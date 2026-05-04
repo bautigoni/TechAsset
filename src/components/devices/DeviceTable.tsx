@@ -1,0 +1,83 @@
+import type { Device } from '../../types';
+import { Badge } from '../layout/Badge';
+import { Button } from '../layout/Button';
+import { getOperationalAlias } from '../../utils/classifyDevice';
+
+type ActionMode = 'full' | 'dashboard';
+
+function badgeTone(state: string) {
+  if (state === 'Prestado') return 'loaned';
+  if (state === 'No encontrada' || state === 'Perdida') return 'lost';
+  if (state === 'Fuera de servicio') return 'out-service';
+  return 'available';
+}
+
+function tableValue(value?: string) {
+  const clean = String(value || '').trim();
+  if (!clean || /^(devuelto|prestado|disponible)$/i.test(clean)) return '-';
+  return clean;
+}
+
+function deviceModel(device: Device) {
+  const parts = [device.marca, device.modelo].map(item => String(item || '').trim()).filter(Boolean);
+  return parts.length ? parts.join(' · ') : '';
+}
+
+export function DeviceTable({ devices, compact = false, actionMode = 'full', onLoan, onReturn, onProfile, onEdit }: {
+  devices: Device[];
+  compact?: boolean;
+  actionMode?: ActionMode;
+  onLoan?: (device: Device) => void;
+  onReturn?: (device: Device) => void;
+  onProfile?: (device: Device) => void;
+  onEdit?: (device: Device) => void;
+}) {
+  return (
+    <div className="table-wrap no-scroll-table device-table-wrap">
+      <table className="compact-table device-table">
+        <thead>
+          <tr>
+            <th>Etiqueta</th>
+            <th>Dispositivo</th>
+            <th>SN</th>
+            <th>Prestado a</th>
+            <th>Horario préstamo</th>
+            <th>Horario devolución</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {devices.map(device => (
+            <tr key={device.id} data-device-tag={device.etiqueta}>
+              <td data-label="Etiqueta">
+                <strong>{device.etiqueta}</strong>
+                <div className="cell-sub operational-alias">{getOperationalAlias(device)}</div>
+              </td>
+              <td data-label="Dispositivo">
+                <div>{device.dispositivo || 'Chromebook'}</div>
+                <div className="cell-sub">{deviceModel(device)}</div>
+              </td>
+              <td data-label="SN">{tableValue(device.sn || device.mac)}</td>
+              <td data-label="Prestado a">
+                <div>{tableValue(device.prestadoA)}</div>
+                {device.ubicacion && <div className="cell-sub">{device.ubicacion}</div>}
+              </td>
+              <td data-label="Horario préstamo">{tableValue(device.loanedAt)}</td>
+              <td data-label="Horario devolución">{tableValue(device.returnedAt)}</td>
+              <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
+              <td data-label="Acciones">
+                <div className="table-actions">
+                  {onLoan && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
+                  {onReturn && <Button className="mini-action-btn" variant="success" onClick={() => onReturn(device)}>Devolver</Button>}
+                  {actionMode !== 'dashboard' && onProfile && <Button className="mini-action-btn" onClick={() => onProfile(device)}>Ficha</Button>}
+                  {onEdit && <Button className="mini-action-btn" onClick={() => onEdit(device)}>Editar</Button>}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

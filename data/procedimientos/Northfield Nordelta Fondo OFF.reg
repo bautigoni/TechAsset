@@ -1,0 +1,17 @@
+Windows Registry Editor Version 5.00
+
+; Set up the enrollment token for organizational unit: TODOS LOS DOMINIOS
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome]
+"CloudManagementEnrollmentToken"="00343520-d854-47e8-a2d1-348d1a6ffc95"
+
+; Clear current registration if one exists.
+[-HKEY_LOCAL_MACHINE\SOFTWARE\Google\Chrome\Enrollment]
+
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer]
+@=""
+"NoThemesTab"=dword:00000001
+"NoChangingWallPaper"=dword:00000000
+"TaskbarLockAll"=dword:00000001
+
+[HKEY_CURRENT_USER\SOFTWARE\Policies\Microsoft\Windows\Personalization]
+"NoChangingMousePointers"=dword:00000001

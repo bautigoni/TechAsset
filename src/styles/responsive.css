@@ -1,0 +1,28 @@
+@media (max-width: 980px) {
+  .app-shell {
+    display: block;
+  }
+
+  .page-actions {
+    justify-content: stretch;
+  }
+
+  .page-actions .btn {
+    flex: 1 1 160px;
+  }
+
+  .topbar-actions {
+    flex-wrap: wrap;
+  }
+
+  .topbar-actions .input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .agenda-cards,
+  .task-board,
+  .analytics-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
