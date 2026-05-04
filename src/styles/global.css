@@ -1,0 +1,130 @@
+@import './variables.css';
+@import './legacy.css';
+@import './layout.css';
+@import './responsive.css';
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html,
+body {
+  width: 100%;
+}
+
+#root {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.inline-kpi-filter {
+  cursor: pointer;
+}
+
+.stat-card.active {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, .28) inset;
+}
+
+.empty-state {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  padding: 18px;
+  text-align: center;
+  width: 100%;
+}
+
+.assistant-fab {
+  align-items: center;
+  background: #20a9df;
+  border: 0;
+  border-radius: 16px;
+  bottom: 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+  color: #fff;
+  cursor: pointer;
+  gap: 8px;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  min-height: 50px;
+  justify-content: center;
+  position: fixed;
+  right: 22px;
+  padding: 0 16px;
+  z-index: 20;
+}
+
+.assistant-fab-icon {
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  display: inline-block;
+  height: 18px;
+  position: relative;
+  width: 22px;
+}
+
+.assistant-fab-icon::after {
+  border-bottom: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  bottom: -5px;
+  content: "";
+  height: 7px;
+  left: 5px;
+  position: absolute;
+  transform: rotate(45deg);
+  width: 7px;
+}
+
+.assistant-confirm {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.assistant-confirm h3 {
+  margin: 4px 0 0;
+}
+
+.assistant-confirm-grid {
+  display: grid;
+  gap: 8px 12px;
+  grid-template-columns: 90px 1fr;
+}
+
+.assistant-confirm-grid span {
+  color: var(--muted);
+}
+
+.modal-card.wide {
+  width: min(920px, 100%);
+}
+
+.task-column.drag-over {
+  border-color: var(--blue);
+}

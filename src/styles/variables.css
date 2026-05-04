@@ -1,0 +1,25 @@
+:root {
+  --bg: #09101d;
+  --panel: #121b2d;
+  --panel-2: #1a2740;
+  --border: #2c3d5f;
+  --text: #e8eefb;
+  --muted: #99a9c6;
+  --blue: #3b82f6;
+  --green: #22c55e;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --radius: 16px;
+}
+
+:root.theme-light {
+  --bg: #eef4ff;
+  --panel: #ffffff;
+  --panel-2: #edf3ff;
+  --border: #c7d5ee;
+  --text: #10203a;
+  --muted: #60728f;
+  --blue: #2563eb;
+  --green: #16a34a;
+  --yellow: #d97706;
+}
