@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { TaskItem, TaskState } from '../../types';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { formatDdMm } from '../../utils/taskDate';
 
 export function TaskCard({ task, consultationMode, onMove, onDelete, onPatch, onPointerDragStart }: { task: TaskItem; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onPointerDragStart?: () => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
@@ -33,7 +34,7 @@ export function TaskCard({ task, consultationMode, onMove, onDelete, onPatch, on
       style={{ viewTransitionName: `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }}
     >
       <strong>{task.titulo}</strong>
-      <div className="muted">{task.responsable} - {task.prioridad}</div>
+      <div className="muted">{task.responsable} - {task.prioridad}{task.fechaVencimiento ? ` · Vence ${formatDdMm(task.fechaVencimiento)}` : ''}</div>
       <div className={`task-state-pill task-state-pill-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}>{task.estado === 'Hecha' ? '✓ Hecha' : task.estado}</div>
       {task.descripcion && <p>{task.descripcion}</p>}
       {task.comentario && <p className="task-note">Nota: {task.comentario}</p>}

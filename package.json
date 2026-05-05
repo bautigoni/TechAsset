@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"npm run server\" \"vite --host 127.0.0.1\"",
+    "dev:full": "concurrently -k -n server,vite,tunnel \"npm run server\" \"vite --host 127.0.0.1\" \"node scripts/start-tunnel.js\"",
     "server": "node server/index.js",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 127.0.0.1",
@@ -22,6 +23,7 @@
     "express": "^4.21.2",
     "localtunnel": "^2.0.2",
     "mammoth": "^1.12.0",
+    "nodemailer": "^6.9.16",
     "openai": "^6.35.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

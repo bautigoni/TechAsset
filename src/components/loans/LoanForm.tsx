@@ -23,6 +23,23 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
   const payload = () => ({ etiqueta: selected?.etiqueta, person, role, location, reason, comment });
 
+  const reset = () => {
+    setCode(''); setPerson(''); setRole(''); setLocation(''); setReason(''); setComment('');
+    codeInputRef.current?.focus();
+  };
+
+  const handleLend = async () => {
+    const data = payload();
+    await onLend(data);
+    reset();
+  };
+
+  const handleReturn = async () => {
+    const data = payload();
+    await onReturn(data);
+    reset();
+  };
+
   return (
     <form className="stack" onSubmit={event => event.preventDefault()}>
       <label>Etiqueta 2023 o codigo</label>
@@ -46,8 +63,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       </div>
       <label>Comentario<input className="input" value={comment} onChange={event => setComment(event.target.value)} placeholder="Comentario opcional" /></label>
       <div className="actions">
-        <Button type="button" variant="primary" disabled={blocked} onClick={() => onLend(payload())}>Prestar</Button>
-        <Button type="button" variant="success" disabled={blocked} onClick={() => onReturn(payload())}>Devolver</Button>
+        <Button type="button" variant="primary" disabled={blocked} onClick={handleLend}>Prestar</Button>
+        <Button type="button" variant="success" disabled={blocked} onClick={handleReturn}>Devolver</Button>
         <Button type="button">Cierre del dia</Button>
         <Button type="button">Abrir camara</Button>
         <Button type="button">Cerrar camara</Button>

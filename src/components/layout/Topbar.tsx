@@ -9,6 +9,9 @@ const TITLES: Record<ViewKey, string> = {
   analytics: 'Analitica',
   agenda: 'Agenda TIC',
   tasks: 'Tareas TIC',
+  classrooms: 'Estado aulas',
+  tools: 'Herramientas auxiliares',
+  quickaccess: 'Accesos rápidos',
   assistant: 'Asistente TIC',
   settings: 'Configuracion'
 };

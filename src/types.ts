@@ -1,4 +1,45 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'analytics' | 'agenda' | 'tasks' | 'assistant' | 'settings';
+export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'analytics' | 'agenda' | 'tasks' | 'classrooms' | 'tools' | 'quickaccess' | 'assistant' | 'settings';
+
+export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'No encontrado' | 'En reparación' | 'Sin revisar';
+export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
+
+export interface Classroom {
+  roomKey: string;
+  nombre: string;
+  nivel: string;
+  piso: string;
+  sector: string;
+  estadoGeneral: ClassroomGeneralState;
+  proyector: ClassroomItemState;
+  nuc: ClassroomItemState;
+  monitor: ClassroomItemState;
+  tecladoMouse: ClassroomItemState;
+  observaciones: string;
+  ultimaActualizacion: string;
+  operadorUltimoCambio: string;
+}
+
+export interface ClassroomHistoryEntry {
+  id: number;
+  roomKey: string;
+  timestamp: string;
+  operador: string;
+  campo: string;
+  valorAnterior: string;
+  valorNuevo: string;
+  observacion: string;
+}
+
+export interface ClassroomSummary {
+  total: number;
+  ok: number;
+  observaciones: number;
+  problema: number;
+  sinRevisar: number;
+  proyectorFalla: number;
+  nucFalla: number;
+  monitorFalla: number;
+}
 
 export type DeviceState = 'Disponible' | 'Prestado' | 'No encontrada' | 'Fuera de servicio';
 export type DeviceType = 'PLANI' | 'TOUCH' | 'TIC' | 'DELL';
