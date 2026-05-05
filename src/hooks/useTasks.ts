@@ -22,9 +22,9 @@ export function useTasks(operator: string) {
     progress: items.filter(item => item.estado === 'En proceso').length,
     done: items.filter(item => item.estado === 'Hecha').length,
     overdue: items.filter(item => item.estado !== 'Hecha' && isOverdue(item.fechaVencimiento)).length,
-    bauti: items.filter(item => item.responsable === 'Bauti').length,
-    equi: items.filter(item => item.responsable === 'Equi').length,
-    mine: items.filter(item => item.responsable === operator).length
+    bauti: items.filter(item => item.responsable === 'Bauti' || item.responsable === 'Ambos').length,
+    equi: items.filter(item => item.responsable === 'Equi' || item.responsable === 'Ambos').length,
+    mine: items.filter(item => item.responsable === operator || item.responsable === 'Ambos').length
   }), [items, operator]);
 
   const move = async (id: string, estado: TaskState) => {

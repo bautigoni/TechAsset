@@ -52,5 +52,9 @@ export function useDevices(search: string) {
     return base;
   }, [devices]);
 
-  return { devices, filteredDevices, counts, sync, refresh, setDevices };
+  const patchLocal = useCallback((etiqueta: string, patch: Partial<Device>) => {
+    setDevices(current => current.map(device => device.etiqueta === etiqueta ? { ...device, ...patch } : device));
+  }, []);
+
+  return { devices, filteredDevices, counts, sync, refresh, setDevices, patchLocal };
 }

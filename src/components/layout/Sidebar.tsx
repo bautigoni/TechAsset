@@ -7,6 +7,9 @@ const NAV: Array<{ key: ViewKey; label: string }> = [
   { key: 'analytics', label: 'Analitica' },
   { key: 'agenda', label: 'Agenda TIC' },
   { key: 'tasks', label: 'Tareas TIC' },
+  { key: 'classrooms', label: 'Estado aulas' },
+  { key: 'tools', label: 'Herramientas auxiliares' },
+  { key: 'quickaccess', label: 'Accesos rápidos' },
   { key: 'settings', label: 'Configuracion' }
 ];
 
@@ -28,7 +31,7 @@ export function Sidebar({ active, onNavigate, open, onClose, onReload }: { activ
           </div>
         </div>
 
-        <nav className="nav">
+        <nav className="nav nav-scrollable">
           {NAV.map(item => (
             <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)}>
               {item.label}
