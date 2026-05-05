@@ -11,12 +11,15 @@ import { AgendaPage } from './components/agenda/AgendaPage';
 import { TasksPage } from './components/tasks/TasksPage';
 import { AnalyticsPage } from './components/analytics/AnalyticsPage';
 import { SettingsPage } from './components/settings/SettingsPage';
-import { AssistantPanel } from './components/assistant/AssistantPanel';
+import { ToolsPage } from './components/tools/ToolsPage';
+import { QuickAccessPage } from './components/tools/QuickAccessPage';
+import { ClassroomStatusPage } from './components/classrooms/ClassroomStatusPage';
 import { useOperator } from './hooks/useOperator';
 import { useDevices } from './hooks/useDevices';
 import { useAgenda } from './hooks/useAgenda';
 import { useTasks } from './hooks/useTasks';
 import { useScrollReveal } from './hooks/useScrollReveal';
+import { useAutoRefresh } from './hooks/useAutoRefresh';
 import { addDevice, getMovements } from './services/devicesApi';
 import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
@@ -31,10 +34,16 @@ export function App() {
   const [loanSeed, setLoanSeed] = useState('');
   const [movements, setMovements] = useState<Movement[]>([]);
   const { operator, setOperator } = useOperator();
-  const { devices, filteredDevices, counts, sync, refresh } = useDevices(search);
+  const { devices, filteredDevices, counts, sync, refresh, patchLocal } = useDevices(search);
   const agenda = useAgenda(operator);
   const tasks = useTasks(operator);
   useScrollReveal([view, filteredDevices.length, agenda.items.length, tasks.items.length, movements.length]);
+
+  useAutoRefresh(() => {
+    if (document.hidden) return;
+    void refresh();
+    getMovements().then(data => setMovements(data.items)).catch(() => {});
+  }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 5));
 
   useEffect(() => {
     document.documentElement.classList.toggle('theme-light', localStorage.getItem('techasset_nfpt_theme') === 'light');
@@ -68,24 +77,31 @@ export function App() {
   };
 
   const onLend = async (payload: Record<string, unknown>) => {
-    await lendDevice({ ...payload, operator });
-    await refresh();
+    const tag = String(payload.etiqueta || '');
+    if (tag) patchLocal(tag, { estado: 'Prestado', prestadoA: String(payload.person || ''), ubicacion: String(payload.location || ''), motivo: String(payload.reason || ''), rol: String(payload.role || ''), comentarios: String(payload.comment || '') });
+    try {
+      await lendDevice({ ...payload, operator });
+    } finally {
+      void refresh();
+      getMovements().then(data => setMovements(data.items)).catch(() => {});
+    }
   };
 
   const onReturn = async (payload: Record<string, unknown>) => {
-    await returnDevice({ ...payload, operator });
-    await refresh();
+    const tag = String(payload.etiqueta || '');
+    if (tag) patchLocal(tag, { estado: 'Disponible', prestadoA: '', ubicacion: '', motivo: '', rol: '' });
+    try {
+      await returnDevice({ ...payload, operator });
+    } finally {
+      void refresh();
+      getMovements().then(data => setMovements(data.items)).catch(() => {});
+    }
   };
 
   const createTaskFromAgenda = async (item: { id: string; curso: string; actividad: string }) => {
     await createTask({ titulo: `Revisar ${item.curso} - ${item.actividad}`, responsable: operator === 'Equi' ? 'Equi' : 'Bauti', prioridad: 'Media', agendaId: item.id, operator });
     await tasks.refresh();
     setView('tasks');
-  };
-
-  const navigateFromAssistant = (target: string) => {
-    const map: Record<string, ViewKey> = { dashboard: 'dashboard', devices: 'devices', loans: 'loans', agenda: 'agenda', tasks: 'tasks', analytics: 'analytics', settings: 'settings' };
-    if (map[target]) setView(map[target]);
   };
 
   const openLoanFlow = (deviceOrCode: Device | string) => {
@@ -104,9 +120,11 @@ export function App() {
         {view === 'analytics' && <AnalyticsPage devices={devices} onRefresh={refresh} />}
         {view === 'agenda' && <AgendaPage items={agenda.items} consultationMode={consultationMode} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
         {view === 'tasks' && <TasksPage tasks={tasks.items} kpis={tasks.kpis} consultationMode={consultationMode} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
+        {view === 'classrooms' && <ClassroomStatusPage operator={operator} consultationMode={consultationMode} />}
+        {view === 'tools' && <ToolsPage operator={operator} />}
+        {view === 'quickaccess' && <QuickAccessPage />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={consultationMode} setConsultationMode={setConsultationMode} sync={sync} />}
       </main>
-      <AssistantPanel onNavigate={navigateFromAssistant} onLoanDraft={openLoanFlow} />
       {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}
       {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}
     </div>

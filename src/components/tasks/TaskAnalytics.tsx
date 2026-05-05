@@ -7,7 +7,7 @@ export function TaskAnalytics({ tasks }: { tasks: TaskItem[] }) {
       <div className="card-head"><h3>Analitica de asistentes</h3><span className="muted">Datos reales de tareas</span></div>
       <div className="grid-2">
         {people.map((person, index) => {
-          const assigned = tasks.filter(task => task.responsable === person);
+          const assigned = tasks.filter(task => task.responsable === person || task.responsable === 'Ambos');
           const done = assigned.filter(task => task.estado === 'Hecha').length;
           const pending = assigned.filter(task => task.estado === 'Pendiente').length;
           const progress = assigned.filter(task => task.estado === 'En proceso').length;

@@ -128,6 +128,31 @@ export function initDb(database = getDb()) {
       created_at TEXT,
       updated_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS classrooms (
+      room_key TEXT PRIMARY KEY,
+      nombre TEXT,
+      nivel TEXT DEFAULT '',
+      piso TEXT DEFAULT '',
+      sector TEXT DEFAULT '',
+      estado_general TEXT DEFAULT 'Sin revisar',
+      proyector_estado TEXT DEFAULT 'Sin revisar',
+      nuc_estado TEXT DEFAULT 'Sin revisar',
+      monitor_estado TEXT DEFAULT 'Sin revisar',
+      teclado_mouse_estado TEXT DEFAULT 'Sin revisar',
+      observaciones TEXT DEFAULT '',
+      ultima_actualizacion TEXT DEFAULT '',
+      operador_ultimo_cambio TEXT DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS classroom_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_key TEXT,
+      timestamp TEXT,
+      operador TEXT DEFAULT '',
+      campo TEXT DEFAULT '',
+      valor_anterior TEXT DEFAULT '',
+      valor_nuevo TEXT DEFAULT '',
+      observacion TEXT DEFAULT ''
+    );
     CREATE TABLE IF NOT EXISTS devoluciones (
       id TEXT PRIMARY KEY,
       prestamo_id TEXT,
