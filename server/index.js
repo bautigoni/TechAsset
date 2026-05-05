@@ -57,6 +57,7 @@ app.use((error, _req, res, _next) => {
 });
 
 const bindHost = process.env.SERVER_HOST || '0.0.0.0';
-app.listen(config.port, bindHost, () => {
-  console.log(`${config.appName} listo en http://${bindHost === '0.0.0.0' ? '127.0.0.1' : bindHost}:${config.port}`);
+const port = Number(process.env.PORT) || config.port;
+app.listen(port, bindHost, () => {
+  console.log(`${config.appName} listo en http://${bindHost === '0.0.0.0' ? '127.0.0.1' : bindHost}:${port}`);
 });

@@ -1,22 +1,30 @@
-node_modules
-.env
-dist
+node_modules/
+dist/
 logs
-data/techasset.db
-data/*.db-wal
-data/*.db-shm
+
+# Variables de entorno reales (.env.example sí se versiona)
+.env
+.env.local
+*.local
+
+# Logs / cachés
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-*.local
-data/procedimientos/0226 (1).mp4 data/procedimientos/Bajar app a tablets administradas.mp4 data/procedimientos/Bajas apps a Chromes administradas.mp4 data/procedimientos/Cambiar fondo de pantalla a computadoras que tienen esa función bloqueada.mp4 data/procedimientos/Crear Unidad compartida.mp4 data/procedimientos/CÓMO TENER CANVA PRO.mp4 data/procedimientos/Install apps Chrome.mp4 data/procedimientos/Install apps Tablet.mp4 data/procedimientos/Tutorial Lecto.mp4 data/procedimientos/excel.mp4 data/procedimientos/¿CÓMO USAR CHATGPT PRO_.mp4
-
-# No subir archivos locales o pesados
-.env
 .npm-cache/
 .claude/
+
+# Bases SQLite locales
+data/techasset.db
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/tmp/
+
+# Archivos pesados / locales
 TechAsset/
 TechAssetfv/
+TechAssetvf/
 *.mp4
 data/procedimientos/*.mp4

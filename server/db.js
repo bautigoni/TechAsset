@@ -153,6 +153,11 @@ export function initDb(database = getDb()) {
       valor_nuevo TEXT DEFAULT '',
       observacion TEXT DEFAULT ''
     );
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT
+    );
     CREATE TABLE IF NOT EXISTS devoluciones (
       id TEXT PRIMARY KEY,
       prestamo_id TEXT,
@@ -334,6 +339,18 @@ export function setLocalState(etiqueta, fields) {
     returned_at: fields.returnedAt || '',
     updated_at: nowIso()
   });
+}
+
+export function getAppSetting(key) {
+  const row = getDb().prepare('SELECT value FROM app_settings WHERE key = ?').get(key);
+  return row ? row.value : null;
+}
+
+export function setAppSetting(key, value) {
+  getDb().prepare(`
+    INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at
+  `).run(key, value == null ? '' : String(value), nowIso());
 }
 
 export function getLocalStates() {

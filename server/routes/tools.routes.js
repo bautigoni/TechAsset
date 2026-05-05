@@ -4,20 +4,66 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
+import { getAppSetting, setAppSetting } from '../db.js';
+
+const MAIL_KEYS = ['smtpServer', 'smtpPort', 'smtpUser', 'smtpAppPassword', 'mailFrom', 'mailSubject', 'modoPrueba', 'microsoftLoginUrl'];
+
+function getMailSettings() {
+  const stored = {};
+  for (const key of MAIL_KEYS) {
+    const value = getAppSetting(`mail.${key}`);
+    if (value != null && value !== '') stored[key] = value;
+  }
+  return {
+    smtpServer: stored.smtpServer ?? config.smtp.server,
+    smtpPort: Number(stored.smtpPort ?? config.smtp.port) || 465,
+    smtpUser: stored.smtpUser ?? config.smtp.user,
+    smtpAppPassword: stored.smtpAppPassword ?? config.smtp.appPassword,
+    mailFrom: stored.mailFrom ?? config.smtp.mailFrom,
+    mailSubject: stored.mailSubject ?? config.smtp.subject,
+    modoPrueba: stored.modoPrueba != null ? String(stored.modoPrueba).toLowerCase() !== 'false' : config.smtp.modoPrueba,
+    microsoftLoginUrl: stored.microsoftLoginUrl ?? config.smtp.microsoftLoginUrl
+  };
+}
+
+function maskPassword(value) {
+  const str = String(value || '');
+  if (!str) return '';
+  if (str.length <= 4) return '•'.repeat(str.length);
+  return `••••••••${str.slice(-2)}`;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-let glifingTemplateDataUrl = '';
-try {
-  const tplPath = path.resolve(__dirname, '..', '..', 'public', 'glifing-template.png');
-  if (fs.existsSync(tplPath)) {
-    const b64 = fs.readFileSync(tplPath).toString('base64');
-    glifingTemplateDataUrl = `data:image/png;base64,${b64}`;
+
+function loadTemplateAsDataUrl(candidates) {
+  for (const candidate of candidates) {
+    try {
+      const tplPath = path.resolve(__dirname, '..', '..', candidate.path);
+      if (fs.existsSync(tplPath)) {
+        const b64 = fs.readFileSync(tplPath).toString('base64');
+        return `data:${candidate.mime};base64,${b64}`;
+      }
+    } catch { /* try next */ }
   }
-} catch { /* template opcional */ }
+  return '';
+}
+
+const glifingTemplateDataUrl = loadTemplateAsDataUrl([
+  { path: 'public/templates/glifing-template.png', mime: 'image/png' },
+  { path: 'public/glifing-template.png', mime: 'image/png' }
+]);
+
+const santillanaTemplateDataUrl = loadTemplateAsDataUrl([
+  { path: 'public/templates/template_santillana.jpeg', mime: 'image/jpeg' },
+  { path: 'public/templates/template_santillana.jpg', mime: 'image/jpeg' },
+  { path: 'public/templates/template_santillana.png', mime: 'image/png' },
+  { path: 'template_santillana.jpeg', mime: 'image/jpeg' }
+]);
 
 export const toolsRouter = Router();
 
 const GLIFING_COLUMNS = ['Username', 'Nombre', 'Apellido', 'Grupo', 'Contraseña'];
+const SANTILLANA_COLUMNS = ['Username', 'Nombre', 'Apellido', 'Grupo', 'Contraseña'];
 const C365_COLUMNS = ['Nombre para mostrar', 'Nombre de usuario', 'mail', 'Contraseña', 'Sede', 'Licencias'];
 
 const jobs = new Map(); // jobId -> { type, filePath, createdAt, content }
@@ -129,99 +175,167 @@ toolsRouter.post('/tools/glifing/upload', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-function buildGlifingHtml(rows) {
+function buildCardsHtml(rows, { kind }) {
+  const isSantillana = kind === 'santillana';
+  const titulo = isSantillana ? 'Tarjetas de acceso · Santillana' : 'Tarjetas de acceso · Glifing';
+  const accent = isSantillana ? '#e7176d' : '#f08000';
+  const templateUrl = isSantillana ? santillanaTemplateDataUrl : glifingTemplateDataUrl;
+
   const cards = rows.map(r => {
     const nombre = `${r.Nombre || ''} ${r.Apellido || ''}`.trim();
     return `
     <article class="g-card">
+      ${templateUrl ? `<img class="g-card-bg" src="${templateUrl}" alt="" />` : ''}
       <div class="g-card-text">
         <h2>${escapeHtml(nombre)}</h2>
         <p class="g-row">Usuario: <strong>${escapeHtml(r.Username || '')}</strong></p>
         <p class="g-row">Contraseña: <strong>${escapeHtml(r['Contraseña'] || '')}</strong></p>
+        ${r.Grupo ? `<p class="g-row g-row-small">Grupo: ${escapeHtml(r.Grupo)}</p>` : ''}
       </div>
     </article>`;
   }).join('\n');
 
+  const textRules = isSantillana
+    ? `
+    .g-card-text {
+      position: absolute;
+      right: 4mm;
+      bottom: 4mm;
+      width: 50%;
+      max-width: 50%;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2mm;
+      padding: 2mm 3mm;
+      background: rgba(255,255,255,.78);
+      border-radius: 4mm;
+      backdrop-filter: blur(2px);
+    }`
+    : `
+    .g-card-text {
+      position: absolute;
+      left: 50%;
+      right: 3mm;
+      bottom: 3mm;
+      width: 47%;
+      max-width: 47%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1mm;
+      padding: 2mm 3mm;
+      background: rgba(255,255,255,.7);
+      border-radius: 3mm;
+    }`;
+
   return `<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><title>Tarjetas Glifing</title>
+<html lang="es"><head><meta charset="utf-8"><title>${escapeHtml(titulo)}</title>
 <style>
   @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; }
-  body { font-family: 'Poppins', 'Inter', 'Segoe UI', Arial, sans-serif; background: #f4f5f8; color: #111; margin: 0; padding: 18px; }
-  h1 { text-align: center; color: #f08000; margin: 0 0 8px; font-weight: 700; }
-  .actions { text-align: center; margin: 0 0 18px; }
-  .actions button { background: #f08000; color: #fff; border: 0; border-radius: 10px; padding: 10px 22px; cursor: pointer; font-size: 14px; font-weight: 600; }
-  @media print { .actions { display: none; } body { background: #fff; padding: 0; } }
-  .grid { display: grid; grid-template-columns: 1fr; gap: 14px; max-width: 720px; margin: 0 auto; }
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+  body { font-family: 'Poppins', 'Inter', 'Segoe UI', Arial, sans-serif; background: #f4f5f8; color: #111; margin: 0; padding: 12px; }
+  h1 { text-align: center; color: ${accent}; margin: 0 0 6px; font-weight: 700; font-size: 18px; }
+  .actions { text-align: center; margin: 0 0 12px; }
+  .actions button { background: ${accent}; color: #fff; border: 0; border-radius: 10px; padding: 8px 18px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  @media print {
+    .actions, h1 { display: none; }
+    body { background: #fff; padding: 0; }
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 65mm;
+    gap: 6mm;
+    max-width: 190mm;
+    margin: 0 auto;
+  }
   .g-card {
     position: relative;
     width: 100%;
-    aspect-ratio: 1400 / 620;
-    background: ${glifingTemplateDataUrl ? `url('${glifingTemplateDataUrl}') center/100% 100% no-repeat #fff` : '#fff'};
-    border: 2px dashed #222;
-    border-radius: 18px;
+    height: 65mm;
+    background: #fff;
+    border: 1.5px dashed #444;
+    border-radius: 10px;
     overflow: hidden;
     page-break-inside: avoid;
+    break-inside: avoid;
   }
-  .g-card-text {
+  .g-card-bg {
     position: absolute;
-    top: 58%;
-    right: 4%;
-    transform: translateY(-50%);
-    width: 52%;
-    max-width: 52%;
-    text-align: center;
-    color: #1a1a1a;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    pointer-events: none;
+    user-select: none;
   }
+  ${textRules}
   .g-card-text h2 {
-    margin: 0 0 6px;
-    font-size: clamp(18px, 2.6vw, 30px);
+    margin: 0;
+    font-size: 17px;
     line-height: 1.05;
-    font-weight: 700;
-    color: #1a1a1a;
+    font-weight: 800;
+    color: #111;
+    letter-spacing: .005em;
     word-break: break-word;
     overflow-wrap: anywhere;
     hyphens: auto;
     max-width: 100%;
   }
   .g-card-text .g-row {
-    margin: 2px 0;
-    font-size: clamp(14px, 1.9vw, 22px);
-    color: #333;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.15;
+    color: #1a1a1a;
     font-weight: 500;
     word-break: break-word;
     overflow-wrap: anywhere;
     max-width: 100%;
   }
   .g-card-text .g-row strong {
-    color: #111;
-    font-weight: 700;
+    color: #000;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: .005em;
+  }
+  .g-card-text .g-row.g-row-small {
+    font-size: 11px;
+    color: #444;
+    font-weight: 600;
   }
 </style></head>
 <body>
-  <h1>Tarjetas de acceso · Glifing</h1>
+  <h1>${escapeHtml(titulo)}</h1>
   <div class="actions"><button onclick="window.print()">Imprimir</button></div>
   <div class="grid">${cards}</div>
 </body></html>`;
+}
+
+function buildGlifingHtml(rows) {
+  return buildCardsHtml(rows, { kind: 'glifing' });
 }
 
 toolsRouter.post('/tools/glifing/generate', async (req, res, next) => {
   try {
     pruneOldJobs();
     const csv = await getCsvFromRequest(req);
+    const tipo = String((req.body && req.body.tipo) || req.query.tipo || 'glifing').toLowerCase();
+    const isSantillana = tipo === 'santillana';
+    const requiredCols = isSantillana ? SANTILLANA_COLUMNS : GLIFING_COLUMNS;
     const { headers, rows } = parseCsv(csv);
-    const missing = GLIFING_COLUMNS.filter(c => !headers.includes(c));
+    const missing = requiredCols.filter(c => !headers.includes(c));
     if (missing.length) return res.status(400).json({ ok: false, error: `Faltan columnas obligatorias: ${missing.join(', ')}` });
     if (!rows.length) return res.status(400).json({ ok: false, error: 'El CSV no contiene filas' });
-    const html = buildGlifingHtml(rows);
+    const html = buildCardsHtml(rows, { kind: isSantillana ? 'santillana' : 'glifing' });
     const id = newJobId();
     const dir = ensureTempDir();
-    const filePath = path.join(dir, `glifing-${id}.html`);
+    const filePath = path.join(dir, `${isSantillana ? 'santillana' : 'glifing'}-${id}.html`);
     fs.writeFileSync(filePath, html, 'utf8');
     jobs.set(id, { type: 'glifing', filePath, createdAt: Date.now() });
     res.json({ ok: true, jobId: id, total: rows.length, downloadUrl: `/api/tools/glifing/download/${id}` });
@@ -238,6 +352,13 @@ toolsRouter.get('/tools/glifing/download/:jobId', (req, res) => {
       jobs.delete(req.params.jobId);
     }, 1000);
   });
+});
+
+toolsRouter.get('/tools/santillana/template', (_req, res) => {
+  const sample = rowsToCsv(SANTILLANA_COLUMNS, [
+    { Username: 'jperez', Nombre: 'Juan', Apellido: 'Pérez', Grupo: '4N', 'Contraseña': 'ABC123' }
+  ]);
+  res.type('text/csv; charset=utf-8').attachment('plantilla-santillana.csv').send('﻿' + sample);
 });
 
 // =========================================================
@@ -299,7 +420,8 @@ toolsRouter.post('/tools/credentials365/preview', async (req, res, next) => {
 });
 
 function buildEmailHtml({ nombre, usuario, password, sede, licencias }) {
-  const loginUrl = config.smtp.microsoftLoginUrl || 'https://login.microsoftonline.com/';
+  const settings = getMailSettings();
+  const loginUrl = settings.microsoftLoginUrl || 'https://login.microsoftonline.com/';
   return `<html><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;">
     <p>Hola ${escapeHtml(nombre)},</p>
     <p>Te damos la bienvenida.</p>
@@ -321,15 +443,16 @@ async function sendViaSmtp(rows) {
   try { nodemailer = (await import('nodemailer')).default; }
   catch { throw new Error('Falta nodemailer en el servidor. Instalar con npm i nodemailer.'); }
 
-  if (!config.smtp.server || !config.smtp.user || !config.smtp.appPassword || !config.smtp.mailFrom) {
-    throw new Error('Configuración SMTP incompleta. Completar variables en .env.');
+  const settings = getMailSettings();
+  if (!settings.smtpServer || !settings.smtpUser || !settings.smtpAppPassword || !settings.mailFrom) {
+    throw new Error('Configuración SMTP incompleta. Completala desde Herramientas auxiliares.');
   }
 
   const transporter = nodemailer.createTransport({
-    host: config.smtp.server,
-    port: config.smtp.port,
-    secure: Number(config.smtp.port) === 465,
-    auth: { user: config.smtp.user, pass: config.smtp.appPassword }
+    host: settings.smtpServer,
+    port: settings.smtpPort,
+    secure: Number(settings.smtpPort) === 465,
+    auth: { user: settings.smtpUser, pass: settings.smtpAppPassword }
   });
 
   const results = [];
@@ -342,9 +465,9 @@ async function sendViaSmtp(rows) {
     const licencias = r.Licencias || '';
     try {
       await transporter.sendMail({
-        from: config.smtp.mailFrom,
+        from: settings.mailFrom,
         to: destino,
-        subject: config.smtp.subject,
+        subject: settings.mailSubject,
         text: `Hola ${nombre}\n\nUsuario: ${usuario}\nContraseña: ${password}\nSede: ${sede}\nLicencias: ${licencias}`,
         html: buildEmailHtml({ nombre, usuario, password, sede, licencias })
       });
@@ -367,7 +490,8 @@ toolsRouter.post('/tools/credentials365/send', async (req, res, next) => {
     if (missing.length) return res.status(400).json({ ok: false, error: `Faltan columnas obligatorias: ${missing.join(', ')}` });
     const { valid, invalid } = validateC365(rows);
 
-    const modoPrueba = config.smtp.modoPrueba;
+    const settings = getMailSettings();
+    const modoPrueba = settings.modoPrueba;
     if (!modoPrueba && !confirm) {
       return res.status(400).json({ ok: false, error: 'Confirmación requerida para envío real (confirm=true).', requireConfirm: true, validos: valid.length, invalidos: invalid.length });
     }
@@ -427,10 +551,72 @@ toolsRouter.get('/tools/credentials365/report/:jobId', (req, res) => {
 // Public config (only safe values)
 // =========================================================
 toolsRouter.get('/tools/config', (_req, res) => {
+  const settings = getMailSettings();
   res.json({
     ok: true,
     handingTicketUrl: config.handingTicketUrl,
-    modoPrueba: config.smtp.modoPrueba,
-    smtpConfigurado: Boolean(config.smtp.server && config.smtp.user && config.smtp.appPassword && config.smtp.mailFrom)
+    modoPrueba: settings.modoPrueba,
+    smtpConfigurado: Boolean(settings.smtpServer && settings.smtpUser && settings.smtpAppPassword && settings.mailFrom)
+  });
+});
+
+// =========================================================
+// Mail settings (SMTP) — editable from UI, persisted in SQLite
+// =========================================================
+toolsRouter.get('/settings/mail', (_req, res) => {
+  const settings = getMailSettings();
+  res.json({
+    ok: true,
+    settings: {
+      smtpServer: settings.smtpServer,
+      smtpPort: settings.smtpPort,
+      smtpUser: settings.smtpUser,
+      smtpAppPasswordMasked: maskPassword(settings.smtpAppPassword),
+      smtpAppPasswordSet: Boolean(settings.smtpAppPassword),
+      mailFrom: settings.mailFrom,
+      mailSubject: settings.mailSubject,
+      modoPrueba: settings.modoPrueba,
+      microsoftLoginUrl: settings.microsoftLoginUrl
+    }
+  });
+});
+
+toolsRouter.patch('/settings/mail', (req, res) => {
+  const body = req.body || {};
+  const allowed = {
+    smtpServer: 'smtpServer',
+    smtpPort: 'smtpPort',
+    smtpUser: 'smtpUser',
+    mailFrom: 'mailFrom',
+    mailSubject: 'mailSubject',
+    microsoftLoginUrl: 'microsoftLoginUrl'
+  };
+  for (const [bodyKey, settingKey] of Object.entries(allowed)) {
+    if (Object.prototype.hasOwnProperty.call(body, bodyKey)) {
+      setAppSetting(`mail.${settingKey}`, String(body[bodyKey] ?? ''));
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'modoPrueba')) {
+    const value = body.modoPrueba === true || body.modoPrueba === 'true' || body.modoPrueba === 1 || body.modoPrueba === '1';
+    setAppSetting('mail.modoPrueba', value ? 'true' : 'false');
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'smtpAppPassword')) {
+    const password = String(body.smtpAppPassword ?? '');
+    if (password) setAppSetting('mail.smtpAppPassword', password);
+  }
+  const settings = getMailSettings();
+  res.json({
+    ok: true,
+    settings: {
+      smtpServer: settings.smtpServer,
+      smtpPort: settings.smtpPort,
+      smtpUser: settings.smtpUser,
+      smtpAppPasswordMasked: maskPassword(settings.smtpAppPassword),
+      smtpAppPasswordSet: Boolean(settings.smtpAppPassword),
+      mailFrom: settings.mailFrom,
+      mailSubject: settings.mailSubject,
+      modoPrueba: settings.modoPrueba,
+      microsoftLoginUrl: settings.microsoftLoginUrl
+    }
   });
 });
