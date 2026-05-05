@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
-    "dev": "concurrently -k \"npm run server\" \"vite --host 127.0.0.1\"",
-    "dev:full": "concurrently -k -n server,vite,tunnel \"npm run server\" \"vite --host 127.0.0.1\" \"node scripts/start-tunnel.js\"",
+    "dev": "concurrently -k \"npm run server\" \"vite --host 0.0.0.0\"",
+    "dev:full": "concurrently -k -n server,vite,tunnel \"npm run server\" \"vite --host 0.0.0.0\" \"node scripts/start-tunnel.js\"",
     "server": "node server/index.js",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host 127.0.0.1",
+    "preview": "vite preview --host 0.0.0.0",
     "start": "node server/index.js",
     "tunnel": "node scripts/start-tunnel.js",
     "serve": "concurrently -k -n server,tunnel \"node server/index.js\" \"node scripts/start-tunnel.js\"",

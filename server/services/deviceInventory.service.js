@@ -138,7 +138,7 @@ function mergeDevice(master, sheet, state, local) {
   const inventory = sheet || {};
   const operational = state || {};
   const extra = local || {};
-  return {
+  const merged = {
     ...master,
     ...inventory,
     ...operational,
@@ -158,6 +158,15 @@ function mergeDevice(master, sheet, state, local) {
     returnedAt: operational.returnedAt || extra.returnedAt || '',
     comentarios: operational.comentarios || extra.comentarios || ''
   };
+  const stateText = String(merged.estado || '').trim().toLowerCase();
+  if (stateText === 'disponible' || stateText === 'devuelto') {
+    merged.prestadoA = '';
+    merged.rol = '';
+    merged.ubicacion = '';
+    merged.motivo = '';
+    merged.loanedAt = '';
+  }
+  return merged;
 }
 
 function normalizeTag(value) {

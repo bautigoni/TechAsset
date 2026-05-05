@@ -4,6 +4,19 @@ type C365Preview = { ok: boolean; total?: number; validos?: number; invalidos?: 
 type C365Send = { ok: boolean; modoPrueba?: boolean; stats?: { total: number; ok: number; prueba: number; errores: number }; jobId?: string; reportUrl?: string; sample?: Record<string, string>[]; requireConfirm?: boolean; error?: string };
 type ToolsConfig = { ok: boolean; handingTicketUrl: string; modoPrueba: boolean; smtpConfigurado: boolean };
 
+export type MailSettingsState = {
+  smtpServer: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpAppPasswordMasked: string;
+  smtpAppPasswordSet: boolean;
+  mailFrom: string;
+  mailSubject: string;
+  modoPrueba: boolean;
+  microsoftLoginUrl: string;
+};
+type MailSettingsResponse = { ok: boolean; settings: MailSettingsState };
+
 const post = async <T>(url: string, body: Record<string, unknown>): Promise<T> => {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   return res.json();
@@ -12,11 +25,19 @@ const post = async <T>(url: string, body: Record<string, unknown>): Promise<T> =
 export const fetchToolsConfig = (): Promise<ToolsConfig> => fetch('/api/tools/config').then(r => r.json());
 
 export const downloadGlifingTemplate = () => window.open('/api/tools/glifing/template', '_blank');
+export const downloadSantillanaTemplate = () => window.open('/api/tools/santillana/template', '_blank');
 export const downloadC365Template = () => window.open('/api/tools/credentials365/template', '_blank');
 
 export const uploadGlifingCsv = (csv: string) => post<GlifingPreview>('/api/tools/glifing/upload', { csv });
-export const generateGlifing = (csv: string) => post<GlifingGenerate>('/api/tools/glifing/generate', { csv });
+export const generateGlifing = (csv: string, tipo: 'glifing' | 'santillana' = 'glifing') => post<GlifingGenerate>('/api/tools/glifing/generate', { csv, tipo });
 
 export const uploadC365Csv = (csv: string) => post<C365Preview>('/api/tools/credentials365/upload', { csv });
 export const previewC365 = (csv: string) => post<C365Preview>('/api/tools/credentials365/preview', { csv });
 export const sendC365 = (csv: string, confirm: boolean) => post<C365Send>('/api/tools/credentials365/send', { csv, confirm });
+
+export const fetchMailSettings = (): Promise<MailSettingsResponse> => fetch('/api/settings/mail').then(r => r.json());
+export const updateMailSettings = (body: Record<string, unknown>): Promise<MailSettingsResponse> => fetch('/api/settings/mail', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body)
+}).then(r => r.json());

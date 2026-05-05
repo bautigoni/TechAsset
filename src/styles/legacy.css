@@ -1842,3 +1842,19 @@ body.consulta-mode #returnBtn {
   .sidebar.mobile-open{height:100vh}
   .sidebar .nav-scrollable{max-height:none;overflow:visible}
 }
+
+/* ============= Continuous scan ============= */
+.continuous-scan-panel{display:flex;flex-direction:column;gap:10px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--panel-2)}
+.continuous-scan-summary{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.continuous-scan-summary strong{color:var(--text);margin-left:4px}
+.continuous-scan-table{max-height:260px;overflow:auto}
+.continuous-scan-table tr.row-error{background:rgba(239,68,68,.08)}
+
+/* ============= Classroom modal positioning ============= */
+.classroom-modal-wrap{z-index:60}
+.classroom-modal-wrap .modal-card.classroom-modal{box-shadow:0 24px 60px rgba(0,0,0,.55)}
+
+/* ============= Tools type selector ============= */
+.tool-type-selector{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 6px}
+.tool-type-selector button{padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer}
+.tool-type-selector button.active{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.5);color:#cfe2ff;font-weight:600}

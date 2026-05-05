@@ -32,6 +32,41 @@ npm run start
 
 Luego abrir `http://127.0.0.1:8000`.
 
+## Docker
+
+La app se puede correr en VPS con Docker. La imagen usa Node 22 sobre Debian (no Alpine, para que `better-sqlite3` compile sin problemas) y persiste la base SQLite en el volumen `./data`.
+
+Antes de levantar:
+
+```bash
+cp .env.example .env
+# editar .env con los valores reales (sin subirlo al repo)
+```
+
+Comandos:
+
+```bash
+docker compose build           # construir la imagen
+docker compose up -d           # levantar la app en segundo plano
+docker compose logs -f techasset   # ver logs en vivo
+docker compose restart techasset   # reiniciar el contenedor
+docker compose down            # detener y limpiar
+```
+
+Dentro del contenedor el server escucha en el puerto **8000**; desde afuera se accede por **8001** (mapeo `8001:8000`). La app queda disponible en:
+
+```
+http://IP_DEL_SERVIDOR:8001
+```
+
+Persistencia:
+
+- La base SQLite vive en `./data/techasset.db` del host (volumen `./data:/app/data`).
+- Reconstruir la imagen no borra datos.
+- Cache CSV (`./data/cache_sheet.csv`) y archivos temporales (`./data/tmp`) también persisten.
+
+Si cambiás dependencias (`package.json`), volver a correr `docker compose build` y luego `docker compose up -d`.
+
 ## Configuración
 
 Copiar `.env.example` a `.env` y completar:

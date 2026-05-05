@@ -3,15 +3,20 @@ import type { Classroom, ClassroomHistoryEntry, ClassroomItemState, Operator } f
 import { fetchClassroom, fetchClassroomHistory, updateClassroom } from '../../services/classroomsApi';
 import { Button } from '../layout/Button';
 
-const ITEM_STATES: ClassroomItemState[] = ['OK', 'Con falla', 'No tiene', 'No encontrado', 'En reparación', 'Sin revisar'];
+const ITEM_STATES: ClassroomItemState[] = ['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar'];
 const ITEM_COLORS: Record<ClassroomItemState, string> = {
   'OK': 'ok',
   'Con falla': 'warn',
   'No tiene': 'neutral',
-  'No encontrado': 'bad',
   'En reparación': 'special',
   'Sin revisar': 'muted'
 };
+
+function migrateLegacyState(value: string | undefined): ClassroomItemState {
+  if (value === 'No encontrado') return 'Con falla';
+  if (value === 'OK' || value === 'Con falla' || value === 'No tiene' || value === 'En reparación' || value === 'Sin revisar') return value;
+  return 'Sin revisar';
+}
 
 const ITEMS: Array<{ key: 'proyector' | 'nuc' | 'monitor' | 'tecladoMouse'; label: string }> = [
   { key: 'proyector', label: 'Proyector' },
@@ -38,15 +43,37 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
     let cancelled = false;
     fetchClassroom(roomKey, nombre).then(r => {
       if (cancelled || !r.ok) return;
-      setClassroom(r.item); setDraft(r.item);
+      const item = {
+        ...r.item,
+        proyector: migrateLegacyState(r.item.proyector),
+        nuc: migrateLegacyState(r.item.nuc),
+        monitor: migrateLegacyState(r.item.monitor),
+        tecladoMouse: migrateLegacyState(r.item.tecladoMouse)
+      };
+      setClassroom(item); setDraft(item);
     });
     fetchClassroomHistory(roomKey).then(r => { if (!cancelled && r.ok) setHistory(r.items); });
     return () => { cancelled = true; };
   }, [roomKey, nombre]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    document.body.classList.add('modal-open');
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.classList.remove('modal-open');
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onClose]);
+
   if (!draft) {
     return (
-      <div className="modal" onClick={onClose}>
+      <div className="modal classroom-modal-wrap" onClick={onClose} role="dialog" aria-modal="true">
         <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
           <p>Cargando aula...</p>
         </div>
@@ -80,10 +107,10 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
     finally { setBusy(false); }
   };
 
-  const onCancel = () => { if (classroom) setDraft(classroom); };
+  const onCancel = () => { onClose(); };
 
   return (
-    <div className="modal" onClick={onClose}>
+    <div className="modal classroom-modal-wrap" onClick={onClose} role="dialog" aria-modal="true">
       <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
         <div className="card-head" style={{ marginBottom: 8 }}>
           <div>
@@ -136,7 +163,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
         {error && <div className="tool-error">{error}</div>}
 
         <div className="actions" style={{ marginTop: 12 }}>
-          <Button onClick={onCancel} disabled={consultationMode || busy}>Cancelar</Button>
+          <Button onClick={onCancel} disabled={busy}>Cancelar</Button>
           <Button variant="primary" onClick={onSave} disabled={consultationMode || busy}>Guardar cambios</Button>
         </div>
 

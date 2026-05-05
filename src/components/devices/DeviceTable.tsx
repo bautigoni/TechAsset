@@ -61,9 +61,9 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               <td data-label="SN">{tableValue(device.sn || device.mac)}</td>
               <td data-label="Prestado a">
                 <div>{tableValue(device.prestadoA)}</div>
-                {device.ubicacion && <div className="cell-sub">{device.ubicacion}</div>}
+                {device.estado === 'Prestado' && device.ubicacion && <div className="cell-sub">{device.ubicacion}</div>}
               </td>
-              <td data-label="Horario préstamo">{tableValue(device.loanedAt)}</td>
+              <td data-label="Horario préstamo">{device.estado === 'Prestado' ? tableValue(device.loanedAt) : '-'}</td>
               <td data-label="Horario devolución">{tableValue(device.returnedAt)}</td>
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
               <td data-label="Acciones">

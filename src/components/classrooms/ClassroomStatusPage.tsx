@@ -8,13 +8,13 @@ type FloorKey = 'inicial' | 'planta' | 'primero' | 'segundo';
 
 const FLOORS: Array<{ key: FloorKey; label: string; enabled: boolean }> = [
   { key: 'inicial', label: 'Nivel inicial', enabled: false },
-  { key: 'planta', label: 'Planta baja', enabled: false },
-  { key: 'primero', label: 'Primer piso', enabled: true },
+  { key: 'planta', label: 'Planta baja', enabled: true },
+  { key: 'primero', label: 'Primer piso', enabled: false },
   { key: 'segundo', label: 'Segundo piso', enabled: false }
 ];
 
 export function ClassroomStatusPage({ operator, consultationMode }: { operator: Operator; consultationMode: boolean }) {
-  const [floor, setFloor] = useState<FloorKey>('primero');
+  const [floor, setFloor] = useState<FloorKey>('planta');
   const [items, setItems] = useState<Classroom[]>([]);
   const [summary, setSummary] = useState<ClassroomSummary | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -75,7 +75,7 @@ export function ClassroomStatusPage({ operator, consultationMode }: { operator: 
           </div>
         )}
 
-        {floor === 'primero' ? (
+        {floor === 'planta' ? (
           <div className="classroom-model-wrap">
             <div className="classroom-model-canvas">
               <PrimerPisoModel statuses={statusMap} onRoomClick={handleRoomClick} />
@@ -107,7 +107,7 @@ export function ClassroomStatusPage({ operator, consultationMode }: { operator: 
         <ClassroomInfoPanel
           roomKey={selectedKey}
           nombre={selectedNombre}
-          piso="Primer piso"
+          piso="Planta baja"
           operator={operator}
           consultationMode={consultationMode}
           onClose={handleClose}

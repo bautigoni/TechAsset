@@ -3,20 +3,26 @@ import { getDb, nowIso } from '../db.js';
 
 export const classroomsRouter = Router();
 
-const VALID_ITEM_STATES = new Set(['OK', 'Con falla', 'No tiene', 'No encontrado', 'En reparación', 'Sin revisar']);
+const VALID_ITEM_STATES = new Set(['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar']);
+
+function migrateItemState(value) {
+  if (value === 'No encontrado') return 'Con falla';
+  if (VALID_ITEM_STATES.has(value)) return value;
+  return 'Sin revisar';
+}
 
 function rowToClassroom(row) {
   return {
     roomKey: row.room_key,
     nombre: row.nombre || '',
     nivel: row.nivel || '',
-    piso: row.piso || '',
+    piso: row.piso === 'Primer piso' ? 'Planta baja' : (row.piso || ''),
     sector: row.sector || '',
     estadoGeneral: row.estado_general || 'Sin revisar',
-    proyector: row.proyector_estado || 'Sin revisar',
-    nuc: row.nuc_estado || 'Sin revisar',
-    monitor: row.monitor_estado || 'Sin revisar',
-    tecladoMouse: row.teclado_mouse_estado || 'Sin revisar',
+    proyector: migrateItemState(row.proyector_estado || 'Sin revisar'),
+    nuc: migrateItemState(row.nuc_estado || 'Sin revisar'),
+    monitor: migrateItemState(row.monitor_estado || 'Sin revisar'),
+    tecladoMouse: migrateItemState(row.teclado_mouse_estado || 'Sin revisar'),
     observaciones: row.observaciones || '',
     ultimaActualizacion: row.ultima_actualizacion || '',
     operadorUltimoCambio: row.operador_ultimo_cambio || ''
@@ -25,41 +31,62 @@ function rowToClassroom(row) {
 
 function calcEstadoGeneral(c) {
   const items = [c.proyector, c.nuc, c.monitor, c.tecladoMouse];
-  if (items.some(v => v === 'En reparación' || v === 'No encontrado')) return 'Problema';
+  if (items.some(v => v === 'En reparación')) return 'Problema';
   if (items.some(v => v === 'Con falla' || v === 'Sin revisar')) return 'Con observaciones';
   if (items.every(v => v === 'OK' || v === 'No tiene')) return 'OK';
   return 'Sin revisar';
 }
 
+function migrateLegacyClassroomData(db) {
+  try {
+    db.exec(`UPDATE classrooms SET piso='Planta baja' WHERE piso='Primer piso'`);
+    for (const col of ['proyector_estado', 'nuc_estado', 'monitor_estado', 'teclado_mouse_estado']) {
+      db.prepare(`UPDATE classrooms SET ${col}='Con falla' WHERE ${col}='No encontrado'`).run();
+    }
+  } catch { /* migration is best-effort */ }
+}
+
+let migrated = false;
+function ensureMigrated(db) {
+  if (migrated) return;
+  migrateLegacyClassroomData(db);
+  migrated = true;
+}
+
 function ensureClassroom(roomKey, defaults = {}) {
   const db = getDb();
+  ensureMigrated(db);
   let row = db.prepare('SELECT * FROM classrooms WHERE room_key = ?').get(roomKey);
   if (!row) {
     db.prepare(`
       INSERT INTO classrooms (room_key, nombre, nivel, piso, sector, estado_general, proyector_estado, nuc_estado, monitor_estado, teclado_mouse_estado, observaciones, ultima_actualizacion, operador_ultimo_cambio)
       VALUES (?, ?, ?, ?, ?, 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', '', '', '')
-    `).run(roomKey, defaults.nombre || roomKey, defaults.nivel || '', defaults.piso || 'Primer piso', defaults.sector || '');
+    `).run(roomKey, defaults.nombre || roomKey, defaults.nivel || '', defaults.piso || 'Planta baja', defaults.sector || '');
     row = db.prepare('SELECT * FROM classrooms WHERE room_key = ?').get(roomKey);
   }
   return row;
 }
 
 classroomsRouter.get('/classrooms', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM classrooms ORDER BY piso, nombre').all();
+  const db = getDb();
+  ensureMigrated(db);
+  const rows = db.prepare('SELECT * FROM classrooms ORDER BY piso, nombre').all();
   res.json({ ok: true, items: rows.map(rowToClassroom) });
 });
 
 classroomsRouter.get('/classrooms/summary', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM classrooms').all().map(rowToClassroom);
+  const db = getDb();
+  ensureMigrated(db);
+  const rows = db.prepare('SELECT * FROM classrooms').all().map(rowToClassroom);
   const summary = {
     total: rows.length,
     ok: rows.filter(r => r.estadoGeneral === 'OK').length,
     observaciones: rows.filter(r => r.estadoGeneral === 'Con observaciones').length,
     problema: rows.filter(r => r.estadoGeneral === 'Problema').length,
     sinRevisar: rows.filter(r => r.estadoGeneral === 'Sin revisar').length,
-    proyectorFalla: rows.filter(r => r.proyector === 'Con falla' || r.proyector === 'No encontrado' || r.proyector === 'En reparación').length,
-    nucFalla: rows.filter(r => r.nuc === 'Con falla' || r.nuc === 'No encontrado' || r.nuc === 'En reparación').length,
-    monitorFalla: rows.filter(r => r.monitor === 'Con falla' || r.monitor === 'No encontrado' || r.monitor === 'En reparación').length
+    proyectorFalla: rows.filter(r => r.proyector === 'Con falla' || r.proyector === 'En reparación').length,
+    nucFalla: rows.filter(r => r.nuc === 'Con falla' || r.nuc === 'En reparación').length,
+    monitorFalla: rows.filter(r => r.monitor === 'Con falla' || r.monitor === 'En reparación').length
   };
   res.json({ ok: true, summary });
 });
@@ -90,8 +117,9 @@ classroomsRouter.patch('/classrooms/:roomKey', (req, res) => {
   };
 
   for (const key of ['proyector', 'nuc', 'monitor', 'tecladoMouse']) {
-    if (!VALID_ITEM_STATES.has(next[key])) next[key] = 'Sin revisar';
+    next[key] = migrateItemState(next[key]);
   }
+  if (next.piso === 'Primer piso') next.piso = 'Planta baja';
   next.estadoGeneral = calcEstadoGeneral(next);
 
   db.prepare(`

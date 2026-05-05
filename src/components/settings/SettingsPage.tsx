@@ -24,16 +24,6 @@ export function SettingsPage({ operator, setOperator, consultationMode, setConsu
           <div className="sync-status ok">Estado de sincronización: {sync.state === 'ok' ? 'OK' : sync.state === 'error' ? 'Error' : 'Sincronizando'}</div>
         </section>
         <AdvancedSettings />
-        <section className="card">
-          <div className="card-head"><h3>Procedimientos</h3></div>
-          <div className="procedures-list">
-            {['Cómo prestar computadoras', 'Cómo hacer cierre del día', 'Qué hacer si falla localtunnel', 'Qué hacer si una compu queda no encontrada', 'Qué hacer si una tarea queda vencida', 'Qué hacer si se marca Faltaron equipos'].map(item => <div className="list-item" key={item}>{item}</div>)}
-          </div>
-        </section>
-        <section className="card">
-          <div className="card-head"><h3>Mapa del colegio</h3></div>
-          <div className="map-placeholder">Placeholder para plano y ubicaciones: Aula, DOE, Preceptoría, Planificación, Laboratorio, Biblioteca.</div>
-        </section>
       </div>
     </section>
   );

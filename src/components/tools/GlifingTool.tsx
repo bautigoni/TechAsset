@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Button } from '../layout/Button';
-import { downloadGlifingTemplate, generateGlifing, uploadGlifingCsv } from '../../services/toolsApi';
+import { downloadGlifingTemplate, downloadSantillanaTemplate, generateGlifing, uploadGlifingCsv } from '../../services/toolsApi';
 
 const REQUIRED = ['Username', 'Nombre', 'Apellido', 'Grupo', 'Contraseña'];
 
+type CardKind = 'glifing' | 'santillana';
+
 export function GlifingTool() {
+  const [kind, setKind] = useState<CardKind>('glifing');
   const [csv, setCsv] = useState('');
   const [filename, setFilename] = useState('');
   const [preview, setPreview] = useState<Record<string, string>[]>([]);
@@ -31,32 +34,43 @@ export function GlifingTool() {
     if (!csv) { setError('Subí un CSV primero'); return; }
     setBusy(true); setError(''); setInfo('');
     try {
-      const r = await generateGlifing(csv);
+      const r = await generateGlifing(csv, kind);
       if (!r.ok) { setError(r.error || 'No se pudo generar'); return; }
       if (r.downloadUrl) {
         window.open(r.downloadUrl, '_blank');
-        setInfo(`Tarjetas generadas para ${r.total} usuario(s). Descarga iniciada.`);
+        setInfo(`Tarjetas (${kind}) generadas para ${r.total} usuario(s). Descarga iniciada.`);
       }
     } finally { setBusy(false); }
   };
 
+  const onDownloadTemplate = () => {
+    if (kind === 'santillana') downloadSantillanaTemplate();
+    else downloadGlifingTemplate();
+  };
+
   return (
     <section className="card tool-card">
-      <div className="card-head"><h3>Creador de tarjetas de Glifing</h3></div>
-      <p className="muted">Subí un CSV con los datos de Glifing. Se valida el formato y se genera un HTML imprimible (A4) con las tarjetas listas para recortar.</p>
+      <div className="card-head"><h3>Creador de tarjetas</h3></div>
+      <p className="muted">Subí un CSV con los datos. Se valida el formato y se genera un HTML A4 listo para imprimir (aprox. 8 tarjetas por hoja).</p>
+
+      <label style={{ display: 'block', marginTop: 8 }}>Tipo de tarjeta</label>
+      <div className="tool-type-selector">
+        <button type="button" className={kind === 'glifing' ? 'active' : ''} onClick={() => setKind('glifing')}>Glifing</button>
+        <button type="button" className={kind === 'santillana' ? 'active' : ''} onClick={() => setKind('santillana')}>Santillana</button>
+      </div>
 
       <div className="tool-format">
-        <strong>Formato CSV requerido:</strong>
+        <strong>Formato CSV requerido ({kind === 'santillana' ? 'Santillana' : 'Glifing'}):</strong>
         <code>{REQUIRED.join(',')}</code>
       </div>
 
       <div className="actions wrap-actions">
-        <Button onClick={downloadGlifingTemplate}>Descargar plantilla CSV</Button>
+        <Button onClick={onDownloadTemplate}>Descargar plantilla CSV ({kind})</Button>
         <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
           {filename ? `Cambiar archivo (${filename})` : 'Subir CSV'}
           <input type="file" accept=".csv,text/csv" hidden onChange={e => onFile(e.target.files?.[0] || null)} />
         </label>
-        <Button variant="primary" onClick={onGenerate} disabled={!csv || busy}>Generar tarjetas</Button>
+        <Button variant="primary" onClick={onGenerate} disabled={!csv || busy}>Generar tarjetas {kind === 'santillana' ? 'Santillana' : 'Glifing'}</Button>
       </div>
 
       {error && <div className="tool-error">{error}</div>}

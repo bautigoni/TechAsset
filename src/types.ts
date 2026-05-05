@@ -1,6 +1,6 @@
 export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'analytics' | 'agenda' | 'tasks' | 'classrooms' | 'tools' | 'quickaccess' | 'assistant' | 'settings';
 
-export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'No encontrado' | 'En reparación' | 'Sin revisar';
+export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
 
 export interface Classroom {

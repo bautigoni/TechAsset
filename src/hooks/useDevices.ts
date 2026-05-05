@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Device, SyncStatus } from '../types';
 import { getDevices } from '../services/devicesApi';
-import { classifyDeviceType, getOperationalAlias } from '../utils/classifyDevice';
+import { classifyDeviceType, withOperationalAliases } from '../utils/classifyDevice';
 import { getDeviceStateKey } from '../utils/deviceState';
 import { matchesSmartSearch } from '../utils/normalizeSearch';
 
@@ -13,7 +13,7 @@ export function useDevices(search: string) {
     setSync(current => current.state === 'ok' ? { ...current, state: 'loading' } : { state: 'loading' });
     try {
       const data = await getDevices();
-      setDevices(data.items.map(device => ({ ...device, aliasOperativo: getOperationalAlias(device) })));
+      setDevices(withOperationalAliases(data.items));
       setSync({ state: 'ok', loadedAt: data.loadedAt, message: data.source });
     } catch (error) {
       setSync({ state: 'error', message: error instanceof Error ? error.message : 'Error' });
