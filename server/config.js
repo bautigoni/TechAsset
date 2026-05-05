@@ -20,5 +20,18 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   openaiModel: process.env.OPENAI_MODEL || '',
   openaiPromptId: process.env.OPENAI_PROMPT_ID || '',
-  localtunnelSubdomain: process.env.LOCALTUNNEL_SUBDOMAIN || 'techasset-nfpt'
+  localtunnelSubdomain: process.env.LOCALTUNNEL_SUBDOMAIN || 'techasset-nfpt',
+  toolsTempDir: path.resolve(rootDir, process.env.TOOLS_TEMP_DIR || './data/tmp'),
+  maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 10),
+  smtp: {
+    server: process.env.SMTP_SERVER || '',
+    port: Number(process.env.SMTP_PORT || 465),
+    user: process.env.SMTP_USER || '',
+    appPassword: process.env.SMTP_APP_PASSWORD || '',
+    mailFrom: process.env.MAIL_FROM || '',
+    subject: process.env.MAIL_SUBJECT || 'Credenciales de acceso',
+    modoPrueba: String(process.env.MODO_PRUEBA || 'true').toLowerCase() !== 'false',
+    microsoftLoginUrl: process.env.MICROSOFT_LOGIN_URL || ''
+  },
+  handingTicketUrl: process.env.HANDING_TICKET_URL || ''
 };
