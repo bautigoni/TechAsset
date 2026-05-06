@@ -246,7 +246,9 @@ function updateDiagnostics(result, timings, { timedOut, error }) {
     cacheAgeSeconds: 0,
     inflight: Boolean(inventoryInflight)
   };
-  console.info(`[devices/perf] source="${result.source}" fetch=${diagnostics.lastExternalFetchMs}ms parse=${diagnostics.lastParseMs}ms merge=${diagnostics.lastMergeMs}ms total=${diagnostics.lastTotalMs}ms count=${diagnostics.deviceCount} timeout=${diagnostics.timedOut}`);
+  if (process.env.DEBUG_DEVICE_PERF === '1' || process.env.DEBUG_DEVICE_PERF === 'true') {
+    console.info(`[devices/perf] source="${result.source}" fetch=${diagnostics.lastExternalFetchMs}ms parse=${diagnostics.lastParseMs}ms merge=${diagnostics.lastMergeMs}ms total=${diagnostics.lastTotalMs}ms count=${diagnostics.deviceCount} timeout=${diagnostics.timedOut}`);
+  }
 }
 
 function readableError(error) {
