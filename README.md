@@ -53,11 +53,21 @@ docker compose restart techasset   # reiniciar el contenedor
 docker compose down            # detener y limpiar
 ```
 
-Dentro del contenedor el server escucha en el puerto **8000**; desde afuera se accede por **8001** (mapeo `8001:8000`). La app queda disponible en:
+Dentro del contenedor el server escucha en el puerto **8000**. El servicio **no expone puertos al host**: el ingreso entra por Caddy (u otro reverse proxy) que comparte la red Docker `proxy-network`. Caddy proxea hacia `techasset:8000`.
 
+Si necesitás probar el contenedor directo desde el VPS sin Caddy, agregá temporalmente al `docker-compose.yml`:
+
+```yaml
+    ports:
+      - "8001:8000"
 ```
-http://IP_DEL_SERVIDOR:8001
-```
+
+y la app queda accesible en `http://IP_DEL_SERVIDOR:8001`.
+
+Red compartida:
+
+- El compose define `proxy-network` (driver bridge).
+- Caddy debe declarar la misma red en su propio compose (`external: true` si Caddy vive en otro stack, o sumando el servicio al mismo `docker-compose.yml`).
 
 Persistencia:
 

@@ -3,11 +3,17 @@ services:
     build: .
     container_name: techasset-nfs
     restart: unless-stopped
-    ports:
-      - "8001:8000"
+    # Sin "ports" expuestos al host: el ingreso queda detrás de Caddy
+    # (u otro reverse proxy) que comparte la red `proxy-network`.
     env_file:
       - .env
     environment:
       - PORT=8000
     volumes:
       - ./data:/app/data
+    networks:
+      - proxy-network
+
+networks:
+  proxy-network:
+    driver: bridge
