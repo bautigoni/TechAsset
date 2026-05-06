@@ -176,6 +176,7 @@ export function initDb(database = getDb()) {
   `);
 
   ensureColumn(database, 'agenda', 'compus_retiradas', 'INTEGER DEFAULT 0');
+  ensureColumn(database, 'classrooms', 'equipment_json', "TEXT DEFAULT ''");
 
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);

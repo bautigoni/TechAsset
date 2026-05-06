@@ -1,12 +1,35 @@
 import { readFile } from 'node:fs/promises';
+import { performance } from 'node:perf_hooks';
 import { config } from '../config.js';
 import { getDb, getLocalStates } from '../db.js';
-import { loadDevicesCsv, parseDevicesCsv } from './googleSheets.service.js';
+import {
+  fetchDevicesCsvFromGoogle,
+  fetchDevicesJsonFromAppsScript,
+  parseDevicesCsv,
+  readCachedDevicesCsv
+} from './googleSheets.service.js';
 import { proxyAppsScript } from './appsScript.service.js';
 
 const STATE_CACHE_TTL_MS = 60 * 1000;
+const INVENTORY_CACHE_TTL_MS = Math.max(1000, Number(config.sheetCacheTtlMs || 5000));
 let stateCache = { rows: [], fetchedAt: 0 };
 let stateInflight = null;
+let inventoryCache = null;
+let inventoryInflight = null;
+let diagnostics = {
+  source: 'sin datos',
+  lastSuccessfulReadAt: '',
+  lastExternalFetchMs: 0,
+  lastParseMs: 0,
+  lastMergeMs: 0,
+  lastTotalMs: 0,
+  deviceCount: 0,
+  timedOut: false,
+  lastError: '',
+  respondedWithCache: false,
+  cacheAgeSeconds: null,
+  inflight: false
+};
 
 function refreshStateInBackground() {
   if (stateInflight) return stateInflight;
@@ -33,23 +56,202 @@ async function loadAppsScriptState({ wait = false } = {}) {
   const stale = age > STATE_CACHE_TTL_MS;
   if (stale || !stateCache.fetchedAt) {
     const promise = refreshStateInBackground();
-    if (wait || !stateCache.fetchedAt) await promise;
+    if (wait) await promise;
   }
   return stateCache.rows;
 }
 
-export async function getMergedDevices() {
-  const { text, source } = await loadDevicesCsv();
-  const sheetDevices = parseDevicesCsv(text);
-  const stateDevices = await loadAppsScriptState();
-  const localStates = getLocalStates();
-  const masterDevices = await loadAppDevices();
-  const localDevices = loadLocalDevices();
-  const overrideState = mergeStateOverrides(stateDevices, localStates);
+export async function getMergedDevices({ forceRefresh = false, waitForFresh = false } = {}) {
+  const now = Date.now();
+  const isFresh = inventoryCache && now - inventoryCache.fetchedAt <= INVENTORY_CACHE_TTL_MS;
+
+  if (!forceRefresh && isFresh) {
+    return fromCache(inventoryCache, 'memory cache', false);
+  }
+
+  if (!forceRefresh && inventoryCache) {
+    refreshInventoryInBackground('stale-memory');
+    return fromCache(inventoryCache, 'memory cache stale-while-revalidate', true);
+  }
+
+  if (!forceRefresh && !waitForFresh) {
+    const local = await buildFromLocalCsvCache();
+    if (local) {
+      inventoryCache = local;
+      refreshInventoryInBackground('bootstrap-local-cache');
+      return fromCache(local, 'local CSV cache stale-while-revalidate', true);
+    }
+  }
+
+  try {
+    const fresh = await refreshInventory({ reason: forceRefresh ? 'force-refresh' : 'cold-start' });
+    return fromCache(fresh, fresh.source, false);
+  } catch (error) {
+    diagnostics.lastError = readableError(error);
+    diagnostics.timedOut = isTimeoutError(error);
+    if (inventoryCache) return fromCache(inventoryCache, 'memory cache after refresh error', true);
+    const local = await buildFromLocalCsvCache();
+    if (local) {
+      inventoryCache = local;
+      return fromCache(local, 'local CSV cache after refresh error', true);
+    }
+    throw new Error('No se pudo leer inventario desde Google Sheets, Apps Script ni cache local.');
+  }
+}
+
+export function invalidateDeviceInventoryCache(reason = 'manual') {
+  inventoryCache = null;
+  diagnostics = { ...diagnostics, source: `invalidated: ${reason}`, cacheAgeSeconds: null };
+}
+
+export function getDeviceInventoryDiagnostics() {
   return {
-    items: mergeDevices(masterDevices.length ? masterDevices : sheetDevices, sheetDevices, overrideState, localDevices, !masterDevices.length),
-    source: [source, stateDevices.length ? 'Apps Script state' : '', localStates.length ? 'Estado local' : '', masterDevices.length ? 'Dispositivos APP' : ''].filter(Boolean).join(' + ')
+    ...diagnostics,
+    inflight: Boolean(inventoryInflight),
+    cacheAgeSeconds: inventoryCache ? Math.round((Date.now() - inventoryCache.fetchedAt) / 1000) : null,
+    cacheTtlSeconds: Math.round(INVENTORY_CACHE_TTL_MS / 1000),
+    memoryCacheReady: Boolean(inventoryCache),
+    localStateCacheAgeSeconds: stateCache.fetchedAt ? Math.round((Date.now() - stateCache.fetchedAt) / 1000) : null
   };
+}
+
+function refreshInventoryInBackground(reason) {
+  if (inventoryInflight) return inventoryInflight;
+  inventoryInflight = refreshInventory({ reason }).catch(error => {
+    diagnostics.lastError = readableError(error);
+    diagnostics.timedOut = isTimeoutError(error);
+    console.warn(`[devices] background refresh failed: ${diagnostics.lastError}`);
+    return null;
+  }).finally(() => {
+    inventoryInflight = null;
+  });
+  return inventoryInflight;
+}
+
+async function refreshInventory({ reason }) {
+  if (inventoryInflight) return inventoryInflight;
+  inventoryInflight = (async () => {
+    const timings = {};
+    const totalStart = performance.now();
+    let sheetDevices = [];
+    let source = '';
+    let timedOut = false;
+    try {
+      if (config.appsScriptInventoryUrl) {
+        const live = await timed('fetch-sheet', timings, () => fetchDevicesJsonFromAppsScript());
+        sheetDevices = live.items;
+        source = live.updatedAt ? `${live.source} (${live.updatedAt})` : live.source;
+        timings['parse-csv'] = 0;
+      } else {
+        const csv = await timed('fetch-sheet', timings, () => fetchDevicesCsvFromGoogle());
+        sheetDevices = await timed('parse-csv', timings, () => parseDevicesCsv(csv.text));
+        source = csv.source;
+      }
+    } catch (error) {
+      timedOut = isTimeoutError(error);
+      diagnostics.lastError = readableError(error);
+      diagnostics.timedOut = timedOut;
+      const local = await buildFromLocalCsvCache({ failedExternalFetchMs: timings['fetch-sheet'] || 0, externalError: error });
+      if (local) return local;
+      throw error;
+    }
+
+    const merged = await buildMergedResult(sheetDevices, source, timings);
+    merged.fetchedAt = Date.now();
+    merged.loadedAt = new Date().toISOString();
+    merged.reason = reason;
+    timings.total = Math.round(performance.now() - totalStart);
+    updateDiagnostics(merged, timings, { timedOut, error: '' });
+    inventoryCache = merged;
+    return merged;
+  })().finally(() => {
+    inventoryInflight = null;
+  });
+  return inventoryInflight;
+}
+
+async function buildFromLocalCsvCache(extra = {}) {
+  const timings = {};
+  const totalStart = performance.now();
+  const cached = await timed('read-local-cache', timings, () => readCachedDevicesCsv());
+  if (!cached?.text) return null;
+  const sheetDevices = await timed('parse-csv', timings, () => parseDevicesCsv(cached.text));
+  const result = await buildMergedResult(sheetDevices, cached.source, timings);
+  result.fetchedAt = Date.now();
+  result.loadedAt = new Date().toISOString();
+  timings.total = Math.round(performance.now() - totalStart);
+  if (extra.failedExternalFetchMs) timings['fetch-sheet'] = extra.failedExternalFetchMs;
+  updateDiagnostics(result, timings, { timedOut: isTimeoutError(extra.externalError), error: extra.externalError ? readableError(extra.externalError) : '' });
+  return result;
+}
+
+async function buildMergedResult(sheetDevices, source, timings) {
+  const stateDevices = await loadAppsScriptState();
+  return timed('merge-local-state', timings, async () => {
+    const localStates = getLocalStates();
+    const masterDevices = await loadAppDevices();
+    const localDevices = loadLocalDevices();
+    const overrideState = mergeStateOverrides(stateDevices, localStates);
+    const items = mergeDevices(masterDevices.length ? masterDevices : sheetDevices, sheetDevices, overrideState, localDevices, !masterDevices.length);
+    return {
+      items,
+      source: [source, stateDevices.length ? 'Apps Script state' : '', localStates.length ? 'Estado local' : '', masterDevices.length ? 'Dispositivos APP' : ''].filter(Boolean).join(' + ')
+    };
+  });
+}
+
+async function timed(label, timings, fn) {
+  const start = performance.now();
+  try {
+    return await fn();
+  } finally {
+    timings[label] = Math.round(performance.now() - start);
+  }
+}
+
+function fromCache(cache, source, respondedWithCache) {
+  const cacheAgeSeconds = Math.max(0, Math.round((Date.now() - cache.fetchedAt) / 1000));
+  diagnostics = { ...diagnostics, source, respondedWithCache, cacheAgeSeconds, inflight: Boolean(inventoryInflight) };
+  return {
+    items: cache.items,
+    source,
+    loadedAt: cache.loadedAt,
+    diagnostics: {
+      source,
+      respondedWithCache,
+      cacheAgeSeconds,
+      lastExternalFetchMs: diagnostics.lastExternalFetchMs,
+      lastParseMs: diagnostics.lastParseMs,
+      lastMergeMs: diagnostics.lastMergeMs,
+      lastTotalMs: diagnostics.lastTotalMs
+    }
+  };
+}
+
+function updateDiagnostics(result, timings, { timedOut, error }) {
+  diagnostics = {
+    source: result.source,
+    lastSuccessfulReadAt: result.loadedAt,
+    lastExternalFetchMs: timings['fetch-sheet'] || 0,
+    lastParseMs: timings['parse-csv'] || 0,
+    lastMergeMs: timings['merge-local-state'] || 0,
+    lastTotalMs: timings.total || 0,
+    deviceCount: result.items.length,
+    timedOut: Boolean(timedOut),
+    lastError: error || '',
+    respondedWithCache: result.source.includes('Cache local'),
+    cacheAgeSeconds: 0,
+    inflight: Boolean(inventoryInflight)
+  };
+  console.info(`[devices/perf] source="${result.source}" fetch=${diagnostics.lastExternalFetchMs}ms parse=${diagnostics.lastParseMs}ms merge=${diagnostics.lastMergeMs}ms total=${diagnostics.lastTotalMs}ms count=${diagnostics.deviceCount} timeout=${diagnostics.timedOut}`);
+}
+
+function readableError(error) {
+  return error instanceof Error ? error.message : String(error || 'Error desconocido');
+}
+
+function isTimeoutError(error) {
+  return error?.name === 'TimeoutError' || error?.name === 'AbortError' || /timeout|aborted/i.test(readableError(error));
 }
 
 function mergeStateOverrides(stateDevices, localStates) {

@@ -56,8 +56,7 @@ const glifingTemplateDataUrl = loadTemplateAsDataUrl([
 const santillanaTemplateDataUrl = loadTemplateAsDataUrl([
   { path: 'public/templates/template_santillana.jpeg', mime: 'image/jpeg' },
   { path: 'public/templates/template_santillana.jpg', mime: 'image/jpeg' },
-  { path: 'public/templates/template_santillana.png', mime: 'image/png' },
-  { path: 'template_santillana.jpeg', mime: 'image/jpeg' }
+  { path: 'public/templates/template_santillana.png', mime: 'image/png' }
 ]);
 
 export const toolsRouter = Router();
@@ -199,19 +198,21 @@ function buildCardsHtml(rows, { kind }) {
     ? `
     .g-card-text {
       position: absolute;
-      right: 4mm;
-      bottom: 4mm;
-      width: 50%;
-      max-width: 50%;
-      text-align: right;
+      right: 5mm;
+      bottom: 5mm;
+      width: 48%;
+      max-width: 48%;
+      text-align: center;
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
-      gap: 2mm;
+      align-items: center;
+      justify-content: center;
+      gap: 1.4mm;
       padding: 2mm 3mm;
-      background: rgba(255,255,255,.78);
-      border-radius: 4mm;
+      background: rgba(255,255,255,.82);
+      border-radius: 3mm;
       backdrop-filter: blur(2px);
+      overflow: hidden;
     }`
     : `
     .g-card-text {
@@ -270,8 +271,9 @@ function buildCardsHtml(rows, { kind }) {
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: ${isSantillana ? 'contain' : 'cover'};
     object-position: center;
+    background: #fff;
     pointer-events: none;
     user-select: none;
   }

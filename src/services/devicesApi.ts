@@ -1,8 +1,25 @@
 import type { Device, Movement } from '../types';
 import { apiGet, apiSend } from './apiClient';
 
-export function getDevices() {
-  return apiGet<{ ok: true; items: Device[]; loadedAt: string; source: string }>('/api/devices');
+type DevicesResponse = { ok: true; items: Device[]; loadedAt: string; source: string; diagnostics?: Record<string, unknown> };
+type DevicesDiagnosticsResponse = { ok: true; diagnostics: Record<string, unknown> };
+
+let devicesRequest: Promise<DevicesResponse> | null = null;
+
+export function getDevices(options: { force?: boolean; wait?: boolean } = {}) {
+  const params = new URLSearchParams();
+  if (options.force) params.set('refresh', '1');
+  if (options.wait) params.set('wait', '1');
+  const url = `/api/devices${params.size ? `?${params}` : ''}`;
+  if (!options.force && devicesRequest) return devicesRequest;
+  devicesRequest = apiGet<DevicesResponse>(url).finally(() => {
+    devicesRequest = null;
+  });
+  return devicesRequest;
+}
+
+export function getDevicesDiagnostics() {
+  return apiGet<DevicesDiagnosticsResponse>('/api/devices/diagnostics');
 }
 
 export function getMovements() {

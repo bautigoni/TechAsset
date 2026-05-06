@@ -24,12 +24,7 @@ const FIELD_ALIASES = {
 export async function loadDevicesCsv() {
   if (config.googleSheetCsvUrl) {
     try {
-      const response = await fetch(toCsvExportUrl(config.googleSheetCsvUrl));
-      if (!response.ok) throw new Error(`Google Sheets HTTP ${response.status}`);
-      const text = await response.text();
-      if (looksLikeHtml(text)) throw new Error('La URL configurada no devolvio CSV.');
-      await writeText(config.cacheCsvPath, text);
-      return { text, source: 'Google Sheets' };
+      return await fetchDevicesCsvFromGoogle();
     } catch {
       const cached = await readTextIfExists(config.cacheCsvPath);
       if (cached) return { text: cached, source: 'Cache local' };
@@ -40,6 +35,30 @@ export async function loadDevicesCsv() {
   return { text, source: 'Cache local' };
 }
 
+export async function readCachedDevicesCsv() {
+  const text = await readTextIfExists(config.cacheCsvPath);
+  return text ? { text, source: 'Cache local' } : null;
+}
+
+export async function fetchDevicesCsvFromGoogle() {
+  if (!config.googleSheetCsvUrl) throw new Error('GOOGLE_SHEET_CSV_URL no configurado.');
+  const response = await fetchWithTimeout(addCacheBuster(toCsvExportUrl(config.googleSheetCsvUrl)), config.sheetFetchTimeoutMs);
+  if (!response.ok) throw new Error(`Google Sheets HTTP ${response.status}`);
+  const text = await response.text();
+  if (looksLikeHtml(text)) throw new Error('La URL configurada no devolvio CSV.');
+  await writeText(config.cacheCsvPath, text);
+  return { text, source: 'Google CSV' };
+}
+
+export async function fetchDevicesJsonFromAppsScript() {
+  if (!config.appsScriptInventoryUrl) throw new Error('APPS_SCRIPT_INVENTORY_URL no configurado.');
+  const response = await fetchWithTimeout(addCacheBuster(config.appsScriptInventoryUrl), config.sheetFetchTimeoutMs);
+  if (!response.ok) throw new Error(`Apps Script inventory HTTP ${response.status}`);
+  const payload = await response.json();
+  const rows = Array.isArray(payload?.rows) ? payload.rows : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
+  return { items: parseDevicesJsonRows(rows), source: 'Apps Script inventory', updatedAt: payload?.updatedAt || payload?.version || '' };
+}
+
 export function parseDevicesCsv(text) {
   const rows = parseCsv(text);
   if (!rows.length) return [];
@@ -48,6 +67,11 @@ export function parseDevicesCsv(text) {
   const col = key => findColumn(headers, FIELD_ALIASES[key]);
   const idx = Object.fromEntries(Object.keys(FIELD_ALIASES).map(key => [key, col(key)]));
   return rows.slice(headerIndex + 1).map(row => normalizeDevice(row, idx)).filter(device => device.etiqueta || device.sn || device.mac);
+}
+
+export function parseDevicesJsonRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(normalizeDeviceObject).filter(device => device.etiqueta || device.sn || device.mac);
 }
 
 export function toCsvExportUrl(rawUrl) {
@@ -92,6 +116,57 @@ function normalizeDevice(row, idx) {
     returnedAt: get('fechaDevuelto'),
     ultima: get('ultima')
   };
+}
+
+function normalizeDeviceObject(row) {
+  const normalized = new Map();
+  for (const [key, value] of Object.entries(row || {})) {
+    normalized.set(normalizeText(key), value);
+  }
+  const get = key => {
+    for (const alias of FIELD_ALIASES[key] || []) {
+      const value = normalized.get(normalizeText(alias));
+      if (value != null && clean(value)) return clean(value);
+    }
+    return '';
+  };
+  const etiqueta = get('etiqueta');
+  const prestadoA = get('prestada');
+  const estado = normalizeAppState(get('estado'), prestadoA);
+  return {
+    id: makeDeviceId(etiqueta, get('sn'), get('mac')),
+    etiqueta,
+    numero: get('numero'),
+    dispositivo: get('dispositivo') || 'Chromebook',
+    marca: get('marca'),
+    modelo: get('modelo'),
+    sn: get('sn'),
+    mac: get('mac'),
+    estado,
+    prestadoA,
+    comentarios: get('comentarios'),
+    rol: get('rol'),
+    ubicacion: get('ubicacion'),
+    motivo: get('motivo'),
+    loanedAt: get('fechaPrestado'),
+    returnedAt: get('fechaDevuelto'),
+    ultima: get('ultima')
+  };
+}
+
+function fetchWithTimeout(url, timeoutMs) {
+  const signal = AbortSignal.timeout(Math.max(1000, Number(timeoutMs || 4500)));
+  return fetch(url, { signal });
+}
+
+function addCacheBuster(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    url.searchParams.set('_ta', String(Date.now()));
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
 }
 
 function parseCsv(text) {

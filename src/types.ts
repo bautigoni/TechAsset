@@ -2,6 +2,13 @@ export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'analytics' | 'agenda'
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
+export type ClassroomEquipmentKey = 'proyector' | 'nuc' | 'monitor' | 'tecladoMouse' | 'tele' | 'notebook' | 'otro';
+
+export interface ClassroomEquipmentItem {
+  key: ClassroomEquipmentKey;
+  label: string;
+  state: ClassroomItemState;
+}
 
 export interface Classroom {
   roomKey: string;
@@ -14,6 +21,7 @@ export interface Classroom {
   nuc: ClassroomItemState;
   monitor: ClassroomItemState;
   tecladoMouse: ClassroomItemState;
+  equipment: ClassroomEquipmentItem[];
   observaciones: string;
   ultimaActualizacion: string;
   operadorUltimoCambio: string;
