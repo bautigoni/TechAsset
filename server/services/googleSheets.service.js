@@ -42,12 +42,19 @@ export async function readCachedDevicesCsv() {
 
 export async function fetchDevicesCsvFromGoogle() {
   if (!config.googleSheetCsvUrl) throw new Error('GOOGLE_SHEET_CSV_URL no configurado.');
+  if (!isAbsoluteUrl(config.googleSheetCsvUrl)) {
+    throw new Error(`GOOGLE_SHEET_CSV_URL debe ser absoluta (https://...). Valor actual: "${config.googleSheetCsvUrl}".`);
+  }
   const response = await fetchWithTimeout(addCacheBuster(toCsvExportUrl(config.googleSheetCsvUrl)), config.sheetFetchTimeoutMs);
   if (!response.ok) throw new Error(`Google Sheets HTTP ${response.status}`);
   const text = await response.text();
   if (looksLikeHtml(text)) throw new Error('La URL configurada no devolvio CSV.');
   await writeText(config.cacheCsvPath, text);
   return { text, source: 'Google CSV' };
+}
+
+function isAbsoluteUrl(value) {
+  return /^https?:\/\//i.test(String(value || '').trim());
 }
 
 export async function fetchDevicesJsonFromAppsScript() {

@@ -20,6 +20,21 @@ devicesRouter.get('/devices/diagnostics', (_req, res) => {
   res.json({ ok: true, diagnostics: getDeviceInventoryDiagnostics() });
 });
 
+// Borra del estado local SQLite las filas triviales (Disponible/Devuelto/vacías),
+// dejando solo los préstamos activos. Útil cuando la planilla es la fuente de verdad
+// y local_states acumuló restos de pruebas.
+devicesRouter.post('/devices/sync-from-sheet', (_req, res) => {
+  const result = getDb().prepare(`
+    DELETE FROM local_states
+    WHERE estado IS NULL
+       OR TRIM(estado) = ''
+       OR TRIM(estado) = 'Disponible'
+       OR TRIM(estado) = 'Devuelto'
+  `).run();
+  invalidateDeviceInventoryCache('sync-from-sheet');
+  res.json({ ok: true, removed: result.changes });
+});
+
 devicesRouter.get('/devices/state', async (_req, res, next) => {
   try {
     const { items, source } = await getMergedDevices();

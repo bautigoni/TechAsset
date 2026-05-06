@@ -152,7 +152,10 @@ async function refreshInventory({ reason }) {
       diagnostics.lastError = readableError(error);
       diagnostics.timedOut = timedOut;
       const local = await buildFromLocalCsvCache({ failedExternalFetchMs: timings['fetch-sheet'] || 0, externalError: error });
-      if (local) return local;
+      if (local) {
+        inventoryCache = local;
+        return local;
+      }
       throw error;
     }
 
@@ -254,18 +257,37 @@ function isTimeoutError(error) {
   return error?.name === 'TimeoutError' || error?.name === 'AbortError' || /timeout|aborted/i.test(readableError(error));
 }
 
+const SHEET_AUTHORITATIVE_STATES = new Set(['Prestado', 'No encontrada', 'Fuera de servicio']);
+const LOCAL_TRIVIAL_STATES = new Set(['', 'Disponible', 'Devuelto']);
+// Ventana en la que confiamos en local por encima de la planilla (segundos para que la sincronización con GAS llegue).
+const LOCAL_PRECEDENCE_WINDOW_MS = 90 * 1000;
+
 function mergeStateOverrides(stateDevices, localStates) {
   const map = new Map();
   for (const device of stateDevices) {
     const key = normalizeTag(device.etiqueta);
     if (key) map.set(key, device);
   }
+  const now = Date.now();
   for (const local of localStates) {
     const key = normalizeTag(local.etiqueta);
     if (!key) continue;
+    const sheetState = map.get(key);
+    const sheetEstado = String(sheetState?.estado || '').trim();
+    const localEstado = String(local.estado || '').trim();
+    const sheetIsAuthoritative = SHEET_AUTHORITATIVE_STATES.has(sheetEstado);
+    const localIsTrivial = LOCAL_TRIVIAL_STATES.has(localEstado);
+    if (sheetIsAuthoritative && localIsTrivial) {
+      // La planilla marca Prestado / No encontrada / Fuera de servicio y local sólo tiene
+      // "Disponible/Devuelto" remanente: gana la planilla, salvo que local sea muy reciente
+      // (devolución hecha en la app que aún no terminó de sincronizar con Apps Script).
+      const localTime = parseLooseTimestamp(local.updatedAt);
+      const isRecent = localTime && (now - localTime) < LOCAL_PRECEDENCE_WINDOW_MS;
+      if (!isRecent) continue;
+    }
     map.set(key, {
       etiqueta: local.etiqueta,
-      estado: local.estado,
+      estado: localEstado,
       prestadoA: local.prestadoA,
       rol: local.rol,
       ubicacion: local.ubicacion,
@@ -276,6 +298,16 @@ function mergeStateOverrides(stateDevices, localStates) {
     });
   }
   return [...map.values()];
+}
+
+function parseLooseTimestamp(value) {
+  if (!value) return 0;
+  const direct = Date.parse(value);
+  if (!Number.isNaN(direct)) return direct;
+  const match = String(value).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[, ]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!match) return 0;
+  const year = Number(match[3].length === 2 ? '20' + match[3] : match[3]);
+  return new Date(year, Number(match[2]) - 1, Number(match[1]), Number(match[4] || 0), Number(match[5] || 0), Number(match[6] || 0)).getTime() || 0;
 }
 
 async function loadAppDevices() {
