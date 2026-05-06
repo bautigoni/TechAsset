@@ -9,7 +9,8 @@ export async function proxyAppsScript(action, payload = {}, method = 'POST') {
   const response = await fetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
-    body: method === 'GET' ? undefined : JSON.stringify(payload)
+    body: method === 'GET' ? undefined : JSON.stringify(payload),
+    signal: AbortSignal.timeout(Math.max(1000, Number(config.sheetFetchTimeoutMs || 4500)))
   });
   const text = await response.text();
   try {

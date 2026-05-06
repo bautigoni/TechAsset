@@ -1,17 +1,23 @@
 import { Router } from 'express';
 import { proxyAppsScript } from '../services/appsScript.service.js';
-import { addLocalMovement, getDb, nowIso } from '../db.js';
-import { getMergedDevices } from '../services/deviceInventory.service.js';
+import { addLocalMovement, getDb, nowIso, setLocalState } from '../db.js';
+import { getDeviceInventoryDiagnostics, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
 
 export const devicesRouter = Router();
 
 devicesRouter.get('/devices', async (_req, res, next) => {
   try {
-    const { items, source } = await getMergedDevices();
-    res.json({ ok: true, items, loadedAt: new Date().toISOString(), source });
+    const forceRefresh = _req.query.refresh === '1' || _req.query.refresh === 'true';
+    const waitForFresh = _req.query.wait === '1' || _req.query.wait === 'true';
+    const { items, source, loadedAt, diagnostics } = await getMergedDevices({ forceRefresh, waitForFresh });
+    res.json({ ok: true, items, loadedAt: loadedAt || new Date().toISOString(), source, diagnostics });
   } catch (error) {
     next(error);
   }
+});
+
+devicesRouter.get('/devices/diagnostics', (_req, res) => {
+  res.json({ ok: true, diagnostics: getDeviceInventoryDiagnostics() });
 });
 
 devicesRouter.get('/devices/state', async (_req, res, next) => {
@@ -34,10 +40,11 @@ devicesRouter.get('/devices/state', async (_req, res, next) => {
 
 devicesRouter.post('/devices/add', async (req, res, next) => {
   try {
-    const result = await proxyAppsScript('adddevice', req.body);
     saveLocalDevice(req.body);
+    invalidateDeviceInventoryCache('device-added');
     addLocalMovement({ tipo: 'dispositivo agregado', descripcion: `${req.body.etiqueta || ''} agregado`, operador: req.body.operator, origen: 'Google Sheets', etiqueta: req.body.etiqueta });
-    res.json({ ok: true, item: req.body, appsScript: result });
+    res.json({ ok: true, item: req.body, syncing: true });
+    proxyAppsScript('adddevice', req.body).catch(error => console.warn('[devices/add sync]', error?.message || error));
   } catch (error) {
     next(error);
   }
@@ -45,9 +52,21 @@ devicesRouter.post('/devices/add', async (req, res, next) => {
 
 devicesRouter.post('/devices/status', async (req, res, next) => {
   try {
-    const result = await proxyAppsScript('status', req.body);
-    addLocalMovement({ tipo: 'estado dispositivo', descripcion: `${req.body.etiqueta} -> ${req.body.estado}`, operador: req.body.operator, origen: 'Google Sheets', etiqueta: req.body.etiqueta });
-    res.json({ ok: true, appsScript: result });
+    const estado = String(req.body.estado || '');
+    setLocalState(req.body.etiqueta, {
+      estado,
+      comentarios: req.body.comentario || req.body.comentarios || '',
+      prestadoA: '',
+      rol: '',
+      ubicacion: '',
+      motivo: '',
+      loanedAt: '',
+      returnedAt: estado === 'Disponible' ? nowIso() : ''
+    });
+    invalidateDeviceInventoryCache('device-status');
+    addLocalMovement({ tipo: 'estado dispositivo', descripcion: `${req.body.etiqueta} -> ${req.body.estado}`, operador: req.body.operator, origen: 'Local', etiqueta: req.body.etiqueta });
+    res.json({ ok: true, syncing: true });
+    proxyAppsScript('status', req.body).catch(error => console.warn('[devices/status sync]', error?.message || error));
   } catch (error) {
     next(error);
   }

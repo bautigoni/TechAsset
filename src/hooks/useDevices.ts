@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Device, SyncStatus } from '../types';
 import { getDevices } from '../services/devicesApi';
 import { classifyDeviceType, withOperationalAliases } from '../utils/classifyDevice';
@@ -8,16 +8,30 @@ import { matchesSmartSearch } from '../utils/normalizeSearch';
 export function useDevices(search: string) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [sync, setSync] = useState<SyncStatus>({ state: 'loading' });
+  const refreshInFlight = useRef<Promise<void> | null>(null);
+  const hasDevices = useRef(false);
 
-  const refresh = useCallback(async () => {
-    setSync(current => current.state === 'ok' ? { ...current, state: 'loading' } : { state: 'loading' });
-    try {
-      const data = await getDevices();
-      setDevices(withOperationalAliases(data.items));
-      setSync({ state: 'ok', loadedAt: data.loadedAt, message: data.source });
-    } catch (error) {
-      setSync({ state: 'error', message: error instanceof Error ? error.message : 'Error' });
-    }
+  const refresh = useCallback((options: { force?: boolean; wait?: boolean } = {}) => {
+    if (refreshInFlight.current && !options.force) return refreshInFlight.current;
+    const promise = (async () => {
+      setSync(current => hasDevices.current ? current : { state: 'loading' });
+      try {
+        const data = await getDevices(options);
+        const nextDevices = withOperationalAliases(data.items);
+        hasDevices.current = nextDevices.length > 0;
+        setDevices(nextDevices);
+        const cacheNote = data.diagnostics?.respondedWithCache ? 'cache inmediato' : 'actualizado';
+        setSync({ state: 'ok', loadedAt: data.loadedAt, message: `${data.source} · ${cacheNote}` });
+      } catch (error) {
+        setSync(current => current.state === 'ok'
+          ? { ...current, message: current.message || 'Inventario cargado desde cache local.' }
+          : { state: 'error', message: error instanceof Error ? error.message : 'Error' });
+      } finally {
+        refreshInFlight.current = null;
+      }
+    })();
+    refreshInFlight.current = promise;
+    return promise;
   }, []);
 
   useEffect(() => {

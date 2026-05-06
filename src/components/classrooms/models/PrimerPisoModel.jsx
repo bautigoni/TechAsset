@@ -6,15 +6,15 @@ import { useState } from 'react';
 
 const ROOMS = [
   { id: 'room_Banos_1', label: 'Baños', x: 0, y: 0, w: 108, h: 118, type: 'service', noClick: true },
-  { id: 'room_Directores', label: 'Directores', x: 0, y: 118, w: 108, h: 52, type: 'admin' },
-  { id: 'room_Salita', label: 'Administración', x: 0, y: 170, w: 108, h: 58, type: 'admin' },
-  { id: 'room_Preceptoria_2', label: 'Prec. 2', x: 852, y: 0, w: 148, h: 30, type: 'admin' },
+  { id: 'room_Directores', label: 'Directores', x: 0, y: 118, w: 108, h: 52, type: 'admin', noClick: true },
+  { id: 'room_Salita', label: 'Administración', x: 0, y: 170, w: 108, h: 58, type: 'admin', noClick: true },
+  { id: 'room_Preceptoria_2', label: 'Prec. 2', x: 852, y: 0, w: 148, h: 30, type: 'admin', noClick: true },
   { id: 'room_3ero_N', label: '3ero N', x: 112, y: 0, w: 148, h: 118, type: 'classroom' },
   { id: 'room_5to_N', label: '5to N', x: 260, y: 0, w: 148, h: 118, type: 'classroom' },
   { id: 'room_5to_F', label: '5to F', x: 408, y: 0, w: 148, h: 118, type: 'classroom' },
   { id: 'room_5to_S', label: '5to S', x: 556, y: 0, w: 148, h: 118, type: 'classroom' },
-  { id: 'room_Drama', label: 'Drama', x: 704, y: 0, w: 148, h: 118, type: 'classroom' },
-  { id: 'room_Musica', label: 'Música', x: 852, y: 30, w: 148, h: 88, type: 'classroom' },
+  { id: 'room_Drama', label: 'Drama', x: 704, y: 0, w: 148, h: 118, type: 'classroom', noClick: true },
+  { id: 'room_Musica', label: 'Música', x: 852, y: 30, w: 148, h: 88, type: 'classroom', noClick: true },
   { id: 'room_3ero_F', label: '3ero F', x: 112, y: 150, w: 127, h: 110, type: 'classroom' },
   { id: 'room_3ero_S', label: '3ero S', x: 239, y: 150, w: 127, h: 110, type: 'classroom' },
   { id: 'room_4to_N', label: '4to N', x: 366, y: 150, w: 127, h: 110, type: 'classroom' },
@@ -22,8 +22,8 @@ const ROOMS = [
   { id: 'room_4to_S', label: '4to S', x: 620, y: 150, w: 127, h: 110, type: 'classroom' },
   { id: 'room_Arte', label: 'Arte', x: 747, y: 150, w: 127, h: 110, type: 'classroom' },
   { id: 'room_Banos_2', label: 'Baños', x: 874, y: 150, w: 126, h: 110, type: 'service', noClick: true },
-  { id: 'room_Hall_Entrada', label: 'Hall\n+ Entrada', x: 0, y: 228, w: 108, h: 232, type: 'hall' },
-  { id: 'room_Escalera', label: 'Escalera', x: 140, y: 260, w: 94, h: 80, type: 'stairs' },
+  { id: 'room_Hall_Entrada', label: 'Hall\n+ Entrada', x: 0, y: 228, w: 108, h: 232, type: 'hall', noClick: true },
+  { id: 'room_Escalera', label: 'Escalera', x: 140, y: 260, w: 94, h: 80, type: 'stairs', noClick: true },
   { id: 'room_2do_N', label: '2do N', x: 0, y: 460, w: 108, h: 115, type: 'classroom' },
   { id: 'room_2do_F', label: '2do F', x: 0, y: 575, w: 108, h: 115, type: 'classroom' },
   { id: 'room_2do_S', label: '2do S', x: 0, y: 690, w: 108, h: 115, type: 'classroom' },
@@ -36,7 +36,7 @@ const ROOMS = [
   { id: 'pasillo_zoom_com', label: '', x: 502, y: 832, w: 44, h: 250, type: 'corridor', noClick: true },
   { id: 'room_Patio_Primaria', label: 'Patio Primaria', x: 234, y: 260, w: 766, h: 572, type: 'patio' },
   { id: 'room_Kiosco', label: 'Kiosco', x: 0, y: 832, w: 108, h: 76, type: 'service', noClick: true },
-  { id: 'room_Front', label: 'Front', x: 0, y: 908, w: 108, h: 84, type: 'service' },
+  { id: 'room_Front', label: 'Front', x: 0, y: 908, w: 108, h: 84, type: 'service', noClick: true },
   { id: 'room_Zoom', label: 'Zoom', x: 112, y: 892, w: 390, h: 190, type: 'special' },
   { id: 'room_Comedor', label: 'Comedor', x: 546, y: 832, w: 294, h: 250, type: 'special', noClick: true },
   { id: 'room_Zoom_exit', label: '', x: 225, y: 1082, w: 115, h: 60, type: 'special', noClick: true }
@@ -98,7 +98,7 @@ export function PrimerPisoModel({ statuses = {}, onRoomClick }) {
           <g
             key={r.id}
             onClick={() => canClick(r) && onRoomClick && onRoomClick(r.id, r.label.replace('\n', ' '))}
-            onMouseEnter={() => setHovered(r.id)}
+            onMouseEnter={() => canClick(r) && setHovered(r.id)}
             onMouseLeave={() => setHovered(null)}
             style={{ cursor: canClick(r) ? 'pointer' : 'default' }}
           >

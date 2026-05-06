@@ -4,6 +4,21 @@ import { getDb, nowIso } from '../db.js';
 export const classroomsRouter = Router();
 
 const VALID_ITEM_STATES = new Set(['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar']);
+const EQUIPMENT_OPTIONS = [
+  { key: 'proyector', label: 'Proyector', column: 'proyector_estado' },
+  { key: 'nuc', label: 'NUC', column: 'nuc_estado' },
+  { key: 'monitor', label: 'Monitor', column: 'monitor_estado' },
+  { key: 'tecladoMouse', label: 'Teclado/Mouse', column: 'teclado_mouse_estado' },
+  { key: 'tele', label: 'Tele' },
+  { key: 'notebook', label: 'Notebook' },
+  { key: 'otro', label: 'Otro' }
+];
+const EQUIPMENT_BY_KEY = new Map(EQUIPMENT_OPTIONS.map(item => [item.key, item]));
+const DEFAULT_EQUIPMENT_KEYS = ['proyector', 'nuc', 'monitor', 'tecladoMouse'];
+const ROOM_DEFAULT_EQUIPMENT = {
+  room_Arte: ['notebook', 'proyector'],
+  room_Directores: ['tele']
+};
 
 function migrateItemState(value) {
   if (value === 'No encontrado') return 'Con falla';
@@ -11,18 +26,57 @@ function migrateItemState(value) {
   return 'Sin revisar';
 }
 
+function stateFromRow(row, key) {
+  const option = EQUIPMENT_BY_KEY.get(key);
+  if (option?.column) return migrateItemState(row[option.column] || 'Sin revisar');
+  return 'Sin revisar';
+}
+
+function normalizeEquipmentItem(item, row) {
+  const key = String(item?.key || '').trim();
+  const option = EQUIPMENT_BY_KEY.get(key);
+  if (!option) return null;
+  return {
+    key,
+    label: option.label,
+    state: migrateItemState(item?.state || stateFromRow(row, key))
+  };
+}
+
+function defaultEquipment(row) {
+  const keys = ROOM_DEFAULT_EQUIPMENT[row.room_key] || DEFAULT_EQUIPMENT_KEYS;
+  return keys.map(key => ({
+    key,
+    label: EQUIPMENT_BY_KEY.get(key)?.label || key,
+    state: stateFromRow(row, key)
+  }));
+}
+
+function parseEquipment(row) {
+  try {
+    const raw = row.equipment_json ? JSON.parse(row.equipment_json) : null;
+    if (Array.isArray(raw)) {
+      const items = raw.map(item => normalizeEquipmentItem(item, row)).filter(Boolean);
+      if (items.length) return items;
+    }
+  } catch { /* fall back to legacy columns */ }
+  return defaultEquipment(row);
+}
+
 function rowToClassroom(row) {
+  const equipment = parseEquipment(row);
   return {
     roomKey: row.room_key,
     nombre: row.nombre || '',
     nivel: row.nivel || '',
     piso: row.piso === 'Primer piso' ? 'Planta baja' : (row.piso || ''),
     sector: row.sector || '',
-    estadoGeneral: row.estado_general || 'Sin revisar',
+    estadoGeneral: calcEstadoGeneral({ equipment }),
     proyector: migrateItemState(row.proyector_estado || 'Sin revisar'),
     nuc: migrateItemState(row.nuc_estado || 'Sin revisar'),
     monitor: migrateItemState(row.monitor_estado || 'Sin revisar'),
     tecladoMouse: migrateItemState(row.teclado_mouse_estado || 'Sin revisar'),
+    equipment,
     observaciones: row.observaciones || '',
     ultimaActualizacion: row.ultima_actualizacion || '',
     operadorUltimoCambio: row.operador_ultimo_cambio || ''
@@ -30,7 +84,9 @@ function rowToClassroom(row) {
 }
 
 function calcEstadoGeneral(c) {
-  const items = [c.proyector, c.nuc, c.monitor, c.tecladoMouse];
+  const items = Array.isArray(c.equipment) && c.equipment.length
+    ? c.equipment.map(item => migrateItemState(item.state))
+    : [c.proyector, c.nuc, c.monitor, c.tecladoMouse];
   if (items.some(v => v === 'En reparación')) return 'Problema';
   if (items.some(v => v === 'Con falla' || v === 'Sin revisar')) return 'Con observaciones';
   if (items.every(v => v === 'OK' || v === 'No tiene')) return 'OK';
@@ -59,12 +115,35 @@ function ensureClassroom(roomKey, defaults = {}) {
   let row = db.prepare('SELECT * FROM classrooms WHERE room_key = ?').get(roomKey);
   if (!row) {
     db.prepare(`
-      INSERT INTO classrooms (room_key, nombre, nivel, piso, sector, estado_general, proyector_estado, nuc_estado, monitor_estado, teclado_mouse_estado, observaciones, ultima_actualizacion, operador_ultimo_cambio)
-      VALUES (?, ?, ?, ?, ?, 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', '', '', '')
+      INSERT INTO classrooms (room_key, nombre, nivel, piso, sector, estado_general, proyector_estado, nuc_estado, monitor_estado, teclado_mouse_estado, observaciones, ultima_actualizacion, operador_ultimo_cambio, equipment_json)
+      VALUES (?, ?, ?, ?, ?, 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', '', '', '', '')
     `).run(roomKey, defaults.nombre || roomKey, defaults.nivel || '', defaults.piso || 'Planta baja', defaults.sector || '');
     row = db.prepare('SELECT * FROM classrooms WHERE room_key = ?').get(roomKey);
   }
   return row;
+}
+
+function equipmentFromBody(body, old) {
+  if (!Array.isArray(body.equipment)) return old.equipment;
+  const byOldState = new Map((old.equipment || []).map(item => [item.key, item.state]));
+  const items = body.equipment.map(item => {
+    const key = String(item?.key || '').trim();
+    const option = EQUIPMENT_BY_KEY.get(key);
+    if (!option) return null;
+    return {
+      key,
+      label: option.label,
+      state: migrateItemState(item?.state || byOldState.get(key) || 'Sin revisar')
+    };
+  }).filter(Boolean);
+  return items.length ? items : old.equipment;
+}
+
+function syncLegacyStates(next) {
+  for (const key of DEFAULT_EQUIPMENT_KEYS) {
+    const item = next.equipment.find(entry => entry.key === key);
+    next[key] = item ? migrateItemState(item.state) : 'No tiene';
+  }
 }
 
 classroomsRouter.get('/classrooms', (_req, res) => {
@@ -78,15 +157,16 @@ classroomsRouter.get('/classrooms/summary', (_req, res) => {
   const db = getDb();
   ensureMigrated(db);
   const rows = db.prepare('SELECT * FROM classrooms').all().map(rowToClassroom);
+  const hasFault = (room, key) => room.equipment?.some(item => item.key === key && (item.state === 'Con falla' || item.state === 'En reparación'));
   const summary = {
     total: rows.length,
     ok: rows.filter(r => r.estadoGeneral === 'OK').length,
     observaciones: rows.filter(r => r.estadoGeneral === 'Con observaciones').length,
     problema: rows.filter(r => r.estadoGeneral === 'Problema').length,
     sinRevisar: rows.filter(r => r.estadoGeneral === 'Sin revisar').length,
-    proyectorFalla: rows.filter(r => r.proyector === 'Con falla' || r.proyector === 'En reparación').length,
-    nucFalla: rows.filter(r => r.nuc === 'Con falla' || r.nuc === 'En reparación').length,
-    monitorFalla: rows.filter(r => r.monitor === 'Con falla' || r.monitor === 'En reparación').length
+    proyectorFalla: rows.filter(r => hasFault(r, 'proyector')).length,
+    nucFalla: rows.filter(r => hasFault(r, 'nuc')).length,
+    monitorFalla: rows.filter(r => hasFault(r, 'monitor')).length
   };
   res.json({ ok: true, summary });
 });
@@ -113,25 +193,35 @@ classroomsRouter.patch('/classrooms/:roomKey', (req, res) => {
     nuc: body.nuc ?? old.nuc,
     monitor: body.monitor ?? old.monitor,
     tecladoMouse: body.tecladoMouse ?? old.tecladoMouse,
-    observaciones: body.observaciones ?? old.observaciones
+    observaciones: body.observaciones ?? old.observaciones,
+    equipment: equipmentFromBody(body, old)
   };
 
-  for (const key of ['proyector', 'nuc', 'monitor', 'tecladoMouse']) {
-    next[key] = migrateItemState(next[key]);
+  for (const key of DEFAULT_EQUIPMENT_KEYS) {
+    next[key] = migrateItemState(body[key] ?? next[key]);
   }
+  if (!Array.isArray(body.equipment)) {
+    next.equipment = next.equipment.map(item => {
+      if (!DEFAULT_EQUIPMENT_KEYS.includes(item.key)) return item;
+      return { ...item, state: next[item.key] };
+    });
+  }
+  syncLegacyStates(next);
   if (next.piso === 'Primer piso') next.piso = 'Planta baja';
   next.estadoGeneral = calcEstadoGeneral(next);
+  const equipmentJson = JSON.stringify(next.equipment);
 
   db.prepare(`
-    UPDATE classrooms SET nombre=?, nivel=?, piso=?, sector=?, estado_general=?, proyector_estado=?, nuc_estado=?, monitor_estado=?, teclado_mouse_estado=?, observaciones=?, ultima_actualizacion=?, operador_ultimo_cambio=?
+    UPDATE classrooms SET nombre=?, nivel=?, piso=?, sector=?, estado_general=?, proyector_estado=?, nuc_estado=?, monitor_estado=?, teclado_mouse_estado=?, observaciones=?, ultima_actualizacion=?, operador_ultimo_cambio=?, equipment_json=?
     WHERE room_key=?
-  `).run(next.nombre, next.nivel, next.piso, next.sector, next.estadoGeneral, next.proyector, next.nuc, next.monitor, next.tecladoMouse, next.observaciones, ts, operator, req.params.roomKey);
+  `).run(next.nombre, next.nivel, next.piso, next.sector, next.estadoGeneral, next.proyector, next.nuc, next.monitor, next.tecladoMouse, next.observaciones, ts, operator, equipmentJson, req.params.roomKey);
 
   const fields = [
     ['proyector', old.proyector, next.proyector],
     ['nuc', old.nuc, next.nuc],
     ['monitor', old.monitor, next.monitor],
     ['tecladoMouse', old.tecladoMouse, next.tecladoMouse],
+    ['equipment', JSON.stringify(old.equipment || []), equipmentJson],
     ['observaciones', old.observaciones, next.observaciones],
     ['estadoGeneral', old.estadoGeneral, next.estadoGeneral]
   ];

@@ -37,6 +37,7 @@ export function ClassroomStatusPage({ operator, consultationMode }: { operator: 
   }, [items]);
 
   const handleRoomClick = (roomKey: string, nombre: string) => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setSelectedKey(roomKey);
     setSelectedNombre(nombre);
   };

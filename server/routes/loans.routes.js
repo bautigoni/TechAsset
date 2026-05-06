@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { proxyAppsScript } from '../services/appsScript.service.js';
 import { addLocalMovement, setLocalState } from '../db.js';
+import { invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
 
 export const loansRouter = Router();
 
@@ -22,6 +23,7 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
       loanedAt: payload.fechaPrestado,
       returnedAt: ''
     });
+    invalidateDeviceInventoryCache('loan-lend');
     addLocalMovement({ tipo: 'préstamo', descripcion: `${etiqueta} prestada a ${req.body.person || ''}`, operador: req.body.operator, origen: 'Local', etiqueta });
     res.json({ ok: true, syncing: true });
     proxyAppsScript('lend', payload).catch(error => console.warn('[loans/lend sync]', error?.message || error));
@@ -53,6 +55,7 @@ loansRouter.post('/loans/return', async (req, res, next) => {
       loanedAt: '',
       returnedAt: payload.fechaDevuelto
     });
+    invalidateDeviceInventoryCache('loan-return');
     addLocalMovement({ tipo: 'devolución', descripcion: `${etiqueta} devuelta`, operador: req.body.operator, origen: 'Local', etiqueta });
     res.json({ ok: true, syncing: true });
     proxyAppsScript('return', payload).catch(error => console.warn('[loans/return sync]', error?.message || error));

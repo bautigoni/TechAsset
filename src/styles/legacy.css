@@ -1805,6 +1805,12 @@ body.consulta-mode #returnBtn {
 .classroom-general-badge.estado-con-observaciones{border-color:rgba(245,158,11,.5);color:#ffd27a}
 .classroom-general-badge.estado-problema{border-color:rgba(239,68,68,.5);color:#ff9b9b}
 .classroom-items{display:grid;gap:10px;margin-bottom:12px}
+.classroom-equipment-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.classroom-equipment-toolbar strong{font-size:13px}
+.classroom-equipment-config{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel-2)}
+.equipment-option{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted);font-size:12px;cursor:pointer}
+.equipment-option.active{background:rgba(59,130,246,.16);border-color:rgba(59,130,246,.45);color:#cfe2ff}
+.equipment-option input{accent-color:var(--blue)}
 .classroom-item-row{padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--panel-2)}
 .classroom-item-label{font-weight:600;margin-bottom:6px;font-size:13px}
 .classroom-item-states{display:flex;flex-wrap:wrap;gap:6px}
@@ -1851,10 +1857,16 @@ body.consulta-mode #returnBtn {
 .continuous-scan-table tr.row-error{background:rgba(239,68,68,.08)}
 
 /* ============= Classroom modal positioning ============= */
-.classroom-modal-wrap{z-index:60}
+.classroom-modal-wrap{z-index:1200;align-items:center !important;justify-items:center !important;place-items:center !important;overflow:hidden !important}
 .classroom-modal-wrap .modal-card.classroom-modal{box-shadow:0 24px 60px rgba(0,0,0,.55)}
 
 /* ============= Tools type selector ============= */
 .tool-type-selector{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 6px}
 .tool-type-selector button{padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:13px;cursor:pointer}
 .tool-type-selector button.active{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.5);color:#cfe2ff;font-weight:600}
+
+/* ============= Inventory diagnostics ============= */
+.diagnostics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px}
+.diagnostic-item{display:grid;gap:4px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel-2);min-width:0}
+.diagnostic-item span{font-size:11px;color:var(--muted)}
+.diagnostic-item strong{font-size:12px;color:var(--text);overflow-wrap:anywhere}
