@@ -223,7 +223,6 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           <>
             <Button type="button" variant="primary" disabled={blocked} onClick={handleLend}>Prestar</Button>
             <Button type="button" variant="success" disabled={blocked} onClick={handleReturn}>Devolver</Button>
-            <Button type="button">Cierre del dia</Button>
             <Button type="button">Abrir camara</Button>
             <Button type="button">Cerrar camara</Button>
           </>

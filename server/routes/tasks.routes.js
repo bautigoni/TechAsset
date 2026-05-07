@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDb, nowIso, rowToTask } from '../db.js';
+import { getDb, nowIso, rowToTask, rowToTaskItem } from '../db.js';
 
 export const tasksRouter = Router();
 const STATES = new Set(['Pendiente', 'En proceso', 'Hecha']);
@@ -27,8 +27,8 @@ tasksRouter.post('/tasks', (req, res) => {
   const id = payload.id || `TK${Date.now()}`;
   const ts = nowIso();
   db.prepare(`
-    INSERT INTO tasks (id, titulo, descripcion, responsable, estado, prioridad, tipo, fecha_creacion, fecha_vencimiento, comentario, creado_por, operador_ultimo_cambio, agenda_id, ultima_modificacion)
-    VALUES (@id, @titulo, @descripcion, @responsable, @estado, @prioridad, @tipo, @ts, @fechaVencimiento, @comentario, @operator, @operator, @agendaId, @ts)
+    INSERT INTO tasks (id, titulo, descripcion, responsable, responsables_json, estado, prioridad, tipo, turno, fecha_creacion, fecha_vencimiento, comentario, creado_por, operador_ultimo_cambio, agenda_id, ultima_modificacion)
+    VALUES (@id, @titulo, @descripcion, @responsable, @responsablesJson, @estado, @prioridad, @tipo, @turno, @ts, @fechaVencimiento, @comentario, @operator, @operator, @agendaId, @ts)
   `).run({ ...payload, id, ts });
   db.prepare('INSERT INTO task_history (task_id, timestamp, titulo, accion, responsable, estado_anterior, estado_nuevo, comentario, operador, agenda_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(id, ts, payload.titulo, 'tarea creada', payload.responsable, '', payload.estado, payload.comentario, payload.operator, payload.agendaId);
@@ -60,8 +60,8 @@ tasksRouter.patch('/tasks/:id', (req, res) => {
   const payload = normalizeTaskPayload({ ...oldItem, ...req.body, id: req.params.id });
   const ts = nowIso();
   db.prepare(`
-    UPDATE tasks SET titulo=@titulo, descripcion=@descripcion, responsable=@responsable, estado=@estado, prioridad=@prioridad,
-      tipo=@tipo, fecha_vencimiento=@fechaVencimiento, comentario=@comentario, operador_ultimo_cambio=@operator,
+    UPDATE tasks SET titulo=@titulo, descripcion=@descripcion, responsable=@responsable, responsables_json=@responsablesJson, estado=@estado, prioridad=@prioridad,
+      tipo=@tipo, turno=@turno, fecha_vencimiento=@fechaVencimiento, comentario=@comentario, operador_ultimo_cambio=@operator,
       agenda_id=@agendaId, ultima_modificacion=@ts WHERE id=@id
   `).run({ ...payload, ts });
   db.prepare('INSERT INTO task_history (task_id, timestamp, titulo, accion, responsable, estado_anterior, estado_nuevo, comentario, operador, agenda_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -88,11 +88,47 @@ tasksRouter.get('/tasks/history', (_req, res) => {
 tasksRouter.get('/tasks/analytics', (_req, res) => {
   const rows = getDb().prepare('SELECT * FROM tasks WHERE eliminada=0').all().map(rowToTask);
   const assistants = ['Bauti', 'Equi'].map(name => {
-    const assigned = rows.filter(task => task.responsable === name);
+    const assigned = rows.filter(task => task.responsables?.includes(name) || task.responsable === name);
     const done = assigned.filter(task => task.estado === 'Hecha').length;
     return { name, assigned: assigned.length, pending: assigned.filter(task => task.estado === 'Pendiente').length, progress: assigned.filter(task => task.estado === 'En proceso').length, done, resolution: assigned.length ? Math.round(done / assigned.length * 100) : 0 };
   });
   res.json({ ok: true, assistants });
+});
+
+tasksRouter.get('/tasks/:id/items', (req, res) => {
+  const rows = getDb().prepare('SELECT * FROM task_items WHERE task_id=? ORDER BY orden, id').all(req.params.id);
+  res.json({ ok: true, items: rows.map(rowToTaskItem) });
+});
+
+tasksRouter.post('/tasks/:id/items', (req, res) => {
+  const db = getDb();
+  const task = db.prepare('SELECT * FROM tasks WHERE id=? AND eliminada=0').get(req.params.id);
+  if (!task) return res.status(404).json({ ok: false, error: 'Tarea no encontrada.' });
+  const texto = String(req.body?.texto || '').trim();
+  if (!texto) return res.status(400).json({ ok: false, error: 'La subtarea no puede estar vacía.' });
+  const ts = nowIso();
+  const max = db.prepare('SELECT COALESCE(MAX(orden), 0) AS orden FROM task_items WHERE task_id=?').get(req.params.id).orden || 0;
+  const info = db.prepare('INSERT INTO task_items (task_id, texto, orden, creado_por, created_at) VALUES (?, ?, ?, ?, ?)').run(req.params.id, texto, max + 1, req.body?.operator || '', ts);
+  db.prepare('INSERT INTO task_history (task_id, timestamp, titulo, accion, responsable, estado_anterior, estado_nuevo, comentario, operador, agenda_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(req.params.id, ts, task.titulo, 'subtarea agregada', task.responsable, task.estado, task.estado, texto, req.body?.operator || '', task.agenda_id || '');
+  res.json({ ok: true, item: rowToTaskItem(db.prepare('SELECT * FROM task_items WHERE id=?').get(info.lastInsertRowid)) });
+});
+
+tasksRouter.patch('/tasks/:taskId/items/:itemId', (req, res) => {
+  const db = getDb();
+  const item = db.prepare('SELECT * FROM task_items WHERE id=? AND task_id=?').get(req.params.itemId, req.params.taskId);
+  if (!item) return res.status(404).json({ ok: false, error: 'Subtarea no encontrada.' });
+  const nextDone = req.body.completada == null ? Boolean(item.completada) : Boolean(req.body.completada);
+  const nextText = String(req.body.texto ?? item.texto).trim();
+  const ts = nowIso();
+  db.prepare('UPDATE task_items SET texto=?, completada=?, completado_por=?, completed_at=? WHERE id=? AND task_id=?')
+    .run(nextText, nextDone ? 1 : 0, nextDone ? (req.body.operator || item.completado_por || '') : '', nextDone ? (item.completed_at || ts) : '', req.params.itemId, req.params.taskId);
+  res.json({ ok: true, item: rowToTaskItem(db.prepare('SELECT * FROM task_items WHERE id=?').get(req.params.itemId)) });
+});
+
+tasksRouter.delete('/tasks/:taskId/items/:itemId', (req, res) => {
+  const result = getDb().prepare('DELETE FROM task_items WHERE id=? AND task_id=?').run(req.params.itemId, req.params.taskId);
+  res.json({ ok: true, deleted: result.changes > 0 });
 });
 
 tasksRouter.get('/tasks/export.csv', (_req, res) => {
@@ -101,19 +137,34 @@ tasksRouter.get('/tasks/export.csv', (_req, res) => {
 });
 
 function normalizeTaskPayload(raw) {
+  const responsables = normalizeResponsables(raw.responsables || raw.responsable);
   return {
     id: raw.id || '',
     titulo: raw.titulo || 'Tarea sin título',
     descripcion: raw.descripcion || '',
-    responsable: RESPONSABLES.has(raw.responsable) ? raw.responsable : 'Bauti',
+    responsable: responsables.join(','),
+    responsables,
+    responsablesJson: JSON.stringify(responsables),
     estado: STATES.has(raw.estado) ? raw.estado : 'Pendiente',
     prioridad: raw.prioridad || 'Media',
     tipo: raw.tipo || 'Soporte',
+    turno: normalizeTurno(raw.turno),
     fechaVencimiento: raw.fechaVencimiento || raw.fecha_vencimiento || '',
     comentario: raw.comentario || '',
     agendaId: raw.agendaId || raw.agenda_id || '',
     operator: raw.operator || raw.operador || ''
   };
+}
+
+function normalizeResponsables(value) {
+  const raw = Array.isArray(value) ? value : String(value || 'Bauti').split(/,| y |\/|\+/i);
+  const flat = raw.map(item => String(item).trim()).flatMap(item => item === 'Ambos' ? ['Bauti', 'Equi'] : item).filter(item => RESPONSABLES.has(item));
+  return [...new Set(flat.length ? flat : ['Bauti'])];
+}
+
+function normalizeTurno(value) {
+  const raw = String(value || 'Sin turno').trim();
+  return ['Mañana', 'Tarde', 'Todo el día', 'Sin turno'].includes(raw) ? raw : 'Sin turno';
 }
 
 function toCsv(rows) {

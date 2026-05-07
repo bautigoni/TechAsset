@@ -57,9 +57,11 @@ export function initDb(database = getDb()) {
       titulo TEXT NOT NULL,
       descripcion TEXT DEFAULT '',
       responsable TEXT,
+      responsables_json TEXT DEFAULT '',
       estado TEXT DEFAULT 'Pendiente',
       prioridad TEXT DEFAULT 'Media',
       tipo TEXT DEFAULT 'Soporte',
+      turno TEXT DEFAULT 'Sin turno',
       fecha_creacion TEXT,
       fecha_vencimiento TEXT DEFAULT '',
       comentario TEXT DEFAULT '',
@@ -82,6 +84,17 @@ export function initDb(database = getDb()) {
       operador TEXT,
       agenda_id TEXT DEFAULT ''
     );
+    CREATE TABLE IF NOT EXISTS task_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id TEXT,
+      texto TEXT,
+      completada INTEGER DEFAULT 0,
+      orden INTEGER DEFAULT 0,
+      creado_por TEXT DEFAULT '',
+      completado_por TEXT DEFAULT '',
+      created_at TEXT,
+      completed_at TEXT DEFAULT ''
+    );
     CREATE TABLE IF NOT EXISTS local_movements (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       timestamp TEXT,
@@ -94,6 +107,21 @@ export function initDb(database = getDb()) {
     CREATE TABLE IF NOT EXISTS local_devices (
       etiqueta TEXT PRIMARY KEY,
       payload TEXT NOT NULL,
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS hidden_devices (
+      etiqueta TEXT PRIMARY KEY,
+      deleted_at TEXT,
+      deleted_by TEXT DEFAULT '',
+      reason TEXT DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS device_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT UNIQUE,
+      color TEXT DEFAULT '',
+      icono TEXT DEFAULT '',
+      activo INTEGER DEFAULT 1,
       created_at TEXT,
       updated_at TEXT
     );
@@ -173,10 +201,48 @@ export function initDb(database = getDb()) {
       detalle_penalizacion TEXT DEFAULT '',
       created_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS internal_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      texto TEXT NOT NULL,
+      operador TEXT DEFAULT '',
+      categoria TEXT DEFAULT 'General',
+      importante INTEGER DEFAULT 0,
+      archivada INTEGER DEFAULT 0,
+      visible INTEGER DEFAULT 1,
+      deleted_at TEXT DEFAULT '',
+      deleted_by TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS daily_closures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fecha TEXT,
+      operador TEXT DEFAULT '',
+      resumen_json TEXT DEFAULT '{}',
+      observaciones TEXT DEFAULT '',
+      created_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS quick_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titulo TEXT,
+      url TEXT,
+      descripcion TEXT DEFAULT '',
+      categoria TEXT DEFAULT '',
+      icono TEXT DEFAULT '',
+      creado_por TEXT DEFAULT '',
+      activo INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT
+    );
   `);
 
   ensureColumn(database, 'agenda', 'compus_retiradas', 'INTEGER DEFAULT 0');
   ensureColumn(database, 'classrooms', 'equipment_json', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tasks', 'responsables_json', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tasks', 'turno', "TEXT DEFAULT 'Sin turno'");
+  ensureColumn(database, 'internal_notes', 'visible', "INTEGER DEFAULT 1");
+  ensureColumn(database, 'internal_notes', 'deleted_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'internal_notes', 'deleted_by', "TEXT DEFAULT ''");
 
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);
@@ -289,22 +355,56 @@ export function rowToAgenda(row) {
 }
 
 export function rowToTask(row) {
+  const responsables = parseTaskResponsables(row);
+  const items = getDb().prepare('SELECT * FROM task_items WHERE task_id=? ORDER BY orden, id').all(row.id).map(rowToTaskItem);
   return {
     id: row.id,
     titulo: row.titulo || '',
     descripcion: row.descripcion || '',
-    responsable: row.responsable || 'Bauti',
+    responsable: responsables.length > 1 ? responsables.join(',') : (responsables[0] || row.responsable || 'Bauti'),
+    responsables,
     estado: row.estado || 'Pendiente',
     prioridad: row.prioridad || 'Media',
     tipo: row.tipo || 'Soporte',
+    turno: row.turno || 'Sin turno',
     fechaCreacion: row.fecha_creacion || '',
     fechaVencimiento: row.fecha_vencimiento || '',
     comentario: row.comentario || '',
     creadoPor: row.creado_por || '',
     operadorUltimoCambio: row.operador_ultimo_cambio || '',
     agendaId: row.agenda_id || '',
-    ultimaModificacion: row.ultima_modificacion || ''
+    ultimaModificacion: row.ultima_modificacion || '',
+    items,
+    checklistTotal: items.length,
+    checklistDone: items.filter(item => item.completada).length
   };
+}
+
+export function rowToTaskItem(row) {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    texto: row.texto || '',
+    completada: Boolean(row.completada),
+    orden: Number(row.orden || 0),
+    creadoPor: row.creado_por || '',
+    completadoPor: row.completado_por || '',
+    createdAt: row.created_at || '',
+    completedAt: row.completed_at || ''
+  };
+}
+
+function parseTaskResponsables(row) {
+  try {
+    const parsed = row.responsables_json ? JSON.parse(row.responsables_json) : null;
+    if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+  } catch { /* legacy fallback */ }
+  return String(row.responsable || 'Bauti')
+    .split(/,| y |\/|\+/i)
+    .map(item => item.trim())
+    .filter(Boolean)
+    .map(item => item === 'Ambos' ? ['Bauti', 'Equi'] : item)
+    .flat();
 }
 
 export function addLocalMovement({ tipo, descripcion, operador, origen = 'Local', etiqueta = '' }) {

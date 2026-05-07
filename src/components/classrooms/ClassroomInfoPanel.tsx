@@ -25,6 +25,8 @@ const EQUIPMENT_OPTIONS: Array<{ key: ClassroomEquipmentKey; label: string }> = 
   { key: 'tecladoMouse', label: 'Teclado/Mouse' },
   { key: 'tele', label: 'Tele' },
   { key: 'notebook', label: 'Notebook' },
+  { key: 'parlantes', label: 'Parlantes' },
+  { key: 'conectividad', label: 'Conectividad' },
   { key: 'otro', label: 'Otro' }
 ];
 
@@ -74,7 +76,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     let cancelled = false;
-    fetchClassroom(roomKey, nombre).then(r => {
+    fetchClassroom(roomKey, nombre, piso).then(r => {
       if (cancelled || !r.ok) return;
       const item = {
         ...r.item,
@@ -88,7 +90,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
     });
     fetchClassroomHistory(roomKey).then(r => { if (!cancelled && r.ok) setHistory(r.items); });
     return () => { cancelled = true; };
-  }, [roomKey, nombre]);
+  }, [roomKey, nombre, piso]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

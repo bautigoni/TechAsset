@@ -118,7 +118,7 @@ label{display:block;margin-bottom:6px;font-size:13px;color:var(--muted)}.input{w
 
 .dashboard-stat-groups{display:grid;gap:14px;margin-bottom:18px}
 .stats-main{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:0}
-.stats-secondary{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:0}
+.stats-secondary{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:0}
 .stat-card-lg{min-height:118px;display:flex;flex-direction:column;justify-content:space-between}
 .stat-card-lg strong{font-size:42px}
 .operational-alias{color:#dbeafe;font-weight:700}
@@ -140,7 +140,7 @@ label{display:block;margin-bottom:6px;font-size:13px;color:var(--muted)}.input{w
 .batch-remove{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:999px;padding:6px 9px;cursor:pointer}
 .batch-remove:hover{border-color:var(--blue);color:#bfdbfe}
 .batch-actions{padding-top:2px}
-@media (max-width:1280px){.stats-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1280px){.stats-secondary{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}}
 @media (max-width:980px){.stats-main,.stats-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-card-lg{min-height:auto}.batch-item{grid-template-columns:1fr}.batch-remove{justify-self:start}}
 @media (max-width:560px){.stats-main,.stats-secondary{grid-template-columns:1fr}.continuous-scan-control{align-items:flex-start}.batch-panel-head{display:grid}}
 
@@ -1769,10 +1769,10 @@ body.consulta-mode #returnBtn {
 .tool-counters .ok strong{color:#7ce9a4}
 .tool-counters .bad{border-color:rgba(239,68,68,.4)}
 .tool-counters .bad strong{color:#ff9b9b}
-.quick-access-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.quick-access-card{padding:14px;border-radius:14px;background:var(--panel-2);border:1px solid var(--border);display:flex;flex-direction:column;gap:10px;justify-content:space-between}
+.quick-access-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:stretch}
+.quick-access-card{min-height:168px;padding:14px;border-radius:14px;background:var(--panel-2);border:1px solid var(--border);display:flex;flex-direction:column;gap:10px;justify-content:space-between}
 .quick-access-card h4{margin:0 0 4px;font-size:15px}
-.quick-access-card .btn{align-self:flex-start;text-decoration:none;display:inline-block}
+.quick-access-card .btn{align-self:flex-start;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:9px 13px}
 
 /* ============= Classroom Status ============= */
 .classrooms-page{display:grid;gap:14px;margin-bottom:18px}

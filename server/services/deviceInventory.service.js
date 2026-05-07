@@ -336,6 +336,7 @@ function normalizeStateRow(row) {
   return {
     etiqueta: row.etiqueta || row.codigo || row.code || '',
     numero: row.numero || row.alias || '',
+    categoria: normalizeCategory(row.categoria || row.tipo || row.category || ''),
     modelo: row.modelo || '',
     estado,
     prestadoA: row.prestada || row.prestadoA || row.persona || '',
@@ -350,6 +351,7 @@ function normalizeStateRow(row) {
 }
 
 function mergeDevices(masterDevices, sheetDevices, stateDevices, localDevices, includeSheetExtras = true) {
+  const hidden = new Set(getDb().prepare('SELECT etiqueta FROM hidden_devices').all().map(row => normalizeTag(row.etiqueta)));
   const sheetByTag = new Map(sheetDevices.map(device => [normalizeTag(device.etiqueta), device]));
   const stateByTag = new Map(stateDevices.map(device => [normalizeTag(device.etiqueta), device]));
   const localByTag = new Map(localDevices.map(device => [normalizeTag(device.etiqueta), device]));
@@ -357,12 +359,13 @@ function mergeDevices(masterDevices, sheetDevices, stateDevices, localDevices, i
   const merged = masterDevices.map(master => {
     const key = normalizeTag(master.etiqueta);
     seen.add(key);
+    if (hidden.has(key)) return null;
     return mergeDevice(master, sheetByTag.get(key), stateByTag.get(key), localByTag.get(key));
-  });
+  }).filter(Boolean);
   const extras = includeSheetExtras ? [...sheetDevices, ...stateDevices, ...localDevices] : [...stateDevices, ...localDevices];
   for (const device of extras) {
     const key = normalizeTag(device.etiqueta);
-    if (key && !seen.has(key)) {
+    if (key && !seen.has(key) && !hidden.has(key)) {
       seen.add(key);
       merged.push(mergeDevice(device, sheetByTag.get(key), stateByTag.get(key), localByTag.get(key)));
     }
@@ -380,6 +383,7 @@ function mergeDevice(master, sheet, state, local) {
     ...operational,
     ...extra,
     etiqueta: master.etiqueta || inventory.etiqueta || operational.etiqueta || extra.etiqueta || '',
+    categoria: normalizeCategory(extra.categoria || master.categoria || inventory.categoria || operational.categoria || inventory.tipo || master.tipo || ''),
     dispositivo: master.dispositivo || inventory.dispositivo || extra.dispositivo || 'Chromebook',
     marca: master.marca || inventory.marca || extra.marca || '',
     modelo: master.modelo || inventory.modelo || operational.modelo || extra.modelo || '',
@@ -392,7 +396,8 @@ function mergeDevice(master, sheet, state, local) {
     motivo: operational.motivo || extra.motivo || '',
     loanedAt: operational.loanedAt || extra.loanedAt || '',
     returnedAt: operational.returnedAt || extra.returnedAt || '',
-    comentarios: operational.comentarios || extra.comentarios || ''
+    comentarios: operational.comentarios || extra.comentarios || '',
+    aliasOperativo: extra.aliasOperativo || master.aliasOperativo || inventory.aliasOperativo || operational.aliasOperativo || ''
   };
   const stateText = String(merged.estado || '').trim().toLowerCase();
   if (stateText === 'disponible' || stateText === 'devuelto') {
@@ -417,6 +422,18 @@ function normalizeAppState(rawState, prestadoA = '') {
   if (state.includes('perd') || state.includes('lost') || state.includes('no encontrada') || state.includes('no encontrado')) return 'No encontrada';
   if (state.includes('prest') || state.includes('retir') || String(prestadoA || '').trim()) return 'Prestado';
   return 'Disponible';
+}
+
+function normalizeCategory(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const text = normalizeText(raw);
+  if (text.includes('tablet')) return 'Tablet';
+  if (text.includes('plani') || text.includes('planificacion')) return 'Plani';
+  if (text === 'touch') return 'Touch';
+  if (text === 'tic') return 'TIC';
+  if (text === 'dell') return 'Dell';
+  return raw.slice(0, 1).toUpperCase() + raw.slice(1);
 }
 
 function normalizeText(value) {

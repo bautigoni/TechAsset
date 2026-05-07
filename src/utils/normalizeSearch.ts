@@ -1,5 +1,5 @@
 import type { Device } from '../types';
-import { classifyDeviceType, getOperationalAlias } from './classifyDevice';
+import { classifyDeviceType, getOperationalAlias, getOperationalAliasList } from './classifyDevice';
 import { clean, normalizeText } from './formatters';
 
 export function parseScannedCode(raw: unknown): string {
@@ -70,7 +70,8 @@ export function flexibleDeviceKey(value: unknown): string {
 export function matchesSmartSearch(device: Device, query: string): boolean {
   const aliasQuery = parseOperationalAlias(query);
   if (aliasQuery) {
-    return classifyDeviceType(device) === aliasQuery.type && String(Number(clean(device.numero))) === aliasQuery.number;
+    const explicitMatch = getOperationalAliasList(device).some(alias => normalizeAlias(alias) === normalizeAlias(query));
+    return explicitMatch || (classifyDeviceType(device) === aliasQuery.type && String(Number(clean(device.numero))) === aliasQuery.number);
   }
 
   const q = normalizeDeviceSearch(query);
@@ -82,6 +83,7 @@ export function matchesSmartSearch(device: Device, query: string): boolean {
   const values = [
     device.etiqueta,
     getOperationalAlias(device),
+    ...getOperationalAliasList(device),
     device.aliasOperativo,
     device.numero,
     device.dispositivo,
@@ -120,7 +122,7 @@ export function resolveDeviceMatches(devices: Device[], raw: string): Device[] {
   if (matches.length) return matches;
 
   devices.forEach(device => {
-    if (alias && normalizeAlias(getOperationalAlias(device)) === alias) add(device);
+    if (alias && getOperationalAliasList(device).some(value => normalizeAlias(value) === alias)) add(device);
   });
   if (matches.length) return matches;
 

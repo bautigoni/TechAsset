@@ -4,7 +4,7 @@ import { TaskCard } from './TaskCard';
 
 const STATES: TaskState[] = ['Pendiente', 'En proceso', 'Hecha'];
 
-export function TaskBoard({ tasks, consultationMode, onMove, onDelete, onSave }: { tasks: TaskItem[]; consultationMode: boolean; onMove: (id: string, state: TaskState) => void; onDelete: (id: string) => void; onSave?: (task: Partial<TaskItem>) => Promise<unknown> }) {
+export function TaskBoard({ tasks, operator, consultationMode, onMove, onDelete, onSave, onEdit, onRefresh }: { tasks: TaskItem[]; operator: string; consultationMode: boolean; onMove: (id: string, state: TaskState) => void; onDelete: (id: string) => void; onSave?: (task: Partial<TaskItem>) => Promise<unknown>; onEdit?: (task: TaskItem) => void; onRefresh?: () => Promise<unknown> | void }) {
   const [dragOver, setDragOver] = useState<TaskState | null>(null);
   const [justDropped, setJustDropped] = useState<TaskState | null>(null);
   const [pointerDragId, setPointerDragId] = useState<string | null>(null);
@@ -68,7 +68,7 @@ export function TaskBoard({ tasks, consultationMode, onMove, onDelete, onSave }:
                 dropTask(id, state);
               }}
             >
-              {group.map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} onMove={next => onMove(task.id, next)} onDelete={() => onDelete(task.id)} onPatch={patch => onSave?.({ ...task, ...patch })} onPointerDragStart={() => setPointerDragId(task.id)} />)}
+              {group.map(task => <TaskCard key={task.id} task={task} operator={operator} consultationMode={consultationMode} onMove={next => onMove(task.id, next)} onDelete={() => onDelete(task.id)} onPatch={patch => onSave?.({ ...task, ...patch })} onEdit={() => onEdit?.(task)} onRefresh={onRefresh} onPointerDragStart={() => setPointerDragId(task.id)} />)}
               {!group.length && <div className="empty-state">Sin tareas</div>}
             </div>
           </section>

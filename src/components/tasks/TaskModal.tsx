@@ -5,6 +5,7 @@ import { Button } from '../layout/Button';
 import { ddMmToIso, formatDdMm, isValidDdMm } from '../../utils/taskDate';
 
 const ASSIGN_OPTIONS = ['Bauti', 'Equi', 'Ambos'] as const;
+const TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'] as const;
 
 export function TaskModal({ onClose, onSave, initial }: { onClose: () => void; onSave: (task: Partial<TaskItem>) => Promise<unknown>; initial?: Partial<TaskItem> }) {
   const [task, setTask] = useState<Partial<TaskItem>>({ responsable: 'Bauti', prioridad: 'Media', estado: 'Pendiente', ...initial });
@@ -20,7 +21,7 @@ export function TaskModal({ onClose, onSave, initial }: { onClose: () => void; o
   };
 
   return (
-    <Modal title="+ Nueva tarea" onClose={onClose}>
+    <Modal title={initial?.id ? 'Editar tarea' : '+ Nueva tarea'} onClose={onClose}>
       <form className="stack" onSubmit={onSubmit}>
         <label>Título<input className="input" required value={task.titulo || ''} onChange={e => update('titulo', e.target.value)} /></label>
         <label>Descripción<textarea className="input" value={task.descripcion || ''} onChange={e => update('descripcion', e.target.value)} /></label>
@@ -31,6 +32,10 @@ export function TaskModal({ onClose, onSave, initial }: { onClose: () => void; o
             </select>
           </label>
           <label>Prioridad<select className="input" value={task.prioridad} onChange={e => update('prioridad', e.target.value)}><option>Baja</option><option>Media</option><option>Urgente</option></select></label>
+        </div>
+        <div className="grid-2">
+          <label>Tipo<input className="input" value={task.tipo || ''} onChange={e => update('tipo', e.target.value)} placeholder="Soporte, Aula, Agenda..." /></label>
+          <label>Turno<select className="input" value={task.turno || 'Sin turno'} onChange={e => update('turno', e.target.value)}>{TURNOS.map(item => <option key={item}>{item}</option>)}</select></label>
         </div>
         <label>Vencimiento (DD/MM)
           <input
@@ -48,6 +53,7 @@ export function TaskModal({ onClose, onSave, initial }: { onClose: () => void; o
           />
           {!isValidDdMm(dateInput) && <span className="muted" style={{ color: '#ff9b9b' }}>Formato inválido. Usá DD/MM.</span>}
         </label>
+        <label>Comentario<textarea className="input" rows={3} value={task.comentario || ''} onChange={e => update('comentario', e.target.value)} /></label>
         <div className="actions"><Button variant="primary" type="submit">Guardar</Button><Button type="button" onClick={onClose}>Cancelar</Button></div>
       </form>
     </Modal>

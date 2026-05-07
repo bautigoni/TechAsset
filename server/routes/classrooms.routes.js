@@ -11,14 +11,66 @@ const EQUIPMENT_OPTIONS = [
   { key: 'tecladoMouse', label: 'Teclado/Mouse', column: 'teclado_mouse_estado' },
   { key: 'tele', label: 'Tele' },
   { key: 'notebook', label: 'Notebook' },
+  { key: 'parlantes', label: 'Parlantes' },
+  { key: 'conectividad', label: 'Conectividad' },
   { key: 'otro', label: 'Otro' }
 ];
 const EQUIPMENT_BY_KEY = new Map(EQUIPMENT_OPTIONS.map(item => [item.key, item]));
 const DEFAULT_EQUIPMENT_KEYS = ['proyector', 'nuc', 'monitor', 'tecladoMouse'];
 const ROOM_DEFAULT_EQUIPMENT = {
   room_Arte: ['notebook', 'proyector'],
-  room_Directores: ['tele']
+  room_Directores: ['tele'],
+  pp_TIC: ['notebook', 'proyector'],
+  pp_Lab: ['notebook', 'proyector'],
+  pp_Maker: ['notebook', 'proyector']
 };
+
+const DEFAULT_CLASSROOMS = [
+  ['room_3ero_N', '3ero N', 'Planta baja', 'classroom'],
+  ['room_5to_N', '5to N', 'Planta baja', 'classroom'],
+  ['room_5to_F', '5to F', 'Planta baja', 'classroom'],
+  ['room_5to_S', '5to S', 'Planta baja', 'classroom'],
+  ['room_3ero_F', '3ero F', 'Planta baja', 'classroom'],
+  ['room_3ero_S', '3ero S', 'Planta baja', 'classroom'],
+  ['room_4to_N', '4to N', 'Planta baja', 'classroom'],
+  ['room_4to_F', '4to F', 'Planta baja', 'classroom'],
+  ['room_4to_S', '4to S', 'Planta baja', 'classroom'],
+  ['room_Arte', 'Arte', 'Planta baja', 'classroom'],
+  ['room_2do_N', '2do N', 'Planta baja', 'classroom'],
+  ['room_2do_F', '2do F', 'Planta baja', 'classroom'],
+  ['room_2do_S', '2do S', 'Planta baja', 'classroom'],
+  ['room_1ero_N', '1ero N', 'Planta baja', 'classroom'],
+  ['room_1ero_F', '1ero F', 'Planta baja', 'classroom'],
+  ['room_1ero_S', '1ero S', 'Planta baja', 'classroom'],
+  ['room_Zoom', 'Zoom', 'Planta baja', 'special'],
+  ['3S', '3S', 'Segundo piso', 'classroom'],
+  ['4N', '4N', 'Segundo piso', 'classroom'],
+  ['4F', '4F', 'Segundo piso', 'classroom'],
+  ['4S', '4S', 'Segundo piso', 'classroom'],
+  ['pp_Direccion', 'Direccion', 'Primer piso', 'admin'],
+  ['pp_DOE', 'DOE', 'Primer piso', 'admin'],
+  ['pp_2N', '2N', 'Primer piso', 'classroom'],
+  ['pp_2F', '2F', 'Primer piso', 'classroom'],
+  ['pp_2S', '2S', 'Primer piso', 'classroom'],
+  ['pp_Precep', 'PRECEP', 'Primer piso', 'admin'],
+  ['pp_3N', '3N', 'Primer piso', 'classroom'],
+  ['pp_5S', '5S', 'Primer piso', 'classroom'],
+  ['pp_5F', '5F', 'Primer piso', 'classroom'],
+  ['pp_Lab', 'LAB', 'Primer piso', 'special'],
+  ['pp_Maker', 'MAKER', 'Primer piso', 'special'],
+  ['pp_SalaProfs', 'SALA PROFES', 'Primer piso', 'admin'],
+  ['pp_3F', '3F', 'Primer piso', 'classroom'],
+  ['pp_6F', '6F', 'Primer piso', 'classroom'],
+  ['pp_6N', '6N', 'Primer piso', 'classroom'],
+  ['pp_1F', '1F', 'Primer piso', 'classroom'],
+  ['pp_1N', '1N', 'Primer piso', 'classroom'],
+  ['pp_6F2', '6F', 'Primer piso', 'classroom'],
+  ['pp_TIC', 'TIC', 'Primer piso', 'special'],
+  ['pp_1S', '1S', 'Primer piso', 'classroom'],
+  ['pp_6S', '6S', 'Primer piso', 'classroom'],
+  ['pp_6N2', '6N', 'Primer piso', 'classroom'],
+  ['sp_Pasillo_Precep', 'Pasillo / precep', 'Segundo piso', 'admin']
+];
 
 function migrateItemState(value) {
   if (value === 'No encontrado') return 'Con falla';
@@ -69,7 +121,7 @@ function rowToClassroom(row) {
     roomKey: row.room_key,
     nombre: row.nombre || '',
     nivel: row.nivel || '',
-    piso: row.piso === 'Primer piso' ? 'Planta baja' : (row.piso || ''),
+    piso: row.piso || '',
     sector: row.sector || '',
     estadoGeneral: calcEstadoGeneral({ equipment }),
     proyector: migrateItemState(row.proyector_estado || 'Sin revisar'),
@@ -95,7 +147,8 @@ function calcEstadoGeneral(c) {
 
 function migrateLegacyClassroomData(db) {
   try {
-    db.exec(`UPDATE classrooms SET piso='Planta baja' WHERE piso='Primer piso'`);
+    db.prepare(`UPDATE classrooms SET piso='Planta baja' WHERE piso='Primer piso' AND room_key LIKE 'room_%'`).run();
+    db.prepare(`UPDATE classrooms SET piso='Segundo piso' WHERE piso IN ('1er piso', 'Primer piso') AND room_key IN ('3S', '4N', '4F', '4S')`).run();
     for (const col of ['proyector_estado', 'nuc_estado', 'monitor_estado', 'teclado_mouse_estado']) {
       db.prepare(`UPDATE classrooms SET ${col}='Con falla' WHERE ${col}='No encontrado'`).run();
     }
@@ -121,6 +174,19 @@ function ensureClassroom(roomKey, defaults = {}) {
     row = db.prepare('SELECT * FROM classrooms WHERE room_key = ?').get(roomKey);
   }
   return row;
+}
+
+function ensureDefaultClassrooms() {
+  for (const [roomKey, nombre, piso, sector] of DEFAULT_CLASSROOMS) {
+    ensureClassroom(roomKey, { nombre, piso, sector });
+    getDb().prepare(`
+      UPDATE classrooms
+      SET nombre = COALESCE(NULLIF(nombre, ''), ?),
+          piso = ?,
+          sector = COALESCE(NULLIF(sector, ''), ?)
+      WHERE room_key = ?
+    `).run(nombre, piso, sector, roomKey);
+  }
 }
 
 function equipmentFromBody(body, old) {
@@ -149,6 +215,7 @@ function syncLegacyStates(next) {
 classroomsRouter.get('/classrooms', (_req, res) => {
   const db = getDb();
   ensureMigrated(db);
+  ensureDefaultClassrooms();
   const rows = db.prepare('SELECT * FROM classrooms ORDER BY piso, nombre').all();
   res.json({ ok: true, items: rows.map(rowToClassroom) });
 });
@@ -156,6 +223,7 @@ classroomsRouter.get('/classrooms', (_req, res) => {
 classroomsRouter.get('/classrooms/summary', (_req, res) => {
   const db = getDb();
   ensureMigrated(db);
+  ensureDefaultClassrooms();
   const rows = db.prepare('SELECT * FROM classrooms').all().map(rowToClassroom);
   const hasFault = (room, key) => room.equipment?.some(item => item.key === key && (item.state === 'Con falla' || item.state === 'En reparación'));
   const summary = {
@@ -207,7 +275,6 @@ classroomsRouter.patch('/classrooms/:roomKey', (req, res) => {
     });
   }
   syncLegacyStates(next);
-  if (next.piso === 'Primer piso') next.piso = 'Planta baja';
   next.estadoGeneral = calcEstadoGeneral(next);
   const equipmentJson = JSON.stringify(next.equipment);
 

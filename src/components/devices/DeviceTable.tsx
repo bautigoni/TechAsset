@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Device } from '../../types';
 import { Badge } from '../layout/Badge';
 import { Button } from '../layout/Button';
@@ -23,7 +24,7 @@ function deviceModel(device: Device) {
   return parts.length ? parts.join(' · ') : '';
 }
 
-export function DeviceTable({ devices, compact = false, actionMode = 'full', onLoan, onReturn, onProfile, onEdit }: {
+export function DeviceTable({ devices, compact = false, actionMode = 'full', onLoan, onReturn, onProfile, onEdit, onDelete }: {
   devices: Device[];
   compact?: boolean;
   actionMode?: ActionMode;
@@ -31,7 +32,10 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
   onReturn?: (device: Device) => void;
   onProfile?: (device: Device) => void;
   onEdit?: (device: Device) => void;
+  onDelete?: (device: Device) => Promise<void> | void;
 }) {
+  const [deletingTag, setDeletingTag] = useState('');
+
   return (
     <div className="table-wrap no-scroll-table device-table-wrap">
       <table className="compact-table device-table">
@@ -55,7 +59,8 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
                 <div className="cell-sub operational-alias">{getOperationalAlias(device)}</div>
               </td>
               <td data-label="Dispositivo">
-                <div>{device.dispositivo || 'Chromebook'}</div>
+                <div>{device.categoria || device.dispositivo || 'Chromebook'}</div>
+                {device.categoria && device.dispositivo && device.categoria !== device.dispositivo && <div className="cell-sub">{device.dispositivo}</div>}
                 <div className="cell-sub">{deviceModel(device)}</div>
               </td>
               <td data-label="SN">{tableValue(device.sn || device.mac)}</td>
@@ -72,6 +77,15 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
                   {onReturn && <Button className="mini-action-btn" variant="success" onClick={() => onReturn(device)}>Devolver</Button>}
                   {actionMode !== 'dashboard' && onProfile && <Button className="mini-action-btn" onClick={() => onProfile(device)}>Ficha</Button>}
                   {onEdit && <Button className="mini-action-btn" onClick={() => onEdit(device)}>Editar</Button>}
+                  {onDelete && actionMode !== 'dashboard' && <Button className="mini-action-btn device-delete-btn" disabled={deletingTag === device.etiqueta} onClick={async () => {
+                    if (!window.confirm(`¿Borrar ${device.etiqueta}? Se ocultará de la app sin borrar el historial.`)) return;
+                    setDeletingTag(device.etiqueta);
+                    try {
+                      await onDelete(device);
+                    } finally {
+                      setDeletingTag('');
+                    }
+                  }}>{deletingTag === device.etiqueta ? 'Borrando...' : 'Borrar'}</Button>}
                 </div>
               </td>
             </tr>

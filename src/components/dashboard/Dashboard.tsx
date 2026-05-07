@@ -7,16 +7,12 @@ import { DeviceTable } from '../devices/DeviceTable';
 import { NowPanel } from './NowPanel';
 import { RecentMovements } from './RecentMovements';
 
-type DeviceFilter = 'all' | 'available' | 'loaned' | 'PLANI' | 'TOUCH' | 'TIC' | 'DELL' | 'missing' | 'out';
+type DeviceFilter = string;
 
-const FILTER_TITLES: Record<DeviceFilter, string> = {
+const FILTER_TITLES: Record<string, string> = {
   all: 'Resumen de dispositivos',
   available: 'Dispositivos disponibles',
   loaned: 'Dispositivos prestados',
-  PLANI: 'Equipos Plani',
-  TOUCH: 'Equipos Touch',
-  TIC: 'Equipos TIC',
-  DELL: 'Equipos Dell',
   missing: 'Dispositivos no encontrados',
   out: 'Dispositivos fuera de servicio'
 };
@@ -52,6 +48,10 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
     });
   }, [deviceFilter, devices]);
 
+  const categoryCounts = useMemo(() => Object.entries(counts)
+    .filter(([key, value]) => !['total', 'available', 'loaned', 'missing', 'out'].includes(key) && Number(value) > 0)
+    .sort(([a], [b]) => a.localeCompare(b)), [counts]);
+
   return (
     <section className="view active">
       <div className="dashboard-stat-groups">
@@ -61,10 +61,9 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
           <StatCard label="Prestados" value={counts.loaned || 0} large active={deviceFilter === 'loaned'} onClick={() => applyDeviceFilter('loaned')} />
         </div>
         <div className="stats-grid stats-secondary">
-          <StatCard label="Plani" value={counts.PLANI || 0} active={deviceFilter === 'PLANI'} onClick={() => applyDeviceFilter('PLANI')} />
-          <StatCard label="Touch" value={counts.TOUCH || 0} active={deviceFilter === 'TOUCH'} onClick={() => applyDeviceFilter('TOUCH')} />
-          <StatCard label="TIC" value={counts.TIC || 0} active={deviceFilter === 'TIC'} onClick={() => applyDeviceFilter('TIC')} />
-          <StatCard label="Dell" value={counts.DELL || 0} active={deviceFilter === 'DELL'} onClick={() => applyDeviceFilter('DELL')} />
+          {categoryCounts.map(([category, value]) => (
+            <StatCard key={category} label={category} value={value || 0} active={deviceFilter === category} onClick={() => applyDeviceFilter(category)} />
+          ))}
           <StatCard label="No encontradas" value={counts.missing || 0} active={deviceFilter === 'missing'} onClick={() => applyDeviceFilter('missing')} />
           <StatCard label="Fuera de servicio" value={counts.out || 0} active={deviceFilter === 'out'} onClick={() => applyDeviceFilter('out')} />
         </div>
@@ -73,7 +72,7 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
       <RecentMovements items={movements} />
       <section className="card dashboard-device-section" ref={tableRef}>
         <div className="card-head">
-          <h3>{FILTER_TITLES[deviceFilter]}</h3>
+          <h3>{FILTER_TITLES[deviceFilter] || `Equipos ${deviceFilter}`}</h3>
           <span className="muted">{visibleDevices.length} equipos</span>
         </div>
         {visibleDevices.length ? (

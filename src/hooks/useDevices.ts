@@ -49,11 +49,7 @@ export function useDevices(search: string) {
       available: 0,
       loaned: 0,
       missing: 0,
-      out: 0,
-      PLANI: 0,
-      TOUCH: 0,
-      TIC: 0,
-      DELL: 0
+      out: 0
     };
     devices.forEach(device => {
       const state = getDeviceStateKey(device);
@@ -61,7 +57,8 @@ export function useDevices(search: string) {
       else if (state === 'missing') base.missing += 1;
       else if (state === 'out') base.out += 1;
       else base.available += 1;
-      base[classifyDeviceType(device)] += 1;
+      const category = classifyDeviceType(device);
+      base[category] = (base[category] || 0) + 1;
     });
     return base;
   }, [devices]);
@@ -70,5 +67,10 @@ export function useDevices(search: string) {
     setDevices(current => current.map(device => device.etiqueta === etiqueta ? { ...device, ...patch } : device));
   }, []);
 
-  return { devices, filteredDevices, counts, sync, refresh, setDevices, patchLocal };
+  const removeLocal = useCallback((etiqueta: string) => {
+    const key = String(etiqueta || '').trim().toUpperCase().replace(/\s+/g, '');
+    setDevices(current => current.filter(device => String(device.etiqueta || '').trim().toUpperCase().replace(/\s+/g, '') !== key));
+  }, []);
+
+  return { devices, filteredDevices, counts, sync, refresh, setDevices, patchLocal, removeLocal };
 }
