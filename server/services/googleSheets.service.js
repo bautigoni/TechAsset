@@ -4,6 +4,7 @@ import { readTextIfExists, writeText } from './cache.service.js';
 
 const FIELD_ALIASES = {
   etiqueta: ['etiqueta 2023', 'etiqueta', 'codigo', 'código'],
+  categoria: ['categoria', 'categoría', 'tipo', 'tipo dispositivo', 'tipo de dispositivo'],
   dispositivo: ['dispositivo', 'equipo'],
   marca: ['marca'],
   modelo: ['modelo', 'model'],
@@ -108,6 +109,7 @@ function normalizeDevice(row, idx) {
     id: makeDeviceId(etiqueta, get('sn'), get('mac')),
     etiqueta,
     numero: get('numero'),
+    categoria: normalizeCategory(get('categoria')),
     dispositivo: get('dispositivo') || 'Chromebook',
     marca: get('marca'),
     modelo: get('modelo'),
@@ -144,6 +146,7 @@ function normalizeDeviceObject(row) {
     id: makeDeviceId(etiqueta, get('sn'), get('mac')),
     etiqueta,
     numero: get('numero'),
+    categoria: normalizeCategory(get('categoria')),
     dispositivo: get('dispositivo') || 'Chromebook',
     marca: get('marca'),
     modelo: get('modelo'),
@@ -226,6 +229,18 @@ function normalizeAppState(rawState, prestadoA = '') {
   if (state.includes('perd') || state.includes('no encontrada')) return 'No encontrada';
   if (state.includes('prest') || clean(prestadoA)) return 'Prestado';
   return 'Disponible';
+}
+
+function normalizeCategory(value) {
+  const raw = clean(value);
+  if (!raw) return '';
+  const text = normalizeText(raw);
+  if (text.includes('tablet')) return 'Tablet';
+  if (text.includes('plani') || text.includes('planificacion')) return 'Plani';
+  if (text === 'touch') return 'Touch';
+  if (text === 'tic') return 'TIC';
+  if (text === 'dell') return 'Dell';
+  return raw.slice(0, 1).toUpperCase() + raw.slice(1);
 }
 
 function looksLikeHtml(text) {

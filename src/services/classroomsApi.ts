@@ -6,10 +6,10 @@ export const fetchClassrooms = (): Promise<{ ok: boolean; items: Classroom[] }> 
 export const fetchClassroomSummary = (): Promise<{ ok: boolean; summary: ClassroomSummary }> =>
   fetch('/api/classrooms/summary').then(r => r.json());
 
-export const fetchClassroom = (roomKey: string, nombre?: string): Promise<{ ok: boolean; item: Classroom }> => {
+export const fetchClassroom = (roomKey: string, nombre?: string, piso = 'Planta baja'): Promise<{ ok: boolean; item: Classroom }> => {
   const params = new URLSearchParams();
   if (nombre) params.set('nombre', nombre);
-  params.set('piso', 'Planta baja');
+  params.set('piso', piso);
   return fetch(`/api/classrooms/${encodeURIComponent(roomKey)}?${params}`).then(r => r.json());
 };
 

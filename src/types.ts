@@ -2,7 +2,7 @@ export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'analytics' | 'agenda'
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
-export type ClassroomEquipmentKey = 'proyector' | 'nuc' | 'monitor' | 'tecladoMouse' | 'tele' | 'notebook' | 'otro';
+export type ClassroomEquipmentKey = 'proyector' | 'nuc' | 'monitor' | 'tecladoMouse' | 'tele' | 'notebook' | 'parlantes' | 'conectividad' | 'otro';
 
 export interface ClassroomEquipmentItem {
   key: ClassroomEquipmentKey;
@@ -50,7 +50,7 @@ export interface ClassroomSummary {
 }
 
 export type DeviceState = 'Disponible' | 'Prestado' | 'No encontrada' | 'Fuera de servicio';
-export type DeviceType = 'PLANI' | 'TOUCH' | 'TIC' | 'DELL';
+export type DeviceType = string;
 export type Operator = 'Equi' | 'Bauti' | 'Lau' | 'Gus' | 'Mastro' | 'Fede';
 
 export interface Device {
@@ -58,6 +58,7 @@ export interface Device {
   etiqueta: string;
   numero?: string;
   aliasOperativo?: string;
+  categoria?: string;
   dispositivo?: string;
   marca?: string;
   modelo?: string;
@@ -115,9 +116,11 @@ export interface TaskItem {
   titulo: string;
   descripcion?: string;
   responsable: Operator | string;
+  responsables?: string[];
   estado: TaskState;
   prioridad: 'Baja' | 'Media' | 'Urgente' | string;
   tipo?: string;
+  turno?: 'Mañana' | 'Tarde' | 'Todo el día' | 'Sin turno' | string;
   fechaCreacion?: string;
   fechaVencimiento?: string;
   comentario?: string;
@@ -125,6 +128,48 @@ export interface TaskItem {
   operadorUltimoCambio?: string;
   agendaId?: string;
   ultimaModificacion?: string;
+  items?: TaskChecklistItem[];
+  checklistTotal?: number;
+  checklistDone?: number;
+}
+
+export interface TaskChecklistItem {
+  id: number;
+  taskId: string;
+  texto: string;
+  completada: boolean;
+  orden: number;
+  creadoPor: string;
+  completadoPor: string;
+  createdAt: string;
+  completedAt: string;
+}
+
+export interface InternalNote {
+  id: number;
+  texto: string;
+  operador: string;
+  categoria: string;
+  importante: boolean;
+  archivada: boolean;
+  visible?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuickLink {
+  id: number;
+  titulo: string;
+  url: string;
+  descripcion: string;
+  categoria: string;
+  icono: string;
+  creadoPor: string;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SyncStatus {

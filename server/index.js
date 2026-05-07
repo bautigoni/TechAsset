@@ -14,6 +14,7 @@ import { procedimientosRouter } from './routes/procedimientos.routes.js';
 import { healthRouter } from './routes/health.routes.js';
 import { classroomsRouter } from './routes/classrooms.routes.js';
 import { toolsRouter } from './routes/tools.routes.js';
+import { operationsRouter } from './routes/operations.routes.js';
 import { loadDevicesCsv } from './services/googleSheets.service.js';
 
 getDb();
@@ -42,6 +43,7 @@ app.use('/api', prestamosRouter);
 app.use('/api', procedimientosRouter);
 app.use('/api', classroomsRouter);
 app.use('/api', toolsRouter);
+app.use('/api', operationsRouter);
 
 const distDir = path.join(config.rootDir, 'dist');
 app.use(express.static(distDir));

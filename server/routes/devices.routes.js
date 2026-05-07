@@ -20,6 +20,19 @@ devicesRouter.get('/devices/diagnostics', (_req, res) => {
   res.json({ ok: true, diagnostics: getDeviceInventoryDiagnostics() });
 });
 
+devicesRouter.get('/device-categories', async (_req, res, next) => {
+  try {
+    const dbRows = getDb().prepare('SELECT nombre, color, icono FROM device_categories WHERE activo=1 ORDER BY nombre').all();
+    const { items } = await getMergedDevices();
+    const names = new Set(['Plani', 'Touch', 'TIC', 'Dell', 'Tablet', 'Notebook', 'Chromebook', 'Camara', 'Proyector', 'Router', 'Impresora', 'Otro']);
+    dbRows.forEach(row => row.nombre && names.add(row.nombre));
+    items.forEach(item => item.categoria && names.add(item.categoria));
+    res.json({ ok: true, items: [...names].sort().map(nombre => ({ nombre })) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Borra del estado local SQLite las filas triviales (Disponible/Devuelto/vacías),
 // dejando solo los préstamos activos. Útil cuando la planilla es la fuente de verdad
 // y local_states acumuló restos de pruebas.
@@ -55,11 +68,15 @@ devicesRouter.get('/devices/state', async (_req, res, next) => {
 
 devicesRouter.post('/devices/add', async (req, res, next) => {
   try {
-    saveLocalDevice(req.body);
+    const payload = normalizeDevicePayload(req.body);
+    if (!payload.etiqueta) return res.status(400).json({ ok: false, error: 'La etiqueta es obligatoria.' });
+    if (!payload.categoria) return res.status(400).json({ ok: false, error: 'La categoría es obligatoria.' });
+    saveCategory(payload.categoria);
+    saveLocalDevice(payload);
     invalidateDeviceInventoryCache('device-added');
-    addLocalMovement({ tipo: 'dispositivo agregado', descripcion: `${req.body.etiqueta || ''} agregado`, operador: req.body.operator, origen: 'Google Sheets', etiqueta: req.body.etiqueta });
-    res.json({ ok: true, item: req.body, syncing: true });
-    proxyAppsScript('adddevice', req.body).catch(error => console.warn('[devices/add sync]', error?.message || error));
+    addLocalMovement({ tipo: 'dispositivo agregado', descripcion: `${payload.etiqueta || ''} agregado`, operador: payload.operator, origen: 'Google Sheets', etiqueta: payload.etiqueta });
+    res.json({ ok: true, item: payload, syncing: true });
+    proxyAppsScript('adddevice', payload).catch(error => console.warn('[devices/add sync]', error?.message || error));
   } catch (error) {
     next(error);
   }
@@ -87,6 +104,31 @@ devicesRouter.post('/devices/status', async (req, res, next) => {
   }
 });
 
+devicesRouter.delete('/devices/:etiqueta', (req, res, next) => {
+  try {
+    const etiqueta = String(req.params.etiqueta || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
+    const operator = String(req.body?.operator || req.query.operator || '');
+    const ts = nowIso();
+    getDb().prepare(`
+      INSERT INTO hidden_devices (etiqueta, deleted_at, deleted_by, reason)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(etiqueta) DO UPDATE SET deleted_at=excluded.deleted_at, deleted_by=excluded.deleted_by, reason=excluded.reason
+    `).run(etiqueta, ts, operator, 'Borrado desde Dispositivos');
+    getDb().prepare('DELETE FROM local_devices WHERE etiqueta=?').run(etiqueta);
+    invalidateDeviceInventoryCache('device-deleted');
+    addLocalMovement({ tipo: 'dispositivo borrado', descripcion: `${etiqueta} ocultado de la app`, operador: operator, origen: 'Local', etiqueta });
+    res.json({ ok: true, etiqueta });
+  } catch (error) {
+    next(error);
+  }
+});
+
+devicesRouter.get('/devices/deleted', (_req, res) => {
+  const rows = getDb().prepare('SELECT * FROM hidden_devices ORDER BY deleted_at DESC').all();
+  res.json({ ok: true, items: rows });
+});
+
 devicesRouter.get('/movements', (_req, res) => {
   const local = getDb().prepare('SELECT timestamp, tipo, descripcion, operador, origen, etiqueta FROM local_movements ORDER BY id DESC LIMIT 100').all();
   const agenda = getDb().prepare(`
@@ -110,4 +152,44 @@ function saveLocalDevice(payload) {
     VALUES (?, ?, ?, ?)
     ON CONFLICT(etiqueta) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at
   `).run(etiqueta, JSON.stringify(payload), ts, ts);
+}
+
+function saveCategory(nombre) {
+  const clean = normalizeCategory(nombre);
+  if (!clean) return;
+  const ts = nowIso();
+  getDb().prepare(`
+    INSERT INTO device_categories (nombre, created_at, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(nombre) DO UPDATE SET activo=1, updated_at=excluded.updated_at
+  `).run(clean, ts, ts);
+}
+
+function normalizeDevicePayload(raw) {
+  const aliasOperativo = String(raw.aliasOperativo || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+    .join(', ');
+  return {
+    ...raw,
+    etiqueta: String(raw.etiqueta || '').trim().toUpperCase().replace(/\s+/g, ''),
+    categoria: normalizeCategory(raw.categoria || raw.tipo || raw.dispositivo || ''),
+    dispositivo: String(raw.dispositivo || raw.categoria || 'Chromebook').trim(),
+    aliasOperativo,
+    aliasOperativoJson: aliasOperativo ? JSON.stringify(aliasOperativo.split(',').map(item => item.trim()).filter(Boolean)) : '',
+    estado: ['Disponible', 'Prestado', 'No encontrada', 'Fuera de servicio'].includes(raw.estado) ? raw.estado : 'Disponible'
+  };
+}
+
+function normalizeCategory(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const text = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (text.includes('tablet')) return 'Tablet';
+  if (text.includes('plani') || text.includes('planificacion')) return 'Plani';
+  if (text === 'touch') return 'Touch';
+  if (text === 'tic') return 'TIC';
+  if (text === 'dell') return 'Dell';
+  return raw.slice(0, 1).toUpperCase() + raw.slice(1);
 }

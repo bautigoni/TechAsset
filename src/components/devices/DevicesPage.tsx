@@ -7,16 +7,12 @@ import { DeviceTable } from './DeviceTable';
 import { DeviceProfile } from './DeviceProfile';
 import { AddDeviceModal } from './AddDeviceModal';
 
-type DeviceFilter = 'all' | 'available' | 'loaned' | 'PLANI' | 'TOUCH' | 'TIC' | 'DELL' | 'missing' | 'out';
+type DeviceFilter = string;
 
-const FILTER_LABELS: Record<DeviceFilter, string> = {
+const FILTER_LABELS: Record<string, string> = {
   all: 'Todos los dispositivos',
   available: 'Disponibles',
   loaned: 'Prestados',
-  PLANI: 'Plani',
-  TOUCH: 'Touch',
-  TIC: 'TIC',
-  DELL: 'Dell',
   missing: 'No encontradas',
   out: 'Fuera de servicio'
 };
@@ -30,20 +26,37 @@ function matchesFilter(device: Device, filter: DeviceFilter) {
   return classifyDeviceType(device) === filter;
 }
 
-export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn }: {
+export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn, onDelete }: {
   devices: Device[];
   consultationMode: boolean;
   onAdd: (device: Partial<Device>) => Promise<void>;
   onLoan: (device: Device) => void;
   onReturn: (device: Device) => void;
+  onDelete?: (device: Device) => Promise<void> | void;
 }) {
   const [profile, setProfile] = useState<Device | null>(null);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Device | null>(null);
   const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all');
+  const [message, setMessage] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
 
   const visibleDevices = useMemo(() => devices.filter(device => matchesFilter(device, deviceFilter)), [devices, deviceFilter]);
   const count = (filter: DeviceFilter) => devices.filter(device => matchesFilter(device, filter)).length;
+  const categories = useMemo(() => Array.from(new Set(devices.map(classifyDeviceType).filter(Boolean))).sort(), [devices]);
+  const handleDelete = async (device: Device) => {
+    if (consultationMode) {
+      setMessage({ tone: 'error', text: 'Modo consulta activo.' });
+      return;
+    }
+    if (!onDelete) return;
+    setMessage(null);
+    try {
+      await onDelete(device);
+      setMessage({ tone: 'info', text: 'Dispositivo borrado' });
+    } catch (error) {
+      setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo borrar el dispositivo.' });
+    }
+  };
 
   return (
     <section className="view active">
@@ -51,10 +64,9 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
         <StatCard label="Total" value={count('all')} active={deviceFilter === 'all'} onClick={() => setDeviceFilter('all')} />
         <StatCard label="Disponibles" value={count('available')} active={deviceFilter === 'available'} onClick={() => setDeviceFilter('available')} />
         <StatCard label="Prestados" value={count('loaned')} active={deviceFilter === 'loaned'} onClick={() => setDeviceFilter('loaned')} />
-        <StatCard label="Plani" value={count('PLANI')} active={deviceFilter === 'PLANI'} onClick={() => setDeviceFilter('PLANI')} />
-        <StatCard label="Touch" value={count('TOUCH')} active={deviceFilter === 'TOUCH'} onClick={() => setDeviceFilter('TOUCH')} />
-        <StatCard label="TIC" value={count('TIC')} active={deviceFilter === 'TIC'} onClick={() => setDeviceFilter('TIC')} />
-        <StatCard label="Dell" value={count('DELL')} active={deviceFilter === 'DELL'} onClick={() => setDeviceFilter('DELL')} />
+        {categories.map(category => (
+          <StatCard key={category} label={category} value={count(category)} active={deviceFilter === category} onClick={() => setDeviceFilter(category)} />
+        ))}
         <StatCard label="No encontradas" value={count('missing')} active={deviceFilter === 'missing'} onClick={() => setDeviceFilter('missing')} />
         <StatCard label="Fuera de servicio" value={count('out')} active={deviceFilter === 'out'} onClick={() => setDeviceFilter('out')} />
       </div>
@@ -62,13 +74,14 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
       <section className="card">
         <div className="card-head">
           <div>
-            <h3>{FILTER_LABELS[deviceFilter]}</h3>
+            <h3>{FILTER_LABELS[deviceFilter] || deviceFilter}</h3>
             <span className="muted">{visibleDevices.length} equipos visibles</span>
           </div>
           {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Anadir dispositivo</Button>}
         </div>
+        {message && <div className={message.tone === 'error' ? 'tool-error' : 'tool-info'}>{message.text}</div>}
         {visibleDevices.length ? (
-          <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={setProfile} onEdit={consultationMode ? undefined : setEditing} />
+          <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={setProfile} onEdit={consultationMode ? undefined : setEditing} onDelete={consultationMode ? undefined : handleDelete} />
         ) : (
           <div className="empty-state">No hay dispositivos para este filtro o busqueda.</div>
         )}

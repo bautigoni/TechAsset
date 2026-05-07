@@ -2,6 +2,7 @@ import type { Device, Movement } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
 import { LoanForm } from './LoanForm';
 import { RecentMovements } from '../dashboard/RecentMovements';
+import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
 
 function countBy(devices: Device[], getter: (device: Device) => string) {
   return Object.entries(devices.reduce<Record<string, number>>((acc, device) => {
@@ -11,7 +12,7 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
   }, {})).sort((a, b) => b[1] - a[1]);
 }
 
-export function LoansPage({ devices, movements, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<void>; onReturn: (payload: Record<string, unknown>) => Promise<void>; initialCode?: string }) {
+export function LoansPage({ devices, movements, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<void>; onReturn: (payload: Record<string, unknown>) => Promise<void>; initialCode?: string }) {
   const loaned = devices.filter(device => device.estado === 'Prestado');
   const available = devices.filter(device => device.estado === 'Disponible');
   const byType = countBy(devices, device => classifyDeviceType(device));
@@ -22,7 +23,10 @@ export function LoansPage({ devices, movements, consultationMode, onLend, onRetu
     <section className="view active">
       <div className="panel two-col loans-layout">
         <section className="card">
-          <div className="card-head"><h3>Prestamo / devolucion</h3></div>
+          <div className="card-head">
+            <h3>Prestamo / devolucion</h3>
+            <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
+          </div>
           <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={initialCode} />
         </section>
         <div className="loans-side-stack">

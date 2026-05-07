@@ -22,7 +22,7 @@ export function Sidebar({ active, onNavigate, open, onClose, onReload }: { activ
   return (
     <>
       <div className={`mobile-overlay ${open ? '' : 'hidden'}`} onClick={onClose} />
-      <aside className={`sidebar ${open ? 'mobile-open' : ''}`}>
+      <aside className={`sidebar ${open ? 'open mobile-open' : ''}`}>
         <div className="brand">
           <img className="brand-logo" src="/northfield_logo.png" alt="Northfield" />
           <div>

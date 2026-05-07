@@ -40,13 +40,20 @@ function taskScore(task: TaskItem) {
 }
 
 export function NowPanel({ agenda, tasks, onAgenda, onTasks }: { agenda: AgendaItem[]; tasks: TaskItem[]; onAgenda: () => void; onTasks: () => void }) {
-  const agendaToday = agenda.filter(item => isAgendaToday(item) && isOpenAgenda(item));
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const validAgenda = agenda.filter(item => isOpenAgenda(item) && item.estado !== 'Faltaron equipos');
+  const agendaToday = validAgenda.filter(item => isAgendaToday(item));
   const pendingTodayCount = agenda.filter(item => isAgendaToday(item) && isPendingAgenda(item)).length;
   const pendingTasks = tasks.filter(isOpenTask).length;
   const today = todayIso();
-  const upcomingAgenda = agenda.filter(item => isOpenAgenda(item) && (isAgendaToday(item) || !item.fecha || item.fecha >= today));
-  const nextAgenda = [...agendaToday].sort((a, b) => minutesFromTime(a.desde) - minutesFromTime(b.desde))[0]
-    || [...upcomingAgenda].sort((a, b) => String(a.fecha || '9999-12-31').localeCompare(String(b.fecha || '9999-12-31')) || minutesFromTime(a.desde) - minutesFromTime(b.desde))[0];
+  const currentAgenda = agendaToday.find(item => minutesFromTime(item.desde) <= nowMinutes && minutesFromTime(item.hasta) >= nowMinutes && (item.estado === 'Entregado' || item.estado === 'Pendiente'));
+  const nextToday = agendaToday
+    .filter(item => minutesFromTime(item.desde) > nowMinutes && item.estado === 'Pendiente')
+    .sort((a, b) => minutesFromTime(a.desde) - minutesFromTime(b.desde))[0];
+  const futureAgenda = validAgenda
+    .filter(item => !isAgendaToday(item) && (item.fecha ? item.fecha >= today : true) && item.estado === 'Pendiente')
+    .sort((a, b) => String(a.fecha || '9999-12-31').localeCompare(String(b.fecha || '9999-12-31')) || weekdayRank(a.dia) - weekdayRank(b.dia) || minutesFromTime(a.desde) - minutesFromTime(b.desde))[0];
+  const nextAgenda = currentAgenda || nextToday || futureAgenda;
   const urgentTask = [...tasks.filter(isOpenTask)].sort((a, b) => taskScore(a) - taskScore(b))[0];
 
   return (
@@ -68,7 +75,7 @@ export function NowPanel({ agenda, tasks, onAgenda, onTasks }: { agenda: AgendaI
         </div>
         <div className="list-item">
           <div className="muted">Proxima agenda</div>
-          <strong>{nextAgenda ? `${nextAgenda.desde} · ${nextAgenda.curso || nextAgenda.actividad}` : 'Sin actividad proxima'}</strong>
+          <strong>{nextAgenda ? `${currentAgenda ? 'En curso' : nextAgenda.desde} · ${nextAgenda.curso || nextAgenda.actividad}` : 'Sin próximas actividades'}</strong>
         </div>
         <div className="list-item">
           <div className="muted">Tarea urgente</div>
@@ -77,4 +84,11 @@ export function NowPanel({ agenda, tasks, onAgenda, onTasks }: { agenda: AgendaI
       </div>
     </section>
   );
+}
+
+function weekdayRank(day?: string) {
+  const order = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+  const today = new Date().getDay();
+  const idx = order.indexOf(normalize(day));
+  return idx < 0 ? 99 : (idx - today + 7) % 7;
 }

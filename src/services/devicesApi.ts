@@ -30,6 +30,14 @@ export function addDevice(payload: Partial<Device> & { operator: string }) {
   return apiSend<{ ok: true; item: Device }>('/api/devices/add', 'POST', payload);
 }
 
+export function getDeviceCategories() {
+  return apiGet<{ ok: true; items: Array<{ nombre: string }> }>('/api/device-categories');
+}
+
 export function updateDeviceStatus(payload: { etiqueta: string; estado: string; operator: string; comentario?: string }) {
   return apiSend<{ ok: true }>('/api/devices/status', 'POST', payload);
+}
+
+export function deleteDevice(etiqueta: string, operator: string) {
+  return apiSend<{ ok: true; etiqueta: string }>(`/api/devices/${encodeURIComponent(etiqueta)}`, 'DELETE', { operator });
 }

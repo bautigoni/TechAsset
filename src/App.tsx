@@ -20,7 +20,7 @@ import { useAgenda } from './hooks/useAgenda';
 import { useTasks } from './hooks/useTasks';
 import { useScrollReveal } from './hooks/useScrollReveal';
 import { useAutoRefresh } from './hooks/useAutoRefresh';
-import { addDevice, getMovements } from './services/devicesApi';
+import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
 import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 
@@ -34,7 +34,7 @@ export function App() {
   const [loanSeed, setLoanSeed] = useState('');
   const [movements, setMovements] = useState<Movement[]>([]);
   const { operator, setOperator } = useOperator();
-  const { devices, filteredDevices, counts, sync, refresh, patchLocal } = useDevices(search);
+  const { devices, filteredDevices, counts, sync, refresh, patchLocal, removeLocal } = useDevices(search);
   const agenda = useAgenda(operator);
   const tasks = useTasks(operator);
   useScrollReveal([view, filteredDevices.length, agenda.items.length, tasks.items.length, movements.length]);
@@ -76,6 +76,13 @@ export function App() {
     await refresh();
   };
 
+  const onDeleteDevice = async (device: Device) => {
+    await deleteDevice(device.etiqueta, operator);
+    removeLocal(device.etiqueta);
+    await refresh({ force: true, wait: true });
+    getMovements().then(data => setMovements(data.items)).catch(() => {});
+  };
+
   const onLend = async (payload: Record<string, unknown>) => {
     const tag = String(payload.etiqueta || '');
     if (tag) patchLocal(tag, { estado: 'Prestado', prestadoA: String(payload.person || ''), ubicacion: String(payload.location || ''), motivo: String(payload.reason || ''), rol: String(payload.role || ''), comentarios: String(payload.comment || '') });
@@ -115,14 +122,14 @@ export function App() {
       <main className="main main-content">
         <Topbar view={view} search={search} setSearch={setSearch} operator={operator} setOperator={setOperator} sync={sync} consultationMode={consultationMode} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} />
         {view === 'dashboard' && <Dashboard devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onProfile={setProfile} onEdit={setEditingDevice} />}
-        {view === 'devices' && <DevicesPage devices={filteredDevices} consultationMode={consultationMode} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} />}
-        {view === 'loans' && <LoansPage devices={devices} movements={movements} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
+        {view === 'devices' && <DevicesPage devices={filteredDevices} consultationMode={consultationMode} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} />}
+        {view === 'loans' && <LoansPage devices={devices} movements={movements} operator={operator} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
         {view === 'analytics' && <AnalyticsPage devices={devices} onRefresh={refresh} />}
         {view === 'agenda' && <AgendaPage items={agenda.items} consultationMode={consultationMode} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
-        {view === 'tasks' && <TasksPage tasks={tasks.items} kpis={tasks.kpis} consultationMode={consultationMode} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
+        {view === 'tasks' && <TasksPage tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={consultationMode} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
         {view === 'classrooms' && <ClassroomStatusPage operator={operator} consultationMode={consultationMode} />}
         {view === 'tools' && <ToolsPage operator={operator} />}
-        {view === 'quickaccess' && <QuickAccessPage />}
+        {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={consultationMode} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={consultationMode} setConsultationMode={setConsultationMode} sync={sync} />}
       </main>
       {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}

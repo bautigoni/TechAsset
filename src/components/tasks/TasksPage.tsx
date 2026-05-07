@@ -6,12 +6,14 @@ import { TaskBoard } from './TaskBoard';
 import { TaskModal } from './TaskModal';
 import { TaskCard } from './TaskCard';
 import { TaskAnalytics } from './TaskAnalytics';
+import { InternalNotesPanel } from '../dashboard/InternalNotesPanel';
 
 const PRIORITY_RANK: Record<string, number> = { Urgente: 0, Media: 1, Baja: 2 };
 
-export function TasksPage({ tasks, kpis, consultationMode, onSave, onMove, onDelete, onRefresh }: { tasks: TaskItem[]; kpis: Record<string, number>; consultationMode: boolean; onSave: (task: Partial<TaskItem>) => Promise<unknown>; onMove: (id: string, state: TaskState) => void; onDelete: (id: string) => void; onRefresh?: () => Promise<unknown> | void }) {
-  const [tab, setTab] = useState<'board' | 'schedule'>('board');
+export function TasksPage({ tasks, kpis, operator, consultationMode, onSave, onMove, onDelete, onRefresh }: { tasks: TaskItem[]; kpis: Record<string, number>; operator: string; consultationMode: boolean; onSave: (task: Partial<TaskItem>) => Promise<unknown>; onMove: (id: string, state: TaskState) => void; onDelete: (id: string) => void; onRefresh?: () => Promise<unknown> | void }) {
+  const [tab, setTab] = useState<'board' | 'schedule' | 'handoff'>('board');
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<TaskItem | null>(null);
 
   const grouped = useMemo(() => {
     const buckets: Record<string, TaskItem[]> = { Urgente: [], Media: [], Baja: [] };
@@ -37,8 +39,9 @@ export function TasksPage({ tasks, kpis, consultationMode, onSave, onMove, onDel
       <div className="agenda-tabs">
         <button className={`agenda-tab ${tab === 'board' ? 'active' : ''}`} onClick={() => setTab('board')}>Tablero</button>
         <button className={`agenda-tab ${tab === 'schedule' ? 'active' : ''}`} onClick={() => setTab('schedule')}>Por prioridad</button>
+        <button className={`agenda-tab ${tab === 'handoff' ? 'active' : ''}`} onClick={() => setTab('handoff')}>Traspaso TIC</button>
       </div>
-      <div className="stats-grid agenda-kpi-grid">
+      {tab !== 'handoff' && <div className="stats-grid agenda-kpi-grid">
         <StatCard label="Total tareas" value={kpis.total || 0} />
         <StatCard label="Pendientes" value={kpis.pending || 0} />
         <StatCard label="En proceso" value={kpis.progress || 0} />
@@ -47,9 +50,11 @@ export function TasksPage({ tasks, kpis, consultationMode, onSave, onMove, onDel
         <StatCard label="Bauti" value={kpis.bauti || 0} />
         <StatCard label="Equi" value={kpis.equi || 0} />
         <StatCard label="Mis tareas" value={kpis.mine || 0} />
-      </div>
-      {tab === 'board' ? (
-        <TaskBoard tasks={tasks} consultationMode={consultationMode} onMove={onMove} onDelete={onDelete} onSave={onSave} />
+      </div>}
+      {tab === 'handoff' ? (
+        <InternalNotesPanel operator={operator} consultationMode={consultationMode} />
+      ) : tab === 'board' ? (
+        <TaskBoard tasks={tasks} operator={operator} consultationMode={consultationMode} onMove={onMove} onDelete={onDelete} onSave={onSave} onEdit={setEditing} onRefresh={onRefresh} />
       ) : (
         <>
           <div className="task-schedule-grid">
@@ -65,9 +70,12 @@ export function TasksPage({ tasks, kpis, consultationMode, onSave, onMove, onDel
                       key={task.id}
                       task={task}
                       consultationMode={consultationMode}
+                      operator={operator}
                       onMove={state => onMove(task.id, state)}
                       onDelete={() => onDelete(task.id)}
                       onPatch={patch => onSave({ ...task, ...patch })}
+                      onEdit={() => setEditing(task)}
+                      onRefresh={onRefresh}
                     />
                   ))}
                   {!grouped[level].length && <div className="empty-state">Sin tareas</div>}
@@ -86,9 +94,12 @@ export function TasksPage({ tasks, kpis, consultationMode, onSave, onMove, onDel
                   key={task.id}
                   task={task}
                   consultationMode={consultationMode}
+                  operator={operator}
                   onMove={state => onMove(task.id, state)}
                   onDelete={() => onDelete(task.id)}
                   onPatch={patch => onSave({ ...task, ...patch })}
+                  onEdit={() => setEditing(task)}
+                  onRefresh={onRefresh}
                 />
               ))}
               {!doneTasks.length && <div className="empty-state">Aun no hay tareas terminadas</div>}
@@ -96,8 +107,9 @@ export function TasksPage({ tasks, kpis, consultationMode, onSave, onMove, onDel
           </section>
         </>
       )}
-      <TaskAnalytics tasks={tasks} />
+      {tab !== 'handoff' && <TaskAnalytics tasks={tasks} />}
       {creating && <TaskModal onClose={() => setCreating(false)} onSave={onSave} />}
+      {editing && <TaskModal initial={editing} onClose={() => setEditing(null)} onSave={onSave} />}
     </section>
   );
 }

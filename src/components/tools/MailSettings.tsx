@@ -55,6 +55,22 @@ export function MailSettings() {
     <section className="card tool-card">
       <div className="card-head"><h3>Configuración SMTP / Credenciales 365</h3></div>
       <p className="muted">Editá los datos de envío. Se guardan en el servidor (SQLite). El .env solo se usa como valor inicial.</p>
+      <details className="settings-info-block">
+        <summary>¿Cómo completar esta configuración?</summary>
+        <ol className="smtp-help-list">
+          <li>Usá una cuenta institucional autorizada para enviar correos.</li>
+          <li>SMTP es el servicio que permite enviar emails desde la app.</li>
+          <li>Para Microsoft 365 suele usarse <code>smtp.office365.com</code>.</li>
+          <li>El puerto habitual para Microsoft 365 es <code>587</code>.</li>
+          <li>SMTP User debe ser el mail completo de la cuenta emisora.</li>
+          <li>La contraseña debe ser una contraseña de aplicación o clave SMTP autorizada.</li>
+          <li>Si la cuenta tiene doble factor, puede requerir contraseña de aplicación.</li>
+          <li>En Microsoft 365 puede ser necesario habilitar SMTP AUTH desde administración.</li>
+          <li>Primero usá Modo prueba y revisá la vista previa/reporte.</li>
+          <li>Recién después pasá a Modo real.</li>
+          <li>La contraseña no se muestra en claro. No la subas a GitHub ni la compartas.</li>
+        </ol>
+      </details>
 
       <div className="grid-2">
         <label>SMTP server<input className="input" value={draft.smtpServer} onChange={e => update('smtpServer', e.target.value)} placeholder="smtp.gmail.com" /></label>

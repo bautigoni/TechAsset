@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { TaskItem, TaskState } from '../types';
 import { createTask, deleteTask, getTasks, updateTask } from '../services/tasksApi';
+import { fetchShiftSettings } from '../services/operationsApi';
 import { isOverdue } from '../utils/dates';
 
 export function useTasks(operator: string) {
   const [items, setItems] = useState<TaskItem[]>([]);
+  const [shifts, setShifts] = useState({ morningOperator: 'Bauti', afternoonOperator: 'Equi' });
 
   const refresh = useCallback(async () => {
     const data = await getTasks();
@@ -14,6 +16,7 @@ export function useTasks(operator: string) {
 
   useEffect(() => {
     refresh().catch(() => setItems([]));
+    fetchShiftSettings().then(r => r.ok && setShifts(r.settings)).catch(() => {});
   }, [refresh]);
 
   const kpis = useMemo<Record<string, number>>(() => ({
@@ -22,10 +25,10 @@ export function useTasks(operator: string) {
     progress: items.filter(item => item.estado === 'En proceso').length,
     done: items.filter(item => item.estado === 'Hecha').length,
     overdue: items.filter(item => item.estado !== 'Hecha' && isOverdue(item.fechaVencimiento)).length,
-    bauti: items.filter(item => item.responsable === 'Bauti' || item.responsable === 'Ambos').length,
-    equi: items.filter(item => item.responsable === 'Equi' || item.responsable === 'Ambos').length,
-    mine: items.filter(item => item.responsable === operator || item.responsable === 'Ambos').length
-  }), [items, operator]);
+    bauti: items.filter(item => isAssignedTo(item, 'Bauti')).length,
+    equi: items.filter(item => isAssignedTo(item, 'Equi')).length,
+    mine: items.filter(item => isAssignedTo(item, operator) && isOwnShift(item, operator, shifts)).length
+  }), [items, operator, shifts]);
 
   const move = async (id: string, estado: TaskState) => {
     const current = items.find(item => item.id === id);
@@ -52,4 +55,17 @@ export function useTasks(operator: string) {
   };
 
   return { items, kpis, refresh, move, save, remove };
+}
+
+function isAssignedTo(item: TaskItem, operator: string) {
+  if (item.responsables?.includes(operator)) return true;
+  return String(item.responsable || '').split(',').map(v => v.trim()).includes(operator) || item.responsable === 'Ambos';
+}
+
+function isOwnShift(item: TaskItem, operator: string, shifts: { morningOperator: string; afternoonOperator: string }) {
+  const shift = item.turno || 'Sin turno';
+  if (shift === 'Todo el día' || shift === 'Sin turno') return true;
+  if (operator === shifts.morningOperator) return shift === 'Mañana';
+  if (operator === shifts.afternoonOperator) return shift === 'Tarde';
+  return true;
 }
