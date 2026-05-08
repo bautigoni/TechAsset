@@ -1,16 +1,18 @@
 import { Router } from 'express';
 import { getDb, nowIso, rowToAgenda, rowToTask } from '../db.js';
+import { requireSite } from '../services/siteContext.service.js';
 
 export const operationsRouter = Router();
 
 operationsRouter.get('/internal-notes', (req, res) => {
+  const siteCode = requireSite(req);
   const filter = String(req.query.filter || 'active');
   const where = filter === 'last30'
     ? "created_at >= datetime('now','-30 days')"
     : filter === 'all'
       ? 'COALESCE(visible,1)=1'
       : 'COALESCE(visible,1)=1';
-  const rows = getDb().prepare(`SELECT * FROM internal_notes WHERE ${where} ORDER BY importante DESC, id DESC LIMIT 250`).all();
+  const rows = getDb().prepare(`SELECT * FROM internal_notes WHERE site_code=? AND ${where} ORDER BY importante DESC, id DESC LIMIT 250`).all(siteCode);
   res.json({ ok: true, items: rows.map(rowToNote) });
 });
 
@@ -18,13 +20,13 @@ operationsRouter.post('/internal-notes', (req, res) => {
   const texto = String(req.body?.texto || '').trim();
   if (!texto) return res.status(400).json({ ok: false, error: 'La nota no puede estar vacía.' });
   const ts = nowIso();
-  const info = getDb().prepare('INSERT INTO internal_notes (texto, operador, categoria, importante, archivada, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?)')
-    .run(texto, req.body?.operator || req.body?.operador || '', req.body?.categoria || 'General', req.body?.importante ? 1 : 0, ts, ts);
+  const info = getDb().prepare('INSERT INTO internal_notes (site_code, texto, operador, categoria, importante, archivada, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)')
+    .run(requireSite(req), texto, req.body?.operator || req.body?.operador || '', req.body?.categoria || 'General', req.body?.importante ? 1 : 0, ts, ts);
   res.json({ ok: true, item: rowToNote(getDb().prepare('SELECT * FROM internal_notes WHERE id=?').get(info.lastInsertRowid)) });
 });
 
 operationsRouter.patch('/internal-notes/:id', (req, res) => {
-  const old = getDb().prepare('SELECT * FROM internal_notes WHERE id=?').get(req.params.id);
+  const old = getDb().prepare('SELECT * FROM internal_notes WHERE id=? AND site_code=?').get(req.params.id, requireSite(req));
   if (!old) return res.status(404).json({ ok: false, error: 'Nota no encontrada.' });
   const ts = nowIso();
   getDb().prepare('UPDATE internal_notes SET texto=?, categoria=?, importante=?, archivada=?, visible=?, deleted_at=?, deleted_by=?, updated_at=? WHERE id=?')
@@ -45,29 +47,30 @@ operationsRouter.patch('/internal-notes/:id', (req, res) => {
 operationsRouter.delete('/internal-notes/:id', (req, res) => {
   const ts = nowIso();
   const operator = req.body?.operator || req.query.operator || '';
-  const result = getDb().prepare('UPDATE internal_notes SET visible=0, deleted_at=?, deleted_by=?, updated_at=? WHERE id=?').run(ts, operator, ts, req.params.id);
+  const result = getDb().prepare('UPDATE internal_notes SET visible=0, deleted_at=?, deleted_by=?, updated_at=? WHERE id=? AND site_code=?').run(ts, operator, ts, req.params.id, requireSite(req));
   res.json({ ok: true, deleted: result.changes > 0 });
 });
 
 operationsRouter.get('/daily-closures', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM daily_closures ORDER BY id DESC LIMIT 100').all();
+  const rows = getDb().prepare('SELECT * FROM daily_closures WHERE site_code=? ORDER BY id DESC LIMIT 100').all(requireSite(_req));
   res.json({ ok: true, items: rows.map(rowToClosure) });
 });
 
 operationsRouter.get('/daily-closures/preview', (_req, res) => {
-  res.json({ ok: true, resumen: buildDailySummary() });
+  res.json({ ok: true, resumen: buildDailySummary(requireSite(_req)) });
 });
 
 operationsRouter.post('/daily-closures', (req, res) => {
   const ts = nowIso();
-  const resumen = req.body?.resumen || buildDailySummary();
-  const info = getDb().prepare('INSERT INTO daily_closures (fecha, operador, resumen_json, observaciones, created_at) VALUES (?, ?, ?, ?, ?)')
-    .run(ts.slice(0, 10), req.body?.operator || req.body?.operador || '', JSON.stringify(resumen), req.body?.observaciones || '', ts);
+  const siteCode = requireSite(req);
+  const resumen = req.body?.resumen || buildDailySummary(siteCode);
+  const info = getDb().prepare('INSERT INTO daily_closures (site_code, fecha, operador, resumen_json, observaciones, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(siteCode, ts.slice(0, 10), req.body?.operator || req.body?.operador || '', JSON.stringify(resumen), req.body?.observaciones || '', ts);
   res.json({ ok: true, item: rowToClosure(getDb().prepare('SELECT * FROM daily_closures WHERE id=?').get(info.lastInsertRowid)) });
 });
 
 operationsRouter.get('/quick-links', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM quick_links WHERE activo=1 ORDER BY categoria, titulo').all();
+  const rows = getDb().prepare('SELECT * FROM quick_links WHERE activo=1 AND site_code=? ORDER BY categoria, titulo').all(requireSite(_req));
   res.json({ ok: true, items: rows.map(rowToQuickLink) });
 });
 
@@ -76,13 +79,13 @@ operationsRouter.post('/quick-links', (req, res) => {
   if (!payload.titulo || !payload.url) return res.status(400).json({ ok: false, error: 'Título y URL son obligatorios.' });
   if (!isSafeUrl(payload.url)) return res.status(400).json({ ok: false, error: 'Solo se permiten URLs http:// o https://.' });
   const ts = nowIso();
-  const info = getDb().prepare('INSERT INTO quick_links (titulo, url, descripcion, categoria, icono, creado_por, activo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)')
-    .run(payload.titulo, payload.url, payload.descripcion, payload.categoria, payload.icono, payload.creadoPor, ts, ts);
+  const info = getDb().prepare('INSERT INTO quick_links (site_code, titulo, url, descripcion, categoria, icono, creado_por, activo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)')
+    .run(requireSite(req), payload.titulo, payload.url, payload.descripcion, payload.categoria, payload.icono, payload.creadoPor, ts, ts);
   res.json({ ok: true, item: rowToQuickLink(getDb().prepare('SELECT * FROM quick_links WHERE id=?').get(info.lastInsertRowid)) });
 });
 
 operationsRouter.patch('/quick-links/:id', (req, res) => {
-  const old = getDb().prepare('SELECT * FROM quick_links WHERE id=?').get(req.params.id);
+  const old = getDb().prepare('SELECT * FROM quick_links WHERE id=? AND site_code=?').get(req.params.id, requireSite(req));
   if (!old) return res.status(404).json({ ok: false, error: 'Acceso no encontrado.' });
   const payload = normalizeQuickLink({ ...old, ...req.body });
   if (!isSafeUrl(payload.url)) return res.status(400).json({ ok: false, error: 'Solo se permiten URLs http:// o https://.' });
@@ -92,13 +95,15 @@ operationsRouter.patch('/quick-links/:id', (req, res) => {
 });
 
 operationsRouter.delete('/quick-links/:id', (req, res) => {
-  const result = getDb().prepare('UPDATE quick_links SET activo=0, updated_at=? WHERE id=?').run(nowIso(), req.params.id);
+  const result = getDb().prepare('UPDATE quick_links SET activo=0, updated_at=? WHERE id=? AND site_code=?').run(nowIso(), req.params.id, requireSite(req));
   res.json({ ok: true, deleted: result.changes > 0 });
 });
 
 operationsRouter.get('/settings/shifts', (_req, res) => {
-  const rows = getDb().prepare("SELECT key, value FROM app_settings WHERE key IN ('shift.morningOperator','shift.afternoonOperator')").all();
-  const map = Object.fromEntries(rows.map(row => [row.key, row.value]));
+  const rows = getDb().prepare("SELECT key, value_json FROM site_settings WHERE site_code=? AND key IN ('shift.morningOperator','shift.afternoonOperator')").all(requireSite(_req));
+  const map = Object.fromEntries(rows.map(row => {
+    try { return [row.key, JSON.parse(row.value_json)]; } catch { return [row.key, row.value_json]; }
+  }));
   res.json({ ok: true, settings: { morningOperator: map['shift.morningOperator'] || 'Bauti', afternoonOperator: map['shift.afternoonOperator'] || 'Equi' } });
 });
 
@@ -106,20 +111,21 @@ operationsRouter.patch('/settings/shifts', (req, res) => {
   const ts = nowIso();
   const morning = req.body?.morningOperator || 'Bauti';
   const afternoon = req.body?.afternoonOperator || 'Equi';
-  const stmt = getDb().prepare('INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at');
-  stmt.run('shift.morningOperator', morning, ts);
-  stmt.run('shift.afternoonOperator', afternoon, ts);
+  const siteCode = requireSite(req);
+  const stmt = getDb().prepare('INSERT INTO site_settings (site_code, key, value_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(site_code, key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at');
+  stmt.run(siteCode, 'shift.morningOperator', JSON.stringify(morning), ts);
+  stmt.run(siteCode, 'shift.afternoonOperator', JSON.stringify(afternoon), ts);
   res.json({ ok: true, settings: { morningOperator: morning, afternoonOperator: afternoon } });
 });
 
-function buildDailySummary() {
+function buildDailySummary(siteCode) {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
-  const tasks = db.prepare('SELECT * FROM tasks WHERE eliminada=0').all().map(rowToTask);
-  const agenda = db.prepare('SELECT * FROM agenda WHERE eliminada=0').all().map(rowToAgenda);
-  const notes = db.prepare("SELECT * FROM internal_notes WHERE COALESCE(visible,1)=1 AND importante=1 AND created_at LIKE ? ORDER BY id DESC").all(`${today}%`).map(rowToNote);
-  const classrooms = db.prepare("SELECT room_key, nombre, piso, estado_general FROM classrooms WHERE estado_general IN ('Con observaciones','Problema') ORDER BY piso, nombre").all();
-  const prestamos = db.prepare("SELECT * FROM prestamos WHERE estado='activo' ORDER BY created_at DESC").all();
+  const tasks = db.prepare('SELECT * FROM tasks WHERE eliminada=0 AND site_code=?').all(siteCode).map(rowToTask);
+  const agenda = db.prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=?').all(siteCode).map(rowToAgenda);
+  const notes = db.prepare("SELECT * FROM internal_notes WHERE site_code=? AND COALESCE(visible,1)=1 AND importante=1 AND created_at LIKE ? ORDER BY id DESC").all(siteCode, `${today}%`).map(rowToNote);
+  const classrooms = db.prepare("SELECT room_key, nombre, piso, estado_general FROM classrooms WHERE site_code=? AND estado_general IN ('Con observaciones','Problema') ORDER BY piso, nombre").all(siteCode);
+  const prestamos = db.prepare("SELECT * FROM prestamos WHERE site_code=? AND estado='activo' ORDER BY created_at DESC").all(siteCode);
   return {
     fecha: today,
     prestamosActivos: prestamos.length,

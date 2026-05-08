@@ -15,7 +15,10 @@ import { healthRouter } from './routes/health.routes.js';
 import { classroomsRouter } from './routes/classrooms.routes.js';
 import { toolsRouter } from './routes/tools.routes.js';
 import { operationsRouter } from './routes/operations.routes.js';
+import { authRouter } from './routes/auth.routes.js';
+import { sitesRouter } from './routes/sites.routes.js';
 import { loadDevicesCsv } from './services/googleSheets.service.js';
+import { authMiddleware } from './services/siteContext.service.js';
 
 getDb();
 
@@ -33,6 +36,9 @@ app.get('/sheet.csv', async (_req, res, next) => {
 });
 
 app.use('/api', healthRouter);
+app.use('/api', authRouter);
+app.use('/api', authMiddleware);
+app.use('/api', sitesRouter);
 app.use('/api', devicesRouter);
 app.use('/api', loansRouter);
 app.use('/api', agendaRouter);

@@ -27,6 +27,9 @@ export function getMovements() {
 }
 
 export function addDevice(payload: Partial<Device> & { operator: string }) {
+  if ((payload as Record<string, unknown>).originalEtiqueta) {
+    return apiSend<{ ok: true; item: Device }>(`/api/devices/${encodeURIComponent(String((payload as Record<string, unknown>).originalEtiqueta))}`, 'PATCH', payload);
+  }
   return apiSend<{ ok: true; item: Device }>('/api/devices/add', 'POST', payload);
 }
 

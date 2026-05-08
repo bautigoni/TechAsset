@@ -53,11 +53,35 @@ export type DeviceState = 'Disponible' | 'Prestado' | 'No encontrada' | 'Fuera d
 export type DeviceType = string;
 export type Operator = 'Equi' | 'Bauti' | 'Lau' | 'Gus' | 'Mastro' | 'Fede';
 
+export interface SiteInfo {
+  siteCode: string;
+  nombre: string;
+  subtitulo?: string;
+  logo?: string;
+  siteRole?: string;
+  turno?: string;
+  isDefault?: boolean;
+  themeColor?: string;
+  spreadsheetUrl?: string;
+  appsScriptUrl?: string;
+  inventorySheetName?: string;
+  activo?: boolean;
+}
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  nombre: string;
+  rolGlobal: string;
+}
+
 export interface Device {
   id: string;
+  siteCode?: string;
   etiqueta: string;
   numero?: string;
   aliasOperativo?: string;
+  aliasOperativoJson?: string;
   categoria?: string;
   dispositivo?: string;
   marca?: string;

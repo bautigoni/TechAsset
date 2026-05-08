@@ -1,4 +1,4 @@
-import type { Operator, SyncStatus, ViewKey } from '../../types';
+import type { AuthUser, Operator, SiteInfo, SyncStatus, ViewKey } from '../../types';
 import { OPERATORS } from '../../utils/permissions';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 
@@ -16,7 +16,7 @@ const TITLES: Record<ViewKey, string> = {
   settings: 'Configuracion'
 };
 
-export function Topbar({ view, search, setSearch, operator, setOperator, sync, consultationMode, onMenu, onToggleTheme }: {
+export function Topbar({ view, search, setSearch, operator, setOperator, sync, consultationMode, onMenu, onToggleTheme, activeSite = 'NFPT', sites = [], onSiteChange, user }: {
   view: ViewKey;
   search: string;
   setSearch: (value: string) => void;
@@ -26,6 +26,10 @@ export function Topbar({ view, search, setSearch, operator, setOperator, sync, c
   consultationMode: boolean;
   onMenu: () => void;
   onToggleTheme: () => void;
+  activeSite?: string;
+  sites?: SiteInfo[];
+  onSiteChange?: (siteCode: string) => void;
+  user?: AuthUser | null;
 }) {
   const syncUi = useSyncStatus(sync);
 
@@ -38,11 +42,16 @@ export function Topbar({ view, search, setSearch, operator, setOperator, sync, c
         <img className="topbar-logo" src="/northfield_logo.png" alt="Northfield" />
         <div className="topbar-title-text">
           <h2>{TITLES[view]}</h2>
-          <p />
+          <p>{activeSite} · {sites.find(site => site.siteCode === activeSite)?.nombre || 'Sede activa'}</p>
         </div>
       </div>
       <div className="topbar-actions">
         {consultationMode && <span className="consulta-banner">Modo consulta</span>}
+        {sites.length > 1 ? (
+          <select className="operator-chip" value={activeSite} onChange={event => onSiteChange?.(event.target.value)} title="Seleccionar sede">
+            {sites.map(site => <option key={site.siteCode} value={site.siteCode}>{site.siteCode}</option>)}
+          </select>
+        ) : <span className="operator-chip" title={user?.email || 'Sede'}>{activeSite}</span>}
         <select className="operator-chip" value={operator} onChange={event => setOperator(event.target.value as Operator)} title="Seleccionar operador">
           {OPERATORS.map(item => <option key={item} value={item}>{item}</option>)}
         </select>

@@ -2,14 +2,17 @@ import { Router } from 'express';
 import { proxyAppsScript } from '../services/appsScript.service.js';
 import { addLocalMovement, setLocalState } from '../db.js';
 import { invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
+import { requireSite } from '../services/siteContext.service.js';
 
 export const loansRouter = Router();
 
 loansRouter.post('/loans/lend', async (req, res, next) => {
   try {
     const etiqueta = req.body.etiqueta;
+    const siteCode = requireSite(req);
     const payload = {
       ...req.body,
+      siteCode,
       estado: 'Prestado',
       fechaPrestado: new Date().toISOString()
     };
@@ -18,13 +21,17 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
       prestadoA: req.body.person || '',
       rol: req.body.role || '',
       ubicacion: req.body.location || '',
+      ubicacionDetalle: req.body.locationDetail || '',
+      curso: req.body.course || '',
       motivo: req.body.reason || '',
+      motivoDetalle: req.body.reasonDetail || '',
       comentarios: req.body.comment || '',
       loanedAt: payload.fechaPrestado,
-      returnedAt: ''
+      returnedAt: '',
+      siteCode
     });
-    invalidateDeviceInventoryCache('loan-lend');
-    addLocalMovement({ tipo: 'préstamo', descripcion: `${etiqueta} prestada a ${req.body.person || ''}`, operador: req.body.operator, origen: 'Local', etiqueta });
+    invalidateDeviceInventoryCache('loan-lend', siteCode);
+    addLocalMovement({ tipo: 'prestamo', descripcion: `${etiqueta} prestada a ${req.body.person || ''}`, operador: req.body.operator, origen: 'Local', etiqueta, siteCode });
     res.json({ ok: true, syncing: true });
     proxyAppsScript('lend', payload).catch(error => console.warn('[loans/lend sync]', error?.message || error));
   } catch (error) {
@@ -35,8 +42,10 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
 loansRouter.post('/loans/return', async (req, res, next) => {
   try {
     const etiqueta = req.body.etiqueta;
+    const siteCode = requireSite(req);
     const payload = {
       ...req.body,
+      siteCode,
       estado: 'Devuelto',
       person: '',
       comment: '',
@@ -53,10 +62,11 @@ loansRouter.post('/loans/return', async (req, res, next) => {
       motivo: '',
       comentarios: '',
       loanedAt: '',
-      returnedAt: payload.fechaDevuelto
+      returnedAt: payload.fechaDevuelto,
+      siteCode
     });
-    invalidateDeviceInventoryCache('loan-return');
-    addLocalMovement({ tipo: 'devolución', descripcion: `${etiqueta} devuelta`, operador: req.body.operator, origen: 'Local', etiqueta });
+    invalidateDeviceInventoryCache('loan-return', siteCode);
+    addLocalMovement({ tipo: 'devolucion', descripcion: `${etiqueta} devuelta`, operador: req.body.operator, origen: 'Local', etiqueta, siteCode });
     res.json({ ok: true, syncing: true });
     proxyAppsScript('return', payload).catch(error => console.warn('[loans/return sync]', error?.message || error));
   } catch (error) {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb, nowIso } from '../db.js';
+import { requireSite } from '../services/siteContext.service.js';
 
 export const classroomsRouter = Router();
 
@@ -119,6 +120,7 @@ function rowToClassroom(row) {
   const equipment = parseEquipment(row);
   return {
     roomKey: row.room_key,
+    siteCode: row.site_code || '',
     nombre: row.nombre || '',
     nivel: row.nivel || '',
     piso: row.piso || '',
@@ -162,30 +164,30 @@ function ensureMigrated(db) {
   migrated = true;
 }
 
-function ensureClassroom(roomKey, defaults = {}) {
+function ensureClassroom(roomKey, defaults = {}, siteCode = 'NFPT') {
   const db = getDb();
   ensureMigrated(db);
-  let row = db.prepare('SELECT * FROM classrooms WHERE room_key = ?').get(roomKey);
+  let row = db.prepare('SELECT * FROM classrooms WHERE room_key = ? AND site_code=?').get(roomKey, siteCode);
   if (!row) {
     db.prepare(`
-      INSERT INTO classrooms (room_key, nombre, nivel, piso, sector, estado_general, proyector_estado, nuc_estado, monitor_estado, teclado_mouse_estado, observaciones, ultima_actualizacion, operador_ultimo_cambio, equipment_json)
-      VALUES (?, ?, ?, ?, ?, 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', '', '', '', '')
-    `).run(roomKey, defaults.nombre || roomKey, defaults.nivel || '', defaults.piso || 'Planta baja', defaults.sector || '');
-    row = db.prepare('SELECT * FROM classrooms WHERE room_key = ?').get(roomKey);
+      INSERT INTO classrooms (room_key, site_code, nombre, nivel, piso, sector, estado_general, proyector_estado, nuc_estado, monitor_estado, teclado_mouse_estado, observaciones, ultima_actualizacion, operador_ultimo_cambio, equipment_json)
+      VALUES (?, ?, ?, ?, ?, ?, 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', '', '', '', '')
+    `).run(roomKey, siteCode, defaults.nombre || roomKey, defaults.nivel || '', defaults.piso || 'Planta baja', defaults.sector || '');
+    row = db.prepare('SELECT * FROM classrooms WHERE room_key = ? AND site_code=?').get(roomKey, siteCode);
   }
   return row;
 }
 
-function ensureDefaultClassrooms() {
+function ensureDefaultClassrooms(siteCode = 'NFPT') {
   for (const [roomKey, nombre, piso, sector] of DEFAULT_CLASSROOMS) {
-    ensureClassroom(roomKey, { nombre, piso, sector });
+    ensureClassroom(roomKey, { nombre, piso, sector }, siteCode);
     getDb().prepare(`
       UPDATE classrooms
       SET nombre = COALESCE(NULLIF(nombre, ''), ?),
           piso = ?,
           sector = COALESCE(NULLIF(sector, ''), ?)
-      WHERE room_key = ?
-    `).run(nombre, piso, sector, roomKey);
+      WHERE room_key = ? AND site_code=?
+    `).run(nombre, piso, sector, roomKey, siteCode);
   }
 }
 
@@ -214,17 +216,19 @@ function syncLegacyStates(next) {
 
 classroomsRouter.get('/classrooms', (_req, res) => {
   const db = getDb();
+  const siteCode = requireSite(_req);
   ensureMigrated(db);
-  ensureDefaultClassrooms();
-  const rows = db.prepare('SELECT * FROM classrooms ORDER BY piso, nombre').all();
+  ensureDefaultClassrooms(siteCode);
+  const rows = db.prepare('SELECT * FROM classrooms WHERE site_code=? ORDER BY piso, nombre').all(siteCode);
   res.json({ ok: true, items: rows.map(rowToClassroom) });
 });
 
 classroomsRouter.get('/classrooms/summary', (_req, res) => {
   const db = getDb();
+  const siteCode = requireSite(_req);
   ensureMigrated(db);
-  ensureDefaultClassrooms();
-  const rows = db.prepare('SELECT * FROM classrooms').all().map(rowToClassroom);
+  ensureDefaultClassrooms(siteCode);
+  const rows = db.prepare('SELECT * FROM classrooms WHERE site_code=?').all(siteCode).map(rowToClassroom);
   const hasFault = (room, key) => room.equipment?.some(item => item.key === key && (item.state === 'Con falla' || item.state === 'En reparación'));
   const summary = {
     total: rows.length,
@@ -240,13 +244,14 @@ classroomsRouter.get('/classrooms/summary', (_req, res) => {
 });
 
 classroomsRouter.get('/classrooms/:roomKey', (req, res) => {
-  const row = ensureClassroom(req.params.roomKey, req.query || {});
+  const row = ensureClassroom(req.params.roomKey, req.query || {}, requireSite(req));
   res.json({ ok: true, item: rowToClassroom(row) });
 });
 
 classroomsRouter.patch('/classrooms/:roomKey', (req, res) => {
   const db = getDb();
-  const oldRow = ensureClassroom(req.params.roomKey, req.body || {});
+  const siteCode = requireSite(req);
+  const oldRow = ensureClassroom(req.params.roomKey, req.body || {}, siteCode);
   const old = rowToClassroom(oldRow);
   const body = req.body || {};
   const operator = String(body.operator || body.operador || '');
@@ -280,8 +285,8 @@ classroomsRouter.patch('/classrooms/:roomKey', (req, res) => {
 
   db.prepare(`
     UPDATE classrooms SET nombre=?, nivel=?, piso=?, sector=?, estado_general=?, proyector_estado=?, nuc_estado=?, monitor_estado=?, teclado_mouse_estado=?, observaciones=?, ultima_actualizacion=?, operador_ultimo_cambio=?, equipment_json=?
-    WHERE room_key=?
-  `).run(next.nombre, next.nivel, next.piso, next.sector, next.estadoGeneral, next.proyector, next.nuc, next.monitor, next.tecladoMouse, next.observaciones, ts, operator, equipmentJson, req.params.roomKey);
+    WHERE room_key=? AND site_code=?
+  `).run(next.nombre, next.nivel, next.piso, next.sector, next.estadoGeneral, next.proyector, next.nuc, next.monitor, next.tecladoMouse, next.observaciones, ts, operator, equipmentJson, req.params.roomKey, siteCode);
 
   const fields = [
     ['proyector', old.proyector, next.proyector],
@@ -292,17 +297,17 @@ classroomsRouter.patch('/classrooms/:roomKey', (req, res) => {
     ['observaciones', old.observaciones, next.observaciones],
     ['estadoGeneral', old.estadoGeneral, next.estadoGeneral]
   ];
-  const insertHist = db.prepare('INSERT INTO classroom_history (room_key, timestamp, operador, campo, valor_anterior, valor_nuevo, observacion) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const insertHist = db.prepare('INSERT INTO classroom_history (room_key, site_code, timestamp, operador, campo, valor_anterior, valor_nuevo, observacion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
   for (const [campo, antes, despues] of fields) {
-    if (String(antes) !== String(despues)) insertHist.run(req.params.roomKey, ts, operator, campo, String(antes), String(despues), '');
+    if (String(antes) !== String(despues)) insertHist.run(req.params.roomKey, siteCode, ts, operator, campo, String(antes), String(despues), '');
   }
 
-  const updated = db.prepare('SELECT * FROM classrooms WHERE room_key=?').get(req.params.roomKey);
+  const updated = db.prepare('SELECT * FROM classrooms WHERE room_key=? AND site_code=?').get(req.params.roomKey, siteCode);
   res.json({ ok: true, item: rowToClassroom(updated) });
 });
 
 classroomsRouter.get('/classrooms/:roomKey/history', (req, res) => {
-  const rows = getDb().prepare('SELECT * FROM classroom_history WHERE room_key = ? ORDER BY id DESC LIMIT 100').all(req.params.roomKey);
+  const rows = getDb().prepare('SELECT * FROM classroom_history WHERE room_key = ? AND site_code=? ORDER BY id DESC LIMIT 100').all(req.params.roomKey, requireSite(req));
   res.json({ ok: true, items: rows.map(row => ({
     id: row.id,
     roomKey: row.room_key,
