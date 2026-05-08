@@ -7,7 +7,7 @@ import { isOverdue } from '../utils/dates';
 
 export function useTasks(operator: string) {
   const [items, setItems] = useState<TaskItem[]>([]);
-  const [shifts, setShifts] = useState({ morningOperator: 'Bauti', afternoonOperator: 'Equi' });
+  const [shifts, setShifts] = useState({ morningOperator: '', afternoonOperator: '' });
 
   const refresh = useCallback(async () => {
     const data = await getTasks();
@@ -25,8 +25,6 @@ export function useTasks(operator: string) {
     progress: items.filter(item => item.estado === 'En proceso').length,
     done: items.filter(item => item.estado === 'Hecha').length,
     overdue: items.filter(item => item.estado !== 'Hecha' && isOverdue(item.fechaVencimiento)).length,
-    bauti: items.filter(item => isAssignedTo(item, 'Bauti')).length,
-    equi: items.filter(item => isAssignedTo(item, 'Equi')).length,
     mine: items.filter(item => isAssignedTo(item, operator) && isOwnShift(item, operator, shifts)).length
   }), [items, operator, shifts]);
 

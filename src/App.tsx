@@ -23,13 +23,15 @@ import { useAutoRefresh } from './hooks/useAutoRefresh';
 import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
 import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
-import { getAuthSession } from './services/authApi';
+import { getAuthSession, logout as logoutSession } from './services/authApi';
 import { LoginPage } from './components/auth/LoginPage';
 
 export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
+  const [authMode, setAuthMode] = useState<'landing' | 'login' | 'register'>(() => readAuthModeFromUrl());
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('techasset_sidebar_collapsed') === '1');
   const [consultationMode, setConsultationMode] = useState(false);
   const [profile, setProfile] = useState<Device | null>(null);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
@@ -38,7 +40,7 @@ export function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sites, setSites] = useState<SiteInfo[]>([]);
-  const [activeSite, setActiveSite] = useState(localStorage.getItem('techasset_active_site') || readSiteFromUrl() || 'NFPT');
+  const [activeSite, setActiveSite] = useState('');
   const { operator, setOperator } = useOperator();
   const { devices, filteredDevices, counts, sync, refresh, patchLocal, removeLocal } = useDevices(search);
   const agenda = useAgenda(operator);
@@ -48,19 +50,18 @@ export function App() {
   useEffect(() => {
     const fromUrl = readSiteFromUrl();
     const fromView = readViewFromUrl();
-    if (fromUrl) {
-      setActiveSite(fromUrl);
-      localStorage.setItem('techasset_active_site', fromUrl);
-    }
     if (fromView) setView(fromView);
     getAuthSession()
       .then(session => {
         if (session.authenticated && session.user && session.sites?.length) {
           setUser(session.user);
           setSites(session.sites);
-          const allowed = session.sites.find(site => site.siteCode.toLowerCase() === activeSite.toLowerCase()) || session.sites.find(site => site.isDefault) || session.sites[0];
-          setActiveSite(allowed.siteCode);
-          localStorage.setItem('techasset_active_site', allowed.siteCode);
+          const allowed = fromUrl ? session.sites.find(site => site.siteCode.toLowerCase() === fromUrl.toLowerCase()) : null;
+          const fallback = session.sites.find(site => site.isDefault) || session.sites[0];
+          const site = allowed || fallback;
+          if (fromUrl && !allowed) setView('dashboard');
+          setActiveSite(site.siteCode);
+          localStorage.setItem('techasset_active_site', site.siteCode);
         }
       })
       .finally(() => setAuthLoading(false));
@@ -68,6 +69,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (user) setOperator(user.nombre || user.email);
+  }, [user, setOperator]);
+
+  useEffect(() => {
+    if (!user || !activeSite) return;
     localStorage.setItem('techasset_active_site', activeSite);
     const next = `/sede/${activeSite.toLowerCase()}/${view}`;
     if (window.location.pathname !== next) window.history.replaceState(null, '', next);
@@ -147,7 +153,7 @@ export function App() {
   };
 
   const createTaskFromAgenda = async (item: { id: string; curso: string; actividad: string }) => {
-    await createTask({ titulo: `Revisar ${item.curso} - ${item.actividad}`, responsable: operator === 'Equi' ? 'Equi' : 'Bauti', prioridad: 'Media', agendaId: item.id, operator });
+    await createTask({ titulo: `Revisar ${item.curso} - ${item.actividad}`, responsable: operator, prioridad: 'Media', agendaId: item.id, operator });
     await tasks.refresh();
     setView('tasks');
   };
@@ -163,6 +169,25 @@ export function App() {
     }
   };
 
+  const handleLogout = async () => {
+    await logoutSession().catch(() => undefined);
+    setUser(null);
+    setSites([]);
+    setActiveSite('');
+    setView('dashboard');
+    setAuthMode('landing');
+    setSearch('');
+    window.history.replaceState(null, '', '/');
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(value => {
+      const next = !value;
+      localStorage.setItem('techasset_sidebar_collapsed', next ? '1' : '0');
+      return next;
+    });
+  };
+
   const openLoanFlow = (deviceOrCode: Device | string) => {
     setLoanSeed(typeof deviceOrCode === 'string' ? deviceOrCode : deviceOrCode.etiqueta);
     setView('loans');
@@ -170,27 +195,32 @@ export function App() {
 
   if (authLoading) return <main className="login-shell"><section className="card login-card">Cargando sesión...</section></main>;
   if (!user) {
-    return <LoginPage onReady={session => {
+    return <LoginPage mode={authMode} onMode={mode => {
+      setAuthMode(mode);
+      window.history.replaceState(null, '', mode === 'landing' ? '/' : `/${mode}`);
+    }} onReady={session => {
       setUser(session.user);
+      setOperator(session.user.nombre || session.user.email);
       setSites(session.sites);
       const site = session.sites.find(item => item.isDefault) || session.sites[0];
       setActiveSite(site.siteCode);
       localStorage.setItem('techasset_active_site', site.siteCode);
+      setView('dashboard');
     }} />;
   }
 
   return (
-    <div className="app-shell">
-      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} onReload={refresh} />
+    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} onReload={refresh} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} />
       <main className="main main-content">
-        <Topbar view={view} search={search} setSearch={setSearch} operator={operator} setOperator={setOperator} sync={sync} consultationMode={consultationMode} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} />
-        {view === 'dashboard' && <Dashboard devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onProfile={setProfile} onEdit={setEditingDevice} />}
-        {view === 'devices' && <DevicesPage devices={filteredDevices} consultationMode={consultationMode} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} />}
-        {view === 'loans' && <LoansPage devices={devices} movements={movements} operator={operator} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
-        {view === 'analytics' && <AnalyticsPage devices={devices} onRefresh={refresh} />}
-        {view === 'agenda' && <AgendaPage items={agenda.items} consultationMode={consultationMode} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
-        {view === 'tasks' && <TasksPage tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={consultationMode} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
-        {view === 'classrooms' && <ClassroomStatusPage operator={operator} consultationMode={consultationMode} />}
+        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={consultationMode} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} />
+        {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onProfile={setProfile} onEdit={setEditingDevice} />}
+        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={consultationMode} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} />}
+        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
+        {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
+        {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={consultationMode} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
+        {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={consultationMode} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
+        {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={consultationMode} activeSite={activeSite} />}
         {view === 'tools' && <ToolsPage operator={operator} />}
         {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={consultationMode} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={consultationMode} setConsultationMode={setConsultationMode} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} />}
@@ -210,4 +240,11 @@ function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
   const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'analytics', 'agenda', 'tasks', 'classrooms', 'tools', 'quickaccess', 'assistant', 'settings'];
   return view && allowed.includes(view) ? view : null;
+}
+
+function readAuthModeFromUrl(): 'landing' | 'login' | 'register' {
+  const path = window.location.pathname.toLowerCase();
+  if (path === '/login') return 'login';
+  if (path === '/register') return 'register';
+  return 'landing';
 }

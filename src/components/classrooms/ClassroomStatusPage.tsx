@@ -18,18 +18,19 @@ const FLOORS: Array<{ key: FloorKey; label: string; enabled: boolean; piso: stri
   { key: 'inicial', label: 'Nivel inicial', enabled: false, piso: 'Nivel inicial' }
 ];
 
-export function ClassroomStatusPage({ operator, consultationMode }: { operator: Operator; consultationMode: boolean }) {
+export function ClassroomStatusPage({ operator, consultationMode, activeSite }: { operator: Operator; consultationMode: boolean; activeSite: string }) {
   const [floor, setFloor] = useState<FloorKey>('planta');
   const [items, setItems] = useState<Classroom[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedNombre, setSelectedNombre] = useState<string>('');
 
   const refresh = useCallback(async () => {
+    if (activeSite !== 'NFPT') return;
     try {
       const list = await fetchClassrooms();
       if (list.ok) setItems(list.items);
     } catch { /* ignore */ }
-  }, []);
+  }, [activeSite]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -66,6 +67,14 @@ export function ClassroomStatusPage({ operator, consultationMode }: { operator: 
   };
 
   const handleClose = () => { setSelectedKey(null); refresh(); };
+
+  if (activeSite !== 'NFPT') {
+    return (
+      <section className="view active">
+        <div className="empty-state">Estado de aulas no configurado para esta sede.</div>
+      </section>
+    );
+  }
 
   return (
     <section className="view active">

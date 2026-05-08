@@ -1,7 +1,17 @@
+import { useEffect, useState } from 'react';
 import type { TaskItem } from '../../types';
+import { getSiteAssistants } from '../../services/authApi';
 
 export function TaskAnalytics({ tasks }: { tasks: TaskItem[] }) {
-  const people = ['Bauti', 'Equi'];
+  const [sitePeople, setSitePeople] = useState<string[]>([]);
+  useEffect(() => {
+    getSiteAssistants()
+      .then(response => setSitePeople(response.items.map(item => item.name).filter(Boolean)))
+      .catch(() => setSitePeople([]));
+  }, []);
+  const people = sitePeople.length
+    ? sitePeople
+    : Array.from(new Set(tasks.flatMap(task => task.responsables?.length ? task.responsables : String(task.responsable || '').split(',').map(item => item.trim())).filter(Boolean)));
   return (
     <section className="card assistant-task-analytics">
       <div className="card-head"><h3>Analitica de asistentes</h3><span className="muted">Datos reales de tareas</span></div>

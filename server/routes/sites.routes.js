@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { getDb, nowIso, seedDefaultSettings } from '../db.js';
-import { isAdminUser, normalizeSiteCode, requireSite } from '../services/siteContext.service.js';
+import { isSiteManager, isSuperadmin, normalizeSiteCode, requireSite } from '../services/siteContext.service.js';
 
 export const sitesRouter = Router();
 
 sitesRouter.get('/sites', (req, res) => {
-  if (isAdminUser(req.user)) {
+  if (isSuperadmin(req.user)) {
     const rows = getDb().prepare('SELECT * FROM sites ORDER BY site_code').all();
     return res.json({ ok: true, items: rows.map(rowToSite) });
   }
@@ -21,8 +21,8 @@ sitesRouter.get('/site-settings', (req, res) => {
 });
 
 sitesRouter.patch('/site-settings', (req, res) => {
-  if (!isAdminUser(req.user)) return res.status(403).json({ ok: false, error: 'Solo Jefe TIC puede editar la configuracion de sede.' });
   const siteCode = requireSite(req);
+  if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para editar esta sede.' });
   const body = req.body || {};
   const ts = nowIso();
   const stmt = getDb().prepare(`
@@ -38,7 +38,7 @@ sitesRouter.patch('/site-settings', (req, res) => {
 });
 
 sitesRouter.post('/sites', (req, res) => {
-  if (!isAdminUser(req.user)) return res.status(403).json({ ok: false, error: 'Solo Jefe TIC puede administrar sedes.' });
+  if (!isSuperadmin(req.user)) return res.status(403).json({ ok: false, error: 'Solo Superadmin puede administrar sedes.' });
   const siteCode = normalizeSiteCode(req.body?.siteCode || req.body?.site_code);
   if (!siteCode) return res.status(400).json({ ok: false, error: 'Falta site_code.' });
   const ts = nowIso();
@@ -61,8 +61,8 @@ sitesRouter.post('/sites', (req, res) => {
 });
 
 sitesRouter.patch('/sites/:siteCode', (req, res) => {
-  if (!isAdminUser(req.user)) return res.status(403).json({ ok: false, error: 'Solo Jefe TIC puede administrar sedes.' });
   const siteCode = normalizeSiteCode(req.params.siteCode);
+  if (!isSuperadmin(req.user) && !isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para administrar esta sede.' });
   const old = getDb().prepare('SELECT * FROM sites WHERE site_code=?').get(siteCode);
   if (!old) return res.status(404).json({ ok: false, error: 'Sede no encontrada.' });
   getDb().prepare(`
@@ -84,18 +84,59 @@ sitesRouter.patch('/sites/:siteCode', (req, res) => {
 });
 
 sitesRouter.get('/allowed-users', (req, res) => {
-  if (!isAdminUser(req.user)) return res.status(403).json({ ok: false, error: 'Solo Jefe TIC puede administrar usuarios.' });
-  const rows = getDb().prepare('SELECT id, email, nombre, default_role AS defaultRole, can_choose_role AS canChooseRole, activo FROM allowed_users ORDER BY email').all();
+  const siteCode = requireSite(req);
+  if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para administrar usuarios de esta sede.' });
+  const rows = isSuperadmin(req.user)
+    ? getDb().prepare('SELECT id, email, nombre, default_role AS defaultRole, can_choose_role AS canChooseRole, activo FROM allowed_users ORDER BY email').all()
+    : getDb().prepare(`
+      SELECT au.id, au.email, au.nombre, au.default_role AS defaultRole, au.can_choose_role AS canChooseRole, au.activo
+      FROM allowed_users au
+      JOIN allowed_user_sites aus ON aus.allowed_user_id=au.id
+      WHERE aus.site_code=? AND aus.activo=1
+      ORDER BY au.email
+    `).all(siteCode);
   res.json({ ok: true, items: rows.map(row => ({
     ...row,
     canChooseRole: Boolean(row.canChooseRole),
     activo: Boolean(row.activo),
-    sites: getAllowedUserSites(row.id)
+    sites: isSuperadmin(req.user) ? getAllowedUserSites(row.id) : getAllowedUserSites(row.id).filter(site => normalizeSiteCode(site.siteCode) === siteCode)
   })) });
 });
 
+sitesRouter.get('/site-assistants', (req, res) => {
+  const siteCode = requireSite(req);
+  const rows = getDb().prepare(`
+    SELECT u.nombre, u.email, us.site_role AS siteRole, us.turno
+    FROM user_sites us
+    JOIN users u ON u.id=us.user_id
+    WHERE us.site_code=? AND us.activo=1 AND u.activo=1
+      AND lower(COALESCE(us.site_role,'')) LIKE '%asistente%'
+    UNION
+    SELECT au.nombre, au.email, aus.site_role AS siteRole, aus.turno
+    FROM allowed_user_sites aus
+    JOIN allowed_users au ON au.id=aus.allowed_user_id
+    WHERE aus.site_code=? AND aus.activo=1 AND au.activo=1
+      AND lower(COALESCE(aus.site_role,'')) LIKE '%asistente%'
+    ORDER BY nombre, email
+  `).all(siteCode, siteCode);
+  const seen = new Set();
+  const items = rows.map(row => ({
+    name: String(row.nombre || row.email || '').trim(),
+    email: row.email,
+    siteRole: row.siteRole || 'Asistente TIC',
+    turno: row.turno || 'Sin turno'
+  })).filter(row => {
+    const key = String(row.email || row.name).toLowerCase();
+    if (!row.name || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  res.json({ ok: true, items });
+});
+
 sitesRouter.post('/allowed-users', (req, res) => {
-  if (!isAdminUser(req.user)) return res.status(403).json({ ok: false, error: 'Solo Jefe TIC puede administrar usuarios.' });
+  const siteCode = requireSite(req);
+  if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para administrar usuarios de esta sede.' });
   const email = String(req.body?.email || '').trim().toLowerCase();
   if (!email.includes('@')) return res.status(400).json({ ok: false, error: 'Mail inválido.' });
   const ts = nowIso();
@@ -105,13 +146,18 @@ sitesRouter.post('/allowed-users', (req, res) => {
     ON CONFLICT(email) DO UPDATE SET nombre=excluded.nombre, default_role=excluded.default_role, can_choose_role=excluded.can_choose_role, activo=excluded.activo, updated_at=excluded.updated_at
   `).run(email, req.body?.nombre || '', req.body?.defaultRole || 'Consulta', req.body?.canChooseRole ? 1 : 0, ts, ts);
   const allowed = getDb().prepare('SELECT * FROM allowed_users WHERE lower(email)=?').get(email);
-  saveAllowedUserSites(allowed.id, req.body?.sites || req.body?.siteCodes || [], req.body?.defaultSiteCode || req.body?.defaultSite || '', req.body?.defaultRole || 'Consulta', req.body?.turno || 'Sin turno');
+  if (isSuperadmin(req.user)) {
+    saveAllowedUserSites(allowed.id, req.body?.sites || req.body?.siteCodes || [], req.body?.defaultSiteCode || req.body?.defaultSite || '', req.body?.defaultRole || 'Consulta', req.body?.turno || 'Sin turno');
+  } else {
+    upsertAllowedUserSite(allowed.id, siteCode, req.body?.defaultRole || 'Consulta', req.body?.turno || 'Sin turno');
+  }
   syncExistingUserSites(email, allowed);
   res.json({ ok: true, item: { ...allowed, sites: getAllowedUserSites(allowed.id) } });
 });
 
 sitesRouter.patch('/allowed-users/:id', (req, res) => {
-  if (!isAdminUser(req.user)) return res.status(403).json({ ok: false, error: 'Solo Jefe TIC puede administrar usuarios.' });
+  const siteCode = requireSite(req);
+  if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para administrar usuarios de esta sede.' });
   const old = getDb().prepare('SELECT * FROM allowed_users WHERE id=?').get(req.params.id);
   if (!old) return res.status(404).json({ ok: false, error: 'Usuario permitido no encontrado.' });
   const ts = nowIso();
@@ -127,8 +173,10 @@ sitesRouter.patch('/allowed-users/:id', (req, res) => {
     req.params.id
   );
   const updated = getDb().prepare('SELECT * FROM allowed_users WHERE id=?').get(req.params.id);
-  if (Array.isArray(req.body?.sites) || Array.isArray(req.body?.siteCodes)) {
+  if (isSuperadmin(req.user) && (Array.isArray(req.body?.sites) || Array.isArray(req.body?.siteCodes))) {
     saveAllowedUserSites(updated.id, req.body?.sites || req.body?.siteCodes || [], req.body?.defaultSiteCode || req.body?.defaultSite || '', updated.default_role, req.body?.turno || 'Sin turno');
+  } else if (!isSuperadmin(req.user)) {
+    upsertAllowedUserSite(updated.id, siteCode, updated.default_role, req.body?.turno || 'Sin turno');
   }
   syncExistingUserSites(updated.email, updated);
   res.json({ ok: true, item: { ...updated, sites: getAllowedUserSites(updated.id) } });
@@ -178,6 +226,15 @@ function saveAllowedUserSites(allowedUserId, rawSites, defaultSiteCode, defaultR
   for (const item of fallback) {
     stmt.run(allowedUserId, item.siteCode, item.siteRole, item.turno, item.siteCode === selectedDefault ? 1 : 0, ts, ts);
   }
+}
+
+function upsertAllowedUserSite(allowedUserId, siteCode, siteRole, turno) {
+  const ts = nowIso();
+  getDb().prepare(`
+    INSERT INTO allowed_user_sites (allowed_user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 1, 1, ?, ?)
+    ON CONFLICT(allowed_user_id, site_code) DO UPDATE SET site_role=excluded.site_role, turno=excluded.turno, activo=1, updated_at=excluded.updated_at
+  `).run(allowedUserId, normalizeSiteCode(siteCode), siteRole || 'Consulta', turno || 'Sin turno', ts, ts);
 }
 
 function normalizeSiteItems(rawSites, defaultRole, defaultTurno) {

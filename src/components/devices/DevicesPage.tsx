@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Device } from '../../types';
-import { classifyDeviceType } from '../../utils/classifyDevice';
+import { classifyDeviceType, getDeviceNumber, getOperationalAlias } from '../../utils/classifyDevice';
 import { Button } from '../layout/Button';
 import { StatCard } from '../layout/StatCard';
 import { DeviceTable } from './DeviceTable';
@@ -8,6 +8,7 @@ import { DeviceProfile } from './DeviceProfile';
 import { AddDeviceModal } from './AddDeviceModal';
 
 type DeviceFilter = string;
+type DeviceSort = 'default' | 'operational';
 
 const FILTER_LABELS: Record<string, string> = {
   all: 'Todos los dispositivos',
@@ -38,9 +39,14 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Device | null>(null);
   const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all');
+  const [sort, setSort] = useState<DeviceSort>('default');
   const [message, setMessage] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
 
-  const visibleDevices = useMemo(() => devices.filter(device => matchesFilter(device, deviceFilter)), [devices, deviceFilter]);
+  const visibleDevices = useMemo(() => {
+    const base = devices.filter(device => matchesFilter(device, deviceFilter));
+    if (sort !== 'operational') return base;
+    return [...base].sort(compareOperational);
+  }, [devices, deviceFilter, sort]);
   const count = (filter: DeviceFilter) => devices.filter(device => matchesFilter(device, filter)).length;
   const categories = useMemo(() => Array.from(new Set(devices.map(classifyDeviceType).filter(Boolean))).sort(), [devices]);
   const handleDelete = async (device: Device) => {
@@ -77,7 +83,13 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
             <h3>{FILTER_LABELS[deviceFilter] || deviceFilter}</h3>
             <span className="muted">{visibleDevices.length} equipos visibles</span>
           </div>
-          {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Anadir dispositivo</Button>}
+          <div className="actions">
+            <select className="input compact-select" value={sort} onChange={event => setSort(event.target.value as DeviceSort)} title="Ordenar dispositivos">
+              <option value="default">Orden original</option>
+              <option value="operational">Ordenar por número operativo</option>
+            </select>
+            {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Anadir dispositivo</Button>}
+          </div>
         </div>
         {message && <div className={message.tone === 'error' ? 'tool-error' : 'tool-info'}>{message.text}</div>}
         {visibleDevices.length ? (
@@ -91,4 +103,19 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
       {editing && <AddDeviceModal title={`Editar ${editing.etiqueta}`} initialDevice={editing} onClose={() => setEditing(null)} onSave={onAdd} />}
     </section>
   );
+}
+
+function compareOperational(a: Device, b: Device) {
+  const type = (device: Device) => classifyDeviceType(device).toLowerCase();
+  const num = (device: Device) => {
+    const direct = Number(getDeviceNumber(device));
+    if (Number.isFinite(direct) && direct > 0) return direct;
+    const match = getOperationalAlias(device).match(/(\d+)/);
+    return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+  };
+  const typeCompare = type(a).localeCompare(type(b), 'es');
+  if (typeCompare) return typeCompare;
+  const numberCompare = num(a) - num(b);
+  if (numberCompare) return numberCompare;
+  return String(a.etiqueta || '').localeCompare(String(b.etiqueta || ''), 'es', { numeric: true });
 }

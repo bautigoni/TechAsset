@@ -6,8 +6,8 @@ import { Button } from '../layout/Button';
 const ROLES = ['Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
 const TURNS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'];
 
-function emptyUser(): AllowedUserItem {
-  return { email: '', nombre: '', defaultRole: 'Consulta', turno: 'Sin turno', defaultSiteCode: 'NFPT', activo: true, canChooseRole: false, sites: [{ siteCode: 'NFPT', siteRole: 'Consulta', turno: 'Sin turno', isDefault: true }] };
+function emptyUser(siteCode = 'NFPT'): AllowedUserItem {
+  return { email: '', nombre: '', defaultRole: 'Consulta', turno: 'Sin turno', defaultSiteCode: siteCode, activo: true, canChooseRole: false, sites: [{ siteCode, siteRole: 'Consulta', turno: 'Sin turno', isDefault: true }] };
 }
 
 export function AllowedUsersPanel({ onChanged }: { onChanged?: () => void }) {
@@ -20,6 +20,7 @@ export function AllowedUsersPanel({ onChanged }: { onChanged?: () => void }) {
     const [u, s] = await Promise.all([getAllowedUsers(), getSites()]);
     setUsers(u.items);
     setSites(s.items);
+    setDraft(current => current.email ? current : emptyUser(s.items[0]?.siteCode || 'NFPT'));
   };
   useEffect(() => { load().catch(() => {}); }, []);
 
@@ -45,7 +46,7 @@ export function AllowedUsersPanel({ onChanged }: { onChanged?: () => void }) {
       sites: (draft.sites || []).map(site => ({ ...site, siteRole: draft.defaultRole, turno: draft.turno || 'Sin turno', isDefault: site.siteCode === draft.defaultSiteCode }))
     });
     setMessage('Usuario guardado.');
-    setDraft(emptyUser());
+    setDraft(emptyUser(sites[0]?.siteCode || 'NFPT'));
     await load();
     onChanged?.();
   };
@@ -54,19 +55,19 @@ export function AllowedUsersPanel({ onChanged }: { onChanged?: () => void }) {
     <section className="card">
       <div className="card-head">
         <h3>Usuarios permitidos</h3>
-        <Button onClick={() => setDraft(emptyUser())}>Nuevo usuario</Button>
+        <Button onClick={() => setDraft(emptyUser(sites[0]?.siteCode || 'NFPT'))}>Nuevo usuario</Button>
       </div>
       <div className="table-wrap">
-        <table className="compact-table">
+        <table className="compact-table allowed-users-table">
           <thead><tr><th>Mail</th><th>Rol</th><th>Sedes</th><th>Estado</th><th></th></tr></thead>
           <tbody>
             {users.map(user => (
               <tr key={user.id || user.email}>
-                <td><strong>{user.email}</strong><div className="cell-sub">{user.nombre}</div></td>
+                <td><strong className="allowed-user-email" title={user.email}>{user.email}</strong><div className="cell-sub">{user.nombre}</div></td>
                 <td>{user.defaultRole}</td>
                 <td>{(user.sites || []).filter(site => site.activo !== false).map(site => site.siteCode).join(', ') || '-'}</td>
                 <td>{user.activo === false ? 'Inactivo' : 'Activo'}</td>
-                <td><Button className="mini-action-btn" onClick={() => setDraft({ ...user, turno: user.sites?.[0]?.turno || user.turno || 'Sin turno', defaultSiteCode: user.sites?.find(site => site.isDefault)?.siteCode || user.sites?.[0]?.siteCode || 'NFPT' })}>Editar</Button></td>
+                <td><Button className="mini-action-btn" onClick={() => setDraft({ ...user, turno: user.sites?.[0]?.turno || user.turno || 'Sin turno', defaultSiteCode: user.sites?.find(site => site.isDefault)?.siteCode || user.sites?.[0]?.siteCode || sites[0]?.siteCode || 'NFPT' })}>Editar</Button></td>
               </tr>
             ))}
           </tbody>

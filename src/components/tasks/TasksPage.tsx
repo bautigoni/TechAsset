@@ -47,8 +47,6 @@ export function TasksPage({ tasks, kpis, operator, consultationMode, onSave, onM
         <StatCard label="En proceso" value={kpis.progress || 0} />
         <StatCard label="Hechas" value={kpis.done || 0} />
         <StatCard label="Vencidas" value={kpis.overdue || 0} />
-        <StatCard label="Bauti" value={kpis.bauti || 0} />
-        <StatCard label="Equi" value={kpis.equi || 0} />
         <StatCard label="Mis tareas" value={kpis.mine || 0} />
       </div>}
       {tab === 'handoff' ? (
@@ -108,8 +106,8 @@ export function TasksPage({ tasks, kpis, operator, consultationMode, onSave, onM
         </>
       )}
       {tab !== 'handoff' && <TaskAnalytics tasks={tasks} />}
-      {creating && <TaskModal onClose={() => setCreating(false)} onSave={onSave} />}
-      {editing && <TaskModal initial={editing} onClose={() => setEditing(null)} onSave={onSave} />}
+      {creating && <TaskModal operator={operator} onClose={() => setCreating(false)} onSave={onSave} />}
+      {editing && <TaskModal operator={operator} initial={editing} onClose={() => setEditing(null)} onSave={onSave} />}
     </section>
   );
 }

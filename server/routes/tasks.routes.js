@@ -4,7 +4,6 @@ import { requireSite } from '../services/siteContext.service.js';
 
 export const tasksRouter = Router();
 const STATES = new Set(['Pendiente', 'En proceso', 'Hecha']);
-const RESPONSABLES = new Set(['Bauti', 'Equi']);
 
 tasksRouter.get('/tasks', (_req, res) => {
   const rows = getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? ORDER BY CASE estado WHEN 'Pendiente' THEN 1 WHEN 'En proceso' THEN 2 ELSE 3 END, fecha_creacion DESC").all(requireSite(_req));
@@ -90,8 +89,11 @@ tasksRouter.get('/tasks/history', (_req, res) => {
 });
 
 tasksRouter.get('/tasks/analytics', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM tasks WHERE eliminada=0 AND site_code=?').all(requireSite(_req)).map(rowToTask);
-  const assistants = ['Bauti', 'Equi'].map(name => {
+  const siteCode = requireSite(_req);
+  const rows = getDb().prepare('SELECT * FROM tasks WHERE eliminada=0 AND site_code=?').all(siteCode).map(rowToTask);
+  const names = getSiteAssistantNames(siteCode);
+  const fallback = Array.from(new Set(rows.flatMap(task => task.responsables?.length ? task.responsables : String(task.responsable || '').split(',').map(item => item.trim())).filter(Boolean)));
+  const assistants = (names.length ? names : fallback).map(name => {
     const assigned = rows.filter(task => task.responsables?.includes(name) || task.responsable === name);
     const done = assigned.filter(task => task.estado === 'Hecha').length;
     return { name, assigned: assigned.length, pending: assigned.filter(task => task.estado === 'Pendiente').length, progress: assigned.filter(task => task.estado === 'En proceso').length, done, resolution: assigned.length ? Math.round(done / assigned.length * 100) : 0 };
@@ -143,7 +145,7 @@ tasksRouter.get('/tasks/export.csv', (_req, res) => {
 });
 
 function normalizeTaskPayload(raw) {
-  const responsables = normalizeResponsables(raw.responsables || raw.responsable);
+  const responsables = normalizeResponsables(raw.responsables || raw.responsable || raw.operator || raw.operador);
   return {
     id: raw.id || '',
     titulo: raw.titulo || 'Tarea sin título',
@@ -163,9 +165,20 @@ function normalizeTaskPayload(raw) {
 }
 
 function normalizeResponsables(value) {
-  const raw = Array.isArray(value) ? value : String(value || 'Bauti').split(/,| y |\/|\+/i);
-  const flat = raw.map(item => String(item).trim()).flatMap(item => item === 'Ambos' ? ['Bauti', 'Equi'] : item).filter(item => RESPONSABLES.has(item));
-  return [...new Set(flat.length ? flat : ['Bauti'])];
+  const raw = Array.isArray(value) ? value : String(value || '').split(/,| y |\/|\+/i);
+  const flat = raw.map(item => String(item).trim()).flatMap(item => item === 'Ambos' ? ['Compartida'] : item).filter(Boolean);
+  return [...new Set(flat.length ? flat : ['Sin asignar'])];
+}
+
+function getSiteAssistantNames(siteCode) {
+  const rows = getDb().prepare(`
+    SELECT u.nombre AS name, u.email FROM user_sites us JOIN users u ON u.id=us.user_id
+    WHERE us.site_code=? AND us.activo=1 AND u.activo=1 AND lower(COALESCE(us.site_role,'')) LIKE '%asistente%'
+    UNION
+    SELECT au.nombre AS name, au.email FROM allowed_user_sites aus JOIN allowed_users au ON au.id=aus.allowed_user_id
+    WHERE aus.site_code=? AND aus.activo=1 AND au.activo=1 AND lower(COALESCE(aus.site_role,'')) LIKE '%asistente%'
+  `).all(siteCode, siteCode);
+  return [...new Set(rows.map(row => String(row.name || row.email || '').trim()).filter(Boolean))];
 }
 
 function normalizeTurno(value) {

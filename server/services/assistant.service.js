@@ -402,7 +402,7 @@ async function executePending(pending) {
   if (pending.type === 'crear_tarea') {
     const id = `TK${Date.now()}`;
     const p = pending.payload;
-    db.prepare(`INSERT INTO tasks (id, titulo, descripcion, responsable, estado, prioridad, tipo, fecha_creacion, fecha_vencimiento, comentario, creado_por, operador_ultimo_cambio, agenda_id, ultima_modificacion) VALUES (?, ?, ?, ?, ?, ?, 'Asistente', ?, '', '', 'Asistente TechAsset', 'Asistente TechAsset', '', ?)`).run(id, p.titulo, p.descripcion || '', p.responsable || 'Bauti', p.estado || 'Pendiente', p.prioridad || 'Media', ts, ts);
+    db.prepare(`INSERT INTO tasks (id, titulo, descripcion, responsable, estado, prioridad, tipo, fecha_creacion, fecha_vencimiento, comentario, creado_por, operador_ultimo_cambio, agenda_id, ultima_modificacion) VALUES (?, ?, ?, ?, ?, ?, 'Asistente', ?, '', '', 'Asistente TechAsset', 'Asistente TechAsset', '', ?)`).run(id, p.titulo, p.descripcion || '', p.responsable || 'Sin asignar', p.estado || 'Pendiente', p.prioridad || 'Media', ts, ts);
     return response(`Tarea creada: ${p.titulo}`, 'task_flow', { id });
   }
   if (pending.type === 'crear_evento_agenda') {
@@ -483,7 +483,7 @@ function parseTaskText(text, previous = {}) {
     titulo: title,
     descripcion: text || previous.descripcion || '',
     prioridad: /urgente/i.test(text) ? 'Urgente' : /alta/i.test(text) ? 'Alta' : /baja/i.test(text) ? 'Baja' : previous.prioridad || 'Media',
-    responsable: /equi/i.test(text) ? 'Equi' : /bauti/i.test(text) ? 'Bauti' : previous.responsable || 'Bauti',
+    responsable: previous.responsable || 'Sin asignar',
     estado: 'Pendiente'
   };
 }

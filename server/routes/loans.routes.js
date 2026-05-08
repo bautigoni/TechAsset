@@ -14,6 +14,9 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
       ...req.body,
       siteCode,
       estado: 'Prestado',
+      prestada: req.body.person || '',
+      prestadoA: req.body.person || '',
+      persona: req.body.person || '',
       fechaPrestado: new Date().toISOString()
     };
     setLocalState(etiqueta, {
@@ -33,7 +36,7 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
     invalidateDeviceInventoryCache('loan-lend', siteCode);
     addLocalMovement({ tipo: 'prestamo', descripcion: `${etiqueta} prestada a ${req.body.person || ''}`, operador: req.body.operator, origen: 'Local', etiqueta, siteCode });
     res.json({ ok: true, syncing: true });
-    proxyAppsScript('lend', payload).catch(error => console.warn('[loans/lend sync]', error?.message || error));
+    proxyAppsScript('lend', payload, 'POST', { siteCode }).catch(error => console.warn(`[loans/lend sync:${siteCode}]`, error?.message || error));
   } catch (error) {
     next(error);
   }
@@ -47,6 +50,9 @@ loansRouter.post('/loans/return', async (req, res, next) => {
       ...req.body,
       siteCode,
       estado: 'Devuelto',
+      prestada: '',
+      prestadoA: '',
+      persona: '',
       person: '',
       comment: '',
       role: '',
@@ -68,7 +74,7 @@ loansRouter.post('/loans/return', async (req, res, next) => {
     invalidateDeviceInventoryCache('loan-return', siteCode);
     addLocalMovement({ tipo: 'devolucion', descripcion: `${etiqueta} devuelta`, operador: req.body.operator, origen: 'Local', etiqueta, siteCode });
     res.json({ ok: true, syncing: true });
-    proxyAppsScript('return', payload).catch(error => console.warn('[loans/return sync]', error?.message || error));
+    proxyAppsScript('return', payload, 'POST', { siteCode }).catch(error => console.warn(`[loans/return sync:${siteCode}]`, error?.message || error));
   } catch (error) {
     next(error);
   }

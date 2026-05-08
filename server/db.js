@@ -429,8 +429,8 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'loan.gradeOptions': ['1N', '1F', '2N', '2F', '3N', '3F', '4N', '4F', '5N', '5F', '6N', '6F'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
-    'shift.morningOperator': 'Bauti',
-    'shift.afternoonOperator': 'Equi',
+    'shift.morningOperator': '',
+    'shift.afternoonOperator': '',
     quickLinks: []
   };
   const ts = nowIso();
@@ -685,7 +685,7 @@ export function rowToTask(row) {
     siteCode: row.site_code || config.defaultSiteCode || 'NFPT',
     titulo: row.titulo || '',
     descripcion: row.descripcion || '',
-    responsable: responsables.length > 1 ? responsables.join(',') : (responsables[0] || row.responsable || 'Bauti'),
+    responsable: responsables.length > 1 ? responsables.join(',') : (responsables[0] || row.responsable || 'Sin asignar'),
     responsables,
     estado: row.estado || 'Pendiente',
     prioridad: row.prioridad || 'Media',
@@ -724,11 +724,11 @@ function parseTaskResponsables(row) {
     const parsed = row.responsables_json ? JSON.parse(row.responsables_json) : null;
     if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
   } catch { /* legacy fallback */ }
-  return String(row.responsable || 'Bauti')
+  return String(row.responsable || 'Sin asignar')
     .split(/,| y |\/|\+/i)
     .map(item => item.trim())
     .filter(Boolean)
-    .map(item => item === 'Ambos' ? ['Bauti', 'Equi'] : item)
+    .map(item => item === 'Ambos' ? ['Compartida'] : item)
     .flat();
 }
 

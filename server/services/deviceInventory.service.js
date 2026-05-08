@@ -9,15 +9,16 @@ import {
   parseDevicesCsv,
   readCachedDevicesCsv
 } from './googleSheets.service.js';
-import { proxyAppsScript } from './appsScript.service.js';
+import { getAppsScriptUrlForSite, proxyAppsScript } from './appsScript.service.js';
 
 const STATE_CACHE_TTL_MS = 60 * 1000;
-const INVENTORY_CACHE_TTL_MS = Math.max(1000, Number(config.sheetCacheTtlMs || 5000));
-let stateCache = { rows: [], fetchedAt: 0 };
-let stateInflight = null;
+const INVENTORY_CACHE_TTL_MS = Math.max(30000, Number(config.sheetCacheTtlMs || 30000));
+const stateCacheBySite = new Map();
+const stateInflightBySite = new Map();
 const inventoryCache = new Map();
 const inventoryInflight = new Map();
 const diagnosticsBySite = new Map();
+const EMPTY_RETRY_MS = 2 * 60 * 1000;
 const baseDiagnostics = {
   source: 'sin datos',
   lastSuccessfulReadAt: '',
@@ -43,34 +44,40 @@ function setDiagnostics(siteCode, next) {
   return next;
 }
 
-function refreshStateInBackground() {
-  if (stateInflight) return stateInflight;
-  stateInflight = (async () => {
+function getStateCache(siteCode) {
+  return stateCacheBySite.get(siteCode) || { rows: [], fetchedAt: 0 };
+}
+
+function refreshStateInBackground(siteCode) {
+  if (stateInflightBySite.get(siteCode)) return stateInflightBySite.get(siteCode);
+  const stateInflight = (async () => {
     try {
-      const result = await proxyAppsScript('state', {}, 'GET');
+      const result = await proxyAppsScript('state', { siteCode }, 'GET', { siteCode });
       const rows = Array.isArray(result?.rows) ? result.rows : Array.isArray(result?.items) ? result.items : [];
-      stateCache = {
+      stateCacheBySite.set(siteCode, {
         rows: rows.map(row => normalizeStateRow(row)).filter(device => device.etiqueta),
         fetchedAt: Date.now()
-      };
+      });
     } catch (error) {
-      console.warn(`[devices] Apps Script state unavailable: ${error instanceof Error ? error.message : 'unknown error'}`);
-      stateCache = { ...stateCache, fetchedAt: Date.now() };
+      console.warn(`[devices:${siteCode}] Apps Script state unavailable: ${error instanceof Error ? error.message : 'unknown error'}`);
+      stateCacheBySite.set(siteCode, { ...getStateCache(siteCode), fetchedAt: Date.now() });
     } finally {
-      stateInflight = null;
+      stateInflightBySite.delete(siteCode);
     }
   })();
+  stateInflightBySite.set(siteCode, stateInflight);
   return stateInflight;
 }
 
-async function loadAppsScriptState({ wait = false } = {}) {
+async function loadAppsScriptState({ wait = false, siteCode } = {}) {
+  const stateCache = getStateCache(siteCode);
   const age = Date.now() - stateCache.fetchedAt;
   const stale = age > STATE_CACHE_TTL_MS;
   if (stale || !stateCache.fetchedAt) {
-    const promise = refreshStateInBackground();
+    const promise = refreshStateInBackground(siteCode);
     if (wait) await promise;
   }
-  return stateCache.rows;
+  return getStateCache(siteCode).rows;
 }
 
 export async function getMergedDevices({ forceRefresh = false, waitForFresh = false, siteCode = config.defaultSiteCode || 'NFPT' } = {}) {
@@ -97,6 +104,12 @@ export async function getMergedDevices({ forceRefresh = false, waitForFresh = fa
   }
 
   try {
+    const siteSource = getSiteInventorySource(siteCode);
+    if (!siteSource.hasSource) {
+      const empty = buildEmptyInventory(siteCode, 'Inventario no configurado para esta sede.', { source: siteSource });
+      inventoryCache.set(siteCode, empty);
+      return fromCache(empty, empty.source, true, siteCode);
+    }
     const fresh = await refreshInventory({ reason: forceRefresh ? 'force-refresh' : 'cold-start', siteCode });
     return fromCache(fresh, fresh.source, false, siteCode);
   } catch (error) {
@@ -109,7 +122,9 @@ export async function getMergedDevices({ forceRefresh = false, waitForFresh = fa
       inventoryCache.set(siteCode, local);
       return fromCache(local, 'local CSV cache after refresh error', true, siteCode);
     }
-    throw new Error('No se pudo leer inventario desde Google Sheets, Apps Script ni cache local.');
+    const empty = buildEmptyInventory(siteCode, 'Inventario no disponible.', { error, timedOut: diagnostics.timedOut });
+    inventoryCache.set(siteCode, empty);
+    return fromCache(empty, empty.source, true, siteCode);
   }
 }
 
@@ -127,17 +142,19 @@ export function getDeviceInventoryDiagnostics(siteCode = config.defaultSiteCode 
     cacheAgeSeconds: cache ? Math.round((Date.now() - cache.fetchedAt) / 1000) : null,
     cacheTtlSeconds: Math.round(INVENTORY_CACHE_TTL_MS / 1000),
     memoryCacheReady: Boolean(cache),
-    localStateCacheAgeSeconds: stateCache.fetchedAt ? Math.round((Date.now() - stateCache.fetchedAt) / 1000) : null
+    localStateCacheAgeSeconds: getStateCache(siteCode).fetchedAt ? Math.round((Date.now() - getStateCache(siteCode).fetchedAt) / 1000) : null
   };
 }
 
 function refreshInventoryInBackground(reason, siteCode) {
+  const cache = inventoryCache.get(siteCode);
+  if (cache?.emptyFallback && Date.now() - cache.fetchedAt < EMPTY_RETRY_MS) return Promise.resolve(cache);
   if (inventoryInflight.get(siteCode)) return inventoryInflight.get(siteCode);
   const promise = refreshInventory({ reason, siteCode }).catch(error => {
     const diagnostics = getDiagnostics(siteCode);
     diagnostics.lastError = readableError(error);
     diagnostics.timedOut = isTimeoutError(error);
-    console.warn(`[devices] background refresh failed: ${diagnostics.lastError}`);
+    console.warn(`[devices:${siteCode}] background refresh failed: ${diagnostics.lastError}`);
     return null;
   }).finally(() => {
     inventoryInflight.delete(siteCode);
@@ -156,17 +173,16 @@ async function refreshInventory({ reason, siteCode }) {
     let timedOut = false;
     try {
       const siteSource = getSiteInventorySource(siteCode);
-      if (siteSource.appsScriptUrl) {
+      if (!siteSource.hasSource) return buildEmptyInventory(siteCode, 'Inventario no configurado para esta sede.', { source: siteSource });
+      if (siteSource.csvUrl) {
+        const csv = await timed('fetch-sheet', timings, () => fetchDevicesCsvFromGoogle({ csvUrl: siteSource.csvUrl, cachePath: siteSource.cachePath }));
+        sheetDevices = await timed('parse-csv', timings, () => parseDevicesCsv(csv.text));
+        source = csv.source;
+      } else if (siteSource.appsScriptUrl) {
         const live = await timed('fetch-sheet', timings, () => fetchDevicesJsonFromAppsScript({ url: siteSource.appsScriptUrl }));
         sheetDevices = live.items;
         source = live.updatedAt ? `${live.source} (${live.updatedAt})` : live.source;
         timings['parse-csv'] = 0;
-      } else if (siteSource.csvUrl) {
-        const csv = await timed('fetch-sheet', timings, () => fetchDevicesCsvFromGoogle({ csvUrl: siteSource.csvUrl, cachePath: siteSource.cachePath }));
-        sheetDevices = await timed('parse-csv', timings, () => parseDevicesCsv(csv.text));
-        source = csv.source;
-      } else {
-        throw new Error(`La sede ${siteCode} no tiene Spreadsheet ni Apps Script configurado.`);
       }
     } catch (error) {
       timedOut = isTimeoutError(error);
@@ -178,7 +194,7 @@ async function refreshInventory({ reason, siteCode }) {
         inventoryCache.set(siteCode, local);
         return local;
       }
-      throw error;
+      return buildEmptyInventory(siteCode, 'Inventario no disponible.', { error, timedOut });
     }
 
     const merged = await buildMergedResult(filterBySite(sheetDevices, siteCode), source, timings, siteCode);
@@ -199,7 +215,10 @@ async function refreshInventory({ reason, siteCode }) {
 async function buildFromLocalCsvCache(extra = {}, siteCode) {
   const timings = {};
   const totalStart = performance.now();
-  const cached = await timed('read-local-cache', timings, () => readCachedDevicesCsv(cachePathForSite(siteCode)));
+  let cached = await timed('read-local-cache', timings, () => readCachedDevicesCsv(cachePathForSite(siteCode)));
+  if (!cached?.text && String(siteCode || '').toUpperCase() === String(config.defaultSiteCode || 'NFPT').toUpperCase()) {
+    cached = await timed('read-legacy-local-cache', timings, () => readCachedDevicesCsv(config.cacheCsvPath));
+  }
   if (!cached?.text) return null;
   const sheetDevices = await timed('parse-csv', timings, () => parseDevicesCsv(cached.text));
   const result = await buildMergedResult(filterBySite(sheetDevices, siteCode), cached.source, timings, siteCode);
@@ -212,7 +231,7 @@ async function buildFromLocalCsvCache(extra = {}, siteCode) {
 }
 
 async function buildMergedResult(sheetDevices, source, timings, siteCode) {
-  const stateDevices = filterBySite(await loadAppsScriptState(), siteCode);
+  const stateDevices = filterBySite(await loadAppsScriptState({ siteCode }), siteCode);
   return timed('merge-local-state', timings, async () => {
     const localStates = getLocalStates(siteCode);
     const masterDevices = await loadAppDevices(siteCode);
@@ -249,7 +268,12 @@ function fromCache(cache, source, respondedWithCache, siteCode) {
       lastExternalFetchMs: diagnostics.lastExternalFetchMs,
       lastParseMs: diagnostics.lastParseMs,
       lastMergeMs: diagnostics.lastMergeMs,
-      lastTotalMs: diagnostics.lastTotalMs
+      lastTotalMs: diagnostics.lastTotalMs,
+      timedOut: diagnostics.timedOut,
+      lastError: diagnostics.lastError,
+      deviceCount: diagnostics.deviceCount,
+      message: cache.message || '',
+      emptyFallback: Boolean(cache.emptyFallback)
     }
   };
 }
@@ -337,21 +361,71 @@ function parseLooseTimestamp(value) {
 
 async function loadAppDevices(siteCode) {
   try {
-    const text = await readFile(config.devicesAppCsvPath, 'utf8');
+    const appPath = devicesAppPathForSite(siteCode);
+    const text = await readFile(appPath, 'utf8');
     return filterBySite(parseDevicesCsv(text), siteCode);
   } catch {
+    if (String(siteCode || '').toUpperCase() === String(config.defaultSiteCode || 'NFPT').toUpperCase()) {
+      try {
+        const text = await readFile(config.devicesAppCsvPath, 'utf8');
+        return filterBySite(parseDevicesCsv(text), siteCode);
+      } catch { /* ignore legacy fallback */ }
+    }
     return [];
   }
 }
 
 function getSiteInventorySource(siteCode) {
   const row = getDb().prepare('SELECT spreadsheet_url, apps_script_url FROM sites WHERE site_code=?').get(siteCode);
-  const csvUrl = String(row?.spreadsheet_url || config.googleSheetCsvUrl || '').trim();
-  const appsScriptUrl = String(row?.apps_script_url || config.appsScriptInventoryUrl || config.appsScriptUrl || '').trim();
+  const isDefaultSite = String(siteCode || '').toUpperCase() === String(config.defaultSiteCode || 'NFPT').toUpperCase();
+  const csvUrl = String(row?.spreadsheet_url || (isDefaultSite ? config.googleSheetCsvUrl : '') || '').trim();
+  const appsScriptUrl = String(row?.apps_script_url || (isDefaultSite ? (config.appsScriptInventoryUrl || getAppsScriptUrlForSite(siteCode)) : '') || '').trim();
+  const usableCsv = isUsableExternalUrl(csvUrl) ? csvUrl : '';
+  const usableApps = isUsableExternalUrl(appsScriptUrl) ? appsScriptUrl : '';
   return {
-    csvUrl: isUsableExternalUrl(csvUrl) ? csvUrl : '',
-    appsScriptUrl: isUsableExternalUrl(appsScriptUrl) ? appsScriptUrl : '',
-    cachePath: cachePathForSite(siteCode)
+    siteCode,
+    csvUrl: usableCsv,
+    appsScriptUrl: usableApps,
+    cachePath: cachePathForSite(siteCode),
+    hasSource: Boolean(usableCsv || usableApps),
+    usedEnvFallback: isDefaultSite && Boolean(!row?.spreadsheet_url && !row?.apps_script_url && (config.googleSheetCsvUrl || config.appsScriptInventoryUrl || config.appsScriptUrl))
+  };
+}
+
+function devicesAppPathForSite(siteCode) {
+  const ext = config.devicesAppCsvPath.match(/\.[^\\.]+$/)?.[0] || '.csv';
+  const base = config.devicesAppCsvPath.slice(0, -ext.length);
+  const code = String(siteCode || config.defaultSiteCode || 'NFPT').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  return `${base}_${code}${ext}`;
+}
+
+function buildEmptyInventory(siteCode, message, { error, timedOut = false, source } = {}) {
+  const now = new Date().toISOString();
+  const diagnostics = setDiagnostics(siteCode, {
+    ...getDiagnostics(siteCode),
+    source: message,
+    lastSuccessfulReadAt: '',
+    lastExternalFetchMs: 0,
+    lastParseMs: 0,
+    lastMergeMs: 0,
+    lastTotalMs: 0,
+    deviceCount: 0,
+    timedOut: Boolean(timedOut || isTimeoutError(error)),
+    lastError: error ? readableError(error) : message,
+    respondedWithCache: true,
+    cacheAgeSeconds: 0,
+    inflight: false,
+    siteCode,
+    sourceAttempt: source || getSiteInventorySource(siteCode)
+  });
+  return {
+    items: [],
+    source: diagnostics.source,
+    loadedAt: now,
+    fetchedAt: Date.now(),
+    emptyFallback: true,
+    message,
+    diagnostics
   };
 }
 
@@ -423,6 +497,7 @@ function mergeDevice(master, sheet, state, local) {
     ...extra,
     siteCode: extra.siteCode || extra.site_code || master.siteCode || master.site_code || inventory.siteCode || inventory.site_code || '',
     etiqueta: master.etiqueta || inventory.etiqueta || operational.etiqueta || extra.etiqueta || '',
+    numero: firstNonEmpty(extra.numero, master.numero, inventory.numero, operational.numero),
     categoria: normalizeCategory(extra.categoria || master.categoria || inventory.categoria || operational.categoria || inventory.tipo || master.tipo || ''),
     dispositivo: master.dispositivo || inventory.dispositivo || extra.dispositivo || 'Chromebook',
     marca: master.marca || inventory.marca || extra.marca || '',
@@ -437,7 +512,7 @@ function mergeDevice(master, sheet, state, local) {
     loanedAt: operational.loanedAt || extra.loanedAt || '',
     returnedAt: operational.returnedAt || extra.returnedAt || '',
     comentarios: operational.comentarios || extra.comentarios || '',
-    aliasOperativo: extra.aliasOperativo || master.aliasOperativo || inventory.aliasOperativo || operational.aliasOperativo || ''
+    aliasOperativo: firstNonEmpty(extra.aliasOperativo, master.aliasOperativo, inventory.aliasOperativo, operational.aliasOperativo)
   };
   const stateText = String(merged.estado || '').trim().toLowerCase();
   if (stateText === 'disponible' || stateText === 'devuelto') {
@@ -448,6 +523,10 @@ function mergeDevice(master, sheet, state, local) {
     merged.loanedAt = '';
   }
   return merged;
+}
+
+function firstNonEmpty(...values) {
+  return values.map(value => String(value || '').trim()).find(Boolean) || '';
 }
 
 function filterBySite(devices, siteCode) {
