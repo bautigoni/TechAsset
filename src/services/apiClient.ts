@@ -1,5 +1,10 @@
+function headers(extra?: HeadersInit): HeadersInit {
+  const siteCode = localStorage.getItem('techasset_active_site') || 'NFPT';
+  return { 'X-Site-Code': siteCode, ...(extra || {}) };
+}
+
 export async function apiGet<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: 'no-store' });
+  const response = await fetch(url, { cache: 'no-store', headers: headers() });
   const data = await response.json();
   if (!response.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${response.status}`);
   return data;
@@ -8,7 +13,7 @@ export async function apiGet<T>(url: string): Promise<T> {
 export async function apiSend<T>(url: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   const response = await fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: headers({ 'Content-Type': 'application/json' }),
     body: body === undefined ? undefined : JSON.stringify(body)
   });
   const data = await response.json();

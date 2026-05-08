@@ -10,7 +10,7 @@ export function AddDeviceModal({ onClose, onSave, initialDevice, title = '+ Anad
   initialDevice?: Partial<Device>;
   title?: string;
 }) {
-  const [device, setDevice] = useState<Partial<Device>>({ estado: 'Disponible', categoria: 'Chromebook', dispositivo: 'Chromebook', ...initialDevice });
+  const [device, setDevice] = useState<Partial<Device> & { originalEtiqueta?: string }>({ estado: 'Disponible', categoria: 'Chromebook', dispositivo: 'Chromebook', ...initialDevice, originalEtiqueta: initialDevice?.etiqueta });
   const [categories, setCategories] = useState<string[]>(['Tablet', 'Notebook', 'Chromebook', 'Plani', 'Touch', 'TIC', 'Dell', 'Camara', 'Proyector', 'Router', 'Impresora', 'Otro']);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
-import type { Operator, SyncStatus } from '../../types';
+import type { AuthUser, Operator, SiteInfo, SyncStatus } from '../../types';
 import { OPERATORS } from '../../utils/permissions';
 import { AdvancedSettings } from './AdvancedSettings';
 import { fetchShiftSettings, updateShiftSettings } from '../../services/operationsApi';
+import { SiteAdminPanel } from './SiteAdminPanel';
+import { AllowedUsersPanel } from './AllowedUsersPanel';
+import { LoanSettingsPanel } from './LoanSettingsPanel';
 
-export function SettingsPage({ operator, setOperator, consultationMode, setConsultationMode, sync }: { operator: Operator; setOperator: (operator: Operator) => void; consultationMode: boolean; setConsultationMode: (value: boolean) => void; sync: SyncStatus }) {
+export function SettingsPage({ operator, setOperator, consultationMode, setConsultationMode, sync, user, sites, onSitesChanged }: { operator: Operator; setOperator: (operator: Operator) => void; consultationMode: boolean; setConsultationMode: (value: boolean) => void; sync: SyncStatus; user: AuthUser; sites: SiteInfo[]; onSitesChanged: () => void }) {
   const [shifts, setShifts] = useState({ morningOperator: 'Bauti', afternoonOperator: 'Equi' });
+  const isAdmin = ['Jefe TIC', 'Admin', 'Administrador'].includes(user.rolGlobal);
   useEffect(() => { fetchShiftSettings().then(r => r.ok && setShifts(r.settings)).catch(() => {}); }, []);
   return (
     <section className="view active">
@@ -35,7 +39,15 @@ export function SettingsPage({ operator, setOperator, consultationMode, setConsu
           </div>
           <div className="actions"><button className="btn btn-primary" disabled={consultationMode} type="button" onClick={() => updateShiftSettings(shifts)}>Guardar turnos</button></div>
         </section>
-        <AdvancedSettings />
+        {isAdmin && (
+          <>
+            <LoanSettingsPanel />
+            <SiteAdminPanel onChanged={onSitesChanged} />
+            <AllowedUsersPanel onChanged={onSitesChanged} />
+            <AdvancedSettings />
+          </>
+        )}
+        {!isAdmin && <div className="tool-info">Tu usuario tiene acceso a: {sites.map(site => site.siteCode).join(', ')}</div>}
       </div>
     </section>
   );

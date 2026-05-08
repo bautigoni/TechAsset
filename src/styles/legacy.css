@@ -1870,3 +1870,29 @@ body.consulta-mode #returnBtn {
 .diagnostic-item{display:grid;gap:4px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--panel-2);min-width:0}
 .diagnostic-item span{font-size:11px;color:var(--muted)}
 .diagnostic-item strong{font-size:12px;color:var(--text);overflow-wrap:anywhere}
+
+/* ============= Login ============= */
+.login-shell{min-height:100dvh;display:grid;place-items:center;background:var(--bg);padding:20px}
+.login-card{width:min(440px,100%);display:grid;gap:12px}
+.site-settings-editor{display:grid;gap:10px;margin-top:10px}
+.site-settings-editor textarea{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+
+/* ============= Site administration ============= */
+.site-admin-form{display:grid;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.site-check-grid{display:flex;flex-wrap:wrap;gap:8px}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.settings-editor{display:grid;gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--panel-2);min-width:0}
+.settings-editor.wide{grid-column:span 2}
+.settings-editor h4{margin:0;font-size:13px}
+.inline-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.pill-list{display:flex;flex-wrap:wrap;gap:8px}
+.setting-pill{display:inline-flex;align-items:center;gap:8px;padding:7px 9px;border-radius:999px;border:1px solid var(--border);background:rgba(148,163,184,.1);font-size:12px}
+.setting-pill button,.option-row button{border:0;background:transparent;color:#fca5a5;cursor:pointer;font-size:11px}
+.option-list{display:grid;gap:8px}
+.option-row{display:grid;grid-template-columns:minmax(120px,1fr) auto auto auto;align-items:center;gap:8px}
+.option-row label{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.option-row input[type="checkbox"]{accent-color:var(--blue)}
+@media (max-width:720px){
+  .settings-editor.wide{grid-column:auto}
+  .option-row{grid-template-columns:1fr}
+}

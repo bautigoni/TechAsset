@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { config } from '../config.js';
+import path from 'node:path';
 import { readTextIfExists, writeText } from './cache.service.js';
 
 const FIELD_ALIASES = {
+  siteCode: ['sede', 'site', 'site_code', 'site code'],
   etiqueta: ['etiqueta 2023', 'etiqueta', 'codigo', 'código'],
   categoria: ['categoria', 'categoría', 'tipo', 'tipo dispositivo', 'tipo de dispositivo'],
   dispositivo: ['dispositivo', 'equipo'],
@@ -11,6 +13,7 @@ const FIELD_ALIASES = {
   sn: ['s/n', 'serial', 'numero de serie', 'número de serie'],
   mac: ['mac', 'ma:c :ad:dr:es:s wifi', 'wifi'],
   numero: ['nombre', 'numero', 'número', 'alias'],
+  aliasOperativo: ['alias operativo', 'alias alternativos', 'aliases', 'alias'],
   estado: ['estado', 'estado/devuelto', 'devuelto'],
   prestada: ['prestada', 'prestado a', 'persona'],
   comentarios: ['comentarios', 'comentario'],
@@ -22,35 +25,39 @@ const FIELD_ALIASES = {
   ultima: ['ultima modificacion', 'última modificación']
 };
 
-export async function loadDevicesCsv() {
-  if (config.googleSheetCsvUrl) {
+export async function loadDevicesCsv(options = {}) {
+  const csvUrl = options.csvUrl ?? config.googleSheetCsvUrl;
+  const cachePath = options.cachePath || config.cacheCsvPath;
+  if (csvUrl) {
     try {
-      return await fetchDevicesCsvFromGoogle();
+      return await fetchDevicesCsvFromGoogle({ csvUrl, cachePath });
     } catch {
-      const cached = await readTextIfExists(config.cacheCsvPath);
+      const cached = await readTextIfExists(cachePath);
       if (cached) return { text: cached, source: 'Cache local' };
       throw new Error('No se pudo leer Google Sheets ni cache local.');
     }
   }
-  const text = await readTextIfExists(config.cacheCsvPath);
+  const text = await readTextIfExists(cachePath);
   return { text, source: 'Cache local' };
 }
 
-export async function readCachedDevicesCsv() {
-  const text = await readTextIfExists(config.cacheCsvPath);
+export async function readCachedDevicesCsv(cachePath = config.cacheCsvPath) {
+  const text = await readTextIfExists(cachePath);
   return text ? { text, source: 'Cache local' } : null;
 }
 
-export async function fetchDevicesCsvFromGoogle() {
-  if (!config.googleSheetCsvUrl) throw new Error('GOOGLE_SHEET_CSV_URL no configurado.');
-  if (!isAbsoluteUrl(config.googleSheetCsvUrl)) {
-    throw new Error(`GOOGLE_SHEET_CSV_URL debe ser absoluta (https://...). Valor actual: "${config.googleSheetCsvUrl}".`);
+export async function fetchDevicesCsvFromGoogle(options = {}) {
+  const csvUrl = options.csvUrl ?? config.googleSheetCsvUrl;
+  const cachePath = options.cachePath || config.cacheCsvPath;
+  if (!csvUrl) throw new Error('GOOGLE_SHEET_CSV_URL no configurado.');
+  if (!isAbsoluteUrl(csvUrl)) {
+    throw new Error(`GOOGLE_SHEET_CSV_URL debe ser absoluta (https://...). Valor actual: "${csvUrl}".`);
   }
-  const response = await fetchWithTimeout(addCacheBuster(toCsvExportUrl(config.googleSheetCsvUrl)), config.sheetFetchTimeoutMs);
+  const response = await fetchWithTimeout(addCacheBuster(toCsvExportUrl(csvUrl)), config.sheetFetchTimeoutMs);
   if (!response.ok) throw new Error(`Google Sheets HTTP ${response.status}`);
   const text = await response.text();
   if (looksLikeHtml(text)) throw new Error('La URL configurada no devolvio CSV.');
-  await writeText(config.cacheCsvPath, text);
+  await writeText(cachePath, text);
   return { text, source: 'Google CSV' };
 }
 
@@ -58,13 +65,23 @@ function isAbsoluteUrl(value) {
   return /^https?:\/\//i.test(String(value || '').trim());
 }
 
-export async function fetchDevicesJsonFromAppsScript() {
-  if (!config.appsScriptInventoryUrl) throw new Error('APPS_SCRIPT_INVENTORY_URL no configurado.');
-  const response = await fetchWithTimeout(addCacheBuster(config.appsScriptInventoryUrl), config.sheetFetchTimeoutMs);
+export async function fetchDevicesJsonFromAppsScript(options = {}) {
+  const rawUrl = options.url || config.appsScriptInventoryUrl || config.appsScriptUrl;
+  if (!rawUrl) throw new Error('APPS_SCRIPT_INVENTORY_URL/APPS_SCRIPT_URL no configurado.');
+  const url = new URL(rawUrl);
+  if (!url.searchParams.get('action')) url.searchParams.set('action', 'state');
+  const response = await fetchWithTimeout(addCacheBuster(url.toString()), config.sheetFetchTimeoutMs);
   if (!response.ok) throw new Error(`Apps Script inventory HTTP ${response.status}`);
   const payload = await response.json();
   const rows = Array.isArray(payload?.rows) ? payload.rows : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
   return { items: parseDevicesJsonRows(rows), source: 'Apps Script inventory', updatedAt: payload?.updatedAt || payload?.version || '' };
+}
+
+export function cachePathForSite(siteCode) {
+  if (!siteCode || siteCode === config.defaultSiteCode) return config.cacheCsvPath;
+  const ext = path.extname(config.cacheCsvPath) || '.csv';
+  const base = config.cacheCsvPath.slice(0, -ext.length);
+  return `${base}_${String(siteCode).toLowerCase()}${ext}`;
 }
 
 export function parseDevicesCsv(text) {
@@ -107,6 +124,7 @@ function normalizeDevice(row, idx) {
   const estado = normalizeAppState(get('estado'), prestadoA);
   return {
     id: makeDeviceId(etiqueta, get('sn'), get('mac')),
+    siteCode: get('siteCode'),
     etiqueta,
     numero: get('numero'),
     categoria: normalizeCategory(get('categoria')),
@@ -123,7 +141,8 @@ function normalizeDevice(row, idx) {
     motivo: get('motivo'),
     loanedAt: get('fechaPrestado'),
     returnedAt: get('fechaDevuelto'),
-    ultima: get('ultima')
+    ultima: get('ultima'),
+    aliasOperativo: get('aliasOperativo')
   };
 }
 
@@ -144,6 +163,7 @@ function normalizeDeviceObject(row) {
   const estado = normalizeAppState(get('estado'), prestadoA);
   return {
     id: makeDeviceId(etiqueta, get('sn'), get('mac')),
+    siteCode: get('siteCode'),
     etiqueta,
     numero: get('numero'),
     categoria: normalizeCategory(get('categoria')),
@@ -160,7 +180,8 @@ function normalizeDeviceObject(row) {
     motivo: get('motivo'),
     loanedAt: get('fechaPrestado'),
     returnedAt: get('fechaDevuelto'),
-    ultima: get('ultima')
+    ultima: get('ultima'),
+    aliasOperativo: get('aliasOperativo')
   };
 }
 
