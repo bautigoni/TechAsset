@@ -3,6 +3,7 @@ import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDev
 import { LoanForm } from './LoanForm';
 import { RecentMovements } from '../dashboard/RecentMovements';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
+import { InternalNotesPanel } from '../dashboard/InternalNotesPanel';
 
 function countBy(devices: Device[], getter: (device: Device) => string) {
   return Object.entries(devices.reduce<Record<string, number>>((acc, device) => {
@@ -16,7 +17,7 @@ export function LoansPage({ devices, movements, operator, consultationMode, onLe
   const loaned = devices.filter(device => device.estado === 'Prestado');
   const available = devices.filter(device => device.estado === 'Disponible');
   const byType = countBy(devices, device => classifyDeviceType(device));
-  const byLocation = countBy(loaned, device => device.ubicacion || 'Sin ubicacion');
+  const byLocation = countBy(loaned, device => device.ubicacion || 'Sin ubicación');
   const recentLoaned = loaned.slice(0, 8);
 
   return (
@@ -24,19 +25,20 @@ export function LoansPage({ devices, movements, operator, consultationMode, onLe
       <div className="panel two-col loans-layout">
         <section className="card">
           <div className="card-head">
-            <h3>Prestamo / devolucion</h3>
+            <h3>Préstamo / devolución</h3>
             <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
           </div>
           <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={initialCode} />
+          <InternalNotesPanel operator={operator} consultationMode={consultationMode} />
         </section>
         <div className="loans-side-stack">
           <section className="card loan-summary-card">
-            <div className="card-head"><h3>Resumen rapido</h3></div>
+            <div className="card-head"><h3>Resumen rápido</h3></div>
             <div className="loan-summary-grid">
               <div><span>Prestados</span><strong>{loaned.length}</strong></div>
               <div><span>Disponibles</span><strong>{available.length}</strong></div>
-              <div><span>Mas usado</span><strong>{byType[0]?.[0] || '-'}</strong></div>
-              <div><span>Ubicacion</span><strong>{byLocation[0]?.[0] || '-'}</strong></div>
+              <div><span>Más usado</span><strong>{byType[0]?.[0] || '-'}</strong></div>
+              <div><span>Ubicación</span><strong>{byLocation[0]?.[0] || '-'}</strong></div>
             </div>
             <div className="loan-filter-chips">
               {byType.map(([label, value]) => <span key={label}>{label}: {value}</span>)}
@@ -48,7 +50,7 @@ export function LoansPage({ devices, movements, operator, consultationMode, onLe
               {recentLoaned.map(device => (
                 <div className="loaned-now-item" key={device.id}>
                   <strong>{device.etiqueta} · {getOperationalAlias(device)}</strong>
-                  <span>{device.prestadoA || 'Sin persona'} · {device.ubicacion || 'Sin ubicacion'}</span>
+                  <span>{device.prestadoA || 'Sin persona'} · {device.ubicacion || 'Sin ubicación'}</span>
                   <button type="button" onClick={() => onReturn({ etiqueta: device.etiqueta })} disabled={consultationMode}>Devolver</button>
                 </div>
               ))}

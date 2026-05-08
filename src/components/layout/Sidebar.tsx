@@ -3,14 +3,15 @@ import type { SiteInfo, ViewKey } from '../../types';
 const NAV: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: 'dashboard', label: 'Dashboard', icon: 'DB' },
   { key: 'devices', label: 'Dispositivos', icon: 'DV' },
-  { key: 'loans', label: 'Prestamos', icon: 'PR' },
-  { key: 'analytics', label: 'Analitica', icon: 'AN' },
+  { key: 'loans', label: 'Préstamos', icon: 'PR' },
+  { key: 'inventory', label: 'Inventario TIC', icon: 'IT' },
+  { key: 'analytics', label: 'Analítica', icon: 'AN' },
   { key: 'agenda', label: 'Agenda TIC', icon: 'AG' },
   { key: 'tasks', label: 'Tareas TIC', icon: 'TK' },
   { key: 'classrooms', label: 'Estado aulas', icon: 'AU' },
   { key: 'tools', label: 'Herramientas auxiliares', icon: 'TL' },
   { key: 'quickaccess', label: 'Accesos rápidos', icon: 'QA' },
-  { key: 'settings', label: 'Configuracion', icon: 'CF' }
+  { key: 'settings', label: 'Configuración', icon: 'CF' }
 ];
 
 export function Sidebar({ active, onNavigate, open, onClose, onReload, collapsed, onToggleCollapsed, activeSite, sites }: {
@@ -36,12 +37,16 @@ export function Sidebar({ active, onNavigate, open, onClose, onReload, collapsed
       <div className={`mobile-overlay ${open ? '' : 'hidden'}`} onClick={onClose} />
       <aside className={`sidebar ${open ? 'open mobile-open' : ''} ${collapsed ? 'is-collapsed' : ''}`}>
         <div className="brand">
-          <img className="brand-logo" src="/northfield_logo.png" alt="Northfield" />
-          <div className="brand-text">
-            <h1>TechAsset</h1>
-            <p>{siteInfo?.nombre || activeSite}</p>
+          <div className="brand-lockup">
+            <img className="brand-logo" src="/northfield_logo.png" alt="Northfield" />
+            <div className="brand-text">
+              <h1>TechAsset</h1>
+              <p>{siteInfo?.nombre || activeSite}</p>
+            </div>
           </div>
-          <button className="sidebar-collapse-btn" type="button" aria-label={collapsed ? 'Expandir menu' : 'Contraer menu'} onClick={onToggleCollapsed}>
+        </div>
+        <div className="sidebar-tools">
+          <button className="sidebar-collapse-btn" type="button" aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'} onClick={onToggleCollapsed}>
             <span />
             <span />
             <span />

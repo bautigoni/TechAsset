@@ -6,8 +6,8 @@ import { AgendaCard } from './AgendaCard';
 import { AgendaModal } from './AgendaModal';
 
 const DAYS = ['Hoy', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie'];
-const DAY_MAP: Record<string, string> = { Lun: 'Lunes', Mar: 'Martes', Mie: 'Miercoles', Jue: 'Jueves', Vie: 'Viernes' };
-const WEEK_DAYS = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
+const DAY_MAP: Record<string, string> = { Lun: 'Lunes', Mar: 'Martes', Mie: 'Miércoles', Jue: 'Jueves', Vie: 'Viernes' };
+const WEEK_DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
 
 type TurnoFilter = 'completo' | 'manana' | 'tarde';
 
@@ -17,7 +17,7 @@ function comparableDay(value: string) {
 
 function todayName() {
   const index = new Date().getDay();
-  return ['', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', ''][index] || '';
+  return ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', ''][index] || '';
 }
 
 function displayTurno(value: string) {
@@ -193,7 +193,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
       ) : (
         <div className="agenda-cards">
           {historyItems.map(item => <AgendaCard key={item.id} item={item} consultationMode={consultationMode} onUpdate={(current, patch) => onSave({ ...current, ...patch })} onDelete={id => onDelete(id)} onTask={onTask} />)}
-          {!historyItems.length && <div className="empty-state">Aun no hay actividades realizadas o canceladas.</div>}
+          {!historyItems.length && <div className="empty-state">Aún no hay actividades realizadas o canceladas.</div>}
         </div>
       )}
       {creating && <AgendaModal onClose={() => setCreating(false)} onSave={onSave} />}

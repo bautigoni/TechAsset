@@ -43,6 +43,7 @@ export async function handleAssistantChat({ message, action = '', conversationId
   logModeOnce();
   const text = String(message || '').trim();
   const memory = getMemory(conversationId);
+  memory.siteCode = String(context.siteCode || context.site_code || memory.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
   if (context.pendingAction && !memory.pendingConfirmation && isExecutablePending(context.pendingAction)) {
     memory.pendingConfirmation = context.pendingAction;
   }
@@ -57,7 +58,7 @@ export async function handleAssistantChat({ message, action = '', conversationId
   else if (intent === 'return_flow') result = await handleReturnFlow(memory, text, action);
   else if (intent === 'task_flow') result = await handleTaskFlow(memory, text, action);
   else if (intent === 'agenda_flow') result = await handleAgendaFlow(memory, text, action);
-  else if (intent === 'device_query') result = await deviceAnswer(text);
+  else if (intent === 'device_query') result = await deviceAnswer(text, memory.siteCode);
   else if (intent === 'procedure_query') result = await procedureAnswer(text, memory, action);
   else if (intent === 'technical_help') result = await technicalHelp(text);
   else result = await generalChat(text, memory);
@@ -83,7 +84,8 @@ function getMemory(conversationId) {
       lastIntent: null,
       lastDevice: '',
       lastPerson: '',
-      messages: []
+      messages: [],
+      siteCode: config.defaultSiteCode || 'NFPT'
     });
   }
   return conversations.get(conversationId);
@@ -223,7 +225,7 @@ async function technicalHelp(text) {
       console.warn(`[assistant] OpenAI technical fallback: ${safeError(error)}`);
     }
   }
-  return response(`Revisaria por partes: alimentacion, cableado, entrada seleccionada y salida de audio/video del equipo. Si es proyector, proba primero otra fuente o cable. ${procedures.length ? `Tambien encontre procedimiento: ${procedures[0].excerpt}` : 'Si queres, despues lo dejamos como tarea TIC.'}`, 'technical_help', { procedures });
+  return response(`Revisaría por partes: alimentación, cableado, entrada seleccionada y salida de audio/video del equipo. Si es proyector, probá primero otra fuente o cable. ${procedures.length ? `También encontré procedimiento: ${procedures[0].excerpt}` : 'Si querés, después lo dejamos como tarea TIC.'}`, 'technical_help', { procedures });
 }
 
 async function handleLoanFlow(memory, text, action) {
@@ -234,9 +236,9 @@ async function handleLoanFlow(memory, text, action) {
   if (parsed.codigo_dispositivo) memory.lastDevice = parsed.codigo_dispositivo;
   if (parsed.usuario_nombre) memory.lastPerson = parsed.usuario_nombre;
 
-  if (!parsed.codigo_dispositivo) return askFlow(memory, 'Perfecto. Que numero o codigo de dispositivo queres prestar?', 'loan_flow', 'codigo_dispositivo');
+  if (!parsed.codigo_dispositivo) return askFlow(memory, 'Perfecto. ¿Qué número o código de dispositivo querés prestar?', 'loan_flow', 'codigo_dispositivo');
 
-  const deviceCheck = await validateDeviceForLoan(parsed.codigo_dispositivo);
+  const deviceCheck = await validateDeviceForLoan(parsed.codigo_dispositivo, memory.siteCode);
   if (deviceCheck) return deviceCheck;
 
   const missing = loanMissing(parsed);
@@ -245,30 +247,30 @@ async function handleLoanFlow(memory, text, action) {
     return askFlow(memory, loanMissingQuestion(parsed, missing), 'loan_flow', missing[0]);
   }
 
-  const pendingAction = { type: 'registrar_prestamo', payload: parsed };
-  return confirm(`Confirmame si registro este prestamo:
+  const pendingAction = { type: 'registrar_prestamo', payload: { ...parsed, siteCode: memory.siteCode } };
+  return confirm(`Confirmame si registro este préstamo:
 Dispositivo: ${parsed.codigo_dispositivo}
 Persona: ${parsed.usuario_nombre}
 Rol: ${parsed.rol}
-Ubicacion: ${parsed.ubicacion}
+Ubicación: ${parsed.ubicacion}
 Motivo: ${parsed.motivo}
 Comentario: ${parsed.comentario || 'sin comentario'}
 
-Lo registro?`, 'loan_flow', pendingAction, ['Confirmar prestamo', 'Cancelar']);
+Lo registro?`, 'loan_flow', pendingAction, ['Confirmar préstamo', 'Cancelar']);
 }
 
-async function validateDeviceForLoan(code) {
-  const active = getActiveLoan(code);
-  if (active) return response(`${normalizeCode(code)} ya tiene un prestamo activo para ${active.usuario_nombre}.`, 'loan_flow', { activeLoan: active });
-  const { items } = await getMergedDevices();
-  if (!items.some(item => sameCode(item.etiqueta, code))) return response(`No encontre el dispositivo ${normalizeCode(code)} en el inventario real.`, 'loan_flow');
+async function validateDeviceForLoan(code, siteCode = config.defaultSiteCode || 'NFPT') {
+  const active = getActiveLoan(code, siteCode);
+  if (active) return response(`${normalizeCode(code)} ya tiene un préstamo activo para ${active.usuario_nombre}.`, 'loan_flow', { activeLoan: active });
+  const { items } = await getMergedDevices({ siteCode });
+  if (!items.some(item => sameCode(item.etiqueta, code))) return response(`No encontré el dispositivo ${normalizeCode(code)} en el inventario real.`, 'loan_flow');
   return null;
 }
 
 async function handleReturnFlow(memory, text, action) {
   const previous = memory.activeFlow === 'return_flow' ? memory.collectedData : {};
   const parsed = action === 'start_return' && !extractDevice(text) ? { ...previous } : parseReturnText(text, previous);
-  // "devolvela / devolvelo / el de recién" — use last known device from memory
+  // "devolvela / devolvelo / el de recién" usa el último dispositivo conocido.
   if (!parsed.codigo_dispositivo && memory.lastDevice && /devolvela|devolvelo|el de recien|la de recien|esa|ese/.test(normalize(text))) {
     parsed.codigo_dispositivo = memory.lastDevice;
   }
@@ -276,22 +278,22 @@ async function handleReturnFlow(memory, text, action) {
   memory.collectedData = parsed;
   if (parsed.codigo_dispositivo) memory.lastDevice = parsed.codigo_dispositivo;
 
-  if (!parsed.codigo_dispositivo) return askFlow(memory, 'Que equipo queres registrar como devuelto?', 'return_flow', 'codigo_dispositivo');
+  if (!parsed.codigo_dispositivo) return askFlow(memory, '¿Qué equipo querés registrar como devuelto?', 'return_flow', 'codigo_dispositivo');
 
-  const active = getActiveLoan(parsed.codigo_dispositivo);
+  const active = getActiveLoan(parsed.codigo_dispositivo, memory.siteCode);
   const procedure = parsed.condicion_devolucion !== 'bueno' ? await searchProcedures(text) : [];
-  const pendingAction = { type: 'registrar_devolucion', payload: { ...parsed, prestamo_id: active?.id || '', usuario_nombre: active?.usuario_nombre || parsed.usuario_nombre || '' } };
-  const activeText = active ? `Encontre prestamo activo para ${parsed.codigo_dispositivo} (${active.usuario_nombre}).` : `No encontre prestamo activo para ${parsed.codigo_dispositivo}; si confirmas lo registro como devolucion manual.`;
+  const pendingAction = { type: 'registrar_devolucion', payload: { ...parsed, siteCode: memory.siteCode, prestamo_id: active?.id || '', usuario_nombre: active?.usuario_nombre || parsed.usuario_nombre || '' } };
+  const activeText = active ? `Encontré préstamo activo para ${parsed.codigo_dispositivo} (${active.usuario_nombre}).` : `No encontré préstamo activo para ${parsed.codigo_dispositivo}; si confirmás lo registro como devolución manual.`;
   const procedureText = procedure.length ? `\nProcedimiento relacionado: ${procedure[0].excerpt}` : '';
   return confirm(`${activeText}
-Condicion: ${parsed.condicion_devolucion}.${parsed.accesorios_devueltos ? `\nAccesorios: ${parsed.accesorios_devueltos}` : ''}${procedureText}
+Condición: ${parsed.condicion_devolucion}.${parsed.accesorios_devueltos ? `\nAccesorios: ${parsed.accesorios_devueltos}` : ''}${procedureText}
 
-Confirmas que guarde la devolucion?`, 'return_flow', pendingAction, ['Confirmar devolucion', 'Cancelar']);
+¿Confirmás que guarde la devolución?`, 'return_flow', pendingAction, ['Confirmar devolución', 'Cancelar']);
 }
 
 async function handleTaskFlow(memory, text, action) {
   memory.activeFlow = 'task_flow';
-  if (/mostrame|listar|consult|pendiente|vencid/i.test(text)) return taskQuery(normalize(text));
+  if (/mostrame|listar|consult|pendiente|vencid/i.test(text)) return taskQuery(normalize(text), memory.siteCode);
   const parsed = parseTaskText(text, memory.collectedData || {});
   memory.collectedData = parsed;
   const pendingAction = { type: 'crear_tarea', payload: parsed };
@@ -305,24 +307,24 @@ Confirmas?`, 'task_flow', pendingAction, ['Crear tarea', 'Cancelar']);
 
 async function handleAgendaFlow(memory, text, action) {
   memory.activeFlow = 'agenda_flow';
-  if (action === 'show_agenda' || /que tengo|mostrame|ver agenda|agenda hoy|agenda semana/i.test(text)) return agendaQuery(normalize(text));
+  if (action === 'show_agenda' || /que tengo|mostrame|ver agenda|agenda hoy|agenda semana/i.test(text)) return agendaQuery(normalize(text), memory.siteCode);
   const parsed = parseAgendaText(text, memory.collectedData || {});
   memory.collectedData = parsed;
   const missing = [];
   if (!parsed.dia) missing.push('dia');
   if (!parsed.desde) missing.push('hora');
-  if (missing.length) return askFlow(memory, `Para agendar me falta ${missing[0]}.`, 'agenda_flow', missing[0]);
+  if (missing.length) return askFlow(memory, `Para agendar me falta ${missing[0] === 'dia' ? 'día' : missing[0]}.`, 'agenda_flow', missing[0]);
   const pendingAction = { type: 'crear_evento_agenda', payload: parsed };
   return confirm(`Confirmame esta agenda:
-Dia: ${parsed.dia}
+Día: ${parsed.dia}
 Hora: ${parsed.desde}
 Actividad: ${parsed.actividad}
-Ubicacion: ${parsed.ubicacion || 'Aula'}`, 'agenda_flow', pendingAction, ['Crear agenda', 'Cancelar']);
+Ubicación: ${parsed.ubicacion || 'Aula'}`, 'agenda_flow', pendingAction, ['Crear agenda', 'Cancelar']);
 }
 
 async function confirmPending(memory, text) {
   if (!memory.pendingConfirmation) return generalChat(text, memory);
-  const executed = await executePending(memory.pendingConfirmation);
+  const executed = await executePending(memory.pendingConfirmation, memory.siteCode);
   memory.pendingConfirmation = null;
   memory.activeFlow = null;
   memory.waitingFor = null;
@@ -352,19 +354,19 @@ async function applyCorrection(memory, text) {
 }
 
 function pickCancel() {
-  const opts = ['Dale, lo cancelo.', 'Listo, descartado.', 'Cancelado. ¿Qué querés hacer?', 'Ok, cancele la acción.'];
+  const opts = ['Dale, lo cancelo.', 'Listo, descartado.', 'Cancelado. ¿Qué querés hacer?', 'Ok, cancelé la acción.'];
   return opts[Math.floor(Math.random() * opts.length)];
 }
 
-async function deviceAnswer(text) {
+async function deviceAnswer(text, siteCode = config.defaultSiteCode || 'NFPT') {
   const code = extractDevice(text);
-  if (!code) return ask('Decime el codigo del dispositivo y lo busco.', 'device_query');
-  const { items } = await getMergedDevices();
+  if (!code) return ask('Decime el código del dispositivo y lo busco.', 'device_query');
+  const { items } = await getMergedDevices({ siteCode });
   const device = items.find(item => sameCode(item.etiqueta, code));
-  if (!device) return response(`No encontre el dispositivo ${code} en el inventario real.`, 'device_query');
-  const active = getActiveLoan(code);
+  if (!device) return response(`No encontré el dispositivo ${code} en el inventario real.`, 'device_query');
+  const active = getActiveLoan(code, siteCode);
   const reply = active
-    ? `${code} figura prestado a ${active.usuario_nombre}. Ubicacion: ${active.sede || '-'}. Motivo: ${active.observaciones_entrega || '-'}.`
+    ? `${code} figura prestado a ${active.usuario_nombre}. Ubicación: ${active.sede || '-'}. Motivo: ${active.observaciones_entrega || '-'}.`
     : `${code} figura como ${device.estado || 'Disponible'}. Modelo: ${device.marca || ''} ${device.modelo || ''}. SN: ${device.sn || '-'}. MAC: ${device.mac || '-'}.`;
   return response(reply, 'device_query', { device, activeLoan: active });
 }
@@ -373,52 +375,53 @@ async function procedureAnswer(text, memory, action = '') {
   if (isEmptyProcedureRequest(text, action)) {
     memory.activeFlow = 'procedure_query';
     memory.waitingFor = 'procedure_query';
-    return ask('Decime que procedimiento o situacion queres consultar. Por ejemplo: "notebook danada", "falta cargador" o "como prestar un equipo".', 'procedure_query');
+    return ask('Decime qué procedimiento o situación querés consultar. Por ejemplo: "notebook dañada", "falta cargador" o "cómo prestar un equipo".', 'procedure_query');
   }
   const results = await searchProcedures(text);
   memory.activeFlow = null;
   memory.waitingFor = null;
   memory.collectedData = {};
-  if (!results.length) return response('No encontre informacion suficiente en los documentos de procedimiento cargados para responder con precision. Te recomiendo validarlo con la coordinacion o responsable TIC.', 'procedure_query');
+  if (!results.length) return response('No encontré información suficiente en los documentos de procedimiento cargados para responder con precisión. Te recomiendo validarlo con la coordinación o responsable TIC.', 'procedure_query');
   return response(`${results[0].excerpt}\n\nFuente: ${results[0].source}`, 'procedure_query', { results });
 }
 
-function taskQuery(lower) {
-  const rows = getDb().prepare('SELECT * FROM tasks WHERE eliminada=0 ORDER BY fecha_creacion DESC LIMIT 20').all();
+function taskQuery(lower, siteCode = config.defaultSiteCode || 'NFPT') {
+  const rows = getDb().prepare('SELECT * FROM tasks WHERE eliminada=0 AND site_code=? ORDER BY fecha_creacion DESC LIMIT 20').all(siteCode);
   const filtered = /vencid/.test(lower) ? rows.filter(row => row.fecha_vencimiento && row.fecha_vencimiento < todayIso() && row.estado !== 'Hecha') : rows;
-  return response(filtered.length ? `Encontre ${filtered.length} tareas.` : 'No encontre tareas para ese criterio.', 'task_flow', { items: filtered });
+  return response(filtered.length ? `Encontré ${filtered.length} tareas.` : 'No encontré tareas para ese criterio.', 'task_flow', { items: filtered });
 }
 
-function agendaQuery(lower = '') {
-  const rows = getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 ORDER BY dia, desde LIMIT 40').all();
+function agendaQuery(lower = '', siteCode = config.defaultSiteCode || 'NFPT') {
+  const rows = getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY dia, desde LIMIT 40').all(siteCode);
   const today = dayName(new Date());
   const filtered = /hoy/.test(lower) ? rows.filter(row => normalize(row.dia) === normalize(today)) : rows;
-  return response(filtered.length ? `Encontre ${filtered.length} actividades de agenda.` : 'No encontre agenda para ese criterio.', 'agenda_flow', { items: filtered });
+  return response(filtered.length ? `Encontré ${filtered.length} actividades de agenda.` : 'No encontré agenda para ese criterio.', 'agenda_flow', { items: filtered });
 }
 
-async function executePending(pending) {
+async function executePending(pending, siteCode = config.defaultSiteCode || 'NFPT') {
   const db = getDb();
   const ts = nowIso();
+  const activeSite = String(pending.payload?.siteCode || pending.payload?.site_code || siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
   if (pending.type === 'crear_tarea') {
     const id = `TK${Date.now()}`;
     const p = pending.payload;
-    db.prepare(`INSERT INTO tasks (id, titulo, descripcion, responsable, estado, prioridad, tipo, fecha_creacion, fecha_vencimiento, comentario, creado_por, operador_ultimo_cambio, agenda_id, ultima_modificacion) VALUES (?, ?, ?, ?, ?, ?, 'Asistente', ?, '', '', 'Asistente TechAsset', 'Asistente TechAsset', '', ?)`).run(id, p.titulo, p.descripcion || '', p.responsable || 'Sin asignar', p.estado || 'Pendiente', p.prioridad || 'Media', ts, ts);
+    db.prepare(`INSERT INTO tasks (id, site_code, titulo, descripcion, responsable, estado, prioridad, tipo, fecha_creacion, fecha_vencimiento, comentario, creado_por, operador_ultimo_cambio, agenda_id, ultima_modificacion) VALUES (?, ?, ?, ?, ?, ?, ?, 'Asistente', ?, '', '', 'Asistente TechAsset', 'Asistente TechAsset', '', ?)`).run(id, activeSite, p.titulo, p.descripcion || '', p.responsable || 'Sin asignar', p.estado || 'Pendiente', p.prioridad || 'Media', ts, ts);
     return response(`Tarea creada: ${p.titulo}`, 'task_flow', { id });
   }
   if (pending.type === 'crear_evento_agenda') {
     const id = `AG${Date.now()}`;
     const p = pending.payload;
-    db.prepare(`INSERT INTO agenda (id, dia, fecha, turno, desde, hasta, curso, actividad, tipo_dispositivo, cantidad, ubicacion, responsable_tic, estado, nota, compus_retiradas, operador_ultimo_cambio, ultima_modificacion, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'Pendiente', '', 0, 'Asistente TechAsset', ?, ?)`).run(id, p.dia, p.fecha || '', p.turno || 'Manana', p.desde || '', p.hasta || '', p.curso || '', p.actividad || 'Actividad TIC', p.tipoDispositivo || 'Touch', p.cantidad || 1, p.ubicacion || 'Aula', ts, ts);
+    db.prepare(`INSERT INTO agenda (id, site_code, dia, fecha, turno, desde, hasta, curso, actividad, tipo_dispositivo, cantidad, ubicacion, responsable_tic, estado, nota, compus_retiradas, operador_ultimo_cambio, ultima_modificacion, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'Pendiente', '', 0, 'Asistente TechAsset', ?, ?)`).run(id, activeSite, p.dia, p.fecha || '', p.turno || 'Mañana', p.desde || '', p.hasta || '', p.curso || '', p.actividad || 'Actividad TIC', p.tipoDispositivo || 'Touch', p.cantidad || 1, p.ubicacion || 'Aula', ts, ts);
     return response(`Actividad creada: ${p.actividad}`, 'agenda_flow', { id });
   }
   if (pending.type === 'registrar_prestamo') {
     const p = pending.payload;
     const id = `PR${Date.now()}`;
-    const { items } = await getMergedDevices();
+    const { items } = await getMergedDevices({ siteCode: activeSite });
     const device = items.find(d => sameCode(d.etiqueta, p.codigo_dispositivo)) || {};
     const observaciones = [p.motivo, p.comentario, p.rol ? `Rol: ${p.rol}` : ''].filter(Boolean).join(' | ');
-    db.prepare(`INSERT INTO prestamos (id, dispositivo_id, codigo_dispositivo, tipo_dispositivo, usuario_nombre, usuario_email, curso_o_area, sede, responsable_entrega, fecha_prestamo, fecha_devolucion_prevista, estado, observaciones_entrega, condicion_entrega, accesorios_entregados, created_at, updated_at) VALUES (?, ?, ?, ?, ?, '', ?, ?, 'Asistente TechAsset', ?, '', 'activo', ?, 'bueno', '', ?, ?)`).run(id, device.id || '', p.codigo_dispositivo, device.dispositivo || device.modelo || '', p.usuario_nombre, p.rol || '', p.ubicacion || '', todayIso(), observaciones, ts, ts);
-    addLocalMovement({ tipo: 'prestamo local', descripcion: `${p.codigo_dispositivo} prestado a ${p.usuario_nombre}`, operador: 'Asistente TechAsset', origen: 'Asistente', etiqueta: p.codigo_dispositivo });
+    db.prepare(`INSERT INTO prestamos (id, site_code, dispositivo_id, codigo_dispositivo, tipo_dispositivo, usuario_nombre, usuario_email, curso_o_area, sede, responsable_entrega, fecha_prestamo, fecha_devolucion_prevista, estado, observaciones_entrega, condicion_entrega, accesorios_entregados, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, 'Asistente TechAsset', ?, '', 'activo', ?, 'bueno', '', ?, ?)`).run(id, activeSite, device.id || '', p.codigo_dispositivo, device.dispositivo || device.modelo || '', p.usuario_nombre, p.rol || '', p.ubicacion || activeSite, todayIso(), observaciones, ts, ts);
+    addLocalMovement({ tipo: 'préstamo local', descripcion: `${p.codigo_dispositivo} prestado a ${p.usuario_nombre}`, operador: 'Asistente TechAsset', origen: 'Asistente', etiqueta: p.codigo_dispositivo, siteCode: activeSite });
     return response(`Listo. ${p.codigo_dispositivo} prestada a ${p.usuario_nombre}.`, 'loan_flow', { id });
   }
   if (pending.type === 'registrar_devolucion') {
@@ -426,12 +429,12 @@ async function executePending(pending) {
     const id = `DV${Date.now()}`;
     const condicion = p.condicion_devolucion || 'bueno';
     const penalizacion = /dan|incompleto/.test(condicion) ? 'si' : 'no';
-    db.prepare(`INSERT INTO devoluciones (id, prestamo_id, dispositivo_id, codigo_dispositivo, usuario_nombre, fecha_devolucion_real, responsable_recepcion, condicion_devolucion, accesorios_devueltos, observaciones_devolucion, penalizacion_aplicada, detalle_penalizacion, created_at) VALUES (?, ?, '', ?, ?, ?, 'Asistente TechAsset', ?, ?, ?, ?, '', ?)`).run(id, p.prestamo_id || '', p.codigo_dispositivo, p.usuario_nombre || '', ts, condicion, p.accesorios_devueltos || '', p.observaciones_devolucion || '', penalizacion, ts);
-    if (p.prestamo_id) db.prepare("UPDATE prestamos SET estado='devuelto', updated_at=? WHERE id=?").run(ts, p.prestamo_id);
-    addLocalMovement({ tipo: 'devolucion local', descripcion: `${p.codigo_dispositivo} devuelta`, operador: 'Asistente TechAsset', origen: 'Asistente', etiqueta: p.codigo_dispositivo });
-    return response(`Listo. ${p.codigo_dispositivo} quedo devuelta.`, 'return_flow', { id });
+    db.prepare(`INSERT INTO devoluciones (id, site_code, prestamo_id, dispositivo_id, codigo_dispositivo, usuario_nombre, fecha_devolucion_real, responsable_recepcion, condicion_devolucion, accesorios_devueltos, observaciones_devolucion, penalizacion_aplicada, detalle_penalizacion, created_at) VALUES (?, ?, ?, '', ?, ?, ?, 'Asistente TechAsset', ?, ?, ?, ?, '', ?)`).run(id, activeSite, p.prestamo_id || '', p.codigo_dispositivo, p.usuario_nombre || '', ts, condicion, p.accesorios_devueltos || '', p.observaciones_devolucion || '', penalizacion, ts);
+    if (p.prestamo_id) db.prepare("UPDATE prestamos SET estado='devuelto', updated_at=? WHERE id=? AND site_code=?").run(ts, p.prestamo_id, activeSite);
+    addLocalMovement({ tipo: 'devolución local', descripcion: `${p.codigo_dispositivo} devuelta`, operador: 'Asistente TechAsset', origen: 'Asistente', etiqueta: p.codigo_dispositivo, siteCode: activeSite });
+    return response(`Listo. ${p.codigo_dispositivo} quedó devuelta.`, 'return_flow', { id });
   }
-  return response('No pude ejecutar la accion pendiente.', 'general_chat');
+  return response('No pude ejecutar la acción pendiente.', 'general_chat');
 }
 
 function parseLoanText(text, previous = {}) {
@@ -538,7 +541,7 @@ function loanKnownSummary(payload) {
 }
 
 function label(key) {
-  return ({ codigo_dispositivo: 'codigo del equipo', usuario_nombre: 'persona', rol: 'rol', ubicacion: 'ubicacion', motivo: 'motivo', dia: 'dia', hora: 'hora' })[key] || key;
+  return ({ codigo_dispositivo: 'código del equipo', usuario_nombre: 'persona', rol: 'rol', ubicacion: 'ubicación', motivo: 'motivo', dia: 'día', hora: 'hora' })[key] || key;
 }
 
 function fillMissingFromParts(parsed, missing, parts) {
@@ -602,11 +605,11 @@ function extractOpenAIText(data) {
 function systemPrompt() {
   return `Sos el Asistente TechAsset de una aplicacion escolar de gestion operativa TIC.
 Responde siempre en espanol, tono directo, practico y cercano.
-Solo inicia flujos operativos (prestamo, devolucion, tarea, agenda) cuando el usuario lo pida claramente.
+Solo inicia flujos operativos (préstamo, devolución, tarea, agenda) cuando el usuario lo pida claramente.
 No inventes datos de equipos, personas ni procedimientos.
 No menciones modelos de IA, APIs, OpenAI, ni configuracion tecnica.
 Si el usuario insulta o se frustra, responde breve y directo sin ponerte defensive.
-Pregunta solo lo indispensable. Usa contexto previo de la conversacion.
+Pregunta solo lo indispensable. Usá contexto previo de la conversación.
 Fecha y hora actual: ${currentDateTimeText()}. Zona horaria: ${TZ}.`;
 }
 
@@ -619,14 +622,14 @@ function directGeneralReply(text) {
   if (/que dia|fecha|hoy/.test(lower)) return `Hoy es ${currentDateText()}.`;
   if (/hora/.test(lower)) return `Ahora son ${currentTimeText()}.`;
   if (/modelo.*ia|ia.*usas|que modelo|usas.*modelo|openai|modo.*ia|que ia|como te llamas|quien sos|que sos/.test(lower)) {
-    return 'Soy el Asistente TechAsset. Puedo ayudarte con prestamos, devoluciones, tareas, agenda y consultas de equipos.';
+    return 'Soy el Asistente TechAsset. Puedo ayudarte con préstamos, devoluciones, tareas, agenda y consultas de equipos.';
   }
   if (/retrasa|tonto|tarado|idiota|puto|boludo|inutil|mala|mals|no sirve/.test(lower)) {
-    return 'Sí, algo salió mal. ¿Querés hacer prestamo, devolucion, tarea o agenda?';
+    return 'Sí, algo salió mal. ¿Querés hacer préstamo, devolución, tarea o agenda?';
   }
   if (/hola|buenas|hey/.test(lower)) return 'Hola. ¿Qué necesitas?';
-  if (/pod|que hac|ayuda/.test(lower)) return 'Puedo registrar prestamos, devoluciones, tareas y agenda, y consultar equipos.';
-  if (isConfirmation(lower) || isCancel(lower)) return 'No tengo ninguna accion pendiente. Decime que queres hacer.';
+  if (/pod|que hac|ayuda/.test(lower)) return 'Puedo registrar préstamos, devoluciones, tareas y agenda, y consultar equipos.';
+  if (isConfirmation(lower) || isCancel(lower)) return 'No tengo ninguna acción pendiente. Decime qué querés hacer.';
   return '';
 }
 
@@ -651,8 +654,8 @@ function defaultSuggestions(intent) {
   return [];
 }
 
-function getActiveLoan(code) {
-  return getDb().prepare("SELECT * FROM prestamos WHERE upper(codigo_dispositivo)=upper(?) AND estado IN ('activo','vencido')").get(normalizeCode(code));
+function getActiveLoan(code, siteCode = config.defaultSiteCode || 'NFPT') {
+  return getDb().prepare("SELECT * FROM prestamos WHERE site_code=? AND upper(codigo_dispositivo)=upper(?) AND estado IN ('activo','vencido')").get(siteCode, normalizeCode(code));
 }
 
 function extractDevice(text) {
@@ -699,7 +702,7 @@ function extractDay(text) {
   const lower = normalize(text);
   if (/lunes/.test(lower)) return 'Lunes';
   if (/martes/.test(lower)) return 'Martes';
-  if (/miercoles/.test(lower)) return 'Miercoles';
+  if (/miercoles/.test(lower)) return 'Miércoles';
   if (/jueves/.test(lower)) return 'Jueves';
   if (/viernes/.test(lower)) return 'Viernes';
   return '';
@@ -727,7 +730,7 @@ function dateParts(date) {
 
 function dayName(date) {
   const name = new Intl.DateTimeFormat('es-AR', { weekday: 'long', timeZone: TZ }).format(date);
-  return name.charAt(0).toUpperCase() + name.slice(1).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 function addDays(date, days) {

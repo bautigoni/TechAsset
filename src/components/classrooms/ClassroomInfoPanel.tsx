@@ -64,7 +64,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   piso: string;
   operator: Operator;
   consultationMode: boolean;
-  onClose: () => void;
+  onClose: (saved?: boolean) => void;
 }) {
   const [classroom, setClassroom] = useState<Classroom | null>(null);
   const [draft, setDraft] = useState<Classroom | null>(null);
@@ -109,7 +109,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
 
   if (!draft) {
     return (
-      <div className="modal classroom-modal-wrap" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="modal classroom-modal-wrap" onClick={() => onClose()} role="dialog" aria-modal="true">
         <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
           <p>Cargando aula...</p>
         </div>
@@ -160,6 +160,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
       setClassroom(saved); setDraft(saved);
       const hist = await fetchClassroomHistory(roomKey);
       if (hist.ok) setHistory(hist.items);
+      onClose(true);
     } catch { setError('Error de conexión'); }
     finally { setBusy(false); }
   };
@@ -167,14 +168,14 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   const onCancel = () => { onClose(); };
 
   return (
-    <div className="modal classroom-modal-wrap" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="modal classroom-modal-wrap" onClick={() => onClose()} role="dialog" aria-modal="true">
       <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
         <div className="card-head" style={{ marginBottom: 8 }}>
           <div>
             <h3 style={{ margin: 0 }}>{nombre || draft.nombre}</h3>
             <p className="muted" style={{ margin: '2px 0 0' }}>{piso} · {roomKey}</p>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Cerrar">✕</button>
+          <button type="button" className="icon-btn" onClick={() => onClose()} aria-label="Cerrar">✕</button>
         </div>
 
         <div className={`classroom-general-badge estado-${normalize(draft.estadoGeneral)}`}>
@@ -246,9 +247,9 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
 
         {error && <div className="tool-error">{error}</div>}
 
-        <div className="actions" style={{ marginTop: 12 }}>
+        <div className="actions classroom-modal-actions">
           <Button onClick={onCancel} disabled={busy}>Cancelar</Button>
-          <Button variant="primary" onClick={onSave} disabled={consultationMode || busy}>Guardar cambios</Button>
+          <Button variant="primary" onClick={onSave} disabled={consultationMode || busy}>{busy ? 'Guardando...' : 'Guardar cambios'}</Button>
         </div>
 
         {history.length > 0 && (

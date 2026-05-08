@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Device } from '../../types';
-import { classifyDeviceType, getDeviceNumber, getOperationalAlias } from '../../utils/classifyDevice';
+import { classifyDeviceType, matchesOperationalAlias, sortByOperationalAlias } from '../../utils/classifyDevice';
 import { Button } from '../layout/Button';
 import { StatCard } from '../layout/StatCard';
 import { DeviceTable } from './DeviceTable';
@@ -40,13 +40,16 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
   const [editing, setEditing] = useState<Device | null>(null);
   const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all');
   const [sort, setSort] = useState<DeviceSort>('default');
+  const [aliasQuery, setAliasQuery] = useState('');
   const [message, setMessage] = useState<{ tone: 'info' | 'error'; text: string } | null>(null);
 
   const visibleDevices = useMemo(() => {
-    const base = devices.filter(device => matchesFilter(device, deviceFilter));
-    if (sort !== 'operational') return base;
-    return [...base].sort(compareOperational);
-  }, [devices, deviceFilter, sort]);
+    const base = devices
+      .filter(device => matchesFilter(device, deviceFilter))
+      .filter(device => matchesOperationalAlias(device, aliasQuery));
+    if (sort !== 'operational' && !aliasQuery.trim()) return base;
+    return sortByOperationalAlias(base);
+  }, [aliasQuery, devices, deviceFilter, sort]);
   const count = (filter: DeviceFilter) => devices.filter(device => matchesFilter(device, filter)).length;
   const categories = useMemo(() => Array.from(new Set(devices.map(classifyDeviceType).filter(Boolean))).sort(), [devices]);
   const handleDelete = async (device: Device) => {
@@ -84,18 +87,26 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
             <span className="muted">{visibleDevices.length} equipos visibles</span>
           </div>
           <div className="actions">
+            <input
+              className="input compact-search"
+              type="search"
+              placeholder="Filtrar etiqueta o alias"
+              value={aliasQuery}
+              onChange={event => setAliasQuery(event.target.value)}
+              title="Buscar D1433, Touch 31, touch31, Plani 5..."
+            />
             <select className="input compact-select" value={sort} onChange={event => setSort(event.target.value as DeviceSort)} title="Ordenar dispositivos">
               <option value="default">Orden original</option>
               <option value="operational">Ordenar por número operativo</option>
             </select>
-            {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Anadir dispositivo</Button>}
+            {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Añadir dispositivo</Button>}
           </div>
         </div>
         {message && <div className={message.tone === 'error' ? 'tool-error' : 'tool-info'}>{message.text}</div>}
         {visibleDevices.length ? (
           <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={setProfile} onEdit={consultationMode ? undefined : setEditing} onDelete={consultationMode ? undefined : handleDelete} />
         ) : (
-          <div className="empty-state">No hay dispositivos para este filtro o busqueda.</div>
+          <div className="empty-state">No hay dispositivos para este filtro o búsqueda.</div>
         )}
       </section>
       {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}
@@ -105,17 +116,3 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
   );
 }
 
-function compareOperational(a: Device, b: Device) {
-  const type = (device: Device) => classifyDeviceType(device).toLowerCase();
-  const num = (device: Device) => {
-    const direct = Number(getDeviceNumber(device));
-    if (Number.isFinite(direct) && direct > 0) return direct;
-    const match = getOperationalAlias(device).match(/(\d+)/);
-    return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
-  };
-  const typeCompare = type(a).localeCompare(type(b), 'es');
-  if (typeCompare) return typeCompare;
-  const numberCompare = num(a) - num(b);
-  if (numberCompare) return numberCompare;
-  return String(a.etiqueta || '').localeCompare(String(b.etiqueta || ''), 'es', { numeric: true });
-}

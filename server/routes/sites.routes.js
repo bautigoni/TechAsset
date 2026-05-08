@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDb, nowIso, seedDefaultSettings } from '../db.js';
+import { getDb, nowIso, seedDefaultSettings, seedInitialInventory } from '../db.js';
 import { isSiteManager, isSuperadmin, normalizeSiteCode, requireSite } from '../services/siteContext.service.js';
 
 export const sitesRouter = Router();
@@ -50,6 +50,7 @@ sitesRouter.post('/sites', (req, res) => {
       theme_color=excluded.theme_color, updated_at=excluded.updated_at
   `).run(siteCode, req.body?.nombre || siteCode, req.body?.subtitulo || '', req.body?.logo || '', req.body?.activo === false ? 0 : 1, req.body?.spreadsheetUrl || '', req.body?.appsScriptUrl || '', req.body?.inventorySheetName || '', req.body?.themeColor || '', ts, ts);
   seedDefaultSettings(getDb(), siteCode);
+  seedInitialInventory(getDb(), siteCode);
   if (req.user?.id) {
     getDb().prepare(`
       INSERT INTO user_sites (user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at)

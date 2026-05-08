@@ -100,7 +100,7 @@ export function TasksPage({ tasks, kpis, operator, consultationMode, onSave, onM
                   onRefresh={onRefresh}
                 />
               ))}
-              {!doneTasks.length && <div className="empty-state">Aun no hay tareas terminadas</div>}
+              {!doneTasks.length && <div className="empty-state">Aún no hay tareas terminadas</div>}
             </div>
           </section>
         </>

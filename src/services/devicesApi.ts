@@ -10,7 +10,9 @@ export function getDevices(options: { force?: boolean; wait?: boolean } = {}) {
   const params = new URLSearchParams();
   if (options.force) params.set('refresh', '1');
   if (options.wait) params.set('wait', '1');
+  if (options.force) params.set('_ts', String(Date.now()));
   const url = `/api/devices${params.size ? `?${params}` : ''}`;
+  if (options.force) devicesRequest = null;
   if (!options.force && devicesRequest) return devicesRequest;
   devicesRequest = apiGet<DevicesResponse>(url).finally(() => {
     devicesRequest = null;

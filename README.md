@@ -88,6 +88,24 @@ Copiar `.env.example` a `.env` y completar:
 
 Si Google Sheets falla, el servidor usa `data/cache_sheet.csv`.
 
+## Acceso inicial / Superadmin
+
+Al inicializar la base, TechAsset crea usuarios permitidos a partir de `AUTH_ALLOWED_EMAILS`.
+
+Si `AUTH_ALLOWED_EMAILS` está vacío, el bootstrap de desarrollo usa:
+
+```env
+admin@northfield.local
+```
+
+Para definir usuarios iniciales reales, configurar en `.env`:
+
+```env
+AUTH_ALLOWED_EMAILS=mail1@dominio.com,mail2@dominio.com
+```
+
+Los usuarios creados por bootstrap quedan como `Jefe TIC` para la sede `DEFAULT_SITE_CODE` y luego se pueden administrar desde Configuración → Usuarios permitidos. En producción conviene cargar mails institucionales reales, revisar sedes/roles desde la pantalla de Usuarios permitidos y no dejar accesos de prueba activos.
+
 ## SQLite
 
 Inicializar o verificar la base:

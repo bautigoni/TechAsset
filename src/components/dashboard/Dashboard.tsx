@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { AgendaItem, Device, Movement, TaskItem, ViewKey } from '../../types';
-import { classifyDeviceType } from '../../utils/classifyDevice';
+import { classifyDeviceType, matchesOperationalAlias, sortByOperationalAlias } from '../../utils/classifyDevice';
 import { getDeviceStateKey } from '../../utils/deviceState';
 import { StatCard } from '../layout/StatCard';
 import { DeviceTable } from '../devices/DeviceTable';
@@ -30,6 +30,7 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
   onEdit: (device: Device) => void;
 }) {
   const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all');
+  const [aliasQuery, setAliasQuery] = useState('');
   const tableRef = useRef<HTMLElement | null>(null);
 
   const applyDeviceFilter = (filter: DeviceFilter) => {
@@ -38,15 +39,16 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
   };
 
   const visibleDevices = useMemo(() => {
-    if (deviceFilter === 'all') return devices;
-    return devices.filter(device => {
+    const base = deviceFilter === 'all' ? devices : devices.filter(device => {
       if (deviceFilter === 'available') return getDeviceStateKey(device) === 'available';
       if (deviceFilter === 'loaned') return getDeviceStateKey(device) === 'loaned';
       if (deviceFilter === 'missing') return getDeviceStateKey(device) === 'missing';
       if (deviceFilter === 'out') return getDeviceStateKey(device) === 'out';
       return classifyDeviceType(device) === deviceFilter;
     });
-  }, [deviceFilter, devices]);
+    const filtered = base.filter(device => matchesOperationalAlias(device, aliasQuery));
+    return sortByOperationalAlias(filtered);
+  }, [aliasQuery, deviceFilter, devices]);
 
   const categoryCounts = useMemo(() => Object.entries(counts)
     .filter(([key, value]) => !['total', 'available', 'loaned', 'missing', 'out'].includes(key) && Number(value) > 0)
@@ -72,8 +74,18 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
       <RecentMovements items={movements} />
       <section className="card dashboard-device-section" ref={tableRef}>
         <div className="card-head">
-          <h3>{FILTER_TITLES[deviceFilter] || `Equipos ${deviceFilter}`}</h3>
-          <span className="muted">{visibleDevices.length} equipos</span>
+          <div>
+            <h3>{FILTER_TITLES[deviceFilter] || `Equipos ${deviceFilter}`}</h3>
+            <span className="muted">{visibleDevices.length} equipos</span>
+          </div>
+          <input
+            className="input compact-search"
+            type="search"
+            placeholder="Filtrar etiqueta o alias"
+            value={aliasQuery}
+            onChange={event => setAliasQuery(event.target.value)}
+            title="Buscar D1433, Touch 31, touch31, Plani 5..."
+          />
         </div>
         {visibleDevices.length ? (
           <DeviceTable devices={visibleDevices} compact={deviceFilter === 'all'} actionMode="dashboard" onLoan={onLoan} onReturn={onReturn} onEdit={onEdit} />

@@ -64,11 +64,11 @@ export function AnalyticsPage({ devices, onRefresh }: { devices: Device[]; onRef
 
   const charts = [
     { title: 'Estado general', rows: stateRows },
-    { title: 'Prestamos por tipo de equipo', rows: historicalTypeRows },
+    { title: 'Préstamos por tipo de equipo', rows: historicalTypeRows },
     { title: 'Personas que mas piden', rows: topRows(peopleRows, 50) },
     { title: 'Ubicaciones activas', rows: topRows(locationRows, 50) },
-    { title: 'Roles de prestamos', rows: topRows(roleRows, 50) },
-    { title: 'Motivos de prestamos', rows: topRows(reasonRows, 50) },
+    { title: 'Roles de préstamos', rows: topRows(roleRows, 50) },
+    { title: 'Motivos de préstamos', rows: topRows(reasonRows, 50) },
     { title: 'Modelos y familias', rows: topRows(modelRows, 50) },
     { title: 'Equipos con movimiento reciente', rows: recentRows }
   ];
@@ -80,11 +80,11 @@ export function AnalyticsPage({ devices, onRefresh }: { devices: Device[]; onRef
         <Button variant="primary" disabled={reloading} onClick={reload}>{reloading ? 'Actualizando…' : 'Recargar analítica'}</Button>
       </div>
       <div className="stats-grid analytics-kpi-grid">
-        <StatCard label="Total prestamos historicos" value={historicalLoaned.length} />
+        <StatCard label="Total préstamos históricos" value={historicalLoaned.length} />
         <StatCard label="Total equipos devueltos" value={returned.length} />
         <StatCard label="Prestados ahora" value={loaned.length} />
         <StatCard label="Tipo mas prestado" value={topType?.label || '-'} />
-        <StatCard label="Ubicacion principal" value={locationRows[0]?.label || '-'} />
+        <StatCard label="Ubicación principal" value={locationRows[0]?.label || '-'} />
         <StatCard label="Persona principal" value={peopleRows[0]?.label || '-'} />
         <StatCard label="Sin persona cargada" value={withoutPerson} />
         <StatCard label="No encontradas / servicio" value={devices.filter(device => device.estado === 'No encontrada' || device.estado === 'Perdida' || device.estado === 'Fuera de servicio').length} />
@@ -96,7 +96,7 @@ export function AnalyticsPage({ devices, onRefresh }: { devices: Device[]; onRef
         </div>
         <div className="analytics-filters">
           <div className="analytics-summary-pill"><span>Con persona cargada</span><strong>{loaned.length - withoutPerson}</strong></div>
-          <div className="analytics-summary-pill"><span>Ultimo equipo prestado</span><strong>{devices.find(device => device.loanedAt)?.etiqueta || '-'}</strong></div>
+          <div className="analytics-summary-pill"><span>Último equipo prestado</span><strong>{devices.find(device => device.loanedAt)?.etiqueta || '-'}</strong></div>
           <div className="analytics-summary-pill"><span>Touch en uso</span><strong>{loaned.filter(device => classifyDeviceType(device) === 'TOUCH').length}</strong></div>
           <div className="analytics-summary-pill"><span>Devueltos con hora</span><strong>{returned.length}</strong></div>
         </div>

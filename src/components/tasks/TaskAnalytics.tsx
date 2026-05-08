@@ -14,7 +14,7 @@ export function TaskAnalytics({ tasks }: { tasks: TaskItem[] }) {
     : Array.from(new Set(tasks.flatMap(task => task.responsables?.length ? task.responsables : String(task.responsable || '').split(',').map(item => item.trim())).filter(Boolean)));
   return (
     <section className="card assistant-task-analytics">
-      <div className="card-head"><h3>Analitica de asistentes</h3><span className="muted">Datos reales de tareas</span></div>
+      <div className="card-head"><h3>Analítica de asistentes</h3><span className="muted">Datos reales de tareas</span></div>
       <div className="grid-2">
         {people.map((person, index) => {
           const assigned = tasks.filter(task => task.responsables?.includes(person) || String(task.responsable || '').split(',').map(v => v.trim()).includes(person) || task.responsable === 'Ambos');
