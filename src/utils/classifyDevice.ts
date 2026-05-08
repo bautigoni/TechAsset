@@ -36,7 +36,11 @@ export function classifyDeviceType(device: Partial<Device>): DeviceType {
 }
 
 export function getDeviceNumber(device: Partial<Device>): string {
-  return clean(device.numero || (device as Record<string, unknown>).number || (device as Record<string, unknown>).nro);
+  const direct = clean(device.numero || (device as Record<string, unknown>).number || (device as Record<string, unknown>).nro);
+  if (direct) return direct;
+  const alias = clean((device as Record<string, unknown>).aliasOperativo);
+  const match = alias.match(/\b(?:plani|touch|tic|dell)\s*0*(\d{1,3})\b/i) || alias.match(/\b0*(\d{1,3})\s*(?:plani|touch|tic|dell)\b/i);
+  return match ? String(Number(match[1])) : '';
 }
 
 export function operationalTypeLabel(device: Partial<Device>): string {
@@ -45,19 +49,26 @@ export function operationalTypeLabel(device: Partial<Device>): string {
 
 export function getOperationalAlias(device: Partial<Device>): string {
   const explicit = clean((device as Record<string, unknown>).aliasOperativo);
-  if (explicit) return explicit;
   const type = operationalTypeLabel(device);
   const number = getDeviceNumber(device);
+  if (explicit) {
+    const first = explicit.split(',').map(item => clean(item)).find(Boolean) || explicit;
+    const hasNumber = /\d/.test(first);
+    if (!hasNumber && number && ['Plani', 'Touch', 'TIC', 'Dell'].includes(type)) return `${first} ${number}`;
+    return first;
+  }
   if (!type) return number;
   return number ? `${type} ${number}` : type;
 }
 
 export function getOperationalAliasList(device: Partial<Device>): string[] {
   const explicit = clean((device as Record<string, unknown>).aliasOperativo);
+  const main = getOperationalAlias(device);
   if (explicit) {
-    return explicit.split(',').map(item => clean(item)).filter(Boolean);
+    const items = explicit.split(',').map(item => clean(item)).filter(Boolean);
+    return [...new Set([main, ...items].filter(Boolean))];
   }
-  const fallback = getOperationalAlias(device);
+  const fallback = main;
   return fallback ? [fallback] : [];
 }
 

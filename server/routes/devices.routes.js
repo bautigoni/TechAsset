@@ -41,11 +41,13 @@ devicesRouter.get('/device-categories', async (_req, res, next) => {
 devicesRouter.post('/devices/sync-from-sheet', (_req, res) => {
   const result = getDb().prepare(`
     DELETE FROM local_states
-    WHERE estado IS NULL
-       OR TRIM(estado) = ''
-       OR TRIM(estado) = 'Disponible'
-       OR TRIM(estado) = 'Devuelto'
-       AND site_code=?
+    WHERE site_code=?
+      AND (
+        estado IS NULL
+        OR TRIM(estado) = ''
+        OR TRIM(estado) = 'Disponible'
+        OR TRIM(estado) = 'Devuelto'
+      )
   `).run(requireSite(_req));
   invalidateDeviceInventoryCache('sync-from-sheet', requireSite(_req));
   res.json({ ok: true, removed: result.changes });
@@ -80,7 +82,7 @@ devicesRouter.post('/devices/add', async (req, res, next) => {
     invalidateDeviceInventoryCache('device-added', siteCode);
     addLocalMovement({ tipo: 'dispositivo agregado', descripcion: `${payload.etiqueta || ''} agregado`, operador: payload.operator, origen: 'Google Sheets', etiqueta: payload.etiqueta, siteCode });
     res.json({ ok: true, item: payload, syncing: true });
-    proxyAppsScript('adddevice', payload).catch(error => console.warn('[devices/add sync]', error?.message || error));
+    proxyAppsScript('adddevice', payload, 'POST', { siteCode }).catch(error => console.warn(`[devices/add sync:${siteCode}]`, error?.message || error));
   } catch (error) {
     next(error);
   }
@@ -101,7 +103,7 @@ devicesRouter.patch('/devices/:etiqueta', async (req, res, next) => {
     invalidateDeviceInventoryCache('device-updated', siteCode);
     addLocalMovement({ tipo: 'dispositivo editado', descripcion: `${originalEtiqueta} actualizado`, operador: payload.operator, origen: 'Local', etiqueta: payload.etiqueta, siteCode });
     res.json({ ok: true, item: payload, syncing: true });
-    proxyAppsScript('adddevice', payload).catch(error => console.warn('[devices/edit sync]', error?.message || error));
+    proxyAppsScript('adddevice', payload, 'POST', { siteCode }).catch(error => console.warn(`[devices/edit sync:${siteCode}]`, error?.message || error));
   } catch (error) {
     next(error);
   }
@@ -125,7 +127,7 @@ devicesRouter.post('/devices/status', async (req, res, next) => {
     invalidateDeviceInventoryCache('device-status', siteCode);
     addLocalMovement({ tipo: 'estado dispositivo', descripcion: `${req.body.etiqueta} -> ${req.body.estado}`, operador: req.body.operator, origen: 'Local', etiqueta: req.body.etiqueta, siteCode });
     res.json({ ok: true, syncing: true });
-    proxyAppsScript('status', req.body).catch(error => console.warn('[devices/status sync]', error?.message || error));
+    proxyAppsScript('status', { ...req.body, siteCode }, 'POST', { siteCode }).catch(error => console.warn(`[devices/status sync:${siteCode}]`, error?.message || error));
   } catch (error) {
     next(error);
   }

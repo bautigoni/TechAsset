@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { SiteInfo } from '../../types';
+import type { AuthUser, SiteInfo } from '../../types';
 import { getSites, saveSite } from '../../services/authApi';
 import { Button } from '../layout/Button';
 
@@ -16,13 +16,14 @@ const blankSite: SiteInfo & { isNew?: boolean } = {
   isNew: true
 };
 
-export function SiteAdminPanel({ onChanged }: { onChanged?: () => void }) {
+export function SiteAdminPanel({ user, onChanged }: { user: AuthUser; onChanged?: () => void }) {
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [draft, setDraft] = useState<SiteInfo & { isNew?: boolean }>(blankSite);
   const [message, setMessage] = useState('');
 
   const load = () => getSites().then(r => setSites(r.items));
   useEffect(() => { load().catch(() => setSites([])); }, []);
+  const isSuperadmin = user.rolGlobal === 'Superadmin';
 
   const edit = (site: SiteInfo) => {
     setDraft({ ...site, isNew: false });
@@ -45,7 +46,7 @@ export function SiteAdminPanel({ onChanged }: { onChanged?: () => void }) {
     <section className="card">
       <div className="card-head">
         <h3>Administrar sedes</h3>
-        <Button onClick={() => setDraft(blankSite)}>Nueva sede</Button>
+        {isSuperadmin && <Button onClick={() => setDraft(blankSite)}>Nueva sede</Button>}
       </div>
       <div className="table-wrap">
         <table className="compact-table">
@@ -65,7 +66,7 @@ export function SiteAdminPanel({ onChanged }: { onChanged?: () => void }) {
       </div>
       <div className="site-admin-form">
         <div className="grid-2">
-          <label>Código<input className="input" value={draft.siteCode} disabled={!draft.isNew} onChange={e => setDraft(s => ({ ...s, siteCode: e.target.value.toUpperCase() }))} placeholder="NFND" /></label>
+          <label>Código<input className="input" value={draft.siteCode} disabled={!draft.isNew || !isSuperadmin} onChange={e => setDraft(s => ({ ...s, siteCode: e.target.value.toUpperCase() }))} placeholder="NFND" /></label>
           <label>Nombre<input className="input" value={draft.nombre || ''} onChange={e => setDraft(s => ({ ...s, nombre: e.target.value }))} placeholder="Northfield Nordelta" /></label>
         </div>
         <label>Subtítulo<input className="input" value={draft.subtitulo || ''} onChange={e => setDraft(s => ({ ...s, subtitulo: e.target.value }))} /></label>
@@ -75,10 +76,10 @@ export function SiteAdminPanel({ onChanged }: { onChanged?: () => void }) {
           <label>Inventory sheet name<input className="input" value={draft.inventorySheetName || ''} onChange={e => setDraft(s => ({ ...s, inventorySheetName: e.target.value }))} /></label>
           <label>Color / logo<input className="input" value={draft.themeColor || ''} onChange={e => setDraft(s => ({ ...s, themeColor: e.target.value }))} placeholder="#2563eb" /></label>
         </div>
-        <label className="toggle-row">
+        {isSuperadmin && <label className="toggle-row">
           <input type="checkbox" checked={draft.activo !== false} onChange={e => setDraft(s => ({ ...s, activo: e.target.checked }))} />
           <span>Sede activa</span>
-        </label>
+        </label>}
         <div className="actions"><Button variant="primary" onClick={save}>Guardar sede</Button></div>
         {message && <div className={message.includes('guardada') ? 'tool-info' : 'tool-error'}>{message}</div>}
       </div>

@@ -29,7 +29,8 @@ operationsRouter.patch('/internal-notes/:id', (req, res) => {
   const old = getDb().prepare('SELECT * FROM internal_notes WHERE id=? AND site_code=?').get(req.params.id, requireSite(req));
   if (!old) return res.status(404).json({ ok: false, error: 'Nota no encontrada.' });
   const ts = nowIso();
-  getDb().prepare('UPDATE internal_notes SET texto=?, categoria=?, importante=?, archivada=?, visible=?, deleted_at=?, deleted_by=?, updated_at=? WHERE id=?')
+  const siteCode = requireSite(req);
+  getDb().prepare('UPDATE internal_notes SET texto=?, categoria=?, importante=?, archivada=?, visible=?, deleted_at=?, deleted_by=?, updated_at=? WHERE id=? AND site_code=?')
     .run(
       req.body.texto ?? old.texto,
       req.body.categoria ?? old.categoria,
@@ -39,9 +40,10 @@ operationsRouter.patch('/internal-notes/:id', (req, res) => {
       req.body.visible === false ? ts : (old.deleted_at || ''),
       req.body.visible === false ? (req.body.operator || req.body.operador || '') : (old.deleted_by || ''),
       ts,
-      req.params.id
+      req.params.id,
+      siteCode
     );
-  res.json({ ok: true, item: rowToNote(getDb().prepare('SELECT * FROM internal_notes WHERE id=?').get(req.params.id)) });
+  res.json({ ok: true, item: rowToNote(getDb().prepare('SELECT * FROM internal_notes WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
 operationsRouter.delete('/internal-notes/:id', (req, res) => {
@@ -89,9 +91,10 @@ operationsRouter.patch('/quick-links/:id', (req, res) => {
   if (!old) return res.status(404).json({ ok: false, error: 'Acceso no encontrado.' });
   const payload = normalizeQuickLink({ ...old, ...req.body });
   if (!isSafeUrl(payload.url)) return res.status(400).json({ ok: false, error: 'Solo se permiten URLs http:// o https://.' });
-  getDb().prepare('UPDATE quick_links SET titulo=?, url=?, descripcion=?, categoria=?, icono=?, updated_at=? WHERE id=?')
-    .run(payload.titulo, payload.url, payload.descripcion, payload.categoria, payload.icono, nowIso(), req.params.id);
-  res.json({ ok: true, item: rowToQuickLink(getDb().prepare('SELECT * FROM quick_links WHERE id=?').get(req.params.id)) });
+  const siteCode = requireSite(req);
+  getDb().prepare('UPDATE quick_links SET titulo=?, url=?, descripcion=?, categoria=?, icono=?, updated_at=? WHERE id=? AND site_code=?')
+    .run(payload.titulo, payload.url, payload.descripcion, payload.categoria, payload.icono, nowIso(), req.params.id, siteCode);
+  res.json({ ok: true, item: rowToQuickLink(getDb().prepare('SELECT * FROM quick_links WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
 operationsRouter.delete('/quick-links/:id', (req, res) => {
@@ -104,13 +107,13 @@ operationsRouter.get('/settings/shifts', (_req, res) => {
   const map = Object.fromEntries(rows.map(row => {
     try { return [row.key, JSON.parse(row.value_json)]; } catch { return [row.key, row.value_json]; }
   }));
-  res.json({ ok: true, settings: { morningOperator: map['shift.morningOperator'] || 'Bauti', afternoonOperator: map['shift.afternoonOperator'] || 'Equi' } });
+  res.json({ ok: true, settings: { morningOperator: map['shift.morningOperator'] || '', afternoonOperator: map['shift.afternoonOperator'] || '' } });
 });
 
 operationsRouter.patch('/settings/shifts', (req, res) => {
   const ts = nowIso();
-  const morning = req.body?.morningOperator || 'Bauti';
-  const afternoon = req.body?.afternoonOperator || 'Equi';
+  const morning = req.body?.morningOperator || '';
+  const afternoon = req.body?.afternoonOperator || '';
   const siteCode = requireSite(req);
   const stmt = getDb().prepare('INSERT INTO site_settings (site_code, key, value_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(site_code, key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at');
   stmt.run(siteCode, 'shift.morningOperator', JSON.stringify(morning), ts);

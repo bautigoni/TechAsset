@@ -51,7 +51,7 @@ export interface ClassroomSummary {
 
 export type DeviceState = 'Disponible' | 'Prestado' | 'No encontrada' | 'Fuera de servicio';
 export type DeviceType = string;
-export type Operator = 'Equi' | 'Bauti' | 'Lau' | 'Gus' | 'Mastro' | 'Fede';
+export type Operator = string;
 
 export interface SiteInfo {
   siteCode: string;

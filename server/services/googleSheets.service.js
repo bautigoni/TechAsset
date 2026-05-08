@@ -78,10 +78,10 @@ export async function fetchDevicesJsonFromAppsScript(options = {}) {
 }
 
 export function cachePathForSite(siteCode) {
-  if (!siteCode || siteCode === config.defaultSiteCode) return config.cacheCsvPath;
   const ext = path.extname(config.cacheCsvPath) || '.csv';
   const base = config.cacheCsvPath.slice(0, -ext.length);
-  return `${base}_${String(siteCode).toLowerCase()}${ext}`;
+  const code = String(siteCode || config.defaultSiteCode || 'NFPT').toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  return `${base}_${code}${ext}`;
 }
 
 export function parseDevicesCsv(text) {

@@ -21,7 +21,8 @@ export function useDevices(search: string) {
         hasDevices.current = nextDevices.length > 0;
         setDevices(nextDevices);
         const cacheNote = data.diagnostics?.respondedWithCache ? 'cache inmediato' : 'actualizado';
-        setSync({ state: 'ok', loadedAt: data.loadedAt, message: `${data.source} · ${cacheNote}` });
+        const diagMessage = typeof data.diagnostics?.message === 'string' ? data.diagnostics.message : '';
+        setSync({ state: data.diagnostics?.emptyFallback ? 'error' : 'ok', loadedAt: data.loadedAt, message: diagMessage || `${data.source} · ${cacheNote}` });
       } catch (error) {
         setSync(current => current.state === 'ok'
           ? { ...current, message: current.message || 'Inventario cargado desde cache local.' }

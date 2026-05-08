@@ -1,16 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { TaskItem } from '../../types';
 import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
 import { ddMmToIso, formatDdMm, isValidDdMm } from '../../utils/taskDate';
+import { getSiteAssistants } from '../../services/authApi';
 
-const ASSIGN_OPTIONS = ['Bauti', 'Equi', 'Ambos'] as const;
 const TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'] as const;
 
-export function TaskModal({ onClose, onSave, initial }: { onClose: () => void; onSave: (task: Partial<TaskItem>) => Promise<unknown>; initial?: Partial<TaskItem> }) {
-  const [task, setTask] = useState<Partial<TaskItem>>({ responsable: 'Bauti', prioridad: 'Media', estado: 'Pendiente', ...initial });
+export function TaskModal({ onClose, onSave, initial, operator }: { onClose: () => void; onSave: (task: Partial<TaskItem>) => Promise<unknown>; initial?: Partial<TaskItem>; operator: string }) {
+  const [assistants, setAssistants] = useState<string[]>([]);
+  const [task, setTask] = useState<Partial<TaskItem>>({ responsable: operator || 'Sin asignar', prioridad: 'Media', estado: 'Pendiente', ...initial });
   const [dateInput, setDateInput] = useState(formatDdMm(task.fechaVencimiento));
   const update = (key: keyof TaskItem, value: string) => setTask(current => ({ ...current, [key]: value }));
+  useEffect(() => {
+    getSiteAssistants()
+      .then(response => setAssistants(response.items.map(item => item.name).filter(Boolean)))
+      .catch(() => setAssistants([]));
+  }, []);
+  const assignOptions = useMemo(() => {
+    const names = Array.from(new Set([operator, ...assistants, task.responsable].map(item => String(item || '').trim()).filter(Boolean)));
+    const shared = names.length > 1 ? [names.join(',')] : [];
+    return [...names, ...shared];
+  }, [assistants, operator, task.responsable]);
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -28,7 +39,7 @@ export function TaskModal({ onClose, onSave, initial }: { onClose: () => void; o
         <div className="grid-2">
           <label>Responsable
             <select className="input" value={task.responsable} onChange={e => update('responsable', e.target.value)}>
-              {ASSIGN_OPTIONS.map(item => <option key={item} value={item}>{item}</option>)}
+              {assignOptions.map(item => <option key={item} value={item}>{item}</option>)}
             </select>
           </label>
           <label>Prioridad<select className="input" value={task.prioridad} onChange={e => update('prioridad', e.target.value)}><option>Baja</option><option>Media</option><option>Urgente</option></select></label>

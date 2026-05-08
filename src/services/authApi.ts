@@ -13,6 +13,12 @@ export const getAuthSession = () => apiGet<AuthSession>('/api/auth/session');
 export const login = (payload: { email: string; nombre?: string; role?: string; turno?: string; siteCode?: string; siteCodes?: string[] }) =>
   apiSend<AuthSession>('/api/auth/login', 'POST', payload);
 
+export const getRegisterOptions = () =>
+  apiGet<{ ok: true; sites: SiteInfo[] }>('/api/auth/register-options');
+
+export const register = (payload: { email: string; nombre: string; role: string; siteCode: string; turno?: string }) =>
+  apiSend<AuthSession>('/api/auth/register', 'POST', payload);
+
 export const logout = () => apiSend<{ ok: true }>('/api/auth/logout', 'POST');
 
 export const getSiteSettings = () => apiGet<{ ok: true; siteCode: string; settings: Record<string, unknown> }>('/api/site-settings');
@@ -49,6 +55,8 @@ export type AllowedUserItem = {
 };
 
 export const getAllowedUsers = () => apiGet<{ ok: true; items: AllowedUserItem[] }>('/api/allowed-users');
+
+export const getSiteAssistants = () => apiGet<{ ok: true; items: Array<{ name: string; email?: string; siteRole?: string; turno?: string }> }>('/api/site-assistants');
 
 export const saveAllowedUser = (user: AllowedUserItem) =>
   apiSend<{ ok: true; item: AllowedUserItem }>(user.id ? `/api/allowed-users/${user.id}` : '/api/allowed-users', user.id ? 'PATCH' : 'POST', user);

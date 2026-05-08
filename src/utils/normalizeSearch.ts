@@ -71,7 +71,7 @@ export function matchesSmartSearch(device: Device, query: string): boolean {
   const aliasQuery = parseOperationalAlias(query);
   if (aliasQuery) {
     const explicitMatch = getOperationalAliasList(device).some(alias => normalizeAlias(alias) === normalizeAlias(query));
-    return explicitMatch || (classifyDeviceType(device) === aliasQuery.type && String(Number(clean(device.numero))) === aliasQuery.number);
+    return explicitMatch || (normalizeSearchKey(classifyDeviceType(device)) === aliasQuery.type && String(Number(clean(device.numero))) === aliasQuery.number);
   }
 
   const q = normalizeDeviceSearch(query);
@@ -129,7 +129,7 @@ export function resolveDeviceMatches(devices: Device[], raw: string): Device[] {
   const aliasQuery = parseOperationalAlias(code);
   if (aliasQuery) {
     devices.forEach(device => {
-      if (classifyDeviceType(device) === aliasQuery.type && String(Number(clean(device.numero))) === aliasQuery.number) add(device);
+      if (normalizeSearchKey(classifyDeviceType(device)) === aliasQuery.type && String(Number(clean(device.numero))) === aliasQuery.number) add(device);
     });
     return matches;
   }
