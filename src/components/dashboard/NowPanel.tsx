@@ -74,7 +74,7 @@ export function NowPanel({ agenda, tasks, onAgenda, onTasks }: { agenda: AgendaI
           <strong>{pendingTodayCount ? `${pendingTodayCount} pendiente${pendingTodayCount === 1 ? '' : 's'} hoy` : agendaToday.length ? `${agendaToday.length} en curso hoy` : 'Sin pendientes hoy'}</strong>
         </div>
         <div className="list-item">
-          <div className="muted">Proxima agenda</div>
+          <div className="muted">Próxima agenda</div>
           <strong>{nextAgenda ? `${currentAgenda ? 'En curso' : nextAgenda.desde} · ${nextAgenda.curso || nextAgenda.actividad}` : 'Sin próximas actividades'}</strong>
         </div>
         <div className="list-item">

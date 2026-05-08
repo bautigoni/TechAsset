@@ -23,6 +23,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
   const [items, setItems] = useState<Classroom[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedNombre, setSelectedNombre] = useState<string>('');
+  const [message, setMessage] = useState('');
 
   const refresh = useCallback(async () => {
     if (activeSite !== 'NFPT') return;
@@ -62,11 +63,16 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
 
   const handleRoomClick = (roomKey: string, nombre: string) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setMessage('');
     setSelectedKey(roomKey);
     setSelectedNombre(nombre);
   };
 
-  const handleClose = () => { setSelectedKey(null); refresh(); };
+  const handleClose = (saved = false) => {
+    setSelectedKey(null);
+    if (saved) setMessage('Cambios guardados.');
+    refresh();
+  };
 
   if (activeSite !== 'NFPT') {
     return (
@@ -79,6 +85,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
   return (
     <section className="view active">
       <div className="classrooms-page">
+        {message && <div className="tool-info">{message}</div>}
         <div className="classrooms-floor-selector">
           {FLOORS.map(f => (
             <button

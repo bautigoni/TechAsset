@@ -1,4 +1,4 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'analytics' | 'agenda' | 'tasks' | 'classrooms' | 'tools' | 'quickaccess' | 'assistant' | 'settings';
+export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'tasks' | 'classrooms' | 'tools' | 'quickaccess' | 'assistant' | 'settings';
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
@@ -181,6 +181,21 @@ export interface InternalNote {
   deletedBy?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface InventoryItem {
+  id: number;
+  siteCode?: string;
+  nombre: string;
+  categoria: string;
+  cantidad: number;
+  unidad: string;
+  imagenUrl?: string;
+  estado?: string;
+  observaciones?: string;
+  activo?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface QuickLink {

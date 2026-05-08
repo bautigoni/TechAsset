@@ -10,25 +10,29 @@ export function useDevices(search: string) {
   const [sync, setSync] = useState<SyncStatus>({ state: 'loading' });
   const refreshInFlight = useRef<Promise<void> | null>(null);
   const hasDevices = useRef(false);
+  const requestSeq = useRef(0);
 
   const refresh = useCallback((options: { force?: boolean; wait?: boolean } = {}) => {
     if (refreshInFlight.current && !options.force) return refreshInFlight.current;
+    const requestId = ++requestSeq.current;
     const promise = (async () => {
-      setSync(current => hasDevices.current ? current : { state: 'loading' });
+      setSync(current => options.force ? { state: 'loading', message: 'Recargando hoja...' } : hasDevices.current ? current : { state: 'loading' });
       try {
         const data = await getDevices(options);
+        if (requestId !== requestSeq.current) return;
         const nextDevices = withOperationalAliases(data.items);
         hasDevices.current = nextDevices.length > 0;
         setDevices(nextDevices);
         const cacheNote = data.diagnostics?.respondedWithCache ? 'cache inmediato' : 'actualizado';
         const diagMessage = typeof data.diagnostics?.message === 'string' ? data.diagnostics.message : '';
-        setSync({ state: data.diagnostics?.emptyFallback ? 'error' : 'ok', loadedAt: data.loadedAt, message: diagMessage || `${data.source} · ${cacheNote}` });
+        setSync({ state: data.diagnostics?.emptyFallback ? 'error' : 'ok', loadedAt: data.loadedAt, message: diagMessage || `${data.source} - ${cacheNote}` });
       } catch (error) {
+        if (requestId !== requestSeq.current) return;
         setSync(current => current.state === 'ok'
           ? { ...current, message: current.message || 'Inventario cargado desde cache local.' }
           : { state: 'error', message: error instanceof Error ? error.message : 'Error' });
       } finally {
-        refreshInFlight.current = null;
+        if (requestId === requestSeq.current) refreshInFlight.current = null;
       }
     })();
     refreshInFlight.current = promise;

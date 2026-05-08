@@ -17,8 +17,12 @@ const stateCacheBySite = new Map();
 const stateInflightBySite = new Map();
 const inventoryCache = new Map();
 const inventoryInflight = new Map();
+const inventoryRefreshGeneration = new Map();
 const diagnosticsBySite = new Map();
+const stateStatusBySite = new Map();
+const stateWarningBySite = new Map();
 const EMPTY_RETRY_MS = 2 * 60 * 1000;
+const STATE_WARNING_INTERVAL_MS = 5 * 60 * 1000;
 const baseDiagnostics = {
   source: 'sin datos',
   lastSuccessfulReadAt: '',
@@ -48,36 +52,79 @@ function getStateCache(siteCode) {
   return stateCacheBySite.get(siteCode) || { rows: [], fetchedAt: 0 };
 }
 
-function refreshStateInBackground(siteCode) {
-  if (stateInflightBySite.get(siteCode)) return stateInflightBySite.get(siteCode);
+function getStateStatus(siteCode) {
+  return stateStatusBySite.get(siteCode) || { ok: false, lastError: '', lastAttemptAt: 0, lastOkAt: 0 };
+}
+
+function setStateStatus(siteCode, patch) {
+  const next = { ...getStateStatus(siteCode), ...patch };
+  stateStatusBySite.set(siteCode, next);
+  return next;
+}
+
+function logStateWarning(siteCode, error) {
+  const message = readableError(error);
+  const now = Date.now();
+  const debug = process.env.DEBUG_DEVICE_STATE === '1' || process.env.DEBUG_DEVICE_STATE === 'true';
+  const last = stateWarningBySite.get(siteCode) || { at: 0, message: '' };
+  if (!debug && last.message === message && now - last.at < STATE_WARNING_INTERVAL_MS) return;
+  stateWarningBySite.set(siteCode, { at: now, message });
+  console.warn(`[devices:${siteCode}] Apps Script state unavailable: ${message}`);
+}
+
+function refreshStateInBackground(siteCode, { force = false } = {}) {
+  const current = stateInflightBySite.get(siteCode);
+  if (!force && current?.promise) return current.promise;
+  const generation = (current?.generation || 0) + 1;
   const stateInflight = (async () => {
     try {
       const result = await proxyAppsScript('state', { siteCode }, 'GET', { siteCode });
+      if (result?.skipped) {
+        setStateStatus(siteCode, { ok: false, lastError: result.message || 'APPS_SCRIPT_URL no configurado.', lastAttemptAt: Date.now() });
+        return;
+      }
       const rows = Array.isArray(result?.rows) ? result.rows : Array.isArray(result?.items) ? result.items : [];
-      stateCacheBySite.set(siteCode, {
-        rows: rows.map(row => normalizeStateRow(row)).filter(device => device.etiqueta),
-        fetchedAt: Date.now()
-      });
+      const normalizedRows = rows.map(row => normalizeStateRow(row)).filter(device => device.etiqueta);
+      if (!normalizedRows.length) throw new Error('Apps Script state devolvió una respuesta vacía.');
+      if (stateInflightBySite.get(siteCode)?.generation === generation) {
+        stateCacheBySite.set(siteCode, {
+          rows: normalizedRows,
+          fetchedAt: Date.now()
+        });
+        setStateStatus(siteCode, { ok: true, lastError: '', lastAttemptAt: Date.now(), lastOkAt: Date.now() });
+      }
     } catch (error) {
-      console.warn(`[devices:${siteCode}] Apps Script state unavailable: ${error instanceof Error ? error.message : 'unknown error'}`);
-      stateCacheBySite.set(siteCode, { ...getStateCache(siteCode), fetchedAt: Date.now() });
+      logStateWarning(siteCode, error);
+      if (stateInflightBySite.get(siteCode)?.generation === generation) {
+        const currentCache = getStateCache(siteCode);
+        if (currentCache.rows.length) stateCacheBySite.set(siteCode, { ...currentCache, fetchedAt: Date.now() });
+        setStateStatus(siteCode, { ok: false, lastError: readableError(error), lastAttemptAt: Date.now() });
+      }
     } finally {
-      stateInflightBySite.delete(siteCode);
+      const current = stateInflightBySite.get(siteCode);
+      if (current?.generation === generation) stateInflightBySite.delete(siteCode);
     }
   })();
-  stateInflightBySite.set(siteCode, stateInflight);
+  stateInflightBySite.set(siteCode, { promise: stateInflight, generation });
   return stateInflight;
 }
 
-async function loadAppsScriptState({ wait = false, siteCode } = {}) {
+async function loadAppsScriptState({ wait = false, force = false, siteCode } = {}) {
   const stateCache = getStateCache(siteCode);
   const age = Date.now() - stateCache.fetchedAt;
-  const stale = age > STATE_CACHE_TTL_MS;
+  const stale = force || age > STATE_CACHE_TTL_MS;
   if (stale || !stateCache.fetchedAt) {
-    const promise = refreshStateInBackground(siteCode);
-    if (wait) await promise;
+    const promise = refreshStateInBackground(siteCode, { force });
+    if (wait || force) await promise;
   }
-  return getStateCache(siteCode).rows;
+  const cache = getStateCache(siteCode);
+  const status = getStateStatus(siteCode);
+  return {
+    rows: cache.rows,
+    ok: Boolean(cache.rows.length && (status.ok || status.lastOkAt)),
+    fresh: Boolean(cache.rows.length && status.ok),
+    lastError: status.lastError
+  };
 }
 
 export async function getMergedDevices({ forceRefresh = false, waitForFresh = false, siteCode = config.defaultSiteCode || 'NFPT' } = {}) {
@@ -116,6 +163,9 @@ export async function getMergedDevices({ forceRefresh = false, waitForFresh = fa
     const diagnostics = getDiagnostics(siteCode);
     diagnostics.lastError = readableError(error);
     diagnostics.timedOut = isTimeoutError(error);
+    if (forceRefresh) {
+      throw new Error(diagnostics.lastError || `No se pudo recargar la hoja de ${siteCode}.`);
+    }
     if (cache) return fromCache(cache, 'memory cache after refresh error', true, siteCode);
     const local = await buildFromLocalCsvCache({}, siteCode);
     if (local) {
@@ -149,22 +199,24 @@ export function getDeviceInventoryDiagnostics(siteCode = config.defaultSiteCode 
 function refreshInventoryInBackground(reason, siteCode) {
   const cache = inventoryCache.get(siteCode);
   if (cache?.emptyFallback && Date.now() - cache.fetchedAt < EMPTY_RETRY_MS) return Promise.resolve(cache);
-  if (inventoryInflight.get(siteCode)) return inventoryInflight.get(siteCode);
+  const current = inventoryInflight.get(siteCode);
+  if (current?.promise) return current.promise;
   const promise = refreshInventory({ reason, siteCode }).catch(error => {
     const diagnostics = getDiagnostics(siteCode);
     diagnostics.lastError = readableError(error);
     diagnostics.timedOut = isTimeoutError(error);
     console.warn(`[devices:${siteCode}] background refresh failed: ${diagnostics.lastError}`);
     return null;
-  }).finally(() => {
-    inventoryInflight.delete(siteCode);
   });
-  inventoryInflight.set(siteCode, promise);
   return promise;
 }
 
 async function refreshInventory({ reason, siteCode }) {
-  if (inventoryInflight.get(siteCode)) return inventoryInflight.get(siteCode);
+  const force = reason === 'force-refresh';
+  const current = inventoryInflight.get(siteCode);
+  if (!force && current?.promise) return current.promise;
+  const generation = (inventoryRefreshGeneration.get(siteCode) || 0) + 1;
+  inventoryRefreshGeneration.set(siteCode, generation);
   const promise = (async () => {
     const timings = {};
     const totalStart = performance.now();
@@ -184,11 +236,15 @@ async function refreshInventory({ reason, siteCode }) {
         source = live.updatedAt ? `${live.source} (${live.updatedAt})` : live.source;
         timings['parse-csv'] = 0;
       }
+      if (!sheetDevices.length) throw new Error('La hoja no devolvió dispositivos.');
     } catch (error) {
       timedOut = isTimeoutError(error);
       const diagnostics = getDiagnostics(siteCode);
       diagnostics.lastError = readableError(error);
       diagnostics.timedOut = timedOut;
+      if (force) {
+        throw new Error(`No se pudo recargar la hoja de ${siteCode}: ${diagnostics.lastError}`);
+      }
       const local = await buildFromLocalCsvCache({ failedExternalFetchMs: timings['fetch-sheet'] || 0, externalError: error }, siteCode);
       if (local) {
         inventoryCache.set(siteCode, local);
@@ -197,18 +253,22 @@ async function refreshInventory({ reason, siteCode }) {
       return buildEmptyInventory(siteCode, 'Inventario no disponible.', { error, timedOut });
     }
 
-    const merged = await buildMergedResult(filterBySite(sheetDevices, siteCode), source, timings, siteCode);
+    const merged = await buildMergedResult(filterBySite(sheetDevices, siteCode), source, timings, siteCode, reason === 'force-refresh');
     merged.fetchedAt = Date.now();
     merged.loadedAt = new Date().toISOString();
     merged.reason = reason;
     timings.total = Math.round(performance.now() - totalStart);
+    if (inventoryRefreshGeneration.get(siteCode) !== generation) {
+      return inventoryCache.get(siteCode) || merged;
+    }
     updateDiagnostics(merged, timings, { timedOut, error: '' }, siteCode);
     inventoryCache.set(siteCode, merged);
     return merged;
   })().finally(() => {
-    inventoryInflight.delete(siteCode);
+    const current = inventoryInflight.get(siteCode);
+    if (current?.generation === generation) inventoryInflight.delete(siteCode);
   });
-  inventoryInflight.set(siteCode, promise);
+  inventoryInflight.set(siteCode, { promise, generation, reason });
   return promise;
 }
 
@@ -230,19 +290,40 @@ async function buildFromLocalCsvCache(extra = {}, siteCode) {
   return result;
 }
 
-async function buildMergedResult(sheetDevices, source, timings, siteCode) {
-  const stateDevices = filterBySite(await loadAppsScriptState({ siteCode }), siteCode);
+async function buildMergedResult(sheetDevices, source, timings, siteCode, forceState = false) {
+  const stateResult = await loadAppsScriptState({ siteCode, force: forceState, wait: forceState });
+  const stateDevices = filterBySite(stateResult.rows, siteCode);
+  const preferExternalState = forceState && stateResult.fresh && stateDevices.length > 0;
   return timed('merge-local-state', timings, async () => {
     const localStates = getLocalStates(siteCode);
     const masterDevices = await loadAppDevices(siteCode);
     const localDevices = loadLocalDevices(siteCode);
-    const overrideState = mergeStateOverrides(stateDevices, localStates);
-    const items = mergeDevices(masterDevices.length ? masterDevices : sheetDevices, sheetDevices, overrideState, localDevices, !masterDevices.length, siteCode);
+    const previousRuntimeStates = preferExternalState ? [] : operationalSnapshotsFromCache(siteCode);
+    const overrideState = mergeStateOverrides(stateDevices, [...previousRuntimeStates, ...localStates], { preferExternal: preferExternalState });
+    const items = mergeDevices(masterDevices.length ? masterDevices : sheetDevices, sheetDevices, overrideState, localDevices, !masterDevices.length, siteCode, { preferExternalState });
     return {
       items,
-      source: [source, stateDevices.length ? 'Apps Script state' : '', localStates.length ? 'Estado local' : '', masterDevices.length ? 'Dispositivos APP' : ''].filter(Boolean).join(' + ')
+      source: [source, stateDevices.length ? (stateResult.fresh ? 'Apps Script state' : 'Último state válido') : '', previousRuntimeStates.length ? 'Último estado operativo' : '', localStates.length ? 'Estado local' : '', masterDevices.length ? 'Dispositivos APP' : ''].filter(Boolean).join(' + ')
     };
   });
+}
+
+function operationalSnapshotsFromCache(siteCode) {
+  const cache = inventoryCache.get(siteCode);
+  if (!Array.isArray(cache?.items)) return [];
+  return cache.items
+    .filter(device => ['Prestado', 'No encontrada', 'Fuera de servicio', 'Perdida'].includes(String(device.estado || '').trim()))
+    .map(device => ({
+      etiqueta: device.etiqueta,
+      estado: device.estado === 'Perdida' ? 'No encontrada' : device.estado,
+      prestadoA: device.prestadoA || '',
+      rol: device.rol || '',
+      ubicacion: device.ubicacion || '',
+      motivo: device.motivo || '',
+      comentarios: device.comentarios || '',
+      loanedAt: device.loanedAt || '',
+      returnedAt: device.returnedAt || ''
+    }));
 }
 
 async function timed(label, timings, fn) {
@@ -311,11 +392,14 @@ const LOCAL_TRIVIAL_STATES = new Set(['', 'Disponible', 'Devuelto']);
 // Ventana en la que confiamos en local por encima de la planilla (segundos para que la sincronización con GAS llegue).
 const LOCAL_PRECEDENCE_WINDOW_MS = 90 * 1000;
 
-function mergeStateOverrides(stateDevices, localStates) {
+function mergeStateOverrides(stateDevices, localStates, { preferExternal = false } = {}) {
   const map = new Map();
   for (const device of stateDevices) {
     const key = normalizeTag(device.etiqueta);
     if (key) map.set(key, device);
+  }
+  if (preferExternal) {
+    return [...map.values()];
   }
   const now = Date.now();
   for (const local of localStates) {
@@ -445,11 +529,13 @@ function loadLocalDevices(siteCode) {
 
 function normalizeStateRow(row) {
   const estado = normalizeAppState(row.estado || row.state || row.status || '', row.prestada || row.prestadoA || row.persona || '');
+  const numero = firstOperationalNumber(row.numero, row.nro, row.number, row.alias, row.aliasOperativo);
+  const categoria = normalizeCategory(row.categoria || row.tipo || row.category || '');
   return {
     siteCode: row.siteCode || row.site_code || row.sede || row.Sede || '',
     etiqueta: row.etiqueta || row.codigo || row.code || '',
-    numero: row.numero || row.alias || '',
-    categoria: normalizeCategory(row.categoria || row.tipo || row.category || ''),
+    numero,
+    categoria,
     modelo: row.modelo || '',
     estado,
     prestadoA: row.prestada || row.prestadoA || row.persona || '',
@@ -459,11 +545,12 @@ function normalizeStateRow(row) {
     motivo: row.motivo || '',
     loanedAt: row.fechaPrestado || row.horarioPrestamo || row.loanedAt || '',
     returnedAt: row.fechaDevuelto || row.horarioDevolucion || row.returnedAt || '',
-    ultima: row.ultima || row.ultimaModificacion || ''
+    ultima: row.ultima || row.ultimaModificacion || '',
+    aliasOperativo: buildStableOperationalAlias(row.aliasOperativo || row.alias || '', categoria, numero)
   };
 }
 
-function mergeDevices(masterDevices, sheetDevices, stateDevices, localDevices, includeSheetExtras = true, siteCode) {
+function mergeDevices(masterDevices, sheetDevices, stateDevices, localDevices, includeSheetExtras = true, siteCode, options = {}) {
   const hidden = new Set(getDb().prepare('SELECT etiqueta FROM hidden_devices WHERE site_code=?').all(siteCode).map(row => normalizeTag(row.etiqueta)));
   const sheetByTag = new Map(sheetDevices.map(device => [normalizeTag(device.etiqueta), device]));
   const stateByTag = new Map(stateDevices.map(device => [normalizeTag(device.etiqueta), device]));
@@ -473,23 +560,28 @@ function mergeDevices(masterDevices, sheetDevices, stateDevices, localDevices, i
     const key = normalizeTag(master.etiqueta);
     seen.add(key);
     if (hidden.has(key)) return null;
-    return mergeDevice(master, sheetByTag.get(key), stateByTag.get(key), localByTag.get(key));
+    return mergeDevice(master, sheetByTag.get(key), stateByTag.get(key), localByTag.get(key), options);
   }).filter(Boolean);
   const extras = includeSheetExtras ? [...sheetDevices, ...stateDevices, ...localDevices] : [...stateDevices, ...localDevices];
   for (const device of extras) {
     const key = normalizeTag(device.etiqueta);
     if (key && !seen.has(key) && !hidden.has(key)) {
       seen.add(key);
-      merged.push(mergeDevice(device, sheetByTag.get(key), stateByTag.get(key), localByTag.get(key)));
+      merged.push(mergeDevice(device, sheetByTag.get(key), stateByTag.get(key), localByTag.get(key), options));
     }
   }
   return merged;
 }
 
-function mergeDevice(master, sheet, state, local) {
+function mergeDevice(master, sheet, state, local, { preferExternalState = false } = {}) {
   const inventory = sheet || {};
   const operational = state || {};
   const extra = local || {};
+  const numero = firstOperationalNumber(extra.numero, master.numero, inventory.numero, operational.numero, extra.aliasOperativo, master.aliasOperativo, inventory.aliasOperativo, operational.aliasOperativo);
+  const categoria = normalizeCategory(extra.categoria || master.categoria || inventory.categoria || operational.categoria || inventory.tipo || master.tipo || '');
+  const pickRuntime = (field) => preferExternalState
+    ? firstNonEmpty(operational[field], inventory[field], extra[field], master[field])
+    : firstNonEmpty(operational[field], extra[field], inventory[field], master[field]);
   const merged = {
     ...master,
     ...inventory,
@@ -497,22 +589,24 @@ function mergeDevice(master, sheet, state, local) {
     ...extra,
     siteCode: extra.siteCode || extra.site_code || master.siteCode || master.site_code || inventory.siteCode || inventory.site_code || '',
     etiqueta: master.etiqueta || inventory.etiqueta || operational.etiqueta || extra.etiqueta || '',
-    numero: firstNonEmpty(extra.numero, master.numero, inventory.numero, operational.numero),
-    categoria: normalizeCategory(extra.categoria || master.categoria || inventory.categoria || operational.categoria || inventory.tipo || master.tipo || ''),
-    dispositivo: master.dispositivo || inventory.dispositivo || extra.dispositivo || 'Chromebook',
+    numero,
+    categoria,
+    dispositivo: preferExternalState
+      ? firstNonEmpty(inventory.dispositivo, master.dispositivo, extra.dispositivo, operational.dispositivo, 'Chromebook')
+      : firstNonEmpty(master.dispositivo, inventory.dispositivo, extra.dispositivo, operational.dispositivo, 'Chromebook'),
     marca: master.marca || inventory.marca || extra.marca || '',
     modelo: master.modelo || inventory.modelo || operational.modelo || extra.modelo || '',
     sn: master.sn || inventory.sn || extra.sn || '',
     mac: master.mac || inventory.mac || extra.mac || '',
-    estado: operational.estado || extra.estado || master.estado || 'Disponible',
-    prestadoA: operational.prestadoA || extra.prestadoA || '',
-    rol: operational.rol || extra.rol || '',
-    ubicacion: operational.ubicacion || extra.ubicacion || '',
-    motivo: operational.motivo || extra.motivo || '',
-    loanedAt: operational.loanedAt || extra.loanedAt || '',
-    returnedAt: operational.returnedAt || extra.returnedAt || '',
-    comentarios: operational.comentarios || extra.comentarios || '',
-    aliasOperativo: firstNonEmpty(extra.aliasOperativo, master.aliasOperativo, inventory.aliasOperativo, operational.aliasOperativo)
+    estado: pickRuntime('estado') || 'Disponible',
+    prestadoA: pickRuntime('prestadoA'),
+    rol: pickRuntime('rol'),
+    ubicacion: pickRuntime('ubicacion'),
+    motivo: pickRuntime('motivo'),
+    loanedAt: pickRuntime('loanedAt'),
+    returnedAt: pickRuntime('returnedAt'),
+    comentarios: pickRuntime('comentarios'),
+    aliasOperativo: buildStableOperationalAlias(firstNonEmpty(extra.aliasOperativo, master.aliasOperativo, inventory.aliasOperativo, operational.aliasOperativo), categoria, numero)
   };
   const stateText = String(merged.estado || '').trim().toLowerCase();
   if (stateText === 'disponible' || stateText === 'devuelto') {
@@ -527,6 +621,35 @@ function mergeDevice(master, sheet, state, local) {
 
 function firstNonEmpty(...values) {
   return values.map(value => String(value || '').trim()).find(Boolean) || '';
+}
+
+function firstOperationalNumber(...values) {
+  for (const value of values) {
+    const number = extractOperationalNumber(value);
+    if (number) return number;
+  }
+  return '';
+}
+
+function extractOperationalNumber(value) {
+  const raw = String(value || '').trim();
+  if (!raw || /^D0*\d+$/i.test(raw)) return '';
+  if (/^\d{1,3}$/.test(raw)) return String(Number(raw));
+  const typed = raw.match(/\b(?:plani|touch|tic|dell)\s*0*(\d{1,3})\b/i)
+    || raw.match(/\b0*(\d{1,3})\s*(?:plani|touch|tic|dell)\b/i);
+  return typed ? String(Number(typed[1])) : '';
+}
+
+function buildStableOperationalAlias(alias, category, number) {
+  const firstAlias = String(alias || '').split(',').map(value => value.trim()).find(Boolean) || '';
+  const type = normalizeCategory(category || firstAlias);
+  if (firstAlias && extractOperationalNumber(firstAlias)) {
+    if (type && ['Plani', 'Touch', 'TIC', 'Dell'].includes(type)) return `${type} ${extractOperationalNumber(firstAlias)}`;
+    return firstAlias;
+  }
+  if (firstAlias && number) return `${firstAlias} ${number}`;
+  if (type && number && ['Plani', 'Touch', 'TIC', 'Dell'].includes(type)) return `${type} ${number}`;
+  return firstAlias || (type && number ? `${type} ${number}` : type);
 }
 
 function filterBySite(devices, siteCode) {

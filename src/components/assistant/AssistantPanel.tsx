@@ -9,8 +9,8 @@ interface ChatMessage {
 }
 
 const QUICK_ACTIONS: Record<string, string> = {
-  'Registrar prestamo': 'start_loan',
-  'Registrar devolucion': 'start_return',
+  'Registrar préstamo': 'start_loan',
+  'Registrar devolución': 'start_return',
   'Crear tarea': 'start_task',
   'Crear evento': 'start_agenda',
   'Ver agenda': 'show_agenda',
@@ -106,7 +106,7 @@ export function AssistantPanel({ onNavigate, onLoanDraft }: { onNavigate: (view:
                     <Button onClick={() => {
                       const payload = message.response?.pendingAction?.payload as { codigo_dispositivo?: string } | undefined;
                       if (payload?.codigo_dispositivo) onLoanDraft?.(payload.codigo_dispositivo);
-                    }}>Abrir en Prestamos</Button>
+                    }}>Abrir en Préstamos</Button>
                   </div>
                 )}
               </article>

@@ -37,14 +37,23 @@ export function classifyDeviceType(device: Partial<Device>): DeviceType {
 
 export function getDeviceNumber(device: Partial<Device>): string {
   const direct = clean(device.numero || (device as Record<string, unknown>).number || (device as Record<string, unknown>).nro);
-  if (direct) return direct;
+  const directNumber = extractOperationalNumber(direct);
+  if (directNumber) return directNumber;
   const alias = clean((device as Record<string, unknown>).aliasOperativo);
-  const match = alias.match(/\b(?:plani|touch|tic|dell)\s*0*(\d{1,3})\b/i) || alias.match(/\b0*(\d{1,3})\s*(?:plani|touch|tic|dell)\b/i);
-  return match ? String(Number(match[1])) : '';
+  return extractOperationalNumber(alias);
 }
 
 export function operationalTypeLabel(device: Partial<Device>): string {
   return normalizeDeviceCategory(classifyDeviceType(device)) || 'Otro';
+}
+
+export function getOperationalGroup(device: Partial<Device>): string {
+  return operationalTypeLabel(device);
+}
+
+export function getOperationalNumber(device: Partial<Device>): number {
+  const value = Number(getDeviceNumber(device));
+  return Number.isFinite(value) && value > 0 ? value : Number.MAX_SAFE_INTEGER;
 }
 
 export function getOperationalAlias(device: Partial<Device>): string {
@@ -53,6 +62,8 @@ export function getOperationalAlias(device: Partial<Device>): string {
   const number = getDeviceNumber(device);
   if (explicit) {
     const first = explicit.split(',').map(item => clean(item)).find(Boolean) || explicit;
+    const explicitNumber = extractOperationalNumber(first);
+    if (explicitNumber && ['Plani', 'Touch', 'TIC', 'Dell'].includes(type)) return `${type} ${explicitNumber}`;
     const hasNumber = /\d/.test(first);
     if (!hasNumber && number && ['Plani', 'Touch', 'TIC', 'Dell'].includes(type)) return `${first} ${number}`;
     return first;
@@ -72,9 +83,56 @@ export function getOperationalAliasList(device: Partial<Device>): string[] {
   return fallback ? [fallback] : [];
 }
 
+export function matchesOperationalAlias(device: Partial<Device>, query: string): boolean {
+  const raw = clean(query);
+  if (!raw) return true;
+  const q = normalizeOperationalSearch(raw);
+  const label = normalizeOperationalSearch(device.etiqueta);
+  if (label.includes(q)) return true;
+
+  const group = getOperationalGroup(device);
+  const number = getDeviceNumber(device);
+  const candidates = [
+    getOperationalAlias(device),
+    ...getOperationalAliasList(device),
+    device.aliasOperativo,
+    device.numero,
+    group && number ? `${group} ${number}` : '',
+    group && number ? `${group}${number}` : ''
+  ];
+  return candidates.some(candidate => normalizeOperationalSearch(candidate).includes(q));
+}
+
+export function sortByOperationalAlias<T extends Partial<Device>>(devices: T[]): T[] {
+  return [...devices].sort((a, b) => {
+    const groupCompare = getOperationalGroup(a).localeCompare(getOperationalGroup(b), 'es');
+    if (groupCompare) return groupCompare;
+    const numberCompare = getOperationalNumber(a) - getOperationalNumber(b);
+    if (numberCompare) return numberCompare;
+    return String(a.etiqueta || '').localeCompare(String(b.etiqueta || ''), 'es', { numeric: true });
+  });
+}
+
 function tagSortKey(etiqueta: string): number {
   const match = String(etiqueta || '').toUpperCase().match(/D0*(\d+)/);
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function extractOperationalNumber(value: unknown): string {
+  const raw = clean(value);
+  if (!raw || /^D0*\d+$/i.test(raw)) return '';
+  if (/^\d{1,3}$/.test(raw)) return String(Number(raw));
+  const match = raw.match(/\b(?:plani|touch|tic|dell)\s*0*(\d{1,3})\b/i)
+    || raw.match(/\b0*(\d{1,3})\s*(?:plani|touch|tic|dell)\b/i);
+  return match ? String(Number(match[1])) : '';
+}
+
+function normalizeOperationalSearch(value: unknown): string {
+  return normalizeText(value)
+    .replace(/planificacion/g, 'plani')
+    .replace(/\bplano\b/g, 'plani')
+    .replace(/\bplan\b/g, 'plani')
+    .replace(/[^a-z0-9]/g, '');
 }
 
 export function withOperationalAliases<T extends Partial<Device> & { id?: string; etiqueta?: string }>(devices: T[]): T[] {

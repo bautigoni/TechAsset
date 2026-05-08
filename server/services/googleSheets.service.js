@@ -12,8 +12,8 @@ const FIELD_ALIASES = {
   modelo: ['modelo', 'model'],
   sn: ['s/n', 'serial', 'numero de serie', 'número de serie'],
   mac: ['mac', 'ma:c :ad:dr:es:s wifi', 'wifi'],
-  numero: ['nombre', 'numero', 'número', 'alias'],
-  aliasOperativo: ['alias operativo', 'alias alternativos', 'aliases', 'alias'],
+  numero: ['nombre', 'numero', 'número', 'nro', 'n°', 'numero operativo', 'número operativo', 'alias'],
+  aliasOperativo: ['alias operativo', 'nombre operativo', 'alias alternativos', 'aliases', 'alias'],
   estado: ['estado', 'estado/devuelto', 'devuelto'],
   prestada: ['prestada', 'prestado a', 'persona'],
   comentarios: ['comentarios', 'comentario'],
@@ -56,7 +56,7 @@ export async function fetchDevicesCsvFromGoogle(options = {}) {
   const response = await fetchWithTimeout(addCacheBuster(toCsvExportUrl(csvUrl)), config.sheetFetchTimeoutMs);
   if (!response.ok) throw new Error(`Google Sheets HTTP ${response.status}`);
   const text = await response.text();
-  if (looksLikeHtml(text)) throw new Error('La URL configurada no devolvio CSV.');
+  if (looksLikeHtml(text)) throw new Error('La URL configurada no devolvió CSV.');
   await writeText(cachePath, text);
   return { text, source: 'Google CSV' };
 }
@@ -122,12 +122,14 @@ function normalizeDevice(row, idx) {
   const etiqueta = get('etiqueta');
   const prestadoA = get('prestada');
   const estado = normalizeAppState(get('estado'), prestadoA);
+  const categoria = normalizeCategory(get('categoria'));
+  const numero = firstOperationalNumber(get('numero'), get('aliasOperativo'));
   return {
     id: makeDeviceId(etiqueta, get('sn'), get('mac')),
     siteCode: get('siteCode'),
     etiqueta,
-    numero: get('numero'),
-    categoria: normalizeCategory(get('categoria')),
+    numero,
+    categoria,
     dispositivo: get('dispositivo') || 'Chromebook',
     marca: get('marca'),
     modelo: get('modelo'),
@@ -142,7 +144,7 @@ function normalizeDevice(row, idx) {
     loanedAt: get('fechaPrestado'),
     returnedAt: get('fechaDevuelto'),
     ultima: get('ultima'),
-    aliasOperativo: get('aliasOperativo')
+    aliasOperativo: buildStableOperationalAlias(get('aliasOperativo'), categoria, numero)
   };
 }
 
@@ -161,12 +163,14 @@ function normalizeDeviceObject(row) {
   const etiqueta = get('etiqueta');
   const prestadoA = get('prestada');
   const estado = normalizeAppState(get('estado'), prestadoA);
+  const categoria = normalizeCategory(get('categoria'));
+  const numero = firstOperationalNumber(get('numero'), get('aliasOperativo'));
   return {
     id: makeDeviceId(etiqueta, get('sn'), get('mac')),
     siteCode: get('siteCode'),
     etiqueta,
-    numero: get('numero'),
-    categoria: normalizeCategory(get('categoria')),
+    numero,
+    categoria,
     dispositivo: get('dispositivo') || 'Chromebook',
     marca: get('marca'),
     modelo: get('modelo'),
@@ -181,8 +185,37 @@ function normalizeDeviceObject(row) {
     loanedAt: get('fechaPrestado'),
     returnedAt: get('fechaDevuelto'),
     ultima: get('ultima'),
-    aliasOperativo: get('aliasOperativo')
+    aliasOperativo: buildStableOperationalAlias(get('aliasOperativo'), categoria, numero)
   };
+}
+
+function firstOperationalNumber(...values) {
+  for (const value of values) {
+    const number = extractOperationalNumber(value);
+    if (number) return number;
+  }
+  return '';
+}
+
+function extractOperationalNumber(value) {
+  const raw = clean(value);
+  if (!raw || /^D0*\d+$/i.test(raw)) return '';
+  if (/^\d{1,3}$/.test(raw)) return String(Number(raw));
+  const match = raw.match(/\b(?:plani|touch|tic|dell)\s*0*(\d{1,3})\b/i)
+    || raw.match(/\b0*(\d{1,3})\s*(?:plani|touch|tic|dell)\b/i);
+  return match ? String(Number(match[1])) : '';
+}
+
+function buildStableOperationalAlias(alias, category, number) {
+  const firstAlias = clean(alias).split(',').map(value => value.trim()).find(Boolean) || '';
+  const type = normalizeCategory(category || firstAlias);
+  if (firstAlias && extractOperationalNumber(firstAlias)) {
+    if (['Plani', 'Touch', 'TIC', 'Dell'].includes(type)) return `${type} ${extractOperationalNumber(firstAlias)}`;
+    return firstAlias;
+  }
+  if (firstAlias && number) return `${firstAlias} ${number}`;
+  if (['Plani', 'Touch', 'TIC', 'Dell'].includes(type) && number) return `${type} ${number}`;
+  return firstAlias || type;
 }
 
 function fetchWithTimeout(url, timeoutMs) {

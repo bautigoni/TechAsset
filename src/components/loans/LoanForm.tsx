@@ -145,7 +145,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
   const handleConfirmMultipleLoan = async () => {
     if (consultationMode || !validScanItems.length) return;
-    if (!person.trim() || !location.trim() || location === 'Seleccionar ubicacion' || (selectedLocation?.requiresDetail && !locationDetail.trim()) || (selectedLocation?.requiresCourse && !course.trim()) || (selectedReason?.requiresDetail && !reasonDetail.trim())) {
+    if (!person.trim() || !location.trim() || location === 'Seleccionar ubicación' || (selectedLocation?.requiresDetail && !locationDetail.trim()) || (selectedLocation?.requiresCourse && !course.trim()) || (selectedReason?.requiresDetail && !reasonDetail.trim())) {
       setScanMessage({ tone: 'error', text: 'Completá persona y ubicación antes de confirmar.' });
       return;
     }
@@ -175,14 +175,14 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
   return (
     <form className="stack" onSubmit={event => event.preventDefault()}>
-      <label>Etiqueta 2023 o codigo</label>
+      <label>Etiqueta 2023 o código</label>
       <div className="scan-input-row">
         <input ref={codeInputRef} className="input" value={code} onChange={event => setCode(event.target.value)} onKeyDown={onCodeKeyDown} placeholder={continuousScan ? 'Escanear y Enter (o agregar a lista)' : 'Ej. D1436 o QR'} autoComplete="off" />
         {continuousScan
           ? <Button type="button" variant="primary" onClick={handleAddCurrent} disabled={!code.trim()}>Agregar a lista</Button>
           : <Button type="button" onClick={() => codeInputRef.current?.focus()}>Foco scanner</Button>}
       </div>
-      {!continuousScan && <ScannerPanel device={selected} message={matches.length > 1 ? 'Hay mas de un equipo posible. Especifica mejor.' : undefined} />}
+      {!continuousScan && <ScannerPanel device={selected} message={matches.length > 1 ? 'Hay más de un equipo posible. Especificá mejor.' : undefined} />}
       <button className={`toggle-row toggle-row-button ${continuousScan ? 'active' : ''}`} type="button" role="switch" aria-checked={continuousScan} onClick={toggleContinuous}>
         <span className="toggle-pill"><span /></span>
         <strong>Escaneo continuo</strong>
@@ -223,13 +223,13 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
         <label>Rol<select className="input" value={role} onChange={event => setRole(event.target.value)}><option>Seleccionar rol</option>{roleOptions.map(item => <option key={item}>{item}</option>)}</select></label>
       </div>
       <div className="grid-2">
-        <label>Ubicacion<select className="input" value={location} onChange={event => setLocation(event.target.value)}><option>Seleccionar ubicacion</option>{locationOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
+        <label>Ubicación<select className="input" value={location} onChange={event => setLocation(event.target.value)}><option>Seleccionar ubicación</option>{locationOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
         <label>Motivo<select className="input" value={reason} onChange={event => setReason(event.target.value)}><option>Sin motivo</option>{motiveOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
       </div>
       {(selectedLocation?.requiresCourse || selectedLocation?.requiresDetail || selectedReason?.requiresDetail) && (
         <div className="grid-2">
           {selectedLocation?.requiresCourse && <label>Grado / Año / Curso<select className="input" value={course} onChange={event => setCourse(event.target.value)}><option>Seleccionar curso</option>{gradeOptions.map(item => <option key={item}>{item}</option>)}</select></label>}
-          {selectedLocation?.requiresDetail && <label>Especificar ubicacion<input className="input" value={locationDetail} onChange={event => setLocationDetail(event.target.value)} /></label>}
+          {selectedLocation?.requiresDetail && <label>Especificar ubicación<input className="input" value={locationDetail} onChange={event => setLocationDetail(event.target.value)} /></label>}
           {selectedReason?.requiresDetail && <label>Especificar motivo<input className="input" value={reasonDetail} onChange={event => setReasonDetail(event.target.value)} /></label>}
         </div>
       )}
@@ -245,8 +245,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           <>
             <Button type="button" variant="primary" disabled={blocked} onClick={handleLend}>Prestar</Button>
             <Button type="button" variant="success" disabled={blocked} onClick={handleReturn}>Devolver</Button>
-            <Button type="button">Abrir camara</Button>
-            <Button type="button">Cerrar camara</Button>
+            <Button type="button">Abrir cámara</Button>
+            <Button type="button">Cerrar cámara</Button>
           </>
         )}
       </div>

@@ -9,14 +9,14 @@ const defaults = {
   locations: [
     { label: 'Aula', requiresCourse: true },
     { label: 'DOE' },
-    { label: 'Planificacion movil' },
+    { label: 'Planificación móvil' },
     { label: 'Direccion / Coordinacion' },
     { label: 'Departamento' },
     { label: 'Otro', requiresDetail: true }
   ],
   motives: [
-    { label: 'Planificacion' },
-    { label: 'Prestamo autorizado' },
+    { label: 'Planificación' },
+    { label: 'Préstamo autorizado' },
     { label: 'Proyecto / actividad de aula' },
     { label: 'Evaluacion' },
     { label: 'Soporte temporal' },
@@ -58,17 +58,17 @@ export function LoanSettingsPanel() {
       'loan.gradeOptions': grades,
       'devices.categories': categories
     });
-    setMessage('Configuracion de prestamos guardada.');
+    setMessage('Configuración de préstamos guardada.');
   };
 
   return (
     <section className="card">
       <div className="card-head">
-        <h3>Configuracion de sede</h3>
+        <h3>Configuración de sede</h3>
         <Button variant="primary" onClick={save}>Guardar opciones</Button>
       </div>
       <div className="settings-grid">
-        <StringEditor title="Roles de prestamo" items={roles} value={newRole} onValue={setNewRole} onAdd={() => addString(newRole, roles, setRoles, setNewRole)} onRemove={item => setRoles(values => values.filter(value => value !== item))} />
+        <StringEditor title="Roles de préstamo" items={roles} value={newRole} onValue={setNewRole} onAdd={() => addString(newRole, roles, setRoles, setNewRole)} onRemove={item => setRoles(values => values.filter(value => value !== item))} />
         <StringEditor title="Cursos / grados" items={grades} value={newGrade} onValue={setNewGrade} onAdd={() => addString(newGrade, grades, setGrades, setNewGrade)} onRemove={item => setGrades(values => values.filter(value => value !== item))} />
         <StringEditor title="Categorias de dispositivos" items={categories} value={newCategory} onValue={setNewCategory} onAdd={() => addString(newCategory, categories, setCategories, setNewCategory)} onRemove={item => setCategories(values => values.filter(value => value !== item))} />
         <OptionEditor title="Ubicaciones" items={locations} value={newLocation} onValue={setNewLocation} onAdd={() => addOption(newLocation, locations, setLocations, setNewLocation)} onChange={setLocations} />

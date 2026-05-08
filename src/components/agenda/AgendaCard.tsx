@@ -55,7 +55,7 @@ export function AgendaCard({ item, consultationMode, onUpdate, onDelete, onTask 
       <span className="badge subtle">{item.actividad}</span>
       <h3>{item.curso}</h3>
       <p><strong>Dispositivo:</strong> {item.cantidad} {item.tipoDispositivo}</p>
-      <p><strong>Ubicacion:</strong> {item.ubicacion}</p>
+      <p><strong>Ubicación:</strong> {item.ubicacion}</p>
       {item.nota && <p className="muted agenda-note-preview">{item.nota}</p>}
       <div className="small-actions agenda-actions">
         <Button

@@ -5,15 +5,16 @@ import { useSyncStatus } from '../../hooks/useSyncStatus';
 const TITLES: Record<ViewKey, string> = {
   dashboard: 'TechAsset',
   devices: 'Dispositivos',
-  loans: 'Prestamos',
-  analytics: 'Analitica',
+  loans: 'Préstamos',
+  inventory: 'Inventario TIC',
+  analytics: 'Analítica',
   agenda: 'Agenda TIC',
   tasks: 'Tareas TIC',
   classrooms: 'Estado aulas',
   tools: 'Herramientas auxiliares',
   quickaccess: 'Accesos rápidos',
   assistant: 'Asistente TIC',
-  settings: 'Configuracion'
+  settings: 'Configuración'
 };
 
 export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu, onToggleTheme, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout }: {
@@ -40,7 +41,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
   return (
     <header className="topbar">
       <div className="topbar-title-wrap">
-        <button className="mobile-menu-btn" type="button" aria-label="Abrir menu" onClick={onMenu}>
+        <button className="mobile-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
           <span className="hamburger-icon" aria-hidden="true" />
         </button>
         <img className="topbar-logo" src="/northfield_logo.png" alt="Northfield" />

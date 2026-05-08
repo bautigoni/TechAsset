@@ -24,6 +24,14 @@ export function formatTime(value?: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 }
 
+export function formatTimeOnly(value?: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) return date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const directTime = String(value).match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
+  return directTime ? `${directTime[1].padStart(2, '0')}:${directTime[2]}` : value;
+}
+
 export function todayNameEs(date = new Date()): string {
   const map = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   return map[date.getDay()];

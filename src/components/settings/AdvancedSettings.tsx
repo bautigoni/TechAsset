@@ -17,7 +17,7 @@ export function AdvancedSettings() {
       const response = await getDevicesDiagnostics();
       setDiagnostics(response.diagnostics);
     } catch (error) {
-      setDiagnosticsError(error instanceof Error ? error.message : 'No se pudo cargar el diagnostico');
+      setDiagnosticsError(error instanceof Error ? error.message : 'No se pudo cargar el diagnóstico');
     } finally {
       setLoadingDiagnostics(false);
     }
@@ -49,7 +49,7 @@ export function AdvancedSettings() {
         <div className="actions">
           <Button>Exportar CSV</Button>
           <Button>Exportar PDF QR</Button>
-          <Button onClick={loadDiagnostics} disabled={loadingDiagnostics}>Diagnostico</Button>
+          <Button onClick={loadDiagnostics} disabled={loadingDiagnostics}>Diagnóstico</Button>
           <Button onClick={loadSettings}>Configuración de sede</Button>
           <Button>Backup SQLite</Button>
           <Button>Reset datos demo/prueba</Button>
@@ -67,17 +67,17 @@ export function AdvancedSettings() {
         {diagnostics && (
           <div className="diagnostics-grid">
             <Diagnostic label="Fuente" value={diagnostics.source} />
-            <Diagnostic label="Ultima lectura OK" value={diagnostics.lastSuccessfulReadAt} />
+            <Diagnostic label="Última lectura OK" value={diagnostics.lastSuccessfulReadAt} />
             <Diagnostic label="Fetch externo" value={`${diagnostics.lastExternalFetchMs ?? 0} ms`} />
             <Diagnostic label="Parse CSV/JSON" value={`${diagnostics.lastParseMs ?? 0} ms`} />
             <Diagnostic label="Merge SQLite" value={`${diagnostics.lastMergeMs ?? 0} ms`} />
             <Diagnostic label="Total backend" value={`${diagnostics.lastTotalMs ?? 0} ms`} />
             <Diagnostic label="Equipos" value={diagnostics.deviceCount} />
-            <Diagnostic label="Respondio cache" value={diagnostics.respondedWithCache ? 'Si' : 'No'} />
+            <Diagnostic label="Respondió cache" value={diagnostics.respondedWithCache ? 'Sí' : 'No'} />
             <Diagnostic label="Edad cache" value={diagnostics.cacheAgeSeconds == null ? 'Sin cache' : `${diagnostics.cacheAgeSeconds} s`} />
-            <Diagnostic label="Timeout" value={diagnostics.timedOut ? 'Si' : 'No'} />
-            <Diagnostic label="Refresh en curso" value={diagnostics.inflight ? 'Si' : 'No'} />
-            <Diagnostic label="Ultimo error" value={diagnostics.lastError || 'Sin error'} />
+            <Diagnostic label="Timeout" value={diagnostics.timedOut ? 'Sí' : 'No'} />
+            <Diagnostic label="Refresh en curso" value={diagnostics.inflight ? 'Sí' : 'No'} />
+            <Diagnostic label="Último error" value={diagnostics.lastError || 'Sin error'} />
           </div>
         )}
       </div>

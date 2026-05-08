@@ -7,7 +7,7 @@ export function InternalNotesPanel({ operator, consultationMode }: { operator: s
   const [items, setItems] = useState<InternalNote[]>([]);
   const [text, setText] = useState('');
   const [important, setImportant] = useState(false);
-  const [filter, setFilter] = useState<'today' | 'important' | 'all' | 'mine' | 'last30'>('today');
+  const [filter, setFilter] = useState<'today' | 'important' | 'all' | 'mine' | 'last30'>('last30');
   const [error, setError] = useState('');
 
   const refresh = () => fetchInternalNotes(filter === 'last30' ? 'last30' : filter === 'all' ? 'all' : 'active').then(r => r.ok && setItems(r.items)).catch(() => setError('No se pudieron cargar las notas.'));
@@ -29,7 +29,7 @@ export function InternalNotesPanel({ operator, consultationMode }: { operator: s
       <div className="card-head">
         <div>
           <h3>Traspaso TIC</h3>
-          <p className="muted">Notas internas rápidas para el equipo</p>
+          <p className="muted">Notas internas rápidas por sede para el cambio de turno</p>
         </div>
       </div>
       <div className="internal-note-filters">
@@ -57,7 +57,7 @@ export function InternalNotesPanel({ operator, consultationMode }: { operator: s
             <p>{item.texto}</p>
             <div className="muted">
               {item.operador || 'Sin operador'} · {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
-              {!item.visible && item.deletedAt ? ` · borrada por ${item.deletedBy || '—'} ${new Date(item.deletedAt).toLocaleString()}` : ''}
+              {!item.visible && item.deletedAt ? ` · borrada por ${item.deletedBy || '-'} ${new Date(item.deletedAt).toLocaleString()}` : ''}
             </div>
             {!consultationMode && item.visible !== false && <button type="button" onClick={async () => { await updateInternalNote(item.id, { visible: false, operator }); refresh(); }}>Borrar</button>}
           </article>

@@ -289,6 +289,20 @@ export function initDb(database = getDb()) {
       created_at TEXT,
       updated_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS inventory_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      nombre TEXT NOT NULL,
+      categoria TEXT DEFAULT 'Otro',
+      cantidad INTEGER DEFAULT 0,
+      unidad TEXT DEFAULT 'unidades',
+      imagen_url TEXT DEFAULT '',
+      estado TEXT DEFAULT '',
+      observaciones TEXT DEFAULT '',
+      activo INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT
+    );
     CREATE TABLE IF NOT EXISTS daily_closures (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fecha TEXT,
@@ -354,16 +368,84 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'internal_notes', 'visible', "INTEGER DEFAULT 1");
   ensureColumn(database, 'internal_notes', 'deleted_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'internal_notes', 'deleted_by', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'site_code', "TEXT DEFAULT 'NFPT'");
+  ensureColumn(database, 'inventory_items', 'unidad', "TEXT DEFAULT 'unidades'");
+  ensureColumn(database, 'inventory_items', 'imagen_url', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'estado', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'observaciones', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'activo', "INTEGER DEFAULT 1");
 
   seedDefaultSite(database);
   seedDefaultSettings(database);
-  for (const site of parseBootstrapSites()) seedDefaultSettings(database, site.siteCode);
+  seedInitialInventory(database, config.defaultSiteCode || 'NFPT');
+  for (const site of parseBootstrapSites()) {
+    seedDefaultSettings(database, site.siteCode);
+    seedInitialInventory(database, site.siteCode);
+  }
   seedAllowedUsers(database);
   migrateDeviceIdentityTables(database);
 
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);
   ensureFixedAgenda(database);
+}
+
+export function seedInitialInventory(database, siteCode = config.defaultSiteCode || 'NFPT') {
+  const normalizedSite = String(siteCode || 'NFPT').trim().toUpperCase();
+  const count = database.prepare('SELECT COUNT(*) AS total FROM inventory_items WHERE site_code=?').get(normalizedSite).total;
+  if (count) return;
+  const ts = nowIso();
+  const rows = [
+    ['LEDs', 'Componentes', 0],
+    ['Resistencias', 'Componentes', 0],
+    ['Sensores de distancia', 'Sensores', 34],
+    ['Fotoresistencias', 'Sensores', 34],
+    ['Servomotores', 'Robótica', 31],
+    ['Capacitores', 'Componentes', 26],
+    ['Buzzers', 'Componentes', 20],
+    ['Display LCD', 'Electrónica', 17],
+    ['Stepper motor drive board', 'Arduino', 17],
+    ['Diodos', 'Componentes', 16],
+    ['Control', 'Otro', 16],
+    ['Transistores', 'Componentes', 15],
+    ['Protoboard', 'Electrónica', 14],
+    ['Push button', 'Componentes', 14],
+    ['Step motor', 'Robótica', 13],
+    ['Sensor infrarrojo', 'Sensores', 13],
+    ['Sensor de humedad', 'Sensores', 13],
+    ['Motor amarillo', 'Robótica', 11],
+    ['Adaptador batería 9v', 'Componentes', 11],
+    ['Placa con fotoresistencia', 'Sensores', 11],
+    ['Display múltiple 7 segmentos', 'Electrónica', 10],
+    ['Botones pulsadores', 'Componentes', 9],
+    ['Matriz LED', 'Electrónica', 9],
+    ['Relé sin placa', 'Electrónica', 9],
+    ['Resistencia giratoria 10K', 'Componentes', 9],
+    ['Joysticks', 'Componentes', 8],
+    ['Display 7 segmentos', 'Electrónica', 8],
+    ['Resistencia giratoria B10K', 'Componentes', 8],
+    ['Breadboard power supply', 'Arduino', 8],
+    ['Placa Arduino Uno', 'Arduino', 8],
+    ['Sensor de nivel de agua', 'Sensores', 7],
+    ['Botonera', 'Componentes', 6],
+    ['Relé con placa', 'Electrónica', 6],
+    ['Reloj de tiempo real', 'Electrónica', 6],
+    ['Sensor de sonido', 'Sensores', 6],
+    ['Pack NFCs (pin, tarjeta y receptor)', 'Componentes', 5],
+    ['Elego 1', 'Robótica', 3],
+    ['Sensor de gas', 'Sensores', 2],
+    ['Full color RGB', 'Electrónica', 2],
+    ['Placa WiFi', 'Arduino', 1],
+    ['DK-Nano-003 v3.0', 'Arduino', 1],
+    ['Placa Arduino Nano v3', 'Arduino', 1],
+    ['Mega ADK', 'Arduino', 1]
+  ];
+  const insert = database.prepare(`
+    INSERT INTO inventory_items (site_code, nombre, categoria, cantidad, unidad, estado, observaciones, activo, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 'unidades', '', '', 1, ?, ?)
+  `);
+  const tx = database.transaction(() => rows.forEach(row => insert.run(normalizedSite, row[0], row[1], row[2], ts, ts)));
+  tx();
 }
 
 function ensureColumn(database, table, column, definition) {
@@ -600,30 +682,30 @@ function seedAgenda(database) {
 
 function fixedAgendaRows() {
   return [
-    ['AG001', 'Lunes', '', 'Manana', '08:15', '09:05', '2N', 'Glifing', 'Touch', 25, 'Aula'],
-    ['AG002', 'Lunes', '', 'Manana', '09:05', '09:55', '2N', 'Glifing', 'Touch', 25, 'Aula'],
-    ['AG003', 'Lunes', '', 'Manana', '10:10', '11:00', '2N', 'Glifing', 'Touch', 25, 'Aula'],
-    ['AG004', 'Martes', '', 'Manana', '09:05', '09:55', '4N', 'Programacion', 'Touch', 25, 'Aula'],
-    ['AG005', 'Martes', '', 'Manana', '10:10', '11:00', '4S', 'Programacion', 'Touch', 25, 'Aula'],
-    ['AG006', 'Martes', '', 'Manana', '11:00', '11:45', '4F', 'Programacion', 'Touch', 25, 'Aula'],
-    ['AG007', 'Miercoles', '', 'Manana', '08:15', '09:05', '1F', 'Glifing', 'Touch', 25, 'Aula'],
-    ['AG008', 'Miercoles', '', 'Manana', '09:05', '09:55', '1N', 'Glifing', 'Touch', 25, 'Aula'],
-    ['AG009', 'Miercoles', '', 'Manana', '10:10', '11:00', '1S', 'Glifing', 'Touch', 25, 'Aula'],
-    ['AG010', 'Jueves', '', 'Manana', '09:05', '09:55', '1N', 'Glifing', 'Touch', 14, 'Aula'],
-    ['AG011', 'Jueves', '', 'Manana', '10:10', '11:00', '1N', 'Glifing', 'Touch', 14, 'Aula'],
-    ['AG012', 'Jueves', '', 'Manana', '11:00', '11:45', '1N', 'Glifing', 'Touch', 14, 'Aula'],
-    ['AG013', 'Viernes', '', 'Manana', '08:15', '09:05', 'Matific grupo total', 'Matific', 'Touch', 25, 'Aula'],
-    ['AG014', 'Viernes', '', 'Manana', '09:05', '09:55', 'Matific grupo total', 'Matific', 'Touch', 25, 'Aula'],
-    ['AG015', 'Viernes', '', 'Manana', '10:10', '11:00', 'Matific grupo total', 'Matific', 'Touch', 25, 'Aula'],
+    ['AG001', 'Lunes', '', 'Mañana', '08:15', '09:05', '2N', 'Glifing', 'Touch', 25, 'Aula'],
+    ['AG002', 'Lunes', '', 'Mañana', '09:05', '09:55', '2N', 'Glifing', 'Touch', 25, 'Aula'],
+    ['AG003', 'Lunes', '', 'Mañana', '10:10', '11:00', '2N', 'Glifing', 'Touch', 25, 'Aula'],
+    ['AG004', 'Martes', '', 'Mañana', '09:05', '09:55', '4N', 'Programación', 'Touch', 25, 'Aula'],
+    ['AG005', 'Martes', '', 'Mañana', '10:10', '11:00', '4S', 'Programación', 'Touch', 25, 'Aula'],
+    ['AG006', 'Martes', '', 'Mañana', '11:00', '11:45', '4F', 'Programación', 'Touch', 25, 'Aula'],
+    ['AG007', 'Miércoles', '', 'Mañana', '08:15', '09:05', '1F', 'Glifing', 'Touch', 25, 'Aula'],
+    ['AG008', 'Miércoles', '', 'Mañana', '09:05', '09:55', '1N', 'Glifing', 'Touch', 25, 'Aula'],
+    ['AG009', 'Miércoles', '', 'Mañana', '10:10', '11:00', '1S', 'Glifing', 'Touch', 25, 'Aula'],
+    ['AG010', 'Jueves', '', 'Mañana', '09:05', '09:55', '1N', 'Glifing', 'Touch', 14, 'Aula'],
+    ['AG011', 'Jueves', '', 'Mañana', '10:10', '11:00', '1N', 'Glifing', 'Touch', 14, 'Aula'],
+    ['AG012', 'Jueves', '', 'Mañana', '11:00', '11:45', '1N', 'Glifing', 'Touch', 14, 'Aula'],
+    ['AG013', 'Viernes', '', 'Mañana', '08:15', '09:05', 'Matific grupo total', 'Matific', 'Touch', 25, 'Aula'],
+    ['AG014', 'Viernes', '', 'Mañana', '09:05', '09:55', 'Matific grupo total', 'Matific', 'Touch', 25, 'Aula'],
+    ['AG015', 'Viernes', '', 'Mañana', '10:10', '11:00', 'Matific grupo total', 'Matific', 'Touch', 25, 'Aula'],
     ['AG016', 'Lunes', '', 'Tarde', '13:30', '14:15', '2N', 'Reserva Touch', 'Touch', 14, 'Aula'],
     ['AG017', 'Lunes', '', 'Tarde', '14:35', '15:25', '3N', 'Reserva Touch', 'Touch', 14, 'Aula'],
     ['AG018', 'Lunes', '', 'Tarde', '15:25', '16:20', '2S', 'Reserva Touch', 'Touch', 14, 'Aula'],
     ['AG019', 'Martes', '', 'Tarde', '13:30', '14:15', '1S', 'Reserva Touch', 'Touch', 14, 'Aula'],
     ['AG020', 'Martes', '', 'Tarde', '14:35', '15:25', '1N', 'Reserva Touch', 'Touch', 14, 'Aula'],
     ['AG021', 'Martes', '', 'Tarde', '15:25', '16:20', '1F', 'Reserva Touch', 'Touch', 14, 'Aula'],
-    ['AG022', 'Miercoles', '', 'Tarde', '13:30', '14:15', '2F', 'Reserva Touch', 'Touch', 14, 'Aula'],
-    ['AG023', 'Miercoles', '', 'Tarde', '14:35', '15:25', '3S', 'Reserva Touch', 'Touch', 14, 'Aula'],
-    ['AG024', 'Miercoles', '', 'Tarde', '15:25', '16:20', '3F', 'Reserva Touch', 'Touch', 14, 'Aula'],
+    ['AG022', 'Miércoles', '', 'Tarde', '13:30', '14:15', '2F', 'Reserva Touch', 'Touch', 14, 'Aula'],
+    ['AG023', 'Miércoles', '', 'Tarde', '14:35', '15:25', '3S', 'Reserva Touch', 'Touch', 14, 'Aula'],
+    ['AG024', 'Miércoles', '', 'Tarde', '15:25', '16:20', '3F', 'Reserva Touch', 'Touch', 14, 'Aula'],
     ['AG025', 'Viernes', '', 'Tarde', '13:30', '14:15', '4N', 'TIC Grupo completo', 'TIC', 3, 'Aula TIC'],
     ['AG026', 'Viernes', '', 'Tarde', '14:35', '15:25', '4S', 'TIC Grupo completo', 'TIC', 3, 'Aula TIC'],
     ['AG027', 'Viernes', '', 'Tarde', '15:25', '16:20', '4F', 'TIC Grupo completo', 'TIC', 3, 'Aula TIC']
