@@ -3,8 +3,13 @@ import { apiGet, apiSend } from './apiClient';
 
 type DevicesResponse = { ok: true; items: Device[]; loadedAt: string; source: string; diagnostics?: Record<string, unknown> };
 type DevicesDiagnosticsResponse = { ok: true; diagnostics: Record<string, unknown> };
+type DevicesDebugResponse = { ok: boolean; siteCode: string; debug?: Record<string, unknown>; error?: string };
 
-let devicesRequest: Promise<DevicesResponse> | null = null;
+const devicesRequests = new Map<string, Promise<DevicesResponse>>();
+
+function activeSiteKey() {
+  return localStorage.getItem('techasset_active_site') || 'NFPT';
+}
 
 export function getDevices(options: { force?: boolean; wait?: boolean } = {}) {
   const params = new URLSearchParams();
@@ -12,16 +17,23 @@ export function getDevices(options: { force?: boolean; wait?: boolean } = {}) {
   if (options.wait) params.set('wait', '1');
   if (options.force) params.set('_ts', String(Date.now()));
   const url = `/api/devices${params.size ? `?${params}` : ''}`;
-  if (options.force) devicesRequest = null;
-  if (!options.force && devicesRequest) return devicesRequest;
-  devicesRequest = apiGet<DevicesResponse>(url).finally(() => {
-    devicesRequest = null;
+  const key = `${activeSiteKey()}|${url}`;
+  if (options.force) devicesRequests.delete(key);
+  const current = devicesRequests.get(key);
+  if (!options.force && current) return current;
+  const request = apiGet<DevicesResponse>(url).finally(() => {
+    devicesRequests.delete(key);
   });
-  return devicesRequest;
+  devicesRequests.set(key, request);
+  return request;
 }
 
 export function getDevicesDiagnostics() {
   return apiGet<DevicesDiagnosticsResponse>('/api/devices/diagnostics');
+}
+
+export function getDevicesDebug() {
+  return apiGet<DevicesDebugResponse>('/api/devices/debug');
 }
 
 export function getMovements() {

@@ -5,7 +5,7 @@ import { classifyDeviceType, withOperationalAliases } from '../utils/classifyDev
 import { getDeviceStateKey } from '../utils/deviceState';
 import { matchesSmartSearch } from '../utils/normalizeSearch';
 
-export function useDevices(search: string) {
+export function useDevices(search: string, siteCode = '') {
   const [devices, setDevices] = useState<Device[]>([]);
   const [sync, setSync] = useState<SyncStatus>({ state: 'loading' });
   const refreshInFlight = useRef<Promise<void> | null>(null);
@@ -13,6 +13,7 @@ export function useDevices(search: string) {
   const requestSeq = useRef(0);
 
   const refresh = useCallback((options: { force?: boolean; wait?: boolean } = {}) => {
+    if (!siteCode) return Promise.resolve();
     if (refreshInFlight.current && !options.force) return refreshInFlight.current;
     const requestId = ++requestSeq.current;
     const promise = (async () => {
@@ -23,12 +24,15 @@ export function useDevices(search: string) {
         const nextDevices = withOperationalAliases(data.items);
         hasDevices.current = nextDevices.length > 0;
         setDevices(nextDevices);
-        const cacheNote = data.diagnostics?.respondedWithCache ? 'cache inmediato' : 'actualizado';
+        const usingCache = Boolean(data.diagnostics?.respondedWithCache);
+        const emptyFallback = Boolean(data.diagnostics?.emptyFallback);
+        const syncState: SyncStatus['state'] = emptyFallback ? 'error' : usingCache && nextDevices.length ? 'warning' : 'ok';
+        const cacheNote = usingCache ? 'cache local con advertencia' : 'actualizado';
         const diagMessage = typeof data.diagnostics?.message === 'string' ? data.diagnostics.message : '';
-        setSync({ state: data.diagnostics?.emptyFallback ? 'error' : 'ok', loadedAt: data.loadedAt, message: diagMessage || `${data.source} - ${cacheNote}` });
+        setSync({ state: syncState, loadedAt: data.loadedAt, message: diagMessage || `${data.source} - ${cacheNote}` });
       } catch (error) {
         if (requestId !== requestSeq.current) return;
-        setSync(current => current.state === 'ok'
+        setSync(current => current.state === 'ok' || current.state === 'warning'
           ? { ...current, message: current.message || 'Inventario cargado desde cache local.' }
           : { state: 'error', message: error instanceof Error ? error.message : 'Error' });
       } finally {
@@ -37,11 +41,17 @@ export function useDevices(search: string) {
     })();
     refreshInFlight.current = promise;
     return promise;
-  }, []);
+  }, [siteCode]);
 
   useEffect(() => {
+    if (!siteCode) return;
+    requestSeq.current += 1;
+    refreshInFlight.current = null;
+    hasDevices.current = false;
+    setDevices([]);
+    setSync({ state: 'loading', message: `Cargando inventario ${siteCode}...` });
     refresh();
-  }, [refresh]);
+  }, [refresh, siteCode]);
 
   const filteredDevices = useMemo(() => {
     if (!search.trim()) return devices;

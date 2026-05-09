@@ -1,78 +1,60 @@
 /**
  * TechAsset - Apps Script duplicable por sede
  *
- * Uso esperado:
- * 1. Duplicar el Spreadsheet de dispositivos de la sede.
- * 2. Abrir Extensiones > Apps Script.
- * 3. Pegar este archivo o conservarlo si ya venía copiado.
- * 4. Ajustar SHEET_NAME si la pestaña principal no se llama "Inventario".
- * 5. Desplegar como Web App: ejecutar como "Yo" y acceso "Cualquier usuario con el enlace".
- * 6. Copiar la URL del Web App en TechAsset > Configuración > Sede > Apps Script URL.
+ * Pegar este archivo desde Extensiones > Apps Script dentro del Spreadsheet
+ * correcto de la sede. Si SPREADSHEET_ID queda vacio, usa el Spreadsheet activo.
  *
- * Pestañas esperadas:
- * - Inventario: inventario de dispositivos.
- * - Movimientos: se crea automáticamente si no existe.
+ * Estructura soportada para NFND:
+ * - Hoja: "Hoja 1" o primera hoja disponible.
+ * - Fila de encabezados detectada dinamicamente. No necesita empezar en columna A.
+ * - Encabezados reales esperados:
+ *   B Modelo
+ *   C Etiqueta 2023
+ *   D numero operativo
+ *   E Devuelto
+ *   F Comentarios
+ *   G Prestada
+ *   H Fecha pres
+ *   I Fecha dev
+ *   J Ultima mod
+ *   K Rol
+ *   L Ubicacion
+ *   M Motivo
  *
- * Columnas esperadas en Inventario, por encabezado o por posición fallback:
- * A Etiqueta
- * B Categoría / Tipo
- * C Dispositivo
- * D Marca
- * E Modelo
- * F Estado
- * G Prestada / Prestado a / Persona
- * H Comentarios
- * I Rol
- * J Ubicación
- * K Motivo
- * L Horario préstamo
- * M Horario devolución
- * N Última modificación
+ * Acciones:
+ * - ?action=debug
+ * - ?action=inventory
+ * - ?action=state
+ * - ?action=loan
+ * - ?action=return
  *
- * Importante:
- * - La columna de estado guarda solo estados válidos, nunca fechas.
- * - La columna G guarda el nombre de la persona al prestar.
- * - Las fechas se escriben únicamente en columnas de horario/última modificación/movimientos.
- * - El script usa el Spreadsheet activo. Para fijar uno concreto, completar SPREADSHEET_ID.
+ * Reglas:
+ * - La columna de estado/Devuelto guarda solo estados validos, nunca fechas.
+ * - La columna Prestada guarda el nombre de la persona al prestar.
+ * - Las fechas se escriben solo en Fecha pres, Fecha dev, Ultima mod y Movimientos.
+ * - La busqueda de etiquetas no distingue mayusculas/minusculas.
  */
 
 const SPREADSHEET_ID = '';
-const SHEET_NAME = 'Inventario';
+const SHEET_NAME = 'Hoja 1';
 const MOVEMENTS_SHEET_NAME = 'Movimientos';
 const VALID_STATES = ['Devuelto', 'Prestado', 'No encontrada', 'Fuera de servicio'];
 
-const FALLBACK_COLUMNS = {
-  etiqueta: 1,
-  categoria: 2,
-  dispositivo: 3,
-  marca: 4,
-  modelo: 5,
-  estado: 6,
-  prestada: 7,
-  comentarios: 8,
-  rol: 9,
-  ubicacion: 10,
-  motivo: 11,
-  horarioPrestamo: 12,
-  horarioDevolucion: 13,
-  ultimaModificacion: 14
-};
-
 const HEADER_ALIASES = {
-  etiqueta: ['etiqueta', 'etiqueta 2023', 'codigo', 'código'],
+  modelo: ['modelo', 'model'],
   categoria: ['categoria', 'categoría', 'tipo', 'tipo dispositivo'],
   dispositivo: ['dispositivo', 'equipo'],
-  marca: ['marca'],
-  modelo: ['modelo'],
+  etiqueta: ['etiqueta', 'etiqueta 2023', 'codigo', 'código', 'code'],
+  numero: ['numero operativo', 'número operativo', 'numero', 'número', 'nro', 'num'],
   estado: ['estado', 'estado/devuelto', 'devuelto'],
-  prestada: ['prestada', 'prestado a', 'persona'],
   comentarios: ['comentarios', 'comentario'],
+  prestada: ['prestada', 'prestado a', 'prestado', 'persona'],
+  fechaPrestamo: ['fecha pres', 'fecha prestamo', 'fecha préstamo', 'horario prestamo', 'horario préstamo', 'hora prestamo'],
+  fechaDevolucion: ['fecha dev', 'fecha devolucion', 'fecha devolución', 'horario devolucion', 'horario devolución', 'hora devolucion'],
+  ultimaModificacion: ['ultima mod', 'última mod', 'ultima modificacion', 'última modificación', 'modificado'],
   rol: ['rol'],
   ubicacion: ['ubicacion', 'ubicación'],
-  motivo: ['motivo'],
-  horarioPrestamo: ['horario préstamo', 'horario prestamo', 'hora prestamo', 'fecha prestado'],
-  horarioDevolucion: ['horario devolución', 'horario devolucion', 'hora devolucion', 'fecha devuelto'],
-  ultimaModificacion: ['última modificación', 'ultima modificacion', 'modificado']
+  motivo: ['motivo']
 };
 
 function doGet(e) {
@@ -87,28 +69,56 @@ function handleRequest(e, method) {
   try {
     const action = String((e && e.parameter && e.parameter.action) || 'inventory').toLowerCase();
     const payload = method === 'POST' ? parseBody(e) : {};
-    if (action === 'inventory' || action === 'state') return json({ ok: true, rows: readInventory(), updatedAt: new Date().toISOString() });
+    if (action === 'debug') return json(debugInfo());
+    if (action === 'inventory') return json({ ...debugInfo(), rows: readInventory(), updatedAt: new Date().toISOString() });
+    if (action === 'state') return json({ ...debugInfo(), rows: readState(), updatedAt: new Date().toISOString() });
     if (action === 'loan' || action === 'lend') return json(loanDevice(payload));
     if (action === 'return' || action === 'devolver') return json(returnDevice(payload));
     if (action === 'status') return json(updateStatus(payload));
     if (action === 'adddevice') return json(upsertDevice(payload));
-    return json({ ok: false, error: 'Acción no soportada: ' + action }, 400);
+    return json({ ok: false, error: 'Accion no soportada: ' + action });
   } catch (error) {
-    return json({ ok: false, error: error && error.message ? error.message : String(error) }, 500);
+    return json({ ok: false, error: error && error.message ? error.message : String(error) });
   }
+}
+
+function debugInfo() {
+  const ss = spreadsheet();
+  const sheet = inventorySheet();
+  const values = sheet.getDataRange().getValues();
+  const headerRowIndex = findHeaderRow(values);
+  const columns = buildHeaderMap(values[headerRowIndex] || []);
+  const rows = dataRows(values, headerRowIndex, columns);
+  return {
+    ok: true,
+    spreadsheetName: ss.getName(),
+    spreadsheetId: ss.getId(),
+    sheetName: sheet.getName(),
+    headerRow: headerRowIndex + 1,
+    headers: headerDebug(columns),
+    rowsCount: rows.length,
+    firstEtiquetas: rows.slice(0, 5).map(row => clean(row[columns.etiqueta - 1])),
+    timestamp: new Date().toISOString(),
+    usesActiveSpreadsheet: !SPREADSHEET_ID,
+    configuredSpreadsheetId: SPREADSHEET_ID || ''
+  };
 }
 
 function readInventory() {
   const sheet = inventorySheet();
-  const values = sheet.getDataRange().getValues();
-  if (values.length < 2) return [];
-  const columns = columnMap(values[0]);
-  return values.slice(1).filter(row => clean(row[columns.etiqueta - 1])).map(row => rowToObject(row, columns));
+  const context = sheetContext(sheet);
+  return dataRows(context.values, context.headerRowIndex, context.columns).map(row => rowToInventoryObject(row, context.columns));
+}
+
+function readState() {
+  const sheet = inventorySheet();
+  const context = sheetContext(sheet);
+  return dataRows(context.values, context.headerRowIndex, context.columns).map(row => rowToStateObject(row, context.columns));
 }
 
 function loanDevice(payload) {
   const lock = LockService.getDocumentLock();
-  lock.waitLock(8000);
+  lock.waitLock(15000);
   try {
     const sheet = inventorySheet();
     const context = rowContext(sheet, payload);
@@ -116,14 +126,13 @@ function loanDevice(payload) {
     const now = new Date();
     writeIfColumn(sheet, context.rowNumber, context.columns.estado, 'Prestado');
     writeIfColumn(sheet, context.rowNumber, context.columns.prestada, person);
+    writeIfColumn(sheet, context.rowNumber, context.columns.fechaPrestamo, now);
+    writeIfColumn(sheet, context.rowNumber, context.columns.ultimaModificacion, now);
     writeIfColumn(sheet, context.rowNumber, context.columns.rol, clean(payload.role || payload.rol));
     writeIfColumn(sheet, context.rowNumber, context.columns.ubicacion, [payload.location, payload.course, payload.locationDetail].map(clean).filter(Boolean).join(' · '));
     writeIfColumn(sheet, context.rowNumber, context.columns.motivo, [payload.reason, payload.reasonDetail].map(clean).filter(Boolean).join(' · '));
-    writeIfColumn(sheet, context.rowNumber, context.columns.comentarios, clean(payload.comment || payload.comentario || payload.comentarios));
-    writeIfColumn(sheet, context.rowNumber, context.columns.horarioPrestamo, now);
-    writeIfColumn(sheet, context.rowNumber, context.columns.ultimaModificacion, now);
-    appendMovement('Préstamo', context.tag, person, clean(payload.operator || payload.operador), now);
-    return { ok: true, etiqueta: context.tag, estado: 'Prestado' };
+    appendMovement('Prestamo', context.tag, person, clean(payload.operator || payload.operador), now);
+    return { ok: true, etiqueta: context.tag, estado: 'Prestado', rowNumber: context.rowNumber };
   } finally {
     lock.releaseLock();
   }
@@ -131,21 +140,20 @@ function loanDevice(payload) {
 
 function returnDevice(payload) {
   const lock = LockService.getDocumentLock();
-  lock.waitLock(8000);
+  lock.waitLock(15000);
   try {
     const sheet = inventorySheet();
     const context = rowContext(sheet, payload);
     const now = new Date();
     writeIfColumn(sheet, context.rowNumber, context.columns.estado, 'Devuelto');
     writeIfColumn(sheet, context.rowNumber, context.columns.prestada, '');
+    writeIfColumn(sheet, context.rowNumber, context.columns.fechaDevolucion, now);
+    writeIfColumn(sheet, context.rowNumber, context.columns.ultimaModificacion, now);
     writeIfColumn(sheet, context.rowNumber, context.columns.rol, '');
     writeIfColumn(sheet, context.rowNumber, context.columns.ubicacion, '');
     writeIfColumn(sheet, context.rowNumber, context.columns.motivo, '');
-    writeIfColumn(sheet, context.rowNumber, context.columns.comentarios, clean(payload.comment || payload.comentario || ''));
-    writeIfColumn(sheet, context.rowNumber, context.columns.horarioDevolucion, now);
-    writeIfColumn(sheet, context.rowNumber, context.columns.ultimaModificacion, now);
-    appendMovement('Devolución', context.tag, '', clean(payload.operator || payload.operador), now);
-    return { ok: true, etiqueta: context.tag, estado: 'Devuelto' };
+    appendMovement('Devolucion', context.tag, '', clean(payload.operator || payload.operador), now);
+    return { ok: true, etiqueta: context.tag, estado: 'Devuelto', rowNumber: context.rowNumber };
   } finally {
     lock.releaseLock();
   }
@@ -153,7 +161,7 @@ function returnDevice(payload) {
 
 function updateStatus(payload) {
   const lock = LockService.getDocumentLock();
-  lock.waitLock(8000);
+  lock.waitLock(15000);
   try {
     const sheet = inventorySheet();
     const context = rowContext(sheet, payload);
@@ -164,7 +172,7 @@ function updateStatus(payload) {
     writeIfColumn(sheet, context.rowNumber, context.columns.comentarios, clean(payload.comentario || payload.comentarios || ''));
     writeIfColumn(sheet, context.rowNumber, context.columns.ultimaModificacion, now);
     appendMovement('Estado', context.tag, state, clean(payload.operator || payload.operador), now);
-    return { ok: true, etiqueta: context.tag, estado: state };
+    return { ok: true, etiqueta: context.tag, estado: state, rowNumber: context.rowNumber };
   } finally {
     lock.releaseLock();
   }
@@ -172,74 +180,152 @@ function updateStatus(payload) {
 
 function upsertDevice(payload) {
   const sheet = inventorySheet();
-  const values = sheet.getDataRange().getValues();
-  const columns = columnMap(values[0] || []);
-  const tag = normalizeTag(payload.etiqueta || payload.codigo || payload.code);
+  const context = sheetContext(sheet);
+  const tag = normalizeEtiqueta(payload.etiqueta || payload.codigo || payload.code);
   if (!tag) throw new Error('Etiqueta obligatoria.');
-  const rowNumber = findRowNumber(values, columns, tag) || Math.max(sheet.getLastRow() + 1, 2);
+  const rowNumber = findRowByEtiquetaInValues(context.values, context.columns, tag, context.headerRowIndex) || Math.max(sheet.getLastRow() + 1, context.headerRowIndex + 2);
   const now = new Date();
-  writeIfColumn(sheet, rowNumber, columns.etiqueta, tag);
-  writeIfColumn(sheet, rowNumber, columns.categoria, clean(payload.categoria || payload.tipo));
-  writeIfColumn(sheet, rowNumber, columns.dispositivo, clean(payload.dispositivo || payload.equipo));
-  writeIfColumn(sheet, rowNumber, columns.marca, clean(payload.marca));
-  writeIfColumn(sheet, rowNumber, columns.modelo, clean(payload.modelo));
-  writeIfColumn(sheet, rowNumber, columns.estado, normalizeState(payload.estado || 'Devuelto'));
-  writeIfColumn(sheet, rowNumber, columns.comentarios, clean(payload.comentarios || payload.comentario));
-  writeIfColumn(sheet, rowNumber, columns.ultimaModificacion, now);
-  appendMovement('Dispositivo', tag, 'Alta/edición', clean(payload.operator || payload.operador), now);
-  return { ok: true, etiqueta: tag };
+  writeIfColumn(sheet, rowNumber, context.columns.etiqueta, tag);
+  writeIfColumn(sheet, rowNumber, context.columns.modelo, clean(payload.modelo || payload.categoria || payload.tipo));
+  writeIfColumn(sheet, rowNumber, context.columns.categoria, clean(payload.categoria || payload.tipo));
+  writeIfColumn(sheet, rowNumber, context.columns.dispositivo, clean(payload.dispositivo || payload.equipo));
+  writeIfColumn(sheet, rowNumber, context.columns.numero, clean(payload.numero || payload.nro));
+  writeIfColumn(sheet, rowNumber, context.columns.estado, normalizeState(payload.estado || 'Devuelto'));
+  writeIfColumn(sheet, rowNumber, context.columns.comentarios, clean(payload.comentarios || payload.comentario));
+  writeIfColumn(sheet, rowNumber, context.columns.ultimaModificacion, now);
+  appendMovement('Dispositivo', tag, 'Alta/edicion', clean(payload.operator || payload.operador), now);
+  return { ok: true, etiqueta: tag, rowNumber };
+}
+
+function sheetContext(sheet) {
+  const values = sheet.getDataRange().getValues();
+  const headerRowIndex = findHeaderRow(values);
+  const columns = buildHeaderMap(values[headerRowIndex] || []);
+  if (!columns.etiqueta) throw new Error('No se encontro la columna Etiqueta 2023.');
+  if (!columns.estado) throw new Error('No se encontro la columna Devuelto/Estado.');
+  if (!columns.prestada) throw new Error('No se encontro la columna Prestada.');
+  return { values, headerRowIndex, columns };
 }
 
 function rowContext(sheet, payload) {
-  const values = sheet.getDataRange().getValues();
-  const columns = columnMap(values[0] || []);
-  const tag = normalizeTag(payload.etiqueta || payload.codigo || payload.code);
+  const context = sheetContext(sheet);
+  const tag = normalizeEtiqueta(payload.etiqueta || payload.codigo || payload.code);
   if (!tag) throw new Error('Etiqueta obligatoria.');
-  const rowNumber = findRowNumber(values, columns, tag);
-  if (!rowNumber) throw new Error('No se encontró la etiqueta ' + tag);
-  return { columns, tag, rowNumber };
+  const rowNumber = findRowByEtiquetaInValues(context.values, context.columns, tag, context.headerRowIndex);
+  if (!rowNumber) throw new Error('No se encontro la etiqueta ' + tag);
+  return { columns: context.columns, tag, rowNumber };
 }
 
-function findRowNumber(values, columns, tag) {
-  for (let i = 1; i < values.length; i += 1) {
-    if (normalizeTag(values[i][columns.etiqueta - 1]) === tag) return i + 1;
+function findHeaderRow(values) {
+  for (let i = 0; i < Math.min(values.length, 25); i += 1) {
+    const map = buildHeaderMap(values[i] || []);
+    if (map.etiqueta && map.estado && map.prestada) return i;
+  }
+  throw new Error('No se encontro fila de encabezados con Etiqueta 2023, Devuelto y Prestada.');
+}
+
+function buildHeaderMap(headerRow) {
+  const normalizedHeaders = headerRow.map(normalizeHeader);
+  const result = {};
+  Object.keys(HEADER_ALIASES).forEach(key => {
+    const aliases = HEADER_ALIASES[key].map(normalizeHeader);
+    const index = normalizedHeaders.findIndex(header => aliases.indexOf(header) >= 0);
+    if (index >= 0) result[key] = index + 1;
+  });
+  return result;
+}
+
+function findRowByEtiqueta(sheet, etiqueta) {
+  const context = sheetContext(sheet);
+  return findRowByEtiquetaInValues(context.values, context.columns, normalizeEtiqueta(etiqueta), context.headerRowIndex);
+}
+
+function findRowByEtiquetaInValues(values, columns, etiqueta, headerRowIndex) {
+  const target = normalizeEtiqueta(etiqueta);
+  if (!target || !columns.etiqueta) return 0;
+  for (let i = headerRowIndex + 1; i < values.length; i += 1) {
+    if (normalizeEtiqueta(values[i][columns.etiqueta - 1]) === target) return i + 1;
   }
   return 0;
 }
 
-function rowToObject(row, columns) {
-  const prestada = clean(row[columns.prestada - 1]);
-  const estado = normalizeState(row[columns.estado - 1] || (prestada ? 'Prestado' : 'Devuelto'));
+function dataRows(values, headerRowIndex, columns) {
+  return values
+    .slice(headerRowIndex + 1)
+    .filter(row => normalizeEtiqueta(row[columns.etiqueta - 1]));
+}
+
+function rowToInventoryObject(row, columns) {
+  const modelo = getCell(row, columns.modelo);
+  const prestada = getCell(row, columns.prestada);
+  const estado = normalizeState(getCell(row, columns.estado) || (prestada ? 'Prestado' : 'Devuelto'));
   return {
-    etiqueta: clean(row[columns.etiqueta - 1]),
-    categoria: clean(row[columns.categoria - 1]),
-    dispositivo: clean(row[columns.dispositivo - 1]),
-    marca: clean(row[columns.marca - 1]),
-    modelo: clean(row[columns.modelo - 1]),
+    modelo,
+    categoria: getCell(row, columns.categoria) || modelo,
+    dispositivo: getCell(row, columns.dispositivo) || modelo || 'Chromebook',
+    etiqueta: normalizeEtiqueta(getCell(row, columns.etiqueta)),
+    numero: getCell(row, columns.numero),
     estado,
     prestada,
     prestadoA: prestada,
-    comentarios: clean(row[columns.comentarios - 1]),
-    rol: clean(row[columns.rol - 1]),
-    ubicacion: clean(row[columns.ubicacion - 1]),
-    motivo: clean(row[columns.motivo - 1]),
-    fechaPrestado: asIso(row[columns.horarioPrestamo - 1]),
-    horarioPrestamo: asIso(row[columns.horarioPrestamo - 1]),
-    fechaDevuelto: asIso(row[columns.horarioDevolucion - 1]),
-    horarioDevolucion: asIso(row[columns.horarioDevolucion - 1]),
-    ultimaModificacion: asIso(row[columns.ultimaModificacion - 1])
+    comentarios: getCell(row, columns.comentarios),
+    fechaPrestamo: asIso(getRawCell(row, columns.fechaPrestamo)),
+    horarioPrestamo: asIso(getRawCell(row, columns.fechaPrestamo)),
+    fechaDevolucion: asIso(getRawCell(row, columns.fechaDevolucion)),
+    fechaDevuelto: asIso(getRawCell(row, columns.fechaDevolucion)),
+    horarioDevolucion: asIso(getRawCell(row, columns.fechaDevolucion)),
+    ultimaModificacion: asIso(getRawCell(row, columns.ultimaModificacion)),
+    rol: getCell(row, columns.rol),
+    ubicacion: getCell(row, columns.ubicacion),
+    motivo: getCell(row, columns.motivo)
   };
 }
 
-function columnMap(headers) {
-  const normalizedHeaders = headers.map(normalizeText);
-  const result = {};
-  Object.keys(FALLBACK_COLUMNS).forEach(key => {
-    const aliases = HEADER_ALIASES[key].map(normalizeText);
-    const index = normalizedHeaders.findIndex(header => aliases.indexOf(header) >= 0);
-    result[key] = index >= 0 ? index + 1 : FALLBACK_COLUMNS[key];
+function rowToStateObject(row, columns) {
+  const inventory = rowToInventoryObject(row, columns);
+  return {
+    etiqueta: inventory.etiqueta,
+    estado: inventory.estado,
+    prestada: inventory.prestada,
+    prestadoA: inventory.prestada,
+    fechaPrestamo: inventory.fechaPrestamo,
+    fechaDevolucion: inventory.fechaDevolucion,
+    horarioPrestamo: inventory.horarioPrestamo,
+    horarioDevolucion: inventory.horarioDevolucion,
+    ultimaModificacion: inventory.ultimaModificacion,
+    rol: inventory.rol,
+    ubicacion: inventory.ubicacion,
+    motivo: inventory.motivo,
+    comentarios: inventory.comentarios
+  };
+}
+
+function headerDebug(columns) {
+  const out = {};
+  Object.keys(columns).forEach(key => {
+    out[key] = columnLetter(columns[key]);
   });
-  return result;
+  return out;
+}
+
+function inventorySheet() {
+  const ss = spreadsheet();
+  const named = SHEET_NAME ? ss.getSheetByName(SHEET_NAME) : null;
+  const sheet = named || ss.getSheets()[0];
+  if (!sheet) throw new Error('No se encontro la pestana de inventario.');
+  return sheet;
+}
+
+function movementSheet() {
+  const ss = spreadsheet();
+  return ss.getSheetByName(MOVEMENTS_SHEET_NAME) || ss.insertSheet(MOVEMENTS_SHEET_NAME);
+}
+
+function spreadsheet() {
+  if (SPREADSHEET_ID) return SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('No hay Spreadsheet activo. Pega este script desde Extensiones > Apps Script dentro del Spreadsheet correcto o completa SPREADSHEET_ID.');
+  return ss;
 }
 
 function appendMovement(tipo, etiqueta, detalle, operador, date) {
@@ -248,31 +334,33 @@ function appendMovement(tipo, etiqueta, detalle, operador, date) {
   sheet.appendRow([date || new Date(), tipo, etiqueta, detalle, operador]);
 }
 
-function inventorySheet() {
-  const ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
-  if (!sheet) throw new Error('No se encontró la pestaña de inventario.');
-  return sheet;
-}
-
-function movementSheet() {
-  const ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(MOVEMENTS_SHEET_NAME) || ss.insertSheet(MOVEMENTS_SHEET_NAME);
-}
-
 function writeIfColumn(sheet, row, column, value) {
   if (!column || column < 1) return;
   sheet.getRange(row, column).setValue(value);
 }
 
+function normalizeHeader(value) {
+  return clean(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function normalizeEtiqueta(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
 function normalizeState(value) {
-  const text = normalizeText(value);
+  const text = normalizeHeader(value);
   if (text.indexOf('fuera') >= 0 || text.indexOf('servicio') >= 0) return 'Fuera de servicio';
   if (text.indexOf('no encontrada') >= 0 || text.indexOf('perd') >= 0) return 'No encontrada';
   if (text.indexOf('prest') >= 0) return 'Prestado';
   if (text.indexOf('dev') >= 0 || text.indexOf('disp') >= 0 || !text) return 'Devuelto';
-  if (VALID_STATES.indexOf(clean(value)) >= 0) return clean(value);
-  throw new Error('Estado inválido. Usar: ' + VALID_STATES.join(', '));
+  const cleanValue = clean(value);
+  if (VALID_STATES.indexOf(cleanValue) >= 0) return cleanValue;
+  throw new Error('Estado invalido. Usar: ' + VALID_STATES.join(', '));
 }
 
 function parseBody(e) {
@@ -290,18 +378,17 @@ function json(payload) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function getCell(row, column) {
+  return clean(getRawCell(row, column));
+}
+
+function getRawCell(row, column) {
+  if (!column || column < 1) return '';
+  return row[column - 1];
+}
+
 function clean(value) {
   return String(value == null ? '' : value).trim();
-}
-
-function normalizeText(value) {
-  return clean(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
-}
-
-function normalizeTag(value) {
-  const raw = clean(value).toUpperCase().replace(/\s+/g, '');
-  const match = raw.match(/^D?0*(\d{1,5})$/);
-  return match ? 'D' + match[1].padStart(4, '0') : raw;
 }
 
 function asIso(value) {
@@ -310,19 +397,22 @@ function asIso(value) {
   return clean(value);
 }
 
+function columnLetter(column) {
+  let value = Number(column || 0);
+  let out = '';
+  while (value > 0) {
+    const mod = (value - 1) % 26;
+    out = String.fromCharCode(65 + mod) + out;
+    value = Math.floor((value - mod) / 26);
+  }
+  return out;
+}
+
 /**
- * Pruebas rápidas:
- * - Leer inventario:
- *   https://script.google.com/macros/s/DEPLOY_ID/exec?action=inventory
- * - Leer estado:
- *   https://script.google.com/macros/s/DEPLOY_ID/exec?action=state
- * - Prestar con curl:
- *   curl -L -X POST "WEB_APP_URL?action=loan" -H "Content-Type: application/json" -d "{\"etiqueta\":\"D1436\",\"person\":\"Juan Pérez\",\"operator\":\"TIC\"}"
- * - Devolver con curl:
- *   curl -L -X POST "WEB_APP_URL?action=return" -H "Content-Type: application/json" -d "{\"etiqueta\":\"D1436\",\"operator\":\"TIC\"}"
- *
- * Al duplicar el Spreadsheet:
- * - Si SPREADSHEET_ID está vacío, el script apunta al Spreadsheet activo duplicado.
- * - Si SPREADSHEET_ID tiene valor, cambiarlo por el ID del nuevo Spreadsheet.
- * - Volver a desplegar o crear una nueva versión del Web App y actualizar la URL en la sede de TechAsset.
+ * Pruebas rapidas:
+ * - WEB_APP_URL?action=debug
+ * - WEB_APP_URL?action=inventory
+ * - WEB_APP_URL?action=state
+ * - curl -L -X POST "WEB_APP_URL?action=loan" -H "Content-Type: application/json" -d "{\"etiqueta\":\"D1188\",\"person\":\"Prueba\",\"operator\":\"TIC\"}"
+ * - curl -L -X POST "WEB_APP_URL?action=return" -H "Content-Type: application/json" -d "{\"etiqueta\":\"D1188\",\"operator\":\"TIC\"}"
  */

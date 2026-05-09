@@ -212,7 +212,7 @@ export interface QuickLink {
 }
 
 export interface SyncStatus {
-  state: 'loading' | 'ok' | 'error';
+  state: 'loading' | 'ok' | 'warning' | 'error';
   message?: string;
   loadedAt?: string;
 }

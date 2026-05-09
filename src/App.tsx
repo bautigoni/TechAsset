@@ -43,7 +43,7 @@ export function App() {
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [activeSite, setActiveSite] = useState('');
   const { operator, setOperator } = useOperator();
-  const { devices, filteredDevices, counts, sync, refresh, patchLocal, removeLocal } = useDevices(search);
+  const { devices, filteredDevices, counts, sync, refresh, patchLocal, removeLocal } = useDevices(search, activeSite);
   const agenda = useAgenda(operator);
   const tasks = useTasks(operator);
   useScrollReveal([view, filteredDevices.length, agenda.items.length, tasks.items.length, movements.length]);
@@ -135,7 +135,7 @@ export function App() {
     const tag = String(payload.etiqueta || '');
     if (tag) patchLocal(tag, { estado: 'Prestado', prestadoA: String(payload.person || ''), ubicacion: [payload.location, payload.course, payload.locationDetail].map(v => String(v || '').trim()).filter(Boolean).join(' · '), motivo: [payload.reason, payload.reasonDetail].map(v => String(v || '').trim()).filter(Boolean).join(' · '), rol: String(payload.role || ''), comentarios: String(payload.comment || '') });
     try {
-      await lendDevice({ ...payload, operator });
+      return await lendDevice({ ...payload, operator });
     } finally {
       void refresh();
       getMovements().then(data => setMovements(data.items)).catch(() => {});
@@ -146,7 +146,7 @@ export function App() {
     const tag = String(payload.etiqueta || '');
     if (tag) patchLocal(tag, { estado: 'Disponible', prestadoA: '', ubicacion: '', motivo: '', rol: '' });
     try {
-      await returnDevice({ ...payload, operator });
+      return await returnDevice({ ...payload, operator });
     } finally {
       void refresh();
       getMovements().then(data => setMovements(data.items)).catch(() => {});
@@ -212,9 +212,9 @@ export function App() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} onReload={() => refresh({ force: true, wait: true })} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} />
+      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} />
       <main className="main main-content">
-        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={consultationMode} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} />
+        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={consultationMode} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} />
         {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={consultationMode} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}

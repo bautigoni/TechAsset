@@ -67,6 +67,40 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
     }
   };
 
+  const exportQrPdf = () => {
+    const rows = visibleDevices.map(device => {
+      const payload = ['TA', device.etiqueta, device.sn || '', device.mac || ''].join('|');
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=132x132&data=${encodeURIComponent(payload)}`;
+      return `
+        <article class="qr-card">
+          <img src="${qrUrl}" alt="QR ${escapeHtml(device.etiqueta)}" />
+          <strong>${escapeHtml(device.etiqueta)}</strong>
+          <span>${escapeHtml(device.aliasOperativo || device.categoria || '')}</span>
+        </article>
+      `;
+    }).join('') || '<p>No hay dispositivos visibles para exportar.</p>';
+    const popup = window.open('', '_blank', 'width=980,height=720');
+    if (!popup) {
+      setMessage({ tone: 'error', text: 'El navegador bloqueó la ventana de exportación.' });
+      return;
+    }
+    popup.document.write(`<!doctype html>
+      <html><head><meta charset="utf-8" /><title>QR TechAsset</title>
+      <style>
+        body{font-family:Arial,sans-serif;margin:24px;color:#0f172a}
+        h1{font-size:20px;margin:0 0 18px}
+        .qr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+        .qr-card{border:1px solid #cbd5e1;border-radius:12px;padding:12px;display:grid;place-items:center;gap:6px;break-inside:avoid}
+        .qr-card img{width:132px;height:132px}
+        .qr-card strong{font-size:18px}
+        .qr-card span{font-size:12px;color:#475569}
+        @media print{body{margin:10mm}.qr-grid{grid-template-columns:repeat(3,1fr)}}
+      </style></head><body><h1>TechAsset · códigos QR</h1><section class="qr-grid">${rows}</section></body></html>`);
+    popup.document.close();
+    popup.focus();
+    window.setTimeout(() => popup.print(), 600);
+  };
+
   return (
     <section className="view active">
       <div className="stats-grid device-filter-grid">
@@ -99,6 +133,7 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
               <option value="default">Orden original</option>
               <option value="operational">Ordenar por número operativo</option>
             </select>
+            <Button onClick={exportQrPdf}>Exportar PDF QR</Button>
             {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Añadir dispositivo</Button>}
           </div>
         </div>
@@ -114,5 +149,15 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
       {editing && <AddDeviceModal title={`Editar ${editing.etiqueta}`} initialDevice={editing} onClose={() => setEditing(null)} onSave={onAdd} />}
     </section>
   );
+}
+
+function escapeHtml(value: string) {
+  return String(value || '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char] || char));
 }
 

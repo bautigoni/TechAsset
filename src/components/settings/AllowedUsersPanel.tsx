@@ -3,18 +3,20 @@ import type { SiteInfo } from '../../types';
 import { type AllowedUserItem, getAllowedUsers, getSites, saveAllowedUser } from '../../services/authApi';
 import { Button } from '../layout/Button';
 
-const ROLES = ['Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
+const ADMIN_ROLES = ['Superadmin', 'Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
+const SITE_ROLES = ['Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
 const TURNS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'];
 
 function emptyUser(siteCode = 'NFPT'): AllowedUserItem {
   return { email: '', nombre: '', defaultRole: 'Consulta', turno: 'Sin turno', defaultSiteCode: siteCode, activo: true, canChooseRole: false, sites: [{ siteCode, siteRole: 'Consulta', turno: 'Sin turno', isDefault: true }] };
 }
 
-export function AllowedUsersPanel({ onChanged }: { onChanged?: () => void }) {
+export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { canAssignSuperadmin?: boolean; onChanged?: () => void }) {
   const [users, setUsers] = useState<AllowedUserItem[]>([]);
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [draft, setDraft] = useState<AllowedUserItem>(emptyUser());
   const [message, setMessage] = useState('');
+  const roles = canAssignSuperadmin ? ADMIN_ROLES : SITE_ROLES;
 
   const load = async () => {
     const [u, s] = await Promise.all([getAllowedUsers(), getSites()]);
@@ -80,7 +82,7 @@ export function AllowedUsersPanel({ onChanged }: { onChanged?: () => void }) {
           <label>Nombre<input className="input" value={draft.nombre} onChange={e => setDraft(s => ({ ...s, nombre: e.target.value }))} /></label>
         </div>
         <div className="grid-2">
-          <label>Rol<select className="input" value={draft.defaultRole} onChange={e => setDraft(s => ({ ...s, defaultRole: e.target.value }))}>{ROLES.map(role => <option key={role}>{role}</option>)}</select></label>
+          <label>Rol<select className="input" value={draft.defaultRole} onChange={e => setDraft(s => ({ ...s, defaultRole: e.target.value }))}>{roles.map(role => <option key={role}>{role}</option>)}</select></label>
           <label>Turno<select className="input" value={draft.turno || 'Sin turno'} onChange={e => setDraft(s => ({ ...s, turno: e.target.value }))}>{TURNS.map(turn => <option key={turn}>{turn}</option>)}</select></label>
         </div>
         <div className="site-check-grid">
