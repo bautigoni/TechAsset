@@ -5,7 +5,8 @@ import { csvCell } from '../../utils/formatters';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 
-const CATEGORIES = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Otro'];
+const DEFAULT_FILTER_CATEGORIES = ['Tablets', 'Dash Robot', 'Beebot', 'Bluebot', 'Mouses disponibles maker/ofi', 'Filamento 3D', 'Arduino'];
+const FORM_CATEGORIES = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Otro'];
 const STATES = ['', 'Operativo', 'Revisar', 'Incompleto', 'Bajo stock', 'No disponible'];
 const EMPTY_FORM: Partial<InventoryItem> = {
   nombre: '',
@@ -23,7 +24,7 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('Todas');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [sort, setSort] = useState<'name' | 'quantity'>('name');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -35,16 +36,35 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
 
   useEffect(() => { refresh(); }, []);
 
+  const availableCategories = useMemo(() => {
+    const seen = new Set<string>();
+    return [...DEFAULT_FILTER_CATEGORIES, ...FORM_CATEGORIES, ...items.map(item => item.categoria)]
+      .map(item => String(item || '').trim())
+      .filter(Boolean)
+      .filter(item => {
+        const key = item.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [items]);
+
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return items
-      .filter(item => category === 'Todas' || item.categoria === category)
+      .filter(item => !selectedCategories.length || selectedCategories.includes(item.categoria))
       .filter(item => !needle || [item.nombre, item.categoria, item.estado, item.observaciones].some(value => String(value || '').toLowerCase().includes(needle)))
       .sort((a, b) => sort === 'quantity' ? b.cantidad - a.cantidad : a.nombre.localeCompare(b.nombre, 'es'));
-  }, [category, items, search, sort]);
+  }, [items, search, selectedCategories, sort]);
 
   const totalUnits = items.reduce((acc, item) => acc + Number(item.cantidad || 0), 0);
   const lowStock = items.filter(item => Number(item.cantidad || 0) <= 3).length;
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(current => current.includes(category)
+      ? current.filter(item => item !== category)
+      : [...current, category]);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -137,14 +157,21 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
       <section className="card inventory-list-card">
         <div className="inventory-toolbar">
           <input className="input" type="search" placeholder="Buscar recurso, estado u observación" value={search} onChange={event => setSearch(event.target.value)} />
-          <select className="input" value={category} onChange={event => setCategory(event.target.value)}>
-            <option>Todas</option>
-            {CATEGORIES.map(item => <option key={item}>{item}</option>)}
-          </select>
           <select className="input" value={sort} onChange={event => setSort(event.target.value as 'name' | 'quantity')}>
             <option value="name">Ordenar por nombre</option>
             <option value="quantity">Ordenar por cantidad</option>
           </select>
+          <div className="inventory-category-filter" aria-label="Filtrar por categoría">
+            {availableCategories.map(item => (
+              <label key={item} className={selectedCategories.includes(item) ? 'active' : ''}>
+                <input type="checkbox" checked={selectedCategories.includes(item)} onChange={() => toggleCategory(item)} />
+                <span>{item}</span>
+              </label>
+            ))}
+            {selectedCategories.length > 0 && (
+              <button type="button" onClick={() => setSelectedCategories([])}>Limpiar filtros</button>
+            )}
+          </div>
         </div>
         {message && <div className="tool-info">{message}</div>}
         {error && <div className="tool-error">{error}</div>}
@@ -181,7 +208,7 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
             <div className="grid-2">
               <label>Categoría
                 <select className="input" value={form.categoria || 'Otro'} onChange={event => setForm(current => ({ ...current, categoria: event.target.value }))}>
-                  {CATEGORIES.map(item => <option key={item}>{item}</option>)}
+                  {availableCategories.map(item => <option key={item}>{item}</option>)}
                 </select>
               </label>
               <label>Cantidad<input className="input" type="number" min="0" value={form.cantidad ?? 0} onChange={event => setForm(current => ({ ...current, cantidad: Number(event.target.value) }))} /></label>

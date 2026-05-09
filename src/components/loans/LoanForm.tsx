@@ -16,7 +16,9 @@ type ScanItem = {
   motivo?: string;
 };
 
-export function LoanForm({ devices, onLend, onReturn, consultationMode, initialCode = '' }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<void>; onReturn: (payload: Record<string, unknown>) => Promise<void>; consultationMode: boolean; initialCode?: string }) {
+type LoanActionResult = { synced?: boolean; message?: string } | void;
+
+export function LoanForm({ devices, onLend, onReturn, consultationMode, initialCode = '' }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; consultationMode: boolean; initialCode?: string }) {
   const [code, setCode] = useState('');
   const [person, setPerson] = useState('');
   const [role, setRole] = useState('');
@@ -59,14 +61,30 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
   const handleLend = async () => {
     const data = payload();
-    await onLend(data);
-    reset();
+    setBusy(true);
+    try {
+      const result = await onLend(data);
+      setScanMessage({ tone: result && result.synced === false ? 'warn' : 'info', text: result?.message || 'Préstamo registrado.' });
+      reset();
+    } catch (error) {
+      setScanMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo registrar el préstamo.' });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleReturn = async () => {
     const data = payload();
-    await onReturn(data);
-    reset();
+    setBusy(true);
+    try {
+      const result = await onReturn(data);
+      setScanMessage({ tone: result && result.synced === false ? 'warn' : 'info', text: result?.message || 'Devolución registrada.' });
+      reset();
+    } catch (error) {
+      setScanMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo registrar la devolución.' });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const addToContinuousScan = (raw: string) => {
@@ -154,7 +172,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       const errors: string[] = [];
       for (const item of validScanItems) {
         try {
-          await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, reason, reasonDetail, comment });
+          const result = await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, reason, reasonDetail, comment });
+          if (result?.synced === false) errors.push(`${item.etiqueta}: ${result.message || 'pendiente de sincronizar'}`);
         } catch (error) {
           errors.push(`${item.etiqueta}: ${error instanceof Error ? error.message : 'error'}`);
         }
@@ -183,6 +202,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           : <Button type="button" onClick={() => codeInputRef.current?.focus()}>Foco scanner</Button>}
       </div>
       {!continuousScan && <ScannerPanel device={selected} message={matches.length > 1 ? 'Hay más de un equipo posible. Especificá mejor.' : undefined} />}
+      {!continuousScan && scanMessage && <div className={`tool-${scanMessage.tone === 'error' ? 'error' : scanMessage.tone === 'warn' ? 'warning' : 'info'}`}>{scanMessage.text}</div>}
       <button className={`toggle-row toggle-row-button ${continuousScan ? 'active' : ''}`} type="button" role="switch" aria-checked={continuousScan} onClick={toggleContinuous}>
         <span className="toggle-pill"><span /></span>
         <strong>Escaneo continuo</strong>
@@ -243,8 +263,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           </>
         ) : (
           <>
-            <Button type="button" variant="primary" disabled={blocked} onClick={handleLend}>Prestar</Button>
-            <Button type="button" variant="success" disabled={blocked} onClick={handleReturn}>Devolver</Button>
+            <Button type="button" variant="primary" disabled={blocked || busy} onClick={handleLend}>Prestar</Button>
+            <Button type="button" variant="success" disabled={blocked || busy} onClick={handleReturn}>Devolver</Button>
             <Button type="button">Abrir cámara</Button>
             <Button type="button">Cerrar cámara</Button>
           </>

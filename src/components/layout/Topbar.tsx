@@ -17,7 +17,7 @@ const TITLES: Record<ViewKey, string> = {
   settings: 'Configuración'
 };
 
-export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu, onToggleTheme, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout }: {
+export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu, onToggleTheme, onReload, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout }: {
   view: ViewKey;
   search: string;
   setSearch: (value: string) => void;
@@ -25,6 +25,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
   consultationMode: boolean;
   onMenu: () => void;
   onToggleTheme: () => void;
+  onReload?: () => void;
   activeSite?: string;
   sites?: SiteInfo[];
   onSiteChange?: (siteCode: string) => void;
@@ -61,6 +62,14 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
           <span className="sync-mini-dot" />
           <span className="sr-only">{syncUi.title}</span>
         </div>
+        <button className="sync-refresh-btn" type="button" aria-label="Recargar hoja" title="Recargar hoja" onClick={onReload}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 6v5h-5" />
+            <path d="M4 18v-5h5" />
+            <path d="M18.2 9A7 7 0 0 0 6.6 6.6L4 9" />
+            <path d="M5.8 15A7 7 0 0 0 17.4 17.4L20 15" />
+          </svg>
+        </button>
         <button className="theme-icon-btn" type="button" aria-label="Cambiar modo claro u oscuro" title="Modo claro / oscuro" onClick={onToggleTheme}>
           <span className="theme-icon-half" />
         </button>

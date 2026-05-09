@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { config } from './config.js';
 
 let db;
+const NFND_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnzrGcoReFcezLMxmrRSDf6XWq-YgRDrFChvlk9X5m7HqmnMLGm_UamW-i-fjn9ArF/exec';
 
 export function getDb() {
   if (!db) {
@@ -334,6 +335,17 @@ export function initDb(database = getDb()) {
       updated_at TEXT,
       UNIQUE(site_code, floor_key)
     );
+    CREATE TABLE IF NOT EXISTS pending_sheet_sync (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT,
+      action TEXT,
+      etiqueta TEXT,
+      payload_json TEXT DEFAULT '{}',
+      status TEXT DEFAULT 'pending',
+      error TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
   `);
 
   ensureColumn(database, 'agenda', 'site_code', "TEXT DEFAULT 'NFPT'");
@@ -376,6 +388,7 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'inventory_items', 'activo', "INTEGER DEFAULT 1");
 
   seedDefaultSite(database);
+  ensureKnownSiteSources(database);
   seedDefaultSettings(database);
   seedInitialInventory(database, config.defaultSiteCode || 'NFPT');
   for (const site of parseBootstrapSites()) {
@@ -477,6 +490,17 @@ function seedDefaultSite(database) {
   for (const site of bootstrap) stmt.run(site.siteCode, site.nombre, ts, ts);
 }
 
+function ensureKnownSiteSources(database) {
+  const ts = nowIso();
+  database.prepare(`
+    INSERT INTO sites (site_code, nombre, subtitulo, activo, apps_script_url, created_at, updated_at)
+    VALUES ('NFND', 'Northfield Nordelta', 'Sede Nordelta', 1, ?, ?, ?)
+    ON CONFLICT(site_code) DO UPDATE SET
+      apps_script_url=excluded.apps_script_url,
+      updated_at=excluded.updated_at
+  `).run(NFND_APPS_SCRIPT_URL, ts, ts);
+}
+
 function parseBootstrapSites() {
   return String(config.bootstrapSites || '')
     .split(',')
@@ -531,12 +555,16 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
 function seedAllowedUsers(database) {
   const ts = nowIso();
   const emails = config.authAllowedEmails.length ? config.authAllowedEmails : ['admin@northfield.local'];
+  const defaultSiteCode = config.defaultSiteCode || 'NFPT';
+  const bootstrapEmail = String(emails[0] || 'admin@northfield.local').trim().toLowerCase();
   const stmt = database.prepare(`
     INSERT INTO allowed_users (email, nombre, default_role, can_choose_role, activo, created_at, updated_at)
     VALUES (?, ?, 'Jefe TIC', 0, 1, ?, ?)
     ON CONFLICT(email) DO NOTHING
   `);
-  for (const email of emails) {
+  for (const rawEmail of emails) {
+    const email = String(rawEmail || '').trim().toLowerCase();
+    if (!email) continue;
     stmt.run(email, email.split('@')[0], ts, ts);
     const allowed = database.prepare('SELECT id FROM allowed_users WHERE email=?').get(email);
     if (allowed) {
@@ -544,8 +572,32 @@ function seedAllowedUsers(database) {
         INSERT INTO allowed_user_sites (allowed_user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at)
         VALUES (?, ?, 'Jefe TIC', 'Todo el día', 1, 1, ?, ?)
         ON CONFLICT(allowed_user_id, site_code) DO NOTHING
-      `).run(allowed.id, config.defaultSiteCode || 'NFPT', ts, ts);
+      `).run(allowed.id, defaultSiteCode, ts, ts);
     }
+  }
+  const hasSuperadmin = database.prepare(`
+    SELECT 1 FROM allowed_users
+    WHERE activo=1 AND default_role='Superadmin'
+    LIMIT 1
+  `).get();
+  if (!hasSuperadmin && bootstrapEmail) {
+    database.prepare(`
+      INSERT INTO allowed_users (email, nombre, default_role, can_choose_role, activo, created_at, updated_at)
+      VALUES (?, ?, 'Superadmin', 0, 1, ?, ?)
+      ON CONFLICT(email) DO UPDATE SET default_role='Superadmin', can_choose_role=0, activo=1, updated_at=excluded.updated_at
+    `).run(bootstrapEmail, bootstrapEmail.split('@')[0], ts, ts);
+    const allowed = database.prepare('SELECT id FROM allowed_users WHERE email=?').get(bootstrapEmail);
+    if (allowed) {
+      database.prepare(`
+        INSERT INTO allowed_user_sites (allowed_user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at)
+        VALUES (?, ?, 'Superadmin', 'Todo el día', 1, 1, ?, ?)
+        ON CONFLICT(allowed_user_id, site_code) DO UPDATE SET site_role='Superadmin', turno='Todo el día', is_default=1, activo=1, updated_at=excluded.updated_at
+      `).run(allowed.id, defaultSiteCode, ts, ts);
+    }
+    database.prepare(`
+      UPDATE users SET rol_global='Superadmin', activo=1, updated_at=?
+      WHERE lower(email)=?
+    `).run(ts, bootstrapEmail);
   }
 }
 

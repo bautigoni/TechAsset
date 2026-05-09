@@ -21,6 +21,49 @@ devicesRouter.get('/devices/diagnostics', (_req, res) => {
   res.json({ ok: true, diagnostics: getDeviceInventoryDiagnostics(requireSite(_req)) });
 });
 
+devicesRouter.get('/devices/debug', async (_req, res) => {
+  const siteCode = requireSite(_req);
+  try {
+    const debug = await proxyAppsScript('debug', { siteCode }, 'GET', { siteCode, timeoutMs: 12000 });
+    res.json({ ok: true, siteCode, debug });
+  } catch (error) {
+    res.status(502).json({
+      ok: false,
+      siteCode,
+      error: error instanceof Error ? error.message : 'No se pudo consultar el diagnóstico de Apps Script.'
+    });
+  }
+});
+
+devicesRouter.get('/devices/pending-sync', (_req, res) => {
+  const siteCode = requireSite(_req);
+  const items = getDb().prepare(`
+    SELECT id, site_code AS siteCode, action, etiqueta, status, error, created_at AS createdAt, updated_at AS updatedAt
+    FROM pending_sheet_sync
+    WHERE site_code=? AND status='pending'
+    ORDER BY id DESC
+  `).all(siteCode);
+  res.json({ ok: true, items });
+});
+
+devicesRouter.post('/devices/pending-sync/:id/retry', async (_req, res) => {
+  const siteCode = requireSite(_req);
+  const id = Number(_req.params.id);
+  const row = getDb().prepare('SELECT * FROM pending_sheet_sync WHERE id=? AND site_code=?').get(id, siteCode);
+  if (!row) return res.status(404).json({ ok: false, error: 'Sincronización pendiente no encontrada.' });
+  try {
+    const payload = JSON.parse(row.payload_json || '{}');
+    await proxyAppsScript(row.action, payload, 'POST', { siteCode, timeoutMs: 20000 });
+    getDb().prepare("UPDATE pending_sheet_sync SET status='synced', error='', updated_at=? WHERE id=?").run(nowIso(), id);
+    invalidateDeviceInventoryCache('pending-sync-retry', siteCode);
+    res.json({ ok: true, synced: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || 'Error desconocido');
+    getDb().prepare("UPDATE pending_sheet_sync SET error=?, updated_at=? WHERE id=?").run(message, nowIso(), id);
+    res.status(502).json({ ok: false, error: message });
+  }
+});
+
 devicesRouter.get('/device-categories', async (_req, res, next) => {
   try {
     const siteCode = requireSite(_req);

@@ -92,7 +92,7 @@ Si Google Sheets falla, el servidor usa `data/cache_sheet.csv`.
 
 Al inicializar la base, TechAsset crea usuarios permitidos a partir de `AUTH_ALLOWED_EMAILS`.
 
-Si `AUTH_ALLOWED_EMAILS` está vacío, el bootstrap de desarrollo usa:
+Si todavía no existe ningún usuario con rol `Superadmin`, el primer mail de `AUTH_ALLOWED_EMAILS` queda como Superadmin bootstrap. Si `AUTH_ALLOWED_EMAILS` está vacío, se usa este mail de desarrollo:
 
 ```env
 admin@northfield.local
@@ -104,7 +104,9 @@ Para definir usuarios iniciales reales, configurar en `.env`:
 AUTH_ALLOWED_EMAILS=mail1@dominio.com,mail2@dominio.com
 ```
 
-Los usuarios creados por bootstrap quedan como `Jefe TIC` para la sede `DEFAULT_SITE_CODE` y luego se pueden administrar desde Configuración → Usuarios permitidos. En producción conviene cargar mails institucionales reales, revisar sedes/roles desde la pantalla de Usuarios permitidos y no dejar accesos de prueba activos.
+El rol `Superadmin` puede crear sedes, editar sedes, administrar URLs de Spreadsheet/Apps Script por sede y asignar usuarios/roles en todas las sedes. El rol `Jefe TIC` administra solo su sede asignada.
+
+Los demás usuarios de `AUTH_ALLOWED_EMAILS` se crean como `Jefe TIC` para la sede `DEFAULT_SITE_CODE` y luego se pueden administrar desde Configuración → Usuarios permitidos. En producción conviene cargar mails institucionales reales, asignar el Superadmin definitivo, revisar sedes/roles desde la pantalla de Usuarios permitidos y no dejar accesos de prueba activos.
 
 ## SQLite
 

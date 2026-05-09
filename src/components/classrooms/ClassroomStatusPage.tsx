@@ -18,6 +18,8 @@ const FLOORS: Array<{ key: FloorKey; label: string; enabled: boolean; piso: stri
   { key: 'inicial', label: 'Nivel inicial', enabled: false, piso: 'Nivel inicial' }
 ];
 
+const NFND_PLACEHOLDER_FLOORS = ['Planta baja', '1er piso', '2do piso'];
+
 export function ClassroomStatusPage({ operator, consultationMode, activeSite }: { operator: Operator; consultationMode: boolean; activeSite: string }) {
   const [floor, setFloor] = useState<FloorKey>('planta');
   const [items, setItems] = useState<Classroom[]>([]);
@@ -73,6 +75,29 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
     if (saved) setMessage('Cambios guardados.');
     refresh();
   };
+
+  if (activeSite === 'NFND') {
+    return (
+      <section className="view active">
+        <div className="classrooms-page">
+          <div className="classroom-placeholder-hero">
+            <div>
+              <h3>Estado de aulas</h3>
+              <p>Nordelta tendrá sus mapas propios. Mientras tanto, estas plantas quedan visibles sin cruzar datos de otra sede.</p>
+            </div>
+          </div>
+          <div className="classroom-coming-grid">
+            {NFND_PLACEHOLDER_FLOORS.map(label => (
+              <article key={label} className="classroom-coming-card">
+                <span>{label}</span>
+                <strong>Próximamente</strong>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (activeSite !== 'NFPT') {
     return (

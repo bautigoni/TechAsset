@@ -1,9 +1,18 @@
 import { apiSend } from './apiClient';
 
+export type LoanSyncResponse = {
+  ok: true;
+  item?: unknown;
+  synced?: boolean;
+  syncing?: boolean;
+  message?: string;
+  pendingSyncId?: number | null;
+};
+
 export function lendDevice(payload: Record<string, unknown>) {
-  return apiSend<{ ok: true; item?: unknown }>('/api/loans/lend', 'POST', payload);
+  return apiSend<LoanSyncResponse>('/api/loans/lend', 'POST', payload);
 }
 
 export function returnDevice(payload: Record<string, unknown>) {
-  return apiSend<{ ok: true; item?: unknown }>('/api/loans/return', 'POST', payload);
+  return apiSend<LoanSyncResponse>('/api/loans/return', 'POST', payload);
 }

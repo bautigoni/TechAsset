@@ -25,6 +25,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "localtunnel": "^2.0.2",
+    "lucide-react": "^1.14.0",
     "mammoth": "^1.12.0",
     "nodemailer": "^6.9.16",
     "openai": "^6.35.0",

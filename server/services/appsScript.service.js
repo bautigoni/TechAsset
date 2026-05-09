@@ -5,7 +5,8 @@ import { normalizeSiteCode } from './siteContext.service.js';
 export function getAppsScriptUrlForSite(siteCode) {
   const normalized = normalizeSiteCode(siteCode);
   const row = getDb().prepare('SELECT apps_script_url FROM sites WHERE site_code=?').get(normalized);
-  return String(row?.apps_script_url || config.appsScriptUrl || '').trim();
+  const isDefaultSite = normalized === normalizeSiteCode(config.defaultSiteCode || 'NFPT');
+  return String(row?.apps_script_url || (isDefaultSite ? config.appsScriptUrl : '') || '').trim();
 }
 
 export async function proxyAppsScript(action, payload = {}, method = 'POST', options = {}) {
@@ -15,16 +16,21 @@ export async function proxyAppsScript(action, payload = {}, method = 'POST', opt
   }
   const url = new URL(targetUrl);
   if (action) url.searchParams.set('action', action);
+  const timeoutMs = Number(options.timeoutMs || config.sheetFetchTimeoutMs || 4500);
   const response = await fetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: method === 'GET' ? undefined : JSON.stringify(payload),
-    signal: AbortSignal.timeout(Math.max(1000, Number(config.sheetFetchTimeoutMs || 4500)))
+    signal: AbortSignal.timeout(Math.max(1000, timeoutMs))
   });
   const text = await response.text();
+  if (!text.trim()) throw new Error(`Apps Script ${action || ''} devolvió una respuesta vacía.`);
+  let parsed;
   try {
-    return JSON.parse(text);
+    parsed = JSON.parse(text);
   } catch {
-    return { ok: response.ok, raw: text };
+    throw new Error(`Apps Script ${action || ''} no devolvió JSON válido.`);
   }
+  if (!response.ok || parsed?.ok === false) throw new Error(parsed?.error || `Apps Script HTTP ${response.status}`);
+  return parsed;
 }

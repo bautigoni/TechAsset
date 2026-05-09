@@ -69,12 +69,27 @@ export async function fetchDevicesJsonFromAppsScript(options = {}) {
   const rawUrl = options.url || config.appsScriptInventoryUrl || config.appsScriptUrl;
   if (!rawUrl) throw new Error('APPS_SCRIPT_INVENTORY_URL/APPS_SCRIPT_URL no configurado.');
   const url = new URL(rawUrl);
-  if (!url.searchParams.get('action')) url.searchParams.set('action', 'state');
+  if (!url.searchParams.get('action')) url.searchParams.set('action', options.action || 'inventory');
   const response = await fetchWithTimeout(addCacheBuster(url.toString()), config.sheetFetchTimeoutMs);
   if (!response.ok) throw new Error(`Apps Script inventory HTTP ${response.status}`);
   const payload = await response.json();
   const rows = Array.isArray(payload?.rows) ? payload.rows : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : [];
-  return { items: parseDevicesJsonRows(rows), source: 'Apps Script inventory', updatedAt: payload?.updatedAt || payload?.version || '' };
+  const items = parseDevicesJsonRows(rows);
+  if (options.cachePath && items.length && options.writeCache !== false) {
+    await writeDevicesCsvCache(options.cachePath, items);
+  }
+  return {
+    items,
+    source: 'Apps Script inventory',
+    updatedAt: payload?.updatedAt || payload?.version || '',
+    spreadsheet: payload?.spreadsheet || payload?.spreadsheetName || '',
+    spreadsheetId: payload?.spreadsheetId || '',
+    sheet: payload?.sheet || payload?.sheetName || ''
+  };
+}
+
+export async function writeDevicesCsvCache(cachePath, items) {
+  await writeText(cachePath, serializeDevicesCsv(items));
 }
 
 export function cachePathForSite(siteCode) {
@@ -303,6 +318,37 @@ function looksLikeHtml(text) {
 
 function makeDeviceId(etiqueta, sn, mac) {
   return [etiqueta, sn, mac].map(clean).filter(Boolean).join('|') || randomUUID();
+}
+
+function serializeDevicesCsv(items) {
+  const headers = ['site_code', 'etiqueta', 'categoria', 'dispositivo', 'marca', 'modelo', 'sn', 'mac', 'numero', 'alias_operativo', 'estado', 'prestada', 'comentarios', 'rol', 'ubicacion', 'motivo', 'fecha_prestado', 'fecha_devuelto', 'ultima_modificacion'];
+  const rows = items.map(item => [
+    item.siteCode || '',
+    item.etiqueta || '',
+    item.categoria || '',
+    item.dispositivo || '',
+    item.marca || '',
+    item.modelo || '',
+    item.sn || '',
+    item.mac || '',
+    item.numero || '',
+    item.aliasOperativo || '',
+    item.estado || '',
+    item.prestadoA || '',
+    item.comentarios || '',
+    item.rol || '',
+    item.ubicacion || '',
+    item.motivo || '',
+    item.loanedAt || '',
+    item.returnedAt || '',
+    item.ultima || ''
+  ]);
+  return [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\n');
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 function clean(value) {

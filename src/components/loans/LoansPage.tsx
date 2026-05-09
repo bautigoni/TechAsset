@@ -13,7 +13,9 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
   }, {})).sort((a, b) => b[1] - a[1]);
 }
 
-export function LoansPage({ devices, movements, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<void>; onReturn: (payload: Record<string, unknown>) => Promise<void>; initialCode?: string }) {
+type LoanActionResult = { synced?: boolean; message?: string } | void;
+
+export function LoansPage({ devices, movements, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; initialCode?: string }) {
   const loaned = devices.filter(device => device.estado === 'Prestado');
   const available = devices.filter(device => device.estado === 'Disponible');
   const byType = countBy(devices, device => classifyDeviceType(device));
