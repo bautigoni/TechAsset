@@ -351,3 +351,394 @@
     grid-template-columns:1fr;
   }
 }
+
+/* =====================================================================
+   MOBILE RESPONSIVE — capa quirúrgica (no toca desktop)
+   ===================================================================== */
+
+/* Scroll lock al abrir menú mobile */
+body.mobile-menu-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* ── TOPBAR MOBILE (≤ 980px) ─────────────────────────────────────────
+   Sobreescribe los múltiples overrides de legacy.css con una regla
+   final, limpia y de fila única.
+   ──────────────────────────────────────────────────────────────────── */
+@media (max-width: 980px) {
+  /* Fuerza layout flex de fila única */
+  .topbar {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    min-height: 54px;
+  }
+
+  /* Restaura los wrappers como contenedores reales (legacy los ponía display:contents) */
+  .topbar-title-wrap {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-width: 0;
+    order: unset !important;
+  }
+
+  .topbar-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    order: unset !important;
+  }
+
+  /* Reset de order heredados de legacy */
+  .mobile-menu-btn   { order: unset !important; }
+  .topbar-logo       { order: unset !important; margin-left: 0 !important; }
+  .sync-mini         { order: unset !important; }
+
+  /* Logo acotado */
+  .topbar-logo {
+    display: block !important;
+    width: 26px !important;
+    height: 26px !important;
+    object-fit: contain;
+  }
+
+  /* Título oculto — ahorra espacio */
+  .topbar-title-text { display: none !important; }
+
+  /* Buscador global oculto en mobile (cada vista tiene su propio filtro) */
+  .topbar-actions .input,
+  #globalSearch {
+    display: none !important;
+  }
+
+  /* Chip de sede acotado */
+  .operator-chip {
+    max-width: 80px;
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 5px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Sync dot compacto */
+  .sync-mini {
+    flex: 0 0 auto;
+    width: 22px !important;
+    min-width: 22px !important;
+    height: 22px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .sync-mini-dot {
+    width: 12px !important;
+    height: 12px !important;
+    margin: 0 !important;
+  }
+
+  /* Botones mínimo táctil 40px */
+  .sync-refresh-btn,
+  .theme-icon-btn,
+  .mobile-menu-btn {
+    flex: 0 0 auto;
+    min-width: 38px;
+    min-height: 38px;
+    display: inline-grid !important;
+    place-items: center;
+  }
+
+  /* Cuenta: solo avatar en mobile */
+  .account-chip {
+    flex: 0 0 auto;
+    max-width: 48px;
+    padding-right: 6px;
+  }
+
+  .account-name {
+    display: none;
+  }
+
+  /* Banner consulta: muy compacto */
+  .consulta-banner {
+    font-size: 10px;
+    padding: 3px 7px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* ── SAFE AREA PADDING ─────────────────────────────────────────── */
+  .main-content {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .view {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ── MODALES ───────────────────────────────────────────────────── */
+  .modal-card {
+    max-height: calc(100dvh - 32px) !important;
+    width: min(540px, calc(100vw - 24px)) !important;
+  }
+
+  /* ── DEVICE ACTIONS MOBILE ────────────────────────────────────── */
+  .device-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 6px;
+  }
+
+  /* ── DASHBOARD: STAT CARDS ────────────────────────────────────── */
+  .stats-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+  }
+
+  .stats-secondary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+  }
+
+  .stat-card strong {
+    font-size: clamp(26px, 7vw, 38px) !important;
+  }
+
+  .stat-card-lg strong {
+    font-size: clamp(28px, 8vw, 40px) !important;
+  }
+
+  /* Device filter grid con ancho mínimo razonable */
+  .device-filter-grid {
+    grid-template-columns: repeat(2, minmax(118px, 1fr)) !important;
+    gap: 10px;
+  }
+
+  .device-filter-grid .stat-card {
+    min-height: 80px;
+  }
+
+  /* ── DEVICES PAGE TOOLBAR ─────────────────────────────────────── */
+  .card-head {
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  /* Botones de exportación/importación en grilla 2 col */
+  .card-head .actions {
+    flex: 1 1 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    flex-wrap: unset;
+  }
+
+  /* Buscador y selector de orden ocupan fila completa */
+  .card-head .actions .compact-search,
+  .card-head .actions .compact-select {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Botón principal (Add) fila completa */
+  .card-head .actions .btn-primary {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+
+  /* ── SETTINGS: COLUMNAS → STACK ───────────────────────────────── */
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .panel.two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Textos largos que se salen de pantalla */
+  .sync-status,
+  .tool-info,
+  .tool-error,
+  .form-error,
+  .card p,
+  .allowed-user-email {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  /* ── INVENTORY PAGE ────────────────────────────────────────────── */
+  .inventory-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+  }
+
+  .inventory-toolbar {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  /* Chips de filtro: wrap sin scroll horizontal */
+  .inventory-category-filter {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    overflow-x: visible !important;
+    padding: 10px !important;
+  }
+
+  .inventory-category-filter label {
+    max-width: 100%;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    flex: 0 1 auto;
+  }
+
+  .inventory-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  .inventory-item-card {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* ── TASKS PAGE ────────────────────────────────────────────────── */
+  .task-board {
+    gap: 16px;
+  }
+
+  .task-card {
+    padding: 14px;
+  }
+
+  /* Métricas de tareas */
+  .analytics-kpi-grid {
+    gap: 10px;
+  }
+
+  /* Tabs con scroll horizontal suave */
+  .tab-row,
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tab-row::-webkit-scrollbar,
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Espacio adicional para subtarea / form de nota */
+  .task-add-item,
+  .internal-note-form {
+    padding-bottom: 8px;
+  }
+
+  /* ── AGENDA PAGE ───────────────────────────────────────────────── */
+  /* Selector de días: scroll horizontal, sin wrap */
+  .agenda-day-selector {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    padding-bottom: 4px;
+    width: 100%;
+  }
+
+  .agenda-day-selector::-webkit-scrollbar {
+    display: none;
+  }
+
+  .day-btn,
+  .agenda-day-btn {
+    flex: 0 0 auto;
+    min-width: 52px;
+  }
+
+  /* Segmented control Completo/Mañana/Tarde: fondo siempre visible */
+  .agenda-turno-filter {
+    background: var(--panel-2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 999px !important;
+    padding: 3px !important;
+    display: inline-flex !important;
+    gap: 4px;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+  }
+
+  .agenda-turno-btn {
+    white-space: nowrap;
+    min-height: 34px;
+    min-width: 52px;
+  }
+
+  /* ── TABLAS GENERALES ─────────────────────────────────────────── */
+  .no-scroll-table,
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── LOANS: batch item ─────────────────────────────────────────── */
+  .batch-item {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── BREAKPOINT 560px ─────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .stats-main,
+  .stats-secondary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .inventory-kpis {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Toolbar acciones: 1 columna */
+  .card-head .actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card-head .actions .compact-search,
+  .card-head .actions .compact-select {
+    grid-column: auto;
+  }
+}
+
+/* ── BREAKPOINT 380px ─────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .device-filter-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .inventory-kpis {
+    grid-template-columns: 1fr !important;
+  }
+}

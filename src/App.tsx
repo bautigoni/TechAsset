@@ -98,6 +98,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    document.body.classList.toggle('mobile-menu-open', menuOpen);
+    return () => document.body.classList.remove('mobile-menu-open');
+  }, [menuOpen]);
+
+  useEffect(() => {
     getMovements().then(data => setMovements(data.items)).catch(() => setMovements([]));
   }, [devices, agenda.items, tasks.items]);
 

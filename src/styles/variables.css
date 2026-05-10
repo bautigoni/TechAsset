@@ -10,6 +10,14 @@
   --yellow: #f59e0b;
   --red: #ef4444;
   --radius: 16px;
+
+  /* Surface tokens — dark institutional */
+  --surface: linear-gradient(165deg, rgba(22, 38, 70, 0.82), rgba(11, 20, 42, 0.96));
+  --surface-border: rgba(68, 108, 168, 0.28);
+  --surface-border-strong: rgba(59, 130, 246, 0.52);
+  --surface-shadow: 0 8px 30px rgba(0, 0, 0, 0.26);
+  --surface-shadow-hover: 0 14px 42px rgba(37, 99, 235, 0.17);
+  --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.055);
 }
 
 :root.theme-light {
@@ -22,4 +30,12 @@
   --blue: #2563eb;
   --green: #16a34a;
   --yellow: #d97706;
+
+  /* Surface tokens — light */
+  --surface: linear-gradient(165deg, rgba(241, 246, 255, 0.92), rgba(255, 255, 255, 0.98));
+  --surface-border: rgba(96, 140, 210, 0.34);
+  --surface-border-strong: rgba(37, 99, 235, 0.55);
+  --surface-shadow: 0 4px 20px rgba(30, 80, 160, 0.1);
+  --surface-shadow-hover: 0 10px 30px rgba(37, 99, 235, 0.16);
+  --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
