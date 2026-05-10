@@ -14,6 +14,18 @@ function badgeTone(state: string) {
   return 'available';
 }
 
+function normalizeState(value?: string): 'available' | 'loaned' | 'unavailable' {
+  const v = String(value || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (v === 'prestado' || v === 'prestada') return 'loaned';
+  if (v === 'fuera de servicio' || v === 'fuera servicio'
+      || v === 'no encontrada' || v === 'no encontrado'
+      || v === 'perdida' || v === 'perdido'
+      || v === 'en reparacion' || v === 'mantenimiento'
+      || v === 'baja' || v === 'no disponible') return 'unavailable';
+  return 'available';
+}
+
 function tableValue(value?: string) {
   const clean = String(value || '').trim();
   if (!clean || /^(devuelto|prestado|disponible)$/i.test(clean)) return '-';
@@ -74,8 +86,8 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
               <td data-label="Acciones" className="device-actions-cell">
                 <div className="table-actions device-actions">
-                  {onLoan && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
-                  {onReturn && <Button className="mini-action-btn" variant="success" onClick={() => onReturn(device)}>Devolver</Button>}
+                  {onLoan && normalizeState(device.estado) === 'available' && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
+                  {onReturn && normalizeState(device.estado) === 'loaned' && <Button className="mini-action-btn" variant="success" onClick={() => onReturn(device)}>Devolver</Button>}
                   {actionMode !== 'dashboard' && onProfile && <Button className="mini-action-btn" onClick={() => onProfile(device)}>Ficha</Button>}
                   {onEdit && <Button className="mini-action-btn" onClick={() => onEdit(device)}>Editar</Button>}
                   {onDelete && actionMode !== 'dashboard' && <Button className="mini-action-btn device-delete-btn" disabled={deletingTag === device.etiqueta} onClick={async () => {
