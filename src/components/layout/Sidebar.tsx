@@ -32,6 +32,8 @@ const NAV: Array<{ key: ViewKey; label: string; Icon: NavIcon }> = [
   { key: 'settings', label: 'Configuración', Icon: Settings }
 ];
 
+const BOTTOM_NAV = new Set<ViewKey>(['tools', 'quickaccess', 'settings']);
+
 export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggleCollapsed, activeSite, sites }: {
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
@@ -44,6 +46,8 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
 }) {
   const siteInfo = sites.find(site => site.siteCode === activeSite);
   const visibleNav = NAV.filter(item => item.key !== 'classrooms' || ['NFPT', 'NFND'].includes(activeSite));
+  const mainNav = visibleNav.filter(item => !BOTTOM_NAV.has(item.key));
+  const bottomNav = visibleNav.filter(item => BOTTOM_NAV.has(item.key));
   const navigate = (view: ViewKey) => {
     onNavigate(view);
     onClose();
@@ -67,7 +71,18 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
         </div>
 
         <nav className="nav nav-scrollable">
-          {visibleNav.map(item => {
+          {mainNav.map(item => {
+            const Icon = item.Icon;
+            return (
+              <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
+                <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={2.1} /></span>
+                <span className="nav-label">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <nav className="nav sidebar-bottom-nav">
+          {bottomNav.map(item => {
             const Icon = item.Icon;
             return (
               <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>

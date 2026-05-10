@@ -14,8 +14,10 @@ authRouter.get('/auth/session', (req, res) => {
 authRouter.post('/auth/login', (req, res) => {
   const email = normalizeEmail(req.body?.email);
   if (!email || !email.includes('@')) return res.status(400).json({ ok: false, error: 'Ingresá un mail válido.' });
-  const allowed = getDb().prepare('SELECT * FROM allowed_users WHERE lower(email)=? AND activo=1').get(email);
-  if (!allowed) return res.status(403).json({ ok: false, error: 'Este mail no está autorizado para TechAsset.' });
+  const allowed = getDb().prepare("SELECT * FROM allowed_users WHERE lower(email)=? AND COALESCE(deleted_at,'')=''").get(email);
+  if (!allowed) return res.status(403).json({ ok: false, error: 'Usuario no autorizado.' });
+  if (allowed.status === 'Pendiente') return res.status(403).json({ ok: false, error: 'Tu cuenta está pendiente de aprobación.' });
+  if (allowed.status === 'Rechazado' || allowed.activo !== 1) return res.status(403).json({ ok: false, error: 'Tu solicitud fue rechazada o tu usuario no está activo.' });
   const user = upsertLoginUser(allowed, req.body || {});
   const session = createSession(user.id);
   res.cookie(config.sessionCookieName, session.token, {
@@ -40,17 +42,8 @@ authRouter.get('/auth/register-options', (_req, res) => {
 
 authRouter.post('/auth/register', (req, res) => {
   try {
-    const user = createRegisteredUser(req.body || {});
-    const session = createSession(user.id);
-    res.cookie(config.sessionCookieName, session.token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      expires: new Date(session.expires),
-      path: '/'
-    });
-    const fresh = getUserSession({ headers: { cookie: `${config.sessionCookieName}=${session.token}` } });
-    res.json({ ok: true, authenticated: true, user: fresh.user, sites: fresh.sites });
+    createRegisteredUser(req.body || {});
+    res.json({ ok: true, authenticated: false, pending: true, message: 'Solicitud enviada. Tu acceso quedará habilitado cuando sea aprobado por un administrador.' });
   } catch (error) {
     res.status(400).json({ ok: false, error: error.message || 'No se pudo completar el registro.' });
   }

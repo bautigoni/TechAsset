@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Device } from '../../types';
 import { resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { getOperationalAlias, operationalTypeLabel } from '../../utils/classifyDevice';
@@ -32,8 +32,12 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const [continuousScan, setContinuousScan] = useState(false);
   const [scanItems, setScanItems] = useState<ScanItem[]>([]);
   const [scanMessage, setScanMessage] = useState<{ tone: 'info' | 'warn' | 'error'; text: string } | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
   const [busy, setBusy] = useState(false);
   const codeInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const matches = useMemo(() => code ? resolveDeviceMatches(devices, code) : [], [devices, code]);
   const selected = matches.length === 1 ? matches[0] : undefined;
   const blocked = consultationMode || !selected;
@@ -51,6 +55,14 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   useEffect(() => {
     getSiteSettings().then(r => setSettings(r.settings || {})).catch(() => {});
   }, []);
+
+  useEffect(() => () => stopCamera(), []);
+
+  useEffect(() => {
+    if (!cameraOpen || !videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    void videoRef.current.play().catch(() => undefined);
+  }, [cameraOpen]);
 
   const payload = () => ({ etiqueta: selected?.etiqueta, person, role, location, locationDetail, course, reason, reasonDetail, comment });
 
@@ -161,6 +173,41 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const validScanItems = scanItems.filter(item => item.disponible);
   const invalidScanItems = scanItems.filter(item => !item.disponible);
 
+  const openCamera = async () => {
+    setCameraError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('No se pudo abrir la cámara. Este navegador no permite acceso a cámara.');
+      return;
+    }
+    if (!window.isSecureContext) {
+      const host = window.location.hostname;
+      const local = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+      if (!local) {
+        setCameraError('No se pudo abrir la cámara. Verificá permisos del navegador o usá HTTPS/localhost.');
+        return;
+      }
+    }
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+      streamRef.current = stream;
+      setCameraOpen(true);
+    } catch {
+      setCameraError('No se pudo abrir la cámara. Verificá permisos del navegador o usá HTTPS/localhost.');
+      setCameraOpen(false);
+    }
+  };
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraOpen(false);
+  };
+
   const handleConfirmMultipleLoan = async () => {
     if (consultationMode || !validScanItems.length) return;
     if (!person.trim() || !location.trim() || location === 'Seleccionar ubicación' || (selectedLocation?.requiresDetail && !locationDetail.trim()) || (selectedLocation?.requiresCourse && !course.trim()) || (selectedReason?.requiresDetail && !reasonDetail.trim())) {
@@ -173,7 +220,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       for (const item of validScanItems) {
         try {
           const result = await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, reason, reasonDetail, comment });
-          if (result?.synced === false) errors.push(`${item.etiqueta}: ${result.message || 'pendiente de sincronizar'}`);
+          if (result?.synced === false) errors.push(`${item.etiqueta}: ${result.message || 'no se pudo registrar'}`);
         } catch (error) {
           errors.push(`${item.etiqueta}: ${error instanceof Error ? error.message : 'error'}`);
         }
@@ -202,6 +249,13 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           : <Button type="button" onClick={() => codeInputRef.current?.focus()}>Foco scanner</Button>}
       </div>
       {!continuousScan && <ScannerPanel device={selected} message={matches.length > 1 ? 'Hay más de un equipo posible. Especificá mejor.' : undefined} />}
+      {!continuousScan && (cameraOpen || cameraError) && (
+        <div className="camera-panel">
+          {cameraOpen && <video ref={videoRef} className="camera-preview" playsInline muted autoPlay />}
+          {cameraError && <div className="tool-error">{cameraError}</div>}
+          {cameraOpen && <p className="muted">Cámara activa. Escaneá el QR con tu lector habitual o usala como apoyo visual.</p>}
+        </div>
+      )}
       {!continuousScan && scanMessage && <div className={`tool-${scanMessage.tone === 'error' ? 'error' : scanMessage.tone === 'warn' ? 'warning' : 'info'}`}>{scanMessage.text}</div>}
       <button className={`toggle-row toggle-row-button ${continuousScan ? 'active' : ''}`} type="button" role="switch" aria-checked={continuousScan} onClick={toggleContinuous}>
         <span className="toggle-pill"><span /></span>
@@ -265,8 +319,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           <>
             <Button type="button" variant="primary" disabled={blocked || busy} onClick={handleLend}>Prestar</Button>
             <Button type="button" variant="success" disabled={blocked || busy} onClick={handleReturn}>Devolver</Button>
-            <Button type="button">Abrir cámara</Button>
-            <Button type="button">Cerrar cámara</Button>
+            <Button type="button" onClick={openCamera} disabled={cameraOpen}>Abrir cámara</Button>
+            <Button type="button" onClick={stopCamera} disabled={!cameraOpen}>Cerrar cámara</Button>
           </>
         )}
       </div>
@@ -283,3 +337,5 @@ function normalizeStringOptions(value: unknown, fallback: string[]) {
     .filter(Boolean);
   return items.length ? items : fallback;
 }
+
+

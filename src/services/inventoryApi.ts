@@ -16,3 +16,11 @@ export function updateInventoryItem(id: number, payload: Partial<InventoryItem>)
 export function deleteInventoryItem(id: number) {
   return apiSend<{ ok: true; deleted: boolean }>(`/api/inventory/items/${id}`, 'DELETE');
 }
+
+export function importInventoryCsv(csvText: string) {
+  return apiSend<{ ok: true; read: number; created: number; updated: number; skipped: number; errors: Array<{ row: number; error: string }> }>('/api/inventory/import', 'POST', { csvText });
+}
+
+export function uploadInventoryImage(payload: { fileName: string; dataUrl: string }) {
+  return apiSend<{ ok: true; url: string }>('/api/inventory/upload-image', 'POST', payload);
+}

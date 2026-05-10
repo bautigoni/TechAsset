@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import type { Device } from '../../types';
 import { Badge } from '../layout/Badge';
 import { Button } from '../layout/Button';
@@ -96,3 +96,5 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
     </div>
   );
 }
+
+

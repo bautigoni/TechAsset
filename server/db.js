@@ -4,7 +4,6 @@ import Database from 'better-sqlite3';
 import { config } from './config.js';
 
 let db;
-const NFND_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnzrGcoReFcezLMxmrRSDf6XWq-YgRDrFChvlk9X5m7HqmnMLGm_UamW-i-fjn9ArF/exec';
 
 export function getDb() {
   if (!db) {
@@ -42,7 +41,10 @@ export function initDb(database = getDb()) {
       nombre TEXT DEFAULT '',
       default_role TEXT DEFAULT 'Consulta',
       can_choose_role INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'Activo',
       activo INTEGER DEFAULT 1,
+      deleted_at TEXT DEFAULT '',
+      deleted_by TEXT DEFAULT '',
       created_at TEXT,
       updated_at TEXT
     );
@@ -301,6 +303,8 @@ export function initDb(database = getDb()) {
       estado TEXT DEFAULT '',
       observaciones TEXT DEFAULT '',
       activo INTEGER DEFAULT 1,
+      deleted_at TEXT DEFAULT '',
+      deleted_by TEXT DEFAULT '',
       created_at TEXT,
       updated_at TEXT
     );
@@ -335,17 +339,6 @@ export function initDb(database = getDb()) {
       updated_at TEXT,
       UNIQUE(site_code, floor_key)
     );
-    CREATE TABLE IF NOT EXISTS pending_sheet_sync (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      site_code TEXT,
-      action TEXT,
-      etiqueta TEXT,
-      payload_json TEXT DEFAULT '{}',
-      status TEXT DEFAULT 'pending',
-      error TEXT DEFAULT '',
-      created_at TEXT,
-      updated_at TEXT
-    );
   `);
 
   ensureColumn(database, 'agenda', 'site_code', "TEXT DEFAULT 'NFPT'");
@@ -355,6 +348,24 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'task_items', 'site_code', "TEXT DEFAULT 'NFPT'");
   ensureColumn(database, 'local_movements', 'site_code', "TEXT DEFAULT 'NFPT'");
   ensureColumn(database, 'local_devices', 'site_code', "TEXT DEFAULT 'NFPT'");
+  ensureColumn(database, 'local_devices', 'categoria', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'filtro', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'modelo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'marca', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'serial', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'numero_operativo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'alias_operativo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'alias_alternativos', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'estado', "TEXT DEFAULT 'Disponible'");
+  ensureColumn(database, 'local_devices', 'prestada_a', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'rol', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'ubicacion', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'motivo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'comentarios', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'fecha_prestamo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'fecha_devolucion', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'ultima_modificacion', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'activo', "INTEGER DEFAULT 1");
   ensureColumn(database, 'local_devices', 'eliminado', "INTEGER DEFAULT 0");
   ensureColumn(database, 'local_devices', 'deleted_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'local_devices', 'deleted_by', "TEXT DEFAULT ''");
@@ -386,17 +397,40 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'inventory_items', 'estado', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'observaciones', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'activo', "INTEGER DEFAULT 1");
+  ensureColumn(database, 'inventory_items', 'deleted_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'deleted_by', "TEXT DEFAULT ''");
+  migrateInventorySiteCodes(database);
 
   seedDefaultSite(database);
-  ensureKnownSiteSources(database);
   seedDefaultSettings(database);
   seedInitialInventory(database, config.defaultSiteCode || 'NFPT');
   for (const site of parseBootstrapSites()) {
     seedDefaultSettings(database, site.siteCode);
-    seedInitialInventory(database, site.siteCode);
   }
+  cleanupNonDefaultSeedInventory(database);
   seedAllowedUsers(database);
   migrateDeviceIdentityTables(database);
+  ensureColumn(database, 'local_devices', 'categoria', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'filtro', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'modelo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'marca', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'serial', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'numero_operativo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'alias_operativo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'alias_alternativos', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'estado', "TEXT DEFAULT 'Disponible'");
+  ensureColumn(database, 'local_devices', 'prestada_a', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'rol', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'ubicacion', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'motivo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'comentarios', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'fecha_prestamo', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'fecha_devolucion', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'ultima_modificacion', "TEXT DEFAULT ''");
+  ensureColumn(database, 'local_devices', 'activo', "INTEGER DEFAULT 1");
+  ensureColumn(database, 'allowed_users', 'status', "TEXT DEFAULT 'Activo'");
+  ensureColumn(database, 'allowed_users', 'deleted_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'allowed_users', 'deleted_by', "TEXT DEFAULT ''");
 
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);
@@ -461,6 +495,101 @@ export function seedInitialInventory(database, siteCode = config.defaultSiteCode
   tx();
 }
 
+function migrateInventorySiteCodes(database) {
+  const defaultSite = String(config.defaultSiteCode || 'NFPT').trim().toUpperCase();
+  database.prepare("UPDATE inventory_items SET site_code=? WHERE site_code IS NULL OR TRIM(site_code)=''").run(defaultSite);
+  database.prepare("UPDATE inventory_items SET site_code=UPPER(TRIM(site_code)) WHERE site_code IS NOT NULL AND TRIM(site_code)<>''").run();
+}
+
+function cleanupNonDefaultSeedInventory(database) {
+  const defaultSite = String(config.defaultSiteCode || 'NFPT').trim().toUpperCase();
+  const sites = database.prepare(`
+    SELECT DISTINCT site_code
+    FROM inventory_items
+    WHERE site_code IS NOT NULL AND TRIM(site_code)<>'' AND site_code<>?
+  `).all(defaultSite);
+  const seedNames = seedInventoryNameSet();
+  const ts = nowIso();
+  for (const site of sites) {
+    const siteCode = String(site.site_code || '').trim().toUpperCase();
+    if (!siteCode || siteCode === defaultSite) continue;
+    const rows = database.prepare(`
+      SELECT nombre, COALESCE(imagen_url,'') AS imagen_url, COALESCE(estado,'') AS estado, COALESCE(observaciones,'') AS observaciones
+      FROM inventory_items
+      WHERE site_code=? AND COALESCE(activo,1)=1
+    `).all(siteCode);
+    if (rows.length !== seedNames.size) continue;
+    const looksLikeClonedSeed = rows.every(row =>
+      seedNames.has(normalizeInventoryName(row.nombre)) &&
+      !String(row.imagen_url || '').trim() &&
+      !String(row.estado || '').trim() &&
+      !String(row.observaciones || '').trim()
+    );
+    if (!looksLikeClonedSeed) continue;
+    database.prepare(`
+      UPDATE inventory_items
+      SET activo=0, deleted_at=?, deleted_by='migracion', updated_at=?
+      WHERE site_code=? AND COALESCE(activo,1)=1
+    `).run(ts, ts, siteCode);
+  }
+}
+
+function seedInventoryNameSet() {
+  return new Set([
+    'LEDs',
+    'Resistencias',
+    'Sensores de distancia',
+    'Fotoresistencias',
+    'Servomotores',
+    'Capacitores',
+    'Buzzers',
+    'Display LCD',
+    'Stepper motor drive board',
+    'Diodos',
+    'Control',
+    'Transistores',
+    'Protoboard',
+    'Push button',
+    'Step motor',
+    'Sensor infrarrojo',
+    'Sensor de humedad',
+    'Motor amarillo',
+    'Adaptador bateria 9v',
+    'Placa con fotoresistencia',
+    'Display multiple 7 segmentos',
+    'Botones pulsadores',
+    'Matriz LED',
+    'Rele sin placa',
+    'Resistencia giratoria 10K',
+    'Joysticks',
+    'Display 7 segmentos',
+    'Resistencia giratoria B10K',
+    'Breadboard power supply',
+    'Placa Arduino Uno',
+    'Sensor de nivel de agua',
+    'Botonera',
+    'Rele con placa',
+    'Reloj de tiempo real',
+    'Sensor de sonido',
+    'Pack NFCs (pin, tarjeta y receptor)',
+    'Elego 1',
+    'Sensor de gas',
+    'Full color RGB',
+    'Placa WiFi',
+    'DK-Nano-003 v3.0',
+    'Placa Arduino Nano v3',
+    'Mega ADK'
+  ].map(normalizeInventoryName));
+}
+
+function normalizeInventoryName(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function ensureColumn(database, table, column, definition) {
   const columns = database.prepare(`PRAGMA table_info(${table})`).all().map(item => item.name);
   if (!columns.includes(column)) {
@@ -481,24 +610,13 @@ function seedDefaultSite(database) {
       spreadsheet_url=COALESCE(NULLIF(sites.spreadsheet_url,''), excluded.spreadsheet_url),
       apps_script_url=COALESCE(NULLIF(sites.apps_script_url,''), excluded.apps_script_url),
       updated_at=excluded.updated_at
-  `).run(siteCode, 'Northfield Puertos', 'Sede actual', config.googleSheetCsvUrl || '', config.appsScriptUrl || '', ts, ts);
+  `).run(siteCode, 'Northfield Puertos', 'Sede actual', config.googleSheetCsvUrl || '', '', ts, ts);
   const stmt = database.prepare(`
     INSERT INTO sites (site_code, nombre, subtitulo, activo, created_at, updated_at)
     VALUES (?, ?, '', 1, ?, ?)
     ON CONFLICT(site_code) DO NOTHING
   `);
   for (const site of bootstrap) stmt.run(site.siteCode, site.nombre, ts, ts);
-}
-
-function ensureKnownSiteSources(database) {
-  const ts = nowIso();
-  database.prepare(`
-    INSERT INTO sites (site_code, nombre, subtitulo, activo, apps_script_url, created_at, updated_at)
-    VALUES ('NFND', 'Northfield Nordelta', 'Sede Nordelta', 1, ?, ?, ?)
-    ON CONFLICT(site_code) DO UPDATE SET
-      apps_script_url=excluded.apps_script_url,
-      updated_at=excluded.updated_at
-  `).run(NFND_APPS_SCRIPT_URL, ts, ts);
 }
 
 function parseBootstrapSites() {

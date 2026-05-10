@@ -1,9 +1,12 @@
 import type { Device, Movement } from '../types';
-import { apiGet, apiSend } from './apiClient';
+import { apiGet, apiSend, siteHeaders } from './apiClient';
 
 type DevicesResponse = { ok: true; items: Device[]; loadedAt: string; source: string; diagnostics?: Record<string, unknown> };
 type DevicesDiagnosticsResponse = { ok: true; diagnostics: Record<string, unknown> };
-type DevicesDebugResponse = { ok: boolean; siteCode: string; debug?: Record<string, unknown>; error?: string };
+type DevicesImportResponse = {
+  ok: true;
+  summary: { read: number; created: number; updated: number; reactivated?: number; skipped: number; errors: number; errorDetails?: string[] };
+};
 
 const devicesRequests = new Map<string, Promise<DevicesResponse>>();
 
@@ -32,12 +35,35 @@ export function getDevicesDiagnostics() {
   return apiGet<DevicesDiagnosticsResponse>('/api/devices/diagnostics');
 }
 
-export function getDevicesDebug() {
-  return apiGet<DevicesDebugResponse>('/api/devices/debug');
-}
-
 export function getMovements() {
   return apiGet<{ ok: true; items: Movement[] }>('/api/movements');
+}
+
+export function importDevicesFromCsv(payload: { csvUrl?: string; csvText?: string; operator?: string }) {
+  return apiSend<DevicesImportResponse>('/api/devices/import', 'POST', payload);
+}
+
+export async function downloadDevicesCsv(path: string, filename: string) {
+  const response = await fetch(path, { cache: 'no-store', headers: siteHeaders() });
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+    try {
+      const data = await response.json();
+      message = data?.error || message;
+    } catch {
+      // CSV endpoints do not return JSON on success.
+    }
+    throw new Error(message);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 export function addDevice(payload: Partial<Device> & { operator: string }) {

@@ -1,229 +1,162 @@
-# TechAsset - NFS / NFPT
+# TechAsset
 
-Migración técnica de TechAsset a una arquitectura moderna con frontend React + Vite y backend Node.js, conservando la apariencia visual de la app actual.
+TechAsset es una app interna para gestión tecnológica escolar por sede. Está pensada para operar dispositivos, préstamos/devoluciones, movimientos, agenda, tareas TIC, aulas, inventario maker y configuración sin depender de servicios externos para el trabajo diario.
+
+## Versión actual: SQLite-first
+
+SQLite es la fuente principal de verdad. Google Sheets o archivos CSV se usan solo para importación manual de inventario, no para sincronización viva.
+
+- Prestar y devolver dispositivos actualiza SQLite.
+- Dashboard, Dispositivos y Préstamos leen desde SQLite.
+- Los movimientos se registran localmente.
+- La identidad de un equipo es `site_code + etiqueta`.
+- Una importación en NFND no toca NFPT, y una importación en NFPT no toca NFND.
+
+## Funciones
+
+- Login y registro.
+- Multi-sede y usuarios por sede.
+- Roles: `Superadmin`, `Jefe TIC`, asistentes y consulta.
+- Dashboard por sede.
+- Dispositivos, préstamos, devoluciones y movimientos.
+- Inventario TIC / Recursos Maker.
+- Agenda TIC y Tareas TIC.
+- Estado de aulas.
+- Accesos rápidos y herramientas auxiliares.
+- Configuración de sedes y usuarios permitidos.
+- Importación manual de dispositivos desde CSV.
+- Exportación CSV de inventario, resumen, movimientos y préstamos activos.
+- Exportación PDF QR de dispositivos.
 
 ## Arquitectura
 
-- Frontend: React, Vite, TypeScript, componentes separados, hooks y servicios.
-- Backend: Node.js, Express, rutas REST y SQLite local.
-- Google Sheets + Apps Script se mantienen para inventario, préstamos, devoluciones, movimientos y sincronización NFPT.
-- SQLite local se usa para Agenda TIC, Tareas TIC, historiales, panel Ahora y datos operativos.
+- Frontend: React + Vite + TypeScript.
+- Backend: Node.js + Express.
+- Base de datos: SQLite con `better-sqlite3`.
+- Persistencia local: carpeta `data/`.
+- Google Sheets: opcional, solo como fuente de CSV para importación manual.
 
-## Instalar
+## Desarrollo
 
 ```bash
 npm install
+npm run db:init
+npm run build
+npm run start
 ```
 
-## Desarrollo
+Modo desarrollo:
 
 ```bash
 npm run dev
 ```
 
-Levanta el backend en `http://127.0.0.1:8000` y Vite en `http://127.0.0.1:5173`.
+URL habitual:
 
-## Producción local
-
-```bash
-npm run build
-npm run start
+```txt
+http://127.0.0.1:8000
 ```
 
-Luego abrir `http://127.0.0.1:8000`.
+## Variables de entorno
 
-## Docker
+Usar `.env.example` como base:
 
-La app se puede correr en VPS con Docker. La imagen usa Node 22 sobre Debian (no Alpine, para que `better-sqlite3` compile sin problemas) y persiste la base SQLite en el volumen `./data`.
-
-Antes de levantar:
-
-```bash
-cp .env.example .env
-# editar .env con los valores reales (sin subirlo al repo)
+```env
+PORT=8000
+APP_NAME=TechAsset
+DEFAULT_SITE_CODE=NFPT
+BOOTSTRAP_SITES=NFPT:Northfield Puertos,NFND:Northfield Nordelta
+AUTH_ALLOWED_EMAILS=admin@northfield.local
+SQLITE_DB_PATH=./data/techasset.db
+GOOGLE_SHEET_CSV_URL=
+CACHE_CSV_PATH=./data/cache_sheet.csv
+DEVICES_APP_CSV_PATH=./data/devices_app.csv
+AUTO_REFRESH_SECONDS=5
+TOOLS_TEMP_DIR=./data/tmp
+MAX_UPLOAD_MB=10
+MODO_PRUEBA=true
+MICROSOFT_LOGIN_URL=
+HANDING_TICKET_URL=
 ```
 
-Comandos:
-
-```bash
-docker compose build           # construir la imagen
-docker compose up -d           # levantar la app en segundo plano
-docker compose logs -f techasset   # ver logs en vivo
-docker compose restart techasset   # reiniciar el contenedor
-docker compose down            # detener y limpiar
-```
-
-Dentro del contenedor el server escucha en el puerto **8000**. El servicio **no expone puertos al host**: el ingreso entra por Caddy (u otro reverse proxy) que comparte la red Docker `proxy-network`. Caddy proxea hacia `techasset:8000`.
-
-Si necesitás probar el contenedor directo desde el VPS sin Caddy, agregá temporalmente al `docker-compose.yml`:
-
-```yaml
-    ports:
-      - "8001:8000"
-```
-
-y la app queda accesible en `http://IP_DEL_SERVIDOR:8001`.
-
-Red compartida:
-
-- El compose define `proxy-network` (driver bridge).
-- Caddy debe declarar la misma red en su propio compose (`external: true` si Caddy vive en otro stack, o sumando el servicio al mismo `docker-compose.yml`).
-
-Persistencia:
-
-- La base SQLite vive en `./data/techasset.db` del host (volumen `./data:/app/data`).
-- Reconstruir la imagen no borra datos.
-- Cache CSV (`./data/cache_sheet.csv`) y archivos temporales (`./data/tmp`) también persisten.
-
-Si cambiás dependencias (`package.json`), volver a correr `docker compose build` y luego `docker compose up -d`.
-
-## Configuración
-
-Copiar `.env.example` a `.env` y completar:
-
-- `GOOGLE_SHEET_CSV_URL`: URL CSV publicada de la hoja de inventario.
-- `APPS_SCRIPT_URL`: endpoint de Apps Script para escribir préstamos, devoluciones y estados.
-- `SQLITE_DB_PATH`: por defecto `./data/techasset.db`.
-- `CACHE_CSV_PATH`: por defecto `./data/cache_sheet.csv`.
-
-Si Google Sheets falla, el servidor usa `data/cache_sheet.csv`.
+`GOOGLE_SHEET_CSV_URL` es opcional y solo sirve como fuente de importación manual. No se usa para prestar, devolver ni modificar estados.
 
 ## Acceso inicial / Superadmin
 
-Al inicializar la base, TechAsset crea usuarios permitidos a partir de `AUTH_ALLOWED_EMAILS`.
-
-Si todavía no existe ningún usuario con rol `Superadmin`, el primer mail de `AUTH_ALLOWED_EMAILS` queda como Superadmin bootstrap. Si `AUTH_ALLOWED_EMAILS` está vacío, se usa este mail de desarrollo:
+Si no hay usuarios configurados, definí al menos un usuario en:
 
 ```env
-admin@northfield.local
+AUTH_ALLOWED_EMAILS=admin@northfield.local
 ```
 
-Para definir usuarios iniciales reales, configurar en `.env`:
+Desde Configuración > Usuarios permitidos se pueden asignar roles y sedes.
 
-```env
-AUTH_ALLOWED_EMAILS=mail1@dominio.com,mail2@dominio.com
-```
+- `Superadmin`: administra toda la plataforma, crea sedes, asigna usuarios/roles y configura URLs CSV por sede.
+- `Jefe TIC`: administra solo su sede.
+- Usuarios comunes o de consulta: no ven ni administran otras sedes.
 
-El rol `Superadmin` puede crear sedes, editar sedes, administrar URLs de Spreadsheet/Apps Script por sede y asignar usuarios/roles en todas las sedes. El rol `Jefe TIC` administra solo su sede asignada.
+En producción conviene reemplazar `admin@northfield.local` por mails reales del colegio y no dejar cuentas de prueba activas.
 
-Los demás usuarios de `AUTH_ALLOWED_EMAILS` se crean como `Jefe TIC` para la sede `DEFAULT_SITE_CODE` y luego se pueden administrar desde Configuración → Usuarios permitidos. En producción conviene cargar mails institucionales reales, asignar el Superadmin definitivo, revisar sedes/roles desde la pantalla de Usuarios permitidos y no dejar accesos de prueba activos.
+## Importar dispositivos
 
-## SQLite
+La importación se hace desde Dispositivos > Importar CSV.
 
-Inicializar o verificar la base:
+Opciones:
+
+- Pegar una URL CSV publicada.
+- Dejar vacío el prompt para usar la URL CSV configurada en la sede.
+
+Columnas soportadas:
+
+- `Modelo`
+- `Etiqueta 2023`, `Etiqueta`, `Código`, `Codigo`, `ID`
+- `Número`, `N°`, `Numero operativo`, `Número operativo`
+- `Devuelto`, `Estado`
+- `Comentarios`
+- `Prestada`
+- `Fecha pres`
+- `Fecha dev`
+- `Última mod`
+- `Rol`
+- `Ubicación`
+- `Motivo`
+- `Marca`
+- `S/N`
+- `MAC`
+
+Al importar:
+
+- Se normalizan etiquetas como `d1188` a `D1188`.
+- Los nuevos dispositivos se crean para la sede activa.
+- Los dispositivos existentes se actualizan por `site_code + etiqueta`.
+- No se borran movimientos históricos.
+- Los préstamos activos locales se conservan como estado operativo.
+- Se muestra un resumen con leídos, nuevos, actualizados, omitidos y errores.
+
+## Exportar datos
+
+Desde Dispositivos:
+
+- Exportar inventario CSV.
+- Exportar resumen CSV por categoría/estado.
+- Exportar movimientos CSV.
+- Exportar préstamos activos CSV.
+- Exportar PDF QR.
+
+Los CSV se generan desde SQLite y respetan la sede activa.
+
+## Producción / VPS / Docker
+
+Si se usa Docker o VPS, la carpeta `data/` debe persistir como volumen porque contiene la base SQLite y archivos locales.
+
+Comando típico si existe `docker-compose.yml`:
 
 ```bash
-npm run db:init
+docker compose up -d --build
 ```
 
-La base está en `data/techasset.db`. Para backup usar `scripts/backup-db.bat`.
+## Notas operativas
 
-## Túnel local
-
-Para que la app esté siempre publicada en `https://techasset-nfpt.loca.lt`:
-
-```bash
-npm run tunnel
-```
-
-El script reintenta automáticamente si localtunnel cae o no concede el subdominio.
-
-Para levantar backend + túnel en simultáneo:
-
-```bash
-npm run serve
-```
-
-Variables opcionales: `TUNNEL_SUBDOMAIN`, `TUNNEL_PORT`, `TUNNEL_HOST`, `TUNNEL_RETRY_MS`.
-
-También está disponible `scripts\start-tunnel.bat` para Windows.
-
-## Endpoints principales
-
-- `GET /api/devices`
-- `GET /api/devices/state`
-- `POST /api/devices/add`
-- `POST /api/devices/status`
-- `POST /api/loans/lend`
-- `POST /api/loans/return`
-- `GET /api/movements`
-- `GET /api/agenda`
-- `POST /api/agenda`
-- `PATCH /api/agenda/:id`
-- `DELETE /api/agenda/:id`
-- `GET /api/tasks`
-- `POST /api/tasks`
-- `PATCH /api/tasks/:id`
-- `DELETE /api/tasks/:id`
-- `GET /api/tasks/analytics`
-
-## Agenda TIC
-
-La vista **Agenda TIC** es solo lectura/visualización del cronograma semanal. Sirve para consultar horarios de actividades y marcar el estado operativo (entregado, cancelado, nota, computadoras retiradas), pero no se usa como sistema de reservas. Las reservas reales se gestionan fuera de la app, en la planilla compartida del cronograma.
-
-## Pruebas rápidas
-
-- Agenda: consultar el cronograma del día y de la semana, alternar el filtro de turno (Mañana / Tarde / Completo).
-- Tareas: crear tarea, mover entre Pendiente, En proceso y Hecha.
-- Préstamos: configurar `APPS_SCRIPT_URL` y probar prestar/devolver con una etiqueta real.
-- Búsqueda: probar `189`, `D189`, `D0189`, QR `TA|D0189|SERIAL|MAC`, `tic 1`, `plani 5`, `touch 32`.
-
-## Errores comunes
-
-- Sin inventario: revisar `GOOGLE_SHEET_CSV_URL` o `data/cache_sheet.csv`.
-- Escritura no impacta en hoja: revisar `APPS_SCRIPT_URL`.
-- SQLite bloqueado: cerrar otras instancias y respaldar `data/techasset.db`.
-- Puerto ocupado: cambiar `PORT` en `.env`.
-
-## Asistente TIC
-
-La vista `Asistente TIC` agrega un chatbot operativo dentro de la app. Puede consultar datos vivos y preparar acciones sobre tareas, préstamos, devoluciones y dispositivos. La Agenda TIC es solo de visualización: el asistente puede leerla pero no se usa para reservar recursos.
-
-El asistente distingue:
-
-- Datos vivos de la app: dispositivos, prestamos, devoluciones, tareas, agenda e historial.
-- Documentos de procedimiento: archivos internos en `data/procedimientos`.
-- Acciones que modifican datos: siempre piden confirmacion antes de guardar.
-
-Funciona sin API externa con reglas simples. Si mas adelante se configura `OPENAI_API_KEY` y `OPENAI_MODEL`, las llamadas deben seguir saliendo desde backend, nunca desde frontend.
-
-### Endpoints del asistente y operacion TIC
-
-- `POST /api/asistente/chat`
-- `GET /api/procedimientos/search?q=texto`
-- `GET /api/prestamos`
-- `GET /api/prestamos/:id`
-- `POST /api/prestamos`
-- `PUT /api/prestamos/:id`
-- `DELETE /api/prestamos/:id`
-- `POST /api/prestamos/:id/devolver`
-- `GET /api/devoluciones`
-- `GET /api/devoluciones/:id`
-- `POST /api/devoluciones`
-- Alias de tareas en castellano: `GET /api/tareas`, `GET /api/tareas/:id`, `POST /api/tareas`, `PUT /api/tareas/:id`, `DELETE /api/tareas/:id`
-
-### Documentos de procedimiento
-
-Los documentos internos van en:
-
-```bash
-data/procedimientos
-```
-
-Formatos iniciales: `.md`, `.txt`, `.json`.
-
-Ejemplo:
-
-```bash
-GET /api/procedimientos/search?q=falta%20cargador
-```
-
-Si no hay informacion suficiente en documentos cargados, el asistente lo dice claramente y recomienda validar con coordinacion o responsable TIC.
-
-### Pruebas rapidas del Asistente TIC
-
-- `Creá una tarea urgente para revisar el proyector de 3A.`
-- `¿Qué hago si falta el cargador?`
-- `¿Está disponible D1433?`
-- `Prestale D1433 a Juan Pérez hasta mañana responsable Bauti`
-- `Registrá la devolución de D1433`
+- La app debe seguir funcionando aunque internet, Google Sheets o un CSV externo fallen.
+- El indicador superior muestra el estado de la base local y la última importación, no una sincronización viva.
+- No existe escritura automática a planillas al prestar o devolver.

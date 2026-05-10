@@ -6,6 +6,8 @@ export type AuthSession = {
   authenticated: boolean;
   user?: AuthUser;
   sites?: SiteInfo[];
+  pending?: boolean;
+  message?: string;
 };
 
 export const getAuthSession = () => apiGet<AuthSession>('/api/auth/session');
@@ -31,7 +33,6 @@ export const getSites = () => apiGet<{ ok: true; items: SiteInfo[] }>('/api/site
 export const saveSite = (site: Partial<SiteInfo> & {
   siteCode: string;
   spreadsheetUrl?: string;
-  appsScriptUrl?: string;
   inventorySheetName?: string;
   themeColor?: string;
   activo?: boolean;
@@ -51,6 +52,7 @@ export type AllowedUserItem = {
   defaultSiteCode?: string;
   canChooseRole?: boolean;
   activo?: boolean;
+  status?: 'Pendiente' | 'Activo' | 'Rechazado' | 'Inactivo';
   sites: Array<{ siteCode: string; siteRole?: string; turno?: string; isDefault?: boolean; activo?: boolean }>;
 };
 
@@ -60,3 +62,6 @@ export const getSiteAssistants = () => apiGet<{ ok: true; items: Array<{ name: s
 
 export const saveAllowedUser = (user: AllowedUserItem) =>
   apiSend<{ ok: true; item: AllowedUserItem }>(user.id ? `/api/allowed-users/${user.id}` : '/api/allowed-users', user.id ? 'PATCH' : 'POST', user);
+
+export const updateAllowedUserStatus = (id: number, action: 'approve' | 'reject' | 'deactivate' | 'delete') =>
+  apiSend<{ ok: true; item: AllowedUserItem }>(`/api/allowed-users/${id}/${action}`, 'POST');

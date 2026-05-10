@@ -17,23 +17,22 @@ export function useDevices(search: string, siteCode = '') {
     if (refreshInFlight.current && !options.force) return refreshInFlight.current;
     const requestId = ++requestSeq.current;
     const promise = (async () => {
-      setSync(current => options.force ? { state: 'loading', message: 'Recargando hoja...' } : hasDevices.current ? current : { state: 'loading' });
+      setSync(current => options.force ? { state: 'loading', message: 'Actualizando base local...' } : hasDevices.current ? current : { state: 'loading' });
       try {
         const data = await getDevices(options);
         if (requestId !== requestSeq.current) return;
         const nextDevices = withOperationalAliases(data.items);
         hasDevices.current = nextDevices.length > 0;
         setDevices(nextDevices);
-        const usingCache = Boolean(data.diagnostics?.respondedWithCache);
-        const emptyFallback = Boolean(data.diagnostics?.emptyFallback);
-        const syncState: SyncStatus['state'] = emptyFallback ? 'error' : usingCache && nextDevices.length ? 'warning' : 'ok';
-        const cacheNote = usingCache ? 'cache local con advertencia' : 'actualizado';
+        const lastImportAt = typeof data.diagnostics?.lastImportAt === 'string' ? data.diagnostics.lastImportAt : '';
+        const syncState: SyncStatus['state'] = nextDevices.length || lastImportAt ? 'ok' : 'warning';
+        const cacheNote = lastImportAt ? `última importación: ${lastImportAt}` : 'base local sin importación registrada';
         const diagMessage = typeof data.diagnostics?.message === 'string' ? data.diagnostics.message : '';
-        setSync({ state: syncState, loadedAt: data.loadedAt, message: diagMessage || `${data.source} - ${cacheNote}` });
+        setSync({ state: syncState, loadedAt: data.loadedAt, message: diagMessage || `${data.source} · ${cacheNote}` });
       } catch (error) {
         if (requestId !== requestSeq.current) return;
         setSync(current => current.state === 'ok' || current.state === 'warning'
-          ? { ...current, message: current.message || 'Inventario cargado desde cache local.' }
+          ? { ...current, message: current.message || 'Inventario cargado desde base local.' }
           : { state: 'error', message: error instanceof Error ? error.message : 'Error' });
       } finally {
         if (requestId === requestSeq.current) refreshInFlight.current = null;
@@ -72,8 +71,8 @@ export function useDevices(search: string, siteCode = '') {
       else if (state === 'missing') base.missing += 1;
       else if (state === 'out') base.out += 1;
       else base.available += 1;
-      const category = classifyDeviceType(device);
-      base[category] = (base[category] || 0) + 1;
+      const dashboardFilter = getDashboardFilter(device);
+      base[dashboardFilter] = (base[dashboardFilter] || 0) + 1;
     });
     return base;
   }, [devices]);
@@ -88,4 +87,8 @@ export function useDevices(search: string, siteCode = '') {
   }, []);
 
   return { devices, filteredDevices, counts, sync, refresh, setDevices, patchLocal, removeLocal };
+}
+
+function getDashboardFilter(device: Device) {
+  return String(device.filtro || device.categoria || classifyDeviceType(device) || 'Otro').trim() || 'Otro';
 }

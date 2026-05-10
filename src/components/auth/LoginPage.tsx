@@ -21,6 +21,7 @@ export function LoginPage({ mode, onMode, onReady }: {
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     if (activeMode !== 'register') return;
@@ -36,6 +37,7 @@ export function LoginPage({ mode, onMode, onReady }: {
     event.preventDefault();
     setBusy(true);
     setError('');
+    setSuccess('');
     try {
       const session = await login({ email, nombre, turno });
       if (!session.authenticated || !session.user || !session.sites?.length) throw new Error('No se pudo iniciar sesión.');
@@ -51,10 +53,12 @@ export function LoginPage({ mode, onMode, onReady }: {
     event.preventDefault();
     setBusy(true);
     setError('');
+    setSuccess('');
     try {
       const session = await register({ email, nombre, role, siteCode, turno });
-      if (!session.authenticated || !session.user || !session.sites?.length) throw new Error('No se pudo completar el registro.');
-      onReady({ user: session.user, sites: session.sites });
+      setSuccess(session.message || 'Solicitud enviada. Tu acceso quedará habilitado cuando sea aprobado por un administrador.');
+      setEmail('');
+      setNombre('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo completar el registro.');
     } finally {
@@ -69,10 +73,16 @@ export function LoginPage({ mode, onMode, onReady }: {
           <div className="auth-logo-mark">
             <img src="/northfield_logo.png" alt="Northfield" />
           </div>
-          <div>
+          <div className="auth-brand-copy">
             <h1>TechAsset</h1>
             <h2>Gestión tecnológica escolar</h2>
             <p>Dispositivos, aulas, tareas e inventarios TIC en un solo lugar.</p>
+            <ul className="auth-feature-list" aria-label="Funciones principales">
+              <li>Gestión por sede</li>
+              <li>Préstamos trazables</li>
+              <li>Inventario TIC</li>
+              <li>Aulas y tareas organizadas</li>
+            </ul>
           </div>
         </div>
 
@@ -84,7 +94,7 @@ export function LoginPage({ mode, onMode, onReady }: {
           <div key={activeMode} className="auth-form-body">
             <div className="auth-card-head">
               <h3>{activeMode === 'register' ? 'Solicitar acceso' : 'Ingresar'}</h3>
-              <p>{activeMode === 'register' ? 'El acceso queda asociado únicamente a la sede elegida.' : 'Usá el mail autorizado para tu sede.'}</p>
+              <p>{activeMode === 'register' ? 'El acceso queda pendiente de aprobación para la sede elegida.' : 'Usá el mail autorizado para tu sede.'}</p>
             </div>
 
             {activeMode === 'register' && (
@@ -124,6 +134,7 @@ export function LoginPage({ mode, onMode, onReady }: {
               </label>
             )}
             {error && <div className="tool-error">{error}</div>}
+            {success && <div className="tool-info">{success}</div>}
             <div className="actions auth-actions">
               <Button variant="primary" type="submit" disabled={busy}>{busy ? 'Procesando...' : activeMode === 'register' ? 'Solicitar acceso' : 'Ingresar'}</Button>
             </div>

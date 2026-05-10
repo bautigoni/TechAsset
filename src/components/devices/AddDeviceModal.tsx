@@ -4,14 +4,14 @@ import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
 import { getDeviceCategories } from '../../services/devicesApi';
 
-export function AddDeviceModal({ onClose, onSave, initialDevice, title = '+ Anadir dispositivo' }: {
+export function AddDeviceModal({ onClose, onSave, initialDevice, title = '+ Añadir dispositivo' }: {
   onClose: () => void;
   onSave: (device: Partial<Device>) => Promise<void>;
   initialDevice?: Partial<Device>;
   title?: string;
 }) {
   const [device, setDevice] = useState<Partial<Device> & { originalEtiqueta?: string }>({ estado: 'Disponible', categoria: 'Chromebook', dispositivo: 'Chromebook', ...initialDevice, originalEtiqueta: initialDevice?.etiqueta });
-  const [categories, setCategories] = useState<string[]>(['Tablet', 'Notebook', 'Chromebook', 'Plani', 'Touch', 'TIC', 'Dell', 'Camara', 'Proyector', 'Router', 'Impresora', 'Otro']);
+  const [categories, setCategories] = useState<string[]>(['Tablet', 'Notebook', 'Chromebook', 'Plani', 'Touch', 'TIC', 'Dell', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro']);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -44,12 +44,15 @@ export function AddDeviceModal({ onClose, onSave, initialDevice, title = '+ Anad
         }
       }}>
         <label>Etiqueta 2023<input className="input" required value={device.etiqueta || ''} onChange={e => update('etiqueta', e.target.value)} /></label>
-        <label>Numero operativo<input className="input" value={device.numero || ''} onChange={e => update('numero', e.target.value)} /></label>
+        <label>Número operativo<input className="input" value={device.numero || ''} onChange={e => update('numero', e.target.value)} /></label>
         <label>Categoría / tipo
           <input className="input" list="device-category-options" required value={device.categoria || ''} onChange={e => update('categoria', e.target.value)} placeholder="Tablet, Notebook, Proyector..." />
           <datalist id="device-category-options">
             {categories.map(item => <option key={item} value={item} />)}
           </datalist>
+        </label>
+        <label>Filtro
+          <input className="input" value={device.filtro || ''} onChange={e => update('filtro', e.target.value)} placeholder="Touch, Dell, TIC, Tablet, Plani..." />
         </label>
         <label>Dispositivo<input className="input" value={device.dispositivo || ''} onChange={e => update('dispositivo', e.target.value)} placeholder="Chromebook, Tablet, Router..." /></label>
         <div className="grid-2">

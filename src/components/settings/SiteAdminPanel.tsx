@@ -9,7 +9,6 @@ const blankSite: SiteInfo & { isNew?: boolean } = {
   subtitulo: '',
   activo: true,
   spreadsheetUrl: '',
-  appsScriptUrl: '',
   inventorySheetName: '',
   themeColor: '',
   logo: '',
@@ -50,7 +49,7 @@ export function SiteAdminPanel({ user, onChanged }: { user: AuthUser; onChanged?
       </div>
       <div className="table-wrap">
         <table className="compact-table">
-          <thead><tr><th>Código</th><th>Nombre</th><th>Spreadsheet</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Código</th><th>Nombre</th><th>CSV importación</th><th>Estado</th><th></th></tr></thead>
           <tbody>
             {sites.map(site => (
               <tr key={site.siteCode}>
@@ -70,8 +69,7 @@ export function SiteAdminPanel({ user, onChanged }: { user: AuthUser; onChanged?
           <label>Nombre<input className="input" value={draft.nombre || ''} onChange={e => setDraft(s => ({ ...s, nombre: e.target.value }))} placeholder="Northfield Nordelta" /></label>
         </div>
         <label>Subtítulo<input className="input" value={draft.subtitulo || ''} onChange={e => setDraft(s => ({ ...s, subtitulo: e.target.value }))} /></label>
-        <label>Spreadsheet URL<input className="input" value={draft.spreadsheetUrl || ''} onChange={e => setDraft(s => ({ ...s, spreadsheetUrl: e.target.value }))} placeholder="https://docs.google.com/spreadsheets/..." /></label>
-        <label>Apps Script URL<input className="input" value={draft.appsScriptUrl || ''} onChange={e => setDraft(s => ({ ...s, appsScriptUrl: e.target.value }))} /></label>
+        <label>URL CSV para importación manual<input className="input" value={draft.spreadsheetUrl || ''} onChange={e => setDraft(s => ({ ...s, spreadsheetUrl: e.target.value }))} placeholder="https://docs.google.com/spreadsheets/...output=csv" /></label>
         <div className="grid-2">
           <label>Inventory sheet name<input className="input" value={draft.inventorySheetName || ''} onChange={e => setDraft(s => ({ ...s, inventorySheetName: e.target.value }))} /></label>
           <label>Color / logo<input className="input" value={draft.themeColor || ''} onChange={e => setDraft(s => ({ ...s, themeColor: e.target.value }))} placeholder="#2563eb" /></label>

@@ -62,7 +62,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
           <span className="sync-mini-dot" />
           <span className="sr-only">{syncUi.title}</span>
         </div>
-        <button className="sync-refresh-btn" type="button" aria-label="Recargar hoja" title="Recargar hoja" onClick={onReload}>
+        <button className="sync-refresh-btn" type="button" aria-label="Actualizar base local" title="Actualizar base local" onClick={onReload}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 6v5h-5" />
             <path d="M4 18v-5h5" />

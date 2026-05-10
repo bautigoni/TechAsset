@@ -1,9 +1,7 @@
 import type { Device, Movement } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
 import { LoanForm } from './LoanForm';
-import { RecentMovements } from '../dashboard/RecentMovements';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
-import { InternalNotesPanel } from '../dashboard/InternalNotesPanel';
 
 function countBy(devices: Device[], getter: (device: Device) => string) {
   return Object.entries(devices.reduce<Record<string, number>>((acc, device) => {
@@ -15,7 +13,7 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
 
 type LoanActionResult = { synced?: boolean; message?: string } | void;
 
-export function LoansPage({ devices, movements, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; initialCode?: string }) {
+export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; initialCode?: string }) {
   const loaned = devices.filter(device => device.estado === 'Prestado');
   const available = devices.filter(device => device.estado === 'Disponible');
   const byType = countBy(devices, device => classifyDeviceType(device));
@@ -31,7 +29,6 @@ export function LoansPage({ devices, movements, operator, consultationMode, onLe
             <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
           </div>
           <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={initialCode} />
-          <InternalNotesPanel operator={operator} consultationMode={consultationMode} />
         </section>
         <div className="loans-side-stack">
           <section className="card loan-summary-card">
@@ -59,7 +56,6 @@ export function LoansPage({ devices, movements, operator, consultationMode, onLe
               {!loaned.length && <div className="empty-state">No hay equipos prestados ahora.</div>}
             </div>
           </section>
-          <RecentMovements items={movements} />
         </div>
       </div>
     </section>
