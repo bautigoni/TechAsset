@@ -2005,21 +2005,40 @@ body.consulta-mode #returnBtn {
   gap:10px;
 }
 .sidebar.is-collapsed .nav-btn{
-  width:50px;
-  height:50px;
-  min-height:50px;
+  position:relative;
+  width:48px;
+  height:48px;
+  min-height:48px;
   padding:0;
   justify-content:center;
-  border-radius:16px;
+  border-radius:14px;
+  background:transparent;
+  border:1px solid transparent;
+  transition:background .15s ease, border-color .15s ease;
 }
-.sidebar.is-collapsed .nav-btn:hover{
-  transform:translateX(0) scale(1.03);
+.sidebar.is-collapsed .nav-btn:hover,
+.sidebar.is-collapsed .nav-btn:focus-visible{
+  background:rgba(59,130,246,.16);
+  border-color:rgba(59,130,246,.35);
+  transform:none;
+  box-shadow:none;
+}
+.sidebar.is-collapsed .nav-btn.active{
+  background:rgba(59,130,246,.22);
+  border-color:rgba(59,130,246,.55);
 }
 .sidebar.is-collapsed .nav-icon{
-  width:38px;
-  height:38px;
-  border-radius:13px;
-  background:rgba(59,130,246,.10);
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  background:transparent;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.sidebar.is-collapsed .nav-btn:hover .nav-icon,
+.sidebar.is-collapsed .nav-btn.active .nav-icon{
+  background:rgba(59,130,246,.18);
 }
 @media (min-width:981px){
   .sidebar.is-collapsed .nav-btn::after,
@@ -2566,3 +2585,72 @@ body.consulta-mode #returnBtn {
   .inventory-grid{grid-template-columns:1fr}
   .inventory-kpis{grid-template-columns:1fr 1fr}
 }
+
+/* ============= Tabla dispositivos: acciones en una línea (desktop) ============= */
+@media (min-width: 901px) {
+  .device-table .device-actions-cell {
+    min-width: 240px;
+    white-space: nowrap;
+  }
+  .device-table .device-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  .device-table .device-actions .mini-action-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 900px) {
+  .device-table .device-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* ============= Login: tamaños estables al alternar tabs ============= */
+@media (min-width: 901px) {
+  .auth-stage {
+    align-items: stretch;
+  }
+  .auth-brand-panel,
+  .auth-card {
+    min-height: 640px;
+    align-self: stretch;
+  }
+  .auth-card {
+    grid-template-rows: auto 1fr auto;
+  }
+  .auth-form-body {
+    min-height: 500px;
+    align-content: start;
+  }
+}
+@media (min-width: 901px) and (max-height: 820px) {
+  .auth-brand-panel,
+  .auth-card { min-height: 580px; }
+  .auth-form-body { min-height: 440px; }
+}
+
+/* Panel izquierdo del login con más textura para no quedar vacío */
+.auth-brand-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.auth-brand-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(56, 189, 248, .14), transparent 36%),
+    radial-gradient(circle at 88% 86%, rgba(125, 211, 252, .12), transparent 38%),
+    repeating-linear-gradient(135deg, rgba(125, 211, 252, .06) 0 1px, transparent 1px 22px);
+  opacity: .7;
+}
+.auth-brand-panel > * { position: relative; z-index: 1; }

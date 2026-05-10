@@ -38,5 +38,10 @@ export const config = {
     modoPrueba: String(process.env.MODO_PRUEBA || 'true').toLowerCase() !== 'false',
     microsoftLoginUrl: process.env.MICROSOFT_LOGIN_URL || ''
   },
+  appBaseUrl: String(process.env.APP_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, ''),
+  superadminEmails: String(process.env.SUPERADMIN_EMAILS || '')
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean),
   handingTicketUrl: process.env.HANDING_TICKET_URL || ''
 };

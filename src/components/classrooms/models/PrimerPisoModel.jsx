@@ -166,8 +166,10 @@ export function PrimerPisoModel(props) {
   return <FloorModel rooms={PLANTA_BAJA_ROOMS} viewBox="0 0 1000 1150" watermark="Escuela Primaria · Planta Baja" {...props} />;
 }
 
+import FloorMapPrimerPiso, { ROOMS as PRIMER_PISO_REAL_ROOMS } from './FloorMapPrimerPiso.jsx';
+
 export function FirstFloorModel(props) {
-  return <FloorModel rooms={[]} viewBox="0 0 1320 830" watermark="1er PISO" {...props} />;
+  return <FloorMapPrimerPiso {...props} />;
 }
 
 export function SecondFloorModel(props) {
@@ -175,7 +177,9 @@ export function SecondFloorModel(props) {
 }
 
 export const PRIMER_PISO_ROOMS = toRoomList(PLANTA_BAJA_ROOMS);
-export const FIRST_FLOOR_ROOMS = [];
+export const FIRST_FLOOR_ROOMS = PRIMER_PISO_REAL_ROOMS
+  .filter(r => r.interactive !== false)
+  .map(r => ({ roomKey: r.id, nombre: String(r.label || '').replace('\n', ' '), sector: r.type }));
 export const SECOND_FLOOR_ROOMS = toRoomList(PRIMER_PISO_LAYOUT);
 export const ALL_FLOOR_ROOMS = {
   planta: PRIMER_PISO_ROOMS,

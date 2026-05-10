@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { getDb, nowIso, seedDefaultSettings } from '../db.js';
 import { isSiteManager, isSuperadmin, normalizeSiteCode, requireSite } from '../services/siteContext.service.js';
+import { sendMail } from '../services/mail.service.js';
+import { buildUserApprovedMail, buildUserDeactivatedMail, buildUserRejectedMail } from '../services/mailTemplates.js';
 
 export const sitesRouter = Router();
 
@@ -244,8 +246,29 @@ sitesRouter.post('/allowed-users/:id/:action', (req, res) => {
 
   const updated = getDb().prepare('SELECT * FROM allowed_users WHERE id=?').get(allowed.id);
   syncExistingUserSites(updated.email, updated);
+
+  // Notificar por mail (best-effort, no bloquea la respuesta).
+  notifyAllowedUserAction(updated, action).catch(error => console.warn('[allowed-users/notify]', error?.message || error));
+
   res.json({ ok: true, item: { ...updated, sites: getAllowedUserSites(updated.id) } });
 });
+
+async function notifyAllowedUserAction(allowed, action) {
+  if (!allowed?.email) return;
+  const nombre = String(allowed.nombre || '').trim() || String(allowed.email).split('@')[0];
+  const sites = getAllowedUserSites(allowed.id) || [];
+  const sede = sites[0]?.siteCode || '';
+  if (action === 'approve') {
+    const mail = buildUserApprovedMail({ nombre, sede });
+    await sendMail({ to: allowed.email, subject: mail.subject, html: mail.html, text: mail.text });
+  } else if (action === 'reject') {
+    const mail = buildUserRejectedMail({ nombre });
+    await sendMail({ to: allowed.email, subject: mail.subject, html: mail.html, text: mail.text });
+  } else if (action === 'deactivate' || action === 'delete') {
+    const mail = buildUserDeactivatedMail({ nombre });
+    await sendMail({ to: allowed.email, subject: mail.subject, html: mail.html, text: mail.text });
+  }
+}
 
 export function loadSiteSettings(siteCode) {
   const rows = getDb().prepare('SELECT key, value_json FROM site_settings WHERE site_code=?').all(siteCode);
