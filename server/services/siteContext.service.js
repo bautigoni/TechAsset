@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+﻿import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { getDb, nowIso } from '../db.js';
 
@@ -209,9 +209,9 @@ export function createRegisteredUser(profile = {}) {
   if (!site) throw new Error('La sede seleccionada no está disponible.');
 
   db.prepare(`
-    INSERT INTO allowed_users (email, nombre, default_role, can_choose_role, activo, created_at, updated_at)
-    VALUES (?, ?, ?, 0, 1, ?, ?)
-    ON CONFLICT(email) DO UPDATE SET nombre=excluded.nombre, default_role=excluded.default_role, activo=1, updated_at=excluded.updated_at
+    INSERT INTO allowed_users (email, nombre, default_role, can_choose_role, status, activo, deleted_at, deleted_by, created_at, updated_at)
+    VALUES (?, ?, ?, 0, 'Pendiente', 0, '', '', ?, ?)
+    ON CONFLICT(email) DO UPDATE SET nombre=excluded.nombre, default_role=excluded.default_role, status='Pendiente', activo=0, deleted_at='', deleted_by='', updated_at=excluded.updated_at
   `).run(email, nombre, requestedRole, ts, ts);
   const allowed = db.prepare('SELECT * FROM allowed_users WHERE lower(email)=?').get(email);
   db.prepare('UPDATE allowed_user_sites SET activo=0, updated_at=? WHERE allowed_user_id=?').run(ts, allowed.id);
@@ -221,5 +221,6 @@ export function createRegisteredUser(profile = {}) {
     ON CONFLICT(allowed_user_id, site_code) DO UPDATE SET site_role=excluded.site_role, turno=excluded.turno, is_default=1, activo=1, updated_at=excluded.updated_at
   `).run(allowed.id, siteCode, requestedRole, turno, ts, ts);
 
-  return upsertLoginUser(allowed, { nombre, siteCode, role: requestedRole, turno });
+  return allowed;
 }
+

@@ -1,5 +1,5 @@
 import type { Device } from '../types';
-import { classifyDeviceType, getOperationalAlias, getOperationalAliasList } from './classifyDevice';
+import { getOperationalAlias, getOperationalAliasList, operationalTypeLabel } from './classifyDevice';
 import { clean, normalizeText } from './formatters';
 
 export function parseScannedCode(raw: unknown): string {
@@ -40,16 +40,20 @@ export function normalizeAlias(value: unknown): string {
   return normalizeSearchKey(text);
 }
 
-type AliasType = 'PLANI' | 'TOUCH' | 'TIC' | 'DELL';
+type AliasType = 'PLANI' | 'TOUCH' | 'TIC' | 'DELL' | 'TABLET' | 'NOTEBOOK' | 'CHROMEBOOK';
 
 function parseOperationalAlias(value: unknown): { type: AliasType; number: string } | null {
   const text = normalizeText(value)
     .replace(/planificacion/g, 'plani')
     .replace(/\bplano\b/g, 'plani')
     .replace(/\bplan\b/g, 'plani');
-  const match = text.match(/\b(plani|touch|tic|dell)\s*0*(\d{1,3})\b/);
+  let match = text.match(/\b(plani|touch|tic|dell|tablet|notebook|chromebook)\s*0*(\d{1,3})\b/);
+  if (!match) {
+    const reverse = text.match(/\b0*(\d{1,3})\s*(plani|touch|tic|dell|tablet|notebook|chromebook)\b/);
+    if (reverse) match = [reverse[0], reverse[2], reverse[1]] as RegExpMatchArray;
+  }
   if (!match) return null;
-  const type = ({ plani: 'PLANI', touch: 'TOUCH', tic: 'TIC', dell: 'DELL' } as Record<string, AliasType>)[match[1]];
+  const type = ({ plani: 'PLANI', touch: 'TOUCH', tic: 'TIC', dell: 'DELL', tablet: 'TABLET', notebook: 'NOTEBOOK', chromebook: 'CHROMEBOOK' } as Record<string, AliasType>)[match[1]];
   return { type, number: String(Number(match[2])) };
 }
 
@@ -71,7 +75,7 @@ export function matchesSmartSearch(device: Device, query: string): boolean {
   const aliasQuery = parseOperationalAlias(query);
   if (aliasQuery) {
     const explicitMatch = getOperationalAliasList(device).some(alias => normalizeAlias(alias) === normalizeAlias(query));
-    return explicitMatch || (normalizeSearchKey(classifyDeviceType(device)) === aliasQuery.type && String(Number(clean(device.numero))) === aliasQuery.number);
+    return explicitMatch || (normalizeSearchKey(operationalTypeLabel(device)) === aliasQuery.type && String(Number(clean(device.numeroOperativo || device.numero))) === aliasQuery.number);
   }
 
   const q = normalizeDeviceSearch(query);
@@ -129,7 +133,7 @@ export function resolveDeviceMatches(devices: Device[], raw: string): Device[] {
   const aliasQuery = parseOperationalAlias(code);
   if (aliasQuery) {
     devices.forEach(device => {
-      if (normalizeSearchKey(classifyDeviceType(device)) === aliasQuery.type && String(Number(clean(device.numero))) === aliasQuery.number) add(device);
+      if (normalizeSearchKey(operationalTypeLabel(device)) === aliasQuery.type && String(Number(clean(device.numeroOperativo || device.numero))) === aliasQuery.number) add(device);
     });
     return matches;
   }

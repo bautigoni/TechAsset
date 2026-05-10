@@ -44,15 +44,11 @@ export function AdvancedSettings() {
     <details className="card">
       <summary><strong>Avanzado</strong></summary>
       <div className="stack" style={{ marginTop: 14 }}>
-        <label>URL lectura /sheet.csv<input className="input" placeholder="GOOGLE_SHEET_CSV_URL" /></label>
-        <label>URL Apps Script<input className="input" placeholder="APPS_SCRIPT_URL" /></label>
+        <p className="muted">TechAsset usa SQLite como fuente principal. Google Sheets queda solo para importación CSV manual por sede.</p>
         <div className="actions">
-          <Button>Exportar CSV</Button>
-          <Button>Exportar PDF QR</Button>
-          <Button onClick={loadDiagnostics} disabled={loadingDiagnostics}>Diagnóstico</Button>
+          <Button onClick={loadDiagnostics} disabled={loadingDiagnostics}>Diagnóstico local</Button>
           <Button onClick={loadSettings}>Configuración de sede</Button>
           <Button>Backup SQLite</Button>
-          <Button>Reset datos demo/prueba</Button>
         </div>
         {diagnosticsError && <div className="tool-error">{diagnosticsError}</div>}
         {siteSettingsText && (
@@ -67,16 +63,9 @@ export function AdvancedSettings() {
         {diagnostics && (
           <div className="diagnostics-grid">
             <Diagnostic label="Fuente" value={diagnostics.source} />
-            <Diagnostic label="Última lectura OK" value={diagnostics.lastSuccessfulReadAt} />
-            <Diagnostic label="Fetch externo" value={`${diagnostics.lastExternalFetchMs ?? 0} ms`} />
-            <Diagnostic label="Parse CSV/JSON" value={`${diagnostics.lastParseMs ?? 0} ms`} />
-            <Diagnostic label="Merge SQLite" value={`${diagnostics.lastMergeMs ?? 0} ms`} />
-            <Diagnostic label="Total backend" value={`${diagnostics.lastTotalMs ?? 0} ms`} />
+            <Diagnostic label="Sede" value={diagnostics.siteCode} />
             <Diagnostic label="Equipos" value={diagnostics.deviceCount} />
-            <Diagnostic label="Respondió cache" value={diagnostics.respondedWithCache ? 'Sí' : 'No'} />
-            <Diagnostic label="Edad cache" value={diagnostics.cacheAgeSeconds == null ? 'Sin cache' : `${diagnostics.cacheAgeSeconds} s`} />
-            <Diagnostic label="Timeout" value={diagnostics.timedOut ? 'Sí' : 'No'} />
-            <Diagnostic label="Refresh en curso" value={diagnostics.inflight ? 'Sí' : 'No'} />
+            <Diagnostic label="Última importación" value={diagnostics.lastImportAt || 'Sin importación registrada'} />
             <Diagnostic label="Último error" value={diagnostics.lastError || 'Sin error'} />
           </div>
         )}

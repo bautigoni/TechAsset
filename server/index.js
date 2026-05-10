@@ -18,7 +18,6 @@ import { operationsRouter } from './routes/operations.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { sitesRouter } from './routes/sites.routes.js';
 import { inventoryRouter } from './routes/inventory.routes.js';
-import { loadDevicesCsv } from './services/googleSheets.service.js';
 import { authMiddleware } from './services/siteContext.service.js';
 
 getDb();
@@ -26,15 +25,7 @@ getDb();
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
-
-app.get('/sheet.csv', async (_req, res, next) => {
-  try {
-    const { text } = await loadDevicesCsv();
-    res.type('text/csv').send(text);
-  } catch (error) {
-    next(error);
-  }
-});
+app.use('/uploads', express.static(path.join(config.rootDir, 'data', 'uploads')));
 
 app.use('/api', healthRouter);
 app.use('/api', authRouter);

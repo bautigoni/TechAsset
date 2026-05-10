@@ -1,16 +1,14 @@
-import { Router } from 'express';
-import { proxyAppsScript } from '../services/appsScript.service.js';
-import { addLocalMovement, getDb, nowIso, setLocalState } from '../db.js';
-import { getDeviceInventoryDiagnostics, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
+﻿import { Router } from 'express';
+import { addLocalMovement, getDb, nowIso, setAppSetting, setLocalState } from '../db.js';
+import { buildLocalInventory, getDeviceInventoryDiagnostics, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
+import { parseDevicesCsv, toCsvExportUrl } from '../services/googleSheets.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 
 export const devicesRouter = Router();
 
 devicesRouter.get('/devices', async (_req, res, next) => {
   try {
-    const forceRefresh = _req.query.refresh === '1' || _req.query.refresh === 'true';
-    const waitForFresh = _req.query.wait === '1' || _req.query.wait === 'true';
-    const { items, source, loadedAt, diagnostics } = await getMergedDevices({ forceRefresh, waitForFresh, siteCode: requireSite(_req) });
+    const { items, source, loadedAt, diagnostics } = await getMergedDevices({ siteCode: requireSite(_req) });
     res.json({ ok: true, items, loadedAt: loadedAt || new Date().toISOString(), source, diagnostics });
   } catch (error) {
     next(error);
@@ -19,49 +17,6 @@ devicesRouter.get('/devices', async (_req, res, next) => {
 
 devicesRouter.get('/devices/diagnostics', (_req, res) => {
   res.json({ ok: true, diagnostics: getDeviceInventoryDiagnostics(requireSite(_req)) });
-});
-
-devicesRouter.get('/devices/debug', async (_req, res) => {
-  const siteCode = requireSite(_req);
-  try {
-    const debug = await proxyAppsScript('debug', { siteCode }, 'GET', { siteCode, timeoutMs: 12000 });
-    res.json({ ok: true, siteCode, debug });
-  } catch (error) {
-    res.status(502).json({
-      ok: false,
-      siteCode,
-      error: error instanceof Error ? error.message : 'No se pudo consultar el diagnóstico de Apps Script.'
-    });
-  }
-});
-
-devicesRouter.get('/devices/pending-sync', (_req, res) => {
-  const siteCode = requireSite(_req);
-  const items = getDb().prepare(`
-    SELECT id, site_code AS siteCode, action, etiqueta, status, error, created_at AS createdAt, updated_at AS updatedAt
-    FROM pending_sheet_sync
-    WHERE site_code=? AND status='pending'
-    ORDER BY id DESC
-  `).all(siteCode);
-  res.json({ ok: true, items });
-});
-
-devicesRouter.post('/devices/pending-sync/:id/retry', async (_req, res) => {
-  const siteCode = requireSite(_req);
-  const id = Number(_req.params.id);
-  const row = getDb().prepare('SELECT * FROM pending_sheet_sync WHERE id=? AND site_code=?').get(id, siteCode);
-  if (!row) return res.status(404).json({ ok: false, error: 'Sincronización pendiente no encontrada.' });
-  try {
-    const payload = JSON.parse(row.payload_json || '{}');
-    await proxyAppsScript(row.action, payload, 'POST', { siteCode, timeoutMs: 20000 });
-    getDb().prepare("UPDATE pending_sheet_sync SET status='synced', error='', updated_at=? WHERE id=?").run(nowIso(), id);
-    invalidateDeviceInventoryCache('pending-sync-retry', siteCode);
-    res.json({ ok: true, synced: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error || 'Error desconocido');
-    getDb().prepare("UPDATE pending_sheet_sync SET error=?, updated_at=? WHERE id=?").run(message, nowIso(), id);
-    res.status(502).json({ ok: false, error: message });
-  }
 });
 
 devicesRouter.get('/device-categories', async (_req, res, next) => {
@@ -76,24 +31,6 @@ devicesRouter.get('/device-categories', async (_req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
-
-// Borra del estado local SQLite las filas triviales (Disponible/Devuelto/vacías),
-// dejando solo los préstamos activos. Útil cuando la planilla es la fuente de verdad
-// y local_states acumuló restos de pruebas.
-devicesRouter.post('/devices/sync-from-sheet', (_req, res) => {
-  const result = getDb().prepare(`
-    DELETE FROM local_states
-    WHERE site_code=?
-      AND (
-        estado IS NULL
-        OR TRIM(estado) = ''
-        OR TRIM(estado) = 'Disponible'
-        OR TRIM(estado) = 'Devuelto'
-      )
-  `).run(requireSite(_req));
-  invalidateDeviceInventoryCache('sync-from-sheet', requireSite(_req));
-  res.json({ ok: true, removed: result.changes });
 });
 
 devicesRouter.get('/devices/state', async (_req, res, next) => {
@@ -114,6 +51,73 @@ devicesRouter.get('/devices/state', async (_req, res, next) => {
   }
 });
 
+devicesRouter.post('/devices/import', async (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const csvText = await resolveImportCsv(req.body || {}, siteCode);
+    const rows = parseDevicesCsv(csvText);
+    const operador = String(
+      req.user?.nombre ||
+      req.user?.email ||
+      req.session?.user?.nombre ||
+      req.session?.user?.email ||
+      req.body?.operator ||
+      req.body?.operador ||
+      'Sistema'
+    ).trim() || 'Sistema';
+    const summary = importDevices(rows, siteCode, operador);
+    invalidateDeviceInventoryCache('devices-imported', siteCode);
+    setAppSetting(`devices.last_import.${siteCode}`, nowIso());
+    res.json({ ok: true, summary });
+  } catch (error) {
+    next(error);
+  }
+});
+
+devicesRouter.get('/devices/export/inventory.csv', (_req, res) => {
+  const siteCode = requireSite(_req);
+  const rows = buildLocalInventory(siteCode);
+  sendCsv(res, `techasset_inventario_${siteCode}.csv`, [
+    ['Sede', 'Etiqueta', 'Categoría', 'Filtro', 'Dispositivo', 'Modelo', 'Marca', 'S/N', 'MAC', 'Número operativo', 'Alias operativo', 'Estado', 'Prestada a', 'Rol', 'Ubicación', 'Motivo', 'Comentarios', 'Fecha préstamo', 'Fecha devolución', 'Última modificación'],
+    ...rows.map(item => [siteCode, item.etiqueta, item.categoria, item.filtro, item.dispositivo, item.modelo, item.marca, item.sn, item.mac, item.numero, item.aliasOperativo, item.estado, item.prestadoA, item.rol, item.ubicacion, item.motivo, item.comentarios, item.loanedAt, item.returnedAt, item.ultima])
+  ]);
+});
+
+devicesRouter.get('/devices/export/summary.csv', (_req, res) => {
+  const siteCode = requireSite(_req);
+  const rows = buildLocalInventory(siteCode);
+  const groups = new Map();
+  for (const item of rows) {
+    const key = `${item.filtro || item.categoria || 'Otro'}|${item.estado || 'Disponible'}`;
+    groups.set(key, (groups.get(key) || 0) + 1);
+  }
+  sendCsv(res, `techasset_resumen_${siteCode}.csv`, [
+    ['Sede', 'Filtro', 'Estado', 'Cantidad'],
+    ...[...groups.entries()].sort().map(([key, count]) => {
+      const [categoria, estado] = key.split('|');
+      return [siteCode, categoria, estado, count];
+    })
+  ]);
+});
+
+devicesRouter.get('/movements/export.csv', (_req, res) => {
+  const siteCode = requireSite(_req);
+  const rows = getDb().prepare('SELECT timestamp, tipo, descripcion, operador, origen, etiqueta FROM local_movements WHERE site_code=? ORDER BY timestamp DESC').all(siteCode);
+  sendCsv(res, `techasset_movimientos_${siteCode}.csv`, [
+    ['Sede', 'Fecha', 'Tipo', 'Etiqueta', 'Descripción', 'Operador', 'Origen'],
+    ...rows.map(row => [siteCode, row.timestamp, row.tipo, row.etiqueta, row.descripcion, row.operador, row.origen])
+  ]);
+});
+
+devicesRouter.get('/loans/export/active.csv', (_req, res) => {
+  const siteCode = requireSite(_req);
+  const rows = buildLocalInventory(siteCode).filter(item => item.estado === 'Prestado');
+  sendCsv(res, `techasset_prestamos_activos_${siteCode}.csv`, [
+    ['Sede', 'Etiqueta', 'Alias', 'Prestada a', 'Rol', 'Ubicación', 'Motivo', 'Fecha préstamo'],
+    ...rows.map(item => [siteCode, item.etiqueta, item.aliasOperativo, item.prestadoA, item.rol, item.ubicacion, item.motivo, item.loanedAt])
+  ]);
+});
+
 devicesRouter.post('/devices/add', async (req, res, next) => {
   try {
     const siteCode = requireSite(req);
@@ -123,9 +127,8 @@ devicesRouter.post('/devices/add', async (req, res, next) => {
     saveCategory(payload.categoria, siteCode);
     saveLocalDevice(payload, siteCode);
     invalidateDeviceInventoryCache('device-added', siteCode);
-    addLocalMovement({ tipo: 'dispositivo agregado', descripcion: `${payload.etiqueta || ''} agregado`, operador: payload.operator, origen: 'Google Sheets', etiqueta: payload.etiqueta, siteCode });
-    res.json({ ok: true, item: payload, syncing: true });
-    proxyAppsScript('adddevice', payload, 'POST', { siteCode }).catch(error => console.warn(`[devices/add sync:${siteCode}]`, error?.message || error));
+    addLocalMovement({ tipo: 'dispositivo agregado', descripcion: `${payload.etiqueta || ''} agregado`, operador: payload.operator, origen: 'Local', etiqueta: payload.etiqueta, siteCode });
+    res.json({ ok: true, item: payload, syncing: false });
   } catch (error) {
     next(error);
   }
@@ -134,7 +137,7 @@ devicesRouter.post('/devices/add', async (req, res, next) => {
 devicesRouter.patch('/devices/:etiqueta', async (req, res, next) => {
   try {
     const siteCode = requireSite(req);
-    const originalEtiqueta = String(req.params.etiqueta || req.body?.originalEtiqueta || '').trim().toUpperCase().replace(/\s+/g, '');
+    const originalEtiqueta = normalizeTag(req.params.etiqueta || req.body?.originalEtiqueta || '');
     const payload = normalizeDevicePayload({ ...req.body, etiqueta: req.body?.etiqueta || originalEtiqueta, siteCode });
     if (!originalEtiqueta || !payload.etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
     saveCategory(payload.categoria, siteCode);
@@ -145,8 +148,7 @@ devicesRouter.patch('/devices/:etiqueta', async (req, res, next) => {
     saveLocalDevice(payload, siteCode);
     invalidateDeviceInventoryCache('device-updated', siteCode);
     addLocalMovement({ tipo: 'dispositivo editado', descripcion: `${originalEtiqueta} actualizado`, operador: payload.operator, origen: 'Local', etiqueta: payload.etiqueta, siteCode });
-    res.json({ ok: true, item: payload, syncing: true });
-    proxyAppsScript('adddevice', payload, 'POST', { siteCode }).catch(error => console.warn(`[devices/edit sync:${siteCode}]`, error?.message || error));
+    res.json({ ok: true, item: payload, syncing: false });
   } catch (error) {
     next(error);
   }
@@ -154,9 +156,10 @@ devicesRouter.patch('/devices/:etiqueta', async (req, res, next) => {
 
 devicesRouter.post('/devices/status', async (req, res, next) => {
   try {
-    const estado = String(req.body.estado || '');
+    const estado = normalizeDeviceState(req.body.estado || '');
     const siteCode = requireSite(req);
-    setLocalState(req.body.etiqueta, {
+    const etiqueta = normalizeTag(req.body.etiqueta);
+    setLocalState(etiqueta, {
       estado,
       comentarios: req.body.comentario || req.body.comentarios || '',
       prestadoA: '',
@@ -164,13 +167,12 @@ devicesRouter.post('/devices/status', async (req, res, next) => {
       ubicacion: '',
       motivo: '',
       loanedAt: '',
-      returnedAt: estado === 'Disponible' ? nowIso() : '',
+      returnedAt: estado === 'Disponible' || estado === 'Devuelto' ? nowIso() : '',
       siteCode
     });
     invalidateDeviceInventoryCache('device-status', siteCode);
-    addLocalMovement({ tipo: 'estado dispositivo', descripcion: `${req.body.etiqueta} -> ${req.body.estado}`, operador: req.body.operator, origen: 'Local', etiqueta: req.body.etiqueta, siteCode });
-    res.json({ ok: true, syncing: true });
-    proxyAppsScript('status', { ...req.body, siteCode }, 'POST', { siteCode }).catch(error => console.warn(`[devices/status sync:${siteCode}]`, error?.message || error));
+    addLocalMovement({ tipo: 'estado dispositivo', descripcion: `${etiqueta} -> ${estado}`, operador: req.body.operator, origen: 'Local', etiqueta, siteCode });
+    res.json({ ok: true, syncing: false });
   } catch (error) {
     next(error);
   }
@@ -178,7 +180,7 @@ devicesRouter.post('/devices/status', async (req, res, next) => {
 
 devicesRouter.delete('/devices/:etiqueta', (req, res, next) => {
   try {
-    const etiqueta = String(req.params.etiqueta || '').trim().toUpperCase().replace(/\s+/g, '');
+    const etiqueta = normalizeTag(req.params.etiqueta || '');
     const siteCode = requireSite(req);
     if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
     const operator = String(req.body?.operator || req.query.operator || '');
@@ -218,15 +220,115 @@ devicesRouter.get('/movements', (_req, res) => {
   res.json({ ok: true, items: [...local, ...agenda, ...tasks].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))).slice(0, 100) });
 });
 
+async function resolveImportCsv(body, siteCode) {
+  if (typeof body.csvText === 'string' && body.csvText.trim()) return body.csvText;
+  const url = String(body.csvUrl || getDb().prepare('SELECT spreadsheet_url FROM sites WHERE site_code=?').get(siteCode)?.spreadsheet_url || '').trim();
+  if (!url) throw new Error('No se indicó CSV ni hay URL CSV configurada para esta sede.');
+  const response = await fetch(toCsvExportUrl(url), { signal: AbortSignal.timeout(20000) });
+  if (!response.ok) throw new Error(`No se pudo leer el CSV: HTTP ${response.status}`);
+  return await response.text();
+}
+
+function importDevices(rows, siteCode, operador = 'Sistema') {
+  const existing = new Set(getDb().prepare('SELECT etiqueta FROM local_devices WHERE site_code=?').all(siteCode).map(row => normalizeTag(row.etiqueta)));
+  const errors = [];
+  let read = 0;
+  let created = 0;
+  let updated = 0;
+  let reactivated = 0;
+  let skipped = 0;
+  const tx = getDb().transaction(() => {
+    for (const row of rows) {
+      read += 1;
+      const payload = normalizeDevicePayload({ ...row, siteCode });
+      if (!payload.etiqueta) {
+        skipped += 1;
+        errors.push(`Fila ${read}: sin etiqueta`);
+        continue;
+      }
+      if (isHiddenOrInactive(payload.etiqueta, siteCode)) reactivated += 1;
+      saveCategory(payload.categoria || 'Otro', siteCode);
+      saveLocalDevice(payload, siteCode);
+      if (existing.has(payload.etiqueta)) updated += 1;
+      else {
+        existing.add(payload.etiqueta);
+        created += 1;
+      }
+    }
+  });
+  tx();
+  addLocalMovement({ tipo: 'importación dispositivos', descripcion: `${read} leídos, ${created} nuevos, ${updated} actualizados, ${reactivated} reactivados, ${skipped} omitidos`, operador: operador || 'Sistema', origen: 'Local', etiqueta: '', siteCode });
+  return { read, created, updated, reactivated, skipped, errors: errors.length, errorDetails: errors.slice(0, 20) };
+}
+
+function isHiddenOrInactive(etiqueta, siteCode) {
+  const tag = normalizeTag(etiqueta || '');
+  const hidden = getDb().prepare('SELECT 1 FROM hidden_devices WHERE site_code=? AND etiqueta=?').get(siteCode, tag);
+  const local = getDb().prepare('SELECT eliminado, activo, deleted_at FROM local_devices WHERE site_code=? AND etiqueta=?').get(siteCode, tag);
+  return Boolean(hidden || local?.eliminado || local?.activo === 0 || String(local?.deleted_at || '').trim());
+}
+
 function saveLocalDevice(payload, siteCode) {
-  const etiqueta = String(payload.etiqueta || '').trim();
+  const etiqueta = normalizeTag(payload.etiqueta || '');
   if (!etiqueta) return;
   const ts = nowIso();
+  const normalizedPayload = { ...payload, etiqueta, siteCode };
+  getDb().prepare('DELETE FROM hidden_devices WHERE site_code=? AND etiqueta=?').run(siteCode, etiqueta);
   getDb().prepare(`
-    INSERT INTO local_devices (etiqueta, site_code, payload, eliminado, deleted_at, deleted_by, created_at, updated_at)
-    VALUES (?, ?, ?, 0, '', '', ?, ?)
-    ON CONFLICT(site_code, etiqueta) DO UPDATE SET payload=excluded.payload, eliminado=0, deleted_at='', deleted_by='', updated_at=excluded.updated_at
-  `).run(etiqueta, siteCode, JSON.stringify({ ...payload, siteCode }), ts, ts);
+    INSERT INTO local_devices (
+      etiqueta, site_code, payload, categoria, filtro, modelo, marca, serial, numero_operativo, alias_operativo,
+      alias_alternativos, estado, prestada_a, rol, ubicacion, motivo, comentarios, fecha_prestamo,
+      fecha_devolucion, ultima_modificacion, activo, eliminado, deleted_at, deleted_by, created_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, '', '', ?, ?)
+    ON CONFLICT(site_code, etiqueta) DO UPDATE SET
+      payload=excluded.payload,
+      categoria=excluded.categoria,
+      filtro=excluded.filtro,
+      modelo=excluded.modelo,
+      marca=excluded.marca,
+      serial=excluded.serial,
+      numero_operativo=excluded.numero_operativo,
+      alias_operativo=excluded.alias_operativo,
+      alias_alternativos=excluded.alias_alternativos,
+      estado=excluded.estado,
+      prestada_a=excluded.prestada_a,
+      rol=excluded.rol,
+      ubicacion=excluded.ubicacion,
+      motivo=excluded.motivo,
+      comentarios=excluded.comentarios,
+      fecha_prestamo=excluded.fecha_prestamo,
+      fecha_devolucion=excluded.fecha_devolucion,
+      ultima_modificacion=excluded.ultima_modificacion,
+      activo=1,
+      eliminado=0,
+      deleted_at='',
+      deleted_by='',
+      updated_at=excluded.updated_at
+  `).run(
+    etiqueta,
+    siteCode,
+    JSON.stringify(normalizedPayload),
+    normalizedPayload.categoria || '',
+    normalizedPayload.filtro || '',
+    normalizedPayload.modelo || '',
+    normalizedPayload.marca || '',
+    normalizedPayload.sn || normalizedPayload.serial || '',
+    normalizedPayload.numero || normalizedPayload.numeroOperativo || '',
+    normalizedPayload.aliasOperativo || buildOperationalAlias(normalizedPayload.filtro || normalizedPayload.categoria, normalizedPayload.numero || normalizedPayload.numeroOperativo),
+    normalizedPayload.aliasOperativoJson || normalizedPayload.aliasAlternativos || '',
+    normalizedPayload.estado || 'Disponible',
+    normalizedPayload.prestadoA || '',
+    normalizedPayload.rol || '',
+    normalizedPayload.ubicacion || '',
+    normalizedPayload.motivo || '',
+    normalizedPayload.comentarios || '',
+    normalizedPayload.loanedAt || '',
+    normalizedPayload.returnedAt || '',
+    normalizedPayload.ultima || ts,
+    ts,
+    ts
+  );
 }
 
 function saveCategory(nombre, siteCode) {
@@ -241,20 +343,62 @@ function saveCategory(nombre, siteCode) {
 }
 
 function normalizeDevicePayload(raw) {
-  const aliasOperativo = String(raw.aliasOperativo || '')
+  const importedNumber = String(raw.numero || raw.numeroOperativo || raw.numero_operativo || raw.nro || raw.number || raw['número'] || raw['numero operativo'] || raw['número operativo'] || raw.operativo || '').trim();
+  const aliasOperativo = String(raw.aliasOperativo || raw.alias_operativo || raw.alias || '')
     .split(',')
     .map(item => item.trim())
     .filter(Boolean)
     .join(', ');
+  const prestadoA = String(raw.prestada || raw.prestadoA || raw.persona || '').trim();
+  const estadoInput = raw.estado || raw.state || raw.status || raw.devuelto || '';
+  const categoria = normalizeCategory(raw.categoria || raw.tipo || raw.dispositivo || raw.modelo || '');
+  const filtro = normalizeDashboardFilter(raw.filtro || raw.filter || raw.grupo || raw.tipoDashboard || raw['tipo dashboard'] || raw.categoriaDashboard || raw['categoria dashboard'] || '');
   return {
     ...raw,
-    etiqueta: String(raw.etiqueta || '').trim().toUpperCase().replace(/\s+/g, ''),
-    categoria: normalizeCategory(raw.categoria || raw.tipo || raw.dispositivo || ''),
-    dispositivo: String(raw.dispositivo || raw.categoria || 'Chromebook').trim(),
-    aliasOperativo,
+    etiqueta: normalizeTag(raw.etiqueta || raw.codigo || raw.code || raw.id || ''),
+    categoria: categoria || 'Otro',
+    filtro,
+    dispositivo: String(raw.dispositivo || raw.equipo || categoria || 'Chromebook').trim(),
+    modelo: String(raw.modelo || raw.modeloTecnico || raw['modelo técnico'] || raw.model || '').trim(),
+    marca: String(raw.marca || '').trim(),
+    sn: String(raw.sn || raw.serial || raw['s/n'] || raw.SN || '').trim(),
+    mac: String(raw.mac || raw.MAC || '').trim(),
+    numero: importedNumber,
+    numeroOperativo: importedNumber,
+    aliasOperativo: aliasOperativo || buildOperationalAlias(filtro || categoria, importedNumber),
     aliasOperativoJson: aliasOperativo ? JSON.stringify(aliasOperativo.split(',').map(item => item.trim()).filter(Boolean)) : '',
-    estado: ['Disponible', 'Prestado', 'No encontrada', 'Fuera de servicio'].includes(raw.estado) ? raw.estado : 'Disponible'
+    estado: estadoInput ? normalizeDeviceState(estadoInput) : (prestadoA ? 'Prestado' : 'Disponible'),
+    prestadoA,
+    rol: String(raw.rol || '').trim(),
+    ubicacion: String(raw.ubicacion || raw['ubicación'] || '').trim(),
+    motivo: String(raw.motivo || '').trim(),
+    comentarios: String(raw.comentarios || raw.comentario || '').trim(),
+    loanedAt: String(raw.loanedAt || raw.fechaPrestamo || raw.fechaPres || raw['fecha pres'] || raw.horarioPrestamo || '').trim(),
+    returnedAt: String(raw.returnedAt || raw.fechaDevolucion || raw.fechaDev || raw['fecha dev'] || raw.horarioDevolucion || '').trim(),
+    ultima: String(raw.ultima || raw.ultimaModificacion || raw['última mod'] || raw['ultima mod'] || '').trim()
   };
+}
+
+function normalizeDeviceState(value) {
+  const text = String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (text.includes('prest')) return 'Prestado';
+  if (text.includes('no encontrada') || text.includes('perd')) return 'No encontrada';
+  if (text.includes('fuera') || text.includes('servicio')) return 'Fuera de servicio';
+  if (text.includes('repar')) return 'En reparación';
+  if (text.includes('sin revisar')) return 'Sin revisar';
+  return 'Disponible';
+}
+
+function buildOperationalAlias(group, number) {
+  const cleanGroup = normalizeDashboardFilter(group || '');
+  const cleanNumber = String(number || '').trim();
+  return cleanGroup && cleanNumber ? `${cleanGroup} ${cleanNumber}` : '';
+}
+
+function normalizeDashboardFilter(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return raw.slice(0, 1).toUpperCase() + raw.slice(1);
 }
 
 function normalizeCategory(value) {
@@ -268,3 +412,22 @@ function normalizeCategory(value) {
   if (text === 'dell') return 'Dell';
   return raw.slice(0, 1).toUpperCase() + raw.slice(1);
 }
+
+function normalizeTag(value) {
+  const raw = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+  const number = raw.match(/^D?0*(\d{1,5})$/)?.[1];
+  return number ? `D${number.padStart(4, '0')}` : raw;
+}
+
+function sendCsv(res, filename, rows) {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send('\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\n'));
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+

@@ -6,6 +6,7 @@ import { StatCard } from '../layout/StatCard';
 import { DeviceTable } from './DeviceTable';
 import { DeviceProfile } from './DeviceProfile';
 import { AddDeviceModal } from './AddDeviceModal';
+import { downloadDevicesCsv, importDevicesFromCsv } from '../../services/devicesApi';
 
 type DeviceFilter = string;
 type DeviceSort = 'default' | 'operational';
@@ -27,13 +28,15 @@ function matchesFilter(device: Device, filter: DeviceFilter) {
   return classifyDeviceType(device) === filter;
 }
 
-export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn, onDelete }: {
+export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan, onReturn, onDelete, onImported }: {
   devices: Device[];
   consultationMode: boolean;
+  operator: string;
   onAdd: (device: Partial<Device>) => Promise<void>;
   onLoan: (device: Device) => void;
   onReturn: (device: Device) => void;
   onDelete?: (device: Device) => Promise<void> | void;
+  onImported?: () => Promise<void> | void;
 }) {
   const [profile, setProfile] = useState<Device | null>(null);
   const [adding, setAdding] = useState(false);
@@ -64,6 +67,35 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
       setMessage({ tone: 'info', text: 'Dispositivo borrado' });
     } catch (error) {
       setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo borrar el dispositivo.' });
+    }
+  };
+
+  const importCsv = async () => {
+    if (consultationMode) {
+      setMessage({ tone: 'error', text: 'Modo consulta activo.' });
+      return;
+    }
+    const csvUrl = window.prompt('Pegá la URL CSV publicada de esta sede. Si dejás vacío, se usa la URL configurada en la sede.');
+    if (csvUrl === null) return;
+    setMessage({ tone: 'info', text: 'Importando dispositivos a la base local...' });
+    try {
+      const result = await importDevicesFromCsv({ csvUrl: csvUrl.trim(), operator });
+      const summary = result.summary;
+      setMessage({
+        tone: summary.errors ? 'error' : 'info',
+        text: `Importación finalizada: ${summary.read} leídos, ${summary.created} nuevos, ${summary.updated} actualizados, ${summary.reactivated || 0} reactivados, ${summary.skipped} omitidos, ${summary.errors} errores.`
+      });
+      await onImported?.();
+    } catch (error) {
+      setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo importar el CSV.' });
+    }
+  };
+
+  const exportCsv = async (path: string, filename: string) => {
+    try {
+      await downloadDevicesCsv(path, filename);
+    } catch (error) {
+      setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo exportar el CSV.' });
     }
   };
 
@@ -133,6 +165,11 @@ export function DevicesPage({ devices, consultationMode, onAdd, onLoan, onReturn
               <option value="default">Orden original</option>
               <option value="operational">Ordenar por número operativo</option>
             </select>
+            {!consultationMode && <Button onClick={importCsv}>Importar CSV</Button>}
+            <Button onClick={() => exportCsv('/api/devices/export/inventory.csv', 'techasset_inventario.csv')}>Exportar inventario</Button>
+            <Button onClick={() => exportCsv('/api/devices/export/summary.csv', 'techasset_resumen.csv')}>Exportar resumen</Button>
+            <Button onClick={() => exportCsv('/api/movements/export.csv', 'techasset_movimientos.csv')}>Exportar movimientos</Button>
+            <Button onClick={() => exportCsv('/api/loans/export/active.csv', 'techasset_prestamos_activos.csv')}>Exportar préstamos</Button>
             <Button onClick={exportQrPdf}>Exportar PDF QR</Button>
             {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Añadir dispositivo</Button>}
           </div>

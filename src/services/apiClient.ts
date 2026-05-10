@@ -3,6 +3,10 @@ function headers(extra?: HeadersInit): HeadersInit {
   return { 'X-Site-Code': siteCode, ...(extra || {}) };
 }
 
+export function siteHeaders(extra?: HeadersInit): HeadersInit {
+  return headers(extra);
+}
+
 export async function apiGet<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: 'no-store', headers: headers() });
   const data = await response.json();

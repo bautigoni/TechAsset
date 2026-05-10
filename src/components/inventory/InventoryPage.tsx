@@ -1,20 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FileDown, Package, Upload } from 'lucide-react';
 import type { InventoryItem } from '../../types';
-import { createInventoryItem, deleteInventoryItem, getInventoryItems, updateInventoryItem } from '../../services/inventoryApi';
+import { createInventoryItem, deleteInventoryItem, getInventoryItems, importInventoryCsv, updateInventoryItem, uploadInventoryImage } from '../../services/inventoryApi';
 import { csvCell } from '../../utils/formatters';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 
 const DEFAULT_FILTER_CATEGORIES = ['Tablets', 'Dash Robot', 'Beebot', 'Bluebot', 'Mouses disponibles maker/ofi', 'Filamento 3D', 'Arduino'];
 const FORM_CATEGORIES = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Otro'];
-const STATES = ['', 'Operativo', 'Revisar', 'Incompleto', 'Bajo stock', 'No disponible'];
+const STATES = ['', 'Disponible', 'Operativo', 'Revisar', 'Incompleto', 'Bajo stock', 'No disponible'];
 const EMPTY_FORM: Partial<InventoryItem> = {
   nombre: '',
   categoria: 'Otro',
   cantidad: 1,
   unidad: 'unidades',
   imagenUrl: '',
-  estado: 'Operativo',
+  estado: 'Disponible',
   observaciones: ''
 };
 
@@ -27,8 +28,10 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [sort, setSort] = useState<'name' | 'quantity'>('name');
   const [busy, setBusy] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const refresh = () => getInventoryItems()
     .then(response => setItems(response.items))
@@ -81,7 +84,7 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
       cantidad: item.cantidad,
       unidad: item.unidad,
       imagenUrl: item.imagenUrl || '',
-      estado: item.estado || 'Operativo',
+      estado: item.estado || 'Disponible',
       observaciones: item.observaciones || ''
     });
     setError('');
@@ -123,15 +126,56 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
   };
 
   const exportCsv = () => {
-    const headers = ['nombre', 'categoria', 'cantidad', 'unidad', 'estado', 'observaciones', 'imagen_url'];
-    const rows = filtered.map(item => [item.nombre, item.categoria, item.cantidad, item.unidad, item.estado || '', item.observaciones || '', item.imagenUrl || '']);
-    const blob = new Blob([[headers, ...rows].map(row => row.map(csvCell).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `inventario-tic-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const headers = ['Nombre', 'Cantidad', 'Categoría', 'Unidad', 'Estado', 'Observaciones', 'Imagen URL'];
+    const rows = filtered.map(item => [item.nombre, item.cantidad, item.categoria, item.unidad, item.estado || '', item.observaciones || '', item.imagenUrl || '']);
+    downloadCsv(`inventario-tic-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
+
+  const exportExample = () => {
+    const headers = ['Nombre', 'Cantidad', 'Categoría', 'Unidad', 'Estado', 'Observaciones', 'Imagen URL'];
+    const rows = [
+      ['LEDs', 100, 'Componentes', 'unidades', 'Disponible', 'Stock general', ''],
+      ['Resistencias', 200, 'Componentes', 'unidades', 'Disponible', 'Valores surtidos', ''],
+      ['Sensores de distancia', 34, 'Sensores', 'unidades', 'Disponible', 'HC-SR04', ''],
+      ['Servomotor', 31, 'Robótica', 'unidades', 'Disponible', '', '']
+    ];
+    downloadCsv('plantilla-inventario-tic.csv', headers, rows);
+  };
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const csvText = await readFileAsText(file);
+      const result = await importInventoryCsv(csvText);
+      setMessage(`Importación finalizada: ${result.read} leídos, ${result.created} nuevos, ${result.updated} actualizados, ${result.skipped} omitidos, ${result.errors.length} errores.`);
+      await refresh();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No se pudo importar el inventario.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleImageFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+    setUploadingImage(true);
+    setError('');
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const response = await uploadInventoryImage({ fileName: file.name, dataUrl });
+      setForm(current => ({ ...current, imagenUrl: response.url }));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No se pudo subir la imagen.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   return (
@@ -142,8 +186,11 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
           <p>Recursos Maker, placas, sensores, cables, cargadores y materiales por sede.</p>
         </div>
         <div className="actions">
-          <Button onClick={exportCsv}>Exportar CSV</Button>
+          <Button onClick={exportCsv}><FileDown size={16} /> Exportar CSV</Button>
+          <Button onClick={exportExample}><FileDown size={16} /> Exportar ejemplo</Button>
+          <Button disabled={consultationMode || busy} onClick={() => importInputRef.current?.click()}><Upload size={16} /> Importar CSV</Button>
           <Button variant="primary" disabled={consultationMode} onClick={openCreate}>Agregar recurso</Button>
+          <input ref={importInputRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={handleImportFile} />
         </div>
       </div>
 
@@ -165,6 +212,7 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
             {availableCategories.map(item => (
               <label key={item} className={selectedCategories.includes(item) ? 'active' : ''}>
                 <input type="checkbox" checked={selectedCategories.includes(item)} onChange={() => toggleCategory(item)} />
+                <span className="filter-check" aria-hidden="true">✓</span>
                 <span>{item}</span>
               </label>
             ))}
@@ -179,7 +227,7 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
           {filtered.map(item => (
             <article className="inventory-item-card" key={item.id}>
               <div className="inventory-thumb">
-                {item.imagenUrl ? <img src={item.imagenUrl} alt="" /> : <span>{item.nombre.slice(0, 2).toUpperCase()}</span>}
+                {item.imagenUrl ? <img src={item.imagenUrl} alt="" /> : <span className="inventory-placeholder-icon" aria-hidden="true"><Package size={34} /></span>}
               </div>
               <div className="inventory-item-main">
                 <div>
@@ -203,7 +251,17 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
       {modalOpen && (
         <Modal title={editing ? 'Editar recurso' : 'Agregar recurso'} onClose={() => !busy && setModalOpen(false)}>
           <form className="inventory-form" onSubmit={save}>
-            <label>Imagen o URL de imagen<input className="input" value={form.imagenUrl || ''} onChange={event => setForm(current => ({ ...current, imagenUrl: event.target.value }))} placeholder="https://..." /></label>
+            <div className="form-field">
+              <span className="field-label">Imagen o URL de imagen</span>
+              <div className="inventory-image-field">
+                <input className="input" value={form.imagenUrl || ''} onChange={event => setForm(current => ({ ...current, imagenUrl: event.target.value }))} placeholder="https://... o /uploads/..." />
+                <label className="btn btn-secondary inventory-upload-button">
+                  {uploadingImage ? 'Subiendo...' : 'Subir foto'}
+                  <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleImageFile} disabled={uploadingImage || consultationMode} />
+                </label>
+              </div>
+            </div>
+            {form.imagenUrl && <div className="inventory-image-preview"><img src={form.imagenUrl} alt="" /></div>}
             <label>Nombre<input className="input" required value={form.nombre || ''} onChange={event => setForm(current => ({ ...current, nombre: event.target.value }))} /></label>
             <div className="grid-2">
               <label>Categoría
@@ -225,11 +283,39 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
             {error && <div className="tool-error">{error}</div>}
             <div className="actions modal-actions-sticky">
               <Button type="button" onClick={() => setModalOpen(false)} disabled={busy}>Cancelar</Button>
-              <Button variant="primary" type="submit" disabled={busy || consultationMode}>{busy ? 'Guardando...' : editing ? 'Guardar cambios' : 'Agregar recurso'}</Button>
+              <Button variant="primary" type="submit" disabled={busy || uploadingImage || consultationMode}>{busy ? 'Guardando...' : editing ? 'Guardar cambios' : 'Agregar recurso'}</Button>
             </div>
           </form>
         </Modal>
       )}
     </section>
   );
+}
+
+function downloadCsv(fileName: string, headers: string[], rows: unknown[][]) {
+  const blob = new Blob([[headers, ...rows].map(row => row.map(csvCell).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function readFileAsText(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.readAsText(file);
+  });
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+    reader.readAsDataURL(file);
+  });
 }

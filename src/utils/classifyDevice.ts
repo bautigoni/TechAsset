@@ -16,7 +16,7 @@ export function normalizeDeviceCategory(value?: string): string {
 }
 
 export function classifyDeviceType(device: Partial<Device>): DeviceType {
-  const explicit = normalizeDeviceCategory(device.categoria || (device as Record<string, unknown>).tipo as string || (device as Record<string, unknown>).category as string);
+  const explicit = normalizeDeviceCategory(device.filtro || device.categoria || (device as Record<string, unknown>).tipo as string || (device as Record<string, unknown>).category as string);
   if (explicit) return explicit;
   const marca = normalizeText(device.marca);
   const modelo = normalizeText(device.modelo);
@@ -36,7 +36,7 @@ export function classifyDeviceType(device: Partial<Device>): DeviceType {
 }
 
 export function getDeviceNumber(device: Partial<Device>): string {
-  const direct = clean(device.numero || (device as Record<string, unknown>).number || (device as Record<string, unknown>).nro);
+  const direct = clean(device.numero || device.numeroOperativo || (device as Record<string, unknown>).numero_operativo || (device as Record<string, unknown>).number || (device as Record<string, unknown>).nro);
   const directNumber = extractOperationalNumber(direct);
   if (directNumber) return directNumber;
   const alias = clean((device as Record<string, unknown>).aliasOperativo);
@@ -44,7 +44,7 @@ export function getDeviceNumber(device: Partial<Device>): string {
 }
 
 export function operationalTypeLabel(device: Partial<Device>): string {
-  return normalizeDeviceCategory(classifyDeviceType(device)) || 'Otro';
+  return normalizeDeviceCategory(device.filtro || classifyDeviceType(device)) || 'Otro';
 }
 
 export function getOperationalGroup(device: Partial<Device>): string {
@@ -60,6 +60,7 @@ export function getOperationalAlias(device: Partial<Device>): string {
   const explicit = clean((device as Record<string, unknown>).aliasOperativo);
   const type = operationalTypeLabel(device);
   const number = getDeviceNumber(device);
+  if (type && number) return `${type} ${number}`;
   if (explicit) {
     const first = explicit.split(',').map(item => clean(item)).find(Boolean) || explicit;
     const explicitNumber = extractOperationalNumber(first);
@@ -75,12 +76,15 @@ export function getOperationalAlias(device: Partial<Device>): string {
 export function getOperationalAliasList(device: Partial<Device>): string[] {
   const explicit = clean((device as Record<string, unknown>).aliasOperativo);
   const main = getOperationalAlias(device);
+  const type = operationalTypeLabel(device);
+  const number = getDeviceNumber(device);
+  const generated = type && number ? [`${type} ${number}`, `${type}${number}`, `${number}${type}`, `${number} ${type}`] : [];
   if (explicit) {
     const items = explicit.split(',').map(item => clean(item)).filter(Boolean);
-    return [...new Set([main, ...items].filter(Boolean))];
+    return [...new Set([main, ...generated, ...items].filter(Boolean))];
   }
   const fallback = main;
-  return fallback ? [fallback] : [];
+  return [...new Set([fallback, ...generated].filter(Boolean))];
 }
 
 export function matchesOperationalAlias(device: Partial<Device>, query: string): boolean {
@@ -97,8 +101,11 @@ export function matchesOperationalAlias(device: Partial<Device>, query: string):
     ...getOperationalAliasList(device),
     device.aliasOperativo,
     device.numero,
+    device.numeroOperativo,
     group && number ? `${group} ${number}` : '',
-    group && number ? `${group}${number}` : ''
+    group && number ? `${group}${number}` : '',
+    group && number ? `${number}${group}` : '',
+    group && number ? `${number} ${group}` : ''
   ];
   return candidates.some(candidate => normalizeOperationalSearch(candidate).includes(q));
 }
@@ -122,8 +129,8 @@ function extractOperationalNumber(value: unknown): string {
   const raw = clean(value);
   if (!raw || /^D0*\d+$/i.test(raw)) return '';
   if (/^\d{1,3}$/.test(raw)) return String(Number(raw));
-  const match = raw.match(/\b(?:plani|touch|tic|dell)\s*0*(\d{1,3})\b/i)
-    || raw.match(/\b0*(\d{1,3})\s*(?:plani|touch|tic|dell)\b/i);
+  const match = raw.match(/\b(?:plani|touch|tic|dell|tablet|notebook|chromebook)\s*0*(\d{1,3})\b/i)
+    || raw.match(/\b0*(\d{1,3})\s*(?:plani|touch|tic|dell|tablet|notebook|chromebook)\b/i);
   return match ? String(Number(match[1])) : '';
 }
 

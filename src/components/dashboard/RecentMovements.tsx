@@ -1,4 +1,4 @@
-import type { Movement } from '../../types';
+﻿import type { Movement } from '../../types';
 import { formatDateTime } from '../../utils/formatters';
 
 function movementTypeLabel(value: string) {
@@ -27,3 +27,4 @@ export function RecentMovements({ items }: { items: Movement[] }) {
     </section>
   );
 }
+

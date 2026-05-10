@@ -5,13 +5,24 @@ import { fetchShiftSettings, updateShiftSettings } from '../../services/operatio
 import { SiteAdminPanel } from './SiteAdminPanel';
 import { AllowedUsersPanel } from './AllowedUsersPanel';
 import { LoanSettingsPanel } from './LoanSettingsPanel';
-import { getDevicesDebug } from '../../services/devicesApi';
 
-export function SettingsPage({ operator, consultationMode, setConsultationMode, sync, user, sites, onSitesChanged }: { operator: Operator; setOperator: (operator: Operator) => void; consultationMode: boolean; setConsultationMode: (value: boolean) => void; sync: SyncStatus; user: AuthUser; sites: SiteInfo[]; onSitesChanged: () => void }) {
+export function SettingsPage({ operator, consultationMode, setConsultationMode, sync, user, sites, onSitesChanged }: {
+  operator: Operator;
+  setOperator: (operator: Operator) => void;
+  consultationMode: boolean;
+  setConsultationMode: (value: boolean) => void;
+  sync: SyncStatus;
+  user: AuthUser;
+  sites: SiteInfo[];
+  onSitesChanged: () => void;
+}) {
   const [shifts, setShifts] = useState({ morningOperator: '', afternoonOperator: '' });
-  const [debugMessage, setDebugMessage] = useState('');
   const isAdmin = ['Superadmin', 'Jefe TIC', 'Admin', 'Administrador'].includes(user.rolGlobal);
-  useEffect(() => { fetchShiftSettings().then(r => r.ok && setShifts(r.settings)).catch(() => {}); }, []);
+
+  useEffect(() => {
+    fetchShiftSettings().then(r => r.ok && setShifts(r.settings)).catch(() => {});
+  }, []);
+
   return (
     <section className="view active">
       <div className="panel settings-single">
@@ -28,20 +39,10 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
               </select>
             </label>
           </div>
-          <div className="sync-status ok">Estado de sincronización: {sync.state === 'ok' ? 'OK' : sync.state === 'warning' ? 'Con advertencia' : sync.state === 'error' ? 'Error' : 'Sincronizando'}</div>
-          <div className="actions">
-            <button className="btn" type="button" onClick={() => {
-              setDebugMessage('Consultando Apps Script...');
-              getDevicesDebug()
-                .then(result => {
-                  if (!result.ok) throw new Error(result.error || 'No se pudo diagnosticar Apps Script.');
-                  const debug = result.debug || {};
-                  setDebugMessage(`Apps Script: ${debug.spreadsheetName || '-'} · ${debug.sheetName || '-'} · filas: ${debug.rowsCount ?? '-'}`);
-                })
-                .catch(error => setDebugMessage(error instanceof Error ? error.message : 'No se pudo diagnosticar Apps Script.'));
-            }}>Diagnosticar Apps Script</button>
+          <div className="sync-status ok">
+            Base local: {sync.state === 'ok' ? 'OK' : sync.state === 'warning' ? 'Con advertencia' : sync.state === 'error' ? 'Error' : 'Cargando'}
+            {sync.message ? ` · ${sync.message}` : ''}
           </div>
-          {debugMessage && <div className={debugMessage.includes('No se pudo') ? 'tool-warning' : 'tool-info'}>{debugMessage}</div>}
         </section>
         <section className="card">
           <div className="card-head"><h3>Turnos TIC</h3></div>

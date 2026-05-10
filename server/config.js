@@ -17,8 +17,6 @@ export const config = {
   authAllowedEmails: (process.env.AUTH_ALLOWED_EMAILS || '').split(',').map(item => item.trim().toLowerCase()).filter(Boolean),
   sessionCookieName: process.env.SESSION_COOKIE_NAME || 'techasset_session',
   googleSheetCsvUrl: process.env.GOOGLE_SHEET_CSV_URL || '',
-  appsScriptUrl: process.env.APPS_SCRIPT_URL || '',
-  appsScriptInventoryUrl: process.env.APPS_SCRIPT_INVENTORY_URL || '',
   sheetCacheTtlMs: Number(process.env.SHEET_CACHE_TTL_MS || 5000),
   sheetFetchTimeoutMs: Number(process.env.SHEET_FETCH_TIMEOUT_MS || 4500),
   sqliteDbPath: path.resolve(rootDir, process.env.SQLITE_DB_PATH || './data/techasset.db'),

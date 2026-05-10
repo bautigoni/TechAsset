@@ -44,7 +44,7 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
       if (deviceFilter === 'loaned') return getDeviceStateKey(device) === 'loaned';
       if (deviceFilter === 'missing') return getDeviceStateKey(device) === 'missing';
       if (deviceFilter === 'out') return getDeviceStateKey(device) === 'out';
-      return classifyDeviceType(device) === deviceFilter;
+      return getDashboardFilter(device) === deviceFilter;
     });
     const filtered = base.filter(device => matchesOperationalAlias(device, aliasQuery));
     return sortByOperationalAlias(filtered);
@@ -66,8 +66,6 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
           {categoryCounts.map(([category, value]) => (
             <StatCard key={category} label={category} value={value || 0} active={deviceFilter === category} onClick={() => applyDeviceFilter(category)} />
           ))}
-          <StatCard label="No encontradas" value={counts.missing || 0} active={deviceFilter === 'missing'} onClick={() => applyDeviceFilter('missing')} />
-          <StatCard label="Fuera de servicio" value={counts.out || 0} active={deviceFilter === 'out'} onClick={() => applyDeviceFilter('out')} />
         </div>
       </div>
       <NowPanel agenda={agenda} tasks={tasks} onAgenda={() => onNavigate('agenda')} onTasks={() => onNavigate('tasks')} />
@@ -95,4 +93,8 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
       </section>
     </section>
   );
+}
+
+function getDashboardFilter(device: Device) {
+  return String(device.filtro || device.categoria || classifyDeviceType(device) || 'Otro').trim() || 'Otro';
 }

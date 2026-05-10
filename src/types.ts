@@ -63,7 +63,6 @@ export interface SiteInfo {
   isDefault?: boolean;
   themeColor?: string;
   spreadsheetUrl?: string;
-  appsScriptUrl?: string;
   inventorySheetName?: string;
   activo?: boolean;
 }
@@ -80,9 +79,11 @@ export interface Device {
   siteCode?: string;
   etiqueta: string;
   numero?: string;
+  numeroOperativo?: string;
   aliasOperativo?: string;
   aliasOperativoJson?: string;
   categoria?: string;
+  filtro?: string;
   dispositivo?: string;
   marca?: string;
   modelo?: string;
@@ -106,7 +107,7 @@ export interface Movement {
   tipo: string;
   descripcion: string;
   operador?: string;
-  origen: 'Google Sheets' | 'Agenda TIC' | 'Tareas TIC' | 'Local';
+  origen: 'Agenda TIC' | 'Tareas TIC' | 'Local';
   etiqueta?: string;
 }
 
