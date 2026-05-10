@@ -3245,3 +3245,84 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
   border-color: rgba(96, 140, 210, 0.32) !important;
   box-shadow: 0 24px 70px rgba(30, 80, 160, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
+
+/* ============= Métricas/categorías: grid auto-fit pareja ============= */
+/* Dashboard y Dispositivos: las cards de stats/filtros se redistribuyen
+   solas sin dejar huecos verticales ni columnas muertas, sin importar
+   cuántas categorías haya cargadas. */
+.dashboard-stat-groups .stats-grid,
+.device-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+.dashboard-stat-groups .stats-grid .stat-card,
+.device-filter-grid .stat-card {
+  min-width: 0;
+  min-height: 100px;
+}
+.dashboard-stat-groups .stats-grid.stats-main .stat-card {
+  min-height: 120px;
+}
+@media (max-width: 640px) {
+  .dashboard-stat-groups .stats-grid,
+  .device-filter-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+}
+
+/* ============= Inventario TIC: más aire entre cards ============= */
+.inventory-page {
+  display: grid;
+  gap: 22px;
+}
+.inventory-hero { margin-bottom: 4px; }
+.inventory-kpis {
+  gap: 18px;
+  margin-bottom: 8px;
+}
+.inventory-list-card { padding: 22px; }
+.inventory-toolbar {
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.inventory-grid {
+  gap: 22px;
+}
+.inventory-item-card {
+  padding: 16px;
+}
+.inventory-category-filter {
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .inventory-page { gap: 16px; }
+  .inventory-kpis { gap: 14px; }
+  .inventory-grid { gap: 16px; }
+  .inventory-toolbar { gap: 12px; margin-bottom: 14px; }
+  .inventory-list-card { padding: 16px; }
+}
+
+/* ============= Devices actions vertical centering ============= */
+.device-table .device-actions-cell { vertical-align: middle; }
+
+/* ============= Devices table: usar 100% del ancho sin barra vacía ============= */
+/* Tiene 8 columnas, pero hereda widths nth-child de .compact-table que sólo
+   cubren 6 (suman 100%). Eso dejaba aire muerto a la derecha. Forzamos
+   layout auto y ancho 100% solo para esta tabla. */
+.device-table {
+  width: 100%;
+  table-layout: auto;
+}
+.device-table-wrap { width: 100%; }
+.compact-table.device-table th:nth-child(1),
+.compact-table.device-table th:nth-child(2),
+.compact-table.device-table th:nth-child(3),
+.compact-table.device-table th:nth-child(4),
+.compact-table.device-table th:nth-child(5),
+.compact-table.device-table th:nth-child(6),
+.compact-table.device-table th:nth-child(7),
+.compact-table.device-table th:nth-child(8) { width: auto; }
