@@ -72,8 +72,8 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               <td data-label="Horario préstamo">{device.estado === 'Prestado' ? tableValue(formatTimeOnly(device.loanedAt)) : '-'}</td>
               <td data-label="Horario devolución">{tableValue(formatTimeOnly(device.returnedAt))}</td>
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
-              <td data-label="Acciones">
-                <div className="table-actions">
+              <td data-label="Acciones" className="device-actions-cell">
+                <div className="table-actions device-actions">
                   {onLoan && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
                   {onReturn && <Button className="mini-action-btn" variant="success" onClick={() => onReturn(device)}>Devolver</Button>}
                   {actionMode !== 'dashboard' && onProfile && <Button className="mini-action-btn" onClick={() => onProfile(device)}>Ficha</Button>}

@@ -13,7 +13,7 @@ type FloorKey = 'inicial' | 'planta' | 'primero' | 'segundo';
 
 const FLOORS: Array<{ key: FloorKey; label: string; enabled: boolean; piso: string }> = [
   { key: 'planta', label: 'Planta baja', enabled: true, piso: 'Planta baja' },
-  { key: 'primero', label: '1er piso', enabled: false, piso: '1er piso' },
+  { key: 'primero', label: '1er piso', enabled: true, piso: '1er piso' },
   { key: 'segundo', label: 'Segundo piso', enabled: true, piso: 'Segundo piso' },
   { key: 'inicial', label: 'Nivel inicial', enabled: false, piso: 'Nivel inicial' }
 ];
