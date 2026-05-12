@@ -25,7 +25,7 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
   movements: Movement[];
   onNavigate: (view: ViewKey) => void;
   onLoan: (device: Device) => void;
-  onReturn: (device: Device) => void;
+  onReturn: (device: Device) => Promise<unknown> | void;
   onProfile: (device: Device) => void;
   onEdit: (device: Device) => void;
 }) {

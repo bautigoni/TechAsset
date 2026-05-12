@@ -41,13 +41,24 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
   devices: Device[];
   compact?: boolean;
   actionMode?: ActionMode;
-  onLoan?: (device: Device) => void;
-  onReturn?: (device: Device) => void;
+  onLoan?: (device: Device) => Promise<unknown> | void;
+  onReturn?: (device: Device) => Promise<unknown> | void;
   onProfile?: (device: Device) => void;
   onEdit?: (device: Device) => void;
   onDelete?: (device: Device) => Promise<void> | void;
 }) {
   const [deletingTag, setDeletingTag] = useState('');
+  const [returningTag, setReturningTag] = useState('');
+
+  const handleReturn = async (device: Device) => {
+    if (!onReturn || returningTag) return;
+    setReturningTag(device.etiqueta);
+    try {
+      await onReturn(device);
+    } finally {
+      setReturningTag('');
+    }
+  };
 
   return (
     <div className="table-wrap no-scroll-table device-table-wrap">
@@ -87,7 +98,7 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               <td data-label="Acciones" className="device-actions-cell">
                 <div className="table-actions device-actions">
                   {onLoan && normalizeState(device.estado) === 'available' && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
-                  {onReturn && normalizeState(device.estado) === 'loaned' && <Button className="mini-action-btn" variant="success" onClick={() => onReturn(device)}>Devolver</Button>}
+                  {onReturn && normalizeState(device.estado) === 'loaned' && <Button className="mini-action-btn" variant="success" disabled={returningTag === device.etiqueta} onClick={() => handleReturn(device)}>{returningTag === device.etiqueta ? 'Devolviendo...' : 'Devolver'}</Button>}
                   {actionMode !== 'dashboard' && onProfile && <Button className="mini-action-btn" onClick={() => onProfile(device)}>Ficha</Button>}
                   {onEdit && <Button className="mini-action-btn" onClick={() => onEdit(device)}>Editar</Button>}
                   {onDelete && actionMode !== 'dashboard' && <Button className="mini-action-btn device-delete-btn" disabled={deletingTag === device.etiqueta} onClick={async () => {
@@ -108,5 +119,3 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
     </div>
   );
 }
-
-

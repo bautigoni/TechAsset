@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Device } from '../../types';
-import { resolveDeviceMatches } from '../../utils/normalizeSearch';
+import { parseScannedCode, resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { getOperationalAlias, operationalTypeLabel } from '../../utils/classifyDevice';
 import { Button } from '../layout/Button';
 import { ScannerPanel } from './ScannerPanel';
@@ -17,6 +17,21 @@ type ScanItem = {
 };
 
 type LoanActionResult = { synced?: boolean; message?: string } | void;
+type LoanUiState = 'available' | 'loaned' | 'blocked' | 'unknown';
+type BarcodeDetectorInstance = {
+  detect: (source: CanvasImageSource) => Promise<Array<{ rawValue?: string }>>;
+};
+type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
+
+const DEFAULT_GRADE_OPTIONS = [
+  '1N', '1F', '1S',
+  '2N', '2F', '2S',
+  '3N', '3F', '3S',
+  '4N', '4F', '4S',
+  '5N', '5F', '5S',
+  '6N', '6F', '6S'
+];
+const SCHOOL_LEVEL_OPTIONS = ['EP', 'ES'];
 
 export function LoanForm({ devices, onLend, onReturn, consultationMode, initialCode = '' }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; consultationMode: boolean; initialCode?: string }) {
   const [code, setCode] = useState('');
@@ -27,6 +42,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const [locationDetail, setLocationDetail] = useState('');
   const [reasonDetail, setReasonDetail] = useState('');
   const [course, setCourse] = useState('');
+  const [schoolLevel, setSchoolLevel] = useState('');
   const [comment, setComment] = useState('');
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [continuousScan, setContinuousScan] = useState(false);
@@ -35,18 +51,25 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const codeInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
+  const lastQrRef = useRef('');
   const matches = useMemo(() => code ? resolveDeviceMatches(devices, code) : [], [devices, code]);
   const selected = matches.length === 1 ? matches[0] : undefined;
-  const blocked = consultationMode || !selected;
+  const selectedLoanState = getLoanUiState(selected);
+  const unavailableMessage = selected && selectedLoanState === 'blocked'
+    ? `${selected.etiqueta} está ${selected.estado || 'no disponible'}. No se puede prestar ni devolver desde esta pantalla.`
+    : '';
   const roleOptions = normalizeStringOptions(settings['loan.roles'], ['DOE', 'Alumno', 'Maestra', 'Profesor', 'Directivo', 'Preceptor', 'Otro']);
   const locationOptions = (settings['loan.locations'] as Array<{ label: string; requiresDetail?: boolean; requiresCourse?: boolean }>) || [{ label: 'Aula', requiresCourse: true }, { label: 'DOE' }, { label: 'Planificación móvil' }, { label: 'Otro', requiresDetail: true }];
   const motiveOptions = (settings['loan.motives'] as Array<{ label: string; requiresDetail?: boolean }>) || [{ label: 'Planificación' }, { label: 'Préstamo autorizado' }, { label: 'Otro', requiresDetail: true }];
-  const gradeOptions = (settings['loan.gradeOptions'] as string[]) || ['1N', '1F', '2N', '2F', '3N', '3F', '4N', '4F', '5N', '5F', '6N', '6F'];
+  const gradeOptions = mergeStringOptions(settings['loan.gradeOptions'], DEFAULT_GRADE_OPTIONS);
   const selectedLocation = locationOptions.find(item => item.label === location);
   const selectedReason = motiveOptions.find(item => item.label === reason);
+  const requiresSchoolCourse = Boolean(selectedLocation?.requiresCourse);
 
   useEffect(() => {
     if (initialCode) setCode(initialCode);
@@ -60,19 +83,27 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
   useEffect(() => {
     if (!cameraOpen || !videoRef.current || !streamRef.current) return;
-    videoRef.current.srcObject = streamRef.current;
-    void videoRef.current.play().catch(() => undefined);
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    void video.play().then(() => startQrScan()).catch(() => undefined);
   }, [cameraOpen]);
 
-  const payload = () => ({ etiqueta: selected?.etiqueta, person, role, location, locationDetail, course, reason, reasonDetail, comment });
+  const payload = () => ({ etiqueta: selected?.etiqueta, person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment });
 
   const reset = () => {
-    setCode(''); setPerson(''); setRole(''); setLocation(''); setLocationDetail(''); setCourse(''); setReason(''); setReasonDetail(''); setComment('');
+    setCode(''); setPerson(''); setRole(''); setLocation(''); setLocationDetail(''); setCourse(''); setSchoolLevel(''); setReason(''); setReasonDetail(''); setComment('');
     codeInputRef.current?.focus();
   };
 
   const handleLend = async () => {
+    if (busyRef.current || consultationMode || selectedLoanState !== 'available') return;
+    const validation = validateLoanFields();
+    if (validation) {
+      setScanMessage({ tone: 'error', text: validation });
+      return;
+    }
     const data = payload();
+    busyRef.current = true;
     setBusy(true);
     try {
       const result = await onLend(data);
@@ -81,12 +112,15 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     } catch (error) {
       setScanMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo registrar el préstamo.' });
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   const handleReturn = async () => {
+    if (busyRef.current || consultationMode || selectedLoanState !== 'loaned') return;
     const data = payload();
+    busyRef.current = true;
     setBusy(true);
     try {
       const result = await onReturn(data);
@@ -95,8 +129,20 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     } catch (error) {
       setScanMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo registrar la devolución.' });
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
+  };
+
+  const validateLoanFields = () => {
+    if (!person.trim()) return 'Completá la persona que recibe el equipo.';
+    if (!role.trim() || role === 'Seleccionar rol') return 'Seleccioná un rol.';
+    if (!location.trim() || location === 'Seleccionar ubicación') return 'Seleccioná una ubicación.';
+    if (requiresSchoolCourse && (!schoolLevel.trim() || schoolLevel === 'Seleccionar nivel')) return 'Seleccioná si es EP o ES.';
+    if (requiresSchoolCourse && (!course.trim() || course === 'Seleccionar curso')) return 'Seleccioná grado, año o curso.';
+    if (selectedLocation?.requiresDetail && !locationDetail.trim()) return 'Especificá la ubicación.';
+    if (selectedReason?.requiresDetail && !reasonDetail.trim()) return 'Especificá el motivo.';
+    return '';
   };
 
   const addToContinuousScan = (raw: string) => {
@@ -116,7 +162,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       setScanMessage({ tone: 'warn', text: `${device.etiqueta} ya estaba en la lista.` });
       return;
     }
-    const disponible = device.estado === 'Disponible';
+    const disponible = getLoanUiState(device) === 'available';
     const motivo = disponible ? '' : `No disponible (${device.estado || 'sin estado'})`;
     setScanItems(items => [...items, {
       id: device.id,
@@ -189,12 +235,11 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     }
     try {
       stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      });
+      lastQrRef.current = '';
+      const stream = await openPreferredCamera();
       streamRef.current = stream;
       setCameraOpen(true);
+      if (!barcodeDetectorClass()) setCameraError('El escaneo QR no está disponible en este navegador. Podés ingresar el código manualmente.');
     } catch {
       setCameraError('No se pudo abrir la cámara. Verificá permisos del navegador o usá HTTPS/localhost.');
       setCameraOpen(false);
@@ -202,15 +247,46 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   };
 
   const stopCamera = () => {
+    if (scanFrameRef.current !== null) window.cancelAnimationFrame(scanFrameRef.current);
+    scanFrameRef.current = null;
     streamRef.current?.getTracks().forEach(track => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraOpen(false);
   };
 
+  const startQrScan = () => {
+    const Detector = barcodeDetectorClass();
+    const video = videoRef.current;
+    if (!Detector || !video) return;
+    const detector = new Detector({ formats: ['qr_code'] });
+    const scan = async () => {
+      if (!streamRef.current || !videoRef.current) return;
+      try {
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          const codes = await detector.detect(video);
+          const raw = codes.find(item => item.rawValue)?.rawValue || '';
+          const parsed = parseScannedCode(raw);
+          if (parsed && parsed !== lastQrRef.current) {
+            lastQrRef.current = parsed;
+            setCode(parsed);
+            setScanMessage({ tone: 'info', text: `QR detectado: ${parsed}` });
+            stopCamera();
+            codeInputRef.current?.focus();
+            return;
+          }
+        }
+      } catch {
+        setCameraError('No se pudo leer el QR. Podés ingresar el código manualmente.');
+      }
+      scanFrameRef.current = window.requestAnimationFrame(scan);
+    };
+    scanFrameRef.current = window.requestAnimationFrame(scan);
+  };
+
   const handleConfirmMultipleLoan = async () => {
     if (consultationMode || !validScanItems.length) return;
-    if (!person.trim() || !location.trim() || location === 'Seleccionar ubicación' || (selectedLocation?.requiresDetail && !locationDetail.trim()) || (selectedLocation?.requiresCourse && !course.trim()) || (selectedReason?.requiresDetail && !reasonDetail.trim())) {
+    if (!person.trim() || !location.trim() || location === 'Seleccionar ubicación' || (selectedLocation?.requiresDetail && !locationDetail.trim()) || (requiresSchoolCourse && (!schoolLevel.trim() || !course.trim())) || (selectedReason?.requiresDetail && !reasonDetail.trim())) {
       setScanMessage({ tone: 'error', text: 'Completá persona y ubicación antes de confirmar.' });
       return;
     }
@@ -219,7 +295,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       const errors: string[] = [];
       for (const item of validScanItems) {
         try {
-          const result = await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, reason, reasonDetail, comment });
+          const result = await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment });
           if (result?.synced === false) errors.push(`${item.etiqueta}: ${result.message || 'no se pudo registrar'}`);
         } catch (error) {
           errors.push(`${item.etiqueta}: ${error instanceof Error ? error.message : 'error'}`);
@@ -233,7 +309,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           : `Se prestaron ${okCount} equipos correctamente.`
       });
       setScanItems(items => items.filter(item => !item.disponible));
-      setPerson(''); setRole(''); setLocation(''); setLocationDetail(''); setCourse(''); setReason(''); setReasonDetail(''); setComment('');
+      setPerson(''); setRole(''); setLocation(''); setLocationDetail(''); setCourse(''); setSchoolLevel(''); setReason(''); setReasonDetail(''); setComment('');
     } finally {
       setBusy(false);
     }
@@ -257,6 +333,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
         </div>
       )}
       {!continuousScan && scanMessage && <div className={`tool-${scanMessage.tone === 'error' ? 'error' : scanMessage.tone === 'warn' ? 'warning' : 'info'}`}>{scanMessage.text}</div>}
+      {!continuousScan && unavailableMessage && <div className="tool-warning">{unavailableMessage}</div>}
       <button className={`toggle-row toggle-row-button ${continuousScan ? 'active' : ''}`} type="button" role="switch" aria-checked={continuousScan} onClick={toggleContinuous}>
         <span className="toggle-pill"><span /></span>
         <strong>Escaneo continuo</strong>
@@ -300,9 +377,10 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
         <label>Ubicación<select className="input" value={location} onChange={event => setLocation(event.target.value)}><option>Seleccionar ubicación</option>{locationOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
         <label>Motivo<select className="input" value={reason} onChange={event => setReason(event.target.value)}><option>Sin motivo</option>{motiveOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
       </div>
-      {(selectedLocation?.requiresCourse || selectedLocation?.requiresDetail || selectedReason?.requiresDetail) && (
+      {(requiresSchoolCourse || selectedLocation?.requiresDetail || selectedReason?.requiresDetail) && (
         <div className="grid-2">
-          {selectedLocation?.requiresCourse && <label>Grado / Año / Curso<select className="input" value={course} onChange={event => setCourse(event.target.value)}><option>Seleccionar curso</option>{gradeOptions.map(item => <option key={item}>{item}</option>)}</select></label>}
+          {requiresSchoolCourse && <label>Nivel<select className="input" value={schoolLevel} onChange={event => setSchoolLevel(event.target.value)}><option>Seleccionar nivel</option>{SCHOOL_LEVEL_OPTIONS.map(item => <option key={item}>{item}</option>)}</select></label>}
+          {requiresSchoolCourse && <label>Grado / Año / Curso<select className="input" value={course} onChange={event => setCourse(event.target.value)}><option>Seleccionar curso</option>{gradeOptions.map(item => <option key={item}>{item}</option>)}</select></label>}
           {selectedLocation?.requiresDetail && <label>Especificar ubicación<input className="input" value={locationDetail} onChange={event => setLocationDetail(event.target.value)} /></label>}
           {selectedReason?.requiresDetail && <label>Especificar motivo<input className="input" value={reasonDetail} onChange={event => setReasonDetail(event.target.value)} /></label>}
         </div>
@@ -317,8 +395,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           </>
         ) : (
           <>
-            <Button type="button" variant="primary" disabled={blocked || busy} onClick={handleLend}>Prestar</Button>
-            <Button type="button" variant="success" disabled={blocked || busy} onClick={handleReturn}>Devolver</Button>
+            {selectedLoanState === 'available' && <Button type="button" variant="primary" disabled={consultationMode || busy} onClick={handleLend}>{busy ? 'Prestando...' : 'Prestar'}</Button>}
+            {selectedLoanState === 'loaned' && <Button type="button" variant="success" disabled={consultationMode || busy} onClick={handleReturn}>{busy ? 'Devolviendo...' : 'Devolver'}</Button>}
             <Button type="button" onClick={openCamera} disabled={cameraOpen}>Abrir cámara</Button>
             <Button type="button" onClick={stopCamera} disabled={!cameraOpen}>Cerrar cámara</Button>
           </>
@@ -326,6 +404,33 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       </div>
     </form>
   );
+}
+
+async function openPreferredCamera() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    });
+  } catch {
+    return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  }
+}
+
+function barcodeDetectorClass(): BarcodeDetectorConstructor | undefined {
+  return (window as Window & { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector;
+}
+
+function getLoanUiState(device?: Device): LoanUiState {
+  if (!device) return 'unknown';
+  const state = normalizeState(device.estado);
+  if (!state || state === 'disponible' || state === 'devuelto') return 'available';
+  if (state.includes('prest') || state.includes('retir')) return 'loaned';
+  return 'blocked';
+}
+
+function normalizeState(value?: string) {
+  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
 }
 
 function normalizeStringOptions(value: unknown, fallback: string[]) {
@@ -338,4 +443,14 @@ function normalizeStringOptions(value: unknown, fallback: string[]) {
   return items.length ? items : fallback;
 }
 
-
+function mergeStringOptions(value: unknown, defaults: string[]) {
+  const configured = normalizeStringOptions(value, []);
+  const seen = new Set<string>();
+  return [...defaults, ...configured].filter(item => {
+    const key = item.trim().toLowerCase();
+    if (SCHOOL_LEVEL_OPTIONS.some(level => level.toLowerCase() === key)) return false;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}

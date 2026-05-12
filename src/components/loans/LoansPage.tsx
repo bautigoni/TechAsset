@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Device, Movement } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
 import { LoanForm } from './LoanForm';
@@ -14,8 +15,9 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
 type LoanActionResult = { synced?: boolean; message?: string } | void;
 
 export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; initialCode?: string }) {
-  const loaned = devices.filter(device => device.estado === 'Prestado');
-  const available = devices.filter(device => device.estado === 'Disponible');
+  const [returningTag, setReturningTag] = useState('');
+  const loaned = devices.filter(device => normalizeLoanState(device.estado) === 'loaned');
+  const available = devices.filter(device => normalizeLoanState(device.estado) === 'available');
   const byType = countBy(devices, device => classifyDeviceType(device));
   const byLocation = countBy(loaned, device => device.ubicacion || 'Sin ubicación');
   const recentLoaned = loaned.slice(0, 8);
@@ -50,7 +52,15 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                 <div className="loaned-now-item" key={device.id}>
                   <strong>{device.etiqueta} · {getOperationalAlias(device)}</strong>
                   <span>{device.prestadoA || 'Sin persona'} · {device.ubicacion || 'Sin ubicación'}</span>
-                  <button type="button" onClick={() => onReturn({ etiqueta: device.etiqueta })} disabled={consultationMode}>Devolver</button>
+                  <button type="button" onClick={async () => {
+                    if (returningTag) return;
+                    setReturningTag(device.etiqueta);
+                    try {
+                      await onReturn({ etiqueta: device.etiqueta });
+                    } finally {
+                      setReturningTag('');
+                    }
+                  }} disabled={consultationMode || returningTag === device.etiqueta}>{returningTag === device.etiqueta ? 'Devolviendo...' : 'Devolver'}</button>
                 </div>
               ))}
               {!loaned.length && <div className="empty-state">No hay equipos prestados ahora.</div>}
@@ -60,4 +70,11 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
       </div>
     </section>
   );
+}
+
+function normalizeLoanState(value?: string) {
+  const state = String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (state.includes('prest') || state.includes('retir')) return 'loaned';
+  if (!state || state.includes('disponible') || state.includes('devuelto')) return 'available';
+  return 'blocked';
 }

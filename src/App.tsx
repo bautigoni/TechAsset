@@ -137,23 +137,21 @@ export function App() {
   };
 
   const onLend = async (payload: Record<string, unknown>) => {
-    const tag = String(payload.etiqueta || '');
-    if (tag) patchLocal(tag, { estado: 'Prestado', prestadoA: String(payload.person || ''), ubicacion: [payload.location, payload.course, payload.locationDetail].map(v => String(v || '').trim()).filter(Boolean).join(' · '), motivo: [payload.reason, payload.reasonDetail].map(v => String(v || '').trim()).filter(Boolean).join(' · '), rol: String(payload.role || ''), comentarios: String(payload.comment || '') });
     try {
-      return await lendDevice({ ...payload, operator });
+      const result = await lendDevice({ ...payload, operator });
+      await refresh({ force: true, wait: true });
+      return result;
     } finally {
-      void refresh();
       getMovements().then(data => setMovements(data.items)).catch(() => {});
     }
   };
 
   const onReturn = async (payload: Record<string, unknown>) => {
-    const tag = String(payload.etiqueta || '');
-    if (tag) patchLocal(tag, { estado: 'Disponible', prestadoA: '', ubicacion: '', motivo: '', rol: '' });
     try {
-      return await returnDevice({ ...payload, operator });
+      const result = await returnDevice({ ...payload, operator });
+      await refresh({ force: true, wait: true });
+      return result;
     } finally {
-      void refresh();
       getMovements().then(data => setMovements(data.items)).catch(() => {});
     }
   };

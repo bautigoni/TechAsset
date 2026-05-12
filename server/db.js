@@ -650,7 +650,7 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
       { label: 'Soporte temporal' },
       { label: 'Otro', requiresDetail: true }
     ],
-    'loan.gradeOptions': ['1N', '1F', '2N', '2F', '3N', '3F', '4N', '4F', '5N', '5F', '6N', '6F'],
+    'loan.gradeOptions': ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
     'shift.morningOperator': '',

@@ -98,7 +98,9 @@ function mergeLocalDevice(device, state, siteCode) {
   const categoria = normalizeCategory(device.categoria || device.tipo || device.dispositivo || '');
   const filtro = normalizeDashboardFilter(device.filtro || device.filter || '');
   const numero = firstOperationalNumber(device.numero, device.numeroOperativo, device.numero_operativo, device.nro, device.number, device.aliasOperativo, device.alias);
-  const estado = normalizeState(state?.estado || device.estado || '', state?.prestadoA || device.prestadoA || device.prestada || '');
+  const hasLocalState = Boolean(state);
+  const livePrestadoA = hasLocalState ? state.prestadoA : (device.prestadoA || device.prestada || '');
+  const estado = normalizeState(hasLocalState ? state.estado : (device.estado || ''), livePrestadoA);
   const merged = {
     ...device,
     id: `${siteCode}:${normalizeTag(device.etiqueta)}`,
@@ -113,13 +115,13 @@ function mergeLocalDevice(device, state, siteCode) {
     sn: device.sn || device.serial || '',
     mac: device.mac || '',
     estado,
-    prestadoA: state?.prestadoA || device.prestadoA || device.prestada || '',
-    rol: state?.rol || device.rol || '',
-    ubicacion: state?.ubicacion || device.ubicacion || '',
-    motivo: state?.motivo || device.motivo || '',
-    comentarios: state?.comentarios || device.comentarios || '',
-    loanedAt: state?.loanedAt || device.loanedAt || device.fechaPrestamo || device.horarioPrestamo || '',
-    returnedAt: state?.returnedAt || device.returnedAt || device.fechaDevuelto || device.horarioDevolucion || '',
+    prestadoA: hasLocalState ? state.prestadoA : (device.prestadoA || device.prestada || ''),
+    rol: hasLocalState ? state.rol : (device.rol || ''),
+    ubicacion: hasLocalState ? state.ubicacion : (device.ubicacion || ''),
+    motivo: hasLocalState ? state.motivo : (device.motivo || ''),
+    comentarios: hasLocalState ? state.comentarios : (device.comentarios || ''),
+    loanedAt: hasLocalState ? state.loanedAt : (device.loanedAt || device.fechaPrestamo || device.horarioPrestamo || ''),
+    returnedAt: hasLocalState ? state.returnedAt : (device.returnedAt || device.fechaDevuelto || device.horarioDevolucion || ''),
     ultima: state?.updatedAt || device.ultima || device.ultimaModificacion || '',
     numeroOperativo: numero,
     aliasOperativo: buildStableOperationalAlias(device.aliasOperativo || device.alias || '', filtro || categoria, numero)
