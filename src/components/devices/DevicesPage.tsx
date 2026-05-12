@@ -34,7 +34,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
   operator: string;
   onAdd: (device: Partial<Device>) => Promise<void>;
   onLoan: (device: Device) => void;
-  onReturn: (device: Device) => void;
+  onReturn: (device: Device) => Promise<unknown> | void;
   onDelete?: (device: Device) => Promise<void> | void;
   onImported?: () => Promise<void> | void;
 }) {
@@ -197,4 +197,3 @@ function escapeHtml(value: string) {
     "'": '&#39;'
   }[char] || char));
 }
-

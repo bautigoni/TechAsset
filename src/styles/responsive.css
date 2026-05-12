@@ -362,6 +362,30 @@ body.mobile-menu-open {
   touch-action: none;
 }
 
+/* Visual refresh: match the existing KPI card surface. */
+.panel-ahora.card,
+.movements-card.card,
+.dashboard-device-section.card,
+.card:has(.device-table-wrap) {
+  background: var(--surface);
+  border-color: var(--surface-border);
+  box-shadow: var(--surface-shadow), var(--surface-inset);
+}
+
+.ahora-item:hover,
+.movements-card .list-item:hover,
+.floor-btn:hover,
+.classroom-list-item:hover {
+  border-color: var(--surface-border-strong);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, .1);
+}
+
+.floor-btn.active {
+  background: linear-gradient(165deg, rgba(37, 99, 235, .15), rgba(11, 20, 42, .96)) !important;
+  border-color: rgba(59, 130, 246, .52);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, .2) inset, var(--surface-shadow);
+}
+
 /* ── TOPBAR MOBILE (≤ 980px) ─────────────────────────────────────────
    Sobreescribe los múltiples overrides de legacy.css con una regla
    final, limpia y de fila única.
@@ -740,5 +764,110 @@ body.mobile-menu-open {
 
   .inventory-kpis {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* Device table actions keep their surface while horizontally scrolling. */
+@media (min-width: 761px) {
+  .device-table-wrap {
+    contain: layout;
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .device-table {
+    min-width: 1080px;
+  }
+
+  .device-table thead th {
+    background: rgba(18, 32, 62, .86);
+    background-clip: padding-box;
+    border-bottom-color: var(--surface-border);
+  }
+
+  .device-table tbody td {
+    background: rgba(14, 27, 56, .78);
+    background-clip: padding-box;
+  }
+
+  .device-table tbody tr:hover td {
+    background: rgba(37, 99, 235, .12) !important;
+  }
+
+  .device-table th:last-child,
+  .device-table td.device-actions-cell {
+    min-width: 280px;
+    position: sticky;
+    right: 0;
+    z-index: 2;
+  }
+
+  .device-table td.device-actions-cell {
+    background: rgba(14, 27, 56, .78) !important;
+  }
+
+  .device-table th:last-child {
+    background: rgba(18, 32, 62, .86) !important;
+    z-index: 3;
+  }
+
+  .device-table tr:hover td.device-actions-cell {
+    background: rgba(37, 99, 235, .12) !important;
+  }
+
+  .device-table .device-actions {
+    justify-content: flex-start;
+    min-width: max-content;
+  }
+}
+
+/* Collapsed sidebar: fixed rail, centered icons, internal vertical scroll. */
+@media (min-width: 981px) {
+  .sidebar.is-collapsed {
+    flex: 0 0 76px;
+    height: 100vh;
+    min-width: 76px;
+    overflow: hidden;
+    padding: 12px 10px;
+    width: 76px;
+  }
+
+  .sidebar.is-collapsed .brand {
+    flex: 0 0 auto;
+    min-height: 56px;
+    padding-bottom: 10px;
+  }
+
+  .sidebar.is-collapsed .nav-scrollable {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 0;
+    scrollbar-width: thin;
+  }
+
+  .sidebar.is-collapsed .sidebar-bottom-nav {
+    flex: 0 0 auto;
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+
+  .sidebar.is-collapsed .nav {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .sidebar.is-collapsed .nav-btn {
+    align-items: center;
+    display: flex;
+    height: 46px;
+    justify-content: center;
+    min-height: 46px;
+    width: 48px;
+  }
+
+  .sidebar.is-collapsed .nav-icon {
+    flex: 0 0 34px;
   }
 }

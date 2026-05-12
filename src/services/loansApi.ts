@@ -5,6 +5,7 @@ export type LoanSyncResponse = {
   item?: unknown;
   synced?: boolean;
   syncing?: boolean;
+  idempotent?: boolean;
   message?: string;
   pendingSyncId?: number | null;
 };

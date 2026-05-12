@@ -3,6 +3,14 @@ import { getSiteSettings, updateSiteSettings } from '../../services/authApi';
 import { Button } from '../layout/Button';
 
 type ToggleOption = { label: string; requiresDetail?: boolean; requiresCourse?: boolean };
+const DEFAULT_GRADES = [
+  '1N', '1F', '1S',
+  '2N', '2F', '2S',
+  '3N', '3F', '3S',
+  '4N', '4F', '4S',
+  '5N', '5F', '5S',
+  '6N', '6F', '6S'
+];
 
 const defaults = {
   roles: ['DOE', 'Alumno', 'Maestra', 'Profesor', 'Directivo', 'Preceptor', 'Otro'],
@@ -22,7 +30,7 @@ const defaults = {
     { label: 'Soporte temporal' },
     { label: 'Otro', requiresDetail: true }
   ],
-  grades: ['1N', '1F', '2N', '2F', '3N', '3F', '4N', '4F', '5N', '5F', '6N', '6F'],
+  grades: DEFAULT_GRADES,
   categories: ['Tablet', 'Notebook', 'Chromebook', 'Camara', 'Proyector', 'Router', 'Impresora', 'Otro']
 };
 
@@ -45,7 +53,7 @@ export function LoanSettingsPanel() {
       setRoles(readStringList(settings['loan.roles'], defaults.roles));
       setLocations(readOptionList(settings['loan.locations'], defaults.locations));
       setMotives(readOptionList(settings['loan.motives'], defaults.motives));
-      setGrades(readStringList(settings['loan.gradeOptions'], defaults.grades));
+      setGrades(mergeStringList(settings['loan.gradeOptions'], defaults.grades));
       setCategories(readStringList(settings['devices.categories'], defaults.categories));
     }).catch(() => {});
   }, []);
@@ -143,6 +151,18 @@ function readStringList(value: unknown, fallback: string[]) {
     return typeof item === 'string' ? item : String(option.label || option.nombre || '');
   }).map(item => item.trim()).filter(Boolean);
   return items.length ? items : fallback;
+}
+
+function mergeStringList(value: unknown, fallback: string[]) {
+  const configured = readStringList(value, []);
+  const seen = new Set<string>();
+  return [...fallback, ...configured].filter(item => {
+    const key = item.trim().toLowerCase();
+    if (key === 'ep' || key === 'es') return false;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function readOptionList(value: unknown, fallback: ToggleOption[]) {
