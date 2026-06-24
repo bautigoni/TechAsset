@@ -210,18 +210,18 @@
 /* Desktop: dos columnas con panel de features a la izquierda */
 @media (min-width: 860px) {
   .ta-auth-stage {
-    width: min(980px, 100%);
-    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 420px);
-    gap: 34px;
-    align-items: center;
+    width: min(960px, 100%);
+    grid-template-columns: minmax(0, 1fr) minmax(350px, 410px);
+    gap: 28px;
+    align-items: stretch;
   }
   .ta-auth-aside {
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 28px;
-    padding: 40px 30px;
+    gap: 24px;
+    padding: 36px 30px;
     border-radius: 26px;
     overflow: hidden;
     border: 1px solid rgba(125, 211, 252, .14);
@@ -230,8 +230,10 @@
       radial-gradient(120% 90% at 100% 100%, rgba(56, 189, 248, .16), transparent 55%),
       linear-gradient(160deg, rgba(18, 27, 45, .6), rgba(9, 16, 29, .35));
   }
-  /* Orbe difuso animado para que el panel no quede plano */
-  .ta-auth-glow {
+  /* Orbe difuso animado para que el panel no quede plano.
+     Selector con specificity alta para ganarle a `.ta-auth-aside > *` (que lo
+     forzaba a position:relative y lo metía 320px en el flujo, vaciando el tope). */
+  .ta-auth-aside > .ta-auth-glow {
     display: block;
     position: absolute;
     width: 320px; height: 320px;
@@ -249,12 +251,13 @@
     box-shadow: 0 12px 30px rgba(37, 99, 235, .4);
   }
   .ta-auth-tagline {
-    font-size: 34px; line-height: 1.12; font-weight: 800; margin: 0;
+    font-size: 28px; line-height: 1.14; font-weight: 800; margin: 0;
     letter-spacing: -.015em;
     background: linear-gradient(110deg, #ffffff 30%, #93c5fd);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .ta-auth-features { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+  .ta-auth-features { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  .ta-auth-card { align-self: stretch; align-content: center; }
   .ta-auth-features li { display: flex; gap: 12px; align-items: flex-start; color: #dbe6f7; }
   .ta-auth-feat-icon {
     flex: 0 0 auto;
@@ -266,7 +269,6 @@
   }
   .ta-auth-features li strong { display: block; font-size: 15px; color: #f1f6ff; font-weight: 700; }
   .ta-auth-features li em { font-style: normal; font-size: 13px; color: #9fb3d1; }
-  .ta-auth-card { align-self: center; }
 }
 
 /* En mobile el aside (features) se oculta para foco en el form */
