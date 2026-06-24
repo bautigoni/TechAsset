@@ -530,6 +530,7 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'allowed_users', 'status', "TEXT DEFAULT 'Activo'");
   ensureColumn(database, 'allowed_users', 'deleted_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'allowed_users', 'deleted_by', "TEXT DEFAULT ''");
+  ensureColumn(database, 'allowed_users', 'password_hash', "TEXT DEFAULT ''");
 
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);

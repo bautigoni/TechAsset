@@ -420,7 +420,9 @@
 }
 
 .device-table .mini-action-btn {
-  padding: 7px 10px;
+  padding: 7px 12px;
+  flex: 0 0 auto;        /* no encoger: evita que el botón se vuelva un círculo */
+  white-space: nowrap;
 }
 
 /* Desktop: actions cell centrada verticalmente */
@@ -434,7 +436,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;        /* si la columna es angosta, los botones bajan en vez de comprimirse */
 }
 
 .procedures-list {

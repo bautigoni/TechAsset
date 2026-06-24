@@ -12,13 +12,13 @@ export type AuthSession = {
 
 export const getAuthSession = () => apiGet<AuthSession>('/api/auth/session');
 
-export const login = (payload: { email: string; nombre?: string; role?: string; turno?: string; siteCode?: string; siteCodes?: string[] }) =>
+export const login = (payload: { email: string; password?: string; nombre?: string; role?: string; turno?: string; siteCode?: string; siteCodes?: string[] }) =>
   apiSend<AuthSession>('/api/auth/login', 'POST', payload);
 
 export const getRegisterOptions = () =>
   apiGet<{ ok: true; requiresCode: boolean }>('/api/auth/register-options');
 
-export const register = (payload: { email: string; nombre: string; code: string }) =>
+export const register = (payload: { email: string; nombre: string; code: string; password: string }) =>
   apiSend<AuthSession & { activated?: boolean }>('/api/auth/register', 'POST', payload);
 
 export interface Invite {

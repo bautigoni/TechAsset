@@ -36,6 +36,7 @@ export function LoginPage({ mode, onMode, onReady }: {
 }) {
   const activeMode = mode === 'register' ? 'register' : 'login';
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -72,7 +73,7 @@ export function LoginPage({ mode, onMode, onReady }: {
     setError('');
     setSuccess('');
     try {
-      const session = await login({ email, nombre });
+      const session = await login({ email, password, nombre });
       if (!session.authenticated || !session.user || !session.sites?.length) throw new Error('No se pudo iniciar sesión.');
       onReady({ user: session.user, sites: session.sites });
     } catch (err) {
@@ -88,11 +89,12 @@ export function LoginPage({ mode, onMode, onReady }: {
     setError('');
     setSuccess('');
     try {
-      const session = await register({ email, nombre, code });
-      setSuccess(session.message || 'Cuenta creada. Ya podés iniciar sesión con tu mail.');
+      const session = await register({ email, nombre, code, password });
+      setSuccess(session.message || 'Cuenta creada. Ya podés iniciar sesión con tu mail y contraseña.');
       setEmail('');
       setNombre('');
       setCode('');
+      setPassword('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo completar el registro.');
     } finally {
@@ -153,6 +155,10 @@ export function LoginPage({ mode, onMode, onReady }: {
             )}
             <label>Mail
               <input className="input" type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="usuario@colegio.edu.ar" autoComplete="email" inputMode="email" />
+            </label>
+            <label>Contraseña
+              <input className="input" type="password" required minLength={6} value={password} onChange={event => setPassword(event.target.value)} placeholder="••••••••" autoComplete={activeMode === 'register' ? 'new-password' : 'current-password'} />
+              {activeMode === 'login' && <span className="ta-auth-hint">¿Primera vez? La contraseña que pongas queda registrada para tu cuenta.</span>}
             </label>
             {activeMode === 'register' && (
               <label>Código de invitación

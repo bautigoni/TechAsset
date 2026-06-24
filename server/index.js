@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'node:path';
 import { config } from './config.js';
 import { getDb } from './db.js';
@@ -28,6 +29,7 @@ getDb();
 
 const app = express();
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
 app.use('/uploads', express.static(path.join(config.rootDir, 'data', 'uploads')));
 

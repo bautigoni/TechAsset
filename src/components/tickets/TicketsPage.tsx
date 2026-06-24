@@ -6,7 +6,7 @@ import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
-const DEFAULT_INVGATE = 'https://techasset.bauhub.online/requests/show/index/id/';
+const DEFAULT_INVGATE = 'https://tikno.sd.cloud.invgate.net/requests/show/index/id/';
 
 const ESTADO_BADGE: Record<TicketState, string> = {
   'No hecho': 'badge off',
