@@ -4,6 +4,39 @@
   width: 100%;
 }
 
+/* ── PWA safe-area (iPhone notch / isla dinámica / home indicator) ──────────
+   En desktop los insets valen 0, así que no cambia nada. En la webapp instalada
+   en iOS evita que la barra superior quede bajo la isla y que el contenido de
+   abajo quede tapado por el home indicator. */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .topbar {
+    padding-top: calc(18px + env(safe-area-inset-top));
+    padding-left: calc(22px + env(safe-area-inset-left));
+    padding-right: calc(22px + env(safe-area-inset-right));
+  }
+  .sidebar {
+    padding-top: calc(14px + env(safe-area-inset-top));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+  .main-content {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .install-banner {
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    left: calc(12px + env(safe-area-inset-left));
+    right: calc(12px + env(safe-area-inset-right));
+  }
+  .notif-toast,
+  .settings-toast {
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    right: calc(18px + env(safe-area-inset-right));
+  }
+  /* El popover de notificaciones no debe pasar la isla en mobile */
+  .notif-popover {
+    max-height: calc(100dvh - env(safe-area-inset-top) - 90px);
+  }
+}
+
 .auth-shell {
   min-height: 100dvh;
   background:

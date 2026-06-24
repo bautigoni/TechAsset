@@ -64,7 +64,7 @@ googleAuthRouter.get('/auth/google/login', (req, res) => {
  * Errores se traducen a un redirect a /login?error=<slug> para que el front
  * los muestre (sin filtrar detalles de Google al usuario final).
  */
-googleAuthRouter.get('/auth/google/callback', async (req, res) => {
+googleAuthRouter.get('/auth/callback/google', async (req, res) => {
   if (!isEnabled()) {
     return res.redirect('/login?error=google_unavailable');
   }

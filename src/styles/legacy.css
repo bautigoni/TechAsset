@@ -1041,6 +1041,10 @@ body.menu-open{overflow:hidden}
 .notif-bell:hover{border-color:var(--blue)}
 .notif-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .notif-popover{position:absolute;top:46px;right:0;width:320px;max-width:88vw;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 44px rgba(0,0,0,.5);z-index:70;overflow:hidden}
+@media (max-width:560px){
+  .notif-popover{position:fixed;top:auto;right:8px;left:8px;width:auto;max-width:none}
+  .notif-toast{left:10px;right:10px;max-width:none}
+}
 .notif-popover-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)}
 .notif-mark-all{background:none;border:0;color:var(--blue);font-size:12px;font-weight:600;cursor:pointer}
 .notif-list{max-height:60vh;overflow-y:auto}
