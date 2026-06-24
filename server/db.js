@@ -2,14 +2,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { config } from './config.js';
+import { createPgSync } from './pg-sync.js';
 
 let db;
 
+export const isPg = () => config.dbDriver === 'postgres';
+
 export function getDb() {
   if (!db) {
-    fs.mkdirSync(path.dirname(config.sqliteDbPath), { recursive: true });
-    db = new Database(config.sqliteDbPath);
-    db.pragma('journal_mode = WAL');
+    if (isPg()) {
+      db = createPgSync(config.databaseUrl);
+    } else {
+      fs.mkdirSync(path.dirname(config.sqliteDbPath), { recursive: true });
+      db = new Database(config.sqliteDbPath);
+      db.pragma('journal_mode = WAL');
+    }
     initDb(db);
   }
   return db;
@@ -397,6 +404,36 @@ export function initDb(database = getDb()) {
       created_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_invites_site ON invites(site_code);
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      user_email TEXT,
+      kind TEXT DEFAULT 'general',
+      title TEXT,
+      body TEXT DEFAULT '',
+      link TEXT DEFAULT '',
+      read INTEGER DEFAULT 0,
+      payload_json TEXT DEFAULT '',
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(site_code, user_email, read);
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_email TEXT,
+      site_code TEXT DEFAULT 'NFPT',
+      endpoint TEXT UNIQUE,
+      p256dh TEXT,
+      auth TEXT,
+      created_at TEXT,
+      last_seen_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS release_notes (
+      version TEXT PRIMARY KEY,
+      title TEXT,
+      body_md TEXT DEFAULT '',
+      sent_at TEXT DEFAULT '',
+      sent_by TEXT DEFAULT ''
+    );
   `);
 
   ensureColumn(database, 'agenda', 'site_code', "TEXT DEFAULT 'NFPT'");
@@ -467,7 +504,11 @@ export function initDb(database = getDb()) {
   }
   cleanupNonDefaultSeedInventory(database);
   seedAllowedUsers(database);
-  migrateDeviceIdentityTables(database);
+  // Las migraciones de identidad usan RENAME/DROP TABLE (semántica SQLite).
+  // En Postgres se logra el mismo resultado (PK compuesta site_code+etiqueta)
+  // con ALTER, sin recrear tablas.
+  if (isPg()) ensurePgIdentityPks(database);
+  else migrateDeviceIdentityTables(database);
   ensureColumn(database, 'local_devices', 'categoria', "TEXT DEFAULT ''");
   ensureColumn(database, 'local_devices', 'filtro', "TEXT DEFAULT ''");
   ensureColumn(database, 'local_devices', 'modelo', "TEXT DEFAULT ''");
@@ -733,7 +774,7 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
   for (const [key, value] of Object.entries(defaults)) {
     stmt.run(siteCode, key, JSON.stringify(value), ts);
   }
-  const catStmt = database.prepare('INSERT OR IGNORE INTO device_categories (site_code, nombre, created_at, updated_at) VALUES (?, ?, ?, ?)');
+  const catStmt = database.prepare('INSERT INTO device_categories (site_code, nombre, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(site_code, nombre) DO NOTHING');
   for (const name of defaults['devices.categories']) catStmt.run(siteCode, name, ts, ts);
 }
 
@@ -783,6 +824,16 @@ function seedAllowedUsers(database) {
       UPDATE users SET rol_global='Superadmin', activo=1, updated_at=?
       WHERE lower(email)=?
     `).run(ts, bootstrapEmail);
+  }
+}
+
+function ensurePgIdentityPks(database) {
+  for (const table of ['local_devices', 'local_states', 'hidden_devices']) {
+    const pk = tablePkColumns(database, table).slice().sort().join(',');
+    if (pk === 'etiqueta,site_code') continue; // ya es compuesta (set ordenado)
+    database.exec(`UPDATE ${table} SET site_code='NFPT' WHERE site_code IS NULL OR site_code=''`);
+    database.exec(`ALTER TABLE ${table} DROP CONSTRAINT IF EXISTS ${table}_pkey`);
+    database.exec(`ALTER TABLE ${table} ADD PRIMARY KEY (site_code, etiqueta)`);
   }
 }
 

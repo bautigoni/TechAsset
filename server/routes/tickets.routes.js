@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { getDb, nowIso } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { notifySiteAdmins } from '../services/notifications.service.js';
 
 export const ticketsRouter = Router();
 
@@ -39,6 +40,15 @@ ticketsRouter.post('/tickets', (req, res) => {
     INSERT INTO tickets (site_code, numero, titulo, descripcion, estado, prioridad, responsables_json, categoria, imagen_url, nota, creado_por, operador_ultimo_cambio, activo, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `).run(siteCode, payload.numero, payload.titulo, payload.descripcion, payload.estado, payload.prioridad, payload.responsablesJson, payload.categoria, payload.imagenUrl, payload.nota, operador, operador, ts, ts);
+  try {
+    notifySiteAdmins({
+      siteCode, kind: 'ticket.created',
+      title: `Nuevo ticket #${payload.numero}`,
+      body: payload.titulo ? payload.titulo : `Cargado por ${operador || 'el equipo'}`,
+      link: `/sede/${siteCode}/tickets`,
+      exceptEmail: req.user?.email
+    });
+  } catch { /* no bloquear la creación del ticket */ }
   res.json({ ok: true, item: rowToTicket(getDb().prepare('SELECT * FROM tickets WHERE id=? AND site_code=?').get(info.lastInsertRowid, siteCode)) });
 });
 

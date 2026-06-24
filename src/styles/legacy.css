@@ -957,6 +957,118 @@ body.menu-open{overflow:hidden}
 .ticket-file iframe{display:block;width:100%;height:320px;border:0;background:#fff}
 .ticket-file.is-compact iframe{height:180px}
 .ticket-file-open{position:absolute;right:8px;bottom:8px;background:rgba(9,16,29,.82);border:1px solid var(--border);color:var(--text);font-size:12px;padding:4px 8px;border-radius:8px;text-decoration:none}
+/* Tickets v1.4 */
+.ticket-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+.ticket-search{flex:1 1 240px;min-width:200px}
+.ticket-chips{display:flex;flex-wrap:wrap;gap:8px}
+.ticket-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;border:1px solid var(--border);background:var(--panel-2);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.ticket-chip:hover{color:var(--text);border-color:var(--blue)}
+.ticket-chip.is-active{background:var(--blue);border-color:var(--blue);color:#fff}
+.ticket-chip-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:rgba(255,255,255,.16);font-size:11px;font-weight:700}
+.ticket-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.ticket-card{border:1px solid var(--border);border-radius:14px;padding:16px;background:var(--panel-2);display:flex;flex-direction:column;gap:8px}
+.ticket-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ticket-card-title{font-weight:600;font-size:14px;color:var(--text);line-height:1.3}
+.ticket-card-meta{font-size:12px;color:var(--muted)}
+.ticket-card-file{margin:2px 0}
+.ticket-card-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:auto;padding-top:6px}
+.ticket-card-actions .input{width:auto;flex:0 0 auto;min-width:120px}
+.ticket-file-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:13px;font-weight:600;cursor:pointer}
+.ticket-file-chip:hover{border-color:var(--blue)}
+.ticket-file-chip-icon{display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.04em;padding:3px 6px;border-radius:6px;background:rgba(239,68,68,.16);color:#fca5a5}
+.ticket-file-embed{display:block;width:100%;height:min(70vh,560px);border:0;border-radius:10px;background:#fff}
+.ticket-card-file .ticket-file.is-compact img{max-height:120px;border-radius:10px}
+/* Asignación de tareas (chips multi-select) */
+.field{display:flex;flex-direction:column;gap:6px}
+.field-label{font-size:13px;color:var(--muted)}
+.assignee-chips{display:flex;flex-wrap:wrap;gap:8px}
+.assignee-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;border:1px solid var(--border);background:var(--panel-2);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.assignee-chip:hover{color:var(--text);border-color:var(--blue)}
+.assignee-chip.is-on{background:rgba(56,130,246,.16);border-color:var(--blue);color:#cfe2ff}
+.assignee-chip-check{font-size:11px;font-weight:800;color:var(--blue)}
+/* Settings: módulos con switches estilo iOS */
+.module-group{margin-top:16px}
+.module-group-title{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.module-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.module-card{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:14px;border:1px solid var(--border);background:var(--panel-2);transition:border-color .15s}
+.module-card.is-on{border-color:rgba(56,130,246,.5)}
+.module-card-icon{font-size:22px;line-height:1;flex:0 0 auto}
+.module-card-body{flex:1 1 auto;min-width:0}
+.module-card-title{font-weight:600;font-size:14px}
+.module-card-desc{font-size:12px;color:var(--muted);line-height:1.3}
+.switch{flex:0 0 auto;width:46px;height:27px;border-radius:999px;border:1px solid var(--border);background:#2a3343;position:relative;cursor:pointer;padding:0;transition:background .18s}
+.switch.is-on{background:var(--blue);border-color:var(--blue)}
+.switch:disabled{opacity:.5;cursor:not-allowed}
+.switch-knob{position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.switch.is-on .switch-knob{transform:translateX(19px)}
+.settings-toast{position:fixed;right:18px;bottom:18px;z-index:60;background:var(--panel);border:1px solid var(--blue);color:var(--text);padding:11px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:14px;animation:toastIn .2s ease}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Analítica — bento grid */
+.analytics-bento{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px}
+.analytics-bento .span-1{grid-column:span 1}
+.analytics-bento .span-2{grid-column:span 2}
+.analytics-bento .chart-card--sm{grid-column:span 1}
+.analytics-bento .chart-card--md{grid-column:span 2}
+.analytics-bento .chart-card--lg{grid-column:span 2}
+.analytics-bento .chart-card--wide{grid-column:span 4}
+.kpi-bento{display:flex;flex-direction:column;gap:4px;padding:18px 20px;border-radius:16px;border:1px solid var(--border);background:var(--panel-2);box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.kpi-bento.is-primary{background:linear-gradient(150deg,rgba(56,130,246,.18),rgba(56,130,246,.04));border-color:rgba(56,130,246,.4)}
+.kpi-bento-icon{font-size:20px;line-height:1}
+.kpi-bento-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi-bento-value{font-size:30px;font-weight:800;line-height:1.1;color:var(--text);word-break:break-word}
+.kpi-bento.is-primary .kpi-bento-value{font-size:38px}
+.analytics-bento .chart-card{border-radius:14px;padding:20px}
+@media(max-width:1100px){
+  .analytics-bento{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .analytics-bento .chart-card--wide,.analytics-bento .chart-card--md,.analytics-bento .chart-card--lg,.analytics-bento .span-2{grid-column:span 2}
+  .analytics-bento .chart-card--sm,.analytics-bento .span-1{grid-column:span 1}
+}
+@media(max-width:680px){
+  .analytics-bento{grid-template-columns:1fr}
+  .analytics-bento>*{grid-column:span 1 !important}
+}
+/* PWA install banner (solo móvil) */
+.install-banner{position:fixed;left:12px;right:12px;bottom:12px;z-index:80;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:var(--panel);border:1px solid var(--blue);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.install-banner-logo{width:38px;height:38px;flex:0 0 auto}
+.install-banner-text{display:flex;flex-direction:column;flex:1 1 auto;min-width:0}
+.install-banner-text strong{font-size:14px}
+.install-banner-text span{font-size:12px;color:var(--muted)}
+.install-banner-actions{display:flex;gap:8px;flex:0 0 auto}
+.install-banner-actions .btn{padding:8px 12px;font-size:13px}
+/* Notificaciones (campana + popover + toast) */
+.notif-wrap{position:relative;display:flex;align-items:center}
+.notif-bell{position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);cursor:pointer}
+.notif-bell:hover{border-color:var(--blue)}
+.notif-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.notif-popover{position:absolute;top:46px;right:0;width:320px;max-width:88vw;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 44px rgba(0,0,0,.5);z-index:70;overflow:hidden}
+.notif-popover-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)}
+.notif-mark-all{background:none;border:0;color:var(--blue);font-size:12px;font-weight:600;cursor:pointer}
+.notif-list{max-height:60vh;overflow-y:auto}
+.notif-empty{padding:22px 14px;text-align:center;color:var(--muted);font-size:13px}
+.notif-item{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;padding:11px 14px;background:none;border:0;border-bottom:1px solid var(--border);cursor:pointer}
+.notif-item:hover{background:var(--panel-2)}
+.notif-item.is-unread{background:rgba(56,130,246,.07)}
+.notif-item.is-unread .notif-item-title::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--blue);margin-right:7px;vertical-align:middle}
+.notif-item-title{font-size:13px;font-weight:600;color:var(--text)}
+.notif-item-body{font-size:12px;color:var(--muted)}
+.notif-item-time{font-size:11px;color:var(--muted)}
+.notif-toast{position:fixed;right:18px;bottom:18px;z-index:90;display:flex;align-items:center;gap:12px;max-width:340px;background:var(--panel);border:1px solid var(--blue);border-radius:14px;padding:13px 15px;box-shadow:0 14px 40px rgba(0,0,0,.5);animation:toastIn .2s ease}
+.notif-toast-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.notif-toast-body strong{font-size:14px}
+.notif-toast-body span{font-size:12px;color:var(--muted)}
+.notif-toast-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.notif-toast-actions .btn{padding:6px 12px;font-size:13px}
+.notif-toast-close{background:none;border:0;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+/* Modal "Qué hay de nuevo" */
+.release-modal-overlay{position:fixed;inset:0;z-index:120;background:rgba(4,9,18,.66);display:flex;align-items:center;justify-content:center;padding:18px}
+.release-modal{width:440px;max-width:94vw;max-height:86vh;overflow-y:auto;background:var(--panel);border:1px solid var(--blue);border-radius:20px;padding:26px;box-shadow:0 24px 70px rgba(0,0,0,.6);animation:toastIn .2s ease}
+.release-modal-tag{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#7dd3fc;font-weight:700}
+.release-modal-title{margin:6px 0 16px;font-size:22px}
+.release-modal-list{margin:0 0 20px;padding-left:20px;display:flex;flex-direction:column;gap:8px;color:var(--text);font-size:14px;line-height:1.45}
+.release-modal-cta{width:100%}
+/* Panel envío de release (Superadmin) */
+.release-send-grid{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.release-send-grid textarea{min-height:140px;font-family:inherit}
 .role-config-card{border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px;background:var(--panel-2)}
 .role-perm-grid{margin-top:10px;border-top:1px solid var(--border);padding-top:8px}
 .role-perm-head,.role-perm-row{display:grid;grid-template-columns:1fr 60px 60px;align-items:center;gap:8px;padding:5px 0}

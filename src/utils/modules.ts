@@ -6,17 +6,23 @@ export type ModuleKey =
   | 'agenda' | 'tasks' | 'classrooms' | 'tickets'
   | 'tools' | 'quickaccess';
 
-export const TOGGLEABLE_MODULES: Array<{ key: ModuleKey; label: string }> = [
-  { key: 'devices', label: 'Dispositivos' },
-  { key: 'loans', label: 'Préstamos' },
-  { key: 'inventory', label: 'Inventario TIC' },
-  { key: 'analytics', label: 'Analítica' },
-  { key: 'agenda', label: 'Agenda TIC' },
-  { key: 'tasks', label: 'Tareas TIC' },
-  { key: 'classrooms', label: 'Estado aulas' },
-  { key: 'tickets', label: 'Tickets' },
-  { key: 'tools', label: 'Herramientas auxiliares' },
-  { key: 'quickaccess', label: 'Accesos rápidos' },
+export type ModuleCategory = 'Operación' | 'Análisis' | 'Planificación' | 'Aulas y soporte' | 'Comunicaciones';
+
+export const MODULE_CATEGORIES: ModuleCategory[] = ['Operación', 'Análisis', 'Planificación', 'Aulas y soporte', 'Comunicaciones'];
+
+export interface ToggleableModule { key: ModuleKey; label: string; description: string; category: ModuleCategory; icon: string }
+
+export const TOGGLEABLE_MODULES: ToggleableModule[] = [
+  { key: 'devices', label: 'Dispositivos', description: 'Inventario de equipos y su estado.', category: 'Operación', icon: '💻' },
+  { key: 'loans', label: 'Préstamos', description: 'Prestar y devolver dispositivos.', category: 'Operación', icon: '🔄' },
+  { key: 'inventory', label: 'Inventario TIC', description: 'Recursos maker y stock de componentes.', category: 'Operación', icon: '📦' },
+  { key: 'analytics', label: 'Analítica', description: 'Métricas de préstamos y uso.', category: 'Análisis', icon: '📊' },
+  { key: 'agenda', label: 'Agenda TIC', description: 'Reservas y planificación semanal.', category: 'Planificación', icon: '🗓️' },
+  { key: 'tasks', label: 'Tareas TIC', description: 'Tareas del equipo y seguimiento.', category: 'Planificación', icon: '✅' },
+  { key: 'classrooms', label: 'Estado aulas', description: 'Revisión de proyectores y equipos por aula.', category: 'Aulas y soporte', icon: '🏫' },
+  { key: 'tickets', label: 'Tickets', description: 'Tickets de InVgate cargados desde la app.', category: 'Aulas y soporte', icon: '🎫' },
+  { key: 'tools', label: 'Herramientas auxiliares', description: 'Utilidades varias del equipo TIC.', category: 'Aulas y soporte', icon: '🛠️' },
+  { key: 'quickaccess', label: 'Accesos rápidos', description: 'Links institucionales a un toque.', category: 'Comunicaciones', icon: '⚡' },
 ];
 
 export const TOGGLEABLE_KEYS = new Set<string>(TOGGLEABLE_MODULES.map(m => m.key));

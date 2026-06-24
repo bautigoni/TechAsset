@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AuthUser, SiteInfo, SyncStatus, ViewKey } from '../../types';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { NotificationBell } from './NotificationBell';
 
 const TITLES: Record<ViewKey, string> = {
   dashboard: 'TechAsset',
@@ -19,7 +20,7 @@ const TITLES: Record<ViewKey, string> = {
   settings: 'Configuración'
 };
 
-export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu, onToggleTheme, onReload, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout }: {
+export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu, onToggleTheme, onReload, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout, onNavigate }: {
   view: ViewKey;
   search: string;
   setSearch: (value: string) => void;
@@ -33,6 +34,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
   onSiteChange?: (siteCode: string) => void;
   user?: AuthUser | null;
   onLogout?: () => void | Promise<void>;
+  onNavigate?: (view: ViewKey) => void;
 }) {
   const syncUi = useSyncStatus(sync);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -75,6 +77,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
         <button className="theme-icon-btn" type="button" aria-label="Cambiar modo claro u oscuro" title="Modo claro / oscuro" onClick={onToggleTheme}>
           <span className="theme-icon-half" />
         </button>
+        <NotificationBell enabled={!!user} onNavigate={onNavigate} />
         <div className="account-menu-wrap">
           <button className="account-chip" type="button" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
             <span className="account-avatar">{initials}</span>

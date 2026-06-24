@@ -3,8 +3,7 @@ import type { Device } from '../../types';
 import { classifyDeviceType } from '../../utils/classifyDevice';
 import { getAnalytics, type AnalyticsResponse } from '../../services/analyticsApi';
 import { Button } from '../layout/Button';
-import { StatCard } from '../layout/StatCard';
-import { ChartCard, type ChartType } from './ChartCard';
+import { ChartCard, type ChartType, type ChartSize } from './ChartCard';
 
 type RangePreset = 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom';
 
@@ -15,11 +14,6 @@ const PRESETS: Array<{ key: RangePreset; label: string; days: number | null }> =
   { key: 'year', label: 'Último año', days: 365 },
   { key: 'all', label: 'Todo', days: 3650 },
 ];
-
-function defaultChartType(index: number): ChartType {
-  const rotation: ChartType[] = ['donut', 'vertical', 'pie', 'bar', 'threeD', 'line'];
-  return rotation[index % rotation.length];
-}
 
 function toIsoDate(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -70,17 +64,24 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
     return [...map.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
   }, [prestamoEvents]);
 
-  const charts = summary ? [
-    { title: 'Préstamos en el tiempo', rows: summary.series.rows },
-    { title: 'Personas que más piden', rows: summary.byPerson },
-    { title: 'Préstamos por tipo de equipo', rows: typeRows },
-    { title: 'Ubicaciones', rows: summary.byLocation },
-    { title: 'Roles', rows: summary.byRole },
-    { title: 'Motivos', rows: summary.byReason },
-    { title: 'Cursos', rows: summary.byCourse },
+  const charts: Array<{ title: string; rows: Array<{ label: string; value: number; color?: string }>; type: ChartType; size: ChartSize }> = summary ? [
+    { title: 'Préstamos en el tiempo', rows: summary.series.rows, type: 'line', size: 'wide' },
+    { title: 'Personas que más piden', rows: summary.byPerson, type: 'bar', size: 'md' },
+    { title: 'Préstamos por tipo de equipo', rows: typeRows, type: 'donut', size: 'md' },
+    { title: 'Ubicaciones', rows: summary.byLocation, type: 'vertical', size: 'md' },
+    { title: 'Roles', rows: summary.byRole, type: 'pie', size: 'md' },
+    { title: 'Motivos', rows: summary.byReason, type: 'bar', size: 'sm' },
+    { title: 'Cursos', rows: summary.byCourse, type: 'bar', size: 'sm' },
   ] : [];
 
-  const seriesType: ChartType = summary?.series.granularity === 'month' ? 'line' : 'line';
+  const kpis: Array<{ icon: string; label: string; value: string | number; primary?: boolean }> = [
+    { icon: '📤', label: 'Préstamos (período)', value: summary?.totalPrestamos ?? 0, primary: true },
+    { icon: '📥', label: 'Devoluciones (período)', value: summary?.totalDevoluciones ?? 0, primary: true },
+    { icon: '⏳', label: 'Prestados ahora', value: prestadosAhora.length },
+    { icon: '👥', label: 'Personas distintas', value: summary?.personasUnicas ?? 0 },
+    { icon: '💻', label: 'Equipos distintos', value: summary?.equiposUnicos ?? 0 },
+    { icon: '🏷️', label: 'Tipo más prestado', value: typeRows[0]?.label || '-' },
+  ];
 
   return (
     <section className="view active">
@@ -120,20 +121,16 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
 
       {error && <div className="tool-error">{error}</div>}
 
-      <div className="stats-grid analytics-kpi-grid">
-        <StatCard label="Préstamos (período)" value={summary?.totalPrestamos ?? 0} />
-        <StatCard label="Devoluciones (período)" value={summary?.totalDevoluciones ?? 0} />
-        <StatCard label="Prestados ahora" value={prestadosAhora.length} />
-        <StatCard label="Personas distintas" value={summary?.personasUnicas ?? 0} />
-        <StatCard label="Equipos distintos" value={summary?.equiposUnicos ?? 0} />
-        <StatCard label="Persona principal" value={summary?.byPerson[0]?.label || '-'} />
-        <StatCard label="Tipo más prestado" value={typeRows[0]?.label || '-'} />
-        <StatCard label="Ubicación principal" value={summary?.byLocation[0]?.label || '-'} />
-      </div>
-
-      <div className="analytics-grid">
-        {charts.map((chart, index) => (
-          <ChartCard key={chart.title} title={chart.title} rows={chart.rows} type={index === 0 ? seriesType : defaultChartType(index)} />
+      <div className="analytics-bento">
+        {kpis.map(kpi => (
+          <div key={kpi.label} className={`kpi-bento ${kpi.primary ? 'is-primary span-2' : 'span-1'}`}>
+            <span className="kpi-bento-icon" aria-hidden>{kpi.icon}</span>
+            <span className="kpi-bento-label">{kpi.label}</span>
+            <span className="kpi-bento-value">{kpi.value}</span>
+          </div>
+        ))}
+        {charts.map(chart => (
+          <ChartCard key={chart.title} title={chart.title} rows={chart.rows} type={chart.type} size={chart.size} />
         ))}
       </div>
 

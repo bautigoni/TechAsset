@@ -42,6 +42,43 @@ function ctaButton(href, label, color = '#3b82f6') {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+//  Broadcast de release / "App actualizada"
+// ─────────────────────────────────────────────────────────────────────
+function markdownToHtml(md) {
+  const lines = String(md || '').split('\n');
+  let html = '';
+  let inList = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    const bold = (s) => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong style="color:#ffffff;">$1</strong>');
+    if (/^[-*]\s+/.test(line)) {
+      if (!inList) { html += '<ul style="margin:0 0 16px;padding-left:18px;color:#dbeafe;font-size:14px;line-height:1.6;">'; inList = true; }
+      html += `<li style="margin:0 0 6px;">${bold(line.replace(/^[-*]\s+/, ''))}</li>`;
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      if (line) html += `<p style="margin:0 0 12px;color:#aebbd4;font-size:14px;">${bold(line)}</p>`;
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+export function buildReleaseBroadcastMail({ version, title, bodyMd, appUrl: url }) {
+  const subject = `TechAsset actualizado: ${title} (v${version})`;
+  const link = url || appUrl();
+  const body = `
+    <p style="margin:0 0 6px;color:#9fb3d1;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Novedades · v${escapeHtml(version)}</p>
+    <h1 style="margin:0 0 16px;font-size:24px;color:#ffffff;">${escapeHtml(title)}</h1>
+    ${infoBox(markdownToHtml(bodyMd))}
+    ${ctaButton(link, 'Abrir TechAsset')}
+    <p style="margin:22px 0 0;color:#9ca3af;font-size:13px;">¡Ya podés instalar la app en tu celu! Entrá desde el navegador y tocá "Instalar".</p>
+  `;
+  const html = shell({ title: subject, body });
+  const text = `${title} (v${version})\n\n${String(bodyMd || '').replace(/\*\*/g, '')}\n\nAbrí TechAsset: ${link}`;
+  return { subject, html, text };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 //  Invitación con código
 // ─────────────────────────────────────────────────────────────────────
 export function buildInviteMail({ siteName, code, role, registerUrl, expiresAt, isAdmin }) {

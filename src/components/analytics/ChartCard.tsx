@@ -127,12 +127,14 @@ const CHART_OPTIONS: Array<{ value: ChartType; label: string }> = [
   { value: 'line', label: 'Linea' }
 ];
 
-export function ChartCard({ title, rows, type = 'bar' }: { title: string; rows: Array<{ label: string; value: number; color?: string }>; type?: ChartType }) {
+export type ChartSize = 'sm' | 'md' | 'lg' | 'wide';
+
+export function ChartCard({ title, rows, type = 'bar', size = 'md' }: { title: string; rows: Array<{ label: string; value: number; color?: string }>; type?: ChartType; size?: ChartSize }) {
   const [chartType, setChartType] = useState<ChartType>(type);
   const [topLimit, setTopLimit] = useState(10);
   const visibleRows = compactRows(rows).slice(0, topLimit);
   return (
-    <section className="card chart-card">
+    <section className={`card chart-card chart-card--${size}`}>
       <div className="card-head chart-card-head">
         <h3>{title}</h3>
         <div className="chart-controls">

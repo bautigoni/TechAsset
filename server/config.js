@@ -19,6 +19,8 @@ export const config = {
   googleSheetCsvUrl: process.env.GOOGLE_SHEET_CSV_URL || '',
   sheetCacheTtlMs: Number(process.env.SHEET_CACHE_TTL_MS || 5000),
   sheetFetchTimeoutMs: Number(process.env.SHEET_FETCH_TIMEOUT_MS || 4500),
+  dbDriver: String(process.env.DB_DRIVER || (process.env.DATABASE_URL ? 'postgres' : 'sqlite')).toLowerCase(),
+  databaseUrl: process.env.DATABASE_URL || '',
   sqliteDbPath: path.resolve(rootDir, process.env.SQLITE_DB_PATH || './data/techasset.db'),
   cacheCsvPath: path.resolve(rootDir, process.env.CACHE_CSV_PATH || './data/cache_sheet.csv'),
   devicesAppCsvPath: path.resolve(rootDir, process.env.DEVICES_APP_CSV_PATH || './data/devices_app.csv'),
@@ -48,5 +50,11 @@ export const config = {
     .split(',')
     .map(s => s.trim().toLowerCase())
     .filter(Boolean),
-  handingTicketUrl: process.env.HANDING_TICKET_URL || ''
+  techassetPublicUrl: String(process.env.TECHASSET_PUBLIC_URL || process.env.APP_BASE_URL || 'https://techasset.bauhub.online').replace(/\/+$/, ''),
+  handingTicketUrl: process.env.HANDING_TICKET_URL || process.env.TECHASSET_PUBLIC_URL || 'https://techasset.bauhub.online',
+  vapid: {
+    publicKey: process.env.VAPID_PUBLIC_KEY || '',
+    privateKey: process.env.VAPID_PRIVATE_KEY || '',
+    subject: process.env.VAPID_SUBJECT || 'mailto:techassetbot@gmail.com'
+  }
 };

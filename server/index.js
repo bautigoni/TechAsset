@@ -20,6 +20,7 @@ import { sitesRouter } from './routes/sites.routes.js';
 import { inventoryRouter } from './routes/inventory.routes.js';
 import { ticketsRouter } from './routes/tickets.routes.js';
 import { invitesRouter } from './routes/invites.routes.js';
+import { notificationsRouter } from './routes/notifications.routes.js';
 import { authMiddleware, requireEditor } from './services/siteContext.service.js';
 
 getDb();
@@ -34,6 +35,7 @@ app.use('/api', authRouter);
 app.use('/api', authMiddleware);
 app.use('/api', sitesRouter);
 app.use('/api', invitesRouter);
+app.use('/api', notificationsRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.
 // (sitesRouter ya valida manager/superadmin por endpoint.)
 app.use('/api', requireEditor);

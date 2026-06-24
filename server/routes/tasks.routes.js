@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb, nowIso, rowToTask, rowToTaskItem } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { notifySiteAdmins } from '../services/notifications.service.js';
 
 export const tasksRouter = Router();
 const STATES = new Set(['Pendiente', 'En proceso', 'Hecha']);
@@ -33,6 +34,15 @@ tasksRouter.post('/tasks', (req, res) => {
   `).run({ ...payload, id, ts, siteCode });
   db.prepare('INSERT INTO task_history (task_id, site_code, timestamp, titulo, accion, responsable, estado_anterior, estado_nuevo, comentario, operador, agenda_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(id, siteCode, ts, payload.titulo, 'tarea creada', payload.responsable, '', payload.estado, payload.comentario, payload.operator, payload.agendaId);
+  try {
+    notifySiteAdmins({
+      siteCode, kind: 'task.created',
+      title: `Nueva tarea: ${payload.titulo}`,
+      body: `Cargada por ${payload.operator || 'alguien del equipo'}`,
+      link: `/sede/${siteCode}/tareas`,
+      exceptEmail: req.user?.email
+    });
+  } catch { /* las notificaciones no deben bloquear la creación */ }
   res.json({ ok: true, item: rowToTask(db.prepare('SELECT * FROM tasks WHERE id=? AND site_code=?').get(id, siteCode)) });
 });
 

@@ -1,0 +1,16 @@
+{
+  "name": "TechAsset",
+  "short_name": "TechAsset",
+  "description": "Gestión tecnológica escolar: dispositivos, préstamos, agenda, tareas y tickets.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0f1a2e",
+  "background_color": "#0b1220",
+  "icons": [
+    { "src": "/techasset-logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
