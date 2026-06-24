@@ -8,6 +8,7 @@ import { LoanSettingsPanel } from './LoanSettingsPanel';
 import { ModulesPanel } from './ModulesPanel';
 import { RolesPanel } from './RolesPanel';
 import { InvitesPanel } from './InvitesPanel';
+import { NotificationsPanel } from './NotificationsPanel';
 
 export function SettingsPage({ operator, consultationMode, setConsultationMode, siteRole, roleReadOnly, sync, user, sites, onSitesChanged, onModulesChanged }: {
   operator: Operator;
@@ -62,6 +63,7 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
           </div>
           <div className="actions"><button className="btn btn-primary" disabled={consultationMode} type="button" onClick={() => updateShiftSettings(shifts)}>Guardar turnos</button></div>
         </section>
+        <NotificationsPanel />
         {isAdmin && (
           <>
             <ModulesPanel consultationMode={consultationMode} onChanged={onModulesChanged} />

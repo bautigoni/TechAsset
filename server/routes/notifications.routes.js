@@ -48,6 +48,27 @@ notificationsRouter.get('/push/vapid-public-key', (_req, res) => {
   res.json({ ok: true, publicKey: config.vapid.publicKey || '' });
 });
 
+// Preferencias de notificación del usuario (push + mail).
+notificationsRouter.get('/notifications/prefs', (req, res) => {
+  const email = userEmail(req);
+  const row = getDb().prepare('SELECT notif_email FROM allowed_users WHERE lower(email)=?').get(email);
+  const subs = getDb().prepare('SELECT COUNT(*) AS n FROM push_subscriptions WHERE lower(user_email)=?').get(email).n;
+  res.json({
+    ok: true,
+    email: row ? Number(row.notif_email) === 1 : false,
+    pushSubscribed: subs > 0,
+    pushAvailable: Boolean(config.vapid.publicKey)
+  });
+});
+
+notificationsRouter.post('/notifications/prefs', (req, res) => {
+  const email = userEmail(req);
+  if (typeof req.body?.email === 'boolean') {
+    getDb().prepare('UPDATE allowed_users SET notif_email=? WHERE lower(email)=?').run(req.body.email ? 1 : 0, email);
+  }
+  res.json({ ok: true });
+});
+
 notificationsRouter.post('/push/subscribe', (req, res) => {
   const sub = req.body?.subscription || req.body;
   const endpoint = String(sub?.endpoint || '');
