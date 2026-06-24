@@ -5,27 +5,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Comandos
 
 ```bash
-npm install          # primera vez
-npm run db:init      # crea/seedea SQLite (data/techasset.db)
-npm run dev          # backend (8000) + Vite (5173) en paralelo
-npm run server       # solo backend
-npm run build        # tsc -b && vite build (verificación principal antes de mergear)
-npm run start        # producción local (sirve dist/ desde Express en 8000)
-npm run preview      # vite preview de dist/
+npm install              # primera vez
+npm run db:init          # seedea la base (SQLite local o Postgres via DATABASE_URL)
+npm run dev              # backend (8000) + Vite (5173) en paralelo
+npm run server           # solo backend
+npm run build            # tsc -b && vite build (verificación principal antes de mergear)
+npm run start            # producción local (sirve dist/ desde Express en 8000)
+npm run preview          # vite preview de dist/
+npm run release:broadcast -- --version=vX.Y.Z --title="..." --file=./release-notes.md
+npm run release:broadcast:dry -- --version=vX.Y.Z ...  # simula sin enviar
 ```
 
 `npm run build` debe pasar antes de cerrar cualquier cambio. No hay tests configurados.
 
 Engine fijado: **Node 22** (`engines.node: ">=22 <23"`). El Dockerfile usa `node:22-bookworm-slim` (no Alpine — `better-sqlite3` necesita glibc).
 
-## Arquitectura — SQLite-first
+## Arquitectura — Postgres con adaptador SQLite-like
 
-La regla más importante de este repo: **SQLite es la fuente de verdad**. Google Sheets / CSV publicado se usan **solo para importación manual** de inventario, nunca para sincronización viva. Prestar/devolver no escribe en planillas. Si Google falla, la app sigue funcionando.
+La regla más importante de este repo: **la base es la fuente de verdad**. Google Sheets / CSV publicado se usan **solo para importación manual** de inventario, nunca para sincronización viva. Prestar/devolver no escribe en planillas. Si Google falla, la app sigue funcionando.
 
-- Frontend: React 19 + Vite 6 + TypeScript en `src/`.
-- Backend: Express en `server/`, base `better-sqlite3` en `data/techasset.db`.
+- Frontend: React 19 + Vite 6 + TypeScript en `src/`. PWA instalable (`public/manifest.webmanifest` + `public/sw.js`).
+- Backend: Express en `server/`.
+- Base: el driver se elige por env en `server/db.js` → `server/pg-sync.js`:
+  - `DATABASE_URL` seteada → Postgres real (driver `pg` ya en deps).
+  - Si no, fallback a **SQLite** vía `better-sqlite3` en `./data/techasset.db`.
+  - El adaptador `pg-sync.js` expone la misma API que `better-sqlite3` (`prepare`, `run`, `get`, `all`, `transaction`, named params `@id`), así que el código de routes no cambia entre drivers.
 - En producción Express sirve `dist/` y la API en el mismo `:8000`. En desarrollo Vite proxea `/api/*` y `/sheet.csv` al backend (ver `vite.config.ts`).
-- Volumen persistente: `./data/` (db, cache CSV, `tmp/`, uploads).
+- Volumen persistente: `./data/` (db SQLite, cache CSV, `tmp/`, uploads). En Postgres el volumen es externo (gestionado por el deploy).
+- Migración: `server/migrate_to_postgres.cjs` (script standalone, se corre una vez para migrar de SQLite → Postgres).
 
 ## Multi-sede
 
@@ -96,11 +103,36 @@ Todo dato operativo (dispositivos, préstamos, tareas, agenda, aulas, inventario
 
 `server/routes/tools.routes.js` genera HTML imprimible (A4, ~8 tarjetas/página, 2×4) con templates embebidos como data URL para que la imagen aparezca al imprimir. Templates en `public/templates/` (`glifing-template.png`, `template_santillana.jpeg`). `print-color-adjust: exact` en `html, body` para que el background salga en print.
 
+## Login con Google (OAuth 2.0)
+
+Botón opcional en la pantalla de login al lado del tradicional por mail. Si las vars `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` están vacías, el botón se oculta automáticamente (`GET /api/auth/google/config` → `{ enabled: false }`).
+
+- Servicio: `server/services/googleOAuth.service.js` (`buildAuthUrl`, `exchangeCode`, `verifyIdToken` vía `oauth2.googleapis.com/tokeninfo`).
+- Rutas: `server/routes/googleAuth.routes.js`:
+  - `GET /api/auth/google/login` → redirige a Google, setea cookie `state` (CSRF) + cookie `site` (sede activa).
+  - `GET /api/auth/google/callback` → valida state, intercambia code, verifica id_token (valida `aud` + `email_verified` + dominio si `GOOGLE_ALLOWED_DOMAINS` está seteado), busca en `allowed_users`, crea sesión normal con `createSession`.
+- El gatekeeper sigue siendo `allowed_users`: si el mail no está autorizado, redirect a `/login?error=not_authorized` con mensaje claro.
+- Auditoría: cada login queda en `local_movements` con `tipo='auth'`, `origen='Google'`.
+- Setup completo en `server/scripts/README.md` (Google Cloud Console + redirect URIs + test users).
+
+## PWA + notificaciones push
+
+- `public/manifest.webmanifest` + `public/sw.js`: shell cache, network-first para `/api/*`, cache-first para assets estáticos, listener `push` y `notificationclick`.
+- Registro del SW en `src/main.tsx` (solo prod).
+- Banner de instalación: `src/components/common/InstallBanner.tsx`, montado como hermano de `<App />`. Solo aparece en mobile, si no está instalada y el browser disparó `beforeinstallprompt`.
+- Campana + popover + toasts: `src/components/layout/NotificationBell.tsx` + `src/hooks/useNotifications.ts` (polling 30s, dispara toast en nuevas).
+- Backend notificaciones: `server/services/notifications.service.js` (`notifyUser`, `notifySiteAdmins`, `broadcastRelease`, `sendPush` con fallback graceful).
+- Tablas: `notifications`, `push_subscriptions`, `release_notes` (todas en `server/db.js`, idempotentes con `CREATE TABLE IF NOT EXISTS`).
+- Hooks: `tasks.routes.js` y `tickets.routes.js` llaman `notifySiteAdmins` en POST (no bloqueante).
+- Modal "Qué hay de nuevo": `src/components/common/ReleaseNotesModal.tsx` + `GET /api/release-notes/latest`.
+- VAPID setup: si `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` no están seteados, las push caen gracefully a in-app + mail sin romper.
+- Broadcast de release: `POST /api/admin/release-notes` (solo Superadmin, idempotente por `version`). Alternativa CLI: `npm run release:broadcast -- --version=vX.Y.Z --title="..." --file=./release-notes.md`.
+
 ## Deployment
 
-- `Dockerfile` (Node 22 Debian, instala `python3 make g++` para compilar `better-sqlite3`).
+- `Dockerfile` (Node 22 Debian, instala `python3 make g++` para compilar `better-sqlite3` y `pg` si hace falta).
 - `docker-compose.yml` no expone puertos al host: el ingreso pasa por Caddy (u otro reverse proxy) que comparte la red `proxy-network` (driver bridge). El servicio interno escucha `:8000`. Caddy debe declarar la red como `external: true` y proxear `reverse_proxy techasset:8000`.
-- Volumen `./data:/app/data` obligatorio para persistir SQLite, cache CSV y temp.
+- Volumen `./data:/app/data` obligatorio para persistir SQLite (modo dev) o cache CSV y uploads (en Postgres el volumen lo maneja el deploy de la DB). `DATABASE_URL` apuntando al Postgres del compose/servicio.
 
 ## Convenciones
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Boxes, CalendarDays, MonitorSmartphone, Repeat2 } from 'lucide-react';
 import type { AuthUser, SiteInfo } from '../../types';
-import { login, register } from '../../services/authApi';
+import { getGoogleOAuthConfig, login, register } from '../../services/authApi';
 
 type AuthMode = 'landing' | 'login' | 'register';
 
@@ -16,6 +16,19 @@ function GoogleMark() {
   );
 }
 
+function translateGoogleError(slug: string): string {
+  switch (slug) {
+    case 'google_no_code': return 'No volvimos con un código válido de Google. Probá de nuevo.';
+    case 'google_bad_state': return 'La sesión con Google expiró o fue manipulada. Probá de nuevo.';
+    case 'google_verify_failed': return 'No pudimos verificar tu cuenta de Google. Probá de nuevo o usá el login por mail.';
+    case 'google_unavailable': return 'El login con Google no está disponible en este momento.';
+    case 'not_authorized': return 'Tu mail de Google no está autorizado. Pedile a tu administrador que te agregue como usuario permitido.';
+    case 'account_pending': return 'Tu cuenta está pendiente de aprobación.';
+    case 'account_disabled': return 'Tu cuenta fue rechazada o está desactivada.';
+    default: return 'No pudimos iniciar sesión con Google. Probá de nuevo.';
+  }
+}
+
 export function LoginPage({ mode, onMode, onReady }: {
   mode: AuthMode;
   onMode: (mode: AuthMode) => void;
@@ -28,12 +41,30 @@ export function LoginPage({ mode, onMode, onReady }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [googleEnabled, setGoogleEnabled] = useState(false);
 
   // El link de invitación llega como /register?code=TA-XXXX-XXXX
+  // Los errores de Google OAuth llegan como /login?error=<slug>
   useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('code');
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('code');
     if (fromUrl) setCode(fromUrl.toUpperCase());
+    const errSlug = params.get('error');
+    if (errSlug) setError(translateGoogleError(errSlug));
+    if (fromUrl || errSlug) {
+      // Limpiar la URL para que refresh no repita el error.
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }, []);
+
+  // Saber si el backend tiene Google OAuth configurado para mostrar/ocultar el botón.
+  useEffect(() => {
+    getGoogleOAuthConfig().then(r => setGoogleEnabled(Boolean(r.enabled))).catch(() => setGoogleEnabled(false));
+  }, []);
+
+  const loginWithGoogle = () => {
+    window.location.href = '/api/auth/google/login';
+  };
 
   const submitLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -136,19 +167,17 @@ export function LoginPage({ mode, onMode, onReady }: {
               {busy ? 'Procesando…' : activeMode === 'register' ? 'Crear cuenta' : 'Ingresar'}
             </button>
 
-            {activeMode === 'login' && (
+            {activeMode === 'login' && googleEnabled && (
               <>
                 <div className="ta-auth-sep">o</div>
                 <button
                   className="ta-auth-google"
                   type="button"
-                  disabled
-                  title="Disponible próximamente"
-                  aria-label="Continuar con Google (próximamente)"
+                  onClick={loginWithGoogle}
+                  aria-label="Continuar con Google"
                 >
                   <GoogleMark />
                   Continuar con Google
-                  <small>(pronto)</small>
                 </button>
               </>
             )}

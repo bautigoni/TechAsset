@@ -56,5 +56,17 @@ export const config = {
     publicKey: process.env.VAPID_PUBLIC_KEY || '',
     privateKey: process.env.VAPID_PRIVATE_KEY || '',
     subject: process.env.VAPID_SUBJECT || 'mailto:techassetbot@gmail.com'
+  },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    // Redirect URI tiene que matchear EXACTAMENTE lo cargado en Google Cloud Console.
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || '',
+    // CSV de dominios permitidos (sin @). Vacío = acepta cualquier Google account
+    // (el gatekeeper sigue siendo allowed_users).
+    allowedDomains: (process.env.GOOGLE_ALLOWED_DOMAINS || '')
+      .split(',')
+      .map(item => item.trim().toLowerCase())
+      .filter(Boolean)
   }
 };

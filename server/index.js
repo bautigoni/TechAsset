@@ -20,6 +20,7 @@ import { sitesRouter } from './routes/sites.routes.js';
 import { inventoryRouter } from './routes/inventory.routes.js';
 import { ticketsRouter } from './routes/tickets.routes.js';
 import { invitesRouter } from './routes/invites.routes.js';
+import { googleAuthRouter } from './routes/googleAuth.routes.js';
 import { notificationsRouter } from './routes/notifications.routes.js';
 import { authMiddleware, requireEditor } from './services/siteContext.service.js';
 
@@ -32,6 +33,7 @@ app.use('/uploads', express.static(path.join(config.rootDir, 'data', 'uploads'))
 
 app.use('/api', healthRouter);
 app.use('/api', authRouter);
+app.use('/api', googleAuthRouter);
 app.use('/api', authMiddleware);
 app.use('/api', sitesRouter);
 app.use('/api', invitesRouter);

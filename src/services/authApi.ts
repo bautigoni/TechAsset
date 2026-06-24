@@ -87,3 +87,11 @@ export const saveAllowedUser = (user: AllowedUserItem) =>
 
 export const updateAllowedUserStatus = (id: number, action: 'approve' | 'reject' | 'deactivate' | 'delete') =>
   apiSend<{ ok: true; item: AllowedUserItem }>(`/api/allowed-users/${id}/${action}`, 'POST');
+
+/**
+ * Devuelve si el botón "Continuar con Google" debe mostrarse en el login.
+ * Si el backend no tiene configurado GOOGLE_CLIENT_ID/SECRET, devuelve enabled=false
+ * y el frontend oculta el botón (no lo muestra como "deshabilitado").
+ */
+export const getGoogleOAuthConfig = () =>
+  apiGet<{ ok: true; enabled: boolean }>('/api/auth/google/config');
