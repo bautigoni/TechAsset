@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react';
+import { Boxes, CalendarDays, MonitorSmartphone, Repeat2 } from 'lucide-react';
 import type { AuthUser, SiteInfo } from '../../types';
-import { getRegisterOptions, login, register } from '../../services/authApi';
-import { Button } from '../layout/Button';
+import { login, register } from '../../services/authApi';
 
 type AuthMode = 'landing' | 'login' | 'register';
 
-const ROLES = ['Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Consulta', 'Otro'];
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+  );
+}
 
 export function LoginPage({ mode, onMode, onReady }: {
   mode: AuthMode;
@@ -15,23 +24,16 @@ export function LoginPage({ mode, onMode, onReady }: {
   const activeMode = mode === 'register' ? 'register' : 'login';
   const [email, setEmail] = useState('');
   const [nombre, setNombre] = useState('');
-  const [turno, setTurno] = useState('Sin turno');
-  const [role, setRole] = useState('Consulta');
-  const [siteCode, setSiteCode] = useState('');
-  const [sites, setSites] = useState<SiteInfo[]>([]);
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // El link de invitación llega como /register?code=TA-XXXX-XXXX
   useEffect(() => {
-    if (activeMode !== 'register') return;
-    getRegisterOptions()
-      .then(response => {
-        setSites(response.sites || []);
-        setSiteCode(current => current || response.sites?.[0]?.siteCode || '');
-      })
-      .catch(() => setError('No se pudieron cargar las sedes disponibles.'));
-  }, [activeMode]);
+    const fromUrl = new URLSearchParams(window.location.search).get('code');
+    if (fromUrl) setCode(fromUrl.toUpperCase());
+  }, []);
 
   const submitLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -39,7 +41,7 @@ export function LoginPage({ mode, onMode, onReady }: {
     setError('');
     setSuccess('');
     try {
-      const session = await login({ email, nombre, turno });
+      const session = await login({ email, nombre });
       if (!session.authenticated || !session.user || !session.sites?.length) throw new Error('No se pudo iniciar sesión.');
       onReady({ user: session.user, sites: session.sites });
     } catch (err) {
@@ -55,10 +57,11 @@ export function LoginPage({ mode, onMode, onReady }: {
     setError('');
     setSuccess('');
     try {
-      const session = await register({ email, nombre, role, siteCode, turno });
-      setSuccess(session.message || 'Solicitud enviada. Tu acceso quedará habilitado cuando sea aprobado por un administrador.');
+      const session = await register({ email, nombre, code });
+      setSuccess(session.message || 'Cuenta creada. Ya podés iniciar sesión con tu mail.');
       setEmail('');
       setNombre('');
+      setCode('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo completar el registro.');
     } finally {
@@ -67,81 +70,93 @@ export function LoginPage({ mode, onMode, onReady }: {
   };
 
   return (
-    <main className="auth-shell">
-      <section className="auth-stage">
-        <div className="auth-brand-panel">
-          <div className="auth-logo-mark">
-            <img src="/northfield_logo.png" alt="Northfield" />
+    <main className="ta-auth">
+      <div className="ta-auth-stage">
+        <aside className="ta-auth-aside">
+          <div className="ta-auth-glow" aria-hidden="true" />
+          <div className="ta-auth-brand">
+            <img src="/favicon.png" alt="TechAsset" />
+            <div>
+              <h1>TechAsset</h1>
+              <p>Gestión tecnológica multi-sede</p>
+            </div>
           </div>
-          <div className="auth-brand-copy">
-            <h1>TechAsset</h1>
-            <h2>Gestión tecnológica escolar</h2>
-            <p>Dispositivos, aulas, tareas e inventarios TIC en un solo lugar.</p>
-            <ul className="auth-feature-list" aria-label="Funciones principales">
-              <li>Gestión por sede</li>
-              <li>Préstamos trazables</li>
-              <li>Inventario TIC</li>
-              <li>Aulas y tareas organizadas</li>
-            </ul>
-          </div>
-        </div>
+          <p className="ta-auth-tagline">Toda tu operación TIC,<br />ordenada en un solo lugar.</p>
+          <ul className="ta-auth-features" aria-label="Funciones principales">
+            <li><span className="ta-auth-feat-icon"><MonitorSmartphone size={18} strokeWidth={2.1} /></span>
+              <span><strong>Dispositivos y préstamos</strong><em>Trazabilidad por sede, escaneo y devoluciones.</em></span></li>
+            <li><span className="ta-auth-feat-icon"><Repeat2 size={18} strokeWidth={2.1} /></span>
+              <span><strong>Historial y analítica</strong><em>Quién, cuándo y qué, con gráficos.</em></span></li>
+            <li><span className="ta-auth-feat-icon"><Boxes size={18} strokeWidth={2.1} /></span>
+              <span><strong>Inventario y recursos maker</strong><em>Stock TIC siempre al día.</em></span></li>
+            <li><span className="ta-auth-feat-icon"><CalendarDays size={18} strokeWidth={2.1} /></span>
+              <span><strong>Agenda, tareas y aulas</strong><em>El día a día del equipo, coordinado.</em></span></li>
+          </ul>
+        </aside>
 
-        <form className={`auth-card auth-card-${activeMode}`} onSubmit={activeMode === 'register' ? submitRegister : submitLogin}>
-          <div className={`auth-tabs ${activeMode}`}>
+        <form className="ta-auth-card" onSubmit={activeMode === 'register' ? submitRegister : submitLogin}>
+          {/* Marca compacta para mobile (el aside está oculto en pantallas chicas) */}
+          <div className="ta-auth-brand" aria-hidden="true">
+            <img src="/favicon.png" alt="" />
+            <div>
+              <h1>TechAsset</h1>
+              <p>Gestión tecnológica multi-sede</p>
+            </div>
+          </div>
+
+          <div className={`ta-auth-tabs ${activeMode === 'register' ? 'is-register' : ''}`}>
             <button type="button" className={activeMode === 'login' ? 'active' : ''} onClick={() => onMode('login')}>Iniciar sesión</button>
             <button type="button" className={activeMode === 'register' ? 'active' : ''} onClick={() => onMode('register')}>Registrarse</button>
           </div>
-          <div key={activeMode} className="auth-form-body">
-            <div className="auth-card-head">
-              <h3>{activeMode === 'register' ? 'Solicitar acceso' : 'Ingresar'}</h3>
-              <p>{activeMode === 'register' ? 'El acceso queda pendiente de aprobación para la sede elegida.' : 'Usá el mail autorizado para tu sede.'}</p>
-            </div>
 
+          <div key={activeMode} className="ta-auth-head">
+            <h2>{activeMode === 'register' ? 'Crear cuenta' : 'Ingresar'}</h2>
+            <p>{activeMode === 'register' ? 'Necesitás un código de invitación de tu administrador.' : 'Usá tu mail autorizado para tu sede.'}</p>
+          </div>
+
+          <div className="ta-auth-form">
             {activeMode === 'register' && (
               <label>Nombre
-                <input className="input" required value={nombre} onChange={event => setNombre(event.target.value)} placeholder="Tu nombre" />
+                <input className="input" required value={nombre} onChange={event => setNombre(event.target.value)} placeholder="Tu nombre" autoComplete="name" />
               </label>
             )}
             <label>Mail
-              <input className="input" type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="usuario@northfield.edu.ar" />
+              <input className="input" type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="usuario@colegio.edu.ar" autoComplete="email" inputMode="email" />
             </label>
-            {activeMode === 'register' ? (
-              <>
-                <label>Sede
-                  <select className="input" required value={siteCode} onChange={event => setSiteCode(event.target.value)}>
-                    {sites.map(site => <option key={site.siteCode} value={site.siteCode}>{site.nombre || site.siteCode}</option>)}
-                  </select>
-                </label>
-                <div className="grid-2">
-                  <label>Rol solicitado
-                    <select className="input" value={role} onChange={event => setRole(event.target.value)}>
-                      {ROLES.map(item => <option key={item}>{item}</option>)}
-                    </select>
-                  </label>
-                  <label>Turno
-                    <select className="input" value={turno} onChange={event => setTurno(event.target.value)}>
-                      <option>Sin turno</option>
-                      <option>Mañana</option>
-                      <option>Tarde</option>
-                      <option>Todo el día</option>
-                    </select>
-                  </label>
-                </div>
-              </>
-            ) : (
-              <label>Contraseña
-                <input className="input" type="password" value="" placeholder="Acceso por mail autorizado" disabled />
+            {activeMode === 'register' && (
+              <label>Código de invitación
+                <input className="input" required value={code} onChange={event => setCode(event.target.value.toUpperCase())} placeholder="TA-XXXX-XXXX" autoComplete="off" />
               </label>
             )}
-            {error && <div className="tool-error">{error}</div>}
-            {success && <div className="tool-info">{success}</div>}
-            <div className="actions auth-actions">
-              <Button variant="primary" type="submit" disabled={busy}>{busy ? 'Procesando...' : activeMode === 'register' ? 'Solicitar acceso' : 'Ingresar'}</Button>
-            </div>
-            <p className="auth-footnote">La sesión mantiene la separación de datos por sede.</p>
+
+            {error && <div className="ta-auth-msg is-error">{error}</div>}
+            {success && <div className="ta-auth-msg is-ok">{success}</div>}
+
+            <button className="ta-auth-submit" type="submit" disabled={busy}>
+              {busy ? 'Procesando…' : activeMode === 'register' ? 'Crear cuenta' : 'Ingresar'}
+            </button>
+
+            {activeMode === 'login' && (
+              <>
+                <div className="ta-auth-sep">o</div>
+                <button
+                  className="ta-auth-google"
+                  type="button"
+                  disabled
+                  title="Disponible próximamente"
+                  aria-label="Continuar con Google (próximamente)"
+                >
+                  <GoogleMark />
+                  Continuar con Google
+                  <small>(pronto)</small>
+                </button>
+              </>
+            )}
           </div>
+
+          <p className="ta-auth-foot">La sesión mantiene la separación de datos por sede.</p>
         </form>
-      </section>
+      </div>
     </main>
   );
 }

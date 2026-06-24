@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import {
   BarChart3,
   Boxes,
+  Building2,
   CalendarDays,
   ClipboardCheck,
   Gauge,
@@ -12,14 +13,18 @@ import {
   Repeat2,
   School,
   Settings,
+  Ticket,
   Wrench
 } from 'lucide-react';
 import type { SiteInfo, ViewKey } from '../../types';
+import { isViewEnabled, TOGGLEABLE_KEYS } from '../../utils/modules';
+import { canViewModule, type ModuleAccess } from '../../utils/permissions';
 
 type NavIcon = ComponentType<{ size?: number; strokeWidth?: number }>;
 
-const NAV: Array<{ key: ViewKey; label: string; Icon: NavIcon }> = [
+const NAV: Array<{ key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: boolean }> = [
   { key: 'dashboard', label: 'Dashboard', Icon: Gauge },
+  { key: 'tenants', label: 'Tenants', Icon: Building2, superadminOnly: true },
   { key: 'devices', label: 'Dispositivos', Icon: MonitorSmartphone },
   { key: 'loans', label: 'Préstamos', Icon: Repeat2 },
   { key: 'inventory', label: 'Inventario TIC', Icon: Boxes },
@@ -27,6 +32,7 @@ const NAV: Array<{ key: ViewKey; label: string; Icon: NavIcon }> = [
   { key: 'agenda', label: 'Agenda TIC', Icon: CalendarDays },
   { key: 'tasks', label: 'Tareas TIC', Icon: ClipboardCheck },
   { key: 'classrooms', label: 'Estado aulas', Icon: School },
+  { key: 'tickets', label: 'Tickets', Icon: Ticket },
   { key: 'tools', label: 'Herramientas auxiliares', Icon: Wrench },
   { key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
   { key: 'settings', label: 'Configuración', Icon: Settings }
@@ -34,7 +40,7 @@ const NAV: Array<{ key: ViewKey; label: string; Icon: NavIcon }> = [
 
 const BOTTOM_NAV = new Set<ViewKey>(['tools', 'quickaccess', 'settings']);
 
-export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggleCollapsed, activeSite, sites }: {
+export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null }: {
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
   open: boolean;
@@ -43,9 +49,16 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
   onToggleCollapsed: () => void;
   activeSite: string;
   sites: SiteInfo[];
+  settings?: Record<string, unknown> | null;
+  isSuperadmin?: boolean;
+  access?: ModuleAccess | null;
 }) {
   const siteInfo = sites.find(site => site.siteCode === activeSite);
-  const visibleNav = NAV.filter(item => item.key !== 'classrooms' || ['NFPT', 'NFND'].includes(activeSite));
+  const visibleNav = NAV.filter(item =>
+    (!item.superadminOnly || isSuperadmin) &&
+    isViewEnabled(item.key, settings) &&
+    (!access || canViewModule(access, item.key, TOGGLEABLE_KEYS))
+  );
   const mainNav = visibleNav.filter(item => !BOTTOM_NAV.has(item.key));
   const bottomNav = visibleNav.filter(item => BOTTOM_NAV.has(item.key));
   const navigate = (view: ViewKey) => {
@@ -59,7 +72,7 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
       <aside className={`sidebar ${open ? 'open mobile-open' : ''} ${collapsed ? 'is-collapsed' : ''}`}>
         <div className="brand">
           <div className="brand-lockup">
-            <img className="brand-logo" src="/northfield_logo.png" alt="Northfield" />
+            <img className="brand-logo" src="/favicon.png" alt="TechAsset" />
             <div className="brand-text">
               <h1>TechAsset</h1>
               <p>{siteInfo?.nombre || activeSite}</p>

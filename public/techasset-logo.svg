@@ -1,0 +1,22 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TechAsset">
+  <defs>
+    <linearGradient id="taGrad" x1="16" y1="12" x2="112" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#60a5fa"/>
+      <stop offset="0.55" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="taShine" x1="24" y1="20" x2="104" y2="108" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#taGrad)"/>
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#taShine)"/>
+  <rect x="8.5" y="8.5" width="111" height="111" rx="27.5" stroke="#ffffff" stroke-opacity="0.18"/>
+  <!-- Asset tag / monogram TA -->
+  <path d="M36 46 H92" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+  <path d="M64 46 V92" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+  <path d="M83 92 L99 60" stroke="#bfdbfe" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="99" cy="60" r="5.5" fill="#0b1220"/>
+  <circle cx="99" cy="60" r="2.4" fill="#ffffff"/>
+</svg>

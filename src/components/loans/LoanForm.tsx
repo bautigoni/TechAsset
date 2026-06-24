@@ -5,6 +5,7 @@ import { getOperationalAlias, operationalTypeLabel } from '../../utils/classifyD
 import { Button } from '../layout/Button';
 import { ScannerPanel } from './ScannerPanel';
 import { getSiteSettings } from '../../services/authApi';
+import { getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
 
 type ScanItem = {
   id: string;
@@ -45,6 +46,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const [schoolLevel, setSchoolLevel] = useState('');
   const [comment, setComment] = useState('');
   const [settings, setSettings] = useState<Record<string, unknown>>({});
+  const [suggestions, setSuggestions] = useState<LoanSuggestion[]>([]);
+  const [showSuggest, setShowSuggest] = useState(false);
   const [continuousScan, setContinuousScan] = useState(false);
   const [scanItems, setScanItems] = useState<ScanItem[]>([]);
   const [scanMessage, setScanMessage] = useState<{ tone: 'info' | 'warn' | 'error'; text: string } | null>(null);
@@ -92,7 +95,34 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
   const reset = () => {
     setCode(''); setPerson(''); setRole(''); setLocation(''); setLocationDetail(''); setCourse(''); setSchoolLevel(''); setReason(''); setReasonDetail(''); setComment('');
+    setSuggestions([]); setShowSuggest(false);
     codeInputRef.current?.focus();
+  };
+
+  // Recomendador: al tipear la persona, sugerir personas conocidas del historial.
+  useEffect(() => {
+    const q = person.trim();
+    if (q.length < 2) { setSuggestions([]); return; }
+    const timer = window.setTimeout(() => {
+      getLoanSuggestions(q).then(response => setSuggestions(response.suggestions || [])).catch(() => setSuggestions([]));
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [person]);
+
+  // Al elegir una persona conocida, pre-rellenar rol/ubicación/motivo/curso más usados.
+  const applySuggestion = (suggestion: LoanSuggestion) => {
+    setPerson(suggestion.persona);
+    if (suggestion.rol && roleOptions.includes(suggestion.rol)) setRole(suggestion.rol);
+    if (suggestion.ubicacion && locationOptions.some(item => item.label === suggestion.ubicacion)) setLocation(suggestion.ubicacion);
+    if (suggestion.motivo && motiveOptions.some(item => item.label === suggestion.motivo)) setReason(suggestion.motivo);
+    if (suggestion.curso) {
+      const parts = suggestion.curso.split('·').map(part => part.trim()).filter(Boolean);
+      const level = parts.find(part => SCHOOL_LEVEL_OPTIONS.includes(part));
+      const grade = parts.find(part => gradeOptions.includes(part));
+      if (level) setSchoolLevel(level);
+      if (grade) setCourse(grade);
+    }
+    setShowSuggest(false);
   };
 
   const handleLend = async () => {
@@ -370,7 +400,29 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       )}
 
       <div className="grid-2">
-        <label>Persona<input className="input" value={person} onChange={event => setPerson(event.target.value)} placeholder="Nombre de quien recibe" /></label>
+        <label className="loan-person-field">Persona
+          <input
+            className="input"
+            value={person}
+            onChange={event => { setPerson(event.target.value); setShowSuggest(true); }}
+            onFocus={() => setShowSuggest(true)}
+            onBlur={() => window.setTimeout(() => setShowSuggest(false), 150)}
+            placeholder="Nombre de quien recibe"
+            autoComplete="off"
+          />
+          {showSuggest && suggestions.length > 0 && (
+            <ul className="loan-suggest">
+              {suggestions.map(suggestion => (
+                <li key={suggestion.persona}>
+                  <button type="button" onMouseDown={event => { event.preventDefault(); applySuggestion(suggestion); }}>
+                    <strong>{suggestion.persona}</strong>
+                    <span>{[suggestion.rol, suggestion.ubicacion].filter(Boolean).join(' · ') || 'sin datos previos'} · {suggestion.count}×</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </label>
         <label>Rol<select className="input" value={role} onChange={event => setRole(event.target.value)}><option>Seleccionar rol</option>{roleOptions.map(item => <option key={item}>{item}</option>)}</select></label>
       </div>
       <div className="grid-2">

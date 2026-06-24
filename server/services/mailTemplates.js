@@ -42,6 +42,35 @@ function ctaButton(href, label, color = '#3b82f6') {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+//  Invitación con código
+// ─────────────────────────────────────────────────────────────────────
+export function buildInviteMail({ siteName, code, role, registerUrl, expiresAt, isAdmin }) {
+  const subject = isAdmin
+    ? `Tu acceso de administrador a TechAsset (${siteName})`
+    : `Te invitaron a TechAsset (${siteName})`;
+  const vence = expiresAt ? new Date(expiresAt).toLocaleDateString('es-AR') : 'sin vencimiento';
+  const body = `
+    <h1 style="margin:0 0 8px;font-size:24px;color:#ffffff;">${escapeHtml(isAdmin ? 'Acceso de administrador' : 'Te sumaron al equipo')}</h1>
+    <p style="margin:0 0 22px;color:#aebbd4;font-size:14px;">
+      Fuiste invitado a <strong>${escapeHtml(siteName)}</strong> en <strong>TechAsset</strong>${role ? ` como <strong>${escapeHtml(role)}</strong>` : ''}.
+      Usá este código para registrarte:
+    </p>
+    ${infoBox(`
+      <p style="margin:0 0 6px;color:#9fb3d1;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Código de invitación</p>
+      <p style="margin:0;font-size:30px;font-weight:800;letter-spacing:.08em;color:#7dd3fc;font-family:monospace;">${escapeHtml(code)}</p>
+    `)}
+    <p style="margin:0 0 22px;color:#dbeafe;">Válido hasta <strong>${escapeHtml(vence)}</strong>. Es de un solo uso.</p>
+    ${ctaButton(registerUrl, 'Registrarme ahora')}
+    <p style="margin:22px 0 0;color:#9ca3af;font-size:13px;">
+      Si el botón no funciona, entrá a ${escapeHtml(registerUrl)} y pegá el código.
+    </p>
+  `;
+  const html = shell({ title: subject, body });
+  const text = `Te invitaron a ${siteName} en TechAsset${role ? ` como ${role}` : ''}.\nCódigo: ${code}\nVálido hasta: ${vence} (un solo uso).\nRegistrate en: ${registerUrl}`;
+  return { subject, html, text };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 //  Registro: mail al ADMIN
 // ─────────────────────────────────────────────────────────────────────
 export function buildRegistrationAdminMail({ nombre, email, sede, rol, turno, fecha }) {

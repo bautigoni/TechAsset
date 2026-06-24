@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { config } from '../config.js';
-import { getDb } from '../db.js';
-import { clearSession, createRegisteredUser, createSession, getUserSession, normalizeEmail, readSessionToken, upsertLoginUser } from '../services/siteContext.service.js';
-import { getSuperadminRecipients, sendMail } from '../services/mail.service.js';
-import { buildRegistrationAdminMail, buildRegistrationUserMail } from '../services/mailTemplates.js';
+import { getDb, nowIso } from '../db.js';
+import { clearSession, createSession, getUserSession, normalizeEmail, readSessionToken, upsertLoginUser } from '../services/siteContext.service.js';
+import { consumeInvite, findValidInvite } from '../services/invites.service.js';
 
 export const authRouter = Router();
 
@@ -34,64 +33,46 @@ authRouter.post('/auth/login', (req, res) => {
 });
 
 authRouter.get('/auth/register-options', (_req, res) => {
-  const sites = getDb().prepare('SELECT site_code AS siteCode, nombre, subtitulo FROM sites WHERE activo=1 ORDER BY site_code').all();
-  res.json({ ok: true, sites: sites.map(site => ({
-    siteCode: site.siteCode,
-    nombre: site.nombre || site.siteCode,
-    subtitulo: site.subtitulo || ''
-  })) });
+  // Por seguridad multi-tenant ya NO exponemos la lista de sedes. El registro
+  // es por código de invitación que entrega un administrador.
+  res.json({ ok: true, requiresCode: true });
 });
 
-authRouter.post('/auth/register', async (req, res) => {
+authRouter.post('/auth/register', (req, res) => {
   try {
-    const allowed = createRegisteredUser(req.body || {});
-    res.json({ ok: true, authenticated: false, pending: true, message: 'Solicitud enviada. Tu acceso quedará habilitado cuando sea aprobado por un administrador.' });
-    // Notificaciones por mail (sin bloquear la respuesta).
-    notifyRegistration(allowed, req.body || {}).catch(error => {
-      console.warn('[auth/register] notify error:', error?.message || error);
-    });
+    const email = normalizeEmail(req.body?.email);
+    const nombre = String(req.body?.nombre || '').trim() || email.split('@')[0];
+    const code = String(req.body?.code || '').trim().toUpperCase();
+    if (!email || !email.includes('@')) return res.status(400).json({ ok: false, error: 'Ingresá un mail válido.' });
+    if (!code) return res.status(400).json({ ok: false, error: 'Ingresá el código de invitación.' });
+
+    const check = findValidInvite(code);
+    if (!check.ok) return res.status(403).json({ ok: false, error: check.error });
+    const invite = check.invite;
+    if (invite.email && invite.email !== email) {
+      return res.status(403).json({ ok: false, error: 'Esta invitación es para otro mail.' });
+    }
+
+    const db = getDb();
+    const ts = nowIso();
+    db.prepare(`
+      INSERT INTO allowed_users (email, nombre, default_role, can_choose_role, status, activo, deleted_at, deleted_by, created_at, updated_at)
+      VALUES (?, ?, ?, 0, 'Activo', 1, '', '', ?, ?)
+      ON CONFLICT(email) DO UPDATE SET nombre=excluded.nombre, default_role=excluded.default_role, status='Activo', activo=1, deleted_at='', deleted_by='', updated_at=excluded.updated_at
+    `).run(email, nombre, invite.role, ts, ts);
+    const allowed = db.prepare('SELECT * FROM allowed_users WHERE lower(email)=?').get(email);
+    db.prepare(`
+      INSERT INTO allowed_user_sites (allowed_user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 1, 1, ?, ?)
+      ON CONFLICT(allowed_user_id, site_code) DO UPDATE SET site_role=excluded.site_role, turno=excluded.turno, activo=1, updated_at=excluded.updated_at
+    `).run(allowed.id, invite.site_code, invite.role, invite.turno, ts, ts);
+
+    consumeInvite(code, email);
+    res.json({ ok: true, authenticated: false, activated: true, message: 'Cuenta creada. Ya podés iniciar sesión con tu mail.' });
   } catch (error) {
     res.status(400).json({ ok: false, error: error.message || 'No se pudo completar el registro.' });
   }
 });
-
-async function notifyRegistration(allowed, payload) {
-  if (!allowed) return;
-  const email = normalizeEmail(allowed.email || payload.email);
-  const nombre = String(allowed.nombre || payload.nombre || '').trim() || email.split('@')[0];
-  const sede = String(payload.siteCode || '').trim();
-  const rol = String(payload.role || allowed.default_role || 'Consulta');
-  const turno = String(payload.turno || '').trim() || (rol.includes('mañana') ? 'Mañana' : rol.includes('tarde') ? 'Tarde' : 'Sin turno');
-  const fecha = new Date().toLocaleString('es-AR');
-
-  // 1) Mail al usuario
-  const userMail = buildRegistrationUserMail({ nombre, sede });
-  await sendMail({ to: email, subject: userMail.subject, html: userMail.html, text: userMail.text });
-
-  // 2) Mail al superadmin y al jefe TIC de la sede
-  const adminRecipients = new Set(getSuperadminRecipients());
-  if (sede) {
-    try {
-      const jefes = getDb().prepare(`
-        SELECT lower(au.email) AS email
-        FROM allowed_users au
-        JOIN allowed_user_sites aus ON aus.allowed_user_id = au.id
-        WHERE aus.site_code = ?
-          AND aus.activo = 1
-          AND au.activo = 1
-          AND COALESCE(au.deleted_at,'') = ''
-          AND aus.site_role = 'Jefe TIC'
-      `).all(sede);
-      jefes.forEach(j => j?.email && adminRecipients.add(j.email));
-    } catch (error) {
-      console.warn('[auth/register] no se pudieron leer jefes de sede:', error?.message || error);
-    }
-  }
-  const adminList = Array.from(adminRecipients);
-  if (!adminList.length) return;
-  const adminMail = buildRegistrationAdminMail({ nombre, email, sede, rol, turno, fecha });
-  await sendMail({ to: adminList, subject: adminMail.subject, html: adminMail.html, text: adminMail.text });
-}
 
 authRouter.post('/auth/logout', (req, res) => {
   clearSession(readSessionToken(req));

@@ -38,6 +38,11 @@ export const config = {
     modoPrueba: String(process.env.MODO_PRUEBA || 'true').toLowerCase() !== 'false',
     microsoftLoginUrl: process.env.MICROSOFT_LOGIN_URL || ''
   },
+  resend: {
+    apiKey: process.env.RESEND_API_KEY || '',
+    // Remitente verificado en Resend, ej. "TechAsset <noreply@mail.tudominio.com>".
+    from: process.env.RESEND_FROM || process.env.MAIL_FROM || ''
+  },
   appBaseUrl: String(process.env.APP_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, ''),
   superadminEmails: String(process.env.SUPERADMIN_EMAILS || '')
     .split(',')

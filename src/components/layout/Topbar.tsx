@@ -11,9 +11,11 @@ const TITLES: Record<ViewKey, string> = {
   agenda: 'Agenda TIC',
   tasks: 'Tareas TIC',
   classrooms: 'Estado aulas',
+  tickets: 'Tickets',
   tools: 'Herramientas auxiliares',
   quickaccess: 'Accesos rápidos',
   assistant: 'Asistente TIC',
+  tenants: 'Tenants',
   settings: 'Configuración'
 };
 
@@ -45,7 +47,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
         <button className="mobile-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
           <span className="hamburger-icon" aria-hidden="true" />
         </button>
-        <img className="topbar-logo" src="/northfield_logo.png" alt="Northfield" />
+        <img className="topbar-logo" src="/favicon.png" alt="TechAsset" />
         <div className="topbar-title-text">
           <h2>{TITLES[view]}</h2>
           <p>{activeSite} · {activeSiteInfo?.nombre || 'Sede activa'}</p>

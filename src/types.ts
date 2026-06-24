@@ -1,4 +1,4 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'tasks' | 'classrooms' | 'tools' | 'quickaccess' | 'assistant' | 'settings';
+export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'tasks' | 'classrooms' | 'tickets' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'settings';
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
@@ -197,6 +197,26 @@ export interface InventoryItem {
   activo?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type TicketState = 'No hecho' | 'En proceso' | 'Hecho';
+
+export interface Ticket {
+  id: number;
+  siteCode?: string;
+  numero: string;
+  titulo: string;
+  descripcion: string;
+  estado: TicketState;
+  prioridad: 'Baja' | 'Media' | 'Alta' | 'Urgente' | string;
+  responsables: string[];
+  categoria: string;
+  imagenUrl: string;
+  nota: string;
+  creadoPor: string;
+  operadorUltimoCambio: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface QuickLink {

@@ -15,6 +15,7 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { ToolsPage } from './components/tools/ToolsPage';
 import { QuickAccessPage } from './components/tools/QuickAccessPage';
 import { ClassroomStatusPage } from './components/classrooms/ClassroomStatusPage';
+import { TicketsPage } from './components/tickets/TicketsPage';
 import { useOperator } from './hooks/useOperator';
 import { useDevices } from './hooks/useDevices';
 import { useAgenda } from './hooks/useAgenda';
@@ -24,8 +25,11 @@ import { useAutoRefresh } from './hooks/useAutoRefresh';
 import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
 import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
-import { getAuthSession, logout as logoutSession } from './services/authApi';
+import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
 import { LoginPage } from './components/auth/LoginPage';
+import { TenantsDashboard } from './components/settings/TenantsDashboard';
+import { activeSiteRole, canViewModule, isReadOnlyRole, isSuperadmin, roleAccess } from './utils/permissions';
+import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
 
 export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
@@ -42,6 +46,7 @@ export function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [activeSite, setActiveSite] = useState('');
+  const [siteSettings, setSiteSettings] = useState<Record<string, unknown> | null>(null);
   const { operator, setOperator } = useOperator();
   const { devices, filteredDevices, counts, sync, refresh, patchLocal, removeLocal } = useDevices(search, activeSite);
   const agenda = useAgenda(operator);
@@ -86,6 +91,28 @@ export function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSite, view, user?.id]);
+
+  // Settings de la sede activa (incluye módulos habilitados).
+  const reloadSiteSettings = () => {
+    if (!user || !activeSite) return;
+    getSiteSettings().then(response => setSiteSettings(response.settings || {})).catch(() => setSiteSettings({}));
+  };
+  useEffect(() => {
+    if (!user || !activeSite) return;
+    setSiteSettings(null);
+    getSiteSettings().then(response => setSiteSettings(response.settings || {})).catch(() => setSiteSettings({}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSite, user?.id]);
+
+  // Si el módulo de la vista actual está apagado para la sede o el rol no puede verlo,
+  // volver al dashboard.
+  useEffect(() => {
+    if (!user || siteSettings === null) return;
+    const role = activeSiteRole(user, sites, activeSite);
+    const acc = roleAccess(siteSettings, role, isSuperadmin(user));
+    if (!isViewEnabled(view, siteSettings) || !canViewModule(acc, view, TOGGLEABLE_KEYS)) setView('dashboard');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, siteSettings, user?.id, activeSite]);
 
   useAutoRefresh(() => {
     if (document.hidden) return;
@@ -197,6 +224,14 @@ export function App() {
     setView('loans');
   };
 
+  // Rol real en la sede activa → permisos. Consulta/Otro = solo lectura forzada;
+  // editores pueden además activar el "modo consulta / vista jefe" manual.
+  const currentRole = activeSiteRole(user, sites, activeSite);
+  const roleReadOnly = isReadOnlyRole(currentRole);
+  const effectiveConsultation = roleReadOnly || consultationMode;
+  const superadmin = isSuperadmin(user);
+  const access = roleAccess(siteSettings, currentRole, superadmin);
+
   if (authLoading) return <main className="login-shell"><section className="card login-card">Cargando sesión...</section></main>;
   if (!user) {
     return <LoginPage mode={authMode} onMode={mode => {
@@ -215,20 +250,22 @@ export function App() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} />
+      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} />
       <main className="main main-content">
-        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={consultationMode} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} />
+        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} />
         {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onProfile={setProfile} onEdit={setEditingDevice} />}
-        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={consultationMode} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
-        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
-        {view === 'inventory' && <InventoryPage key={activeSite} consultationMode={consultationMode} />}
+        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
+        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
+        {view === 'inventory' && <InventoryPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
-        {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={consultationMode} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
-        {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={consultationMode} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
-        {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={consultationMode} activeSite={activeSite} />}
+        {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
+        {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
+        {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
         {view === 'tools' && <ToolsPage operator={operator} />}
-        {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={consultationMode} />}
-        {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={consultationMode} setConsultationMode={setConsultationMode} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} />}
+        {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}
+        {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} />}
+        {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
       </main>
       {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}
       {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}

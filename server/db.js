@@ -339,6 +339,64 @@ export function initDb(database = getDb()) {
       updated_at TEXT,
       UNIQUE(site_code, floor_key)
     );
+    CREATE TABLE IF NOT EXISTS loan_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      tipo TEXT,
+      etiqueta TEXT,
+      alias TEXT DEFAULT '',
+      filtro TEXT DEFAULT '',
+      persona TEXT DEFAULT '',
+      rol TEXT DEFAULT '',
+      ubicacion TEXT DEFAULT '',
+      ubicacion_detalle TEXT DEFAULT '',
+      curso TEXT DEFAULT '',
+      motivo TEXT DEFAULT '',
+      motivo_detalle TEXT DEFAULT '',
+      comentarios TEXT DEFAULT '',
+      operador TEXT DEFAULT '',
+      origen TEXT DEFAULT 'Local',
+      timestamp TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_loan_events_site_ts ON loan_events(site_code, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_loan_events_persona ON loan_events(site_code, persona);
+    CREATE TABLE IF NOT EXISTS tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      numero TEXT DEFAULT '',
+      titulo TEXT DEFAULT '',
+      descripcion TEXT DEFAULT '',
+      estado TEXT DEFAULT 'No hecho',
+      prioridad TEXT DEFAULT 'Media',
+      responsables_json TEXT DEFAULT '',
+      categoria TEXT DEFAULT '',
+      imagen_url TEXT DEFAULT '',
+      nota TEXT DEFAULT '',
+      creado_por TEXT DEFAULT '',
+      operador_ultimo_cambio TEXT DEFAULT '',
+      activo INTEGER DEFAULT 1,
+      deleted_at TEXT DEFAULT '',
+      deleted_by TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_tickets_site ON tickets(site_code, estado);
+    CREATE TABLE IF NOT EXISTS invites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT UNIQUE NOT NULL,
+      site_code TEXT NOT NULL,
+      role TEXT DEFAULT 'Consulta',
+      turno TEXT DEFAULT 'Sin turno',
+      kind TEXT DEFAULT 'standard',
+      email TEXT DEFAULT '',
+      created_by TEXT DEFAULT '',
+      expires_at TEXT DEFAULT '',
+      used_at TEXT DEFAULT '',
+      used_by TEXT DEFAULT '',
+      revoked_at TEXT DEFAULT '',
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_invites_site ON invites(site_code);
   `);
 
   ensureColumn(database, 'agenda', 'site_code', "TEXT DEFAULT 'NFPT'");
@@ -435,6 +493,8 @@ export function initDb(database = getDb()) {
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);
   ensureFixedAgenda(database);
+
+  backfillLoanEventsFromMovements(database);
 }
 
 export function seedInitialInventory(database, siteCode = config.defaultSiteCode || 'NFPT') {
@@ -653,6 +713,13 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'loan.gradeOptions': ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
+    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess'],
+    'roles.config': [
+      { name: 'Administrador', admin: true, view: ['*'], edit: ['*'] },
+      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess'] },
+      { name: 'Consulta', admin: false, view: ['*'], edit: [] }
+    ],
+    'shift.options': ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'],
     'shift.morningOperator': '',
     'shift.afternoonOperator': '',
     quickLinks: []
@@ -989,6 +1056,63 @@ export function addLocalMovement({ tipo, descripcion, operador, origen = 'Local'
     .run(nowIso(), tipo, descripcion, operador || '', origen, etiqueta || '', siteCode);
 }
 
+// Historial durable de préstamos/devoluciones. A diferencia de local_states (estado
+// vivo que se limpia al devolver), esto NUNCA se borra: es la fuente de la analítica
+// histórica y del recomendador. tipo: 'prestamo' | 'devolucion'.
+export function addLoanEvent(fields = {}) {
+  getDb().prepare(`
+    INSERT INTO loan_events (site_code, tipo, etiqueta, alias, filtro, persona, rol, ubicacion, ubicacion_detalle, curso, motivo, motivo_detalle, comentarios, operador, origen, timestamp)
+    VALUES (@site_code, @tipo, @etiqueta, @alias, @filtro, @persona, @rol, @ubicacion, @ubicacion_detalle, @curso, @motivo, @motivo_detalle, @comentarios, @operador, @origen, @timestamp)
+  `).run({
+    site_code: fields.siteCode || config.defaultSiteCode || 'NFPT',
+    tipo: fields.tipo || 'prestamo',
+    etiqueta: String(fields.etiqueta || '').trim(),
+    alias: fields.alias || '',
+    filtro: fields.filtro || '',
+    persona: fields.persona || '',
+    rol: fields.rol || '',
+    ubicacion: fields.ubicacion || '',
+    ubicacion_detalle: fields.ubicacionDetalle || '',
+    curso: fields.curso || '',
+    motivo: fields.motivo || '',
+    motivo_detalle: fields.motivoDetalle || '',
+    comentarios: fields.comentarios || '',
+    operador: fields.operador || '',
+    origen: fields.origen || 'Local',
+    timestamp: fields.timestamp || nowIso()
+  });
+}
+
+// Reconstruye loan_events desde local_movements (que sí tiene timestamps históricos)
+// la primera vez, para no arrancar la analítica de cero. Idempotente: solo corre si
+// loan_events está vacío.
+function backfillLoanEventsFromMovements(database) {
+  const existing = database.prepare('SELECT COUNT(*) AS total FROM loan_events').get().total;
+  if (existing) return;
+  const rows = database.prepare(`
+    SELECT timestamp, tipo, descripcion, operador, etiqueta, COALESCE(site_code,'NFPT') AS site_code
+    FROM local_movements
+    WHERE lower(tipo) LIKE 'prést%' OR lower(tipo) LIKE 'prest%' OR lower(tipo) LIKE 'devol%'
+    ORDER BY id
+  `).all();
+  if (!rows.length) return;
+  const insert = database.prepare(`
+    INSERT INTO loan_events (site_code, tipo, etiqueta, alias, persona, operador, origen, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, 'backfill', ?)
+  `);
+  const tx = database.transaction(() => {
+    for (const row of rows) {
+      const lowerTipo = String(row.tipo || '').toLowerCase();
+      const tipo = lowerTipo.startsWith('devol') ? 'devolucion' : 'prestamo';
+      const desc = String(row.descripcion || '');
+      const persona = tipo === 'prestamo' ? (desc.match(/prestad[ao]\s+a\s+(.+?)\s*$/i)?.[1] || '').trim() : '';
+      const alias = (desc.match(/·\s*([^·]+?)\s+(?:prestad|devuelt)/i)?.[1] || '').trim();
+      insert.run(row.site_code, tipo, String(row.etiqueta || '').trim(), alias, persona, row.operador || '', row.timestamp || nowIso());
+    }
+  });
+  tx();
+}
+
 export function setLocalState(etiqueta, fields) {
   const tag = String(etiqueta || '').trim();
   if (!tag) return;
@@ -1025,6 +1149,13 @@ export function setLocalState(etiqueta, fields) {
     returned_at: fields.returnedAt || '',
     updated_at: nowIso()
   });
+}
+
+export function getSiteSetting(siteCode, key) {
+  const row = getDb().prepare('SELECT value_json FROM site_settings WHERE site_code=? AND key=?').get(siteCode, key);
+  if (!row) return null;
+  try { return JSON.parse(row.value_json || 'null'); }
+  catch { return row.value_json; }
 }
 
 export function getAppSetting(key) {

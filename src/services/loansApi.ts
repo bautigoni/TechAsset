@@ -1,4 +1,18 @@
-import { apiSend } from './apiClient';
+import { apiGet, apiSend } from './apiClient';
+
+export interface LoanSuggestion {
+  persona: string;
+  count: number;
+  lastAt: string;
+  rol: string;
+  ubicacion: string;
+  curso: string;
+  motivo: string;
+}
+
+export function getLoanSuggestions(q: string) {
+  return apiGet<{ ok: true; suggestions: LoanSuggestion[] }>(`/api/loans/suggest?q=${encodeURIComponent(q)}`);
+}
 
 export type LoanSyncResponse = {
   ok: true;

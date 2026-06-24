@@ -1,6 +1,6 @@
 ﻿import crypto from 'node:crypto';
 import { config } from '../config.js';
-import { getDb, nowIso } from '../db.js';
+import { getDb, getSiteSetting, nowIso } from '../db.js';
 
 export function normalizeSiteCode(value) {
   return String(value || config.defaultSiteCode || 'NFPT').trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_') || 'NFPT';
@@ -95,13 +95,70 @@ export function isSuperadmin(user) {
   return ['Superadmin'].includes(String(user?.rolGlobal || user?.rol_global || ''));
 }
 
-export function isSiteManager(req, siteCode = req?.siteCode) {
-  if (isSuperadmin(req?.user)) return true;
+// Roles "manager" por nombre (fallback retrocompatible cuando el tenant no tiene
+// roles.config o el rol no figura ahí).
+const FALLBACK_MANAGER_ROLES = new Set(['Superadmin', 'Jefe TIC', 'Admin', 'Administrador']);
+const FALLBACK_EDITOR_ROLES = new Set([
+  'Superadmin', 'Jefe TIC', 'Admin', 'Administrador',
+  'Asistente', 'Asistente TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general'
+]);
+
+export function getActiveSiteRole(req) {
+  if (isSuperadmin(req?.user)) return 'Superadmin';
+  const target = normalizeSiteCode(req?.siteCode);
+  const match = (req?.userSites || []).find(site => normalizeSiteCode(site.siteCode) === target);
+  return String(match?.siteRole || 'Consulta');
+}
+
+/**
+ * Permisos efectivos del usuario en una sede, resueltos desde roles.config del tenant.
+ * Devuelve { admin, edit:Set, view:Set } donde '*' significa todos los módulos.
+ * Superadmin global => admin total. Si el rol no está en config, cae a heurística por nombre.
+ */
+export function resolveSitePermissions(req, siteCode = req?.siteCode) {
+  if (isSuperadmin(req?.user)) return { admin: true, edit: new Set(['*']), view: new Set(['*']) };
   const target = normalizeSiteCode(siteCode);
-  return (req?.userSites || []).some(site =>
-    normalizeSiteCode(site.siteCode) === target &&
-    ['Jefe TIC', 'Admin', 'Administrador'].includes(String(site.siteRole || ''))
-  );
+  const match = (req?.userSites || []).find(site => normalizeSiteCode(site.siteCode) === target);
+  const roleName = String(match?.siteRole || 'Consulta').trim();
+  const configRaw = getSiteSetting(target, 'roles.config');
+  const config = Array.isArray(configRaw) ? configRaw.find(role => String(role?.name || '').trim() === roleName) : null;
+  if (config) {
+    return {
+      admin: Boolean(config.admin),
+      edit: new Set((config.edit || []).map(String)),
+      view: new Set((config.view || []).map(String))
+    };
+  }
+  // Fallback por nombre de rol (datos legacy / tenant sin config).
+  if (FALLBACK_MANAGER_ROLES.has(roleName)) return { admin: true, edit: new Set(['*']), view: new Set(['*']) };
+  if (FALLBACK_EDITOR_ROLES.has(roleName)) return { admin: false, edit: new Set(['*']), view: new Set(['*']) };
+  return { admin: false, edit: new Set(), view: new Set(['*']) };
+}
+
+export function isSiteManager(req, siteCode = req?.siteCode) {
+  return resolveSitePermissions(req, siteCode).admin;
+}
+
+export function canEditSite(req, siteCode = req?.siteCode) {
+  const perms = resolveSitePermissions(req, siteCode);
+  return perms.admin || perms.edit.size > 0;
+}
+
+export function canEditModule(req, moduleKey, siteCode = req?.siteCode) {
+  const perms = resolveSitePermissions(req, siteCode);
+  return perms.admin || perms.edit.has('*') || perms.edit.has(moduleKey);
+}
+
+// Endpoints POST/PATCH que en realidad son de lectura (asistente IA) y no deben
+// quedar bloqueados para usuarios de consulta.
+const READ_ONLY_WRITE_PATHS = [/^\/asistente\b/, /^\/assistant\b/];
+
+export function requireEditor(req, res, next) {
+  const method = String(req.method || 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
+  if (READ_ONLY_WRITE_PATHS.some(rx => rx.test(req.path))) return next();
+  if (canEditSite(req)) return next();
+  return res.status(403).json({ ok: false, error: 'Tu rol es de solo consulta: no podés modificar datos en esta sede.' });
 }
 
 export function getAllowedSitesForAllowedUser(allowed) {

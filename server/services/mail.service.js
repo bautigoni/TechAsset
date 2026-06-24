@@ -50,6 +50,14 @@ export async function sendMail({ to, subject, text, html, replyTo }) {
     console.info(`[mail/MODO_PRUEBA] subject="${safeSubject}" to=${recipients.join(',')} (no se envió, sólo log)`);
     return { sent: false, mocked: true };
   }
+
+  // Preferir Resend (HTTP API) si está configurado. Si falla o no está, cae a SMTP.
+  if (config.resend.apiKey && config.resend.from) {
+    const resendResult = await sendViaResend({ recipients, subject: safeSubject, text, html, replyTo });
+    if (resendResult.sent || resendResult.hardError) return resendResult;
+    console.warn('[mail] Resend no disponible, intentando SMTP…');
+  }
+
   if (!settingsAreComplete(settings)) {
     console.warn(`[mail] SMTP incompleto, no se envía "${safeSubject}" a ${recipients.join(',')}.`);
     return { sent: false, missingConfig: true };
@@ -81,6 +89,40 @@ export async function sendMail({ to, subject, text, html, replyTo }) {
   } catch (error) {
     console.warn(`[mail] error enviando "${safeSubject}":`, error?.message || error);
     return { sent: false, error: error?.message || 'unknown error' };
+  }
+}
+
+/**
+ * Envía vía Resend HTTP API (sin dependencias nuevas, usa fetch nativo de Node 22).
+ * Devuelve { sent } o { sent:false, hardError } si el destinatario/payload es inválido.
+ */
+async function sendViaResend({ recipients, subject, text, html, replyTo }) {
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.resend.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: config.resend.from,
+        to: recipients,
+        subject,
+        html: html || undefined,
+        text: text || stripHtml(html || ''),
+        reply_to: replyTo || undefined
+      })
+    });
+    if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { sent: true, provider: 'resend', messageId: data?.id };
+    }
+    const errText = await response.text().catch(() => '');
+    console.warn(`[mail/resend] HTTP ${response.status}: ${errText.slice(0, 200)}`);
+    return { sent: false, error: `resend ${response.status}` };
+  } catch (error) {
+    console.warn('[mail/resend] error:', error?.message || error);
+    return { sent: false, error: error?.message || 'resend error' };
   }
 }
 

@@ -16,10 +16,32 @@ export const login = (payload: { email: string; nombre?: string; role?: string; 
   apiSend<AuthSession>('/api/auth/login', 'POST', payload);
 
 export const getRegisterOptions = () =>
-  apiGet<{ ok: true; sites: SiteInfo[] }>('/api/auth/register-options');
+  apiGet<{ ok: true; requiresCode: boolean }>('/api/auth/register-options');
 
-export const register = (payload: { email: string; nombre: string; role: string; siteCode: string; turno?: string }) =>
-  apiSend<AuthSession>('/api/auth/register', 'POST', payload);
+export const register = (payload: { email: string; nombre: string; code: string }) =>
+  apiSend<AuthSession & { activated?: boolean }>('/api/auth/register', 'POST', payload);
+
+export interface Invite {
+  id: number;
+  code: string;
+  siteCode: string;
+  role: string;
+  turno: string;
+  kind: 'admin' | 'standard';
+  email: string;
+  expiresAt: string;
+  usedAt: string;
+  status: 'Activa' | 'Usada' | 'Vencida' | 'Revocada';
+  createdAt: string;
+}
+
+export const getInvites = () => apiGet<{ ok: true; items: Invite[] }>('/api/invites');
+
+export const createInvite = (payload: { role: string; turno?: string; kind?: 'admin' | 'standard'; email?: string; expiresInDays?: number; siteCode?: string }) =>
+  apiSend<{ ok: true; invite: Invite & { registerUrl: string }; emailSent: boolean }>('/api/invites', 'POST', payload);
+
+export const revokeInvite = (id: number) =>
+  apiSend<{ ok: true; revoked: boolean }>(`/api/invites/${id}/revoke`, 'POST');
 
 export const logout = () => apiSend<{ ok: true }>('/api/auth/logout', 'POST');
 

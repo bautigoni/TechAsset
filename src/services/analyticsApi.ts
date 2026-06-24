@@ -1,3 +1,54 @@
 import { apiGet } from './apiClient';
 
-export const getAnalytics = () => apiGet<{ ok: true; movements: unknown[] }>('/api/analytics');
+export interface AnalyticsRow {
+  label: string;
+  value: number;
+}
+
+export interface LoanEvent {
+  id: number;
+  tipo: 'prestamo' | 'devolucion';
+  etiqueta: string;
+  alias: string;
+  filtro: string;
+  persona: string;
+  rol: string;
+  ubicacion: string;
+  ubicacionDetalle: string;
+  curso: string;
+  motivo: string;
+  motivoDetalle: string;
+  comentarios: string;
+  operador: string;
+  origen: string;
+  timestamp: string;
+}
+
+export interface AnalyticsSummary {
+  totalPrestamos: number;
+  totalDevoluciones: number;
+  personasUnicas: number;
+  equiposUnicos: number;
+  byPerson: AnalyticsRow[];
+  byRole: AnalyticsRow[];
+  byLocation: AnalyticsRow[];
+  byReason: AnalyticsRow[];
+  byCourse: AnalyticsRow[];
+  series: { granularity: 'day' | 'month'; rows: AnalyticsRow[] };
+}
+
+export interface AnalyticsResponse {
+  ok: true;
+  from: string;
+  to: string;
+  events: LoanEvent[];
+  summary: AnalyticsSummary;
+}
+
+export const getAnalytics = (from?: string, to?: string) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const qs = params.toString();
+  return apiGet<AnalyticsResponse>(`/api/analytics${qs ? `?${qs}` : ''}`);
+};

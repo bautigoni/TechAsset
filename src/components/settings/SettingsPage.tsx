@@ -5,19 +5,26 @@ import { fetchShiftSettings, updateShiftSettings } from '../../services/operatio
 import { SiteAdminPanel } from './SiteAdminPanel';
 import { AllowedUsersPanel } from './AllowedUsersPanel';
 import { LoanSettingsPanel } from './LoanSettingsPanel';
+import { ModulesPanel } from './ModulesPanel';
+import { RolesPanel } from './RolesPanel';
+import { InvitesPanel } from './InvitesPanel';
 
-export function SettingsPage({ operator, consultationMode, setConsultationMode, sync, user, sites, onSitesChanged }: {
+export function SettingsPage({ operator, consultationMode, setConsultationMode, siteRole, roleReadOnly, sync, user, sites, onSitesChanged, onModulesChanged }: {
   operator: Operator;
   setOperator: (operator: Operator) => void;
   consultationMode: boolean;
   setConsultationMode: (value: boolean) => void;
+  siteRole: string;
+  roleReadOnly: boolean;
   sync: SyncStatus;
   user: AuthUser;
   sites: SiteInfo[];
   onSitesChanged: () => void;
+  onModulesChanged?: () => void;
 }) {
   const [shifts, setShifts] = useState({ morningOperator: '', afternoonOperator: '' });
-  const isAdmin = ['Superadmin', 'Jefe TIC', 'Admin', 'Administrador'].includes(user.rolGlobal);
+  // Permisos por rol en la sede activa (Superadmin global incluido).
+  const isAdmin = ['Superadmin', 'Jefe TIC', 'Admin', 'Administrador'].includes(siteRole);
 
   useEffect(() => {
     fetchShiftSettings().then(r => r.ok && setShifts(r.settings)).catch(() => {});
@@ -33,10 +40,13 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
               <input className="input" value={operator} readOnly />
             </label>
             <label>Modo consulta / vista jefe
-              <select className="input" value={consultationMode ? 'si' : 'no'} onChange={event => setConsultationMode(event.target.value === 'si')}>
+              <select className="input" value={consultationMode ? 'si' : 'no'} disabled={roleReadOnly} onChange={event => setConsultationMode(event.target.value === 'si')}>
                 <option value="no">Desactivado</option>
                 <option value="si">Activado</option>
               </select>
+              {roleReadOnly
+                ? <small className="muted">Tu rol ({siteRole || 'Consulta'}) es de solo lectura: el modo consulta está siempre activo.</small>
+                : <small className="muted">Activalo para previsualizar la app en modo solo lectura.</small>}
             </label>
           </div>
           <div className="sync-status ok">
@@ -54,6 +64,9 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
         </section>
         {isAdmin && (
           <>
+            <ModulesPanel consultationMode={consultationMode} onChanged={onModulesChanged} />
+            <RolesPanel consultationMode={consultationMode} onChanged={onModulesChanged} />
+            <InvitesPanel consultationMode={consultationMode} />
             <LoanSettingsPanel />
             <SiteAdminPanel user={user} onChanged={onSitesChanged} />
             <AllowedUsersPanel canAssignSuperadmin={user.rolGlobal === 'Superadmin'} onChanged={onSitesChanged} />
