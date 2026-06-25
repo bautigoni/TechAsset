@@ -122,8 +122,12 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
     return itemsByTurno.filter(item => {
       if (item.fecha) return item.fecha === iso;
       return comparableDay(item.dia) === target;
-    });
+    }).sort((a, b) => `${a.desde}${a.curso}`.localeCompare(`${b.desde}${b.curso}`));
   }, [itemsByTurno]);
+
+  const nextTodayItems = useMemo(() => todayItems
+    .filter(item => item.estado === 'Pendiente' || item.estado === 'Entregado')
+    .slice(0, 4), [todayItems]);
 
   const applyKpiFilter = (source: AgendaItem[]) => {
     if (!kpiFilter || kpiFilter === 'total') return source;
@@ -147,7 +151,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
       if (item.fecha) return day === 'Hoy' ? item.fecha === iso : comparableDay(item.dia) === targetDay;
       return comparableDay(item.dia) === targetDay;
     }) : [];
-    return applyKpiFilter(byDay);
+    return applyKpiFilter(byDay).sort((a, b) => `${a.desde}${a.curso}`.localeCompare(`${b.desde}${b.curso}`));
   }, [day, itemsByTurno, kpiFilter]);
 
   const weekGroups = useMemo(() => WEEK_DAYS.map(weekDay => ({
@@ -217,11 +221,10 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
 
   return (
     <section className="view active agenda-view">
-      <div className="agenda-hero">
+      <div className="agenda-workbar">
         <div>
-          <span className="section-eyebrow">Agenda institucional</span>
           <h2>Agenda TIC</h2>
-          <p>{itemsByTurno.length} actividades visibles. Coordiná reservas, entregas y seguimiento del día.</p>
+          <p>{todayItems.length} hoy · {itemsByTurno.length} visibles · {computeKpis(todayItems).pending} pendientes</p>
         </div>
         <div className="agenda-hero-actions">
           <Button onClick={() => onRefresh?.()}><RefreshCw size={16} /> Actualizar</Button>
@@ -254,6 +257,23 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
           ))}
         </div>
       </div>
+
+      <section className="agenda-live-strip">
+        <div>
+          <span>Próximas de hoy</span>
+          <strong>{nextTodayItems.length ? `${nextTodayItems.length} en seguimiento` : 'Sin pendientes activas'}</strong>
+        </div>
+        <div className="agenda-live-items">
+          {nextTodayItems.map(item => (
+            <button key={item.id} type="button" onClick={() => { setDay('Hoy'); setTab('today'); }}>
+              <strong>{item.desde}</strong>
+              <span>{item.curso} · {item.actividad}</span>
+              <em>{item.estado}</em>
+            </button>
+          ))}
+          {!nextTodayItems.length && <span className="muted">No hay actividades pendientes o entregadas para hoy.</span>}
+        </div>
+      </section>
 
       <AgendaKpis kpis={kpis} activeFilter={kpiFilter} onFilter={toggleKpiFilter} />
       {kpiFilter && (

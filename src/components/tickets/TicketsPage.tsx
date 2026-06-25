@@ -3,6 +3,7 @@ import type { Ticket, TicketSource, TicketState } from '../../types';
 import { createTicket, deleteTicket, getTickets, updateTicket, uploadTicketImage } from '../../services/ticketsApi';
 import { getSiteSettings } from '../../services/authApi';
 import { fetchToolsConfig } from '../../services/toolsApi';
+import { formatDateTime } from '../../utils/formatters';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 
@@ -278,6 +279,10 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               <span className={ESTADO_BADGE[ticket.estado]}>{ticket.estado}</span>
             </div>
             <div className="ticket-source-line">{ticket.origen === 'handing' ? `Handing${ticket.numero ? ` · ${ticket.numero}` : ''}` : `Tiknology / InVgate · #${normalizeNumero(ticket.numero)}`}</div>
+            <div className="ticket-creator-line">
+              Cargado por <strong>{ticket.creadoPor || 'Sin usuario'}</strong>
+              {ticket.createdAt && <span> · {formatDateTime(ticket.createdAt)}</span>}
+            </div>
             {ticket.titulo && <div className="ticket-card-title">{ticket.titulo}</div>}
             {ticket.categoria && <div className="ticket-card-meta">{ticket.categoria}</div>}
             {ticket.descripcion && <p className="ticket-card-description">{ticket.descripcion}</p>}

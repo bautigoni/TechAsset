@@ -75,7 +75,9 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const requiresSchoolCourse = Boolean(selectedLocation?.requiresCourse);
 
   useEffect(() => {
-    if (initialCode) setCode(initialCode);
+    if (!initialCode) return;
+    setCode(initialCode);
+    window.setTimeout(() => codeInputRef.current?.focus(), 0);
   }, [initialCode]);
 
   useEffect(() => {

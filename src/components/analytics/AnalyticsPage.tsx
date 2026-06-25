@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Device } from '../../types';
 import { classifyDeviceType } from '../../utils/classifyDevice';
+import { formatLoanDateTime, loanAgeDays } from '../../utils/formatters';
 import { getAnalytics, type AnalyticsResponse } from '../../services/analyticsApi';
 import { Button } from '../layout/Button';
 import { ChartCard, type ChartType, type ChartSize } from './ChartCard';
@@ -51,6 +52,10 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
 
   // Estado vivo (no histórico): cuántos hay prestados ahora.
   const prestadosAhora = devices.filter(device => device.estado === 'Prestado');
+  const overdueLoans = useMemo(() => prestadosAhora
+    .map(device => ({ device, days: loanAgeDays(device.loanedAt) }))
+    .filter(item => item.days >= 1)
+    .sort((a, b) => b.days - a.days), [prestadosAhora]);
   const summary = data?.summary;
   const events = data?.events || [];
   const prestamoEvents = useMemo(() => events.filter(e => e.tipo === 'prestamo'), [events]);
@@ -66,21 +71,24 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
 
   const charts: Array<{ title: string; rows: Array<{ label: string; value: number; color?: string }>; type: ChartType; size: ChartSize }> = summary ? [
     { title: 'Préstamos en el tiempo', rows: summary.series.rows, type: 'line', size: 'wide' },
+    { title: 'Préstamos por hora', rows: summary.byHour || [], type: 'vertical', size: 'md' },
+    { title: 'Días con más demanda', rows: summary.byWeekday || [], type: 'bar', size: 'sm' },
+    { title: 'Equipos más prestados', rows: summary.byDevice || [], type: 'bar', size: 'md' },
     { title: 'Personas que más piden', rows: summary.byPerson, type: 'bar', size: 'md' },
-    { title: 'Préstamos por tipo de equipo', rows: typeRows, type: 'donut', size: 'md' },
+    { title: 'Préstamos por tipo de equipo', rows: typeRows, type: 'donut', size: 'sm' },
     { title: 'Ubicaciones', rows: summary.byLocation, type: 'vertical', size: 'md' },
-    { title: 'Roles', rows: summary.byRole, type: 'pie', size: 'md' },
+    { title: 'Operadores', rows: summary.byOperator || [], type: 'bar', size: 'sm' },
     { title: 'Motivos', rows: summary.byReason, type: 'bar', size: 'sm' },
-    { title: 'Cursos', rows: summary.byCourse, type: 'bar', size: 'sm' },
+    { title: 'Cursos', rows: summary.byCourse, type: 'bar', size: 'sm' }
   ] : [];
 
   const kpis: Array<{ icon: string; label: string; value: string | number; primary?: boolean }> = [
-    { icon: '📤', label: 'Préstamos (período)', value: summary?.totalPrestamos ?? 0, primary: true },
-    { icon: '📥', label: 'Devoluciones (período)', value: summary?.totalDevoluciones ?? 0, primary: true },
-    { icon: '⏳', label: 'Prestados ahora', value: prestadosAhora.length },
-    { icon: '👥', label: 'Personas distintas', value: summary?.personasUnicas ?? 0 },
-    { icon: '💻', label: 'Equipos distintos', value: summary?.equiposUnicos ?? 0 },
-    { icon: '🏷️', label: 'Tipo más prestado', value: typeRows[0]?.label || '-' },
+    { icon: 'IN', label: 'Préstamos (período)', value: summary?.totalPrestamos ?? 0, primary: true },
+    { icon: 'OUT', label: 'Devoluciones (período)', value: summary?.totalDevoluciones ?? 0, primary: true },
+    { icon: 'NOW', label: 'Prestados ahora', value: prestadosAhora.length },
+    { icon: 'LATE', label: 'Con más de 1 día', value: overdueLoans.length },
+    { icon: 'PPL', label: 'Personas distintas', value: summary?.personasUnicas ?? 0 },
+    { icon: 'TOP', label: 'Tipo más prestado', value: typeRows[0]?.label || '-' }
   ];
 
   return (
@@ -129,6 +137,22 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
             <span className="kpi-bento-value">{kpi.value}</span>
           </div>
         ))}
+        <section className="card analytics-risk-card chart-card--md">
+          <div className="card-head">
+            <h3>Préstamos a revisar</h3>
+            <span className="badge off">{overdueLoans.length}</span>
+          </div>
+          <div className="analytics-risk-list">
+            {overdueLoans.slice(0, 8).map(({ device, days }) => (
+              <div className={days >= 2 ? 'risk-row is-danger' : 'risk-row is-warning'} key={device.id}>
+                <strong>{device.etiqueta}</strong>
+                <span>{device.prestadoA || 'Sin persona'} · {formatLoanDateTime(device.loanedAt)}</span>
+                <em>{days} {days === 1 ? 'dia' : 'dias'}</em>
+              </div>
+            ))}
+            {!overdueLoans.length && <div className="empty-state analytics-risk-empty">No hay préstamos viejos activos.</div>}
+          </div>
+        </section>
         {charts.map(chart => (
           <ChartCard key={chart.title} title={chart.title} rows={chart.rows} type={chart.type} size={chart.size} />
         ))}

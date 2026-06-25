@@ -3,7 +3,7 @@ import type { Device } from '../../types';
 import { Badge } from '../layout/Badge';
 import { Button } from '../layout/Button';
 import { getOperationalAlias } from '../../utils/classifyDevice';
-import { formatTimeOnly } from '../../utils/formatters';
+import { formatLoanDateTime, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
 
 type ActionMode = 'full' | 'dashboard';
 
@@ -92,8 +92,15 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
                 <div>{tableValue(device.prestadoA)}</div>
                 {device.estado === 'Prestado' && device.ubicacion && <div className="cell-sub">{device.ubicacion}</div>}
               </td>
-              <td data-label="Horario préstamo">{device.estado === 'Prestado' ? tableValue(formatTimeOnly(device.loanedAt)) : '-'}</td>
-              <td data-label="Horario devolución">{tableValue(formatTimeOnly(device.returnedAt))}</td>
+              <td data-label="Horario préstamo">
+                {device.estado === 'Prestado' ? (
+                  <div className="loan-time-cell">
+                    <strong>{tableValue(formatLoanDateTime(device.loanedAt))}</strong>
+                    {device.loanedAt && <span className={`loan-age-pill loan-age-${loanAgeTone(device.loanedAt)}`}>{loanAgeLabel(device.loanedAt)}</span>}
+                  </div>
+                ) : '-'}
+              </td>
+              <td data-label="Horario devolución">{tableValue(formatLoanDateTime(device.returnedAt))}</td>
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
               <td data-label="Acciones" className="device-actions-cell">
                 <div className="table-actions device-actions">

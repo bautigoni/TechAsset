@@ -7,6 +7,12 @@ const rootDir = path.resolve(__dirname, '..');
 
 dotenv.config({ path: path.join(rootDir, '.env') });
 
+function publicUrl(value, fallback = 'https://techasset.bauhub.online') {
+  const raw = String(value || '').trim();
+  if (!raw || /work\.gd/i.test(raw)) return fallback;
+  return raw.replace(/\/+$/, '');
+}
+
 export const config = {
   rootDir,
   port: Number(process.env.PORT || 8000),
@@ -45,13 +51,13 @@ export const config = {
     // Remitente verificado en Resend, ej. "TechAsset <noreply@mail.tudominio.com>".
     from: process.env.RESEND_FROM || process.env.MAIL_FROM || ''
   },
-  appBaseUrl: String(process.env.APP_BASE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, ''),
+  appBaseUrl: publicUrl(process.env.APP_BASE_URL || process.env.TECHASSET_PUBLIC_URL),
   superadminEmails: String(process.env.SUPERADMIN_EMAILS || '')
     .split(',')
     .map(s => s.trim().toLowerCase())
     .filter(Boolean),
-  techassetPublicUrl: String(process.env.TECHASSET_PUBLIC_URL || process.env.APP_BASE_URL || 'https://techasset.bauhub.online').replace(/\/+$/, ''),
-  handingTicketUrl: process.env.HANDING_TICKET_URL || process.env.TECHASSET_PUBLIC_URL || 'https://techasset.bauhub.online',
+  techassetPublicUrl: publicUrl(process.env.TECHASSET_PUBLIC_URL || process.env.APP_BASE_URL),
+  handingTicketUrl: publicUrl(process.env.HANDING_TICKET_URL || process.env.TECHASSET_PUBLIC_URL),
   vapid: {
     publicKey: process.env.VAPID_PUBLIC_KEY || '',
     privateKey: process.env.VAPID_PRIVATE_KEY || '',

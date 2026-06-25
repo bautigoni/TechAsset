@@ -34,6 +34,10 @@ export interface AnalyticsSummary {
   byLocation: AnalyticsRow[];
   byReason: AnalyticsRow[];
   byCourse: AnalyticsRow[];
+  byDevice: AnalyticsRow[];
+  byOperator: AnalyticsRow[];
+  byHour: AnalyticsRow[];
+  byWeekday: AnalyticsRow[];
   series: { granularity: 'day' | 'month'; rows: AnalyticsRow[] };
 }
 

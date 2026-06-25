@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Device, Movement, PreviousDayLoan } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
-import { formatTimeOnly } from '../../utils/formatters';
+import { formatLoanDateTime, formatTimeOnly, loanAgeDays, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
 import { getPreviousDayLoans } from '../../services/loansApi';
 import { LoanForm } from './LoanForm';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
@@ -25,7 +25,9 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
   const available = devices.filter(device => normalizeLoanState(device.estado) === 'available');
   const byType = countBy(devices, device => classifyDeviceType(device));
   const byLocation = countBy(loaned, device => device.ubicacion || 'Sin ubicación');
-  const recentLoaned = loaned.slice(0, 8);
+  const recentLoaned = [...loaned]
+    .sort((a, b) => loanAgeDays(b.loanedAt) - loanAgeDays(a.loanedAt) || String(a.loanedAt || '').localeCompare(String(b.loanedAt || '')))
+    .slice(0, 8);
 
   useEffect(() => {
     let alive = true;
@@ -109,9 +111,10 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <div className="card-head"><h3>Actualmente prestados</h3><span className="muted">{loaned.length}</span></div>
             <div className="loaned-now-list">
               {recentLoaned.map(device => (
-                <div className="loaned-now-item" key={device.id}>
+                <div className={`loaned-now-item loan-age-${loanAgeTone(device.loanedAt)}`} key={device.id}>
                   <strong>{device.etiqueta} · {getOperationalAlias(device)}</strong>
                   <span>{device.prestadoA || 'Sin persona'} · {device.ubicacion || 'Sin ubicación'}</span>
+                  <span className="loaned-now-time">{formatLoanDateTime(device.loanedAt) || 'Sin fecha'} · {loanAgeLabel(device.loanedAt) || 'sin antiguedad'}</span>
                   <button type="button" onClick={async () => {
                     if (returningTag) return;
                     setReturningTag(device.etiqueta);

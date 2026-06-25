@@ -7,7 +7,7 @@ function escapeHtml(value) {
 }
 
 function appUrl(path = '') {
-  const base = (config.appBaseUrl || 'http://127.0.0.1:8000').replace(/\/+$/, '');
+  const base = (config.appBaseUrl || config.techassetPublicUrl || 'https://techasset.bauhub.online').replace(/\/+$/, '');
   if (!path) return base;
   return `${base}/${String(path).replace(/^\/+/, '')}`;
 }

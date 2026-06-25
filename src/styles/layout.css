@@ -1029,6 +1029,10 @@ html {
   font-size: 12px;
 }
 
+.loaned-now-time {
+  grid-column: 1;
+}
+
 .loaned-now-item button {
   align-self: center;
   background: rgba(34, 197, 94, .16);
@@ -1039,6 +1043,51 @@ html {
   grid-column: 2;
   grid-row: 1 / span 2;
   padding: 7px 10px;
+}
+
+.loan-time-cell {
+  display: grid;
+  gap: 5px;
+}
+
+.loan-time-cell strong {
+  font-size: 13px;
+}
+
+.loan-age-pill {
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  justify-self: start;
+  padding: 3px 7px;
+  width: max-content;
+}
+
+.loan-age-warning,
+.loan-age-pill.loan-age-warning {
+  border-color: rgba(245, 158, 11, .45);
+  background: rgba(245, 158, 11, .12);
+  color: #fde68a;
+}
+
+.loan-age-danger,
+.loan-age-pill.loan-age-danger {
+  border-color: rgba(239, 68, 68, .55);
+  background: rgba(127, 29, 29, .22);
+  color: #fecaca;
+}
+
+.loaned-now-item.loan-age-warning {
+  border-color: rgba(245, 158, 11, .45);
+  background: linear-gradient(180deg, rgba(245, 158, 11, .12), rgba(15, 23, 42, 0)), var(--panel-2);
+}
+
+.loaned-now-item.loan-age-danger {
+  border-color: rgba(239, 68, 68, .58);
+  background: linear-gradient(180deg, rgba(127, 29, 29, .34), rgba(15, 23, 42, 0)), var(--panel-2);
 }
 
 .analytics-filters {
