@@ -15,7 +15,7 @@ const ESTADO_BADGE: Record<TicketState, string> = {
 };
 
 type Draft = Partial<Ticket>;
-const EMPTY: Draft = { numero: '', estado: 'No hecho', imagenUrl: '' };
+const EMPTY: Draft = { numero: '', titulo: '', descripcion: '', categoria: '', estado: 'No hecho', imagenUrl: '' };
 
 const isPdf = (url?: string) => /\.pdf($|\?)/i.test(String(url || ''));
 // A1: el número de InVgate es solo dígitos (strippeamos el '#' o cualquier otra cosa).
@@ -126,7 +126,22 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   const invgateLink = (numero: string) => `${invgateBase}${encodeURIComponent(normalizeNumero(numero))}`;
 
   const openCreate = () => { setDraft(EMPTY); setEditingId(null); setError(''); setModalOpen(true); };
-  const openEdit = (ticket: Ticket) => { setDraft({ numero: ticket.numero, estado: ticket.estado, imagenUrl: ticket.imagenUrl }); setEditingId(ticket.id); setError(''); setModalOpen(true); };
+  const openEdit = (ticket: Ticket) => {
+    setDraft({
+      numero: ticket.numero,
+      titulo: ticket.titulo,
+      descripcion: ticket.descripcion,
+      categoria: ticket.categoria,
+      estado: ticket.estado,
+      prioridad: ticket.prioridad,
+      responsables: ticket.responsables,
+      imagenUrl: ticket.imagenUrl,
+      nota: ticket.nota
+    });
+    setEditingId(ticket.id);
+    setError('');
+    setModalOpen(true);
+  };
 
   const handleFile = async (file?: File) => {
     if (!file) return;
@@ -219,6 +234,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
             </div>
             {ticket.titulo && <div className="ticket-card-title">{ticket.titulo}</div>}
             {ticket.categoria && <div className="ticket-card-meta">{ticket.categoria}</div>}
+            {ticket.descripcion && <p className="ticket-card-description">{ticket.descripcion}</p>}
             {ticket.imagenUrl && <div className="ticket-card-file"><FilePreview url={ticket.imagenUrl} compact /></div>}
             <div className="ticket-card-actions">
               <select className="input" value={ticket.estado} disabled={consultationMode} onChange={e => changeEstado(ticket, e.target.value as TicketState)}>
@@ -251,6 +267,33 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               </select>
             </label>
           </div>
+          <div className="grid-2">
+            <label>Titulo
+              <input
+                className="input"
+                value={draft.titulo || ''}
+                onChange={e => setDraft(d => ({ ...d, titulo: e.target.value }))}
+                placeholder="Ej. Proyector sin imagen"
+              />
+            </label>
+            <label>Categoria
+              <input
+                className="input"
+                value={draft.categoria || ''}
+                onChange={e => setDraft(d => ({ ...d, categoria: e.target.value }))}
+                placeholder="Hardware, cuenta, conectividad..."
+              />
+            </label>
+          </div>
+          <label>Descripcion
+            <textarea
+              className="input"
+              rows={3}
+              value={draft.descripcion || ''}
+              onChange={e => setDraft(d => ({ ...d, descripcion: e.target.value }))}
+              placeholder="Detalle breve del problema o pedido"
+            />
+          </label>
           {normalizeNumero(draft.numero) && (
             <a href={invgateLink(draft.numero || '')} target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 13 }}>
               Abrir en InVgate: {invgateLink(draft.numero || '')} ↗

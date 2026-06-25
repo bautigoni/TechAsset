@@ -871,3 +871,97 @@ body.mobile-menu-open {
     flex: 0 0 34px;
   }
 }
+
+.agenda-selected-day {
+  min-width: 0;
+}
+
+.agenda-selected-day .agenda-cards {
+  display: grid !important;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(360px, 420px);
+  grid-template-columns: none !important;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.agenda-selected-day .agenda-card {
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.notif-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.notif-type-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--panel-2);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.notif-type-card.is-on {
+  border-color: rgba(59, 130, 246, .55);
+  background: rgba(59, 130, 246, .12);
+}
+
+.notif-type-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.notif-type-copy span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.notif-type-state {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.notif-type-card.is-on .notif-type-state {
+  border-color: rgba(34, 197, 94, .45);
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, .14);
+}
+
+.ticket-card-description {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 560px) {
+  .agenda-selected-day .agenda-cards {
+    grid-auto-columns: minmax(280px, 86vw);
+  }
+
+  .notif-type-card {
+    grid-template-columns: 1fr;
+  }
+}

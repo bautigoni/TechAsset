@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getDb, nowIso } from '../db.js';
 import { config } from '../config.js';
-import { broadcastRelease } from '../services/notifications.service.js';
+import { broadcastRelease, normalizeNotificationPrefs } from '../services/notifications.service.js';
 
 export const notificationsRouter = Router();
 
@@ -9,6 +9,12 @@ const userEmail = (req) => String(req.user?.email || '').toLowerCase();
 const isSuperadmin = (req) => String(req.user?.rolGlobal || '') === 'Superadmin';
 
 function rowToNotification(row) {
+  let payload = null;
+  try {
+    payload = row.payload_json ? JSON.parse(row.payload_json) : null;
+  } catch {
+    payload = null;
+  }
   return {
     id: row.id,
     siteCode: row.site_code,
@@ -16,6 +22,7 @@ function rowToNotification(row) {
     title: row.title,
     body: row.body || '',
     link: row.link || '',
+    payload,
     read: Number(row.read) === 1,
     createdAt: row.created_at
   };
@@ -51,11 +58,12 @@ notificationsRouter.get('/push/vapid-public-key', (_req, res) => {
 // Preferencias de notificación del usuario (push + mail).
 notificationsRouter.get('/notifications/prefs', (req, res) => {
   const email = userEmail(req);
-  const row = getDb().prepare('SELECT notif_email FROM allowed_users WHERE lower(email)=?').get(email);
+  const row = getDb().prepare('SELECT notif_email, notification_prefs_json FROM allowed_users WHERE lower(email)=?').get(email);
   const subs = getDb().prepare('SELECT COUNT(*) AS n FROM push_subscriptions WHERE lower(user_email)=?').get(email).n;
   res.json({
     ok: true,
     email: row ? Number(row.notif_email) === 1 : false,
+    types: normalizeNotificationPrefs(row?.notification_prefs_json || ''),
     pushSubscribed: subs > 0,
     pushAvailable: Boolean(config.vapid.publicKey)
   });
@@ -65,6 +73,10 @@ notificationsRouter.post('/notifications/prefs', (req, res) => {
   const email = userEmail(req);
   if (typeof req.body?.email === 'boolean') {
     getDb().prepare('UPDATE allowed_users SET notif_email=? WHERE lower(email)=?').run(req.body.email ? 1 : 0, email);
+  }
+  if (req.body?.types && typeof req.body.types === 'object') {
+    const prefs = normalizeNotificationPrefs(req.body.types);
+    getDb().prepare('UPDATE allowed_users SET notification_prefs_json=? WHERE lower(email)=?').run(JSON.stringify(prefs), email);
   }
   res.json({ ok: true });
 });

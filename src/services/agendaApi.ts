@@ -6,3 +6,5 @@ export const getAgendaHistory = () => apiGet<{ ok: true; items: unknown[] }>('/a
 export const createAgenda = (payload: Partial<AgendaItem> & { operator: string }) => apiSend<{ ok: true; item: AgendaItem }>('/api/agenda', 'POST', payload);
 export const updateAgenda = (id: string, payload: Partial<AgendaItem> & { operator: string }) => apiSend<{ ok: true; item: AgendaItem }>(`/api/agenda/${id}`, 'PATCH', payload);
 export const deleteAgenda = (id: string, operator: string) => apiSend<{ ok: true; id: string }>(`/api/agenda/${id}`, 'DELETE', { operator });
+export const getAgendaCalendarFeed = () => apiGet<{ ok: true; siteCode: string; feedUrl: string; token: string }>('/api/agenda/calendar-feed');
+export const rotateAgendaCalendarFeed = () => apiSend<{ ok: true; siteCode: string; feedUrl: string; token: string }>('/api/agenda/calendar-feed/rotate', 'POST');

@@ -2,7 +2,7 @@ type GlifingPreview = { ok: boolean; total: number; preview: Record<string, stri
 type GlifingGenerate = { ok: boolean; jobId?: string; total?: number; downloadUrl?: string; error?: string };
 type C365Preview = { ok: boolean; total?: number; validos?: number; invalidos?: number; modoPrueba?: boolean; preview?: Record<string, string>[]; invalidPreview?: Record<string, string>[]; error?: string };
 type C365Send = { ok: boolean; modoPrueba?: boolean; stats?: { total: number; ok: number; prueba: number; errores: number }; jobId?: string; reportUrl?: string; sample?: Record<string, string>[]; requireConfirm?: boolean; error?: string };
-type ToolsConfig = { ok: boolean; handingTicketUrl: string; modoPrueba: boolean; smtpConfigurado: boolean };
+type ToolsConfig = { ok: boolean; handingTicketUrl: string; modoPrueba: boolean; smtpConfigurado: boolean; resendConfigurado?: boolean; mailConfigurado?: boolean };
 
 export type MailSettingsState = {
   smtpServer: string;

@@ -22,8 +22,11 @@ const SITE_COOKIE = 'techasset_google_site';
 
 function isSecureCookie() {
   // En prod la app vive detrás de HTTPS (Caddy), mandamos secure=true.
-  // En dev (http://127.0.0.1:8000) secure rompe el callback.
-  return /^https:/i.test(config.techassetPublicUrl || config.appBaseUrl || '');
+  // En dev localhost/http, secure rompe las cookies del state/callback.
+  const url = config.google.redirectUri || config.appBaseUrl || config.techassetPublicUrl || '';
+  if (/^https:\/\/(localhost|127\.0\.0\.1)/i.test(url)) return false;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)/i.test(url)) return false;
+  return /^https:/i.test(url);
 }
 
 /**
@@ -64,7 +67,7 @@ googleAuthRouter.get('/auth/google/login', (req, res) => {
  * Errores se traducen a un redirect a /login?error=<slug> para que el front
  * los muestre (sin filtrar detalles de Google al usuario final).
  */
-googleAuthRouter.get('/auth/callback/google', async (req, res) => {
+googleAuthRouter.get(['/auth/callback/google', '/auth/google/callback'], async (req, res) => {
   if (!isEnabled()) {
     return res.redirect('/login?error=google_unavailable');
   }

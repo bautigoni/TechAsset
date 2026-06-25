@@ -7,9 +7,18 @@ export interface AppNotification {
   title: string;
   body: string;
   link: string;
+  payload?: unknown;
   read: boolean;
   createdAt: string;
 }
+
+export type NotificationTypePrefs = {
+  releases: boolean;
+  tasks: boolean;
+  tickets: boolean;
+  registrations: boolean;
+  system: boolean;
+};
 
 export const getNotifications = () =>
   apiGet<{ ok: true; items: AppNotification[]; unread: number }>('/api/notifications');
@@ -33,10 +42,13 @@ export const getLatestRelease = () =>
   apiGet<{ ok: true; release: { version: string; title: string; bodyMd: string } | null }>('/api/release-notes/latest');
 
 export const getNotificationPrefs = () =>
-  apiGet<{ ok: true; email: boolean; pushSubscribed: boolean; pushAvailable: boolean }>('/api/notifications/prefs');
+  apiGet<{ ok: true; email: boolean; types: NotificationTypePrefs; pushSubscribed: boolean; pushAvailable: boolean }>('/api/notifications/prefs');
 
 export const setNotificationEmailPref = (email: boolean) =>
   apiSend<{ ok: true }>('/api/notifications/prefs', 'POST', { email });
+
+export const setNotificationTypePrefs = (types: NotificationTypePrefs) =>
+  apiSend<{ ok: true }>('/api/notifications/prefs', 'POST', { types });
 
 export async function enableBrowserPush(): Promise<{ ok: boolean; error?: string }> {
   try {

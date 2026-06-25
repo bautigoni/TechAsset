@@ -1,4 +1,8 @@
 import { Router } from 'express';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { config } from '../config.js';
 import { getDb, nowIso, seedDefaultSettings } from '../db.js';
 import { isSiteManager, isSuperadmin, normalizeSiteCode, requireSite } from '../services/siteContext.service.js';
 import { sendMail } from '../services/mail.service.js';
@@ -7,6 +11,11 @@ import { buildUserApprovedMail, buildUserDeactivatedMail, buildUserRejectedMail 
 export const sitesRouter = Router();
 
 const ALLOWED_USER_ROLES = new Set(['Superadmin', 'Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro']);
+const LOGO_TYPES = new Map([
+  ['image/png', 'png'],
+  ['image/jpeg', 'jpg'],
+  ['image/webp', 'webp']
+]);
 
 function getAllowedRole(rawRole = 'Consulta') {
   const role = String(rawRole || 'Consulta').trim();
@@ -59,13 +68,16 @@ sitesRouter.post('/sites', (req, res) => {
   const siteCode = normalizeSiteCode(req.body?.siteCode || req.body?.site_code);
   if (!siteCode) return res.status(400).json({ ok: false, error: 'Falta site_code.' });
   const ts = nowIso();
+  let logo = '';
+  try { logo = resolveSiteLogo(siteCode, req.body || {}, ''); }
+  catch (error) { return res.status(400).json({ ok: false, error: error.message || 'Logo inválido.' }); }
   getDb().prepare(`
     INSERT INTO sites (site_code, nombre, subtitulo, logo, activo, spreadsheet_url, apps_script_url, inventory_sheet_name, theme_color, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(site_code) DO UPDATE SET nombre=excluded.nombre, subtitulo=excluded.subtitulo, logo=excluded.logo,
       spreadsheet_url=excluded.spreadsheet_url, apps_script_url=excluded.apps_script_url, inventory_sheet_name=excluded.inventory_sheet_name,
       theme_color=excluded.theme_color, updated_at=excluded.updated_at
-  `).run(siteCode, req.body?.nombre || siteCode, req.body?.subtitulo || '', req.body?.logo || '', req.body?.activo === false ? 0 : 1, req.body?.spreadsheetUrl || '', '', req.body?.inventorySheetName || '', req.body?.themeColor || '', ts, ts);
+  `).run(siteCode, req.body?.nombre || siteCode, req.body?.subtitulo || '', logo, req.body?.activo === false ? 0 : 1, req.body?.spreadsheetUrl || '', '', req.body?.inventorySheetName || '', req.body?.themeColor || '', ts, ts);
   seedDefaultSettings(getDb(), siteCode);
   if (req.user?.id) {
     getDb().prepare(`
@@ -82,13 +94,16 @@ sitesRouter.patch('/sites/:siteCode', (req, res) => {
   if (!isSuperadmin(req.user) && !isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para administrar esta sede.' });
   const old = getDb().prepare('SELECT * FROM sites WHERE site_code=?').get(siteCode);
   if (!old) return res.status(404).json({ ok: false, error: 'Sede no encontrada.' });
+  let logo = old.logo || '';
+  try { logo = resolveSiteLogo(siteCode, req.body || {}, old.logo || ''); }
+  catch (error) { return res.status(400).json({ ok: false, error: error.message || 'Logo inválido.' }); }
   getDb().prepare(`
     UPDATE sites SET nombre=?, subtitulo=?, logo=?, activo=?, spreadsheet_url=?, apps_script_url=?, inventory_sheet_name=?, theme_color=?, updated_at=?
     WHERE site_code=?
   `).run(
     req.body?.nombre ?? old.nombre,
     req.body?.subtitulo ?? old.subtitulo,
-    req.body?.logo ?? old.logo,
+    logo,
     req.body?.activo == null ? old.activo : (req.body.activo ? 1 : 0),
     req.body?.spreadsheetUrl ?? req.body?.spreadsheet_url ?? old.spreadsheet_url,
     old.apps_script_url || '',
@@ -268,6 +283,38 @@ async function notifyAllowedUserAction(allowed, action) {
     const mail = buildUserDeactivatedMail({ nombre });
     await sendMail({ to: allowed.email, subject: mail.subject, html: mail.html, text: mail.text });
   }
+}
+
+function resolveSiteLogo(siteCode, body, currentLogo) {
+  if (body.logoDataUrl) return saveLogoDataUrl(siteCode, body.logoDataUrl);
+  if (Object.prototype.hasOwnProperty.call(body, 'logo')) {
+    const value = String(body.logo || '').trim();
+    if (!value) return '';
+    if (isSafeLogoUrl(value)) return value;
+    throw new Error('Logo inválido. Usá una URL https o subí una imagen PNG/JPG/WebP.');
+  }
+  return currentLogo || '';
+}
+
+function isSafeLogoUrl(value) {
+  return value.startsWith('/uploads/site-logos/') || /^https:\/\/[^\s"'<>]+$/i.test(value);
+}
+
+function saveLogoDataUrl(siteCode, dataUrl) {
+  const match = String(dataUrl || '').match(/^data:(image\/png|image\/jpeg|image\/webp);base64,([a-z0-9+/=]+)$/i);
+  if (!match) throw new Error('Logo inválido. Subí una imagen PNG, JPG o WEBP.');
+  const mime = match[1].toLowerCase();
+  const ext = LOGO_TYPES.get(mime);
+  if (!ext) throw new Error('Formato de logo no soportado.');
+  const buffer = Buffer.from(match[2], 'base64');
+  const maxBytes = Math.min(Math.max(1, config.maxUploadMb || 2), 2) * 1024 * 1024;
+  if (!buffer.length || buffer.length > maxBytes) throw new Error('El logo supera el límite de 2 MB.');
+  const dir = path.join(config.rootDir, 'data', 'uploads', 'site-logos');
+  fs.mkdirSync(dir, { recursive: true });
+  const hash = crypto.createHash('sha256').update(buffer).digest('hex').slice(0, 16);
+  const filename = `${normalizeSiteCode(siteCode).toLowerCase()}-${hash}.${ext}`;
+  fs.writeFileSync(path.join(dir, filename), buffer);
+  return `/uploads/site-logos/${filename}`;
 }
 
 export function loadSiteSettings(siteCode) {

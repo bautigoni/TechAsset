@@ -23,6 +23,7 @@ import { ticketsRouter } from './routes/tickets.routes.js';
 import { invitesRouter } from './routes/invites.routes.js';
 import { googleAuthRouter } from './routes/googleAuth.routes.js';
 import { notificationsRouter } from './routes/notifications.routes.js';
+import { calendarRouter, publicCalendarRouter } from './routes/calendar.routes.js';
 import { authMiddleware, requireEditor } from './services/siteContext.service.js';
 
 getDb();
@@ -36,10 +37,12 @@ app.use('/uploads', express.static(path.join(config.rootDir, 'data', 'uploads'))
 app.use('/api', healthRouter);
 app.use('/api', authRouter);
 app.use('/api', googleAuthRouter);
+app.use('/', publicCalendarRouter);
 app.use('/api', authMiddleware);
 app.use('/api', sitesRouter);
 app.use('/api', invitesRouter);
 app.use('/api', notificationsRouter);
+app.use('/api', calendarRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.
 // (sitesRouter ya valida manager/superadmin por endpoint.)
 app.use('/api', requireEditor);

@@ -3477,3 +3477,257 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
 .compact-table.device-table th:nth-child(6),
 .compact-table.device-table th:nth-child(7),
 .compact-table.device-table th:nth-child(8) { width: auto; }
+
+/* ============= Tenant branding, calendar polish and mobile safe-area ============= */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.site-switcher { position: relative; min-width: 0; }
+.site-switcher-trigger,
+.site-switcher-option {
+  --tenant-accent: #3b82f6;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  border: 1px solid color-mix(in srgb, var(--tenant-accent) 42%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel-2) 84%, var(--tenant-accent));
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+.site-switcher-trigger { padding: 5px 10px 5px 6px; max-width: 230px; }
+.site-switcher-trigger:hover,
+.site-switcher-option:hover { transform: translateY(-1px); border-color: var(--tenant-accent); }
+.site-switcher-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  object-fit: cover;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  flex: 0 0 auto;
+}
+.site-switcher-text { display: grid; line-height: 1.1; min-width: 0; text-align: left; }
+.site-switcher-text strong { font-size: 13px; font-weight: 800; }
+.site-switcher-text small {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+.site-switcher-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(320px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(12, 22, 40, .98);
+  box-shadow: 0 24px 70px rgba(0,0,0,.42);
+  display: grid;
+  gap: 6px;
+}
+.site-switcher-option { width: 100%; justify-content: flex-start; padding: 8px; }
+.site-switcher-option.active {
+  border-color: var(--tenant-accent);
+  background: color-mix(in srgb, var(--panel) 70%, var(--tenant-accent));
+}
+.site-switcher-option svg { margin-left: auto; color: var(--tenant-accent); }
+
+.tenants-view,
+.agenda-view { display: grid; gap: 16px; }
+.tenants-hero,
+.agenda-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(59,130,246,.22), transparent 32%),
+    linear-gradient(135deg, rgba(15,29,52,.92), rgba(9,17,31,.96));
+}
+.section-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.tenants-hero h2,
+.agenda-hero h2 { margin: 0; font-size: clamp(28px, 4vw, 44px); line-height: 1; }
+.tenants-hero p,
+.agenda-hero p { max-width: 720px; margin: 8px 0 0; color: var(--muted); }
+.tenant-toolbar { display: flex; justify-content: flex-end; }
+.tenant-toolbar .input { max-width: 360px; }
+.tenant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 14px;
+}
+.tenant-card {
+  --tenant-accent: #3b82f6;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--tenant-accent) 38%, var(--border));
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(20,35,61,.96), rgba(12,22,39,.96));
+}
+.tenant-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.tenant-card-logo,
+.tenant-logo-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: rgba(255,255,255,.06);
+  border: 1px solid color-mix(in srgb, var(--tenant-accent, #3b82f6) 48%, rgba(255,255,255,.16));
+}
+.tenant-card h3 { margin: 0; font-size: 18px; }
+.tenant-card p,
+.tenant-meta { color: var(--muted); }
+.tenant-card p { margin: 3px 0 0; }
+.tenant-meta { display: grid; gap: 6px; font-size: 13px; }
+.tenant-meta strong { color: var(--text); }
+.tenant-actions,
+.tenant-admin-code,
+.tenant-code-result { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tenant-admin-code .input { flex: 1 1 180px; min-width: 0; }
+.tenant-code-result code { max-width: 100%; overflow-wrap: anywhere; }
+.tenant-editor { display: grid; gap: 14px; }
+.tenant-logo-editor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+}
+.tenant-logo-preview { width: 74px; height: 74px; }
+.tenant-upload-btn { position: relative; overflow: hidden; }
+.tenant-upload-btn input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+
+.agenda-hero-actions,
+.agenda-secondary-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.agenda-hero-actions .btn,
+.agenda-secondary-actions .btn { display: inline-flex; align-items: center; gap: 7px; }
+.agenda-control-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.025);
+}
+.agenda-view-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.agenda-view-tabs .agenda-tab {
+  min-height: 34px;
+  margin: 0;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 10px;
+}
+.agenda-view-tabs .agenda-tab.active { background: rgba(59,130,246,.18); }
+.agenda-month-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.agenda-month-card,
+.agenda-selected-day {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  padding: 18px;
+}
+.agenda-month-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.agenda-month-head h3 { margin: 0; text-transform: capitalize; }
+.agenda-month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 7px; }
+.agenda-month-weekday { color: var(--muted); font-size: 11px; font-weight: 800; text-align: center; }
+.agenda-month-day {
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+.agenda-month-day:hover { transform: translateY(-1px); border-color: var(--blue); }
+.agenda-month-day.muted-day { opacity: .42; }
+.agenda-month-day.today { border-color: #38bdf8; }
+.agenda-month-day.selected { background: rgba(59,130,246,.22); border-color: var(--blue); }
+.agenda-month-day span {
+  min-width: 20px;
+  border-radius: 999px;
+  padding: 1px 6px;
+  color: #dbeafe;
+  background: rgba(59,130,246,.34);
+  font-size: 11px;
+  font-weight: 800;
+}
+.calendar-sync-modal { display: grid; gap: 14px; }
+.calendar-sync-steps { margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.7; }
+
+@media (max-width: 980px) {
+  .topbar { padding-top: calc(8px + var(--safe-top)) !important; }
+  .main-content { padding-bottom: calc(14px + var(--safe-bottom)); }
+  .tenants-hero,
+  .agenda-hero,
+  .agenda-control-band { grid-template-columns: 1fr; align-items: stretch; }
+  .tenants-hero,
+  .agenda-hero { display: grid; }
+  .agenda-hero-actions,
+  .agenda-secondary-actions { justify-content: stretch; }
+  .agenda-hero-actions .btn,
+  .agenda-secondary-actions .btn { flex: 1 1 160px; justify-content: center; }
+  .agenda-month-layout { grid-template-columns: 1fr; }
+  .site-switcher-trigger { max-width: 176px; }
+  .site-switcher-text small { display: none; }
+}
+
+@media (max-width: 560px) {
+  .tenant-grid { grid-template-columns: 1fr; }
+  .tenant-card-head,
+  .tenant-logo-editor { grid-template-columns: 1fr; }
+  .tenant-card-logo,
+  .tenant-logo-preview { width: 58px; height: 58px; }
+  .agenda-view-tabs,
+  .agenda-turno-filter { width: 100%; }
+  .agenda-view-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

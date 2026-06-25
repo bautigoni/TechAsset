@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { AuthUser, Operator, SiteInfo, SyncStatus } from '../../types';
 import { AdvancedSettings } from './AdvancedSettings';
 import { fetchShiftSettings, updateShiftSettings } from '../../services/operationsApi';
-import { SiteAdminPanel } from './SiteAdminPanel';
 import { AllowedUsersPanel } from './AllowedUsersPanel';
 import { LoanSettingsPanel } from './LoanSettingsPanel';
 import { ModulesPanel } from './ModulesPanel';
@@ -70,7 +69,6 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
             <RolesPanel consultationMode={consultationMode} onChanged={onModulesChanged} />
             <InvitesPanel consultationMode={consultationMode} />
             <LoanSettingsPanel />
-            <SiteAdminPanel user={user} onChanged={onSitesChanged} />
             <AllowedUsersPanel canAssignSuperadmin={user.rolGlobal === 'Superadmin'} onChanged={onSitesChanged} />
             <AdvancedSettings />
           </>

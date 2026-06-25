@@ -4,6 +4,8 @@ import { getDb, nowIso } from '../db.js';
 import { clearSession, createSession, getUserSession, normalizeEmail, readSessionToken, upsertLoginUser } from '../services/siteContext.service.js';
 import { consumeInvite, findValidInvite } from '../services/invites.service.js';
 import { hashPassword, verifyPassword, hasPassword } from '../services/password.service.js';
+import { sendMail, getSuperadminRecipients } from '../services/mail.service.js';
+import { buildRegistrationAdminMail, buildRegistrationUserMail } from '../services/mailTemplates.js';
 
 export const authRouter = Router();
 
@@ -89,11 +91,50 @@ authRouter.post('/auth/register', (req, res) => {
     `).run(allowed.id, invite.site_code, invite.role, invite.turno, ts, ts);
 
     consumeInvite(code, email);
+    notifyRegistration({ email, nombre, invite }).catch(error => console.warn('[auth/register/notify]', error?.message || error));
     res.json({ ok: true, authenticated: false, activated: true, message: 'Cuenta creada. Ya podés iniciar sesión con tu mail.' });
   } catch (error) {
     res.status(400).json({ ok: false, error: error.message || 'No se pudo completar el registro.' });
   }
 });
+
+async function notifyRegistration({ email, nombre, invite }) {
+  const siteCode = invite?.site_code || '';
+  const adminRecipients = getRegistrationAdminRecipients(siteCode);
+  const adminMail = buildRegistrationAdminMail({
+    nombre,
+    email,
+    sede: siteCode,
+    rol: invite?.role || 'Consulta',
+    turno: invite?.turno || 'Sin turno',
+    fecha: new Date().toLocaleString('es-AR')
+  });
+  if (adminRecipients.length) {
+    await sendMail({ to: adminRecipients, subject: adminMail.subject, html: adminMail.html, text: adminMail.text });
+  }
+  const userMail = buildRegistrationUserMail({ nombre, sede: siteCode });
+  await sendMail({ to: email, subject: userMail.subject, html: userMail.html, text: userMail.text });
+}
+
+function getRegistrationAdminRecipients(siteCode) {
+  const recipients = new Set(getSuperadminRecipients());
+  const rows = getDb().prepare(`
+    SELECT DISTINCT au.email
+    FROM allowed_users au
+    JOIN allowed_user_sites aus ON aus.allowed_user_id=au.id
+    WHERE aus.site_code=? AND aus.activo=1 AND au.activo=1
+      AND COALESCE(au.deleted_at,'')=''
+      AND (
+        au.default_role IN ('Superadmin', 'Jefe TIC', 'Admin', 'Administrador')
+        OR aus.site_role IN ('Superadmin', 'Jefe TIC', 'Admin', 'Administrador')
+      )
+  `).all(siteCode);
+  rows.forEach(row => {
+    const email = String(row.email || '').trim().toLowerCase();
+    if (email) recipients.add(email);
+  });
+  return Array.from(recipients);
+}
 
 authRouter.post('/auth/logout', (req, res) => {
   clearSession(readSessionToken(req));

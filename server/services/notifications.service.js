@@ -6,8 +6,49 @@ import { buildReleaseBroadcastMail } from './mailTemplates.js';
 let webpushModule = null;
 let webpushReady = false;
 
-// Carga perezosa de web-push: si no está instalado o no hay VAPID, las push
-// quedan deshabilitadas sin romper el resto (in-app + mail siguen funcionando).
+export const DEFAULT_NOTIFICATION_PREFS = {
+  releases: true,
+  tasks: true,
+  tickets: true,
+  registrations: true,
+  system: true
+};
+
+export function notificationKindKey(kind = '') {
+  const value = String(kind || '').toLowerCase();
+  if (value.startsWith('release')) return 'releases';
+  if (value.startsWith('task')) return 'tasks';
+  if (value.startsWith('ticket')) return 'tickets';
+  if (value.startsWith('registration') || value.startsWith('invite') || value.startsWith('user.')) return 'registrations';
+  return 'system';
+}
+
+export function normalizeNotificationPrefs(raw = {}) {
+  const parsed = typeof raw === 'string' ? parsePrefsJson(raw) : raw;
+  return Object.fromEntries(
+    Object.entries(DEFAULT_NOTIFICATION_PREFS).map(([key, fallback]) => [key, typeof parsed?.[key] === 'boolean' ? parsed[key] : fallback])
+  );
+}
+
+export function getNotificationPrefsForUser(email) {
+  const row = getDb().prepare('SELECT notification_prefs_json FROM allowed_users WHERE lower(email)=?').get(String(email || '').toLowerCase());
+  return normalizeNotificationPrefs(row?.notification_prefs_json || '');
+}
+
+function parsePrefsJson(value) {
+  try {
+    const parsed = JSON.parse(String(value || '{}'));
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function wantsNotificationKind(email, kind) {
+  const prefs = getNotificationPrefsForUser(email);
+  return prefs[notificationKindKey(kind)] !== false;
+}
+
 async function getWebPush() {
   if (webpushReady) return webpushModule;
   webpushReady = true;
@@ -18,7 +59,7 @@ async function getWebPush() {
     webpush.setVapidDetails(config.vapid.subject, config.vapid.publicKey, config.vapid.privateKey);
     webpushModule = webpush;
   } catch {
-    webpushModule = null; // web-push no instalado
+    webpushModule = null;
   }
   return webpushModule;
 }
@@ -33,7 +74,6 @@ export async function sendPush(subscription, payload) {
     );
     return true;
   } catch (error) {
-    // 404/410 => suscripción muerta, la limpiamos.
     if (error && (error.statusCode === 404 || error.statusCode === 410)) {
       try { getDb().prepare('DELETE FROM push_subscriptions WHERE endpoint=?').run(subscription.endpoint); } catch { /* noop */ }
     }
@@ -55,14 +95,15 @@ function emailNotification(email, { title, body, link }) {
   const url = link && link.startsWith('http') ? link : `${config.techassetPublicUrl}${link || ''}`;
   sendMail({
     to: email,
-    subject: `TechAsset · ${title}`,
+    subject: `TechAsset - ${title}`,
     text: `${title}\n${body || ''}\n\nAbrir: ${url}`,
     html: `<div style="font-family:Arial,sans-serif;color:#e5e7eb;background:#0f172a;padding:24px"><div style="max-width:520px;margin:0 auto;background:#111c33;border:1px solid #2b3b5f;border-radius:16px;padding:22px"><h2 style="margin:0 0 8px;color:#fff">${title}</h2><p style="margin:0 0 16px;color:#aebbd4">${body || ''}</p><a href="${url}" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:10px">Abrir TechAsset</a></div></div>`
-  }).catch(() => { /* no romper por mail */ });
+  }).catch(() => { /* do not block flows because of mail */ });
 }
 
 export function notifyUser({ siteCode, email, kind = 'general', title, body = '', link = '', payload = null }) {
   if (!email || !title) return null;
+  if (!wantsNotificationKind(email, kind)) return null;
   const ts = nowIso();
   const info = getDb().prepare(`
     INSERT INTO notifications (site_code, user_email, kind, title, body, link, read, payload_json, created_at)
@@ -73,7 +114,6 @@ export function notifyUser({ siteCode, email, kind = 'general', title, body = ''
   return info.lastInsertRowid;
 }
 
-// Jefes TIC + Superadmin de la sede (para avisar de tareas/tickets nuevos).
 function siteAdminEmails(siteCode) {
   const code = String(siteCode || config.defaultSiteCode).toUpperCase();
   const rows = getDb().prepare(`
@@ -96,25 +136,24 @@ export function notifySiteAdmins({ siteCode, kind, title, body = '', link = '', 
 
 export async function broadcastRelease({ version, title, body, appUrl = config.techassetPublicUrl }) {
   const db = getDb();
-  const ts = nowIso();
-  // Destinatarios: todos los usuarios activos del allowlist.
   const users = db.prepare("SELECT email, notif_email FROM allowed_users WHERE activo=1 AND COALESCE(deleted_at,'')='' AND COALESCE(email,'')<>''").all();
   const mail = buildReleaseBroadcastMail({ version, title, bodyMd: body, appUrl });
   let inApp = 0;
   let sent = 0;
   for (const user of users) {
     const email = String(user.email).toLowerCase();
-    // In-app para TODOS.
-    db.prepare(`
-      INSERT INTO notifications (site_code, user_email, kind, title, body, link, read, payload_json, created_at)
-      VALUES (?, ?, 'release', ?, ?, '/', 0, '', ?)
-    `).run(config.defaultSiteCode, email, title, `Versión ${version} · tocá para ver las novedades`, ts);
-    inApp += 1;
-    // Push a quien tenga suscripción.
-    pushToUser(email, { title, body: 'Hay novedades en TechAsset', link: '/' });
-    // Mail SOLO a quien lo activó.
+    const id = notifyUser({
+      siteCode: config.defaultSiteCode,
+      email,
+      kind: 'release',
+      title,
+      body: `Version ${version} - toca para ver las novedades`,
+      link: '/release-notes',
+      payload: { version }
+    });
+    if (id) inApp += 1;
     if (Number(user.notif_email) === 1) {
-      try { await sendMail({ to: email, subject: mail.subject, text: mail.text, html: mail.html }); sent += 1; } catch { /* sigue */ }
+      try { await sendMail({ to: email, subject: mail.subject, text: mail.text, html: mail.html }); sent += 1; } catch { /* continue */ }
     }
   }
   return { recipients: users.length, inApp, mailsSent: sent };

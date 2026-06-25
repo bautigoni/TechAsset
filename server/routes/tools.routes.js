@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import { getAppSetting, setAppSetting } from '../db.js';
+import { sendMail } from '../services/mail.service.js';
 
 const MAIL_KEYS = ['smtpServer', 'smtpPort', 'smtpUser', 'smtpAppPassword', 'mailFrom', 'mailSubject', 'modoPrueba', 'microsoftLoginUrl'];
 
@@ -482,6 +483,40 @@ async function sendViaSmtp(rows) {
   return results;
 }
 
+async function sendViaConfiguredMail(rows) {
+  const settings = getMailSettings();
+  const providerConfigured = Boolean((config.resend.apiKey && config.resend.from) || (settings.smtpServer && settings.smtpUser && settings.smtpAppPassword && settings.mailFrom));
+  if (!providerConfigured) {
+    throw new Error('No hay proveedor de mail configurado. Configura Resend o SMTP desde Herramientas auxiliares.');
+  }
+
+  const results = [];
+  for (const r of rows) {
+    const nombre = r['Nombre para mostrar'] || '';
+    const usuario = r['Nombre de usuario'] || '';
+    const destino = r.mail || '';
+    const password = r['ContraseÃ±a'] || '';
+    const sede = r.Sede || '';
+    const licencias = r.Licencias || '';
+    try {
+      const result = await sendMail({
+        to: destino,
+        subject: settings.mailSubject,
+        text: `Hola ${nombre}\n\nUsuario: ${usuario}\nContraseÃ±a: ${password}\nSede: ${sede}\nLicencias: ${licencias}`,
+        html: buildEmailHtml({ nombre, usuario, password, sede, licencias })
+      });
+      if (result?.sent) {
+        results.push({ mail_destino: destino, usuario, nombre, estado: 'OK', detalle: `Enviado correctamente${result.provider ? ` via ${result.provider}` : ''}` });
+      } else {
+        results.push({ mail_destino: destino, usuario, nombre, estado: 'ERROR', detalle: result?.error || (result?.missingConfig ? 'Proveedor de mail incompleto' : 'No enviado') });
+      }
+    } catch (error) {
+      results.push({ mail_destino: destino, usuario, nombre, estado: 'ERROR', detalle: error.message || 'Error de mail' });
+    }
+  }
+  return results;
+}
+
 toolsRouter.post('/tools/credentials365/send', async (req, res, next) => {
   try {
     pruneOldJobs();
@@ -508,7 +543,7 @@ toolsRouter.post('/tools/credentials365/send', async (req, res, next) => {
         detalle: 'Correo generado pero no enviado (MODO_PRUEBA=true)'
       }));
     } else {
-      results = await sendViaSmtp(valid);
+      results = await sendViaConfiguredMail(valid);
     }
     for (const inv of invalid) {
       results.push({
@@ -554,11 +589,15 @@ toolsRouter.get('/tools/credentials365/report/:jobId', (req, res) => {
 // =========================================================
 toolsRouter.get('/tools/config', (_req, res) => {
   const settings = getMailSettings();
+  const resendConfigurado = Boolean(config.resend.apiKey && config.resend.from);
+  const smtpConfigurado = Boolean(settings.smtpServer && settings.smtpUser && settings.smtpAppPassword && settings.mailFrom);
   res.json({
     ok: true,
     handingTicketUrl: config.handingTicketUrl,
     modoPrueba: settings.modoPrueba,
-    smtpConfigurado: Boolean(settings.smtpServer && settings.smtpUser && settings.smtpAppPassword && settings.mailFrom)
+    smtpConfigurado,
+    resendConfigurado,
+    mailConfigurado: resendConfigurado || smtpConfigurado
   });
 });
 

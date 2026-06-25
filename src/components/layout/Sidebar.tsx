@@ -19,6 +19,7 @@ import {
 import type { SiteInfo, ViewKey } from '../../types';
 import { isViewEnabled, TOGGLEABLE_KEYS } from '../../utils/modules';
 import { canViewModule, type ModuleAccess } from '../../utils/permissions';
+import { TenantLogo } from './TenantLogo';
 
 type NavIcon = ComponentType<{ size?: number; strokeWidth?: number }>;
 
@@ -72,7 +73,7 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
       <aside className={`sidebar ${open ? 'open mobile-open' : ''} ${collapsed ? 'is-collapsed' : ''}`}>
         <div className="brand">
           <div className="brand-lockup">
-            <img className="brand-logo" src="/favicon.png" alt="TechAsset" />
+            <TenantLogo className="brand-logo" site={siteInfo} />
             <div className="brand-text">
               <h1>TechAsset</h1>
               <p>{siteInfo?.nombre || activeSite}</p>

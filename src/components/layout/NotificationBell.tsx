@@ -9,6 +9,18 @@ function kindToView(kind: string): ViewKey | null {
   return null;
 }
 
+function linkToView(link: string): ViewKey | null {
+  const clean = String(link || '').split('?')[0].replace(/\/+$/, '');
+  const match = clean.match(/\/sede\/[^/]+\/([^/]+)$/);
+  const view = match?.[1] || clean.replace(/^\//, '');
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  return allowed.includes(view as ViewKey) ? view as ViewKey : null;
+}
+
+function openReleaseNotes() {
+  window.dispatchEvent(new CustomEvent('techasset:open-release-notes'));
+}
+
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const min = Math.floor(diff / 60000);
@@ -35,8 +47,21 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
 
   const handleItem = (n: AppNotification) => {
     if (!n.read) void markRead(n.id);
-    const view = kindToView(n.kind);
-    if (view && onNavigate) { onNavigate(view); setOpen(false); }
+    if (n.kind.startsWith('release') || n.link === '/release-notes') {
+      openReleaseNotes();
+      setOpen(false);
+      return;
+    }
+    if (n.link && /^https?:\/\//i.test(n.link)) {
+      window.open(n.link, '_blank', 'noopener,noreferrer');
+      setOpen(false);
+      return;
+    }
+    const view = linkToView(n.link) || kindToView(n.kind);
+    if (view && onNavigate) {
+      onNavigate(view);
+      setOpen(false);
+    }
   };
 
   const openFromToast = () => {

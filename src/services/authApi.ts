@@ -57,6 +57,7 @@ export const saveSite = (site: Partial<SiteInfo> & {
   spreadsheetUrl?: string;
   inventorySheetName?: string;
   themeColor?: string;
+  logoDataUrl?: string;
   activo?: boolean;
   isNew?: boolean;
 }) => {

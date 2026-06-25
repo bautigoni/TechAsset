@@ -50,6 +50,7 @@ export function initDb(database = getDb()) {
       can_choose_role INTEGER DEFAULT 0,
       status TEXT DEFAULT 'Activo',
       activo INTEGER DEFAULT 1,
+      notification_prefs_json TEXT DEFAULT '',
       deleted_at TEXT DEFAULT '',
       deleted_by TEXT DEFAULT '',
       created_at TEXT,
@@ -434,6 +435,15 @@ export function initDb(database = getDb()) {
       sent_at TEXT DEFAULT '',
       sent_by TEXT DEFAULT ''
     );
+    CREATE TABLE IF NOT EXISTS agenda_calendar_tokens (
+      token TEXT PRIMARY KEY,
+      user_email TEXT NOT NULL,
+      site_code TEXT NOT NULL,
+      created_at TEXT,
+      revoked_at TEXT DEFAULT '',
+      UNIQUE(user_email, site_code)
+    );
+    CREATE INDEX IF NOT EXISTS idx_agenda_calendar_tokens_site ON agenda_calendar_tokens(site_code, revoked_at);
   `);
 
   ensureColumn(database, 'agenda', 'site_code', "TEXT DEFAULT 'NFPT'");
@@ -532,6 +542,7 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'allowed_users', 'deleted_by', "TEXT DEFAULT ''");
   ensureColumn(database, 'allowed_users', 'password_hash', "TEXT DEFAULT ''");
   ensureColumn(database, 'allowed_users', 'notif_email', 'INTEGER DEFAULT 0');
+  ensureColumn(database, 'allowed_users', 'notification_prefs_json', "TEXT DEFAULT ''");
 
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);

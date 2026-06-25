@@ -264,7 +264,7 @@ export function App() {
         {view === 'tools' && <ToolsPage operator={operator} />}
         {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}
         {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} />}
+        {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
       </main>
       {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}
@@ -280,7 +280,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tools', 'quickaccess', 'assistant', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 

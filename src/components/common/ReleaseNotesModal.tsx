@@ -7,16 +7,26 @@ const SEEN_KEY = 'techasset_last_seen_release';
 export function ReleaseNotesModal() {
   const [release, setRelease] = useState<{ version: string; title: string; bodyMd: string } | null>(null);
 
-  useEffect(() => {
+  const loadLatest = (force = false) => {
     let alive = true;
     getLatestRelease()
       .then(res => {
         if (!alive || !res.release) return;
-        if (localStorage.getItem(SEEN_KEY) === res.release.version) return;
+        if (!force && localStorage.getItem(SEEN_KEY) === res.release.version) return;
         setRelease(res.release);
       })
       .catch(() => { /* no logueado / sin releases */ });
     return () => { alive = false; };
+  };
+
+  useEffect(() => {
+    const cleanup = loadLatest(false);
+    const open = () => { void loadLatest(true); };
+    window.addEventListener('techasset:open-release-notes', open);
+    return () => {
+      cleanup();
+      window.removeEventListener('techasset:open-release-notes', open);
+    };
   }, []);
 
   if (!release) return null;

@@ -59,7 +59,7 @@ export function getUserSession(req) {
 export function getUserSites(userId) {
   const user = getDb().prepare('SELECT rol_global FROM users WHERE id=?').get(userId);
   if (isSuperadmin({ rolGlobal: user?.rol_global })) {
-    const rows = getDb().prepare('SELECT site_code AS siteCode, nombre, subtitulo, theme_color AS themeColor FROM sites WHERE activo=1 ORDER BY site_code').all();
+    const rows = getDb().prepare('SELECT site_code AS siteCode, nombre, subtitulo, logo, theme_color AS themeColor FROM sites WHERE activo=1 ORDER BY site_code').all();
     if (rows.length) return rows.map((row, index) => ({
       siteCode: row.siteCode,
       siteRole: user.rol_global || 'Jefe TIC',
@@ -67,12 +67,13 @@ export function getUserSites(userId) {
       isDefault: index === 0,
       nombre: row.nombre || row.siteCode,
       subtitulo: row.subtitulo || '',
+      logo: row.logo || '',
       themeColor: row.themeColor || ''
     }));
   }
   return getDb().prepare(`
     SELECT us.site_code AS siteCode, us.site_role AS siteRole, us.turno, us.is_default AS isDefault,
-           s.nombre, s.subtitulo, s.theme_color AS themeColor
+           s.nombre, s.subtitulo, s.logo, s.theme_color AS themeColor
     FROM user_sites us LEFT JOIN sites s ON s.site_code=us.site_code
     WHERE us.user_id=? AND us.activo=1 AND COALESCE(s.activo,1)=1
     ORDER BY us.is_default DESC, us.site_code
@@ -83,6 +84,7 @@ export function getUserSites(userId) {
     isDefault: Boolean(row.isDefault),
     nombre: row.nombre || row.siteCode,
     subtitulo: row.subtitulo || '',
+    logo: row.logo || '',
     themeColor: row.themeColor || ''
   }));
 }
@@ -164,14 +166,14 @@ export function requireEditor(req, res, next) {
 export function getAllowedSitesForAllowedUser(allowed) {
   const rows = getDb().prepare(`
     SELECT aus.site_code AS siteCode, aus.site_role AS siteRole, aus.turno, aus.is_default AS isDefault,
-           s.nombre, s.subtitulo, s.theme_color AS themeColor
+           s.nombre, s.subtitulo, s.logo, s.theme_color AS themeColor
     FROM allowed_user_sites aus LEFT JOIN sites s ON s.site_code=aus.site_code
     WHERE aus.allowed_user_id=? AND aus.activo=1 AND COALESCE(s.activo,1)=1
     ORDER BY aus.is_default DESC, aus.site_code
   `).all(allowed.id);
   if (rows.length) return rows;
   if (isSuperadmin({ rolGlobal: allowed.default_role })) {
-    const sites = getDb().prepare('SELECT site_code AS siteCode, nombre, subtitulo, theme_color AS themeColor FROM sites WHERE activo=1 ORDER BY site_code').all();
+    const sites = getDb().prepare('SELECT site_code AS siteCode, nombre, subtitulo, logo, theme_color AS themeColor FROM sites WHERE activo=1 ORDER BY site_code').all();
     if (sites.length) return sites.map((site, index) => ({ ...site, siteRole: allowed.default_role || 'Jefe TIC', turno: 'Todo el día', isDefault: index === 0 ? 1 : 0 }));
   }
   return [{
@@ -181,6 +183,7 @@ export function getAllowedSitesForAllowedUser(allowed) {
     isDefault: 1,
     nombre: normalizeSiteCode(config.defaultSiteCode),
     subtitulo: '',
+    logo: '',
     themeColor: ''
   }];
 }

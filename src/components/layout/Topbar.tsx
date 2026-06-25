@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
+import { Check, ChevronDown } from 'lucide-react';
 import type { AuthUser, SiteInfo, SyncStatus, ViewKey } from '../../types';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { NotificationBell } from './NotificationBell';
+import { TenantLogo } from './TenantLogo';
 
 const TITLES: Record<ViewKey, string> = {
   dashboard: 'TechAsset',
@@ -38,10 +41,28 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
 }) {
   const syncUi = useSyncStatus(sync);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [siteMenuOpen, setSiteMenuOpen] = useState(false);
+  const siteMenuRef = useRef<HTMLDivElement | null>(null);
   const displayName = user?.nombre || user?.email || 'Usuario';
   const initials = displayName.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
   const activeSiteInfo = sites.find(site => site.siteCode === activeSite);
   const canSwitchSites = user?.rolGlobal === 'Superadmin' && sites.length > 1;
+
+  useEffect(() => {
+    if (!siteMenuOpen) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!siteMenuRef.current?.contains(event.target as Node)) setSiteMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSiteMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [siteMenuOpen]);
 
   return (
     <header className="topbar">
@@ -49,7 +70,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
         <button className="mobile-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
           <span className="hamburger-icon" aria-hidden="true" />
         </button>
-        <img className="topbar-logo" src="/favicon.png" alt="TechAsset" />
+        <TenantLogo className="topbar-logo" site={activeSiteInfo} />
         <div className="topbar-title-text">
           <h2>{TITLES[view]}</h2>
           <p>{activeSite} · {activeSiteInfo?.nombre || 'Sede activa'}</p>
@@ -58,9 +79,50 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
       <div className="topbar-actions">
         {consultationMode && <span className="consulta-banner">Modo consulta</span>}
         {canSwitchSites ? (
-          <select className="operator-chip" value={activeSite} onChange={event => onSiteChange?.(event.target.value)} title="Seleccionar sede">
-            {sites.map(site => <option key={site.siteCode} value={site.siteCode}>{site.siteCode}</option>)}
-          </select>
+          <div className="site-switcher" ref={siteMenuRef}>
+            <button
+              className="site-switcher-trigger"
+              type="button"
+              aria-expanded={siteMenuOpen}
+              aria-label="Seleccionar sede"
+              onClick={() => setSiteMenuOpen(open => !open)}
+              style={{ '--tenant-accent': activeSiteInfo?.themeColor || '#3b82f6' } as CSSProperties}
+            >
+              <TenantLogo className="site-switcher-logo" site={activeSiteInfo} />
+              <span className="site-switcher-text">
+                <strong>{activeSite}</strong>
+                <small>{activeSiteInfo?.nombre || 'Sede activa'}</small>
+              </span>
+              <ChevronDown size={16} strokeWidth={2.2} />
+            </button>
+            {siteMenuOpen && (
+              <div className="site-switcher-menu" role="menu">
+                {sites.map(site => {
+                  const selected = site.siteCode === activeSite;
+                  return (
+                    <button
+                      key={site.siteCode}
+                      type="button"
+                      className={`site-switcher-option ${selected ? 'active' : ''}`}
+                      role="menuitem"
+                      onClick={() => {
+                        onSiteChange?.(site.siteCode);
+                        setSiteMenuOpen(false);
+                      }}
+                      style={{ '--tenant-accent': site.themeColor || '#3b82f6' } as CSSProperties}
+                    >
+                      <TenantLogo className="site-switcher-logo" site={site} />
+                      <span className="site-switcher-text">
+                        <strong>{site.siteCode}</strong>
+                        <small>{site.nombre || site.subtitulo || 'Sede'}</small>
+                      </span>
+                      {selected && <Check size={16} strokeWidth={2.4} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         ) : <span className="operator-chip" title={activeSiteInfo?.nombre || user?.email || 'Sede'}>{activeSite}</span>}
         <div className={`sync-mini ${syncUi.className}`} title={syncUi.title}>
           <span className="sync-mini-dot" />
