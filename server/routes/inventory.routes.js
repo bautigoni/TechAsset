@@ -99,7 +99,7 @@ function importInventoryCsv(siteCode, csvText) {
   const [header = [], ...dataRows] = rows;
   const headerMap = buildHeaderMap(header);
   const ts = nowIso();
-  const summary = { read: 0, created: 0, updated: 0, skipped: 0, errors: [] };
+  const summary = { read: 0, created: 0, updated: 0, skipped: 0, preservedImages: 0, errors: [] };
   const selectExisting = getDb().prepare('SELECT * FROM inventory_items WHERE site_code=? AND lower(nombre)=lower(?) LIMIT 1');
   const insert = getDb().prepare(`
     INSERT INTO inventory_items (site_code, nombre, categoria, cantidad, unidad, imagen_url, estado, observaciones, activo, deleted_at, deleted_by, created_at, updated_at)
@@ -131,12 +131,14 @@ function importInventoryCsv(siteCode, csvText) {
         }
         const old = selectExisting.get(siteCode, payload.nombre);
         if (old) {
+          const nextImageUrl = payload.imagenUrl || old.imagen_url || '';
+          if (!payload.imagenUrl && old.imagen_url) summary.preservedImages += 1;
           update.run(
             payload.nombre,
             payload.categoria,
             payload.cantidad,
             payload.unidad,
-            payload.imagenUrl || old.imagen_url || '',
+            nextImageUrl,
             payload.estado,
             payload.observaciones,
             ts,

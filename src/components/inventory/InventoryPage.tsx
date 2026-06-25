@@ -19,6 +19,20 @@ const EMPTY_FORM: Partial<InventoryItem> = {
   observaciones: ''
 };
 
+function InventoryThumb({ item }: { item: InventoryItem }) {
+  const [broken, setBroken] = useState(false);
+  const imageUrl = String(item.imagenUrl || '').trim();
+  useEffect(() => setBroken(false), [imageUrl]);
+  if (!imageUrl || broken) {
+    return (
+      <span className="inventory-placeholder-icon" aria-hidden="true">
+        <Package size={34} />
+      </span>
+    );
+  }
+  return <img src={imageUrl} alt="" loading="lazy" onError={() => setBroken(true)} />;
+}
+
 export function InventoryPage({ consultationMode }: { consultationMode: boolean }) {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [form, setForm] = useState<Partial<InventoryItem>>(EMPTY_FORM);
@@ -152,7 +166,8 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
     try {
       const csvText = await readFileAsText(file);
       const result = await importInventoryCsv(csvText);
-      setMessage(`Importación finalizada: ${result.read} leídos, ${result.created} nuevos, ${result.updated} actualizados, ${result.skipped} omitidos, ${result.errors.length} errores.`);
+      const preserved = result.preservedImages ? `, ${result.preservedImages} fotos conservadas` : '';
+      setMessage(`Importación finalizada: ${result.read} leídos, ${result.created} nuevos, ${result.updated} actualizados${preserved}, ${result.skipped} omitidos, ${result.errors.length} errores.`);
       await refresh();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo importar el inventario.');
@@ -227,7 +242,7 @@ export function InventoryPage({ consultationMode }: { consultationMode: boolean 
           {filtered.map(item => (
             <article className="inventory-item-card" key={item.id}>
               <div className="inventory-thumb">
-                {item.imagenUrl ? <img src={item.imagenUrl} alt="" /> : <span className="inventory-placeholder-icon" aria-hidden="true"><Package size={34} /></span>}
+                <InventoryThumb item={item} />
               </div>
               <div className="inventory-item-main">
                 <div>

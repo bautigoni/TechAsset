@@ -19,6 +19,7 @@ const FILE_TYPES = new Map([
 
 const ESTADOS = new Set(['No hecho', 'En proceso', 'Hecho']);
 const PRIORIDADES = new Set(['Baja', 'Media', 'Alta', 'Urgente']);
+const ORIGENES = new Set(['tik', 'handing']);
 
 ticketsRouter.get('/tickets', (req, res) => {
   const siteCode = requireSite(req);
@@ -33,17 +34,17 @@ ticketsRouter.get('/tickets', (req, res) => {
 ticketsRouter.post('/tickets', (req, res) => {
   const siteCode = requireSite(req);
   const payload = normalizeTicketPayload(req.body);
-  if (!payload.numero) return res.status(400).json({ ok: false, error: 'Cargá el número de ticket.' });
+  if (payload.origen === 'tik' && !payload.numero) return res.status(400).json({ ok: false, error: 'Cargá el número de ticket Tik/InVgate.' });
   const operador = req.user?.nombre || req.user?.email || '';
   const ts = nowIso();
   const info = getDb().prepare(`
-    INSERT INTO tickets (site_code, numero, titulo, descripcion, estado, prioridad, responsables_json, categoria, imagen_url, nota, creado_por, operador_ultimo_cambio, activo, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-  `).run(siteCode, payload.numero, payload.titulo, payload.descripcion, payload.estado, payload.prioridad, payload.responsablesJson, payload.categoria, payload.imagenUrl, payload.nota, operador, operador, ts, ts);
+    INSERT INTO tickets (site_code, numero, titulo, descripcion, estado, prioridad, responsables_json, categoria, imagen_url, nota, origen, creado_por, operador_ultimo_cambio, activo, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+  `).run(siteCode, payload.numero, payload.titulo, payload.descripcion, payload.estado, payload.prioridad, payload.responsablesJson, payload.categoria, payload.imagenUrl, payload.nota, payload.origen, operador, operador, ts, ts);
   try {
     notifySiteAdmins({
       siteCode, kind: 'ticket.created',
-      title: `Nuevo ticket #${payload.numero}`,
+      title: payload.origen === 'handing' ? 'Nuevo ticket Handing' : `Nuevo ticket #${payload.numero}`,
       body: payload.titulo ? payload.titulo : `Cargado por ${operador || 'el equipo'}`,
       link: `/sede/${siteCode}/tickets`,
       exceptEmail: req.user?.email
@@ -60,9 +61,9 @@ ticketsRouter.patch('/tickets/:id', (req, res) => {
   const operador = req.user?.nombre || req.user?.email || old.operador_ultimo_cambio || '';
   getDb().prepare(`
     UPDATE tickets
-    SET numero=?, titulo=?, descripcion=?, estado=?, prioridad=?, responsables_json=?, categoria=?, imagen_url=?, nota=?, operador_ultimo_cambio=?, updated_at=?
+    SET numero=?, titulo=?, descripcion=?, estado=?, prioridad=?, responsables_json=?, categoria=?, imagen_url=?, nota=?, origen=?, operador_ultimo_cambio=?, updated_at=?
     WHERE id=? AND site_code=?
-  `).run(payload.numero, payload.titulo, payload.descripcion, payload.estado, payload.prioridad, payload.responsablesJson, payload.categoria, payload.imagenUrl, payload.nota, operador, nowIso(), req.params.id, siteCode);
+  `).run(payload.numero, payload.titulo, payload.descripcion, payload.estado, payload.prioridad, payload.responsablesJson, payload.categoria, payload.imagenUrl, payload.nota, payload.origen, operador, nowIso(), req.params.id, siteCode);
   res.json({ ok: true, item: rowToTicket(getDb().prepare('SELECT * FROM tickets WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
@@ -106,6 +107,7 @@ function normalizeTicketPayload(raw = {}) {
   }
   const estado = ESTADOS.has(String(raw.estado)) ? String(raw.estado) : 'No hecho';
   const prioridad = PRIORIDADES.has(String(raw.prioridad)) ? String(raw.prioridad) : 'Media';
+  const origen = ORIGENES.has(String(raw.origen)) ? String(raw.origen) : 'tik';
   return {
     numero: String(raw.numero || '').trim(),
     titulo: String(raw.titulo || '').trim(),
@@ -115,7 +117,8 @@ function normalizeTicketPayload(raw = {}) {
     responsablesJson,
     categoria: String(raw.categoria || '').trim(),
     imagenUrl: String(raw.imagenUrl || raw.imagen_url || '').trim(),
-    nota: String(raw.nota || '').trim()
+    nota: String(raw.nota || '').trim(),
+    origen
   };
 }
 
@@ -135,6 +138,7 @@ function rowToTicket(row) {
     categoria: row.categoria || '',
     imagenUrl: row.imagen_url || '',
     nota: row.nota || '',
+    origen: ORIGENES.has(String(row.origen)) ? row.origen : 'tik',
     creadoPor: row.creado_por || '',
     operadorUltimoCambio: row.operador_ultimo_cambio || '',
     createdAt: row.created_at || '',

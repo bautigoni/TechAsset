@@ -1,4 +1,5 @@
 import { apiGet, apiSend } from './apiClient';
+import type { PreviousDayLoan } from '../types';
 
 export interface LoanSuggestion {
   persona: string;
@@ -12,6 +13,10 @@ export interface LoanSuggestion {
 
 export function getLoanSuggestions(q: string) {
   return apiGet<{ ok: true; suggestions: LoanSuggestion[] }>(`/api/loans/suggest?q=${encodeURIComponent(q)}`);
+}
+
+export function getPreviousDayLoans() {
+  return apiGet<{ ok: true; date: string; items: PreviousDayLoan[] }>('/api/loans/previous-day');
 }
 
 export type LoanSyncResponse = {

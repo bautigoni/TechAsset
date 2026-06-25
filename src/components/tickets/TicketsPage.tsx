@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Ticket, TicketState } from '../../types';
+import type { Ticket, TicketSource, TicketState } from '../../types';
 import { createTicket, deleteTicket, getTickets, updateTicket, uploadTicketImage } from '../../services/ticketsApi';
 import { getSiteSettings } from '../../services/authApi';
+import { fetchToolsConfig } from '../../services/toolsApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
+const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
+  { key: 'tik', label: 'Tiknology', helper: 'Ticket Tik/InVgate' },
+  { key: 'handing', label: 'Handing', helper: 'Ticket Handing' }
+];
 const DEFAULT_INVGATE = 'https://tikno.sd.cloud.invgate.net/requests/show/index/id/';
+const DEFAULT_HANDING = 'https://techasset.bauhub.online';
 
 const ESTADO_BADGE: Record<TicketState, string> = {
   'No hecho': 'badge off',
@@ -15,11 +21,14 @@ const ESTADO_BADGE: Record<TicketState, string> = {
 };
 
 type Draft = Partial<Ticket>;
-const EMPTY: Draft = { numero: '', titulo: '', descripcion: '', categoria: '', estado: 'No hecho', imagenUrl: '' };
+const EMPTY: Draft = { numero: '', titulo: '', descripcion: '', categoria: '', estado: 'No hecho', imagenUrl: '', origen: 'tik' };
 
 const isPdf = (url?: string) => /\.pdf($|\?)/i.test(String(url || ''));
 // A1: el número de InVgate es solo dígitos (strippeamos el '#' o cualquier otra cosa).
 const normalizeNumero = (value: unknown) => String(value ?? '').replace(/\D+/g, '');
+const normalizeReference = (value: unknown, source: TicketSource) => source === 'tik'
+  ? normalizeNumero(value)
+  : String(value ?? '').trim();
 
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -77,6 +86,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'todos' | TicketState>('todos');
+  const [sourceFilter, setSourceFilter] = useState<'todos' | TicketSource>('todos');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -84,6 +94,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [invgateBase, setInvgateBase] = useState(DEFAULT_INVGATE);
+  const [handingBase, setHandingBase] = useState(DEFAULT_HANDING);
 
   const load = () => {
     setLoading(true);
@@ -100,6 +111,11 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
         if (url) setInvgateBase(url.endsWith('/') ? url : `${url}/`);
       })
       .catch(() => {});
+    fetchToolsConfig()
+      .then(response => {
+        if (response.handingTicketUrl) setHandingBase(response.handingTicketUrl);
+      })
+      .catch(() => {});
   }, []);
 
   const counts = useMemo(() => ({
@@ -109,11 +125,18 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
     'Hecho': tickets.filter(t => t.estado === 'Hecho').length
   }), [tickets]);
 
+  const sourceCounts = useMemo(() => ({
+    todos: tickets.length,
+    tik: tickets.filter(t => (t.origen || 'tik') === 'tik').length,
+    handing: tickets.filter(t => t.origen === 'handing').length
+  }), [tickets]);
+
   // A3: búsqueda por número, título, descripción, categoría, responsables y creadoPor.
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tickets.filter(t => {
       if (filter !== 'todos' && t.estado !== filter) return false;
+      if (sourceFilter !== 'todos' && (t.origen || 'tik') !== sourceFilter) return false;
       if (!q) return true;
       const hay = [
         t.numero, t.titulo, t.descripcion, t.categoria, t.creadoPor,
@@ -121,9 +144,16 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
       ].join(' ').toLowerCase();
       return hay.includes(q);
     });
-  }, [tickets, filter, search]);
+  }, [tickets, filter, search, sourceFilter]);
 
   const invgateLink = (numero: string) => `${invgateBase}${encodeURIComponent(normalizeNumero(numero))}`;
+  const handingLink = (numero: string) => {
+    const base = handingBase.trim() || DEFAULT_HANDING;
+    const ref = String(numero || '').trim();
+    if (base.includes('{ticket}')) return base.replace('{ticket}', encodeURIComponent(ref));
+    return base;
+  };
+  const ticketLink = (ticket: Pick<Ticket, 'numero' | 'origen'>) => ticket.origen === 'handing' ? handingLink(ticket.numero) : invgateLink(ticket.numero);
 
   const openCreate = () => { setDraft(EMPTY); setEditingId(null); setError(''); setModalOpen(true); };
   const openEdit = (ticket: Ticket) => {
@@ -136,7 +166,8 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
       prioridad: ticket.prioridad,
       responsables: ticket.responsables,
       imagenUrl: ticket.imagenUrl,
-      nota: ticket.nota
+      nota: ticket.nota,
+      origen: ticket.origen || 'tik'
     });
     setEditingId(ticket.id);
     setError('');
@@ -159,12 +190,13 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   };
 
   const save = async () => {
-    const numero = normalizeNumero(draft.numero);
-    if (!numero) { setError('Cargá el número de ticket (solo dígitos).'); return; }
+    const origen = draft.origen || 'tik';
+    const numero = normalizeReference(draft.numero, origen);
+    if (origen === 'tik' && !numero) { setError('Cargá el número de ticket Tik/InVgate (solo dígitos).'); return; }
     setBusy(true);
     setError('');
     try {
-      const payload = { ...draft, numero };
+      const payload = { ...draft, numero, origen };
       if (editingId) await updateTicket(editingId, payload);
       else await createTicket(payload);
       setModalOpen(false);
@@ -215,6 +247,19 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
             </button>
           ))}
         </div>
+        <div className="ticket-chips ticket-source-chips">
+          {(['todos', ...ORIGENES.map(item => item.key)] as const).map(key => (
+            <button
+              key={key}
+              type="button"
+              className={`ticket-chip ${sourceFilter === key ? 'is-active' : ''}`}
+              onClick={() => setSourceFilter(key)}
+            >
+              {key === 'todos' ? 'Todos los origenes' : ORIGENES.find(item => item.key === key)?.label}
+              <span className="ticket-chip-count">{sourceCounts[key]}</span>
+            </button>
+          ))}
+        </div>
       </div>
       <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
         {visible.length} {visible.length === 1 ? 'resultado' : 'resultados'}
@@ -229,9 +274,10 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           <section className="ticket-card" key={ticket.id}>
             {/* A5: header limpio con #numero azul + badge estado */}
             <div className="ticket-card-head">
-              <a href={invgateLink(ticket.numero)} target="_blank" rel="noreferrer" className="ticket-number-link">#{normalizeNumero(ticket.numero)} ↗</a>
+              <a href={ticketLink(ticket)} target="_blank" rel="noreferrer" className="ticket-number-link">{ticket.origen === 'handing' ? 'Handing' : `#${normalizeNumero(ticket.numero)}`} ↗</a>
               <span className={ESTADO_BADGE[ticket.estado]}>{ticket.estado}</span>
             </div>
+            <div className="ticket-source-line">{ticket.origen === 'handing' ? `Handing${ticket.numero ? ` · ${ticket.numero}` : ''}` : `Tiknology / InVgate · #${normalizeNumero(ticket.numero)}`}</div>
             {ticket.titulo && <div className="ticket-card-title">{ticket.titulo}</div>}
             {ticket.categoria && <div className="ticket-card-meta">{ticket.categoria}</div>}
             {ticket.descripcion && <p className="ticket-card-description">{ticket.descripcion}</p>}
@@ -249,17 +295,30 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
 
       {modalOpen && (
         <Modal title={editingId ? 'Editar ticket' : 'Cargar ticket'} onClose={() => setModalOpen(false)}>
+          <div className="ticket-source-control" role="group" aria-label="Origen del ticket">
+            {ORIGENES.map(item => (
+              <button
+                key={item.key}
+                type="button"
+                className={draft.origen === item.key ? 'active' : ''}
+                onClick={() => setDraft(d => ({ ...d, origen: item.key, numero: normalizeReference(d.numero, item.key) }))}
+              >
+                <strong>{item.label}</strong>
+                <span>{item.helper}</span>
+              </button>
+            ))}
+          </div>
           <div className="grid-2">
-            <label>Número de ticket (InVgate)
+            <label>{draft.origen === 'handing' ? 'Referencia de ticket (Handing)' : 'Número de ticket (InVgate)'}
               <input
                 className="input"
                 value={draft.numero || ''}
-                onChange={e => setDraft(d => ({ ...d, numero: normalizeNumero(e.target.value) }))}
-                placeholder="Ej. 2103"
-                inputMode="numeric"
+                onChange={e => setDraft(d => ({ ...d, numero: normalizeReference(e.target.value, d.origen || 'tik') }))}
+                placeholder={draft.origen === 'handing' ? 'Ej. HDMI-2103' : 'Ej. 2103'}
+                inputMode={draft.origen === 'handing' ? 'text' : 'numeric'}
                 autoFocus
               />
-              <span className="muted" style={{ fontSize: 12 }}>Solo el número, sin <code>#</code> — ej. <code>2103</code></span>
+              <span className="muted" style={{ fontSize: 12 }}>{draft.origen === 'handing' ? 'No usa #id: podés dejarlo vacío o escribir una referencia interna.' : <>Solo el número, sin <code>#</code> - ej. <code>2103</code></>}</span>
             </label>
             <label>Estado
               <select className="input" value={draft.estado || 'No hecho'} onChange={e => setDraft(d => ({ ...d, estado: e.target.value as TicketState }))}>
@@ -294,9 +353,9 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               placeholder="Detalle breve del problema o pedido"
             />
           </label>
-          {normalizeNumero(draft.numero) && (
-            <a href={invgateLink(draft.numero || '')} target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 13 }}>
-              Abrir en InVgate: {invgateLink(draft.numero || '')} ↗
+          {normalizeReference(draft.numero, draft.origen || 'tik') && (
+            <a href={(draft.origen || 'tik') === 'handing' ? handingLink(draft.numero || '') : invgateLink(draft.numero || '')} target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 13 }}>
+              Abrir en {(draft.origen || 'tik') === 'handing' ? 'Handing' : 'InVgate'} ↗
             </a>
           )}
           <label>Ticket exportado (PDF o foto)

@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import type { Device, Movement } from '../../types';
+import { useEffect, useState } from 'react';
+import type { Device, Movement, PreviousDayLoan } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
+import { formatTimeOnly } from '../../utils/formatters';
+import { getPreviousDayLoans } from '../../services/loansApi';
 import { LoanForm } from './LoanForm';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
 
@@ -16,11 +18,29 @@ type LoanActionResult = { synced?: boolean; message?: string } | void;
 
 export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; initialCode?: string }) {
   const [returningTag, setReturningTag] = useState('');
+  const [previousLoans, setPreviousLoans] = useState<PreviousDayLoan[]>([]);
+  const [previousDate, setPreviousDate] = useState('');
+  const [previousError, setPreviousError] = useState('');
   const loaned = devices.filter(device => normalizeLoanState(device.estado) === 'loaned');
   const available = devices.filter(device => normalizeLoanState(device.estado) === 'available');
   const byType = countBy(devices, device => classifyDeviceType(device));
   const byLocation = countBy(loaned, device => device.ubicacion || 'Sin ubicación');
   const recentLoaned = loaned.slice(0, 8);
+
+  useEffect(() => {
+    let alive = true;
+    getPreviousDayLoans()
+      .then(response => {
+        if (!alive) return;
+        setPreviousLoans(response.items || []);
+        setPreviousDate(response.date || '');
+      })
+      .catch(error => {
+        if (!alive) return;
+        setPreviousError(error instanceof Error ? error.message : 'No se pudo cargar el resumen de ayer.');
+      });
+    return () => { alive = false; };
+  }, []);
 
   return (
     <section className="view active">
@@ -44,6 +64,46 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <div className="loan-filter-chips">
               {byType.map(([label, value]) => <span key={label}>{label}: {value}</span>)}
             </div>
+          </section>
+          <section className="card previous-loans-card">
+            <div className="card-head">
+              <div>
+                <h3>Préstamos de ayer</h3>
+                <span className="muted">{previousDate ? formatShortDate(previousDate) : 'Actualización diaria'}</span>
+              </div>
+              <span className="badge loaned">{previousLoans.length}</span>
+            </div>
+            {previousError && <div className="tool-error">{previousError}</div>}
+            {!previousError && previousLoans.length > 0 && (
+              <div className="previous-loans-table-wrap">
+                <table className="previous-loans-table">
+                  <thead>
+                    <tr>
+                      <th>Hora</th>
+                      <th>Equipo</th>
+                      <th>Persona</th>
+                      <th>Ubicación</th>
+                      <th>Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previousLoans.map(item => (
+                      <tr key={item.id}>
+                        <td>{formatTimeOnly(item.timestamp) || '-'}</td>
+                        <td>
+                          <strong>{item.etiqueta}</strong>
+                          {item.alias && <span>{item.alias}</span>}
+                        </td>
+                        <td>{item.persona || '-'}</td>
+                        <td>{[item.ubicacion, item.curso].filter(Boolean).join(' · ') || '-'}</td>
+                        <td>{item.motivo || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {!previousError && !previousLoans.length && <div className="empty-state previous-loans-empty">No hubo préstamos registrados ayer.</div>}
           </section>
           <section className="card loaned-now-card">
             <div className="card-head"><h3>Actualmente prestados</h3><span className="muted">{loaned.length}</span></div>
@@ -70,6 +130,12 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
       </div>
     </section>
   );
+}
+
+function formatShortDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, (month || 1) - 1, day || 1);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
 }
 
 function normalizeLoanState(value?: string) {
