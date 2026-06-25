@@ -34,38 +34,37 @@ function settingsAreComplete(s) {
   return Boolean(s.server && s.user && s.appPassword && s.mailFrom);
 }
 
-/**
- * Envía un mail. Nunca rompe el flujo del caller:
- * - Si MODO_PRUEBA está activo, loguea y devuelve { sent: false, mocked: true }.
- * - Si SMTP no está configurado, loguea y devuelve { sent: false, missingConfig: true }.
- * - Si nodemailer falla, captura el error y devuelve { sent: false, error }.
- */
 export async function sendMail({ to, subject, text, html, replyTo }) {
   if (!to || (Array.isArray(to) && !to.length)) return { sent: false, skipped: 'no-recipient' };
-  const settings = readMailSettings();
   const recipients = Array.isArray(to) ? to.filter(Boolean) : [to];
   const safeSubject = String(subject || '(sin asunto)');
 
-  if (settings.modoPrueba) {
-    console.info(`[mail/MODO_PRUEBA] subject="${safeSubject}" to=${recipients.join(',')} (no se envió, sólo log)`);
+  if (config.smtp.modoPrueba) {
+    console.info(`[mail/MODO_PRUEBA] subject="${safeSubject}" to=${recipients.join(',')} (no se envio, solo log)`);
     return { sent: false, mocked: true };
   }
 
-  // Preferir Resend (HTTP API) si está configurado. Si falla o no está, cae a SMTP.
   if (config.resend.apiKey && config.resend.from) {
     const resendResult = await sendViaResend({ recipients, subject: safeSubject, text, html, replyTo });
-    if (resendResult.sent || resendResult.hardError) return resendResult;
-    console.warn('[mail] Resend no disponible, intentando SMTP…');
+    if (resendResult.sent) return resendResult;
+    console.warn('[mail] Resend configurado pero no pudo enviar; no se intenta SMTP.');
+    return resendResult;
+  }
+
+  const settings = readMailSettings();
+  if (settings.modoPrueba) {
+    console.info(`[mail/MODO_PRUEBA] subject="${safeSubject}" to=${recipients.join(',')} (no se envio, solo log)`);
+    return { sent: false, mocked: true };
   }
 
   if (!settingsAreComplete(settings)) {
-    console.warn(`[mail] SMTP incompleto, no se envía "${safeSubject}" a ${recipients.join(',')}.`);
+    console.warn(`[mail] SMTP incompleto, no se envia "${safeSubject}" a ${recipients.join(',')}.`);
     return { sent: false, missingConfig: true };
   }
 
   const nodemailer = await loadNodemailer();
   if (!nodemailer) {
-    console.warn('[mail] nodemailer no disponible, no se envía.');
+    console.warn('[mail] nodemailer no disponible, no se envia.');
     return { sent: false, missingDep: true };
   }
 
@@ -85,21 +84,20 @@ export async function sendMail({ to, subject, text, html, replyTo }) {
       html: html || undefined
     });
     transporter.close();
-    return { sent: true, messageId: info.messageId };
+    return { sent: true, provider: 'smtp', messageId: info.messageId };
   } catch (error) {
     console.warn(`[mail] error enviando "${safeSubject}":`, error?.message || error);
     return { sent: false, error: error?.message || 'unknown error' };
   }
 }
 
-/**
- * Envía vía Resend HTTP API (sin dependencias nuevas, usa fetch nativo de Node 22).
- * Devuelve { sent } o { sent:false, hardError } si el destinatario/payload es inválido.
- */
 async function sendViaResend({ recipients, subject, text, html, replyTo }) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${config.resend.apiKey}`,
         'Content-Type': 'application/json'
@@ -123,6 +121,8 @@ async function sendViaResend({ recipients, subject, text, html, replyTo }) {
   } catch (error) {
     console.warn('[mail/resend] error:', error?.message || error);
     return { sent: false, error: error?.message || 'resend error' };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
