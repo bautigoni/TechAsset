@@ -380,6 +380,7 @@ export function initDb(database = getDb()) {
       categoria TEXT DEFAULT '',
       imagen_url TEXT DEFAULT '',
       nota TEXT DEFAULT '',
+      origen TEXT DEFAULT 'tik',
       creado_por TEXT DEFAULT '',
       operador_ultimo_cambio TEXT DEFAULT '',
       activo INTEGER DEFAULT 1,
@@ -504,6 +505,7 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'inventory_items', 'activo', "INTEGER DEFAULT 1");
   ensureColumn(database, 'inventory_items', 'deleted_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'deleted_by', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tickets', 'origen', "TEXT DEFAULT 'tik'");
   migrateInventorySiteCodes(database);
 
   seedDefaultSite(database);

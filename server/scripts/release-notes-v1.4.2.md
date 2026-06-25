@@ -1,0 +1,6 @@
+- Préstamos: ahora se ve fecha y hora completas, con alertas amarillas o rojas cuando un equipo lleva más de un día sin devolución.
+- Scanner global: si escaneás o escribís un código fuera de un campo de texto, TechAsset abre Préstamos y carga el equipo automáticamente.
+- Tickets: cada ticket muestra quién lo cargó y cuándo, manteniendo Tiknology y Handing separados.
+- Agenda TIC: vista más operativa, compacta y enfocada en pendientes de hoy, semana, mes e historial.
+- Analítica: nuevos indicadores útiles de uso por hora, día, equipo, operador y préstamos activos a revisar.
+- Invitaciones: se bloquean URLs viejas de work.gd y se usa el dominio oficial de TechAsset.

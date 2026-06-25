@@ -47,6 +47,8 @@ export interface AnalyticsSummary {
   avgLoanHoursByDevice: AnalyticsRow[];
   ticketResponseDays: number;
   agendaOccupation: AnalyticsRow[];
+  byHour: AnalyticsRow[];
+  byWeekday: AnalyticsRow[];
   series: { granularity: 'day' | 'month'; rows: AnalyticsRow[] };
 }
 

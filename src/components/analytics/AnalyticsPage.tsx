@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import type { Device } from '../../types';
 import { classifyDeviceType } from '../../utils/classifyDevice';
+import { formatLoanDateTime, loanAgeDays } from '../../utils/formatters';
 import { getAnalytics, type AnalyticsResponse } from '../../services/analyticsApi';
 import { Button } from '../layout/Button';
 import { ChartCard, type ChartSize, type ChartType } from './ChartCard';
@@ -53,6 +54,10 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
   const events = data?.events || [];
   const prestamoEvents = useMemo(() => events.filter(e => e.tipo === 'prestamo'), [events]);
   const prestadosAhora = devices.filter(device => device.estado === 'Prestado');
+  const overdueLoans = useMemo(() => prestadosAhora
+    .map(device => ({ device, days: loanAgeDays(device.loanedAt) }))
+    .filter(item => item.days >= 1)
+    .sort((a, b) => b.days - a.days), [prestadosAhora]);
   const disponiblesAhora = devices.filter(device => String(device.estado || '').toLowerCase().includes('disponible'));
   const enReparacion = devices.filter(device => /fuera|repar|servicio|no encontrada/i.test(String(device.estado || '')));
   const disponibilidad = devices.length ? Math.round((disponiblesAhora.length / devices.length) * 100) : 0;
@@ -69,6 +74,7 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
   const kpis: Array<{ label: string; value: string | number; primary?: boolean; hint?: string }> = [
     { label: 'Disponibilidad actual', value: `${disponibilidad}%`, primary: true, hint: `${disponiblesAhora.length} disponibles / ${prestadosAhora.length} prestados` },
     { label: 'Prestamos hoy', value: summary?.prestamosHoy ?? 0, primary: true, hint: `${summary?.prestamosAyer ?? 0} prestamos ayer` },
+    { label: 'Prestamos a revisar', value: overdueLoans.length, hint: 'Activos hace mas de 1 dia' },
     { label: 'Equipos en reparacion', value: enReparacion.length, hint: 'Fuera de servicio, reparacion o no encontrados' },
     { label: 'Tickets abiertos', value: summary?.ticketsAbiertos ?? 0 },
     { label: 'Tiempo resp. tickets', value: `${summary?.ticketResponseDays ?? 0} d`, hint: 'Promedio de tickets cerrados' },
@@ -77,14 +83,16 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
 
   const charts: Array<{ title: string; rows: Array<{ label: string; value: number; color?: string }>; type: ChartType; size: ChartSize }> = summary ? [
     { title: 'Evolucion de prestamos', rows: summary.series.rows, type: 'line', size: 'wide' },
-    { title: 'Demanda por hora', rows: summary.byHourWeekday, type: 'vertical', size: 'lg' },
+    { title: 'Prestamos por hora', rows: summary.byHour || [], type: 'vertical', size: 'md' },
+    { title: 'Dias con mas demanda', rows: summary.byWeekday || [], type: 'bar', size: 'sm' },
+    { title: 'Demanda por hora y dia', rows: summary.byHourWeekday || [], type: 'vertical', size: 'lg' },
     { title: 'Top cursos usuarios', rows: summary.byCourse, type: 'bar', size: 'md' },
     { title: 'Motivos de prestamo', rows: summary.byReason, type: 'donut', size: 'md' },
-    { title: 'Equipos mas utilizados', rows: summary.byDevice.length ? summary.byDevice : typeRows, type: 'bar', size: 'md' },
-    { title: 'Tendencia anual', rows: summary.annualTrend, type: 'line', size: 'md' },
-    { title: 'Equipos con mas fallas', rows: summary.byTicketDevice, type: 'bar', size: 'md' },
-    { title: 'Actividad TIC', rows: summary.byOperator, type: 'bar', size: 'sm' },
-    { title: 'Agenda TIC ocupacion', rows: summary.agendaOccupation, type: 'vertical', size: 'sm' },
+    { title: 'Equipos mas utilizados', rows: summary.byDevice?.length ? summary.byDevice : typeRows, type: 'bar', size: 'md' },
+    { title: 'Tendencia anual', rows: summary.annualTrend || [], type: 'line', size: 'md' },
+    { title: 'Equipos con mas fallas', rows: summary.byTicketDevice || [], type: 'bar', size: 'md' },
+    { title: 'Actividad TIC', rows: summary.byOperator || [], type: 'bar', size: 'sm' },
+    { title: 'Agenda TIC ocupacion', rows: summary.agendaOccupation || [], type: 'vertical', size: 'sm' },
   ] : [];
 
   return (
@@ -134,6 +142,22 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
           </div>
         ))}
         <GaugeCard label="Parque activo" value={disponibilidad} detail={`${devices.length} equipos cargados`} />
+        <section className="card analytics-risk-card chart-card--md">
+          <div className="card-head">
+            <h3>Prestamos a revisar</h3>
+            <span className="badge off">{overdueLoans.length}</span>
+          </div>
+          <div className="analytics-risk-list">
+            {overdueLoans.slice(0, 8).map(({ device, days }) => (
+              <div className={days >= 2 ? 'risk-row is-danger' : 'risk-row is-warning'} key={device.id}>
+                <strong>{device.etiqueta}</strong>
+                <span>{device.prestadoA || 'Sin persona'} - {formatLoanDateTime(device.loanedAt)}</span>
+                <em>{days} {days === 1 ? 'dia' : 'dias'}</em>
+              </div>
+            ))}
+            {!overdueLoans.length && <div className="empty-state analytics-risk-empty">No hay prestamos viejos activos.</div>}
+          </div>
+        </section>
         {charts.map(chart => (
           <ChartCard key={chart.title} title={chart.title} rows={chart.rows} type={chart.type} size={chart.size} />
         ))}

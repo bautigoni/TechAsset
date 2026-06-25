@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AuthUser, Device, Movement, SiteInfo, TaskState, ViewKey } from './types';
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
@@ -30,6 +30,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { TenantsDashboard } from './components/settings/TenantsDashboard';
 import { activeSiteRole, canViewModule, isReadOnlyRole, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
+import { parseScannedCode } from './utils/normalizeSearch';
 
 export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
@@ -47,6 +48,8 @@ export function App() {
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [activeSite, setActiveSite] = useState('');
   const [siteSettings, setSiteSettings] = useState<Record<string, unknown> | null>(null);
+  const scannerBufferRef = useRef('');
+  const scannerTimerRef = useRef<number | null>(null);
   const { operator, setOperator } = useOperator();
   const { devices, filteredDevices, counts, sync, refresh, patchLocal, removeLocal } = useDevices(search, activeSite);
   const agenda = useAgenda(operator);
@@ -158,6 +161,44 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  useEffect(() => {
+    if (!user) return;
+    const flushScan = () => {
+      const raw = scannerBufferRef.current;
+      scannerBufferRef.current = '';
+      const parsed = parseScannedCode(raw).trim();
+      if (!parsed || parsed.length < 2 || !/\d/.test(parsed)) return;
+      setLoanSeed('');
+      window.setTimeout(() => setLoanSeed(parsed), 0);
+      setView('loans');
+      setMenuOpen(false);
+    };
+    const scheduleFlush = () => {
+      if (scannerTimerRef.current !== null) window.clearTimeout(scannerTimerRef.current);
+      scannerTimerRef.current = window.setTimeout(flushScan, 120);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (isTypingTarget(target) || target?.closest('.modal')) return;
+      if (event.key === 'Enter') {
+        if (scannerBufferRef.current) {
+          event.preventDefault();
+          flushScan();
+        }
+        return;
+      }
+      if (event.key.length !== 1) return;
+      scannerBufferRef.current += event.key;
+      scheduleFlush();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      if (scannerTimerRef.current !== null) window.clearTimeout(scannerTimerRef.current);
+    };
+  }, [user]);
+
   const toggleTheme = () => {
     const next = document.documentElement.classList.contains('theme-light') ? 'dark' : 'light';
     document.documentElement.classList.toggle('theme-light', next === 'light');
@@ -233,7 +274,9 @@ export function App() {
   };
 
   const openLoanFlow = (deviceOrCode: Device | string) => {
-    setLoanSeed(typeof deviceOrCode === 'string' ? deviceOrCode : deviceOrCode.etiqueta);
+    const next = typeof deviceOrCode === 'string' ? deviceOrCode : deviceOrCode.etiqueta;
+    setLoanSeed('');
+    window.setTimeout(() => setLoanSeed(next), 0);
     setView('loans');
   };
 
@@ -302,4 +345,10 @@ function readAuthModeFromUrl(): 'landing' | 'login' | 'register' {
   if (path === '/login') return 'login';
   if (path === '/register') return 'register';
   return 'landing';
+}
+
+function isTypingTarget(target: HTMLElement | null) {
+  if (!target) return false;
+  const tag = target.tagName.toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
 }

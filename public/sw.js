@@ -1,6 +1,6 @@
-/* TechAsset service worker — shell cache + estrategia por tipo de request. */
-const CACHE = 'techasset-shell-v1';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.png', '/techasset-logo.svg'];
+/* TechAsset service worker - shell cache + estrategia por tipo de request. */
+const CACHE = 'techasset-shell-v3';
+const SHELL = ['/manifest.webmanifest', '/favicon.png', '/techasset-logo.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -11,6 +11,8 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then((clients) => clients.forEach((client) => client.postMessage({ type: 'TECHASSET_SW_READY' })))
   );
 });
 
@@ -26,24 +28,46 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navegación (SPA): network-first con fallback al shell cacheado.
+  // Navegación (SPA): red primero y sin HTTP cache, así nunca queda pegado un bundle viejo.
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/index.html')));
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).then((response) => {
+        if (response && response.status === 200) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put('/index.html', copy));
+        }
+        return response;
+      }).catch(() => caches.match('/index.html'))
+    );
     return;
   }
 
-  // Assets estáticos: cache-first, y refresco en segundo plano.
+  // Assets versionados por Vite: cache-first. El nombre hash cambia con cada build.
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const network = fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        }).catch(() => cached);
+        return cached || network;
+      })
+    );
+    return;
+  }
+
+  // Resto de estáticos: network-first para que sw.js, manifest e íconos no queden congelados.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request).then((response) => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      }).catch(() => cached);
-      return cached || network;
-    })
+    fetch(request, { cache: 'no-store' }).then((response) => {
+      if (response && response.status === 200) {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copy));
+      }
+      return response;
+    }).catch(() => caches.match(request))
   );
 });
 

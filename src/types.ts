@@ -200,6 +200,7 @@ export interface InventoryItem {
 }
 
 export type TicketState = 'No hecho' | 'En proceso' | 'Hecho';
+export type TicketSource = 'tik' | 'handing';
 
 export interface Ticket {
   id: number;
@@ -213,10 +214,25 @@ export interface Ticket {
   categoria: string;
   imagenUrl: string;
   nota: string;
+  origen: TicketSource;
   creadoPor: string;
   operadorUltimoCambio: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PreviousDayLoan {
+  id: number;
+  etiqueta: string;
+  alias: string;
+  filtro: string;
+  persona: string;
+  rol: string;
+  ubicacion: string;
+  curso: string;
+  motivo: string;
+  operador: string;
+  timestamp: string;
 }
 
 export interface QuickLink {

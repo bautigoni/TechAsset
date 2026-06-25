@@ -144,6 +144,34 @@ function avgTicketResponseDays(siteCode) {
   return Math.round((total / rows.length) * 10) / 10;
 }
 
+function buildHourSeries(events) {
+  const buckets = new Map(Array.from({ length: 12 }, (_, index) => [`${String(index + 7).padStart(2, '0')}:00`, 0]));
+  for (const ev of events) {
+    const date = new Date(ev.timestamp);
+    if (Number.isNaN(date.getTime())) continue;
+    const hour = date.getHours();
+    const label = `${String(hour).padStart(2, '0')}:00`;
+    buckets.set(label, (buckets.get(label) || 0) + 1);
+  }
+  return [...buckets.entries()]
+    .filter(([, value]) => value > 0)
+    .map(([label, value]) => ({ label, value }));
+}
+
+function buildWeekdaySeries(events) {
+  const labels = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+  const buckets = new Map(labels.map(label => [label, 0]));
+  for (const ev of events) {
+    const date = new Date(ev.timestamp);
+    if (Number.isNaN(date.getTime())) continue;
+    const label = labels[date.getDay()];
+    buckets.set(label, (buckets.get(label) || 0) + 1);
+  }
+  return [...buckets.entries()]
+    .filter(([, value]) => value > 0)
+    .map(([label, value]) => ({ label, value }));
+}
+
 analyticsRouter.get('/analytics', (req, res) => {
   const siteCode = requireSite(req);
   const { from, to } = parseRange(req.query);
@@ -199,6 +227,8 @@ analyticsRouter.get('/analytics', (req, res) => {
     avgLoanHoursByDevice: buildAverageLoanHours(allEvents),
     ticketResponseDays: avgTicketResponseDays(siteCode),
     agendaOccupation: buildAgendaOccupation(siteCode),
+    byHour: buildHourSeries(prestamos),
+    byWeekday: buildWeekdaySeries(prestamos),
     series: buildSeries(prestamos, from, to)
   };
 

@@ -136,6 +136,33 @@ loansRouter.get('/loans/suggest', (req, res) => {
   res.json({ ok: true, suggestions });
 });
 
+loansRouter.get('/loans/previous-day', (req, res) => {
+  const siteCode = requireSite(req);
+  const date = previousLocalDateKey();
+  const rows = getDb().prepare(`
+    SELECT id, etiqueta, alias, filtro, persona, rol, ubicacion, curso, motivo, operador, timestamp
+    FROM loan_events
+    WHERE site_code=? AND tipo='prestamo'
+    ORDER BY timestamp DESC, id DESC
+  `).all(siteCode);
+  const items = rows
+    .filter(row => localDateKey(row.timestamp) === date)
+    .map(row => ({
+      id: row.id,
+      etiqueta: row.etiqueta || '',
+      alias: row.alias || '',
+      filtro: row.filtro || '',
+      persona: row.persona || '',
+      rol: row.rol || '',
+      ubicacion: row.ubicacion || '',
+      curso: row.curso || '',
+      motivo: row.motivo || '',
+      operador: row.operador || '',
+      timestamp: row.timestamp || ''
+    }));
+  res.json({ ok: true, date, items });
+});
+
 function normalizeName(value) {
   return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
 }
@@ -153,6 +180,23 @@ function mode(map) {
     if (count > bestCount) { best = key; bestCount = count; }
   }
   return best;
+}
+
+function previousLocalDateKey() {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return localDateKey(date);
+}
+
+function localDateKey(value) {
+  const date = value instanceof Date ? value : new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
 }
 
 function normalizeEtiqueta(value) {
