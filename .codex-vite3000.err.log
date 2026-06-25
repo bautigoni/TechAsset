@@ -1,0 +1,420 @@
+[2m10:43:11[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:43:16[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:43:21[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:45:04[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:45:08[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:45:10[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:45:13[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:40[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:47:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:46[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:50[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/agenda[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/tasks[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/settings/shifts[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/session[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/release-notes/latest[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/config[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/google/login[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m10:51:57[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m11:13:17[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m11:13:22[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m11:13:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/movements[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)

@@ -145,6 +145,19 @@ export function App() {
     return () => window.clearTimeout(timer);
   }, [search, view, filteredDevices.length]);
 
+  useEffect(() => {
+    const text = search.trim();
+    if (!/(prestar|prestamo|prestamos|pr[eé]stamo|pr[eé]stamos)/i.test(text)) return;
+    const code = text.match(/\bD?\s*0*\d{1,5}\b/i)?.[0]?.replace(/\s+/g, '').toUpperCase();
+    if (!code) return;
+    const timer = window.setTimeout(() => {
+      openLoanFlow(code);
+      setSearch('');
+    }, 250);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   const toggleTheme = () => {
     const next = document.documentElement.classList.contains('theme-light') ? 'dark' : 'light';
     document.documentElement.classList.toggle('theme-light', next === 'light');

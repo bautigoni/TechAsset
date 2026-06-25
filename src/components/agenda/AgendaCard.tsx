@@ -14,13 +14,14 @@ function activityClass(activity: string) {
 
 function displayTurno(value: string) {
   const v = String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (v === 'manana') return 'Mañana';
+  if (v === 'manana') return 'Manana';
   if (v === 'tarde') return 'Tarde';
   return value || '';
 }
 
 export function AgendaCard({ item, consultationMode, onUpdate, onDelete, onTask }: { item: AgendaItem; consultationMode: boolean; onUpdate: (item: AgendaItem, patch: Partial<AgendaItem>) => Promise<unknown> | void; onDelete: (id: string) => void; onTask: (item: AgendaItem) => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [note, setNote] = useState(item.nota || '');
   const [busyState, setBusyState] = useState('');
   const canRetire = item.estado === 'Entregado' || item.estado === 'Realizado';
@@ -41,7 +42,13 @@ export function AgendaCard({ item, consultationMode, onUpdate, onDelete, onTask 
   };
 
   return (
-    <article className={`agenda-card ${activityClass(item.actividad)} agenda-state-${item.estado.toLowerCase().replace(/\s+/g, '-')} ${retiredClass}`}>
+    <article
+      className={`agenda-card ${activityClass(item.actividad)} agenda-state-${item.estado.toLowerCase().replace(/\s+/g, '-')} ${retiredClass}`}
+      onClick={() => setDetailOpen(true)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={event => { if (event.key === 'Enter') setDetailOpen(true); }}
+    >
       <div className="agenda-card-head">
         <div>
           <strong>{item.desde} - {item.hasta}</strong>
@@ -54,10 +61,12 @@ export function AgendaCard({ item, consultationMode, onUpdate, onDelete, onTask 
       </div>
       <span className="badge subtle">{item.actividad}</span>
       <h3>{item.curso}</h3>
-      <p><strong>Dispositivo:</strong> {item.cantidad} {item.tipoDispositivo}</p>
-      <p><strong>Ubicación:</strong> {item.ubicacion}</p>
+      <div className="agenda-card-meta">
+        <span><strong>{item.cantidad}</strong> {item.tipoDispositivo}</span>
+        <span>{item.ubicacion}</span>
+      </div>
       {item.nota && <p className="muted agenda-note-preview">{item.nota}</p>}
-      <div className="small-actions agenda-actions">
+      <div className="small-actions agenda-actions" onClick={event => event.stopPropagation()}>
         <Button
           className={`agenda-delivered-btn ${isDelivered ? 'is-on' : ''}`}
           variant={isDelivered ? 'success' : undefined}
@@ -65,14 +74,42 @@ export function AgendaCard({ item, consultationMode, onUpdate, onDelete, onTask 
           aria-pressed={isDelivered}
           onClick={() => update({ estado: isDelivered ? 'Pendiente' : 'Entregado' }, 'entregado')}
         >
-          {busyState === 'entregado' ? 'Guardando...' : isDelivered ? 'Entregado ✓' : 'Marcar entregado'}
+          {busyState === 'entregado' ? 'Guardando...' : isDelivered ? 'Entregado' : 'Entregar'}
         </Button>
         <Button disabled={consultationMode} onClick={() => setNoteOpen(true)}>Nota</Button>
-        {canRetire && <Button className={`agenda-retired-btn ${allRetired ? 'is-on' : ''}`} variant={allRetired ? 'success' : undefined} disabled={consultationMode} onClick={() => update({ compusRetiradas: allRetired ? 0 : item.cantidad })}>{allRetired ? 'Retiradas ✓' : 'Computadoras retiradas'}</Button>}
-        <Button disabled={consultationMode} onClick={() => update({ estado: 'Cancelado' })}>Cancelar</Button>
-        <Button disabled={consultationMode} onClick={() => onTask(item)}>Crear tarea relacionada</Button>
-        <Button disabled={consultationMode} onClick={() => onDelete(item.id)}>Borrar actividad</Button>
+        {canRetire && <Button className={`agenda-retired-btn ${allRetired ? 'is-on' : ''}`} variant={allRetired ? 'success' : undefined} disabled={consultationMode} onClick={() => update({ compusRetiradas: allRetired ? 0 : item.cantidad })}>{allRetired ? 'Retiradas' : 'Retirar'}</Button>}
       </div>
+
+      {detailOpen && (
+        <Modal title={`${item.curso} - ${item.actividad}`} onClose={() => setDetailOpen(false)}>
+          <div className="agenda-event-modal">
+            <div className="agenda-event-summary">
+              <div><span>Horario</span><strong>{item.desde} - {item.hasta}</strong></div>
+              <div><span>Entrega</span><strong>{item.cantidad} {item.tipoDispositivo}</strong></div>
+              <div><span>Ubicacion</span><strong>{item.ubicacion}</strong></div>
+              <div><span>Estado</span><strong>{item.estado}</strong></div>
+            </div>
+            {item.nota && <p className="agenda-event-note">{item.nota}</p>}
+            <div className="actions agenda-event-actions" onClick={event => event.stopPropagation()}>
+              <Button
+                variant={isDelivered ? 'success' : 'primary'}
+                disabled={consultationMode || busyState === 'entregado'}
+                onClick={() => update({ estado: isDelivered ? 'Pendiente' : 'Entregado' }, 'entregado')}
+              >
+                {isDelivered ? 'Volver a pendiente' : 'Marcar entregado'}
+              </Button>
+              <Button disabled={consultationMode} onClick={() => update({ compusRetiradas: allRetired ? 0 : item.cantidad })}>
+                {allRetired ? 'Desmarcar retirada' : 'Marcar retirada'}
+              </Button>
+              <Button disabled={consultationMode} onClick={() => setNoteOpen(true)}>Nota</Button>
+              <Button disabled={consultationMode} onClick={() => onTask(item)}>Crear tarea</Button>
+              <Button disabled={consultationMode} onClick={() => update({ estado: 'Cancelado' })}>Cancelar evento</Button>
+              <Button disabled={consultationMode} onClick={() => onDelete(item.id)}>Borrar</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {noteOpen && (
         <Modal title={`Nota - ${item.curso}`} onClose={() => setNoteOpen(false)}>
           <form className="stack" onSubmit={async event => {

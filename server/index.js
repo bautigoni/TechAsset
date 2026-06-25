@@ -43,6 +43,7 @@ app.use('/api', sitesRouter);
 app.use('/api', invitesRouter);
 app.use('/api', notificationsRouter);
 app.use('/api', calendarRouter);
+app.use('/api', analyticsRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.
 // (sitesRouter ya valida manager/superadmin por endpoint.)
 app.use('/api', requireEditor);
@@ -52,7 +53,6 @@ app.use('/api', inventoryRouter);
 app.use('/api', ticketsRouter);
 app.use('/api', agendaRouter);
 app.use('/api', tasksRouter);
-app.use('/api', analyticsRouter);
 app.use('/api', assistantRouter);
 app.use('/api', prestamosRouter);
 app.use('/api', procedimientosRouter);

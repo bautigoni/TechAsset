@@ -9,9 +9,9 @@ export function siteHeaders(extra?: HeadersInit): HeadersInit {
 
 export async function apiGet<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: 'no-store', headers: headers() });
-  const data = await response.json();
+  const data = await readApiResponse(response);
   if (!response.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${response.status}`);
-  return data;
+  return data as T;
 }
 
 export async function apiSend<T>(url: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
@@ -20,7 +20,23 @@ export async function apiSend<T>(url: string, method: 'POST' | 'PATCH' | 'DELETE
     headers: headers({ 'Content-Type': 'application/json' }),
     body: body === undefined ? undefined : JSON.stringify(body)
   });
-  const data = await response.json();
+  const data = await readApiResponse(response);
   if (!response.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${response.status}`);
-  return data;
+  return data as T;
+}
+
+async function readApiResponse(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+  const text = await response.text();
+  if (contentType.includes('application/json')) {
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error('El servidor devolvio JSON invalido.');
+    }
+  }
+  const sample = text.replace(/\s+/g, ' ').slice(0, 120);
+  throw new Error(response.ok
+    ? `La API devolvio una respuesta no JSON (${sample || 'sin contenido'}).`
+    : `HTTP ${response.status}: ${sample || response.statusText}`);
 }

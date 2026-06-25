@@ -27,6 +27,10 @@ export interface LoanEvent {
 export interface AnalyticsSummary {
   totalPrestamos: number;
   totalDevoluciones: number;
+  prestamosHoy: number;
+  prestamosAyer: number;
+  ticketsAbiertos: number;
+  tareasAbiertas: number;
   personasUnicas: number;
   equiposUnicos: number;
   byPerson: AnalyticsRow[];
@@ -34,6 +38,15 @@ export interface AnalyticsSummary {
   byLocation: AnalyticsRow[];
   byReason: AnalyticsRow[];
   byCourse: AnalyticsRow[];
+  byDevice: AnalyticsRow[];
+  byOperator: AnalyticsRow[];
+  byTicketDevice: AnalyticsRow[];
+  byTaskType: AnalyticsRow[];
+  byHourWeekday: AnalyticsRow[];
+  annualTrend: AnalyticsRow[];
+  avgLoanHoursByDevice: AnalyticsRow[];
+  ticketResponseDays: number;
+  agendaOccupation: AnalyticsRow[];
   series: { granularity: 'day' | 'month'; rows: AnalyticsRow[] };
 }
 

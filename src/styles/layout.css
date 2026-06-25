@@ -1808,6 +1808,119 @@ html {
   font-size: 12px;
 }
 
+.kpi-bento-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.analytics-gauge-card {
+  min-height: 220px;
+}
+
+.analytics-gauge {
+  --gauge-value: 0%;
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at center, var(--panel) 0 48%, transparent 49%),
+    conic-gradient(#22c55e var(--gauge-value), rgba(148, 163, 184, .18) 0);
+}
+
+.analytics-gauge > div {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  width: 112px;
+  height: 112px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.analytics-gauge strong {
+  color: var(--text);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.analytics-gauge span {
+  max-width: 86px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.agenda-card {
+  cursor: pointer;
+}
+
+.agenda-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.agenda-card-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(148, 163, 184, .08);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.agenda-event-modal {
+  display: grid;
+  gap: 16px;
+}
+
+.agenda-event-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.agenda-event-summary div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.agenda-event-summary span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.agenda-event-summary strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.agenda-event-note {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, .1);
+  color: var(--text);
+}
+
+.agenda-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 @media (max-width: 980px) {
   .task-schedule-grid {
     grid-template-columns: 1fr;

@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import type { Device } from '../../types';
 import { classifyDeviceType } from '../../utils/classifyDevice';
 import { getAnalytics, type AnalyticsResponse } from '../../services/analyticsApi';
 import { Button } from '../layout/Button';
-import { ChartCard, type ChartType, type ChartSize } from './ChartCard';
+import { ChartCard, type ChartSize, type ChartType } from './ChartCard';
 
 type RangePreset = 'week' | 'month' | 'quarter' | 'year' | 'all' | 'custom';
 
 const PRESETS: Array<{ key: RangePreset; label: string; days: number | null }> = [
-  { key: 'week', label: 'Última semana', days: 7 },
-  { key: 'month', label: 'Último mes', days: 30 },
-  { key: 'quarter', label: 'Últimos 3 meses', days: 92 },
-  { key: 'year', label: 'Último año', days: 365 },
+  { key: 'week', label: 'Ultima semana', days: 7 },
+  { key: 'month', label: 'Ultimo mes', days: 30 },
+  { key: 'quarter', label: 'Ultimos 3 meses', days: 92 },
+  { key: 'year', label: 'Ultimo ano', days: 365 },
   { key: 'all', label: 'Todo', days: 3650 },
 ];
 
@@ -41,7 +41,7 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
       const response = await getAnalytics(range.from, range.to);
       setData(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo cargar la analítica.');
+      setError(err instanceof Error ? err.message : 'No se pudo cargar la analitica.');
     } finally {
       setLoading(false);
     }
@@ -49,11 +49,13 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
 
   useEffect(() => { void load(); }, [load]);
 
-  // Estado vivo (no histórico): cuántos hay prestados ahora.
-  const prestadosAhora = devices.filter(device => device.estado === 'Prestado');
   const summary = data?.summary;
   const events = data?.events || [];
   const prestamoEvents = useMemo(() => events.filter(e => e.tipo === 'prestamo'), [events]);
+  const prestadosAhora = devices.filter(device => device.estado === 'Prestado');
+  const disponiblesAhora = devices.filter(device => String(device.estado || '').toLowerCase().includes('disponible'));
+  const enReparacion = devices.filter(device => /fuera|repar|servicio|no encontrada/i.test(String(device.estado || '')));
+  const disponibilidad = devices.length ? Math.round((disponiblesAhora.length / devices.length) * 100) : 0;
 
   const typeRows = useMemo(() => {
     const map = new Map<string, number>();
@@ -64,34 +66,36 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
     return [...map.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
   }, [prestamoEvents]);
 
-  const charts: Array<{ title: string; rows: Array<{ label: string; value: number; color?: string }>; type: ChartType; size: ChartSize }> = summary ? [
-    { title: 'Préstamos en el tiempo', rows: summary.series.rows, type: 'line', size: 'wide' },
-    { title: 'Personas que más piden', rows: summary.byPerson, type: 'bar', size: 'md' },
-    { title: 'Préstamos por tipo de equipo', rows: typeRows, type: 'donut', size: 'md' },
-    { title: 'Ubicaciones', rows: summary.byLocation, type: 'vertical', size: 'md' },
-    { title: 'Roles', rows: summary.byRole, type: 'pie', size: 'md' },
-    { title: 'Motivos', rows: summary.byReason, type: 'bar', size: 'sm' },
-    { title: 'Cursos', rows: summary.byCourse, type: 'bar', size: 'sm' },
-  ] : [];
-
-  const kpis: Array<{ icon: string; label: string; value: string | number; primary?: boolean }> = [
-    { icon: '📤', label: 'Préstamos (período)', value: summary?.totalPrestamos ?? 0, primary: true },
-    { icon: '📥', label: 'Devoluciones (período)', value: summary?.totalDevoluciones ?? 0, primary: true },
-    { icon: '⏳', label: 'Prestados ahora', value: prestadosAhora.length },
-    { icon: '👥', label: 'Personas distintas', value: summary?.personasUnicas ?? 0 },
-    { icon: '💻', label: 'Equipos distintos', value: summary?.equiposUnicos ?? 0 },
-    { icon: '🏷️', label: 'Tipo más prestado', value: typeRows[0]?.label || '-' },
+  const kpis: Array<{ label: string; value: string | number; primary?: boolean; hint?: string }> = [
+    { label: 'Disponibilidad actual', value: `${disponibilidad}%`, primary: true, hint: `${disponiblesAhora.length} disponibles / ${prestadosAhora.length} prestados` },
+    { label: 'Prestamos hoy', value: summary?.prestamosHoy ?? 0, primary: true, hint: `${summary?.prestamosAyer ?? 0} prestamos ayer` },
+    { label: 'Equipos en reparacion', value: enReparacion.length, hint: 'Fuera de servicio, reparacion o no encontrados' },
+    { label: 'Tickets abiertos', value: summary?.ticketsAbiertos ?? 0 },
+    { label: 'Tiempo resp. tickets', value: `${summary?.ticketResponseDays ?? 0} d`, hint: 'Promedio de tickets cerrados' },
+    { label: 'Promedio prestado', value: formatTopAverage(summary?.avgLoanHoursByDevice) },
   ];
+
+  const charts: Array<{ title: string; rows: Array<{ label: string; value: number; color?: string }>; type: ChartType; size: ChartSize }> = summary ? [
+    { title: 'Evolucion de prestamos', rows: summary.series.rows, type: 'line', size: 'wide' },
+    { title: 'Demanda por hora', rows: summary.byHourWeekday, type: 'vertical', size: 'lg' },
+    { title: 'Top cursos usuarios', rows: summary.byCourse, type: 'bar', size: 'md' },
+    { title: 'Motivos de prestamo', rows: summary.byReason, type: 'donut', size: 'md' },
+    { title: 'Equipos mas utilizados', rows: summary.byDevice.length ? summary.byDevice : typeRows, type: 'bar', size: 'md' },
+    { title: 'Tendencia anual', rows: summary.annualTrend, type: 'line', size: 'md' },
+    { title: 'Equipos con mas fallas', rows: summary.byTicketDevice, type: 'bar', size: 'md' },
+    { title: 'Actividad TIC', rows: summary.byOperator, type: 'bar', size: 'sm' },
+    { title: 'Agenda TIC ocupacion', rows: summary.agendaOccupation, type: 'vertical', size: 'sm' },
+  ] : [];
 
   return (
     <section className="view active">
       <div className="analytics-reload-bar">
-        <span className="muted">{loading ? 'Cargando…' : `${summary?.totalPrestamos ?? 0} préstamos en el período`}</span>
-        <Button variant="primary" disabled={loading} onClick={() => void load()}>{loading ? 'Actualizando…' : 'Recargar'}</Button>
+        <span className="muted">{loading ? 'Cargando...' : `${summary?.totalPrestamos ?? 0} prestamos en el periodo`}</span>
+        <Button variant="primary" disabled={loading} onClick={() => void load()}>{loading ? 'Actualizando...' : 'Recargar'}</Button>
       </div>
 
       <section className="card analytics-filter-card">
-        <div className="card-head"><h3>Período</h3></div>
+        <div className="card-head"><h3>Periodo</h3></div>
         <div className="analytics-filters">
           {PRESETS.map(p => (
             <button
@@ -124,19 +128,37 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
       <div className="analytics-bento">
         {kpis.map(kpi => (
           <div key={kpi.label} className={`kpi-bento ${kpi.primary ? 'is-primary span-2' : 'span-1'}`}>
-            <span className="kpi-bento-icon" aria-hidden>{kpi.icon}</span>
             <span className="kpi-bento-label">{kpi.label}</span>
             <span className="kpi-bento-value">{kpi.value}</span>
+            {kpi.hint && <span className="kpi-bento-hint">{kpi.hint}</span>}
           </div>
         ))}
+        <GaugeCard label="Parque activo" value={disponibilidad} detail={`${devices.length} equipos cargados`} />
         {charts.map(chart => (
           <ChartCard key={chart.title} title={chart.title} rows={chart.rows} type={chart.type} size={chart.size} />
         ))}
       </div>
 
       {!loading && summary && summary.totalPrestamos === 0 && (
-        <div className="tool-info">No hay préstamos registrados en este período. Probá ampliar el rango.</div>
+        <div className="tool-info">No hay prestamos registrados en este periodo. Proba ampliar el rango.</div>
       )}
+    </section>
+  );
+}
+
+function formatTopAverage(rows?: Array<{ label: string; value: number }>) {
+  const top = rows?.find(row => row.value > 0);
+  return top ? `${top.value} h` : '-';
+}
+
+function GaugeCard({ label, value, detail }: { label: string; value: number; detail: string }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  return (
+    <section className="card chart-card chart-card--sm analytics-gauge-card">
+      <div className="card-head"><h3>{label}</h3></div>
+      <div className="analytics-gauge" style={{ '--gauge-value': `${clamped}%` } as CSSProperties}>
+        <div><strong>{clamped}%</strong><span>{detail}</span></div>
+      </div>
     </section>
   );
 }

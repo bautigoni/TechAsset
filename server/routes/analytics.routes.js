@@ -28,6 +28,10 @@ function countBy(events, getter) {
   return [...map.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
 }
 
+function rowsFromMap(map) {
+  return [...map.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+}
+
 function buildSeries(events, from, to) {
   const spanDays = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / DAY_MS));
   const monthly = spanDays > 92;
@@ -46,6 +50,100 @@ function buildSeries(events, from, to) {
   };
 }
 
+function buildAnnualTrend(events) {
+  const buckets = new Map();
+  const now = new Date();
+  for (let i = 11; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    buckets.set(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, 0);
+  }
+  for (const ev of events) {
+    const d = new Date(ev.timestamp);
+    if (Number.isNaN(d.getTime())) continue;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (buckets.has(key)) buckets.set(key, (buckets.get(key) || 0) + 1);
+  }
+  return [...buckets.entries()].map(([label, value]) => ({ label, value }));
+}
+
+function buildHourWeekday(events) {
+  const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+  const map = new Map();
+  for (const ev of events) {
+    const d = new Date(ev.timestamp);
+    if (Number.isNaN(d.getTime())) continue;
+    const key = `${days[d.getDay()]} ${String(d.getHours()).padStart(2, '0')}:00`;
+    map.set(key, (map.get(key) || 0) + 1);
+  }
+  return rowsFromMap(map);
+}
+
+function buildAverageLoanHours(events) {
+  const open = new Map();
+  const totals = new Map();
+  const counts = new Map();
+  for (const ev of [...events].sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)))) {
+    const tag = String(ev.etiqueta || '').trim().toUpperCase();
+    if (!tag) continue;
+    const time = new Date(ev.timestamp).getTime();
+    if (Number.isNaN(time)) continue;
+    if (ev.tipo === 'prestamo') open.set(tag, { time, label: ev.alias || tag });
+    if (ev.tipo === 'devolucion' && open.has(tag)) {
+      const start = open.get(tag);
+      const hours = Math.max(0, (time - start.time) / 3600000);
+      totals.set(start.label, (totals.get(start.label) || 0) + hours);
+      counts.set(start.label, (counts.get(start.label) || 0) + 1);
+      open.delete(tag);
+    }
+  }
+  return [...totals.entries()]
+    .map(([label, total]) => ({ label, value: Math.round((total / Math.max(1, counts.get(label) || 1)) * 10) / 10 }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function buildAgendaOccupation(siteCode) {
+  return getDb().prepare(`
+    SELECT COALESCE(NULLIF(dia,''),'Sin dia') AS label, COUNT(*) AS value
+    FROM agenda
+    WHERE site_code=? AND eliminada=0 AND estado NOT IN ('Cancelado','Realizado')
+    GROUP BY COALESCE(NULLIF(dia,''),'Sin dia')
+    ORDER BY value DESC
+  `).all(siteCode).map(row => ({ label: row.label, value: Number(row.value || 0) }));
+}
+
+function ticketDeviceRows(siteCode) {
+  const rows = getDb().prepare(`
+    SELECT titulo, descripcion, nota
+    FROM tickets
+    WHERE site_code=? AND activo=1
+  `).all(siteCode);
+  const map = new Map();
+  for (const row of rows) {
+    const text = `${row.titulo || ''} ${row.descripcion || ''} ${row.nota || ''}`;
+    const tags = text.match(/\bD\s*0*\d{1,5}\b/gi) || [];
+    for (const tag of tags) {
+      const number = tag.match(/\d{1,5}/)?.[0] || '';
+      if (number) map.set(`D${number.padStart(4, '0')}`, (map.get(`D${number.padStart(4, '0')}`) || 0) + 1);
+    }
+  }
+  return rowsFromMap(map);
+}
+
+function avgTicketResponseDays(siteCode) {
+  const rows = getDb().prepare(`
+    SELECT created_at AS createdAt, updated_at AS updatedAt
+    FROM tickets
+    WHERE site_code=? AND activo=1 AND estado='Hecho' AND created_at<>'' AND updated_at<>''
+  `).all(siteCode);
+  if (!rows.length) return 0;
+  const total = rows.reduce((sum, row) => {
+    const start = new Date(row.createdAt).getTime();
+    const end = new Date(row.updatedAt).getTime();
+    return Number.isNaN(start) || Number.isNaN(end) ? sum : sum + Math.max(0, (end - start) / DAY_MS);
+  }, 0);
+  return Math.round((total / rows.length) * 10) / 10;
+}
+
 analyticsRouter.get('/analytics', (req, res) => {
   const siteCode = requireSite(req);
   const { from, to } = parseRange(req.query);
@@ -59,10 +157,32 @@ analyticsRouter.get('/analytics', (req, res) => {
 
   const prestamos = rows.filter(r => r.tipo === 'prestamo');
   const devoluciones = rows.filter(r => r.tipo === 'devolucion');
+  const allEvents = getDb().prepare(`
+    SELECT id, tipo, etiqueta, alias, filtro, persona, rol, ubicacion, ubicacion_detalle AS ubicacionDetalle,
+           curso, motivo, motivo_detalle AS motivoDetalle, comentarios, operador, origen, timestamp
+    FROM loan_events
+    WHERE site_code=?
+    ORDER BY timestamp ASC
+  `).all(siteCode);
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - DAY_MS).toISOString().slice(0, 10);
+  const ticketsAbiertos = getDb().prepare("SELECT COUNT(*) AS total FROM tickets WHERE site_code=? AND activo=1 AND estado<>'Hecho'").get(siteCode).total;
+  const tareasAbiertas = getDb().prepare("SELECT COUNT(*) AS total FROM tasks WHERE site_code=? AND eliminada=0 AND estado<>'Hecha'").get(siteCode).total;
+  const byTaskType = getDb().prepare(`
+    SELECT COALESCE(NULLIF(tipo,''),'Sin tipo') AS label, COUNT(*) AS value
+    FROM tasks
+    WHERE site_code=? AND eliminada=0
+    GROUP BY COALESCE(NULLIF(tipo,''),'Sin tipo')
+    ORDER BY value DESC
+  `).all(siteCode).map(row => ({ label: row.label, value: Number(row.value || 0) }));
 
   const summary = {
     totalPrestamos: prestamos.length,
     totalDevoluciones: devoluciones.length,
+    prestamosHoy: allEvents.filter(r => r.tipo === 'prestamo' && String(r.timestamp || '').startsWith(today)).length,
+    prestamosAyer: allEvents.filter(r => r.tipo === 'prestamo' && String(r.timestamp || '').startsWith(yesterday)).length,
+    ticketsAbiertos: Number(ticketsAbiertos || 0),
+    tareasAbiertas: Number(tareasAbiertas || 0),
     personasUnicas: new Set(prestamos.map(r => (r.persona || '').trim().toLowerCase()).filter(Boolean)).size,
     equiposUnicos: new Set(prestamos.map(r => (r.etiqueta || '').trim().toUpperCase()).filter(Boolean)).size,
     byPerson: countBy(prestamos, r => r.persona),
@@ -70,6 +190,15 @@ analyticsRouter.get('/analytics', (req, res) => {
     byLocation: countBy(prestamos, r => r.ubicacion),
     byReason: countBy(prestamos, r => r.motivo),
     byCourse: countBy(prestamos, r => r.curso),
+    byDevice: countBy(prestamos, r => r.alias || r.etiqueta),
+    byOperator: countBy(rows, r => r.operador),
+    byTicketDevice: ticketDeviceRows(siteCode),
+    byTaskType,
+    byHourWeekday: buildHourWeekday(prestamos),
+    annualTrend: buildAnnualTrend(allEvents.filter(r => r.tipo === 'prestamo')),
+    avgLoanHoursByDevice: buildAverageLoanHours(allEvents),
+    ticketResponseDays: avgTicketResponseDays(siteCode),
+    agendaOccupation: buildAgendaOccupation(siteCode),
     series: buildSeries(prestamos, from, to)
   };
 
