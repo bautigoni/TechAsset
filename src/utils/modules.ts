@@ -31,6 +31,7 @@ export const TOGGLEABLE_KEYS = new Set<string>(TOGGLEABLE_MODULES.map(m => m.key
 export const ALWAYS_ON_VIEWS = new Set<ViewKey>(['dashboard', 'settings', 'tenants']);
 
 const SETTINGS_KEY = 'modules.enabled';
+const ORDER_SETTINGS_KEY = 'modules.order';
 
 /**
  * Conjunto de módulos habilitados para la sede. Si la sede no tiene la clave
@@ -42,6 +43,19 @@ export function enabledModuleSet(settings?: Record<string, unknown> | null): Set
   return new Set(raw.map(String).filter(key => TOGGLEABLE_KEYS.has(key)));
 }
 
+export function moduleOrder(settings?: Record<string, unknown> | null): ModuleKey[] {
+  const raw = settings?.[ORDER_SETTINGS_KEY];
+  const preferred = Array.isArray(raw) ? raw.map(String).filter(key => TOGGLEABLE_KEYS.has(key)) : [];
+  const unique = Array.from(new Set(preferred)) as ModuleKey[];
+  const missing = TOGGLEABLE_MODULES.map(mod => mod.key).filter(key => !unique.includes(key));
+  return [...unique, ...missing];
+}
+
+export function orderedToggleableModules(settings?: Record<string, unknown> | null): ToggleableModule[] {
+  const byKey = new Map(TOGGLEABLE_MODULES.map(mod => [mod.key, mod]));
+  return moduleOrder(settings).map(key => byKey.get(key)).filter(Boolean) as ToggleableModule[];
+}
+
 export function isViewEnabled(view: ViewKey, settings?: Record<string, unknown> | null): boolean {
   if (ALWAYS_ON_VIEWS.has(view)) return true;
   if (!TOGGLEABLE_KEYS.has(view)) return true; // vistas internas (assistant, etc.)
@@ -49,3 +63,4 @@ export function isViewEnabled(view: ViewKey, settings?: Record<string, unknown> 
 }
 
 export { SETTINGS_KEY as MODULES_SETTINGS_KEY };
+export { ORDER_SETTINGS_KEY as MODULES_ORDER_SETTINGS_KEY };

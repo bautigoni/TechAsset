@@ -957,6 +957,24 @@ body.mobile-menu-open {
 }
 
 @media (max-width: 560px) {
+  .module-card-ordered {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .module-card-ordered .module-card-icon {
+    display: none;
+  }
+
+  .module-card-ordered .switch {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .module-card-ordered .module-order-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+
   .agenda-selected-day .agenda-cards {
     grid-auto-columns: minmax(280px, 86vw);
   }

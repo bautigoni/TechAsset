@@ -17,7 +17,7 @@ import {
   Wrench
 } from 'lucide-react';
 import type { SiteInfo, ViewKey } from '../../types';
-import { isViewEnabled, TOGGLEABLE_KEYS } from '../../utils/modules';
+import { isViewEnabled, moduleOrder, TOGGLEABLE_KEYS, type ModuleKey } from '../../utils/modules';
 import { canViewModule, type ModuleAccess } from '../../utils/permissions';
 import { TenantLogo } from './TenantLogo';
 
@@ -39,7 +39,7 @@ const NAV: Array<{ key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: 
   { key: 'settings', label: 'Configuración', Icon: Settings }
 ];
 
-const BOTTOM_NAV = new Set<ViewKey>(['tools', 'quickaccess', 'settings']);
+const BOTTOM_NAV = new Set<ViewKey>(['settings']);
 
 export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null }: {
   active: ViewKey;
@@ -59,7 +59,7 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
     (!item.superadminOnly || isSuperadmin) &&
     isViewEnabled(item.key, settings) &&
     (!access || canViewModule(access, item.key, TOGGLEABLE_KEYS))
-  );
+  ).sort((a, b) => navSort(a.key, b.key, settings));
   const mainNav = visibleNav.filter(item => !BOTTOM_NAV.has(item.key));
   const bottomNav = visibleNav.filter(item => BOTTOM_NAV.has(item.key));
   const navigate = (view: ViewKey) => {
@@ -109,4 +109,21 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
       </aside>
     </>
   );
+}
+
+function navSort(a: ViewKey, b: ViewKey, settings?: Record<string, unknown> | null) {
+  const fixed: ViewKey[] = ['dashboard', 'tenants'];
+  const fixedA = fixed.indexOf(a);
+  const fixedB = fixed.indexOf(b);
+  if (fixedA !== -1 || fixedB !== -1) {
+    if (fixedA === -1) return 1;
+    if (fixedB === -1) return -1;
+    return fixedA - fixedB;
+  }
+  if (a === 'settings') return 1;
+  if (b === 'settings') return -1;
+  const order = moduleOrder(settings);
+  const indexA = order.indexOf(a as ModuleKey);
+  const indexB = order.indexOf(b as ModuleKey);
+  return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
 }

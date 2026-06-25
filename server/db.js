@@ -768,6 +768,7 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
     'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess'],
+    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess'],
     'roles.config': [
       { name: 'Administrador', admin: true, view: ['*'], edit: ['*'] },
       { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess'] },

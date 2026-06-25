@@ -1,0 +1,7 @@
+- Tenants multi-sede: alta y edicion de sedes, logo propio, color institucional e invitacion de administrador por sede.
+- Agenda TIC renovada: vistas por dia, semana, mes e historial, resumen copiables y calendario ICS para Google Calendar, Outlook o Apple Calendar.
+- Notificaciones accionables: la campana y el toast ahora abren tareas, tickets y novedades; cada usuario puede elegir que tipos recibir.
+- Orden de modulos por sede: cada tenant puede prender, apagar y ordenar el menu segun su forma de trabajo.
+- Tickets mejorados: titulo, categoria, descripcion, link directo a InVgate, adjuntos PDF/foto y preview corregido en local y produccion.
+- Credenciales 365: el envio ahora usa el proveedor general de mail y prioriza Resend cuando esta configurado.
+- Login y administracion: Google OAuth local/prod alineado y script para asegurar un superadmin operativo.
