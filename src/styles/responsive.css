@@ -992,6 +992,28 @@ body.mobile-menu-open {
   min-height: 110px;
 }
 
+.previous-loans-error {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.previous-loans-error button {
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.previous-loans-error button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
 .ticket-source-chips {
   padding-left: 10px;
   border-left: 1px solid var(--border);

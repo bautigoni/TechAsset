@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Device, Movement, PreviousDayLoan } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
 import { formatLoanDateTime, formatTimeOnly, loanAgeDays, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
@@ -21,6 +21,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
   const [previousLoans, setPreviousLoans] = useState<PreviousDayLoan[]>([]);
   const [previousDate, setPreviousDate] = useState('');
   const [previousError, setPreviousError] = useState('');
+  const [previousLoading, setPreviousLoading] = useState(false);
   const loaned = devices.filter(device => normalizeLoanState(device.estado) === 'loaned');
   const available = devices.filter(device => normalizeLoanState(device.estado) === 'available');
   const byType = countBy(devices, device => classifyDeviceType(device));
@@ -29,20 +30,31 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
     .sort((a, b) => loanAgeDays(b.loanedAt) - loanAgeDays(a.loanedAt) || String(a.loanedAt || '').localeCompare(String(b.loanedAt || '')))
     .slice(0, 8);
 
+  const loadPreviousLoans = useCallback(async (alive: () => boolean = () => true) => {
+    setPreviousLoading(true);
+    setPreviousError('');
+    try {
+      const response = await getPreviousDayLoans();
+      if (!alive()) return;
+      setPreviousLoans(response.items || []);
+      setPreviousDate(response.date || '');
+    } catch (error) {
+      if (!alive()) return;
+      setPreviousLoans([]);
+      const message = error instanceof Error ? error.message : '';
+      setPreviousError(message.includes('API') || message.includes('JSON') || message.includes('inválida')
+        ? 'No se pudo cargar el resumen de ayer. Reintentá en un momento.'
+        : message || 'No se pudo cargar el resumen de ayer.');
+    } finally {
+      if (alive()) setPreviousLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let alive = true;
-    getPreviousDayLoans()
-      .then(response => {
-        if (!alive) return;
-        setPreviousLoans(response.items || []);
-        setPreviousDate(response.date || '');
-      })
-      .catch(error => {
-        if (!alive) return;
-        setPreviousError(error instanceof Error ? error.message : 'No se pudo cargar el resumen de ayer.');
-      });
+    void loadPreviousLoans(() => alive);
     return () => { alive = false; };
-  }, []);
+  }, [loadPreviousLoans]);
 
   return (
     <section className="view active">
@@ -73,9 +85,16 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                 <h3>Préstamos de ayer</h3>
                 <span className="muted">{previousDate ? formatShortDate(previousDate) : 'Actualización diaria'}</span>
               </div>
-              <span className="badge loaned">{previousLoans.length}</span>
+              <span className="badge loaned">{previousLoading ? '...' : previousLoans.length}</span>
             </div>
-            {previousError && <div className="tool-error">{previousError}</div>}
+            {previousError && (
+              <div className="tool-error previous-loans-error">
+                <span>{previousError}</span>
+                <button type="button" onClick={() => void loadPreviousLoans()} disabled={previousLoading}>
+                  {previousLoading ? 'Cargando...' : 'Reintentar'}
+                </button>
+              </div>
+            )}
             {!previousError && previousLoans.length > 0 && (
               <div className="previous-loans-table-wrap">
                 <table className="previous-loans-table">
