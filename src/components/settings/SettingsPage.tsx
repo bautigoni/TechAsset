@@ -3,6 +3,7 @@ import type { AuthUser, Operator, SiteInfo, SyncStatus } from '../../types';
 import { AdvancedSettings } from './AdvancedSettings';
 import { fetchShiftSettings, updateShiftSettings } from '../../services/operationsApi';
 import { AllowedUsersPanel } from './AllowedUsersPanel';
+import { AppearancePanel } from './AppearancePanel';
 import { LoanSettingsPanel } from './LoanSettingsPanel';
 import { ModulesPanel } from './ModulesPanel';
 import { RolesPanel } from './RolesPanel';
@@ -54,6 +55,7 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
             {sync.message ? ` · ${sync.message}` : ''}
           </div>
         </section>
+        <AppearancePanel />
         <section className="card">
           <div className="card-head"><h3>Turnos TIC</h3></div>
           <div className="grid-2">

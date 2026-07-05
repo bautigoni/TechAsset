@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Boxes, CalendarDays, MonitorSmartphone, Repeat2 } from 'lucide-react';
 import type { AuthUser, SiteInfo } from '../../types';
 import { getGoogleOAuthConfig, login, register } from '../../services/authApi';
 
@@ -103,95 +102,61 @@ export function LoginPage({ mode, onMode, onReady }: {
   };
 
   return (
-    <main className="ta-auth">
-      <div className="ta-auth-stage">
-        <aside className="ta-auth-aside">
-          <div className="ta-auth-glow" aria-hidden="true" />
-          <div className="ta-auth-brand">
-            <img src="/favicon.png" alt="TechAsset" />
-            <div>
-              <h1>TechAsset</h1>
-              <p>Gestión tecnológica multi-sede</p>
-            </div>
-          </div>
-          <p className="ta-auth-tagline">Toda tu operación TIC,<br />ordenada en un solo lugar.</p>
-          <ul className="ta-auth-features" aria-label="Funciones principales">
-            <li><span className="ta-auth-feat-icon"><MonitorSmartphone size={18} strokeWidth={2.1} /></span>
-              <span><strong>Dispositivos y préstamos</strong><em>Trazabilidad por sede, escaneo y devoluciones.</em></span></li>
-            <li><span className="ta-auth-feat-icon"><Repeat2 size={18} strokeWidth={2.1} /></span>
-              <span><strong>Historial y analítica</strong><em>Quién, cuándo y qué, con gráficos.</em></span></li>
-            <li><span className="ta-auth-feat-icon"><Boxes size={18} strokeWidth={2.1} /></span>
-              <span><strong>Inventario y recursos maker</strong><em>Stock TIC siempre al día.</em></span></li>
-            <li><span className="ta-auth-feat-icon"><CalendarDays size={18} strokeWidth={2.1} /></span>
-              <span><strong>Agenda, tareas y aulas</strong><em>El día a día del equipo, coordinado.</em></span></li>
-          </ul>
-        </aside>
+    <main className="auth">
+      <header className="auth-top">
+        <button type="button" className="auth-back" onClick={() => onMode('landing')}>← TechAsset</button>
+      </header>
 
-        <form className="ta-auth-card" onSubmit={activeMode === 'register' ? submitRegister : submitLogin}>
-          {/* Marca compacta para mobile (el aside está oculto en pantallas chicas) */}
-          <div className="ta-auth-brand" aria-hidden="true">
-            <img src="/favicon.png" alt="" />
-            <div>
-              <h1>TechAsset</h1>
-              <p>Gestión tecnológica multi-sede</p>
-            </div>
-          </div>
+      <form className="auth-panel" onSubmit={activeMode === 'register' ? submitRegister : submitLogin}>
+        <div className="auth-heading">
+          <h1>{activeMode === 'register' ? 'Crear cuenta' : 'Ingresar'}</h1>
+          <p>{activeMode === 'register' ? 'Necesitás un código de invitación de tu administrador.' : 'Usá tu mail autorizado para tu sede.'}</p>
+        </div>
 
-          <div className={`ta-auth-tabs ${activeMode === 'register' ? 'is-register' : ''}`}>
-            <button type="button" className={activeMode === 'login' ? 'active' : ''} onClick={() => onMode('login')}>Iniciar sesión</button>
-            <button type="button" className={activeMode === 'register' ? 'active' : ''} onClick={() => onMode('register')}>Registrarse</button>
-          </div>
+        <div className="auth-switch" role="tablist">
+          <button type="button" role="tab" aria-selected={activeMode === 'login'} className={activeMode === 'login' ? 'active' : ''} onClick={() => onMode('login')}>Iniciar sesión</button>
+          <button type="button" role="tab" aria-selected={activeMode === 'register'} className={activeMode === 'register' ? 'active' : ''} onClick={() => onMode('register')}>Registrarse</button>
+        </div>
 
-          <div key={activeMode} className="ta-auth-head">
-            <h2>{activeMode === 'register' ? 'Crear cuenta' : 'Ingresar'}</h2>
-            <p>{activeMode === 'register' ? 'Necesitás un código de invitación de tu administrador.' : 'Usá tu mail autorizado para tu sede.'}</p>
-          </div>
-
-          <div className="ta-auth-form">
-            {activeMode === 'register' && (
-              <label>Nombre
-                <input className="input" required value={nombre} onChange={event => setNombre(event.target.value)} placeholder="Tu nombre" autoComplete="name" />
-              </label>
-            )}
-            <label>Mail
-              <input className="input" type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="usuario@colegio.edu.ar" autoComplete="email" inputMode="email" />
+        <div className="auth-fields">
+          {activeMode === 'register' && (
+            <label>Nombre
+              <input className="auth-input" required value={nombre} onChange={event => setNombre(event.target.value)} placeholder="Tu nombre" autoComplete="name" />
             </label>
-            <label>Contraseña
-              <input className="input" type="password" required minLength={6} value={password} onChange={event => setPassword(event.target.value)} placeholder="••••••••" autoComplete={activeMode === 'register' ? 'new-password' : 'current-password'} />
-              {activeMode === 'login' && <span className="ta-auth-hint">¿Primera vez? La contraseña que pongas queda registrada para tu cuenta.</span>}
+          )}
+          <label>Mail
+            <input className="auth-input" type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="usuario@colegio.edu.ar" autoComplete="email" inputMode="email" />
+          </label>
+          <label>Contraseña
+            <input className="auth-input" type="password" required minLength={6} value={password} onChange={event => setPassword(event.target.value)} placeholder="••••••••" autoComplete={activeMode === 'register' ? 'new-password' : 'current-password'} />
+            {activeMode === 'login' && <span className="auth-hint">¿Primera vez? La contraseña que pongas queda registrada para tu cuenta.</span>}
+          </label>
+          {activeMode === 'register' && (
+            <label>Código de invitación
+              <input className="auth-input" required value={code} onChange={event => setCode(event.target.value.toUpperCase())} placeholder="TA-XXXX-XXXX" autoComplete="off" />
             </label>
-            {activeMode === 'register' && (
-              <label>Código de invitación
-                <input className="input" required value={code} onChange={event => setCode(event.target.value.toUpperCase())} placeholder="TA-XXXX-XXXX" autoComplete="off" />
-              </label>
-            )}
+          )}
 
-            {error && <div className="ta-auth-msg is-error">{error}</div>}
-            {success && <div className="ta-auth-msg is-ok">{success}</div>}
+          {error && <div className="auth-msg is-error">{error}</div>}
+          {success && <div className="auth-msg is-ok">{success}</div>}
 
-            <button className="ta-auth-submit" type="submit" disabled={busy}>
-              {busy ? 'Procesando…' : activeMode === 'register' ? 'Crear cuenta' : 'Ingresar'}
-            </button>
+          <button className="auth-submit" type="submit" disabled={busy}>
+            {busy ? 'Procesando…' : activeMode === 'register' ? 'Crear cuenta' : 'Ingresar'}
+          </button>
 
-            {activeMode === 'login' && googleEnabled && (
-              <>
-                <div className="ta-auth-sep">o</div>
-                <button
-                  className="ta-auth-google"
-                  type="button"
-                  onClick={loginWithGoogle}
-                  aria-label="Continuar con Google"
-                >
-                  <GoogleMark />
-                  Continuar con Google
-                </button>
-              </>
-            )}
-          </div>
+          {activeMode === 'login' && googleEnabled && (
+            <>
+              <div className="auth-sep"><span>o</span></div>
+              <button className="auth-google" type="button" onClick={loginWithGoogle}>
+                <GoogleMark />
+                Continuar con Google
+              </button>
+            </>
+          )}
+        </div>
 
-          <p className="ta-auth-foot">La sesión mantiene la separación de datos por sede.</p>
-        </form>
-      </div>
+        <p className="auth-note">Cada sede ve solo sus datos.</p>
+      </form>
     </main>
   );
 }

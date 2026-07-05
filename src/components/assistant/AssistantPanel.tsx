@@ -1,124 +1,153 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '../layout/Button';
-import { sendAssistantMessage, type AssistantChatResponse } from '../../services/assistantApi';
+import { sendAssistantMessage, type AssistantResponse } from '../../services/assistantApi';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
-  text: string;
-  response?: AssistantChatResponse;
+  content: string;
+  response?: AssistantResponse;
 }
 
-const QUICK_ACTIONS: Record<string, string> = {
-  'Registrar préstamo': 'start_loan',
-  'Registrar devolución': 'start_return',
-  'Crear tarea': 'start_task',
-  'Crear evento': 'start_agenda',
-  'Ver agenda': 'show_agenda',
-  'Consultar procedimiento': 'procedure_search'
-};
+const STAFF_SUGGESTIONS = [
+  'prestar Touch 34 a mili en DOE',
+  'qué dispositivos están disponibles',
+  'qué tareas tengo pendientes',
+  'quién tiene prestado el D1436',
+  'crear tarea revisar proyectores',
+  'ver agenda de hoy'
+];
 
-export function AssistantPanel({ onNavigate, onLoanDraft }: { onNavigate: (view: string) => void; onLoanDraft?: (deviceCode: string) => void }) {
+const VIEWER_SUGGESTIONS = [
+  'qué dispositivos hay disponibles',
+  'dónde está el D1436',
+  'qué tareas están pendientes',
+  'ver agenda de hoy'
+];
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/>\s+/g, '')
+    .replace(/[-*+]\s+/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+export function AssistantPanel({ onNavigate, canEdit }: { onNavigate: (view: string) => void; canEdit?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [minimized, setMinimized] = useState(false);
   const [input, setInput] = useState('');
-  const [pendingAction, setPendingAction] = useState<Record<string, unknown> | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const conversationId = useMemo(() => `techasset-${Date.now()}-${Math.random().toString(36).slice(2)}`, []);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', text: 'Hola, soy el Asistente TechAsset. Decime que necesitas hacer y lo ordenamos.' }
-  ]);
+  const [hasStarted, setHasStarted] = useState(false);
 
-  const send = async (text = input, action?: string) => {
+  const suggestions = canEdit ? STAFF_SUGGESTIONS : VIEWER_SUGGESTIONS;
+
+  const send = async (text: string) => {
     const clean = text.trim();
     if (!clean || loading) return;
     setInput('');
+    setHasStarted(true);
     setLoading(true);
-    setMessages(current => [...current, { role: 'user', text: clean }]);
+    const newMessages = [...messages, { role: 'user' as const, content: clean }];
+    setMessages(newMessages);
     try {
-      const response = await sendAssistantMessage({ message: clean, action, conversationId, context: { pendingAction } });
-      setPendingAction(response.pendingAction || null);
-      setMessages(current => [...current, { role: 'assistant', text: response.reply, response }]);
-    } catch (error) {
-      setMessages(current => [...current, { role: 'assistant', text: error instanceof Error ? error.message : 'No pude procesar el pedido.' }]);
+      const response = await sendAssistantMessage(
+        newMessages.slice(-12).map(m => ({ role: m.role, content: m.content }))
+      );
+      setMessages(prev => [...prev, { role: 'assistant', content: stripMarkdown(response.reply), response }]);
+      if (response.suggestedRoute) {
+        onNavigate(response.suggestedRoute);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'No pude procesar el pedido. ¿Querés intentar de nuevo?' }]);
     } finally {
       setLoading(false);
     }
   };
 
-  const close = () => {
-    setOpen(false);
-    setMinimized(false);
-  };
-
-  const confirm = () => send('confirmo');
-  const cancel = () => {
-    setPendingAction(null);
-    setMessages(current => [...current, { role: 'assistant', text: 'Listo, cancele la accion pendiente. No modifique datos.' }]);
-  };
+  const chatEl = (
+    <section className="assistant-panel" aria-label="Asistente TechAsset">
+      <header className="assistant-panel-head">
+        <div>
+          <strong>Asistente TechAsset</strong>
+        </div>
+        <button type="button" className="assistant-close" onClick={() => setOpen(false)} aria-label="Cerrar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </header>
+      <div className="assistant-feed">
+        {!hasStarted && (
+          <div className="assistant-welcome">
+            <p>Decime qué necesitas hacer y lo ordenamos.</p>
+            <div className="assistant-suggestions">
+              {suggestions.map(s => (
+                <button key={s} type="button" className="assistant-suggestion-btn" onClick={() => send(s)}>{s}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} className={`chat-msg ${msg.role}`}>
+            {msg.role === 'assistant' && (
+              <div className="chat-avatar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue, #3b82f6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a4 4 0 0 0-4 4v1a4 4 0 0 0 8 0V6a4 4 0 0 0-4-4z"/>
+                  <path d="M20 16.5A6 6 0 0 0 14 11h-4a6 6 0 0 0-6 5.5"/>
+                  <path d="M12 18v4"/>
+                  <path d="M9 22h6"/>
+                </svg>
+              </div>
+            )}
+            <div className="chat-bubble">
+              <p>{msg.content}</p>
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="chat-msg assistant">
+            <img src="/asistente-ia.png" alt="" className="chat-avatar" />
+            <div className="chat-bubble">
+              <div className="chat-typing">
+                <span /><span /><span />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <form className="assistant-input-form" onSubmit={e => { e.preventDefault(); send(input); }}>
+        <input
+          className="assistant-input"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="Escribí tu pedido..."
+          disabled={loading}
+        />
+        <button type="submit" className="assistant-send" disabled={loading || !input.trim()} aria-label="Enviar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </form>
+    </section>
+  );
 
   return (
     <>
-      <button className="assistant-fab" type="button" onClick={() => { setOpen(true); setMinimized(false); }} aria-label="Abrir Asistente TechAsset">
-        <span className="assistant-fab-icon" aria-hidden="true" />
-        <span>Asistente TechAsset</span>
+      <button className="assistant-trigger" type="button" onClick={() => setOpen(true)} aria-label="Abrir Asistente TechAsset">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2a4 4 0 0 0-4 4v1a4 4 0 0 0 8 0V6a4 4 0 0 0-4-4z"/>
+          <path d="M20 16.5A6 6 0 0 0 14 11h-4a6 6 0 0 0-6 5.5"/>
+          <path d="M12 18v4"/>
+          <path d="M9 22h6"/>
+          <circle cx="12" cy="13" r="2" fill="currentColor"/>
+        </svg>
+        <span className="assistant-trigger-label">Asistente de IA</span>
+        <span className="assistant-trigger-badge">IA</span>
       </button>
-      {open && !minimized && (
-        <section className="assistant-popup" aria-label="Asistente TechAsset">
-          <header className="assistant-popup-head">
-            <div>
-              <strong>Asistente TechAsset</strong>
-              <span>Chat operativo</span>
-            </div>
-            <div className="assistant-popup-actions">
-              <button type="button" onClick={() => setMinimized(true)} aria-label="Minimizar">_</button>
-              <button type="button" onClick={close} aria-label="Cerrar">x</button>
-            </div>
-          </header>
-          <div className="assistant-popup-feed">
-            {messages.map((message, index) => (
-              <article className={`chat-message ${message.role}`} key={`${message.role}-${index}`}>
-                <p>{message.text}</p>
-                {Array.isArray(message.response?.data?.items) && (
-                  <div className="assistant-result-list">
-                    {(message.response.data.items as Array<Record<string, unknown>>).slice(0, 5).map((item, itemIndex) => (
-                      <div className="assistant-result-card" key={String(item.id || itemIndex)}>
-                        <strong>{String(item.titulo || item.codigo_dispositivo || item.curso || item.etiqueta || item.id || 'Resultado')}</strong>
-                        <span>{String(item.estado || item.actividad || item.usuario_nombre || item.descripcion || '')}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {message.response?.needsConfirmation && (
-                  <div className="assistant-confirm-actions">
-                    <Button variant="primary" onClick={confirm}>Confirmar</Button>
-                    <Button onClick={cancel}>Cancelar</Button>
-                  </div>
-                )}
-                {Boolean(message.response?.suggestedActions?.length) && (
-                  <div className="assistant-suggestions">
-                    {message.response?.suggestedActions.map(label => (
-                      <button type="button" key={label} onClick={() => send(label, QUICK_ACTIONS[label])}>{label}</button>
-                    ))}
-                  </div>
-                )}
-                {message.response?.intent === 'loan_flow' && message.response.pendingAction && (
-                  <div className="assistant-confirm-actions">
-                    <Button onClick={() => {
-                      const payload = message.response?.pendingAction?.payload as { codigo_dispositivo?: string } | undefined;
-                      if (payload?.codigo_dispositivo) onLoanDraft?.(payload.codigo_dispositivo);
-                    }}>Abrir en Préstamos</Button>
-                  </div>
-                )}
-              </article>
-            ))}
-            {loading && <article className="chat-message assistant"><p>Estoy revisando...</p></article>}
-          </div>
-          <form className="assistant-popup-form" onSubmit={event => { event.preventDefault(); send(); }}>
-            <input className="input" value={input} onChange={event => setInput(event.target.value)} placeholder="Escribi tu pedido..." />
-            <Button variant="primary" type="submit" disabled={loading}>Enviar</Button>
-          </form>
-        </section>
-      )}
+      {open && createPortal(chatEl, document.body)}
     </>
   );
 }

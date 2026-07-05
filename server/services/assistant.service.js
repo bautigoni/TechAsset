@@ -1,6 +1,7 @@
 import { getDb, nowIso, addLocalMovement } from '../db.js';
 import { getMergedDevices } from './deviceInventory.service.js';
 import { searchProcedures } from './procedureSearch.js';
+import { dataChat } from './assistantData.service.js';
 import { config } from '../config.js';
 
 const TZ = 'America/Argentina/Buenos_Aires';
@@ -39,11 +40,17 @@ export function assistantStatus() {
   };
 }
 
-export async function handleAssistantChat({ message, action = '', conversationId = 'default', context = {} }) {
+const WRITE_INTENTS = new Set(['loan_flow', 'return_flow', 'task_flow', 'agenda_flow']);
+
+// `access` lo arma assistant.routes.js desde la sesión (rol, sede, permisos).
+// Si falta (llamadas legacy), se asume lectura sin escritura por seguridad.
+const DEFAULT_ACCESS = { siteCode: '', role: 'Consulta', canEdit: false, isManager: false, user: { id: 0, email: '', nombre: '' } };
+
+export async function handleAssistantChat({ message, action = '', conversationId = 'default', context = {}, access = DEFAULT_ACCESS }) {
   logModeOnce();
   const text = String(message || '').trim();
-  const memory = getMemory(conversationId);
-  memory.siteCode = String(context.siteCode || context.site_code || memory.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
+  const memory = getMemory(`${access?.user?.id || 'anon'}:${conversationId}`);
+  memory.siteCode = String(access?.siteCode || context.siteCode || context.site_code || memory.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
   if (context.pendingAction && !memory.pendingConfirmation && isExecutablePending(context.pendingAction)) {
     memory.pendingConfirmation = context.pendingAction;
   }
@@ -51,17 +58,25 @@ export async function handleAssistantChat({ message, action = '', conversationId
   const intent = await classifyMessage({ text, action, memory });
   logRequest({ conversationId, message: text, action, intent, memory });
 
+  // Escrituras (préstamo/devolución/tarea/agenda) solo para roles con edición.
+  // La consulta de datos sigue disponible para todos, con su propio scoping.
+  if ((WRITE_INTENTS.has(intent) || (intent === 'confirmation' && memory.pendingConfirmation)) && !access?.canEdit) {
+    memory.pendingConfirmation = null;
+    memory.activeFlow = null;
+    return response('Tu rol es de solo consulta: puedo buscarte datos, pero no registrar préstamos, devoluciones, tareas ni agenda.', 'general_chat');
+  }
+
   let result;
-  if (intent === 'confirmation') result = await confirmPending(memory, text);
+  if (intent === 'confirmation') result = await confirmPending(memory, text, access);
   else if (intent === 'correction') result = await applyCorrection(memory, text);
   else if (intent === 'loan_flow') result = await handleLoanFlow(memory, text, action);
   else if (intent === 'return_flow') result = await handleReturnFlow(memory, text, action);
   else if (intent === 'task_flow') result = await handleTaskFlow(memory, text, action);
   else if (intent === 'agenda_flow') result = await handleAgendaFlow(memory, text, action);
-  else if (intent === 'device_query') result = await deviceAnswer(text, memory.siteCode);
+  else if (intent === 'device_query') result = await dataAwareAnswer(text, memory, access) || await deviceAnswer(text, memory.siteCode);
   else if (intent === 'procedure_query') result = await procedureAnswer(text, memory, action);
   else if (intent === 'technical_help') result = await technicalHelp(text);
-  else result = await generalChat(text, memory);
+  else result = await dataAwareAnswer(text, memory, access) || await generalChat(text, memory);
 
   memory.lastIntent = intent;
   if (result.pendingAction) {
@@ -121,6 +136,9 @@ async function classifyMessage({ text, action, memory }) {
 }
 
 function forceIntentFromText(lower, raw) {
+  // Preguntas de datos ("quién tiene la D1436?") nunca fuerzan un flujo de
+  // escritura: el regex de contexto de préstamo (a\s+\w) matchea "la D1436".
+  if (/\b(quien|donde|estado|figura|disponible|cuantos|cuantas|desde cuando)\b/.test(lower) || raw.includes('?')) return null;
   // Priority 1: explicit return keywords always win
   if (/devolv|devolucion|devoluci|trajeron|me trajeron|ya volvio|entregaron|cerrar prestamo|marcar devuelta/.test(lower)) return 'return_flow';
   // Priority 2: loan — keyword OR device code with location/person context
@@ -322,8 +340,25 @@ Actividad: ${parsed.actividad}
 Ubicación: ${parsed.ubicacion || 'Aula'}`, 'agenda_flow', pendingAction, ['Crear agenda', 'Cancelar']);
 }
 
-async function confirmPending(memory, text) {
+// Consulta de datos vía OpenAI con herramientas permission-aware. Devuelve null
+// si no hay API key o si OpenAI falla, para que el caller haga fallback local.
+async function dataAwareAnswer(text, memory, access) {
+  if (!config.openaiApiKey || !text) return null;
+  try {
+    const { reply, navigation, items } = await dataChat({ text, history: memory.messages, access: { ...access, siteCode: memory.siteCode } });
+    return response(reply, 'data_query', { navigation: navigation || null, items: items || undefined });
+  } catch (error) {
+    console.warn(`[assistant] dataChat fallback: ${safeError(error)}`);
+    return null;
+  }
+}
+
+async function confirmPending(memory, text, access) {
   if (!memory.pendingConfirmation) return generalChat(text, memory);
+  if (!access?.canEdit) {
+    memory.pendingConfirmation = null;
+    return response('Tu rol es de solo consulta: no puedo registrar cambios.', 'general_chat');
+  }
   const executed = await executePending(memory.pendingConfirmation, memory.siteCode);
   memory.pendingConfirmation = null;
   memory.activeFlow = null;

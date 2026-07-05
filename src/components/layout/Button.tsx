@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, PropsWithChildren } from 'react';
 
-type Variant = 'primary' | 'success' | 'secondary';
+type Variant = 'primary' | 'success' | 'secondary' | 'danger' | 'ghost' | 'outline';
 
 export function Button({ children, className = '', variant = 'secondary', ...props }: PropsWithChildren<ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }>) {
   return (

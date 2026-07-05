@@ -82,7 +82,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
           <section className="card previous-loans-card">
             <div className="card-head">
               <div>
-                <h3>Préstamos de ayer</h3>
+                <h3>Último día con préstamos</h3>
                 <span className="muted">{previousDate ? formatShortDate(previousDate) : 'Actualización diaria'}</span>
               </div>
               <span className="badge loaned">{previousLoading ? '...' : previousLoans.length}</span>
@@ -124,7 +124,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                 </table>
               </div>
             )}
-            {!previousError && !previousLoans.length && <div className="empty-state previous-loans-empty">No hubo préstamos registrados ayer.</div>}
+            {!previousError && !previousLoans.length && <div className="empty-state previous-loans-empty">Sin préstamos registrados en días anteriores.</div>}
           </section>
           <section className="card loaned-now-card">
             <div className="card-head"><h3>Actualmente prestados</h3><span className="muted">{loaned.length}</span></div>

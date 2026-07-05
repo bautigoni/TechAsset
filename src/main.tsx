@@ -4,6 +4,10 @@ import './styles/global.css';
 import { App } from './App';
 import { InstallBanner } from './components/common/InstallBanner';
 import { ReleaseNotesModal } from './components/common/ReleaseNotesModal';
+import { applyThemeProfile, readThemeProfile } from './utils/themeProfile';
+
+// Aplicar el perfil de tema guardado antes del primer render para evitar flash.
+applyThemeProfile(readThemeProfile());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

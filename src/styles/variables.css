@@ -1,4 +1,18 @@
 :root {
+  /* Paleta de charts (tema A) */
+  --chart-1: #3b82f6;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #ef4444;
+  --chart-5: #8b5cf6;
+
+  /* Tokens de transición */
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --duration-fast: .15s;
+  --duration-base: .22s;
+  --duration-slow: .35s;
+
   --bg: #09101d;
   --panel: #121b2d;
   --panel-2: #1a2740;
@@ -38,4 +52,62 @@
   --surface-shadow: 0 4px 20px rgba(30, 80, 160, 0.1);
   --surface-shadow-hover: 0 10px 30px rgba(37, 99, 235, 0.16);
   --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* ================================================================
+   TEMA B — Smart Campus (crema/cálido, acento naranja-cobre).
+   Los perfiles smart activan además la clase .theme-light (lo hace
+   applyThemeProfile) para heredar los overrides de legibilidad del
+   modo claro; este bloque va DESPUÉS de :root.theme-light y con la
+   misma especificidad, así que pisa sus variables.
+   ================================================================ */
+:root[data-theme-profile="smart"],
+:root[data-theme-profile="smart-stairs"],
+:root[data-theme-profile="smart-centered"],
+:root[data-theme-profile="smart-peek"] {
+  /* Base cálida */
+  --bg: #F5F0E8;
+  --panel: #FBF8F3;
+  --panel-2: #F0EAE0;
+  --border: #E2DCD0;
+  --text: #2C2420;
+  --muted: #8A7E72;
+
+  /* Accent naranja-cobre (institucional) */
+  --accent: #EA6A2B;
+  --accent-soft: rgba(234, 106, 43, 0.10);
+  --accent-light: #FDF0E8;
+
+  /* Blues complementarios */
+  --blue: #2563eb;
+  --green: #16a34a;
+  --yellow: #d97706;
+  --red: #dc2626;
+  --navy-50: #F0EDE8;
+  --navy-100: #E2DCD0;
+
+  /* Surface glass */
+  --glass-bg: rgba(251, 248, 243, 0.82);
+  --glass-border: rgba(226, 220, 208, 0.55);
+  --glass-shadow: 0 12px 40px rgba(44, 36, 32, 0.08);
+  --glass-blur: 12px;
+
+  /* Cards flotantes */
+  --card-radius: 32px;
+  --card-shadow: 0 12px 40px rgba(44, 36, 32, 0.06);
+
+  /* Surface tokens — reutilizados por .card/.stat-card existentes */
+  --surface: linear-gradient(165deg, rgba(251, 248, 243, 0.94), rgba(255, 253, 249, 0.98));
+  --surface-border: rgba(226, 220, 208, 0.9);
+  --surface-border-strong: rgba(234, 106, 43, 0.45);
+  --surface-shadow: 0 8px 28px rgba(44, 36, 32, 0.07);
+  --surface-shadow-hover: 0 14px 40px rgba(234, 106, 43, 0.14);
+  --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+  /* Charts (tema B) */
+  --chart-1: #EA6A2B;
+  --chart-2: #2563eb;
+  --chart-3: #D97706;
+  --chart-4: #DC2626;
+  --chart-5: #7C3AED;
 }

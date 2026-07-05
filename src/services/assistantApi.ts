@@ -1,14 +1,10 @@
 import { apiSend } from './apiClient';
 
-export interface AssistantChatResponse {
+export interface AssistantResponse {
   reply: string;
-  intent: string;
-  needsConfirmation: boolean;
-  pendingAction: Record<string, unknown> | null;
-  suggestedActions: string[];
-  data: Record<string, unknown>;
+  suggestedRoute?: string | null;
 }
 
-export function sendAssistantMessage(payload: { message: string; action?: string; conversationId?: string; context?: Record<string, unknown> }) {
-  return apiSend<AssistantChatResponse>('/api/asistente/chat', 'POST', payload);
+export function sendAssistantMessage(messages: Array<{ role: string; content: string }>) {
+  return apiSend<AssistantResponse>('/api/asistente/chat', 'POST', { messages });
 }

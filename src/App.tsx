@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AuthUser, Device, Movement, SiteInfo, TaskState, ViewKey } from './types';
-import { Sidebar } from './components/layout/Sidebar';
+import { Sidebar, visibleNavItems } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
+import { MobileNav } from './components/layout/MobileNav';
+import { AssistantPanel } from './components/assistant/AssistantPanel';
+import { applyThemeProfile, isSmartProfile, readThemeProfile, THEME_PROFILE_EVENT, type ThemeProfile } from './utils/themeProfile';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { DevicesPage } from './components/devices/DevicesPage';
 import { DeviceProfile } from './components/devices/DeviceProfile';
@@ -27,6 +30,7 @@ import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
 import { LoginPage } from './components/auth/LoginPage';
+import { LandingPage } from './components/auth/LandingPage';
 import { TenantsDashboard } from './components/settings/TenantsDashboard';
 import { activeSiteRole, canViewModule, isReadOnlyRole, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
@@ -38,6 +42,7 @@ export function App() {
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('techasset_sidebar_collapsed') === '1');
+  const [themeProfile, setThemeProfile] = useState<ThemeProfile>(() => readThemeProfile());
   const [consultationMode, setConsultationMode] = useState(false);
   const [profile, setProfile] = useState<Device | null>(null);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
@@ -124,7 +129,17 @@ export function App() {
   }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 5));
 
   useEffect(() => {
-    document.documentElement.classList.toggle('theme-light', localStorage.getItem('techasset_nfpt_theme') === 'light');
+    applyThemeProfile(themeProfile);
+  }, [themeProfile]);
+
+  // Sincroniza el perfil cuando se cambia desde Configuración > Apariencia.
+  useEffect(() => {
+    const onProfileChange = (event: Event) => {
+      const detail = (event as CustomEvent<ThemeProfile>).detail;
+      if (detail) setThemeProfile(detail);
+    };
+    window.addEventListener(THEME_PROFILE_EVENT, onProfileChange);
+    return () => window.removeEventListener(THEME_PROFILE_EVENT, onProfileChange);
   }, []);
 
   useEffect(() => {
@@ -200,6 +215,8 @@ export function App() {
   }, [user]);
 
   const toggleTheme = () => {
+    // Solo aplica al tema clásico; en Smart Campus la paleta es fija.
+    if (isSmartProfile(themeProfile)) return;
     const next = document.documentElement.classList.contains('theme-light') ? 'dark' : 'light';
     document.documentElement.classList.toggle('theme-light', next === 'light');
     localStorage.setItem('techasset_nfpt_theme', next);
@@ -287,9 +304,24 @@ export function App() {
   const effectiveConsultation = roleReadOnly || consultationMode;
   const superadmin = isSuperadmin(user);
   const access = roleAccess(siteSettings, currentRole, superadmin);
+  // Superadmin parado en una sede que no es la suya por defecto → banner de impersonación (tema B).
+  const activeSiteInfo = sites.find(site => site.siteCode === activeSite);
+  const impersonating = superadmin && sites.length > 1 && !!activeSiteInfo && !activeSiteInfo.isDefault;
+  const exitImpersonation = () => {
+    const home = sites.find(site => site.isDefault) || sites[0];
+    if (home) setActiveSite(home.siteCode);
+  };
+  const navItems = visibleNavItems(siteSettings, superadmin, access);
 
   if (authLoading) return <main className="login-shell"><section className="card login-card">Cargando sesión...</section></main>;
   if (!user) {
+    const goMode = (mode: 'landing' | 'login' | 'register') => {
+      setAuthMode(mode);
+      window.history.replaceState(null, '', mode === 'landing' ? '/' : `/${mode}`);
+    };
+    if (authMode === 'landing') {
+      return <LandingPage onLogin={() => goMode('login')} onRegister={() => goMode('register')} />;
+    }
     return <LoginPage mode={authMode} onMode={mode => {
       setAuthMode(mode);
       window.history.replaceState(null, '', mode === 'landing' ? '/' : `/${mode}`);
@@ -306,9 +338,9 @@ export function App() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} />
+      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
       <main className="main main-content">
-        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} />
+        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} />
         {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
@@ -323,6 +355,11 @@ export function App() {
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
       </main>
+      <MobileNav items={navItems} active={view} onNavigate={setView} onMore={() => setMenuOpen(true)} themeProfile={themeProfile} />
+      <AssistantPanel
+        onNavigate={next => setView(next as ViewKey)}
+        canEdit={!effectiveConsultation}
+      />
       {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}
       {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}
     </div>

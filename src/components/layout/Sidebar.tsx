@@ -14,16 +14,20 @@ import {
   School,
   Settings,
   Ticket,
-  Wrench
+  Wrench,
+  X
 } from 'lucide-react';
 import type { SiteInfo, ViewKey } from '../../types';
 import { isViewEnabled, moduleOrder, TOGGLEABLE_KEYS, type ModuleKey } from '../../utils/modules';
 import { canViewModule, type ModuleAccess } from '../../utils/permissions';
+import { isSmartProfile, smartSidebarStyle, type ThemeProfile } from '../../utils/themeProfile';
 import { TenantLogo } from './TenantLogo';
 
 type NavIcon = ComponentType<{ size?: number; strokeWidth?: number }>;
 
-const NAV: Array<{ key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: boolean }> = [
+export type NavItem = { key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: boolean };
+
+const NAV: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', Icon: Gauge },
   { key: 'tenants', label: 'Tenants', Icon: Building2, superadminOnly: true },
   { key: 'devices', label: 'Dispositivos', Icon: MonitorSmartphone },
@@ -41,7 +45,28 @@ const NAV: Array<{ key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: 
 
 const BOTTOM_NAV = new Set<ViewKey>(['settings']);
 
-export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null }: {
+// Lista de navegación visible según sede, rol y módulos habilitados.
+// La comparten Sidebar (ambos temas) y el bottom nav mobile del tema B.
+export function visibleNavItems(settings: Record<string, unknown> | null | undefined, isSuperadmin: boolean, access: ModuleAccess | null): NavItem[] {
+  return NAV.filter(item =>
+    (!item.superadminOnly || isSuperadmin) &&
+    isViewEnabled(item.key, settings) &&
+    (!access || canViewModule(access, item.key, TOGGLEABLE_KEYS))
+  ).sort((a, b) => navSort(a.key, b.key, settings));
+}
+
+// Indentación del estilo "stairs": los items se corren según su distancia al activo.
+export function getStairsMargin(index: number, activeIndex: number): number {
+  if (activeIndex < 0) return 5;
+  const distance = Math.abs(index - activeIndex);
+  if (distance === 0) return 0;
+  if (distance === 1) return 26;
+  if (distance === 2) return 19;
+  if (distance === 3) return 12;
+  return 5;
+}
+
+export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null, themeProfile = 'classic', impersonating = false }: {
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
   open: boolean;
@@ -53,19 +78,66 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
   settings?: Record<string, unknown> | null;
   isSuperadmin?: boolean;
   access?: ModuleAccess | null;
+  themeProfile?: ThemeProfile;
+  impersonating?: boolean;
 }) {
   const siteInfo = sites.find(site => site.siteCode === activeSite);
-  const visibleNav = NAV.filter(item =>
-    (!item.superadminOnly || isSuperadmin) &&
-    isViewEnabled(item.key, settings) &&
-    (!access || canViewModule(access, item.key, TOGGLEABLE_KEYS))
-  ).sort((a, b) => navSort(a.key, b.key, settings));
-  const mainNav = visibleNav.filter(item => !BOTTOM_NAV.has(item.key));
-  const bottomNav = visibleNav.filter(item => BOTTOM_NAV.has(item.key));
+  const visibleNav = visibleNavItems(settings, isSuperadmin, access);
   const navigate = (view: ViewKey) => {
     onNavigate(view);
     onClose();
   };
+
+  if (isSmartProfile(themeProfile)) {
+    const style = smartSidebarStyle(themeProfile);
+    const activeIndex = visibleNav.findIndex(item => item.key === active);
+    return (
+      <aside
+        className={`sidebar-rail style-${style} ${open ? 'open' : ''} ${impersonating ? 'has-impersonation' : ''}`}
+        onClick={onClose}
+      >
+        <div className="sidebar-box" onClick={event => event.stopPropagation()}>
+          <div className="sidebar-box-header">
+            <div className="sidebar-box-brand">
+              <TenantLogo site={siteInfo} />
+              <div>
+                <strong>TechAsset</strong>
+                <small>{siteInfo?.nombre || activeSite}</small>
+              </div>
+            </div>
+            <button className="sidebar-close-btn" type="button" aria-label="Cerrar menú" onClick={onClose}>
+              <X size={18} strokeWidth={2.2} />
+            </button>
+          </div>
+          <nav>
+            {visibleNav.map((item, index) => {
+              const Icon = item.Icon;
+              const isActive = active === item.key;
+              const stairs = style === 'stairs';
+              const peek = style === 'centered-peek';
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`nav-item ${stairs ? 'stairs' : ''} ${peek ? 'peek' : ''} ${isActive ? 'active' : ''}`.replace(/\s+/g, ' ').trim()}
+                  style={stairs ? { marginLeft: getStairsMargin(index, activeIndex) } : undefined}
+                  onClick={() => navigate(item.key)}
+                  aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <Icon size={18} strokeWidth={2.1} />
+                  <span className="nav-item-label">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </aside>
+    );
+  }
+
+  const mainNav = visibleNav.filter(item => !BOTTOM_NAV.has(item.key));
+  const bottomNav = visibleNav.filter(item => BOTTOM_NAV.has(item.key));
 
   return (
     <>

@@ -138,13 +138,19 @@ loansRouter.get('/loans/suggest', (req, res) => {
 
 loansRouter.get('/loans/previous-day', (req, res) => {
   const siteCode = requireSite(req);
-  const date = previousLocalDateKey();
+  const today = localDateKey(new Date());
   const rows = getDb().prepare(`
     SELECT id, etiqueta, alias, filtro, persona, rol, ubicacion, curso, motivo, operador, timestamp
     FROM loan_events
     WHERE site_code=? AND tipo='prestamo'
     ORDER BY timestamp DESC, id DESC
   `).all(siteCode);
+  // "Ayer" estricto queda vacío después de fines de semana o feriados; se muestra
+  // el último día previo a hoy que tuvo préstamos (la fecha viaja en la respuesta).
+  const date = rows
+    .map(row => localDateKey(row.timestamp))
+    .filter(key => key && key < today)
+    .reduce((max, key) => (key > max ? key : max), '') || previousLocalDateKey();
   const items = rows
     .filter(row => localDateKey(row.timestamp) === date)
     .map(row => ({
