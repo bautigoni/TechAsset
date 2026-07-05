@@ -110,7 +110,14 @@ export function AssistantPanel({ onNavigate, canEdit }: { onNavigate: (view: str
         ))}
         {loading && (
           <div className="chat-msg assistant">
-            <img src="/asistente-ia.png" alt="" className="chat-avatar" />
+            <div className="chat-avatar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue, #3b82f6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a4 4 0 0 0-4 4v1a4 4 0 0 0 8 0V6a4 4 0 0 0-4-4z"/>
+                <path d="M20 16.5A6 6 0 0 0 14 11h-4a6 6 0 0 0-6 5.5"/>
+                <path d="M12 18v4"/>
+                <path d="M9 22h6"/>
+              </svg>
+            </div>
             <div className="chat-bubble">
               <div className="chat-typing">
                 <span /><span /><span />
