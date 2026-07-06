@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import type { TaskItem, TaskState } from '../../types';
 import { Button } from '../layout/Button';
 import { StatCard } from '../layout/StatCard';
@@ -14,6 +14,7 @@ export function TasksPage({ tasks, kpis, operator, consultationMode, onSave, onM
   const [tab, setTab] = useState<'board' | 'schedule' | 'handoff'>('board');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaskItem | null>(null);
+  const [showDone, setShowDone] = useState(false);
 
   const grouped = useMemo(() => {
     const buckets: Record<string, TaskItem[]> = { Urgente: [], Media: [], Baja: [] };
@@ -85,9 +86,14 @@ export function TasksPage({ tasks, kpis, operator, consultationMode, onSave, onM
             <header className="task-schedule-head">
               <strong>Terminadas</strong>
               <span className="badge subtle">{doneTasks.length}</span>
+              {doneTasks.length > 3 && (
+                <button type="button" className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }} onClick={() => setShowDone(prev => !prev)}>
+                  {showDone ? 'Mostrar menos' : `Ver más (${doneTasks.length})`}
+                </button>
+              )}
             </header>
             <div className="task-done-list">
-              {doneTasks.map(task => (
+              {(showDone ? doneTasks : doneTasks.slice(0, 3)).map(task => (
                 <TaskCard
                   key={task.id}
                   task={task}

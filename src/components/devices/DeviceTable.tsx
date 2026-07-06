@@ -90,7 +90,7 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               <td data-label="SN">{tableValue(device.sn || device.mac)}</td>
               <td data-label="Prestado a">
                 <div>{tableValue(device.prestadoA)}</div>
-                {device.estado === 'Prestado' && device.ubicacion && <div className="cell-sub">{device.ubicacion}</div>}
+                {device.estado === 'Prestado' && <div className="cell-sub">{[device.ubicacion, device.curso].filter(Boolean).join(' · ') || '-'}</div>}
               </td>
               <td data-label="Horario préstamo">
                 {device.estado === 'Prestado' ? (

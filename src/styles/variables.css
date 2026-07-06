@@ -73,10 +73,10 @@
   --text: #2C2420;
   --muted: #8A7E72;
 
-  /* Accent naranja-cobre (institucional) */
-  --accent: #EA6A2B;
-  --accent-soft: rgba(234, 106, 43, 0.10);
-  --accent-light: #FDF0E8;
+  /* Accent azul TechAsset sobre base cálida */
+  --accent: #2563EB;
+  --accent-soft: rgba(37, 99, 235, 0.10);
+  --accent-light: #EAF1FE;
 
   /* Blues complementarios */
   --blue: #2563eb;
@@ -99,14 +99,14 @@
   /* Surface tokens — reutilizados por .card/.stat-card existentes */
   --surface: linear-gradient(165deg, rgba(251, 248, 243, 0.94), rgba(255, 253, 249, 0.98));
   --surface-border: rgba(226, 220, 208, 0.9);
-  --surface-border-strong: rgba(234, 106, 43, 0.45);
+  --surface-border-strong: rgba(37, 99, 235, 0.45);
   --surface-shadow: 0 8px 28px rgba(44, 36, 32, 0.07);
-  --surface-shadow-hover: 0 14px 40px rgba(234, 106, 43, 0.14);
+  --surface-shadow-hover: 0 14px 40px rgba(37, 99, 235, 0.14);
   --surface-inset: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 
   /* Charts (tema B) */
-  --chart-1: #EA6A2B;
-  --chart-2: #2563eb;
+  --chart-1: #2563eb;
+  --chart-2: #EA6A2B;
   --chart-3: #D97706;
   --chart-4: #DC2626;
   --chart-5: #7C3AED;

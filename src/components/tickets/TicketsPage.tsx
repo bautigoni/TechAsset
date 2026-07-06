@@ -82,6 +82,20 @@ function FilePreview({ url, compact = false }: { url: string; compact?: boolean 
   );
 }
 
+const MAX_DESC_LEN = 120;
+
+function DescriptionBox({ desc }: { desc: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const needsTrunc = desc.length > MAX_DESC_LEN;
+  const show = expanded || !needsTrunc ? desc : desc.slice(0, MAX_DESC_LEN) + '…';
+  return (
+    <p
+      className={`ticket-card-description${needsTrunc && !expanded ? ' is-trunc' : ''}`}
+      onClick={() => needsTrunc && setExpanded(prev => !prev)}
+    >{show}</p>
+  );
+}
+
 export function TicketsPage({ consultationMode }: { consultationMode: boolean }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -285,14 +299,14 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
             </div>
             {ticket.titulo && <div className="ticket-card-title">{ticket.titulo}</div>}
             {ticket.categoria && <div className="ticket-card-meta">{ticket.categoria}</div>}
-            {ticket.descripcion && <p className="ticket-card-description">{ticket.descripcion}</p>}
+            {ticket.descripcion && <DescriptionBox desc={ticket.descripcion} />}
             {ticket.imagenUrl && <div className="ticket-card-file"><FilePreview url={ticket.imagenUrl} compact /></div>}
             <div className="ticket-card-actions">
+              <Button disabled={consultationMode} onClick={() => openEdit(ticket)}>Editar</Button>
               <select className="input" value={ticket.estado} disabled={consultationMode} onChange={e => changeEstado(ticket, e.target.value as TicketState)}>
                 {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
-              <Button disabled={consultationMode} onClick={() => openEdit(ticket)}>Editar</Button>
-              <Button disabled={consultationMode} onClick={() => remove(ticket)}>Borrar</Button>
+              <Button disabled={consultationMode} onClick={() => remove(ticket)} className="btn-ghost-danger">Borrar</Button>
             </div>
           </section>
         ))}

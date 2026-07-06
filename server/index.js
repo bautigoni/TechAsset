@@ -23,6 +23,7 @@ import { ticketsRouter } from './routes/tickets.routes.js';
 import { invitesRouter } from './routes/invites.routes.js';
 import { googleAuthRouter } from './routes/googleAuth.routes.js';
 import { notificationsRouter } from './routes/notifications.routes.js';
+import { userPrefsRouter } from './routes/userPrefs.routes.js';
 import { calendarRouter, publicCalendarRouter } from './routes/calendar.routes.js';
 import { authMiddleware, requireEditor } from './services/siteContext.service.js';
 
@@ -42,6 +43,7 @@ app.use('/api', authMiddleware);
 app.use('/api', sitesRouter);
 app.use('/api', invitesRouter);
 app.use('/api', notificationsRouter);
+app.use('/api', userPrefsRouter);
 app.use('/api', calendarRouter);
 app.use('/api', analyticsRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.

@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import type { ViewKey } from '../../types';
-import { isSmartProfile, type ThemeProfile } from '../../utils/themeProfile';
+import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
 import type { NavItem } from './Sidebar';
 
 const MAX_SLOTS = 4;
@@ -15,7 +15,7 @@ export function MobileNav({ items, active, onNavigate, onMore, themeProfile = 'c
   onMore: () => void;
   themeProfile?: ThemeProfile;
 }) {
-  if (!isSmartProfile(themeProfile) || items.length === 0) return null;
+  if (!hasVariantNav(themeProfile) || items.length === 0) return null;
 
   const hasMore = items.length > MAX_SLOTS;
   const shown = hasMore ? items.slice(0, MAX_SLOTS - 1) : items;

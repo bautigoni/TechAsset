@@ -1,36 +1,32 @@
 import { useState } from 'react';
-import { isSmartProfile, readThemeProfile, saveThemeProfile, type SmartSidebarStyle, type ThemeProfile } from '../../utils/themeProfile';
+import { hasVariantNav, isSmartProfile, readThemeProfile, saveThemeProfile, variantStyle, profileForThemeAndStyle, type ThemeProfile, type VariantStyle } from '../../utils/themeProfile';
 
-const STYLE_OPTIONS: Array<{ value: SmartSidebarStyle; label: string }> = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'stairs', label: 'Escalera' },
-  { value: 'centered', label: 'Centrada' },
-  { value: 'centered-peek', label: 'Centrada + peek' }
+const STYLE_OPTIONS: Array<{ value: VariantStyle; label: string; desc: string }> = [
+  { value: 'normal', label: 'Normal', desc: 'Sidebar tradicional' },
+  { value: 'stairs', label: 'Escalera', desc: 'Items escalonados' },
+  { value: 'centered', label: 'Centrada', desc: 'Sidebar tipo dock' },
+  { value: 'centered-peek', label: 'Centrada + peek', desc: 'Sidebar que asoma' }
 ];
 
-function profileForStyle(style: SmartSidebarStyle): ThemeProfile {
-  if (style === 'stairs') return 'smart-stairs';
-  if (style === 'centered') return 'smart-centered';
-  if (style === 'centered-peek') return 'smart-peek';
-  return 'smart';
-}
-
-function styleForProfile(profile: ThemeProfile): SmartSidebarStyle {
-  if (profile === 'smart-stairs') return 'stairs';
-  if (profile === 'smart-centered') return 'centered';
-  if (profile === 'smart-peek') return 'centered-peek';
-  return 'normal';
-}
-
-// Selector de tema visual. Es una preferencia local del dispositivo
-// (localStorage), no toca datos de la sede ni respeta consultationMode.
 export function AppearancePanel() {
   const [profile, setProfile] = useState<ThemeProfile>(() => readThemeProfile());
   const smart = isSmartProfile(profile);
+  const variant = hasVariantNav(profile);
 
   const select = (next: ThemeProfile) => {
     setProfile(next);
     saveThemeProfile(next);
+  };
+
+  const changeStyle = (style: VariantStyle) => {
+    const next = profileForThemeAndStyle(smart, style);
+    select(next);
+    // Si se elige un estilo variante (no "Normal"), forzar expansión de la sidebar
+    // para que el cambio de 76→240px no comprima el contenido.
+    if (hasVariantNav(next)) {
+      localStorage.removeItem('techasset_sidebar_collapsed');
+      window.dispatchEvent(new CustomEvent('techasset:sidebar-expand'));
+    }
   };
 
   return (
@@ -51,28 +47,26 @@ export function AppearancePanel() {
             <span className="preview-sidebar cream" />
             <span className="preview-content warm" />
           </div>
-          <strong>Smart Campus</strong>
+          <strong>Tema claro</strong>
           <span>Panel flotante, cálido</span>
         </button>
       </div>
-      {smart && (
-        <div className="sidebar-style-selector">
-          <h4>Estilo de navegación</h4>
-          <div className="style-chips">
-            {STYLE_OPTIONS.map(option => (
-              <button
-                key={option.value}
-                type="button"
-                className={`style-chip ${styleForProfile(profile) === option.value ? 'active' : ''}`}
-                onClick={() => select(profileForStyle(option.value))}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <small className="muted">La sidebar cambia el acomodo de sus items en desktop; en mobile aparece la barra inferior.</small>
-        </div>
-      )}
+
+      <h3 style={{ margin: '16px 0 10px', fontSize: 14 }}>Estilo de navegación</h3>
+      <div className="style-chips">
+        {STYLE_OPTIONS.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            className={`style-chip ${!variant && option.value === 'normal' || variantStyle(profile) === option.value ? 'active' : ''}`}
+            onClick={() => changeStyle(option.value)}
+          >
+            {option.label}
+            <small>{option.desc}</small>
+          </button>
+        ))}
+      </div>
+      <small className="muted">La sidebar cambia el acomodo de sus items en desktop; en mobile aparece la barra inferior.</small>
     </section>
   );
 }

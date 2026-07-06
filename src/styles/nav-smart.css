@@ -1,26 +1,52 @@
 /* ================================================================
-   nav-smart.css — Navegación y overrides del TEMA B (Smart Campus).
-   Todo lo de este archivo aplica solo cuando <html> tiene
-   data-theme-profile="smart*" (o a los componentes nuevos que solo
-   se montan en ese perfil). El Tema A (classic) no se toca.
+   nav-smart.css — Navegación flotante (sidebar-rail, topbar-smart,
+   bottom-nav). Aplica con data-theme-profile que termina en un
+   sufijo de variante (-stairs, -centered, -peek) o smart base.
    ================================================================ */
 
-/* ── Shell: en smart la sidebar es un riel sticky en el flujo, no fixed ── */
-:root[data-theme-profile^="smart"] .app-shell,
-:root[data-theme-profile^="smart"] .app-shell.sidebar-collapsed {
+/* ── Shell: sidebar fija + topbar fija ── */
+[data-theme-profile$="-stairs"] .app-shell,
+[data-theme-profile$="-centered"] .app-shell,
+[data-theme-profile$="-peek"] .app-shell,
+[data-theme-profile$="-stairs"] .app-shell.sidebar-collapsed,
+[data-theme-profile$="-centered"] .app-shell.sidebar-collapsed,
+[data-theme-profile$="-peek"] .app-shell.sidebar-collapsed {
   padding-left: 0;
 }
 
-:root[data-theme-profile^="smart"] body,
-[data-theme-profile^="smart"] body {
-  background: var(--bg);
+/* main-content se corre a la derecha de la sidebar fija y abajo de la topbar */
+[data-theme-profile$="-stairs"] .main-content,
+[data-theme-profile$="-centered"] .main-content,
+[data-theme-profile$="-peek"] .main-content {
+  margin-left: 240px;
+  padding-top: 64px;
+  width: auto;
+}
+
+/* Luz ambiente: crema con un wash azul arriba a la derecha y uno cálido
+   apenas perceptible arriba a la izquierda — profundidad sin blobs. */
+[data-theme-profile="smart"] body,
+[data-theme-profile^="smart-"] body {
+  background:
+    radial-gradient(60% 42% at 88% -6%, rgba(37, 99, 235, 0.07), transparent),
+    radial-gradient(48% 36% at 8% -4%, rgba(217, 160, 90, 0.06), transparent),
+    linear-gradient(180deg, #faf7f1 0%, var(--bg) 100%);
+  background-attachment: fixed;
 }
 
 /* ── TOPBAR SMART ──────────────────────────────────────────────── */
 .topbar-smart-block {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
+}
+
+[data-theme-profile$="-stairs"] .topbar-smart-block,
+[data-theme-profile$="-centered"] .topbar-smart-block,
+[data-theme-profile$="-peek"] .topbar-smart-block {
+  left: 0;
 }
 
 .topbar-smart {
@@ -112,7 +138,7 @@
   place-items: center;
   font-size: 12px;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--accent, #EA6A2B), #D95A1A);
+  background: linear-gradient(135deg, var(--accent, #3B82F6), #1D4ED8);
   color: #fff;
 }
 
@@ -152,7 +178,7 @@
 
 /* ── Banner de impersonación (superadmin viendo otra sede) ─────── */
 .impersonation-banner {
-  background: linear-gradient(135deg, #EA6A2B, #D95A1A);
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
   padding: 12px 24px;
   display: flex;
   align-items: center;
@@ -160,7 +186,7 @@
   color: white;
   font-weight: 600;
   font-size: 14px;
-  box-shadow: 0 8px 24px rgba(234, 106, 43, 0.25);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
 }
 
 .impersonation-dot {
@@ -198,20 +224,19 @@
 @media (min-width: 981px) {
   .sidebar-rail {
     display: block;
-    position: sticky;
-    top: 76px;
-    height: calc(100vh - 76px);
+    position: fixed;
+    left: 0;
+    top: 64px;
+    bottom: 0;
     width: 240px;
-    flex: 0 0 240px;
     background: transparent;
-    padding: 12px;
+    padding: 12px 12px 24px;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
   }
   .sidebar-rail.has-impersonation {
-    top: 128px;
-    height: calc(100vh - 128px);
+    top: 116px;
   }
   /* Centrado vertical para centered y centered-peek */
   .sidebar-rail.style-centered,
@@ -312,8 +337,8 @@
 .nav-item:hover { background: var(--navy-50, var(--panel-2)); color: var(--text); }
 
 .nav-item.active {
-  background: color-mix(in srgb, var(--accent, #EA6A2B) 10%, white 40%);
-  color: var(--accent, #EA6A2B);
+  background: color-mix(in srgb, var(--accent, #3B82F6) 10%, white 40%);
+  color: var(--accent, #3B82F6);
 }
 
 .nav-item:active { transform: scale(.985); }
@@ -334,14 +359,14 @@
 }
 
 .nav-item.stairs.active {
-  box-shadow: inset 3px 0 0 var(--accent, #EA6A2B), 0 8px 22px rgba(28, 25, 23, .10);
+  box-shadow: inset 3px 0 0 var(--accent, #3B82F6), 0 8px 22px rgba(28, 25, 23, .10);
   background: white;
 }
 
 /* Estilo centered-peek: solo el activo se asoma hacia la izquierda */
 .nav-item.peek.active {
   margin-left: -10px;
-  box-shadow: inset 3px 0 0 var(--accent, #EA6A2B), 0 8px 22px rgba(28, 25, 23, .10);
+  box-shadow: inset 3px 0 0 var(--accent, #3B82F6), 0 8px 22px rgba(28, 25, 23, .10);
   background: white;
 }
 
@@ -408,8 +433,8 @@
   bottom: 6px;
   left: 6px;
   border-radius: 18px;
-  background: linear-gradient(135deg, var(--accent, #EA6A2B), #D95A1A);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent, #EA6A2B) 35%, transparent);
+  background: linear-gradient(135deg, var(--accent, #3B82F6), #1D4ED8);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent, #3B82F6) 35%, transparent);
   transition: transform .42s var(--ease-spring, cubic-bezier(.34, 1.56, .64, 1));
   width: calc((100% - 12px) / var(--bn-slots, 4));
 }
@@ -453,48 +478,55 @@
 
 /* Espacio inferior para que el bottom nav no tape contenido / FABs */
 @media (max-width: 980px) {
-  :root[data-theme-profile^="smart"] .main-content {
+  [data-theme-profile$="-stairs"] .main-content,
+  [data-theme-profile$="-centered"] .main-content,
+  [data-theme-profile$="-peek"] .main-content {
     padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
-  :root[data-theme-profile^="smart"] .assistant-fab,
-  :root[data-theme-profile^="smart"] .ta-assistant-fab,
-  :root[data-theme-profile^="smart"] .notif-toast,
-  :root[data-theme-profile^="smart"] .settings-toast {
+  [data-theme-profile$="-stairs"] .assistant-trigger,
+  [data-theme-profile$="-centered"] .assistant-trigger,
+  [data-theme-profile$="-peek"] .assistant-trigger,
+  [data-theme-profile$="-stairs"] .notif-toast,
+  [data-theme-profile$="-centered"] .notif-toast,
+  [data-theme-profile$="-peek"] .notif-toast,
+  [data-theme-profile$="-stairs"] .settings-toast,
+  [data-theme-profile$="-centered"] .settings-toast,
+  [data-theme-profile$="-peek"] .settings-toast {
     bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
-  :root[data-theme-profile^="smart"] .install-banner {
+  [data-theme-profile$="-stairs"] .install-banner,
+  [data-theme-profile$="-centered"] .install-banner,
+  [data-theme-profile$="-peek"] .install-banner {
     bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
 }
 
-/* ── COMPAT SMART: acento cálido sobre los componentes existentes ─
-   Los perfiles smart activan .theme-light, que ya resuelve la
-   legibilidad general (cards blancas, texto oscuro, tablas claras).
-   Acá solo se pisa lo que debe pasar de azul a naranja-cobre. ── */
+/* ── COMPAT SMART: overrides para el tema claro ─
+   El tema claro (smart*) cambia la paleta a crema/cálido con .theme-light.
+   Acá se pisa todo lo que tiene colores hardcodeados oscuros y no se
+   lee sobre fondo claro. ── */
 :root[data-theme-profile^="smart"] {
   color-scheme: light;
 }
 
 :root[data-theme-profile^="smart"] * {
-  scrollbar-color: rgba(234, 106, 43, .45) rgba(226, 220, 208, .4);
+  scrollbar-color: rgba(37, 99, 235, .45) rgba(226, 220, 208, .4);
 }
 
 :root[data-theme-profile^="smart"] ::-webkit-scrollbar-thumb {
-  background: rgba(234, 106, 43, .4);
+  background: rgba(37, 99, 235, .4);
 }
 
 :root[data-theme-profile^="smart"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(234, 106, 43, .6);
+  background: rgba(37, 99, 235, .6);
 }
 
-/* Legibilidad: textos hardcodeados para fondo oscuro que .theme-light no cubre */
+/* Legibilidad general: textos con color hardcodeado que .theme-light no alcanza */
 :root[data-theme-profile^="smart"] .card-head h3 { color: var(--text); }
 :root[data-theme-profile^="smart"] .stat-card strong { color: var(--text); }
-:root[data-theme-profile^="smart"] .operational-alias { color: #b04a15; }
-:root[data-theme-profile^="smart"] .scan-preview-meta { color: var(--text); }
 :root[data-theme-profile^="smart"] .inventory-kpis strong { color: var(--text); }
 :root[data-theme-profile^="smart"] .classroom-coming-card span { color: var(--text); }
-:root[data-theme-profile^="smart"] .classroom-coming-card strong { color: #b04a15; }
+:root[data-theme-profile^="smart"] .classroom-coming-card strong { color: #1d4ed8; }
 :root[data-theme-profile^="smart"] .classroom-coming-card,
 :root[data-theme-profile^="smart"] .classroom-placeholder-hero {
   background: var(--panel);
@@ -502,32 +534,224 @@
 }
 :root[data-theme-profile^="smart"] .classroom-placeholder-hero h3 { color: var(--text); }
 
-:root[data-theme-profile^="smart"] .stat-card.active,
-:root[data-theme-profile^="smart"] .stat-card.active-filter {
-  border-color: rgba(234, 106, 43, 0.55) !important;
-  background: linear-gradient(165deg, rgba(234, 106, 43, 0.12), rgba(255, 253, 249, 0.96)) !important;
-  box-shadow: 0 0 0 1px rgba(234, 106, 43, 0.2) inset, var(--surface-shadow) !important;
+/* Sidebar y navegación: el .theme-light los pinta azul claro; para el tema
+   claro usamos la paleta crema/cálida del smart. */
+:root[data-theme-profile^="smart"] .sidebar {
+  background: var(--panel);
+  border-right-color: var(--border);
+}
+:root[data-theme-profile^="smart"] .brand h1 {
+  background: linear-gradient(92deg, var(--accent, #2563EB) 0%, #1d4ed8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+:root[data-theme-profile^="smart"] .brand p { color: var(--muted); }
+:root[data-theme-profile^="smart"] .nav-btn:hover {
+  background: var(--accent-soft) !important;
+  border-color: var(--accent) !important;
+  color: var(--text) !important;
+}
+:root[data-theme-profile^="smart"] .nav-btn.active {
+  background: linear-gradient(90deg, var(--accent-soft), transparent) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  box-shadow: inset 3px 0 0 var(--accent) !important;
+}
+:root[data-theme-profile^="smart"] .nav-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+:root[data-theme-profile^="smart"] .nav-btn:hover .nav-icon { background: var(--accent-soft); }
+:root[data-theme-profile^="smart"] .nav-btn.active .nav-icon { background: var(--accent-soft); color: var(--accent); }
+:root[data-theme-profile^="smart"] .topbar {
+  background: linear-gradient(to bottom, rgba(248, 243, 235, 0.97), rgba(243, 238, 228, 0.94)) !important;
+  border-bottom-color: rgba(200, 180, 160, 0.3) !important;
+}
+:root[data-theme-profile^="smart"] .operational-alias { color: var(--accent); }
+:root[data-theme-profile^="smart"] .scan-preview-meta { color: var(--text); }
+
+/* Botón Cerrar sesión */
+:root[data-theme-profile^="smart"] .account-menu-action {
+  background: rgba(239, 68, 68, .08);
+  color: #991b1b;
+  border-color: rgba(239, 68, 68, .3);
 }
 
+/* Botón de recargar / sync */
+:root[data-theme-profile^="smart"] .sync-refresh-btn {
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+/* Acciones de tabla de dispositivos (Prestar, Editar, etc.) */
+:root[data-theme-profile^="smart"] .device-table .device-actions .mini-action-btn {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Device table: fondo claro */
+:root[data-theme-profile^="smart"] .device-table tbody td {
+  background: var(--panel);
+}
+
+:root[data-theme-profile^="smart"] .device-table td.device-actions-cell {
+  background: var(--panel) !important;
+}
+
+:root[data-theme-profile^="smart"] .device-table thead th {
+  background: var(--panel-2);
+}
+
+:root[data-theme-profile^="smart"] .device-table tbody tr:hover td {
+  background: var(--accent-soft) !important;
+}
+
+/* Escaneo continuo */
+:root[data-theme-profile^="smart"] .toggle-row {
+  background: var(--panel-2);
+  border-color: var(--border);
+}
+:root[data-theme-profile^="smart"] .toggle-pill {
+  background: var(--border);
+}
+:root[data-theme-profile^="smart"] .toggle-pill span {
+  background: var(--muted);
+}
+:root[data-theme-profile^="smart"] .toggle-row-button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+:root[data-theme-profile^="smart"] .toggle-row-button.active .toggle-pill {
+  background: var(--accent);
+}
+:root[data-theme-profile^="smart"] .toggle-row-button.active .toggle-pill span {
+  background: #dbeafe;
+}
+:root[data-theme-profile^="smart"] .continuous-scan-panel {
+  background: var(--panel);
+  border-color: var(--border);
+}
+:root[data-theme-profile^="smart"] .continuous-scan-summary {
+  color: var(--muted);
+}
+:root[data-theme-profile^="smart"] .continuous-scan-table .row-scanned {
+  background: rgba(22, 163, 74, .08);
+}
+:root[data-theme-profile^="smart"] .continuous-scan-table .row-duplicate {
+  background: rgba(217, 119, 6, .08);
+}
+
+/* Tareas: estado Hecha / verde */
+:root[data-theme-profile^="smart"] .task-card.task-state-hecha {
+  background: linear-gradient(180deg, rgba(34, 197, 94, .08), var(--panel));
+  border-color: rgba(34, 197, 94, .4);
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, .2);
+}
+:root[data-theme-profile^="smart"] .task-card.task-state-hecha strong { color: #15803d; }
+:root[data-theme-profile^="smart"] .task-state-pill-hecha {
+  background: rgba(34, 197, 94, .15);
+  color: #15803d;
+}
+:root[data-theme-profile^="smart"] .task-state-pill-pendiente {
+  background: rgba(59, 130, 246, .12);
+  color: #1d4ed8;
+}
+:root[data-theme-profile^="smart"] .task-state-pill-en-proceso {
+  background: rgba(245, 158, 11, .12);
+  color: #92400e;
+}
+:root[data-theme-profile^="smart"] .checklist-confirm-btn {
+  border-color: rgba(34, 197, 94, .4) !important;
+  background: linear-gradient(180deg, rgba(34, 197, 94, .12), rgba(21, 128, 61, .08)) !important;
+  color: #15803d !important;
+}
+:root[data-theme-profile^="smart"] .checklist-confirm-btn:hover {
+  border-color: rgba(34, 197, 94, .6) !important;
+  background: linear-gradient(180deg, rgba(34, 197, 94, .2), rgba(21, 128, 61, .14)) !important;
+}
+:root[data-theme-profile^="smart"] .task-done-btn {
+  background: var(--accent) !important;
+  border-color: rgba(37, 99, 235, .3) !important;
+}
+
+/* Resumen rápido / loan filter chips */
+:root[data-theme-profile^="smart"] .loan-filter-chips span {
+  background: var(--accent-soft);
+  border-color: rgba(37, 99, 235, .25);
+  color: #1d4ed8;
+}
+
+/* Estado Aulas: selector de pisos y filtros */
+:root[data-theme-profile^="smart"] .floor-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Filtros del Inventario */
+:root[data-theme-profile^="smart"] .inventory-category-filter {
+  border-color: var(--border);
+  background: var(--panel-2);
+}
+:root[data-theme-profile^="smart"] .inventory-category-filter label {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+:root[data-theme-profile^="smart"] .inventory-category-filter label.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+:root[data-theme-profile^="smart"] .inventory-category-filter button {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+:root[data-theme-profile^="smart"] .filter-check {
+  border-color: var(--border);
+  background: var(--panel);
+  color: transparent !important;
+}
+:root[data-theme-profile^="smart"] .inventory-category-filter label.active .filter-check {
+  background: var(--accent);
+  color: #fff !important;
+}
+
+/* Sombras del menú de cuenta sobre fondo claro */
+:root[data-theme-profile^="smart"] .account-menu {
+  box-shadow: 0 20px 50px rgba(44, 36, 32, .15);
+}
+
+/* Stats activos / filtrados */
+:root[data-theme-profile^="smart"] .stat-card.active,
+:root[data-theme-profile^="smart"] .stat-card.active-filter {
+  border-color: rgba(37, 99, 235, 0.55) !important;
+  background: linear-gradient(165deg, rgba(37, 99, 235, 0.12), rgba(255, 253, 249, 0.96)) !important;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2) inset, var(--surface-shadow) !important;
+}
+
+/* Sync status */
 :root[data-theme-profile^="smart"] .sync-status.ok { background: rgba(22, 163, 74, .12); color: #166534; border-color: rgba(22, 163, 74, .3); }
 :root[data-theme-profile^="smart"] .sync-status.error { background: rgba(220, 38, 38, .1); color: #991b1b; border-color: rgba(220, 38, 38, .3); }
 :root[data-theme-profile^="smart"] .sync-status.pending { background: rgba(217, 119, 6, .12); color: #92400e; border-color: rgba(217, 119, 6, .3); }
 
+/* Botones primarios y accent */
 :root[data-theme-profile^="smart"] .btn-primary,
 :root[data-theme-profile^="smart"] .btn.btn-primary {
-  background: linear-gradient(135deg, #EA6A2B 0%, #D95A1A 100%);
-  box-shadow: 0 6px 18px rgba(234, 106, 43, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
-
 :root[data-theme-profile^="smart"] .btn-primary:not(:disabled):hover,
 :root[data-theme-profile^="smart"] .btn.btn-primary:not(:disabled):hover {
-  box-shadow: 0 10px 28px rgba(234, 106, 43, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 :root[data-theme-profile^="smart"] .day-btn.active {
-  background: linear-gradient(135deg, #EA6A2B, #D95A1A);
-  border-color: rgba(234, 106, 43, .4);
-  box-shadow: 0 4px 14px rgba(234, 106, 43, .3);
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  border-color: rgba(37, 99, 235, .4);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, .3);
   color: #fff;
 }
 

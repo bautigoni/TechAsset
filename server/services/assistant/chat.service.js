@@ -28,7 +28,8 @@ const SUGGESTED_ROUTES = {
   registrar_devolucion: 'loans',
   crear_tarea: 'tasks',
   crear_evento_agenda: 'agenda',
-  buscar_persona: 'loans'
+  buscar_persona: 'loans',
+  consulta_bd: null
 };
 
 function buildSystemPrompt(access) {
@@ -60,6 +61,20 @@ DEVOLUCIONES: verificá con detalle_dispositivo que esté prestado y ejecutá re
 TAREAS Y AGENDA: si el pedido es claro, crealas directamente sin pedir confirmación. Incluí responsable, prioridad y detalles que el usuario haya mencionado en el mismo llamado. NO podés editar ni borrar tareas o eventos existentes: si lo piden, decilo con honestidad y llevalos a la sección con abrir_seccion.
 
 NAVEGACIÓN: si piden ir a una parte de la app ("llevame a tareas", "abrí préstamos"), usá abrir_seccion. Si piden ir a un dato específico (una tarea, un equipo), primero buscalo con la herramienta que corresponda y nombralo en tu respuesta, además de navegar: "Te llevo a Tareas. La tarea es 'Maker', pendiente, vence el 19/06."
+
+CONSULTAS LIBRES: Si te piden información que ninguna herramienta cubre (ej. "mostrame todos los préstamos de abril", "cuántos equipos tiene cada tipo"), usá consulta_bd con SQL de solo lectura. La base tiene estas tablas útiles:
+- loan_events (tipo, etiqueta, alias, persona, rol, ubicacion, motivo, timestamp)
+- local_states (estado actual de cada equipo)
+- local_devices (datos maestros de equipos)
+- tasks (tareas TIC)
+- agenda (agenda TIC)
+- classrooms (aulas con equipamiento)
+- tickets (tickets de soporte)
+- internal_notes (notas internas)
+- daily_closures (cierres del día)
+- local_movements (auditoría de movimientos)
+
+Siempre preferí las herramientas específicas (historial_prestamos, buscar_dispositivos, etc.) antes que consulta_bd. Usá consulta_bd solo cuando ninguna herramienta específica resuelva la consulta.
 
 ESTILO: español rioplatense (vos), sin Markdown, sin emojis, respuestas cortas y concretas. Listas con guiones simples si hace falta.
 
@@ -111,11 +126,12 @@ const TOOLS = [
   {
     type: 'function',
     name: 'historial_prestamos',
-    description: 'Historial de préstamos y devoluciones ya registrados. Filtrable por fecha (YYYY-MM-DD), persona o etiqueta.',
+    description: 'Historial de préstamos y devoluciones ya registrados. Filtrable por fecha, persona o etiqueta.',
     parameters: {
       type: 'object',
       properties: {
-        fecha: { type: 'string', description: 'Día exacto YYYY-MM-DD. Opcional.' },
+        desde: { type: 'string', description: 'Fecha inicio YYYY-MM-DD. Opcional.' },
+        hasta: { type: 'string', description: 'Fecha fin YYYY-MM-DD. Opcional.' },
         persona: { type: 'string', description: 'Nombre de la persona. Opcional.' },
         etiqueta: { type: 'string', description: 'Etiqueta del equipo. Opcional.' }
       }
@@ -230,6 +246,19 @@ const TOOLS = [
       },
       required: ['dia', 'desde', 'actividad']
     }
+  },
+  {
+    type: 'function',
+    name: 'consulta_bd',
+    description: 'Ejecuta una consulta SQL de solo lectura contra la base de datos. Usar cuando ninguna herramienta específica cubre lo que pide el usuario. Devuelve hasta 100 filas.',
+    parameters: {
+      type: 'object',
+      properties: {
+        sql: { type: 'string', description: 'Consulta SELECT en SQLite. Solo SELECT permitido. Usar ? para parámetros.' },
+        params: { type: 'array', items: { type: 'string' }, description: 'Parámetros para la consulta (opcional).' }
+      },
+      required: ['sql']
+    }
   }
 ];
 
@@ -308,6 +337,7 @@ async function dispatchTool(name, args, access) {
     case 'registrar_devolucion': return registerReturn(args, siteCode, access);
     case 'crear_tarea': return createTask(args, siteCode, access);
     case 'crear_evento_agenda': return createAgenda(args, siteCode, access);
+    case 'consulta_bd': return runSqlQuery(args, siteCode);
     default: return { ok: false, error: `Herramienta desconocida: ${name}` };
   }
 }
@@ -398,18 +428,19 @@ async function activeLoans({ persona = '' } = {}, siteCode) {
   return { ok: true, total: filtered.length, items: filtered.map(i => ({ etiqueta: i.etiqueta, alias: i.aliasOperativo || '', persona: i.prestadoA || '', rol: i.rol || '', ubicacion: i.ubicacion || '', motivo: i.motivo || '', desde: i.loanedAt || '' })) };
 }
 
-function loanHistory({ fecha = '', persona = '', etiqueta = '' } = {}, siteCode) {
+function loanHistory({ desde = '', hasta = '', persona = '', etiqueta = '' } = {}, siteCode) {
   const conditions = ['site_code=?'];
   const params = [siteCode];
   if (persona) { conditions.push('persona LIKE ?'); params.push(`%${persona}%`); }
   if (etiqueta) { conditions.push('upper(etiqueta)=?'); params.push(normalizeCode(etiqueta)); }
+  if (desde) { conditions.push('timestamp >= ?'); params.push(`${desde}T00:00:00`); }
+  if (hasta) { conditions.push('timestamp <= ?'); params.push(`${hasta}T23:59:59`); }
   const rows = getDb().prepare(`
     SELECT tipo, etiqueta, alias, persona, rol, ubicacion, motivo, operador, timestamp
     FROM loan_events WHERE ${conditions.join(' AND ')}
     ORDER BY timestamp DESC LIMIT 300
   `).all(...params);
-  const filtered = rows.filter(row => !fecha || toLocalDate(new Date(row.timestamp)) === fecha).slice(0, 12);
-  return { ok: true, total: filtered.length, items: filtered };
+  return { ok: true, total: rows.length, items: rows.slice(0, 50) };
 }
 
 function tasksList({ estado = '', buscar = '' } = {}, siteCode) {
@@ -639,6 +670,24 @@ function extractText(data) {
     }
   }
   return '';
+}
+
+function runSqlQuery({ sql = '', params = [] } = {}, siteCode) {
+  const query = String(sql || '').trim().toUpperCase();
+  if (!query.startsWith('SELECT') && !query.startsWith('WITH')) {
+    return { ok: false, error: 'Solo se permiten consultas SELECT de solo lectura.' };
+  }
+  try {
+    const db = getDb();
+    const safeSql = String(sql).trim();
+    const bindings = (Array.isArray(params) ? params : []).map(p => String(p));
+    const rows = db.prepare(safeSql).all(...bindings);
+    if (!rows.length) return { ok: true, total: 0, items: [], nota: 'La consulta no devolvió resultados.' };
+    const limited = rows.slice(0, 100);
+    return { ok: true, total: rows.length, items: limited };
+  } catch (error) {
+    return { ok: false, error: `Error en la consulta: ${error.message}` };
+  }
 }
 
 // ---------- Helpers ----------

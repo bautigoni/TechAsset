@@ -20,7 +20,7 @@ import {
 import type { SiteInfo, ViewKey } from '../../types';
 import { isViewEnabled, moduleOrder, TOGGLEABLE_KEYS, type ModuleKey } from '../../utils/modules';
 import { canViewModule, type ModuleAccess } from '../../utils/permissions';
-import { isSmartProfile, smartSidebarStyle, type ThemeProfile } from '../../utils/themeProfile';
+import { hasVariantNav, variantStyle, type ThemeProfile } from '../../utils/themeProfile';
 import { TenantLogo } from './TenantLogo';
 
 type NavIcon = ComponentType<{ size?: number; strokeWidth?: number }>;
@@ -88,8 +88,8 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
     onClose();
   };
 
-  if (isSmartProfile(themeProfile)) {
-    const style = smartSidebarStyle(themeProfile);
+  if (hasVariantNav(themeProfile)) {
+    const style = variantStyle(themeProfile);
     const activeIndex = visibleNav.findIndex(item => item.key === active);
     return (
       <aside

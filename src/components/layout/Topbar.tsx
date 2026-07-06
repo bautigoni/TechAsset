@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import { Check, ChevronDown, Menu } from 'lucide-react';
 import type { AuthUser, SiteInfo, SyncStatus, ViewKey } from '../../types';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { isSmartProfile, type ThemeProfile } from '../../utils/themeProfile';
+import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
 import { NotificationBell } from './NotificationBell';
 import { TenantLogo } from './TenantLogo';
 
@@ -24,7 +24,7 @@ const TITLES: Record<ViewKey, string> = {
   settings: 'Configuración'
 };
 
-export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu, onToggleTheme, onReload, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout, onNavigate, themeProfile = 'classic', impersonating = false, onExitImpersonation }: {
+export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu, onToggleTheme, onReload, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout, onNavigate, themeProfile = 'classic', impersonating = false, onExitImpersonation, onOpenAssistant }: {
   view: ViewKey;
   search: string;
   setSearch: (value: string) => void;
@@ -42,6 +42,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
   themeProfile?: ThemeProfile;
   impersonating?: boolean;
   onExitImpersonation?: () => void;
+  onOpenAssistant?: () => void;
 }) {
   const syncUi = useSyncStatus(sync);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -129,7 +130,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
     </div>
   ) : null;
 
-  if (isSmartProfile(themeProfile)) {
+  if (hasVariantNav(themeProfile)) {
     return (
       <div className={`topbar-smart-block has-searchrow ${impersonating ? 'has-impersonation' : ''}`}>
         {impersonating && (
@@ -155,6 +156,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
           </div>
           <div className="topbar-right">
             <input className="input topbar-smart-search" type="search" placeholder="Buscar" value={search} onChange={event => setSearch(event.target.value)} />
+
             {siteSwitcher}
             <div className={`sync-mini ${syncUi.className}`} title={syncUi.title}>
               <span className="sync-mini-dot" />

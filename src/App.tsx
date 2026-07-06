@@ -4,7 +4,8 @@ import { Sidebar, visibleNavItems } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { MobileNav } from './components/layout/MobileNav';
 import { AssistantPanel } from './components/assistant/AssistantPanel';
-import { applyThemeProfile, isSmartProfile, readThemeProfile, THEME_PROFILE_EVENT, type ThemeProfile } from './utils/themeProfile';
+import { applyThemeProfile, isSmartProfile, profileForThemeAndStyle, readThemeProfile, saveThemeProfile, variantStyle, THEME_PROFILE_EVENT, type ThemeProfile } from './utils/themeProfile';
+import { getUserPrefs } from './services/userPrefsApi';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { DevicesPage } from './components/devices/DevicesPage';
 import { DeviceProfile } from './components/devices/DeviceProfile';
@@ -43,6 +44,7 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('techasset_sidebar_collapsed') === '1');
   const [themeProfile, setThemeProfile] = useState<ThemeProfile>(() => readThemeProfile());
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [consultationMode, setConsultationMode] = useState(false);
   const [profile, setProfile] = useState<Device | null>(null);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
@@ -76,6 +78,13 @@ export function App() {
           if (fromUrl && !allowed) setView('dashboard');
           setActiveSite(site.siteCode);
           localStorage.setItem('techasset_active_site', site.siteCode);
+          // Cargar preferencias del usuario (tema, etc.)
+          getUserPrefs().then(data => {
+            if (data.prefs?.themeProfile) {
+              const p = data.prefs.themeProfile as ThemeProfile;
+              saveThemeProfile(p);
+            }
+          }).catch(() => {});
         }
       })
       .finally(() => setAuthLoading(false));
@@ -140,6 +149,16 @@ export function App() {
     };
     window.addEventListener(THEME_PROFILE_EVENT, onProfileChange);
     return () => window.removeEventListener(THEME_PROFILE_EVENT, onProfileChange);
+  }, []);
+
+  // Expande la sidebar cuando se selecciona un estilo variante.
+  useEffect(() => {
+    const onSidebarExpand = () => {
+      setSidebarCollapsed(false);
+      localStorage.removeItem('techasset_sidebar_collapsed');
+    };
+    window.addEventListener('techasset:sidebar-expand', onSidebarExpand);
+    return () => window.removeEventListener('techasset:sidebar-expand', onSidebarExpand);
   }, []);
 
   useEffect(() => {
@@ -215,11 +234,10 @@ export function App() {
   }, [user]);
 
   const toggleTheme = () => {
-    // Solo aplica al tema clásico; en Smart Campus la paleta es fija.
-    if (isSmartProfile(themeProfile)) return;
-    const next = document.documentElement.classList.contains('theme-light') ? 'dark' : 'light';
-    document.documentElement.classList.toggle('theme-light', next === 'light');
-    localStorage.setItem('techasset_nfpt_theme', next);
+    const isSmart = isSmartProfile(themeProfile);
+    const style = variantStyle(themeProfile);
+    const next = profileForThemeAndStyle(!isSmart, style);
+    saveThemeProfile(next);
   };
 
   const onAddDevice = async (device: Partial<Device>) => {
@@ -340,7 +358,7 @@ export function App() {
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
       <main className="main main-content">
-        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} />
+        <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} onOpenAssistant={() => setAssistantOpen(true)} />
         {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
@@ -359,6 +377,9 @@ export function App() {
       <AssistantPanel
         onNavigate={next => setView(next as ViewKey)}
         canEdit={!effectiveConsultation}
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+        themeProfile={themeProfile}
       />
       {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}
       {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}

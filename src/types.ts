@@ -94,7 +94,10 @@ export interface Device {
   comentarios?: string;
   rol?: string;
   ubicacion?: string;
+  ubicacionDetalle?: string;
+  curso?: string;
   motivo?: string;
+  motivoDetalle?: string;
   loanedAt?: string;
   returnedAt?: string;
   changedAt?: string;

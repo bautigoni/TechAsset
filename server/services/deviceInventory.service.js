@@ -118,7 +118,10 @@ function mergeLocalDevice(device, state, siteCode) {
     prestadoA: hasLocalState ? state.prestadoA : (device.prestadoA || device.prestada || ''),
     rol: hasLocalState ? state.rol : (device.rol || ''),
     ubicacion: hasLocalState ? state.ubicacion : (device.ubicacion || ''),
+    ubicacionDetalle: hasLocalState ? state.ubicacionDetalle : '',
+    curso: hasLocalState ? state.curso : '',
     motivo: hasLocalState ? state.motivo : (device.motivo || ''),
+    motivoDetalle: hasLocalState ? state.motivoDetalle : '',
     comentarios: hasLocalState ? state.comentarios : (device.comentarios || ''),
     loanedAt: hasLocalState ? state.loanedAt : (device.loanedAt || device.fechaPrestamo || device.horarioPrestamo || ''),
     returnedAt: hasLocalState ? state.returnedAt : (device.returnedAt || device.fechaDevuelto || device.horarioDevolucion || ''),
@@ -130,7 +133,10 @@ function mergeLocalDevice(device, state, siteCode) {
     merged.prestadoA = '';
     merged.rol = '';
     merged.ubicacion = '';
+    merged.ubicacionDetalle = '';
+    merged.curso = '';
     merged.motivo = '';
+    merged.motivoDetalle = '';
     merged.loanedAt = '';
   }
   return merged;

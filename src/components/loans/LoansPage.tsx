@@ -132,7 +132,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
               {recentLoaned.map(device => (
                 <div className={`loaned-now-item loan-age-${loanAgeTone(device.loanedAt)}`} key={device.id}>
                   <strong>{device.etiqueta} · {getOperationalAlias(device)}</strong>
-                  <span>{device.prestadoA || 'Sin persona'} · {device.ubicacion || 'Sin ubicación'}</span>
+                  <span>{device.prestadoA || 'Sin persona'} · {[device.ubicacion, device.curso].filter(Boolean).join(' · ') || 'Sin ubicación'}</span>
                   <span className="loaned-now-time">{formatLoanDateTime(device.loanedAt) || 'Sin fecha'} · {loanAgeLabel(device.loanedAt) || 'sin antiguedad'}</span>
                   <button type="button" onClick={async () => {
                     if (returningTag) return;
