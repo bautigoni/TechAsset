@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { assistantStatus, handleAssistantChat } from '../services/assistant/index.js';
+import { transcribeAssistantAudio } from '../services/assistant/audio.service.js';
 import { canEditSite, getActiveSiteRole, isSiteManager } from '../services/siteContext.service.js';
 
 export const assistantRouter = Router();
@@ -15,6 +16,7 @@ function buildAccess(req) {
 }
 
 const buckets = new Map();
+const audioBuckets = new Map();
 function rateLimited(userId) {
   const now = Date.now();
   const bucket = buckets.get(userId) || [];
@@ -22,6 +24,16 @@ function rateLimited(userId) {
   if (recent.length >= 15) { buckets.set(userId, recent); return true; }
   recent.push(now);
   buckets.set(userId, recent);
+  return false;
+}
+
+function audioRateLimited(userId) {
+  const now = Date.now();
+  const bucket = audioBuckets.get(userId) || [];
+  const recent = bucket.filter(ts => now - ts < 60000);
+  if (recent.length >= 8) { audioBuckets.set(userId, recent); return true; }
+  recent.push(now);
+  audioBuckets.set(userId, recent);
   return false;
 }
 
@@ -51,6 +63,24 @@ assistantRouter.post('/asistente/chat', async (req, res, next) => {
     });
     res.json(result);
   } catch (error) {
+    next(error);
+  }
+});
+
+assistantRouter.post('/asistente/transcribir', async (req, res, next) => {
+  try {
+    if (audioRateLimited(req.user?.id || req.ip)) {
+      return res.status(429).json({ ok: false, error: 'Demasiados audios seguidos. Esperá un momento.' });
+    }
+    const result = await transcribeAssistantAudio({
+      audioBase64: req.body?.audio,
+      mimeType: req.body?.mimeType
+    });
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    if (/no se recibió|vacío|formato|demasiado largo|no pude entender/i.test(error?.message || '')) {
+      return res.status(400).json({ ok: false, error: error.message });
+    }
     next(error);
   }
 });
