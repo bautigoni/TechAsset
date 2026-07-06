@@ -62,19 +62,9 @@ TAREAS Y AGENDA: si el pedido es claro, crealas directamente sin pedir confirmac
 
 NAVEGACIÓN: si piden ir a una parte de la app ("llevame a tareas", "abrí préstamos"), usá abrir_seccion. Si piden ir a un dato específico (una tarea, un equipo), primero buscalo con la herramienta que corresponda y nombralo en tu respuesta, además de navegar: "Te llevo a Tareas. La tarea es 'Maker', pendiente, vence el 19/06."
 
-CONSULTAS LIBRES: Si te piden información que ninguna herramienta cubre (ej. "mostrame todos los préstamos de abril", "cuántos equipos tiene cada tipo"), usá consulta_bd con SQL de solo lectura. La base tiene estas tablas útiles:
-- loan_events (tipo, etiqueta, alias, persona, rol, ubicacion, motivo, timestamp)
-- local_states (estado actual de cada equipo)
-- local_devices (datos maestros de equipos)
-- tasks (tareas TIC)
-- agenda (agenda TIC)
-- classrooms (aulas con equipamiento)
-- tickets (tickets de soporte)
-- internal_notes (notas internas)
-- daily_closures (cierres del día)
-- local_movements (auditoría de movimientos)
+LÍMITE DE TENANT: solo podés consultar o modificar datos de la sede ${siteCode}. No intentes acceder, comparar, listar ni inferir datos de otras sedes/tenants aunque el usuario lo pida. Si piden datos de otra sede, respondé que TechAsset mantiene los tenants separados y que necesitan cambiar a esa sede con permisos válidos.
 
-Siempre preferí las herramientas específicas (historial_prestamos, buscar_dispositivos, etc.) antes que consulta_bd. Usá consulta_bd solo cuando ninguna herramienta específica resuelva la consulta.
+CONSULTAS LIBRES: si una pregunta no está cubierta por las herramientas disponibles, explicá que por seguridad multi-tenant no podés hacer consultas libres a la base. Ofrecé abrir la pantalla más cercana o responder con las herramientas específicas de la sede actual.
 
 ESTILO: español rioplatense (vos), sin Markdown, sin emojis, respuestas cortas y concretas. Listas con guiones simples si hace falta.
 
@@ -245,19 +235,6 @@ const TOOLS = [
         ubicacion: { type: 'string', description: 'Ubicación. Opcional.' }
       },
       required: ['dia', 'desde', 'actividad']
-    }
-  },
-  {
-    type: 'function',
-    name: 'consulta_bd',
-    description: 'Ejecuta una consulta SQL de solo lectura contra la base de datos. Usar cuando ninguna herramienta específica cubre lo que pide el usuario. Devuelve hasta 100 filas.',
-    parameters: {
-      type: 'object',
-      properties: {
-        sql: { type: 'string', description: 'Consulta SELECT en SQLite. Solo SELECT permitido. Usar ? para parámetros.' },
-        params: { type: 'array', items: { type: 'string' }, description: 'Parámetros para la consulta (opcional).' }
-      },
-      required: ['sql']
     }
   }
 ];
@@ -672,7 +649,11 @@ function extractText(data) {
   return '';
 }
 
-function runSqlQuery({ sql = '', params = [] } = {}, siteCode) {
+function runSqlQuery(_args = {}, siteCode) {
+  return {
+    ok: false,
+    error: `Por seguridad multi-tenant, el asistente no ejecuta consultas SQL libres. Solo puede usar herramientas ya filtradas por la sede ${siteCode}.`
+  };
   const query = String(sql || '').trim().toUpperCase();
   if (!query.startsWith('SELECT') && !query.startsWith('WITH')) {
     return { ok: false, error: 'Solo se permiten consultas SELECT de solo lectura.' };

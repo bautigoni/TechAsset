@@ -188,6 +188,97 @@ body {
   animation: assistant-in .42s var(--ease-out, cubic-bezier(.22, 1, .36, 1)) both;
 }
 
+@media (max-width: 767px) {
+  .assistant-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    align-items: end;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      10px
+      max(12px, env(safe-area-inset-bottom))
+      10px;
+    background: rgba(3, 7, 18, .36);
+  }
+
+  .assistant-panel {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-height: min(78dvh, 680px);
+    border-radius: 22px;
+    border: 1px solid var(--border);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .12),
+      0 22px 68px rgba(0, 0, 0, .42);
+  }
+
+  .assistant-panel-head {
+    padding: 10px 12px 10px 14px;
+  }
+
+  .assistant-panel-brand .assistant-logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .assistant-panel-brand strong {
+    font-size: 14px;
+  }
+
+  .assistant-panel-brand span {
+    font-size: 11px;
+  }
+
+  .assistant-close {
+    width: 42px;
+    height: 42px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .assistant-feed {
+    padding: 12px 12px;
+  }
+
+  .assistant-welcome {
+    padding: 12px 8px 4px;
+  }
+
+  .assistant-welcome-logo {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 8px;
+  }
+
+  .assistant-suggestions {
+    margin-top: 12px;
+    gap: 7px;
+  }
+
+  .assistant-suggestion-btn {
+    padding: 9px 12px;
+    border-radius: 13px;
+    font-size: 12.5px;
+  }
+
+  .assistant-input-form {
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .assistant-input {
+    padding: 10px 14px;
+  }
+
+  .assistant-send {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 @media (min-width: 768px) {
 .assistant-backdrop {
   position: fixed;
