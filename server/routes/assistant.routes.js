@@ -25,13 +25,28 @@ function rateLimited(userId) {
   return false;
 }
 
+function normalizeMessages(body = {}) {
+  const messages = Array.isArray(body.messages) ? body.messages : [];
+  if (messages.length) {
+    return messages
+      .map(message => ({
+        role: message?.role === 'assistant' ? 'assistant' : 'user',
+        content: String(message?.content || message?.text || '').trim()
+      }))
+      .filter(message => message.content);
+  }
+
+  const legacyMessage = String(body.message || body.text || '').trim();
+  return legacyMessage ? [{ role: 'user', content: legacyMessage }] : [];
+}
+
 assistantRouter.post('/asistente/chat', async (req, res, next) => {
   try {
     if (rateLimited(req.user?.id || req.ip)) {
       return res.status(429).json({ ok: false, error: 'Demasiados mensajes. Esperá un momento.' });
     }
     const result = await handleAssistantChat({
-      messages: req.body?.messages || [],
+      messages: normalizeMessages(req.body),
       access: buildAccess(req)
     });
     res.json(result);
