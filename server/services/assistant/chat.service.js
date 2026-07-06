@@ -649,26 +649,14 @@ function extractText(data) {
   return '';
 }
 
+// Bloqueado a propósito: no reintroducir ejecución de SQL libre acá.
+// El aislamiento multi-tenant depende de que TODAS las consultas pasen
+// por herramientas que filtran por site_code.
 function runSqlQuery(_args = {}, siteCode) {
   return {
     ok: false,
     error: `Por seguridad multi-tenant, el asistente no ejecuta consultas SQL libres. Solo puede usar herramientas ya filtradas por la sede ${siteCode}.`
   };
-  const query = String(sql || '').trim().toUpperCase();
-  if (!query.startsWith('SELECT') && !query.startsWith('WITH')) {
-    return { ok: false, error: 'Solo se permiten consultas SELECT de solo lectura.' };
-  }
-  try {
-    const db = getDb();
-    const safeSql = String(sql).trim();
-    const bindings = (Array.isArray(params) ? params : []).map(p => String(p));
-    const rows = db.prepare(safeSql).all(...bindings);
-    if (!rows.length) return { ok: true, total: 0, items: [], nota: 'La consulta no devolvió resultados.' };
-    const limited = rows.slice(0, 100);
-    return { ok: true, total: rows.length, items: limited };
-  } catch (error) {
-    return { ok: false, error: `Error en la consulta: ${error.message}` };
-  }
 }
 
 // ---------- Helpers ----------
