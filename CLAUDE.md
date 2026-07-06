@@ -130,9 +130,14 @@ Botón opcional en la pantalla de login al lado del tradicional por mail. Si las
 
 ## Deployment
 
-- `Dockerfile` (Node 22 Debian, instala `python3 make g++` para compilar `better-sqlite3` y `pg` si hace falta).
-- `docker-compose.yml` no expone puertos al host: el ingreso pasa por Caddy (u otro reverse proxy) que comparte la red `proxy-network` (driver bridge). El servicio interno escucha `:8000`. Caddy debe declarar la red como `external: true` y proxear `reverse_proxy techasset:8000`.
-- Volumen `./data:/app/data` obligatorio para persistir SQLite (modo dev) o cache CSV y uploads (en Postgres el volumen lo maneja el deploy de la DB). `DATABASE_URL` apuntando al Postgres del compose/servicio.
+**Producción real (VM bauhub, desde julio 2026): systemd, NO Docker.**
+
+- Caddy corre en el host y proxea `techasset.bauhub.online` → `reverse_proxy 127.0.0.1:3013` (ver `/etc/caddy/Caddyfile`).
+- En el 3013 escucha el servicio systemd `techasset` (`/etc/systemd/system/techasset.service`): `node server/index.js` desde `/opt/apps/techasset`, con `.env` ahí (PORT=3013, `DATABASE_URL` a Postgres/Supabase, `OPENAI_API_KEY`).
+- **Deploy: `ssh bauhub` y correr `/opt/apps/techasset/deploy.sh`** (pull + npm install + build + `systemctl restart techasset` + health check). El restart NO es opcional: node no relee código del disco — actualizar la carpeta sin reiniciar deja el proceso viejo sirviendo (causa histórica de "deployé y sigue igual").
+- La VM tiene 1GB de RAM: el build tarda ~2-3 min. Si no da, buildear local y subir `dist/`, después `deploy.sh --no-build`.
+- El container `techasset-nfs` (compose del mismo dir) quedó **detenido a propósito**: era un deploy paralelo que no recibía tráfico y confundía (`restart=no`). No volver a levantarlo salvo que se migre Caddy a apuntarle.
+- `Dockerfile`/`docker-compose.yml` quedan para entornos que sí usen Docker: la imagen escucha `:8000` sin exponer puertos al host; el reverse proxy debe compartir la red `proxy-network` y proxear `techasset:8000`. Volumen `./data:/app/data` para SQLite/cache CSV/uploads.
 
 ## Convenciones
 
