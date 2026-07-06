@@ -4,6 +4,14 @@ import { getGoogleOAuthConfig, login, register } from '../../services/authApi';
 
 type AuthMode = 'landing' | 'login' | 'register';
 
+function ArrowLeft() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function GoogleMark() {
   return (
     <svg viewBox="0 0 48 48" aria-hidden="true">
@@ -43,8 +51,6 @@ export function LoginPage({ mode, onMode, onReady }: {
   const [success, setSuccess] = useState('');
   const [googleEnabled, setGoogleEnabled] = useState(false);
 
-  // El link de invitación llega como /register?code=TA-XXXX-XXXX
-  // Los errores de Google OAuth llegan como /login?error=<slug>
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get('code');
@@ -52,12 +58,10 @@ export function LoginPage({ mode, onMode, onReady }: {
     const errSlug = params.get('error');
     if (errSlug) setError(translateGoogleError(errSlug));
     if (fromUrl || errSlug) {
-      // Limpiar la URL para que refresh no repita el error.
       window.history.replaceState(null, '', window.location.pathname);
     }
   }, []);
 
-  // Saber si el backend tiene Google OAuth configurado para mostrar/ocultar el botón.
   useEffect(() => {
     getGoogleOAuthConfig().then(r => setGoogleEnabled(Boolean(r.enabled))).catch(() => setGoogleEnabled(false));
   }, []);
@@ -103,8 +107,12 @@ export function LoginPage({ mode, onMode, onReady }: {
 
   return (
     <main className="auth">
+      <div className="auth-bg-orb" aria-hidden="true" />
       <header className="auth-top">
-        <button type="button" className="auth-back" onClick={() => onMode('landing')}>← TechAsset</button>
+        <button type="button" className="auth-back" onClick={() => onMode('landing')}>
+          <ArrowLeft />
+          TechAsset
+        </button>
       </header>
 
       <form className="auth-panel" onSubmit={activeMode === 'register' ? submitRegister : submitLogin}>

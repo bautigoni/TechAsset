@@ -73,6 +73,81 @@ const DEFAULT_CLASSROOMS = [
   ['sp_Pasillo_Precep', 'Pasillo / precep', 'Segundo piso', 'admin']
 ];
 
+// Nordelta (NFND). room_key/nombre/piso deben coincidir con NordeltaModels.jsx.
+// Los pisos coinciden con los `piso` de SITE_MAPS.NFND en ClassroomStatusPage.
+const NFND_CLASSROOMS = [
+  // Bloque 3 · Planta baja
+  ['nd_pb_2S_EP', '2°S EP', 'Planta baja', 'classroom'],
+  ['nd_pb_2F_EP', '2°F EP', 'Planta baja', 'classroom'],
+  ['nd_pb_agora', 'Ágora', 'Planta baja', 'special'],
+  ['nd_pb_2N_EP', '2°N EP', 'Planta baja', 'classroom'],
+  ['nd_pb_1S_EP', '1°S EP', 'Planta baja', 'classroom'],
+  ['nd_pb_1F_EP', '1°F EP', 'Planta baja', 'classroom'],
+  ['nd_pb_1N_EP', '1°N EP', 'Planta baja', 'classroom'],
+  ['nd_pb_blooming', 'Blooming', 'Planta baja', 'special'],
+  ['nd_pb_5N_ES', '5°N ES', 'Planta baja', 'classroom'],
+  ['nd_pb_5F_ES', '5°F ES', 'Planta baja', 'classroom'],
+  ['nd_pb_under', 'Under', 'Planta baja', 'special'],
+  ['nd_pb_5S_ES', '5°S ES', 'Planta baja', 'classroom'],
+  ['nd_pb_6N_ES', '6°N ES', 'Planta baja', 'classroom'],
+  ['nd_pb_6F_ES', '6°F ES', 'Planta baja', 'classroom'],
+  // Bloque 3 · 1er piso
+  ['nd_p1_3F_EP', '3°F EP', '1er piso', 'classroom'],
+  ['nd_p1_3N_EP', '3°N EP', '1er piso', 'classroom'],
+  ['nd_p1_3S_EP', '3°S EP', '1er piso', 'classroom'],
+  ['nd_p1_5N_EP', '5°N EP', '1er piso', 'classroom'],
+  ['nd_p1_TICS', 'TICS', '1er piso', 'special'],
+  ['nd_p1_2N_ES', '2do N ES', '1er piso', 'classroom'],
+  ['nd_p1_2F_ES', '2do F ES', '1er piso', 'classroom'],
+  ['nd_p1_2S_ES', '2do S ES', '1er piso', 'classroom'],
+  ['nd_p1_4N_EP', '4°N EP', '1er piso', 'classroom'],
+  ['nd_p1_4NF_EP', '4°NF EP', '1er piso', 'classroom'],
+  ['nd_p1_4S_EP', '4°S EP', '1er piso', 'classroom'],
+  ['nd_p1_5F_EP', '5°F EP', '1er piso', 'classroom'],
+  ['nd_p1_5S_EP', '5°S EP', '1er piso', 'classroom'],
+  ['nd_p1_1N_ES', '1ro N ES', '1er piso', 'classroom'],
+  ['nd_p1_1F_ES', '1ro F ES', '1er piso', 'classroom'],
+  ['nd_p1_1S_ES', '1ro S ES', '1er piso', 'classroom'],
+  // Bloque 3 · 2do piso
+  ['nd_p2_TICS', 'TICS', '2do piso', 'special'],
+  ['nd_p2_6S_EP', '6°S EP', '2do piso', 'classroom'],
+  ['nd_p2_lab', 'Laboratorio', '2do piso', 'special'],
+  ['nd_p2_4N_ES', '4to N ES', '2do piso', 'classroom'],
+  ['nd_p2_4F_ES', '4to F ES', '2do piso', 'classroom'],
+  ['nd_p2_4S_ES', '4to S ES', '2do piso', 'classroom'],
+  ['nd_p2_6N_EP', '6°N EP', '2do piso', 'classroom'],
+  ['nd_p2_6F_EP', '6°F EP', '2do piso', 'classroom'],
+  ['nd_p2_3N_ES', '3ro N ES', '2do piso', 'classroom'],
+  ['nd_p2_3F_ES', '3ro F ES', '2do piso', 'classroom'],
+  ['nd_p2_3S_ES', '3ro S ES', '2do piso', 'classroom'],
+  // Nivel inicial
+  ['nd_ini_K1y2', 'K 1y2', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K2F', 'K2 F', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K2N', 'K2 N', 'Nivel inicial', 'classroom'],
+  ['nd_ini_SUM', 'SUM', 'Nivel inicial', 'special'],
+  ['nd_ini_K3Taller', 'K3 Taller', 'Nivel inicial', 'special'],
+  ['nd_ini_K4N', 'K4 N', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K4F', 'K4 F', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K4S', 'K4 S', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K3N', 'K3 N', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K3F', 'K3 F', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K5S', 'K5 S', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K5F', 'K5 F', 'Nivel inicial', 'classroom'],
+  ['nd_ini_K5N', 'K5 N', 'Nivel inicial', 'classroom'],
+  // Edificio SUM / Artes
+  ['nd_art_SUM', 'SUM', 'Artes', 'special'],
+  ['nd_art_music', 'Música', 'Artes', 'classroom'],
+  ['nd_art_arte', 'Arte', 'Artes', 'classroom'],
+  ['nd_art_esceno', 'Escenografía', 'Artes', 'special'],
+  ['nd_art_blooming', 'Blooming Inicial', 'Artes', 'special'],
+  ['nd_art_drama', 'Drama', 'Artes', 'classroom']
+];
+
+const SITE_DEFAULT_CLASSROOMS = {
+  NFPT: DEFAULT_CLASSROOMS,
+  NFND: NFND_CLASSROOMS
+};
+
 function migrateItemState(value) {
   if (value === 'No encontrado') return 'Con falla';
   if (VALID_ITEM_STATES.has(value)) return value;
@@ -179,7 +254,11 @@ function ensureClassroom(roomKey, defaults = {}, siteCode = 'NFPT') {
 }
 
 function ensureDefaultClassrooms(siteCode = 'NFPT') {
-  for (const [roomKey, nombre, piso, sector] of DEFAULT_CLASSROOMS) {
+  // Cada sede siembra su propio padrón de aulas. Sedes sin plano definido no
+  // seedean nada (no heredan las aulas de NFPT).
+  const defaults = SITE_DEFAULT_CLASSROOMS[siteCode];
+  if (!defaults) return;
+  for (const [roomKey, nombre, piso, sector] of defaults) {
     ensureClassroom(roomKey, { nombre, piso, sector }, siteCode);
     getDb().prepare(`
       UPDATE classrooms

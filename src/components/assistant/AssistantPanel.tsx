@@ -12,19 +12,22 @@ interface ChatMessage {
 }
 
 const STAFF_SUGGESTIONS = [
-  'prestar Touch 34 a mili en DOE',
-  'qué dispositivos están disponibles',
-  'qué tareas tengo pendientes',
-  'quién tiene prestado el D1436',
-  'crear tarea revisar proyectores',
-  'ver agenda de hoy'
+  'Prestale el Touch 34 a Mili en DOE, ¿me confirmás los datos?',
+  '¿Qué dispositivos están disponibles hoy para prestar y cuántos hay de cada tipo?',
+  'Mostrame las tareas pendientes de esta semana ordenadas por prioridad',
+  '¿Quién tiene el D1436 prestado, desde cuándo y cuándo se vence?',
+  'Creá una tarea urgente para revisar los proyectores de todas las aulas del primer piso, asignada a Equi',
+  '¿Qué actividades hay en la agenda de hoy y quién las pidió?',
+  'Repará el D1432 de Mili, me dijo que no prende la pantalla, se lo prestaste ayer'
 ];
 
 const VIEWER_SUGGESTIONS = [
-  'qué dispositivos hay disponibles',
-  'dónde está el D1436',
-  'qué tareas están pendientes',
-  'ver agenda de hoy'
+  '¿Cuántos dispositivos hay disponibles ahora y cuántos están prestados?',
+  '¿Dónde está el D1436 y quién lo tiene hace cuánto tiempo?',
+  '¿Cuáles son las tareas pendientes con prioridad alta para esta semana?',
+  '¿Qué dice la agenda de hoy? Mostrame los detalles de cada actividad.',
+  '¿Qué aulas tienen problemas y cuál es el estado general de cada una?',
+  '¿Hay algún equipo prestado hace más de 30 días?'
 ];
 
 function stripMarkdown(text: string): string {

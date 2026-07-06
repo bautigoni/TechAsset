@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ComponentType } from 'react';
 import type { Classroom, ClassroomSummary, Operator } from '../../types';
 import { fetchClassrooms } from '../../services/classroomsApi';
 import { ClassroomInfoPanel } from './ClassroomInfoPanel';
@@ -6,21 +7,62 @@ import {
   ALL_FLOOR_ROOMS,
   FirstFloorModel,
   PrimerPisoModel,
-  SecondFloorModel
+  SecondFloorModel,
+  type PrimerPisoModelProps
 } from './models/PrimerPisoModel.jsx';
+import {
+  ND_ALL_FLOOR_ROOMS,
+  NdArtesModel,
+  NdInicialModel,
+  NdPlantaBajaModel,
+  NdPrimerPisoModel,
+  NdSegundoPisoModel
+} from './models/NordeltaModels.jsx';
 
-type FloorKey = 'inicial' | 'planta' | 'primero' | 'segundo';
+type FloorKey = 'inicial' | 'planta' | 'primero' | 'segundo' | 'artes';
+type RoomList = Array<{ roomKey: string; nombre: string; sector: string }>;
+type FloorModelComp = ComponentType<PrimerPisoModelProps>;
 
-const FLOORS: Array<{ key: FloorKey; label: string; enabled: boolean; piso: string }> = [
-  { key: 'planta', label: 'Planta baja', enabled: true, piso: 'Planta baja' },
-  { key: 'primero', label: '1er piso', enabled: true, piso: '1er piso' },
-  { key: 'segundo', label: 'Segundo piso', enabled: true, piso: 'Segundo piso' },
-  { key: 'inicial', label: 'Nivel inicial', enabled: false, piso: 'Nivel inicial' }
-];
+interface FloorDef {
+  key: FloorKey;
+  label: string;
+  piso: string;
+  enabled: boolean;
+  Model?: FloorModelComp;
+}
 
-const NFND_PLACEHOLDER_FLOORS = ['Planta baja', '1er piso', '2do piso'];
+interface SiteMaps {
+  floors: FloorDef[];
+  allRooms: Record<string, RoomList>;
+}
+
+// Configuración de plantas por sede. Cada aula del modelo SVG mapea a la tabla
+// `classrooms` (particionada por site_code) mediante su room_key.
+const SITE_MAPS: Record<string, SiteMaps> = {
+  NFPT: {
+    floors: [
+      { key: 'planta', label: 'Planta baja', piso: 'Planta baja', enabled: true, Model: PrimerPisoModel },
+      { key: 'primero', label: '1er piso', piso: '1er piso', enabled: true, Model: FirstFloorModel },
+      { key: 'segundo', label: 'Segundo piso', piso: 'Segundo piso', enabled: true, Model: SecondFloorModel },
+      { key: 'inicial', label: 'Nivel inicial', piso: 'Nivel inicial', enabled: false }
+    ],
+    allRooms: ALL_FLOOR_ROOMS
+  },
+  NFND: {
+    floors: [
+      { key: 'planta', label: 'Planta baja', piso: 'Planta baja', enabled: true, Model: NdPlantaBajaModel },
+      { key: 'primero', label: '1er piso', piso: '1er piso', enabled: true, Model: NdPrimerPisoModel },
+      { key: 'segundo', label: '2do piso', piso: '2do piso', enabled: true, Model: NdSegundoPisoModel },
+      { key: 'inicial', label: 'Nivel inicial', piso: 'Nivel inicial', enabled: true, Model: NdInicialModel },
+      { key: 'artes', label: 'SUM / Artes', piso: 'Artes', enabled: true, Model: NdArtesModel }
+    ],
+    allRooms: ND_ALL_FLOOR_ROOMS
+  }
+};
 
 export function ClassroomStatusPage({ operator, consultationMode, activeSite }: { operator: Operator; consultationMode: boolean; activeSite: string }) {
+  const siteMaps = SITE_MAPS[activeSite];
+  const FLOORS = siteMaps?.floors || [];
   const [floor, setFloor] = useState<FloorKey>('planta');
   const [items, setItems] = useState<Classroom[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -28,19 +70,20 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
   const [message, setMessage] = useState('');
 
   const refresh = useCallback(async () => {
-    if (activeSite !== 'NFPT') return;
+    if (!siteMaps) return;
     try {
       const list = await fetchClassrooms();
       if (list.ok) setItems(list.items);
     } catch { /* ignore */ }
-  }, [activeSite]);
+  }, [siteMaps]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const activeFloor = FLOORS.find(f => f.key === floor) || FLOORS[1];
-  const floorRooms = ALL_FLOOR_ROOMS[floor] || [];
+  const activeFloor = FLOORS.find(f => f.key === floor) || FLOORS[0];
+  const activePiso = activeFloor?.piso;
+  const floorRooms = siteMaps?.allRooms[floor] || [];
   const floorRoomKeys = useMemo(() => new Set(floorRooms.map(r => r.roomKey)), [floorRooms]);
-  const floorItems = useMemo(() => items.filter(c => c.piso === activeFloor.piso || floorRoomKeys.has(c.roomKey)), [items, activeFloor.piso, floorRoomKeys]);
+  const floorItems = useMemo(() => items.filter(c => c.piso === activePiso || floorRoomKeys.has(c.roomKey)), [items, activePiso, floorRoomKeys]);
 
   const statusMap = useMemo(() => {
     const map: Record<string, { estadoGeneral: Classroom['estadoGeneral'] }> = {};
@@ -76,30 +119,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
     refresh();
   };
 
-  if (activeSite === 'NFND') {
-    return (
-      <section className="view active">
-        <div className="classrooms-page">
-          <div className="classroom-placeholder-hero">
-            <div>
-              <h3>Estado de aulas</h3>
-              <p>Nordelta tendrá sus mapas propios. Mientras tanto, estas plantas quedan visibles sin cruzar datos de otra sede.</p>
-            </div>
-          </div>
-          <div className="classroom-coming-grid">
-            {NFND_PLACEHOLDER_FLOORS.map(label => (
-              <article key={label} className="classroom-coming-card">
-                <span>{label}</span>
-                <strong>Próximamente</strong>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (activeSite !== 'NFPT') {
+  if (!siteMaps || !activeFloor) {
     return (
       <section className="view active">
         <div className="empty-state">Estado de aulas no configurado para esta sede.</div>
@@ -138,12 +158,10 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
           <SummaryCard label="Monitores con falla" value={summary.monitorFalla} tone="warn" />
         </div>
 
-        {activeFloor.enabled ? (
+        {activeFloor.enabled && activeFloor.Model ? (
           <div className="classroom-model-wrap">
             <div className="classroom-model-canvas">
-              {floor === 'planta' && <PrimerPisoModel statuses={statusMap} onRoomClick={handleRoomClick} />}
-              {floor === 'primero' && <FirstFloorModel statuses={statusMap} onRoomClick={handleRoomClick} />}
-              {floor === 'segundo' && <SecondFloorModel statuses={statusMap} onRoomClick={handleRoomClick} />}
+              <activeFloor.Model statuses={statusMap} onRoomClick={handleRoomClick} />
             </div>
             <details className="classroom-model-list">
               <summary>Ver lista de aulas</summary>
