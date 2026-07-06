@@ -242,6 +242,7 @@ const TOOLS = [
 const WRITE_TOOLS = new Set(['registrar_prestamo', 'registrar_devolucion', 'crear_tarea', 'crear_evento_agenda']);
 
 export async function runToolLoop({ messages, access }) {
+  const lastUserMessage = getLastUserMessage(messages);
   if (!config.openaiApiKey) return localFallback(messages, access);
 
   const input = [
@@ -260,6 +261,8 @@ export async function runToolLoop({ messages, access }) {
       if (!toolCalls.length) {
         const reply = extractText(data);
         if (!reply) return { reply: 'No pude procesar el mensaje. ¿Podés reformularlo?', suggestedRoute: null };
+        const deterministic = await deterministicLoanDraft(lastUserMessage, access);
+        if (deterministic && isGenericAssistantReply(reply)) return deterministic;
         return { reply, suggestedRoute };
       }
 
@@ -616,6 +619,63 @@ function localFallback(messages, access) {
   if (/prestamo|prestar|prestale|devol/i.test(last)) return { reply: 'El asistente con IA no está configurado. Podés registrar préstamos y devoluciones desde la pantalla de Préstamos.', suggestedRoute: 'loans' };
   if (/hola|buenas|ayuda/i.test(last)) return { reply: 'Hola. Puedo decirte el estado de un equipo si me pasás la etiqueta (ej. D1436). Para el asistente completo hace falta configurar la API de IA.', suggestedRoute: null };
   return { reply: 'El asistente con IA no está configurado en este servidor. Pasame una etiqueta (ej. D1436) y te digo su estado.', suggestedRoute: null };
+}
+
+async function deterministicLoanDraft(text, access) {
+  const parsed = parseLoanRequest(text);
+  if (!parsed) return null;
+  const siteCode = String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
+  const device = await findDevice(parsed.device, siteCode);
+  if (!device) {
+    return { reply: `No encontré "${parsed.device}" en el inventario de ${siteCode}.`, suggestedRoute: 'devices' };
+  }
+  const etiqueta = normalizeCode(device.etiqueta);
+  const label = device.aliasOperativo ? `${device.aliasOperativo} (${etiqueta})` : etiqueta;
+  if (!isAvailableState(device.estado)) {
+    const quien = device.prestadoA ? ` a ${device.prestadoA}` : '';
+    return { reply: `${label} está ${device.estado}${quien}; primero registrá la devolución si corresponde.`, suggestedRoute: 'loans' };
+  }
+  const personInfo = findPerson({ nombre: parsed.person }, siteCode);
+  const person = personInfo?.personas?.[0] || {};
+  const role = person.rol_habitual || '';
+  const location = person.ubicacion_habitual || '';
+  if (!role || !location) {
+    return { reply: `Tengo ${label} para ${titleCase(parsed.person)}. Me falta rol y ubicación para confirmarlo.`, suggestedRoute: 'loans' };
+  }
+  return {
+    reply: `¿Confirmo? ${label} → ${person.nombre || titleCase(parsed.person)} (rol ${role}, ubicación ${location})`,
+    suggestedRoute: 'loans'
+  };
+}
+
+function parseLoanRequest(text) {
+  const raw = String(text || '').trim();
+  const lower = normalize(raw);
+  if (!/(prest|prestar|prestale|dale|dalo|daselo|dáselo|asigna|asignale)/.test(lower)) return null;
+  const deviceMatch =
+    raw.match(/\bD\s*0*\d{1,5}\b/i)?.[0] ||
+    raw.match(/\b(?:touch|plani|tic|tablet|dell)\s*\d{1,3}\b/i)?.[0] ||
+    '';
+  const personMatch = raw.match(/\ba\s+(.+?)(?:\s+en\b|\s+para\b|\s+por\b|,|$)/i)?.[1]?.trim() || '';
+  if (!deviceMatch || !personMatch) return null;
+  const person = personMatch.replace(/\b(?:la|el|un|una)\b/gi, '').trim();
+  return person ? { device: deviceMatch, person } : null;
+}
+
+function getLastUserMessage(messages = []) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === 'user') return String(messages[i]?.content || '');
+  }
+  return '';
+}
+
+function isGenericAssistantReply(reply) {
+  const clean = normalize(reply);
+  return /te escucho|decime que|decime que necesitas|como te ayudo|en que te ayudo/.test(clean);
+}
+
+function titleCase(value) {
+  return String(value || '').trim().replace(/\S+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
 
 // ---------- OpenAI Responses API ----------

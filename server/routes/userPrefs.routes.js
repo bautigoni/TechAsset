@@ -23,7 +23,7 @@ userPrefsRouter.patch('/user/prefs', (req, res) => {
     try { current = JSON.parse(row.prefs_json); } catch { /* ignore */ }
   }
   const merged = { ...current, ...req.body };
-  db.prepare('UPDATE allowed_users SET prefs_json = @prefs, updated_at = datetime("now") WHERE id = @id').run({
+  db.prepare("UPDATE allowed_users SET prefs_json = @prefs, updated_at = datetime('now') WHERE id = @id").run({
     prefs: JSON.stringify(merged),
     id: req.user.id
   });
