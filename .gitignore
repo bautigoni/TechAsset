@@ -22,6 +22,14 @@ data/*.db-wal
 data/*.db-shm
 data/tmp/
 
+# Backups (NUNCA versionar: contienen datos reales de la base y .env)
+backups/
+*.db
+*.db-wal
+*.db-shm
+*.env.backup*
+.env.backup*
+
 # Archivos pesados / locales
 TechAsset/
 TechAssetfv/

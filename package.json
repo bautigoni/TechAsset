@@ -16,6 +16,7 @@
     "tunnel": "node scripts/start-tunnel.js",
     "serve": "concurrently -k -n server,tunnel \"node server/index.js\" \"node scripts/start-tunnel.js\"",
     "db:init": "node server/db/seed.js",
+    "db:rls": "node server/scripts/enable-rls.mjs",
     "release:broadcast": "node server/scripts/send-release-broadcast.js",
     "release:broadcast:dry": "node server/scripts/send-release-broadcast.js --dry-run"
   },
