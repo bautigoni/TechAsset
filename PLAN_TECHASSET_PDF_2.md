@@ -1,6 +1,6 @@
 # Plan TechAsset - PDF "techasseet 2"
 
-Fuente: `PDF de especificación (local)`, repo local y snapshots de `https://techasset.bauhub.online`.
+Fuente: PDF de especificación (local), repo local y snapshots de `https://techasset.bauhub.online`.
 
 Snapshots generados:
 
