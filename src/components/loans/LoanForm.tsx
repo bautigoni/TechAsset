@@ -5,7 +5,7 @@ import { getOperationalAlias, operationalTypeLabel } from '../../utils/classifyD
 import { Button } from '../layout/Button';
 import { ScannerPanel } from './ScannerPanel';
 import { getSiteSettings } from '../../services/authApi';
-import { getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
+import { getActiveLoanAccessories, getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
 
 type ScanItem = {
   id: string;
@@ -33,6 +33,7 @@ const DEFAULT_GRADE_OPTIONS = [
   '6N', '6F', '6S'
 ];
 const SCHOOL_LEVEL_OPTIONS = ['EP', 'ES'];
+const DEFAULT_ACCESSORIES = ['Cargador', 'Mouse', 'Bolso', 'Cable HDMI', 'Adaptador', 'Lápiz óptico', 'Auriculares'];
 
 export function LoanForm({ devices, onLend, onReturn, consultationMode, initialCode = '' }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; consultationMode: boolean; initialCode?: string }) {
   const [code, setCode] = useState('');
@@ -45,6 +46,11 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const [course, setCourse] = useState('');
   const [schoolLevel, setSchoolLevel] = useState('');
   const [comment, setComment] = useState('');
+  const [loanAccessories, setLoanAccessories] = useState<string[]>([]);
+  const [returnedAccessories, setReturnedAccessories] = useState<string[]>([]);
+  const [expectedAccessories, setExpectedAccessories] = useState<string[]>([]);
+  const [customAccessory, setCustomAccessory] = useState('');
+  const [accessoriesOpen, setAccessoriesOpen] = useState(false);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [suggestions, setSuggestions] = useState<LoanSuggestion[]>([]);
   const [showSuggest, setShowSuggest] = useState(false);
@@ -93,11 +99,27 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     void video.play().then(() => startQrScan()).catch(() => undefined);
   }, [cameraOpen]);
 
-  const payload = () => ({ etiqueta: selected?.etiqueta, person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment });
+  useEffect(() => {
+    let cancelled = false;
+    setExpectedAccessories([]);
+    setReturnedAccessories([]);
+    if (!selected?.etiqueta || selectedLoanState !== 'loaned') return () => { cancelled = true; };
+    getActiveLoanAccessories(selected.etiqueta)
+      .then(response => { if (!cancelled) setExpectedAccessories(response.accessories || []); })
+      .catch(() => { if (!cancelled) setExpectedAccessories([]); });
+    return () => { cancelled = true; };
+  }, [selected?.etiqueta, selectedLoanState]);
+
+  const payload = () => ({
+    etiqueta: selected?.etiqueta, person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment,
+    accessories: selectedLoanState === 'available' ? loanAccessories : undefined,
+    returnedAccessories: selectedLoanState === 'loaned' ? returnedAccessories : undefined
+  });
 
   const reset = () => {
     setCode(''); setPerson(''); setRole(''); setLocation(''); setLocationDetail(''); setCourse(''); setSchoolLevel(''); setReason(''); setReasonDetail(''); setComment('');
     setSuggestions([]); setShowSuggest(false);
+    setLoanAccessories([]); setReturnedAccessories([]); setExpectedAccessories([]); setCustomAccessory(''); setAccessoriesOpen(false);
     codeInputRef.current?.focus();
   };
 
@@ -327,7 +349,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       const errors: string[] = [];
       for (const item of validScanItems) {
         try {
-          const result = await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment });
+          const result = await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment, accessories: loanAccessories });
           if (result?.synced === false) errors.push(`${item.etiqueta}: ${result.message || 'no se pudo registrar'}`);
         } catch (error) {
           errors.push(`${item.etiqueta}: ${error instanceof Error ? error.message : 'error'}`);
@@ -439,7 +461,32 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           {selectedReason?.requiresDetail && <label>Especificar motivo<input className="input" value={reasonDetail} onChange={event => setReasonDetail(event.target.value)} /></label>}
         </div>
       )}
-      <label>Comentario<input className="input" value={comment} onChange={event => setComment(event.target.value)} placeholder="Comentario opcional" /></label>
+	      <label>Comentario<input className="input" value={comment} onChange={event => setComment(event.target.value)} placeholder="Comentario opcional" /></label>
+        {!continuousScan && selectedLoanState === 'loaned' && (
+          <section className="loan-accessories-card">
+            <div className="loan-accessories-head">
+              <div><strong>Accesorios entregados originalmente</strong><span>Marcá solamente lo que vuelve. No es obligatorio.</span></div>
+            </div>
+            {expectedAccessories.length ? (
+              <div className="loan-accessory-grid">
+                {expectedAccessories.map(item => <AccessoryCheck key={item} label={item} checked={returnedAccessories.includes(item)} onChange={() => setReturnedAccessories(toggleList(returnedAccessories, item))} />)}
+              </div>
+            ) : <p className="muted loan-accessories-empty">No se registraron accesorios para este préstamo.</p>}
+          </section>
+        )}
+        {(selectedLoanState === 'available' || continuousScan) && (
+          <details className="loan-accessories-card" open={accessoriesOpen} onToggle={event => setAccessoriesOpen(event.currentTarget.open)}>
+            <summary>Checklist de entrega <span>Opcional</span></summary>
+            <p className="muted">Si no lo usás, el préstamo continúa normalmente y se registra sin accesorios.</p>
+            <div className="loan-accessory-grid">
+              {[...new Set([...DEFAULT_ACCESSORIES, ...loanAccessories])].map(item => <AccessoryCheck key={item} label={item} checked={loanAccessories.includes(item)} onChange={() => setLoanAccessories(toggleList(loanAccessories, item))} />)}
+            </div>
+            <div className="loan-custom-accessory">
+              <input className="input" value={customAccessory} onChange={event => setCustomAccessory(event.target.value)} placeholder="Otro accesorio" />
+              <Button type="button" onClick={() => { const item = customAccessory.trim(); if (!item) return; setLoanAccessories(list => [...new Set([...list, item])]); setCustomAccessory(''); }}>Agregar</Button>
+            </div>
+          </details>
+        )}
       <div className="actions">
         {continuousScan ? (
           <>
@@ -458,6 +505,14 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       </div>
     </form>
   );
+}
+
+function AccessoryCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+  return <label className={`loan-accessory-check ${checked ? 'checked' : ''}`}><input type="checkbox" checked={checked} onChange={onChange} /><span>{label}</span></label>;
+}
+
+function toggleList(items: string[], item: string) {
+  return items.includes(item) ? items.filter(value => value !== item) : [...items, item];
 }
 
 async function openPreferredCamera() {

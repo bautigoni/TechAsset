@@ -166,6 +166,12 @@
 /* Cuando hay searchrow, el borde inferior del header se apaga para no duplicar */
 .topbar-smart-block.has-searchrow .topbar-smart { border-bottom: 0; }
 
+@media (min-width: 769px) and (max-width: 1280px) {
+  .topbar-smart-search { width: 150px; min-width: 110px; }
+  .topbar-smart .site-switcher-text small { display: none; }
+  .topbar-center { max-width: 26vw; }
+}
+
 @media (max-width: 768px) {
   .topbar-smart { padding: 8px 12px; gap: 8px; }
   .topbar-center { max-width: 30vw; }

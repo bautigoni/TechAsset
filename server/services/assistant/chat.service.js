@@ -4,16 +4,18 @@ import { addLoanEvent, addLocalMovement, getDb, nowIso, setLocalState } from '..
 import { buildLocalInventory, getMergedDevices, invalidateDeviceInventoryCache } from '../deviceInventory.service.js';
 import { notifySiteAdmins } from '../notifications.service.js';
 import { searchProcedures } from '../procedureSearch.js';
+import { searchKnowledgeArticles } from '../knowledge.service.js';
+import { callOpenAiResponses } from '../openaiResponses.service.js';
 
 const MAX_ROUNDS = 5;
 
 // Vistas válidas de App.tsx (setView). El asistente navega solo a estas.
-const SECTIONS = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tools', 'quickaccess', 'tickets', 'settings'];
+const SECTIONS = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tools', 'quickaccess', 'tickets', 'knowledge', 'settings'];
 
 const SECTION_LABELS = {
   dashboard: 'Inicio', devices: 'Dispositivos', loans: 'Préstamos', inventory: 'Inventario maker',
   analytics: 'Analítica', agenda: 'Agenda TIC', tasks: 'Tareas TIC', classrooms: 'Estado de aulas',
-  tools: 'Herramientas', quickaccess: 'Accesos rápidos', tickets: 'Tickets', settings: 'Configuración'
+  schedules: 'Horarios', canvas: 'Canvas', pettycash: 'Caja chica', tools: 'Herramientas', quickaccess: 'Accesos rápidos', tickets: 'Tickets', knowledge: 'Base de conocimiento', settings: 'Configuración'
 };
 
 const SUGGESTED_ROUTES = {
@@ -32,7 +34,7 @@ const SUGGESTED_ROUTES = {
   consulta_bd: null
 };
 
-function buildSystemPrompt(access) {
+function buildSystemPrompt(access, knowledgeContext = '') {
   const role = access?.role || 'Consulta';
   const siteCode = String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
   const nombre = access?.user?.nombre || access?.user?.email || 'Usuario';
@@ -63,6 +65,10 @@ NAVEGACIÓN: si te piden ir a algún lado ("llevame a tareas", "abrí préstamos
 
 LÍMITE DE SEDE: TODO lo que hago es exclusivamente de la sede ${siteCode}. No puedo ver ni modificar datos de otras sedes. Si te piden algo de otra sede, decí que los tenants están separados y que necesitan cambiarse a esa sede con los permisos correspondientes.
 
+BASE DE CONOCIMIENTO: antes de responder preguntas técnicas, priorizá siempre la documentación interna incluida abajo o consultá base_conocimiento. Si hay una respuesta interna relevante, usala por encima de una explicación genérica y mencioná el título del artículo. No inventes pasos que contradigan esa documentación.
+
+${knowledgeContext ? `DOCUMENTACIÓN INTERNA RELEVANTE DE ${siteCode}:\n${knowledgeContext}` : 'No apareció documentación interna relevante para el último mensaje.'}
+
 CONSULTAS LIBRES: si una pregunta no se puede responder con las herramientas que tengo, avisá que por seguridad no podés hacer consultas libres a la base y ofreceles la pantalla más cercana o las herramientas que sí están disponibles.
 
 CÓMO HABLO: español rioplatense (vos), como si estuviera charlando con un colega en el taller. Nada de Markdown ni emojis. Nada de "estimado usuario" ni fórmulas robóticas. Si algo está bien, va un "todo bien", "joya", "dale". Si algo está mal, lo digo derecho viejo. Variá las respuestas, no repitas siempre la misma estructura. Usá contracciones, frases cortas, preguntá si hace falta. Sé directo pero no seco — como cuando le hablás a alguien que está al lado tuyo.
@@ -71,6 +77,16 @@ Hoy es ${currentDateTimeText()} (hora de Argentina).`;
 }
 
 const TOOLS = [
+  {
+    type: 'function',
+    name: 'base_conocimiento',
+    description: 'Busca primero en la documentación técnica interna de la organización. Usar antes de responder preguntas de configuración, troubleshooting o procedimientos.',
+    parameters: {
+      type: 'object',
+      properties: { consulta: { type: 'string', description: 'Pregunta o términos técnicos a buscar.' } },
+      required: ['consulta']
+    }
+  },
   {
     type: 'function',
     name: 'buscar_dispositivos',
@@ -244,8 +260,12 @@ export async function runToolLoop({ messages, access }) {
   const lastUserMessage = getLastUserMessage(messages);
   if (!config.openaiApiKey) return localFallback(messages, access);
 
+  const knowledgeContext = searchKnowledgeArticles(String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase(), lastUserMessage, 3)
+    .map(article => `[${article.title}] (${article.category || 'General'}; tags: ${article.tags.join(', ') || 'sin tags'})\n${article.contentText.slice(0, 2500)}`)
+    .join('\n\n');
+
   const input = [
-    { role: 'system', content: buildSystemPrompt(access) },
+    { role: 'system', content: buildSystemPrompt(access, knowledgeContext) },
     ...(messages || []).slice(-20)
   ];
 
@@ -311,6 +331,7 @@ async function dispatchTool(name, args, access) {
     case 'agenda_tic': return agendaList(args, siteCode);
     case 'resumen_sitio': return siteSummary(siteCode);
     case 'procedimiento': return searchProcedure(args);
+    case 'base_conocimiento': return knowledgeSearch(args, siteCode);
     case 'abrir_seccion': return openSection(args);
     case 'registrar_prestamo': return registerLoan(args, siteCode, access);
     case 'registrar_devolucion': return registerReturn(args, siteCode, access);
@@ -463,6 +484,11 @@ async function searchProcedure({ consulta } = {}) {
   return { ok: true, total: results.length, items: results.slice(0, 5) };
 }
 
+function knowledgeSearch({ consulta } = {}, siteCode) {
+  const items = searchKnowledgeArticles(siteCode, consulta || '', 5).map(article => ({ id: article.id, title: article.title, category: article.category, tags: article.tags, content: article.contentText.slice(0, 3500), updatedAt: article.updatedAt }));
+  return { ok: true, total: items.length, items, prioridad: items.length ? 'Usá esta documentación interna como fuente principal de la respuesta.' : 'No se encontró documentación interna relevante.' };
+}
+
 function openSection({ seccion } = {}) {
   if (!SECTIONS.includes(seccion)) return { ok: false, error: 'Esa sección no existe en la app.' };
   return { ok: true, seccion, nombre: SECTION_LABELS[seccion], mensaje: `Navegando a ${SECTION_LABELS[seccion]}.` };
@@ -564,7 +590,7 @@ function createTask(args, siteCode, access) {
       siteCode, kind: 'task.created',
       title: `Nueva tarea: ${titulo}`,
       body: `Cargada por ${operador} vía Asistente IA`,
-      link: `/sede/${siteCode}/tareas`,
+      link: `/sede/${siteCode}/tasks`,
       exceptEmail: access?.user?.email
     });
   } catch { /* las notificaciones no deben bloquear la creación */ }
@@ -607,6 +633,8 @@ function nextDateForDay(diaNombre) {
 function localFallback(messages, access) {
   const last = messages?.[messages.length - 1]?.content || '';
   const siteCode = String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
+  const knowledge = searchKnowledgeArticles(siteCode, last, 1)[0];
+  if (knowledge && !/hola|buenas/i.test(last)) return { reply: `${knowledge.title}: ${knowledge.contentText.slice(0, 900)}`, suggestedRoute: 'knowledge' };
   const match = last.match(/\bD\s*0*(\d{1,5})\b/i);
   if (match) {
     const code = normalizeCode(`D${match[1]}`);
@@ -680,21 +708,7 @@ function titleCase(value) {
 // ---------- OpenAI Responses API ----------
 
 async function callResponses(input, { allowTools = true } = {}) {
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.openaiApiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: config.openaiModel || 'gpt-4.1-mini',
-      input,
-      tools: TOOLS,
-      tool_choice: allowTools ? 'auto' : 'none'
-    })
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`OpenAI HTTP ${response.status}: ${body.slice(0, 300)}`);
-  }
-  return response.json();
+  return callOpenAiResponses({ input, tools: TOOLS, toolChoice: allowTools ? 'auto' : 'none' });
 }
 
 function extractText(data) {

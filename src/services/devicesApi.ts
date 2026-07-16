@@ -77,6 +77,24 @@ export function getDeviceCategories() {
   return apiGet<{ ok: true; items: Array<{ nombre: string }> }>('/api/device-categories');
 }
 
+export interface DeviceOverviewResponse {
+  ok: true;
+  device: Device;
+  timeline: Array<{ action: string; date: string; user: string; notes: string; source: string }>;
+  stats: { totalLoans: number; totalRepairs: number; incidents: number; lastMaintenance: string; lastLoan: string; lastRepair: string };
+  activeLoan: null | { person: string; role: string; location: string; since: string };
+  openTickets: Array<{ id: number; numero: string; titulo: string; estado: string; prioridad: string; categoria: string; updatedAt: string }>;
+  recentTickets: Array<{ id: number; numero: string; titulo: string; estado: string; prioridad: string; categoria: string; updatedAt: string }>;
+  maintenanceHistory: Array<{ id: number; title: string; date: string; status: string; notes: string }>;
+  purchaseInformation: null;
+  warrantyInformation: null;
+  aiSummary: { text: string; generatedAt: string; cached: boolean };
+}
+
+export function getDeviceOverview(etiqueta: string) {
+  return apiGet<DeviceOverviewResponse>(`/api/devices/${encodeURIComponent(etiqueta)}/overview`);
+}
+
 export function updateDeviceStatus(payload: { etiqueta: string; estado: string; operator: string; comentario?: string }) {
   return apiSend<{ ok: true }>('/api/devices/status', 'POST', payload);
 }

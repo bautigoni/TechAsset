@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import type { AgendaItem, TaskItem } from '../../types';
 import { minutesFromTime } from '../../utils/dates';
+import { getRecessSchedules } from '../../services/schedulesApi';
 
 function todayIso() {
   const now = new Date();
@@ -30,7 +32,7 @@ function isPendingAgenda(item: AgendaItem) {
 }
 
 function isOpenTask(item: TaskItem) {
-  return item.estado !== 'Hecha';
+  return !item.done && item.estado !== 'Hecha';
 }
 
 function taskScore(task: TaskItem) {
@@ -40,6 +42,8 @@ function taskScore(task: TaskItem) {
 }
 
 export function NowPanel({ agenda, tasks, onAgenda, onTasks }: { agenda: AgendaItem[]; tasks: TaskItem[]; onAgenda: () => void; onTasks: () => void }) {
+  const [activeRecess, setActiveRecess] = useState<Array<{ groupName: string; label: string; startTime: string; endTime: string }>>([]);
+  useEffect(() => { getRecessSchedules().then(response => setActiveRecess(response.active || [])).catch(() => setActiveRecess([])); }, []);
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
   const validAgenda = agenda.filter(item => isOpenAgenda(item) && item.estado !== 'Faltaron equipos');
   const agendaToday = validAgenda.filter(item => isAgendaToday(item));
@@ -73,6 +77,7 @@ export function NowPanel({ agenda, tasks, onAgenda, onTasks }: { agenda: AgendaI
           <div className="muted">Agenda de hoy</div>
           <strong>{pendingTodayCount ? `${pendingTodayCount} pendiente${pendingTodayCount === 1 ? '' : 's'} hoy` : agendaToday.length ? `${agendaToday.length} en curso hoy` : 'Sin pendientes hoy'}</strong>
         </div>
+        {activeRecess.length > 0 && <div className="list-item active-recess-now"><div className="muted">Recreo activo</div><strong>{activeRecess.map(item => `${item.groupName} · hasta ${item.endTime}`).join(' · ')}</strong></div>}
         <div className="list-item">
           <div className="muted">Próxima agenda</div>
           <strong>{nextAgenda ? `${currentAgenda ? 'En curso' : nextAgenda.desde} · ${nextAgenda.curso || nextAgenda.actividad}` : 'Sin próximas actividades'}</strong>

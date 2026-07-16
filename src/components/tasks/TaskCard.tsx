@@ -1,24 +1,19 @@
 import { useState } from 'react';
-import type { TaskItem, TaskState } from '../../types';
+import type { TaskComment, TaskItem, TaskState } from '../../types';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { formatDdMm } from '../../utils/taskDate';
-import { createTaskItem, deleteTaskItem, updateTaskItem } from '../../services/tasksApi';
+import { createTaskComment, createTaskItem, deleteTaskItem, getTaskComments, updateTaskItem } from '../../services/tasksApi';
 
-export function TaskCard({ task, operator, consultationMode, onMove, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void }) {
+export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [itemText, setItemText] = useState('');
   const [comment, setComment] = useState(task.comentario || '');
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<TaskComment[]>([]);
+  const [commentText, setCommentText] = useState('');
   const total = task.checklistTotal || task.items?.length || 0;
   const done = task.checklistDone ?? task.items?.filter(item => item.completada).length ?? 0;
-  const moveTo = (state: TaskState) => {
-    if (consultationMode) return;
-    if (onPatch) {
-      void onPatch({ estado: state });
-      return;
-    }
-    onMove(state);
-  };
   return (
     <article
       className={`task-card task-state-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}
@@ -32,16 +27,18 @@ export function TaskCard({ task, operator, consultationMode, onMove, onDelete, o
       onDragStart={event => {
         event.currentTarget.classList.add('dragging');
         event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', task.id);
+        event.dataTransfer.setData('text/plain', `task:${task.id}`);
       }}
       onDragEnd={event => event.currentTarget.classList.remove('dragging')}
       style={{ viewTransitionName: `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }}
     >
       <strong>{task.titulo}</strong>
       <div className="muted">{task.responsables?.join(', ') || task.responsable} - {task.prioridad}{task.turno ? ` · ${task.turno}` : ''}{task.fechaVencimiento ? ` · Vence ${formatDdMm(task.fechaVencimiento)}` : ''}</div>
-      <div className={`task-state-pill task-state-pill-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}>{task.estado === 'Hecha' ? '✓ Hecha' : task.estado}</div>
+      <div className={`task-state-pill task-state-pill-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}>{task.done ? `✓ ${task.estado}` : task.estado}</div>
+      {task.visibility === 'private' && <span className="task-private-pill">Privada</span>}
       {task.descripcion && <p>{task.descripcion}</p>}
       {task.comentario && <p className="task-note">Nota: {task.comentario}</p>}
+      {!!task.attachments?.length && <div className="task-card-attachments">{task.attachments.map((attachment, index) => <a key={`${attachment.url}-${index}`} href={attachment.url} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()}>📎 {attachment.name}</a>)}</div>}
       {total > 0 && <div className="task-progress"><span>Checklist {done}/{total}</span><progress value={done} max={total} /></div>}
       {task.items?.length ? (
         <div className="task-checklist">
@@ -62,9 +59,6 @@ export function TaskCard({ task, operator, consultationMode, onMove, onDelete, o
           ))}
         </div>
       ) : null}
-      {total > 0 && done === total && task.estado !== 'Hecha' && !consultationMode && (
-        <Button className="checklist-confirm-btn" variant="success" onClick={() => moveTo('Hecha')}>Confirmar checklist</Button>
-      )}
       {!consultationMode && (
         <form className="task-add-item" onSubmit={async event => {
           event.preventDefault();
@@ -78,11 +72,9 @@ export function TaskCard({ task, operator, consultationMode, onMove, onDelete, o
         </form>
       )}
       <div className="task-card-actions" draggable={false} onMouseDown={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()}>
-        {task.estado !== 'Pendiente' && <Button disabled={consultationMode} onClick={event => { event.stopPropagation(); moveTo('Pendiente'); }}>Pendiente</Button>}
-        {task.estado !== 'En proceso' && <Button disabled={consultationMode} onClick={event => { event.stopPropagation(); moveTo('En proceso'); }}>Iniciar</Button>}
-        {task.estado !== 'Hecha' && <Button className="task-done-btn" variant="primary" disabled={consultationMode} onClick={event => { event.stopPropagation(); moveTo('Hecha'); }}>Hecha</Button>}
         <Button disabled={consultationMode} onClick={event => { event.stopPropagation(); onEdit?.(); }}>Editar</Button>
         <Button disabled={consultationMode} onClick={event => { event.stopPropagation(); setNoteOpen(true); }}>Nota</Button>
+        <Button onClick={async event => { event.stopPropagation(); const response = await getTaskComments(task.id); setComments(response.items); setCommentsOpen(true); }}>Comentarios {task.commentsCount ? `(${task.commentsCount})` : ''}</Button>
         <Button className="task-delete-btn" disabled={consultationMode} onClick={event => { event.stopPropagation(); onDelete(); }}>Borrar</Button>
       </div>
       {noteOpen && (
@@ -100,6 +92,7 @@ export function TaskCard({ task, operator, consultationMode, onMove, onDelete, o
           </form>
         </Modal>
       )}
+      {commentsOpen && <Modal title={`Comentarios · ${task.titulo}`} onClose={() => setCommentsOpen(false)}><div className="task-comments"><div className="task-comment-list">{comments.map(item => <article key={item.id}><header><strong>{item.authorName || item.authorEmail}</strong><time>{new Date(item.createdAt).toLocaleString('es-AR')}</time></header><p>{item.body}</p></article>)}{!comments.length && <div className="empty-state">Todavía no hay comentarios.</div>}</div>{!consultationMode && <form onSubmit={async event => { event.preventDefault(); if (!commentText.trim()) return; const response = await createTaskComment(task.id, commentText); setComments(value => [...value, response.item]); setCommentText(''); await onRefresh?.(); }}><textarea className="input" rows={3} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Escribí un comentario" /><Button variant="primary" type="submit">Comentar</Button></form>}</div></Modal>}
     </article>
   );
 }

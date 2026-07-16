@@ -151,6 +151,11 @@ export function canEditModule(req, moduleKey, siteCode = req?.siteCode) {
   return perms.admin || perms.edit.has('*') || perms.edit.has(moduleKey);
 }
 
+export function canViewModule(req, moduleKey, siteCode = req?.siteCode) {
+  const perms = resolveSitePermissions(req, siteCode);
+  return perms.admin || perms.view.has('*') || perms.view.has(moduleKey);
+}
+
 // Endpoints POST/PATCH que en realidad son de lectura (asistente IA) y no deben
 // quedar bloqueados para usuarios de consulta.
 const READ_ONLY_WRITE_PATHS = [/^\/asistente\b/, /^\/assistant\b/];

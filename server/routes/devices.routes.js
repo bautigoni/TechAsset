@@ -3,6 +3,7 @@ import { addLocalMovement, getDb, nowIso, setAppSetting, setLocalState } from '.
 import { buildLocalInventory, getDeviceInventoryDiagnostics, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
 import { parseDevicesCsv, toCsvExportUrl } from '../services/googleSheets.service.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { getDeviceAiSummary } from '../services/aiSummaries.service.js';
 
 export const devicesRouter = Router();
 
@@ -32,6 +33,51 @@ devicesRouter.get('/device-categories', async (_req, res, next) => {
     next(error);
   }
 });
+
+devicesRouter.get('/devices/:etiqueta/overview', async (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const tag = normalizeTag(req.params.etiqueta);
+    const { items } = await getMergedDevices({ siteCode });
+    const device = items.find(item => normalizeTag(item.etiqueta) === tag);
+    if (!device) return res.status(404).json({ ok: false, error: 'Dispositivo no encontrado.' });
+    const loanEvents = getDb().prepare('SELECT * FROM loan_events WHERE site_code=? AND upper(etiqueta)=upper(?) ORDER BY timestamp DESC LIMIT 200').all(siteCode, tag);
+    const movements = getDb().prepare('SELECT * FROM local_movements WHERE site_code=? AND upper(etiqueta)=upper(?) ORDER BY timestamp DESC LIMIT 100').all(siteCode, tag);
+    const pattern = `%${tag}%`;
+    const ticketRows = getDb().prepare(`
+      SELECT * FROM tickets
+      WHERE site_code=? AND activo=1 AND (upper(titulo) LIKE upper(?) OR upper(descripcion) LIKE upper(?) OR upper(nota) LIKE upper(?))
+      ORDER BY updated_at DESC LIMIT 100
+    `).all(siteCode, pattern, pattern, pattern);
+    const timeline = [
+      ...movements.map(row => ({ action: row.tipo, date: row.timestamp, user: row.operador || '', notes: row.descripcion || '', source: row.origen || 'Dispositivos' })),
+      ...loanEvents.map(row => {
+        const accessories = parseJsonArray(row.accessories_json);
+        const expected = parseJsonArray(row.expected_accessories_json);
+        const accessoryNote = row.tipo === 'prestamo'
+          ? (accessories.length ? `Entregado: ${accessories.join(', ')}` : 'Sin accesorios registrados')
+          : (expected.length ? `Esperados: ${expected.join(', ')} · Recibidos: ${accessories.length ? accessories.join(', ') : 'sin marcar'}` : 'Sin accesorios registrados');
+        return { action: row.tipo === 'prestamo' ? 'Prestado' : 'Devuelto', date: row.timestamp, user: row.operador || '', notes: [row.persona, row.ubicacion, row.comentarios, accessoryNote].filter(Boolean).join(' · '), source: row.origen || 'Préstamos' };
+      })
+    ].sort((a,b) => String(b.date).localeCompare(String(a.date))).slice(0,50);
+    const loans = loanEvents.filter(row => row.tipo === 'prestamo');
+    const repairs = ticketRows.filter(row => /repar|manten|service/i.test(`${row.categoria || ''} ${row.titulo || ''} ${row.descripcion || ''}`));
+    const incidents = ticketRows.map(row => ({ id:Number(row.id), numero:row.numero || '', titulo:row.titulo || '', estado:row.estado || '', prioridad:row.prioridad || '', categoria:row.categoria || '', updatedAt:row.updated_at || '' }));
+    const aiSummary = await getDeviceAiSummary({ siteCode, device, events: loanEvents, tickets: ticketRows });
+    res.json({
+      ok:true, device, timeline,
+      stats:{ totalLoans:loans.length, totalRepairs:repairs.length, incidents:ticketRows.length, lastMaintenance:repairs[0]?.updated_at || '', lastLoan:loans[0]?.timestamp || '', lastRepair:repairs[0]?.updated_at || '' },
+      activeLoan: device.estado === 'Prestado' ? { person:device.prestadoA || '', role:device.rol || '', location:device.ubicacion || '', since:device.loanedAt || '' } : null,
+      openTickets:incidents.filter(item=>item.estado!=='Hecho'), recentTickets:incidents.slice(0,8),
+      maintenanceHistory:repairs.slice(0,12).map(row=>({ id:Number(row.id),title:row.titulo||row.descripcion||'Mantenimiento',date:row.updated_at||row.created_at||'',status:row.estado||'',notes:row.nota||'' })),
+      purchaseInformation:null, warrantyInformation:null, aiSummary
+    });
+  } catch(error){ next(error); }
+});
+
+function parseJsonArray(value) {
+  try { const parsed = JSON.parse(String(value || '[]')); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []; } catch { return []; }
+}
 
 devicesRouter.get('/devices/state', async (_req, res, next) => {
   try {

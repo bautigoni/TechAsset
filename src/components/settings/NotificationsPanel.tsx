@@ -5,11 +5,13 @@ const DEFAULT_TYPES: NotificationTypePrefs = {
   releases: true,
   tasks: true,
   tickets: true,
+  suggestions: true,
   registrations: true,
   system: true
 };
 
 const TYPE_OPTIONS: Array<{ key: keyof NotificationTypePrefs; title: string; text: string }> = [
+  { key: 'suggestions', title: 'Sugerencias e ideas', text: 'Comentarios y cambios de estado de las ideas que seguís.' },
   { key: 'tasks', title: 'Tareas TIC', text: 'Tareas creadas o asignadas por otros integrantes de la sede.' },
   { key: 'tickets', title: 'Tickets', text: 'Tickets nuevos o cambios relevantes.' },
   { key: 'releases', title: 'Novedades de TechAsset', text: 'Avisos de actualizacion y cambios de version.' },

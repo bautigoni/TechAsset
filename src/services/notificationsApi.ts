@@ -16,6 +16,7 @@ export type NotificationTypePrefs = {
   releases: boolean;
   tasks: boolean;
   tickets: boolean;
+  suggestions: boolean;
   registrations: boolean;
   system: boolean;
 };

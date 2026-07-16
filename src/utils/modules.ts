@@ -3,7 +3,7 @@ import type { ViewKey } from '../types';
 // Módulos que cada sede puede prender/apagar desde Configuración (rol manager).
 export type ModuleKey =
   | 'devices' | 'loans' | 'inventory' | 'analytics'
-  | 'agenda' | 'tasks' | 'classrooms' | 'tickets'
+  | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'suggestions'
   | 'tools' | 'quickaccess';
 
 export type ModuleCategory = 'Operación' | 'Análisis' | 'Planificación' | 'Aulas y soporte' | 'Comunicaciones';
@@ -18,7 +18,12 @@ export const TOGGLEABLE_MODULES: ToggleableModule[] = [
   { key: 'inventory', label: 'Inventario TIC', description: 'Recursos maker y stock de componentes.', category: 'Operación', icon: '📦' },
   { key: 'analytics', label: 'Analítica', description: 'Métricas de préstamos y uso.', category: 'Análisis', icon: '📊' },
   { key: 'agenda', label: 'Agenda TIC', description: 'Reservas y planificación semanal.', category: 'Planificación', icon: '🗓️' },
+  { key: 'schedules', label: 'Horarios', description: 'Horarios docentes y recreos por grupo.', category: 'Planificación', icon: '🕐' },
   { key: 'tasks', label: 'Tareas TIC', description: 'Tareas del equipo y seguimiento.', category: 'Planificación', icon: '✅' },
+  { key: 'canvas', label: 'Canvas de proyectos', description: 'Espacio visual infinito para planificar.', category: 'Planificación', icon: '🧩' },
+  { key: 'pettycash', label: 'Caja chica', description: 'Fondo fijo, gastos y solicitudes de compra.', category: 'Operación', icon: '💳' },
+  { key: 'knowledge', label: 'Base de conocimiento', description: 'Documentación interna priorizada por el asistente IA.', category: 'Aulas y soporte', icon: '📚' },
+  { key: 'suggestions', label: 'Sugerencias', description: 'Ideas, votos y seguimiento transparente de mejoras.', category: 'Comunicaciones', icon: '💡' },
   { key: 'classrooms', label: 'Estado aulas', description: 'Revisión de proyectores y equipos por aula.', category: 'Aulas y soporte', icon: '🏫' },
   { key: 'tickets', label: 'Tickets', description: 'Tickets de InVgate cargados desde la app.', category: 'Aulas y soporte', icon: '🎫' },
   { key: 'tools', label: 'Herramientas auxiliares', description: 'Utilidades varias del equipo TIC.', category: 'Aulas y soporte', icon: '🛠️' },

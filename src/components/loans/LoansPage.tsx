@@ -17,7 +17,7 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
 type LoanActionResult = { synced?: boolean; message?: string } | void;
 
 export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; initialCode?: string }) {
-  const [returningTag, setReturningTag] = useState('');
+  const [returnSeed, setReturnSeed] = useState(initialCode);
   const [previousLoans, setPreviousLoans] = useState<PreviousDayLoan[]>([]);
   const [previousDate, setPreviousDate] = useState('');
   const [previousError, setPreviousError] = useState('');
@@ -64,7 +64,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <h3>Préstamo / devolución</h3>
             <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
           </div>
-          <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={initialCode} />
+          <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={returnSeed || initialCode} />
         </section>
         <div className="loans-side-stack">
           <section className="card loan-summary-card">
@@ -105,6 +105,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                       <th>Persona</th>
                       <th>Ubicación</th>
                       <th>Motivo</th>
+                      <th>Accesorios</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -118,6 +119,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                         <td>{item.persona || '-'}</td>
                         <td>{[item.ubicacion, item.curso].filter(Boolean).join(' · ') || '-'}</td>
                         <td>{item.motivo || '-'}</td>
+                        <td>{item.accessories?.length ? item.accessories.join(', ') : 'Sin accesorios'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -134,15 +136,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                   <strong>{device.etiqueta} · {getOperationalAlias(device)}</strong>
                   <span>{device.prestadoA || 'Sin persona'} · {[device.ubicacion, device.curso].filter(Boolean).join(' · ') || 'Sin ubicación'}</span>
                   <span className="loaned-now-time">{formatLoanDateTime(device.loanedAt) || 'Sin fecha'} · {loanAgeLabel(device.loanedAt) || 'sin antiguedad'}</span>
-                  <button type="button" onClick={async () => {
-                    if (returningTag) return;
-                    setReturningTag(device.etiqueta);
-                    try {
-                      await onReturn({ etiqueta: device.etiqueta });
-                    } finally {
-                      setReturningTag('');
-                    }
-                  }} disabled={consultationMode || returningTag === device.etiqueta}>{returningTag === device.etiqueta ? 'Devolviendo...' : 'Devolver'}</button>
+                  <button type="button" onClick={() => { setReturnSeed(''); window.setTimeout(() => setReturnSeed(device.etiqueta), 0); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={consultationMode}>Revisar devolución</button>
                 </div>
               ))}
               {!loaned.length && <div className="empty-state">No hay equipos prestados ahora.</div>}

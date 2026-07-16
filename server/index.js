@@ -25,6 +25,11 @@ import { googleAuthRouter } from './routes/googleAuth.routes.js';
 import { notificationsRouter } from './routes/notifications.routes.js';
 import { userPrefsRouter } from './routes/userPrefs.routes.js';
 import { calendarRouter, publicCalendarRouter } from './routes/calendar.routes.js';
+import { schedulesRouter } from './routes/schedules.routes.js';
+import { canvasRouter } from './routes/canvas.routes.js';
+import { pettyCashRouter } from './routes/pettyCash.routes.js';
+import { knowledgeRouter } from './routes/knowledge.routes.js';
+import { suggestionsRouter } from './routes/suggestions.routes.js';
 import { authMiddleware, requireEditor } from './services/siteContext.service.js';
 
 getDb();
@@ -46,6 +51,9 @@ app.use('/api', notificationsRouter);
 app.use('/api', userPrefsRouter);
 app.use('/api', calendarRouter);
 app.use('/api', analyticsRouter);
+// Sugerencias permite crear, votar y comentar a cualquier usuario con acceso de
+// lectura al módulo; el router aplica propiedad y permisos de gestión por acción.
+app.use('/api', suggestionsRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.
 // (sitesRouter ya valida manager/superadmin por endpoint.)
 app.use('/api', requireEditor);
@@ -54,6 +62,10 @@ app.use('/api', loansRouter);
 app.use('/api', inventoryRouter);
 app.use('/api', ticketsRouter);
 app.use('/api', agendaRouter);
+app.use('/api', schedulesRouter);
+app.use('/api', canvasRouter);
+app.use('/api', pettyCashRouter);
+app.use('/api', knowledgeRouter);
 app.use('/api', tasksRouter);
 app.use('/api', assistantRouter);
 app.use('/api', prestamosRouter);

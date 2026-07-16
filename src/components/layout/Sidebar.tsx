@@ -4,10 +4,14 @@ import {
   Boxes,
   Building2,
   CalendarDays,
+  Clock3,
   ClipboardCheck,
   Gauge,
-  Link2,
+	  Link2,
+	  Lightbulb,
+  BookOpenText,
   MonitorSmartphone,
+  PanelsTopLeft,
   PanelLeftClose,
   PanelLeftOpen,
   Repeat2,
@@ -15,6 +19,7 @@ import {
   Settings,
   Ticket,
   Wrench,
+  WalletCards,
   X
 } from 'lucide-react';
 import type { SiteInfo, ViewKey } from '../../types';
@@ -35,9 +40,14 @@ const NAV: NavItem[] = [
   { key: 'inventory', label: 'Inventario TIC', Icon: Boxes },
   { key: 'analytics', label: 'Analítica', Icon: BarChart3 },
   { key: 'agenda', label: 'Agenda TIC', Icon: CalendarDays },
+  { key: 'schedules', label: 'Horarios', Icon: Clock3 },
   { key: 'tasks', label: 'Tareas TIC', Icon: ClipboardCheck },
+  { key: 'canvas', label: 'Canvas', Icon: PanelsTopLeft },
+  { key: 'pettycash', label: 'Caja chica', Icon: WalletCards },
   { key: 'classrooms', label: 'Estado aulas', Icon: School },
   { key: 'tickets', label: 'Tickets', Icon: Ticket },
+  { key: 'knowledge', label: 'Base de conocimiento', Icon: BookOpenText },
+  { key: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
   { key: 'tools', label: 'Herramientas auxiliares', Icon: Wrench },
   { key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
   { key: 'settings', label: 'Configuración', Icon: Settings }

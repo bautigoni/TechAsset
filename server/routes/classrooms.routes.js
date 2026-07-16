@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb, nowIso } from '../db.js';
-import { requireSite } from '../services/siteContext.service.js';
+import { isSiteManager, requireSite } from '../services/siteContext.service.js';
+import { notifySiteAdmins } from '../services/notifications.service.js';
 
 export const classroomsRouter = Router();
 
@@ -155,18 +156,18 @@ function migrateItemState(value) {
 }
 
 function stateFromRow(row, key) {
-  const option = EQUIPMENT_BY_KEY.get(key);
+  const option = equipmentOption(row.site_code, key);
   if (option?.column) return migrateItemState(row[option.column] || 'Sin revisar');
   return 'Sin revisar';
 }
 
 function normalizeEquipmentItem(item, row) {
   const key = String(item?.key || '').trim();
-  const option = EQUIPMENT_BY_KEY.get(key);
-  if (!option) return null;
+  const option = equipmentOption(row.site_code, key) || { key, label: String(item?.label || key) };
+  if (!key) return null;
   return {
     key,
-    label: option.label,
+    label: String(item?.label || option.label || key),
     state: migrateItemState(item?.state || stateFromRow(row, key))
   };
 }
@@ -178,6 +179,15 @@ function defaultEquipment(row) {
     label: EQUIPMENT_BY_KEY.get(key)?.label || key,
     state: stateFromRow(row, key)
   }));
+}
+
+function equipmentOption(siteCode, key) {
+  const configured = getDb().prepare('SELECT category_key AS key, label FROM classroom_categories WHERE site_code=? AND category_key=? AND active=1').get(siteCode || 'NFPT', key);
+  return configured || EQUIPMENT_BY_KEY.get(key);
+}
+
+function activeCategoryMap(siteCode) {
+  return new Map(getDb().prepare('SELECT category_key AS key, label FROM classroom_categories WHERE site_code=? AND active=1 ORDER BY sort_order, id').all(siteCode).map(item => [item.key, item]));
 }
 
 function parseEquipment(row) {
@@ -272,10 +282,12 @@ function ensureDefaultClassrooms(siteCode = 'NFPT') {
 
 function equipmentFromBody(body, old) {
   if (!Array.isArray(body.equipment)) return old.equipment;
+  const configured = activeCategoryMap(old.siteCode || 'NFPT');
   const byOldState = new Map((old.equipment || []).map(item => [item.key, item.state]));
+  const oldLabels = new Map((old.equipment || []).map(item => [item.key, item.label]));
   const items = body.equipment.map(item => {
     const key = String(item?.key || '').trim();
-    const option = EQUIPMENT_BY_KEY.get(key);
+    const option = configured.get(key) || (byOldState.has(key) ? { label: oldLabels.get(key) || key } : null);
     if (!option) return null;
     return {
       key,
@@ -300,6 +312,58 @@ classroomsRouter.get('/classrooms', (_req, res) => {
   ensureDefaultClassrooms(siteCode);
   const rows = db.prepare('SELECT * FROM classrooms WHERE site_code=? ORDER BY piso, nombre').all(siteCode);
   res.json({ ok: true, items: rows.map(rowToClassroom) });
+});
+
+classroomsRouter.get('/classroom-categories', (req, res) => {
+  const siteCode = requireSite(req);
+  ensureClassroomCategories(siteCode);
+  const items = getDb().prepare('SELECT * FROM classroom_categories WHERE site_code=? AND active=1 ORDER BY sort_order, id').all(siteCode).map(rowToCategory);
+  res.json({ ok: true, items, canManage: isSiteManager(req, siteCode) });
+});
+
+classroomsRouter.post('/classroom-categories', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'Solo un administrador puede crear categorías de aula.' });
+  const label = String(req.body?.label || '').trim();
+  if (!label) return res.status(400).json({ ok: false, error: 'La categoría necesita un nombre.' });
+  const key = uniqueCategoryKey(siteCode, req.body?.key || label);
+  const options = normalizeCategoryOptions(req.body?.options);
+  const order = Number(getDb().prepare('SELECT COALESCE(MAX(sort_order),-1) AS value FROM classroom_categories WHERE site_code=? AND active=1').get(siteCode).value) + 1;
+  const ts = nowIso();
+  const info = getDb().prepare(`
+    INSERT INTO classroom_categories (site_code, category_key, label, category_type, options_json, sort_order, built_in, active, created_at, updated_at)
+    VALUES (?, ?, ?, 'status', ?, ?, 0, 1, ?, ?)
+  `).run(siteCode, key, label, JSON.stringify(options), order, ts, ts);
+  try { notifySiteAdmins({ siteCode, kind: 'classroom.category.created', title: 'Nueva categoría de aula', body: label, link: `/sede/${siteCode}/classrooms`, exceptEmail: req.user?.email }); } catch { /* noop */ }
+  res.json({ ok: true, item: rowToCategory(getDb().prepare('SELECT * FROM classroom_categories WHERE id=?').get(info.lastInsertRowid)) });
+});
+
+classroomsRouter.patch('/classroom-categories/reorder', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'Solo un administrador puede ordenar categorías.' });
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Number.isFinite) : [];
+  const update = getDb().prepare('UPDATE classroom_categories SET sort_order=?, updated_at=? WHERE id=? AND site_code=? AND active=1');
+  const ts = nowIso();
+  getDb().transaction(() => ids.forEach((id, index) => update.run(index, ts, id, siteCode)))();
+  res.json({ ok: true });
+});
+
+classroomsRouter.patch('/classroom-categories/:id', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'Solo un administrador puede editar categorías.' });
+  const old = getDb().prepare('SELECT * FROM classroom_categories WHERE id=? AND site_code=? AND active=1').get(req.params.id, siteCode);
+  if (!old) return res.status(404).json({ ok: false, error: 'Categoría no encontrada.' });
+  const label = String(req.body?.label ?? old.label).trim();
+  const options = req.body?.options == null ? parseOptions(old.options_json) : normalizeCategoryOptions(req.body.options);
+  getDb().prepare('UPDATE classroom_categories SET label=?, options_json=?, updated_at=? WHERE id=? AND site_code=?').run(label, JSON.stringify(options), nowIso(), old.id, siteCode);
+  res.json({ ok: true, item: rowToCategory(getDb().prepare('SELECT * FROM classroom_categories WHERE id=?').get(old.id)) });
+});
+
+classroomsRouter.delete('/classroom-categories/:id', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'Solo un administrador puede eliminar categorías.' });
+  const result = getDb().prepare('UPDATE classroom_categories SET active=0, updated_at=? WHERE id=? AND site_code=?').run(nowIso(), req.params.id, siteCode);
+  res.json({ ok: true, deleted: result.changes > 0 });
 });
 
 classroomsRouter.get('/classrooms/summary', (_req, res) => {
@@ -398,3 +462,75 @@ classroomsRouter.get('/classrooms/:roomKey/history', (req, res) => {
     observacion: row.observacion
   })) });
 });
+
+classroomsRouter.get('/classrooms/:roomKey/incidents', (req, res) => {
+  const siteCode = requireSite(req);
+  const classroom = ensureClassroom(req.params.roomKey, {}, siteCode);
+  const rows = getDb().prepare(`
+    SELECT * FROM tickets
+    WHERE site_code=? AND COALESCE(activo,1)=1 AND COALESCE(deleted_at,'')=''
+      AND (
+        classroom_key=?
+        OR (COALESCE(classroom_key,'')='' AND lower(trim(classroom))=lower(trim(?)))
+        OR (COALESCE(classroom_key,'')='' AND lower(trim(classroom))=lower(trim(?)))
+      )
+    ORDER BY COALESCE(created_at,updated_at) DESC, id DESC
+  `).all(siteCode, req.params.roomKey, classroom.nombre || '', req.params.roomKey);
+  const categoryCounts = new Map();
+  for (const row of rows) {
+    const category = String(row.categoria || 'Sin categoría').trim() || 'Sin categoría';
+    categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+  }
+  const incidents = rows.map(row => ({
+    id: Number(row.id), numero: row.numero || '', titulo: row.titulo || '', descripcion: row.descripcion || '',
+    estado: row.estado || 'No hecho', prioridad: row.prioridad || 'Media', categoria: row.categoria || 'Sin categoría',
+    responsables: parseStringArray(row.responsables_json), createdAt: row.created_at || '', updatedAt: row.updated_at || '', resolvedAt: row.resolved_at || ''
+  }));
+  res.json({
+    ok: true,
+    summary: {
+      open: incidents.filter(item => item.estado !== 'Hecho').length,
+      closed: incidents.filter(item => item.estado === 'Hecho').length,
+      total: incidents.length,
+      lastIncidentAt: incidents[0]?.createdAt || incidents[0]?.updatedAt || '',
+      commonCategories: [...categoryCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([label, value]) => ({ label, value }))
+    },
+    items: incidents
+  });
+});
+
+function ensureClassroomCategories(siteCode) {
+  const count = Number(getDb().prepare('SELECT COUNT(*) AS total FROM classroom_categories WHERE site_code=?').get(siteCode).total || 0);
+  if (count) return;
+  const ts = nowIso();
+  const options = JSON.stringify([...VALID_ITEM_STATES]);
+  const insert = getDb().prepare("INSERT INTO classroom_categories (site_code, category_key, label, category_type, options_json, sort_order, built_in, active, created_at, updated_at) VALUES (?, ?, ?, 'status', ?, ?, 1, 1, ?, ?) ON CONFLICT(site_code, category_key) DO NOTHING");
+  EQUIPMENT_OPTIONS.forEach((item, index) => insert.run(siteCode, item.key, item.label, options, index, ts, ts));
+}
+
+function parseOptions(value) {
+  try { const parsed = JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [...VALID_ITEM_STATES]; }
+  catch { return [...VALID_ITEM_STATES]; }
+}
+
+function parseStringArray(value) {
+  try { const parsed = JSON.parse(String(value || '[]')); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []; } catch { return []; }
+}
+
+function normalizeCategoryOptions(value) {
+  const raw = Array.isArray(value) ? value : String(value || '').split(',');
+  const options = raw.map(item => String(item).trim()).filter(item => VALID_ITEM_STATES.has(item));
+  return options.length ? [...new Set(options)] : [...VALID_ITEM_STATES];
+}
+
+function rowToCategory(row) {
+  return { id: row.id, key: row.category_key, label: row.label, type: row.category_type || 'status', options: parseOptions(row.options_json), sortOrder: Number(row.sort_order || 0), builtIn: Boolean(row.built_in) };
+}
+
+function uniqueCategoryKey(siteCode, value) {
+  const base = String(value || 'categoria').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+(.)?/g, (_match, next) => next ? next.toUpperCase() : '').replace(/^[A-Z]/, letter => letter.toLowerCase()).slice(0, 48) || 'categoria';
+  let key = base;
+  let suffix = 2;
+  while (getDb().prepare('SELECT 1 FROM classroom_categories WHERE site_code=? AND category_key=?').get(siteCode, key)) key = `${base}${suffix++}`;
+  return key;
+}

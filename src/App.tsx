@@ -14,6 +14,11 @@ import { LoansPage } from './components/loans/LoansPage';
 import { InventoryPage } from './components/inventory/InventoryPage';
 import { AgendaPage } from './components/agenda/AgendaPage';
 import { TasksPage } from './components/tasks/TasksPage';
+import { SchedulesPage } from './components/schedules/SchedulesPage';
+import { CanvasPage } from './components/canvas/CanvasPage';
+import { PettyCashPage } from './components/pettycash/PettyCashPage';
+import { KnowledgePage } from './components/knowledge/KnowledgePage';
+import { SuggestionsPage } from './components/suggestions/SuggestionsPage';
 import { AnalyticsPage } from './components/analytics/AnalyticsPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { ToolsPage } from './components/tools/ToolsPage';
@@ -359,13 +364,18 @@ export function App() {
       <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
       <main className="main main-content">
         <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} onOpenAssistant={() => setAssistantOpen(true)} />
-        {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onProfile={setProfile} onEdit={setEditingDevice} />}
-        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={device => onReturn({ etiqueta: device.etiqueta })} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
+        {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} />}
+        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={openLoanFlow} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
         {view === 'inventory' && <InventoryPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
         {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
+        {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
+        {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
         {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
         {view === 'tools' && <ToolsPage operator={operator} />}
         {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}
@@ -394,7 +404,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 
