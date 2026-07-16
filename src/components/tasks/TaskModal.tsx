@@ -4,6 +4,7 @@ import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
 import { ddMmToIso, formatDdMm, isValidDdMm } from '../../utils/taskDate';
 import { getSiteAssistants } from '../../services/authApi';
+import { uploadTaskAttachment } from '../../services/tasksApi';
 
 const TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'] as const;
 
@@ -14,22 +15,23 @@ function initialResponsables(initial?: Partial<TaskItem>, operator?: string): st
   return operator ? [operator] : [];
 }
 
-export function TaskModal({ onClose, onSave, initial, operator }: { onClose: () => void; onSave: (task: Partial<TaskItem>) => Promise<unknown>; initial?: Partial<TaskItem>; operator: string }) {
-  const [assistants, setAssistants] = useState<string[]>([]);
-  const [task, setTask] = useState<Partial<TaskItem>>({ prioridad: 'Media', estado: 'Pendiente', ...initial });
+export function TaskModal({ onClose, onSave, initial, operator, defaultVisibility = 'team' }: { onClose: () => void; onSave: (task: Partial<TaskItem>) => Promise<unknown>; initial?: Partial<TaskItem>; operator: string; defaultVisibility?: 'team' | 'private' }) {
+  const [assistants, setAssistants] = useState<Array<{ name: string; email?: string }>>([]);
+  const [task, setTask] = useState<Partial<TaskItem>>({ prioridad: 'Media', estado: 'Pendiente', visibility: defaultVisibility, ...initial });
   const [selected, setSelected] = useState<string[]>(() => initialResponsables(initial, operator));
   const [dateInput, setDateInput] = useState(formatDdMm(task.fechaVencimiento));
+  const [uploading, setUploading] = useState(false);
   const update = (key: keyof TaskItem, value: string) => setTask(current => ({ ...current, [key]: value }));
 
   useEffect(() => {
     getSiteAssistants()
-      .then(response => setAssistants(response.items.map(item => item.name).filter(Boolean)))
+      .then(response => setAssistants(response.items.filter(item => item.name)))
       .catch(() => setAssistants([]));
   }, []);
 
   // C1/C2: todas las personas del sitio + el operador actual, como chips toggleables.
   const people = useMemo(
-    () => Array.from(new Set([operator, ...assistants, ...selected].map(s => String(s || '').trim()).filter(Boolean))),
+    () => Array.from(new Set([operator, ...assistants.map(item => item.name), ...selected].map(s => String(s || '').trim()).filter(Boolean))),
     [assistants, operator, selected]
   );
 
@@ -49,13 +51,15 @@ export function TaskModal({ onClose, onSave, initial, operator }: { onClose: () 
     if (!isValidDdMm(dateInput)) return;
     const iso = ddMmToIso(dateInput);
     const responsables = selected.length ? selected : ['Sin asignar'];
-    await onSave({ ...task, responsables, responsable: responsables.join(','), fechaVencimiento: iso });
+    const assigneeEmails = assistants.filter(item => responsables.includes(item.name)).map(item => item.email || '').filter(Boolean);
+    await onSave({ ...task, responsables, assigneeEmails, responsable: responsables.join(','), fechaVencimiento: iso });
     onClose();
   };
 
   return (
     <Modal title={initial?.id ? 'Editar tarea' : '+ Nueva tarea'} onClose={onClose}>
       <form className="stack" onSubmit={onSubmit}>
+        {!initial?.id && <div className="task-visibility-choice"><button type="button" className={task.visibility === 'private' ? 'active' : ''} onClick={() => setTask(value => ({ ...value, visibility: 'private' }))}><strong>Mi tarea</strong><span>Solo visible para vos</span></button><button type="button" className={task.visibility !== 'private' ? 'active' : ''} onClick={() => setTask(value => ({ ...value, visibility: 'team' }))}><strong>Tarea de equipo</strong><span>Visible en el espacio compartido</span></button></div>}
         <label>Título<input className="input" required value={task.titulo || ''} onChange={e => update('titulo', e.target.value)} /></label>
         <label>Descripción<textarea className="input" value={task.descripcion || ''} onChange={e => update('descripcion', e.target.value)} /></label>
 
@@ -99,8 +103,41 @@ export function TaskModal({ onClose, onSave, initial, operator }: { onClose: () 
           {!isValidDdMm(dateInput) && <span className="muted" style={{ color: '#ff9b9b' }}>Formato inválido. Usá DD/MM.</span>}
         </label>
         <label>Comentario<textarea className="input" rows={3} value={task.comentario || ''} onChange={e => update('comentario', e.target.value)} /></label>
+        <div className="task-attachment-editor">
+          <span className="field-label">Adjuntos</span>
+          <div className="task-attachment-list">
+            {(task.attachments || []).map((attachment, index) => <span key={`${attachment.url}-${index}`}><a href={attachment.url} target="_blank" rel="noreferrer">{attachment.name}</a><button type="button" aria-label={`Quitar ${attachment.name}`} onClick={() => setTask(current => ({ ...current, attachments: (current.attachments || []).filter((_, itemIndex) => itemIndex !== index) }))}>×</button></span>)}
+          </div>
+          <label className="btn task-upload-button">{uploading ? 'Subiendo…' : '+ Adjuntar archivo'}<input type="file" disabled={uploading} accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain,.doc,.docx,.xls,.xlsx" onChange={async event => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            setUploading(true);
+            try {
+              const base64 = await readFileAsDataUrl(file);
+              const response = await uploadTaskAttachment({ name: file.name, mimeType: file.type || mimeFromName(file.name), base64 });
+              setTask(current => ({ ...current, attachments: [...(current.attachments || []), response.attachment] }));
+            } finally {
+              setUploading(false);
+              event.target.value = '';
+            }
+          }} /></label>
+        </div>
         <div className="actions"><Button variant="primary" type="submit">Guardar</Button><Button type="button" onClick={onClose}>Cancelar</Button></div>
       </form>
     </Modal>
   );
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('No se pudo leer el archivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function mimeFromName(name: string) {
+  const extension = name.split('.').pop()?.toLowerCase();
+  return ({ doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', pdf: 'application/pdf', txt: 'text/plain' } as Record<string, string>)[extension || ''] || 'application/octet-stream';
 }

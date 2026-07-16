@@ -364,6 +364,9 @@ export function initDb(database = getDb()) {
       comentarios TEXT DEFAULT '',
       operador TEXT DEFAULT '',
       origen TEXT DEFAULT 'Local',
+      loan_session_id TEXT DEFAULT '',
+      accessories_json TEXT DEFAULT '[]',
+      expected_accessories_json TEXT DEFAULT '[]',
       timestamp TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_loan_events_site_ts ON loan_events(site_code, timestamp);
@@ -390,6 +393,129 @@ export function initDb(database = getDb()) {
       updated_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_tickets_site ON tickets(site_code, estado);
+    CREATE TABLE IF NOT EXISTS ticket_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      priority TEXT DEFAULT 'Media',
+      category TEXT DEFAULT '',
+      suggested_assignee TEXT DEFAULT '',
+      checklist_json TEXT DEFAULT '[]',
+      tags_json TEXT DEFAULT '[]',
+      created_by TEXT DEFAULT '',
+      active INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_ticket_templates_site ON ticket_templates(site_code, active, title);
+    CREATE TABLE IF NOT EXISTS ticket_relations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      ticket_a_id INTEGER NOT NULL,
+      ticket_b_id INTEGER NOT NULL,
+      relation_type TEXT DEFAULT 'related',
+      created_by TEXT DEFAULT '',
+      created_at TEXT,
+      UNIQUE(site_code, ticket_a_id, ticket_b_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_ticket_relations_a ON ticket_relations(site_code, ticket_a_id);
+    CREATE INDEX IF NOT EXISTS idx_ticket_relations_b ON ticket_relations(site_code, ticket_b_id);
+    CREATE TABLE IF NOT EXISTS ticket_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      ticket_id INTEGER NOT NULL,
+      body TEXT NOT NULL,
+      author_email TEXT DEFAULT '',
+      author_name TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT,
+      deleted_at TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket ON ticket_comments(site_code, ticket_id, id);
+    CREATE TABLE IF NOT EXISTS ticket_activity (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      ticket_id INTEGER NOT NULL,
+      action TEXT NOT NULL,
+      detail TEXT DEFAULT '',
+      actor_email TEXT DEFAULT '',
+      actor_name TEXT DEFAULT '',
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_ticket_activity_ticket ON ticket_activity(site_code, ticket_id, id);
+    CREATE TABLE IF NOT EXISTS ticket_checklist_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      ticket_id INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      done INTEGER DEFAULT 0,
+      position INTEGER DEFAULT 0,
+      completed_by TEXT DEFAULT '',
+      completed_at TEXT DEFAULT '',
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_ticket_checklist_ticket ON ticket_checklist_items(site_code, ticket_id, position, id);
+    CREATE TABLE IF NOT EXISTS knowledge_articles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      category TEXT DEFAULT '',
+      tags_json TEXT DEFAULT '[]',
+      attachments_json TEXT DEFAULT '[]',
+      created_by TEXT DEFAULT '',
+      updated_by TEXT DEFAULT '',
+      active INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_knowledge_articles_site ON knowledge_articles(site_code, active, category);
+    CREATE TABLE IF NOT EXISTS suggestions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT DEFAULT 'General',
+      status TEXT DEFAULT 'Proposed',
+      author_email TEXT DEFAULT '',
+      author_name TEXT DEFAULT '',
+      active INTEGER DEFAULT 1,
+      deleted_at TEXT DEFAULT '',
+      deleted_by TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_suggestions_site_status ON suggestions(site_code, active, status, created_at);
+    CREATE TABLE IF NOT EXISTS suggestion_votes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      suggestion_id INTEGER NOT NULL,
+      user_email TEXT NOT NULL,
+      created_at TEXT,
+      UNIQUE(site_code, suggestion_id, user_email)
+    );
+    CREATE INDEX IF NOT EXISTS idx_suggestion_votes_item ON suggestion_votes(site_code, suggestion_id);
+    CREATE TABLE IF NOT EXISTS suggestion_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      suggestion_id INTEGER NOT NULL,
+      body TEXT NOT NULL,
+      author_email TEXT DEFAULT '',
+      author_name TEXT DEFAULT '',
+      deleted_at TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_suggestion_comments_item ON suggestion_comments(site_code, suggestion_id, id);
+    CREATE TABLE IF NOT EXISTS device_ai_summaries (
+      site_code TEXT NOT NULL,
+      device_tag TEXT NOT NULL,
+      source_signature TEXT DEFAULT '',
+      summary TEXT DEFAULT '',
+      generated_at TEXT,
+      PRIMARY KEY(site_code, device_tag)
+    );
     CREATE TABLE IF NOT EXISTS invites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,
@@ -445,6 +571,146 @@ export function initDb(database = getDb()) {
       UNIQUE(user_email, site_code)
     );
     CREATE INDEX IF NOT EXISTS idx_agenda_calendar_tokens_site ON agenda_calendar_tokens(site_code, revoked_at);
+    CREATE TABLE IF NOT EXISTS teacher_schedule_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      teacher TEXT NOT NULL,
+      course TEXT NOT NULL,
+      subject TEXT DEFAULT '',
+      room TEXT DEFAULT '',
+      day_of_week INTEGER DEFAULT 1,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      active INTEGER DEFAULT 1,
+      created_by TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_teacher_schedule_site_day ON teacher_schedule_entries(site_code, day_of_week, start_time);
+    CREATE TABLE IF NOT EXISTS recess_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      name TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      active INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT,
+      UNIQUE(site_code, name)
+    );
+    CREATE TABLE IF NOT EXISTS recess_slots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      group_id INTEGER NOT NULL,
+      label TEXT DEFAULT 'Recreo',
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_recess_slots_group ON recess_slots(group_id, sort_order);
+    CREATE TABLE IF NOT EXISTS task_columns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      name TEXT NOT NULL,
+      color TEXT DEFAULT '',
+      position INTEGER DEFAULT 0,
+      is_done INTEGER DEFAULT 0,
+      active INTEGER DEFAULT 1,
+      created_by TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT,
+      UNIQUE(site_code, name)
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_columns_site_position ON task_columns(site_code, active, position);
+    CREATE TABLE IF NOT EXISTS task_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id TEXT NOT NULL,
+      site_code TEXT DEFAULT 'NFPT',
+      body TEXT NOT NULL,
+      author_email TEXT DEFAULT '',
+      author_name TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT,
+      deleted_at TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(site_code, task_id, id);
+    CREATE TABLE IF NOT EXISTS canvas_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      item_type TEXT DEFAULT 'sticky',
+      title TEXT DEFAULT '',
+      content_json TEXT DEFAULT '{}',
+      x REAL DEFAULT 0,
+      y REAL DEFAULT 0,
+      width REAL DEFAULT 240,
+      height REAL DEFAULT 180,
+      z_index INTEGER DEFAULT 1,
+      color TEXT DEFAULT '',
+      created_by TEXT DEFAULT '',
+      active INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_canvas_items_site ON canvas_items(site_code, active, z_index);
+    CREATE TABLE IF NOT EXISTS petty_cash_config (
+      site_code TEXT PRIMARY KEY,
+      initial_amount REAL DEFAULT 0,
+      requests_enabled INTEGER DEFAULT 0,
+      updated_by TEXT DEFAULT '',
+      updated_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS petty_cash_expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      expense_date TEXT NOT NULL,
+      description TEXT NOT NULL,
+      supplier TEXT DEFAULT '',
+      amount REAL NOT NULL,
+      category TEXT DEFAULT 'General',
+      receipt_url TEXT DEFAULT '',
+      purchase_request_id INTEGER,
+      inventory_item_id INTEGER,
+      created_by TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_petty_expenses_site_date ON petty_cash_expenses(site_code, expense_date);
+    CREATE TABLE IF NOT EXISTS purchase_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      description TEXT NOT NULL,
+      category TEXT DEFAULT 'General',
+      estimated_amount REAL DEFAULT 0,
+      requested_supplier TEXT DEFAULT '',
+      justification TEXT DEFAULT '',
+      receipt_url TEXT DEFAULT '',
+      status TEXT DEFAULT 'Pendiente',
+      requester_email TEXT DEFAULT '',
+      requester_name TEXT DEFAULT '',
+      final_cost REAL DEFAULT 0,
+      final_supplier TEXT DEFAULT '',
+      resolution_note TEXT DEFAULT '',
+      resolved_by TEXT DEFAULT '',
+      resolved_at TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_purchase_requests_site_status ON purchase_requests(site_code, status, id);
+    CREATE TABLE IF NOT EXISTS classroom_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      category_key TEXT NOT NULL,
+      label TEXT NOT NULL,
+      category_type TEXT DEFAULT 'status',
+      options_json TEXT DEFAULT '[]',
+      sort_order INTEGER DEFAULT 0,
+      built_in INTEGER DEFAULT 0,
+      active INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT,
+      UNIQUE(site_code, category_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_classroom_categories_site_order ON classroom_categories(site_code, active, sort_order);
   `);
 
   ensureColumn(database, 'agenda', 'site_code', "TEXT DEFAULT 'NFPT'");
@@ -494,6 +760,11 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'classrooms', 'equipment_json', "TEXT DEFAULT ''");
   ensureColumn(database, 'tasks', 'responsables_json', "TEXT DEFAULT ''");
   ensureColumn(database, 'tasks', 'turno', "TEXT DEFAULT 'Sin turno'");
+  ensureColumn(database, 'tasks', 'visibility', "TEXT DEFAULT 'team'");
+  ensureColumn(database, 'tasks', 'owner_email', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tasks', 'column_id', 'INTEGER');
+  ensureColumn(database, 'tasks', 'assignee_emails_json', "TEXT DEFAULT '[]'");
+  ensureColumn(database, 'tasks', 'attachments_json', "TEXT DEFAULT '[]'");
   ensureColumn(database, 'internal_notes', 'visible', "INTEGER DEFAULT 1");
   ensureColumn(database, 'internal_notes', 'deleted_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'internal_notes', 'deleted_by', "TEXT DEFAULT ''");
@@ -506,6 +777,18 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'inventory_items', 'deleted_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'deleted_by', "TEXT DEFAULT ''");
   ensureColumn(database, 'tickets', 'origen', "TEXT DEFAULT 'tik'");
+  ensureColumn(database, 'tickets', 'tags_json', "TEXT DEFAULT '[]'");
+  ensureColumn(database, 'tickets', 'template_id', 'INTEGER');
+  ensureColumn(database, 'tickets', 'classroom', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tickets', 'classroom_key', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tickets', 'school', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tickets', 'first_response_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tickets', 'resolved_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tickets', 'ai_summary', "TEXT DEFAULT ''");
+  ensureColumn(database, 'tickets', 'ai_summary_updated_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'loan_events', 'loan_session_id', "TEXT DEFAULT ''");
+  ensureColumn(database, 'loan_events', 'accessories_json', "TEXT DEFAULT '[]'");
+  ensureColumn(database, 'loan_events', 'expected_accessories_json', "TEXT DEFAULT '[]'");
   migrateInventorySiteCodes(database);
 
   seedDefaultSite(database);
@@ -514,6 +797,9 @@ export function initDb(database = getDb()) {
   for (const site of parseBootstrapSites()) {
     seedDefaultSettings(database, site.siteCode);
   }
+  seedTaskColumns(database);
+  seedClassroomCategories(database);
+  migrateNewModuleSettings(database);
   cleanupNonDefaultSeedInventory(database);
   seedAllowedUsers(database);
   // Las migraciones de identidad usan RENAME/DROP TABLE (semántica SQLite).
@@ -552,6 +838,26 @@ export function initDb(database = getDb()) {
   ensureFixedAgenda(database);
 
   backfillLoanEventsFromMovements(database);
+  if (isPg()) ensurePgRls(database);
+}
+
+function ensurePgRls(database) {
+  // Supabase expone public mediante PostgREST. Cada arranque aplica RLS también
+  // a tablas recién creadas; el rol dueño que usa Express conserva acceso.
+  database.exec(`
+    DO $$
+    DECLARE r RECORD;
+    BEGIN
+      FOR r IN SELECT tablename FROM pg_tables WHERE schemaname='public'
+      LOOP
+        BEGIN
+          EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', r.tablename);
+        EXCEPTION WHEN insufficient_privilege THEN
+          RAISE WARNING 'Sin permisos para habilitar RLS en public.%', r.tablename;
+        END;
+      END LOOP;
+    END $$;
+  `);
 }
 
 export function seedInitialInventory(database, siteCode = config.defaultSiteCode || 'NFPT') {
@@ -770,11 +1076,11 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'loan.gradeOptions': ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
-    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess'],
-    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess'],
+    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'],
+    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'],
     'roles.config': [
       { name: 'Administrador', admin: true, view: ['*'], edit: ['*'] },
-      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess'] },
+      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'] },
       { name: 'Consulta', admin: false, view: ['*'], edit: [] }
     ],
     'shift.options': ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'],
@@ -793,6 +1099,62 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
   }
   const catStmt = database.prepare('INSERT INTO device_categories (site_code, nombre, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(site_code, nombre) DO NOTHING');
   for (const name of defaults['devices.categories']) catStmt.run(siteCode, name, ts, ts);
+}
+
+function migrateNewModuleSettings(database) {
+  const added = ['schedules', 'canvas', 'pettycash', 'knowledge', 'suggestions'];
+  const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
+  const update = database.prepare('UPDATE site_settings SET value_json=?, updated_at=? WHERE site_code=? AND key=?');
+  const ts = nowIso();
+  for (const row of rows) {
+    let current = [];
+    try { current = JSON.parse(row.value_json || '[]'); } catch { current = []; }
+    if (!Array.isArray(current)) current = [];
+    const next = [...current];
+    for (const moduleKey of added) if (!next.includes(moduleKey)) next.push(moduleKey);
+    if (next.length !== current.length) update.run(JSON.stringify(next), ts, row.site_code, row.key);
+  }
+}
+
+function seedTaskColumns(database) {
+  const sites = database.prepare('SELECT site_code FROM sites WHERE activo=1 ORDER BY site_code').all();
+  const ts = nowIso();
+  const defaults = [
+    ['Pendiente', '#3b82f6', 0, 0],
+    ['En proceso', '#f59e0b', 1, 0],
+    ['Hecha', '#22c55e', 2, 1]
+  ];
+  const insert = database.prepare(`
+    INSERT INTO task_columns (site_code, name, color, position, is_done, active, created_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, 1, 'migracion', ?, ?)
+    ON CONFLICT(site_code, name) DO UPDATE SET active=1
+  `);
+  for (const site of sites) {
+    for (const [name, color, position, isDone] of defaults) insert.run(site.site_code, name, color, position, isDone, ts, ts);
+    const columns = database.prepare('SELECT id, name FROM task_columns WHERE site_code=? AND active=1').all(site.site_code);
+    const byName = new Map(columns.map(column => [column.name, column.id]));
+    const rows = database.prepare('SELECT id, estado FROM tasks WHERE site_code=? AND column_id IS NULL').all(site.site_code);
+    const fallback = byName.get('Pendiente');
+    const update = database.prepare('UPDATE tasks SET column_id=? WHERE id=? AND site_code=?');
+    for (const task of rows) update.run(byName.get(task.estado) || fallback, task.id, site.site_code);
+  }
+}
+
+function seedClassroomCategories(database) {
+  const sites = database.prepare('SELECT site_code FROM sites WHERE activo=1 ORDER BY site_code').all();
+  const ts = nowIso();
+  const options = JSON.stringify(['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar']);
+  const defaults = [
+    ['proyector', 'Proyector'], ['nuc', 'NUC'], ['monitor', 'Monitor'],
+    ['tecladoMouse', 'Teclado/Mouse'], ['tele', 'Tele'], ['notebook', 'Notebook'],
+    ['parlantes', 'Parlantes'], ['conectividad', 'Conectividad'], ['otro', 'Otro']
+  ];
+  const insert = database.prepare(`
+    INSERT INTO classroom_categories (site_code, category_key, label, category_type, options_json, sort_order, built_in, active, created_at, updated_at)
+    VALUES (?, ?, ?, 'status', ?, ?, 1, 1, ?, ?)
+    ON CONFLICT(site_code, category_key) DO NOTHING
+  `);
+  for (const site of sites) defaults.forEach(([key, label], index) => insert.run(site.site_code, key, label, options, index, ts, ts));
 }
 
 function seedAllowedUsers(database) {
@@ -1067,6 +1429,10 @@ export function rowToAgenda(row) {
 export function rowToTask(row) {
   const responsables = parseTaskResponsables(row);
   const items = getDb().prepare('SELECT * FROM task_items WHERE task_id=? AND site_code=? ORDER BY orden, id').all(row.id, row.site_code || config.defaultSiteCode || 'NFPT').map(rowToTaskItem);
+  const assigneeEmails = parseJsonArray(row.assignee_emails_json);
+  const attachments = parseJsonArray(row.attachments_json);
+  const column = row.column_id ? getDb().prepare('SELECT id, name, color, position, is_done FROM task_columns WHERE id=? AND site_code=?').get(row.column_id, row.site_code || config.defaultSiteCode || 'NFPT') : null;
+  const commentsCount = getDb().prepare("SELECT COUNT(*) AS total FROM task_comments WHERE task_id=? AND site_code=? AND COALESCE(deleted_at,'')='' ").get(row.id, row.site_code || config.defaultSiteCode || 'NFPT').total || 0;
   return {
     id: row.id,
     siteCode: row.site_code || config.defaultSiteCode || 'NFPT',
@@ -1074,7 +1440,13 @@ export function rowToTask(row) {
     descripcion: row.descripcion || '',
     responsable: responsables.length > 1 ? responsables.join(',') : (responsables[0] || row.responsable || 'Sin asignar'),
     responsables,
-    estado: row.estado || 'Pendiente',
+    assigneeEmails,
+    estado: column?.name || row.estado || 'Pendiente',
+    columnId: column?.id || row.column_id || null,
+    columnColor: column?.color || '',
+    done: Boolean(column?.is_done) || row.estado === 'Hecha',
+    visibility: row.visibility === 'private' ? 'private' : 'team',
+    ownerEmail: row.owner_email || '',
     prioridad: row.prioridad || 'Media',
     tipo: row.tipo || 'Soporte',
     turno: row.turno || 'Sin turno',
@@ -1085,10 +1457,19 @@ export function rowToTask(row) {
     operadorUltimoCambio: row.operador_ultimo_cambio || '',
     agendaId: row.agenda_id || '',
     ultimaModificacion: row.ultima_modificacion || '',
+    attachments,
+    commentsCount: Number(commentsCount),
     items,
     checklistTotal: items.length,
     checklistDone: items.filter(item => item.completada).length
   };
+}
+
+function parseJsonArray(value) {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
 }
 
 export function rowToTaskItem(row) {
@@ -1129,8 +1510,8 @@ export function addLocalMovement({ tipo, descripcion, operador, origen = 'Local'
 // histórica y del recomendador. tipo: 'prestamo' | 'devolucion'.
 export function addLoanEvent(fields = {}) {
   getDb().prepare(`
-    INSERT INTO loan_events (site_code, tipo, etiqueta, alias, filtro, persona, rol, ubicacion, ubicacion_detalle, curso, motivo, motivo_detalle, comentarios, operador, origen, timestamp)
-    VALUES (@site_code, @tipo, @etiqueta, @alias, @filtro, @persona, @rol, @ubicacion, @ubicacion_detalle, @curso, @motivo, @motivo_detalle, @comentarios, @operador, @origen, @timestamp)
+    INSERT INTO loan_events (site_code, tipo, etiqueta, alias, filtro, persona, rol, ubicacion, ubicacion_detalle, curso, motivo, motivo_detalle, comentarios, operador, origen, loan_session_id, accessories_json, expected_accessories_json, timestamp)
+    VALUES (@site_code, @tipo, @etiqueta, @alias, @filtro, @persona, @rol, @ubicacion, @ubicacion_detalle, @curso, @motivo, @motivo_detalle, @comentarios, @operador, @origen, @loan_session_id, @accessories_json, @expected_accessories_json, @timestamp)
   `).run({
     site_code: fields.siteCode || config.defaultSiteCode || 'NFPT',
     tipo: fields.tipo || 'prestamo',
@@ -1147,8 +1528,16 @@ export function addLoanEvent(fields = {}) {
     comentarios: fields.comentarios || '',
     operador: fields.operador || '',
     origen: fields.origen || 'Local',
+    loan_session_id: fields.loanSessionId || '',
+    accessories_json: JSON.stringify(normalizeStringList(fields.accessories)),
+    expected_accessories_json: JSON.stringify(normalizeStringList(fields.expectedAccessories)),
     timestamp: fields.timestamp || nowIso()
   });
+}
+
+function normalizeStringList(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(item => String(item || '').trim()).filter(Boolean))].slice(0, 30);
 }
 
 // Reconstruye loan_events desde local_movements (que sí tiene timestamps históricos)

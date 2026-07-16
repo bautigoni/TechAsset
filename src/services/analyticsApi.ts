@@ -21,6 +21,9 @@ export interface LoanEvent {
   comentarios: string;
   operador: string;
   origen: string;
+  loanSessionId?: string;
+  accessories: string[];
+  expectedAccessories: string[];
   timestamp: string;
 }
 
@@ -50,6 +53,11 @@ export interface AnalyticsSummary {
   byHour: AnalyticsRow[];
   byWeekday: AnalyticsRow[];
   series: { granularity: 'day' | 'month'; rows: AnalyticsRow[] };
+  ticketMetrics: {
+    created: number; resolved: number; averageResolutionHours: number; averageResponseHours: number;
+    byCategory: AnalyticsRow[]; byPriority: AnalyticsRow[]; byTechnician: AnalyticsRow[]; bySchool: AnalyticsRow[]; byClassroom: AnalyticsRow[];
+    openClosed: AnalyticsRow[]; recurring: AnalyticsRow[]; monthly: AnalyticsRow[];
+  };
 }
 
 export interface AnalyticsResponse {

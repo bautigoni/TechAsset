@@ -67,13 +67,14 @@
 
   .classroom-model-canvas {
     justify-content: flex-start;
-    overflow-x: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 4px;
   }
 
   .classroom-model-canvas svg {
-    min-width: 720px;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .classroom-item-row,
@@ -754,6 +755,40 @@ body.mobile-menu-open {
   .card-head .actions .compact-select {
     grid-column: auto;
   }
+}
+
+/* Módulos operativos nuevos: layout fluido sin anchos mínimos que fuercen zoom. */
+@media (max-width: 980px) {
+  .planning-hero, .tasks-hero, .petty-hero { align-items: stretch; flex-direction: column; }
+  .schedule-controls, .petty-config, .canvas-toolbar { grid-template-columns: 1fr; }
+  .canvas-tools, .canvas-zoom, .petty-actions { justify-content: flex-start; }
+  .petty-layout { grid-template-columns: 1fr; }
+  .petty-balance { min-width: 0; }
+  .classrooms-controls, .recess-toolbar, .tasks-primary-actions { align-items: stretch; flex-wrap: wrap; }
+  .classroom-category-list article > form { grid-template-columns: 1fr; }
+  .infinite-board-shell, .infinite-canvas { max-width: 100%; }
+  .ticket-detail-grid, .device-overview-grid { grid-template-columns: 1fr; }
+  .knowledge-hero, .device-ai-summary { align-items:stretch; flex-direction:column; }
+}
+
+@media (max-width: 640px) {
+  .schedule-row { grid-template-columns: 52px minmax(0, 1fr); }
+  .schedule-row-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .recess-slot, .petty-row { grid-template-columns: 1fr; }
+  .petty-row > *, .inventory-linked { grid-column: auto; }
+  .task-space-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .task-space-toggle, .tasks-subnav, .planning-tabs { width: 100%; overflow-x: auto; }
+  .classroom-category-list article { grid-template-columns: auto minmax(0, 1fr); }
+  .classroom-category-list article > .btn { grid-column: 2; justify-self: start; }
+  .category-create-form, .receipt-field { grid-template-columns: 1fr; }
+  .ticket-relation-form, .ticket-detail-section > form, .knowledge-toolbar { grid-template-columns:1fr; }
+  .device-overview-section dl { grid-template-columns:1fr; }
+  .device-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+@media (min-width: 981px) and (max-width: 1360px) {
+  .topbar > .topbar-actions > .input { width: min(18vw, 210px); min-width: 120px; }
+  .topbar .account-name, .topbar .site-switcher-text small { display: none; }
 }
 
 /* ── BREAKPOINT 380px ─────────────────────────────────────────────── */

@@ -2,12 +2,12 @@
 
 TechAsset es una app interna para gestión tecnológica escolar por sede. Está pensada para operar dispositivos, préstamos/devoluciones, movimientos, agenda, tareas TIC, aulas, inventario maker y configuración sin depender de servicios externos para el trabajo diario.
 
-## Versión actual: SQLite-first
+## Versión actual: PostgreSQL / Supabase
 
-SQLite es la fuente principal de verdad. Google Sheets o archivos CSV se usan solo para importación manual de inventario, no para sincronización viva.
+PostgreSQL alojado en Supabase es la fuente principal de verdad en producción. SQLite existe únicamente como fallback de desarrollo local. Google Sheets o archivos CSV se usan solo para importación manual de inventario, no para sincronización viva.
 
-- Prestar y devolver dispositivos actualiza SQLite.
-- Dashboard, Dispositivos y Préstamos leen desde SQLite.
+- Prestar y devolver dispositivos actualiza PostgreSQL.
+- Dashboard, Dispositivos y Préstamos leen desde PostgreSQL.
 - Los movimientos se registran localmente.
 - La identidad de un equipo es `site_code + etiqueta`.
 - Una importación en NFND no toca NFPT, y una importación en NFPT no toca NFND.
@@ -32,8 +32,9 @@ SQLite es la fuente principal de verdad. Google Sheets o archivos CSV se usan so
 
 - Frontend: React + Vite + TypeScript.
 - Backend: Node.js + Express.
-- Base de datos: SQLite con `better-sqlite3`.
-- Persistencia local: carpeta `data/`.
+- Base de datos de producción: PostgreSQL / Supabase mediante `pg` y el adaptador `server/pg-sync.js`.
+- Desarrollo sin `DATABASE_URL`: fallback SQLite con `better-sqlite3`.
+- Archivos adjuntos: carpeta persistente `data/uploads/`.
 - Google Sheets: opcional, solo como fuente de CSV para importación manual.
 
 ## Desarrollo
@@ -67,7 +68,8 @@ APP_NAME=TechAsset
 DEFAULT_SITE_CODE=NFPT
 BOOTSTRAP_SITES=NFPT:Northfield Puertos,NFND:Northfield Nordelta
 AUTH_ALLOWED_EMAILS=admin@northfield.local
-SQLITE_DB_PATH=./data/techasset.db
+DB_DRIVER=postgres
+DATABASE_URL=postgresql://...
 GOOGLE_SHEET_CSV_URL=
 CACHE_CSV_PATH=./data/cache_sheet.csv
 DEVICES_APP_CSV_PATH=./data/devices_app.csv
@@ -143,20 +145,16 @@ Desde Dispositivos:
 - Exportar préstamos activos CSV.
 - Exportar PDF QR.
 
-Los CSV se generan desde SQLite y respetan la sede activa.
+Los CSV se generan desde la base activa y respetan la sede seleccionada.
 
-## Producción / VPS / Docker
+## Producción
 
-Si se usa Docker o VPS, la carpeta `data/` debe persistir como volumen porque contiene la base SQLite y archivos locales.
+La producción real usa systemd en la VM y PostgreSQL/Supabase mediante `DATABASE_URL`. El arranque de Express ejecuta migraciones idempotentes (`CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`) y habilita RLS para las tablas públicas. `data/uploads/` debe persistir porque contiene adjuntos; la base no vive en ese volumen.
 
-Comando típico si existe `docker-compose.yml`:
-
-```bash
-docker compose up -d --build
-```
+El deploy debe ejecutar instalación, build, reinicio del servicio y health check. Si se desea auditar RLS manualmente, ejecutar `npm run db:rls` con la misma `DATABASE_URL` del backend.
 
 ## Notas operativas
 
 - La app debe seguir funcionando aunque internet, Google Sheets o un CSV externo fallen.
-- El indicador superior muestra el estado de la base local y la última importación, no una sincronización viva.
+- El indicador superior muestra el estado de la aplicación y la última importación, no una sincronización viva con planillas.
 - No existe escritura automática a planillas al prestar o devolver.

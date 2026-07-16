@@ -19,6 +19,10 @@ export function getPreviousDayLoans() {
   return apiGet<{ ok: true; date: string; items: PreviousDayLoan[] }>('/api/loans/previous-day');
 }
 
+export function getActiveLoanAccessories(etiqueta: string) {
+  return apiGet<{ ok: true; loanSessionId: string; accessories: string[]; registered: boolean }>(`/api/loans/${encodeURIComponent(etiqueta)}/accessories`);
+}
+
 export type LoanSyncResponse = {
   ok: true;
   item?: unknown;

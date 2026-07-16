@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Ticket, TicketSource, TicketState } from '../../types';
-import { createTicket, deleteTicket, getTickets, updateTicket, uploadTicketImage } from '../../services/ticketsApi';
+import type { Classroom, Ticket, TicketSource, TicketState, TicketTemplate } from '../../types';
+import { createTicket, deleteTicket, getTickets, getTicketTemplates, updateTicket, uploadTicketImage } from '../../services/ticketsApi';
 import { getSiteSettings } from '../../services/authApi';
 import { fetchToolsConfig } from '../../services/toolsApi';
+import { fetchClassrooms } from '../../services/classroomsApi';
 import { formatDateTime } from '../../utils/formatters';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { TicketTemplateManager } from './TicketTemplateManager';
+import { TicketDetailModal } from './TicketDetailModal';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
 const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
@@ -22,7 +25,7 @@ const ESTADO_BADGE: Record<TicketState, string> = {
 };
 
 type Draft = Partial<Ticket>;
-const EMPTY: Draft = { numero: '', titulo: '', descripcion: '', categoria: '', estado: 'No hecho', imagenUrl: '', origen: 'tik' };
+const EMPTY: Draft = { numero: '', titulo: '', descripcion: '', categoria: '', estado: 'No hecho', prioridad: 'Media', imagenUrl: '', origen: 'tik', tags: [], checklist: [], responsables: [], classroom: '', classroomKey: '', school: '' };
 
 const isPdf = (url?: string) => /\.pdf($|\?)/i.test(String(url || ''));
 // A1: el número de InVgate es solo dígitos (strippeamos el '#' o cualquier otra cosa).
@@ -110,6 +113,10 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   const [busy, setBusy] = useState(false);
   const [invgateBase, setInvgateBase] = useState(DEFAULT_INVGATE);
   const [handingBase, setHandingBase] = useState(DEFAULT_HANDING);
+  const [templates, setTemplates] = useState<TicketTemplate[]>([]);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
 
   const load = () => {
     setLoading(true);
@@ -119,6 +126,9 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
+  const loadTemplates = async () => { const response = await getTicketTemplates(); setTemplates(response.items || []); };
+  useEffect(() => { void loadTemplates(); }, []);
+  useEffect(() => { fetchClassrooms().then(response => setClassrooms(response.items || [])).catch(() => setClassrooms([])); }, []);
   useEffect(() => {
     getSiteSettings()
       .then(response => {
@@ -182,7 +192,12 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
       responsables: ticket.responsables,
       imagenUrl: ticket.imagenUrl,
       nota: ticket.nota,
-      origen: ticket.origen || 'tik'
+      origen: ticket.origen || 'tik',
+      tags: ticket.tags || [],
+      templateId: ticket.templateId,
+      classroom: ticket.classroom || '',
+      classroomKey: ticket.classroomKey || '',
+      school: ticket.school || ''
     });
     setEditingId(ticket.id);
     setError('');
@@ -238,7 +253,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
     <section className="view active">
       <div className="card-head" style={{ marginBottom: 12 }}>
         <h3>Tickets</h3>
-        <Button variant="primary" disabled={consultationMode} onClick={openCreate}>Cargar ticket</Button>
+        <div className="actions"><Button disabled={consultationMode} onClick={() => setTemplatesOpen(true)}>Plantillas</Button><Button variant="primary" disabled={consultationMode} onClick={openCreate}>Cargar ticket</Button></div>
       </div>
 
       {/* A3: búsqueda + chips de estado con contador */}
@@ -300,8 +315,11 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
             {ticket.titulo && <div className="ticket-card-title">{ticket.titulo}</div>}
             {ticket.categoria && <div className="ticket-card-meta">{ticket.categoria}</div>}
             {ticket.descripcion && <DescriptionBox desc={ticket.descripcion} />}
+            {!!ticket.tags?.length && <div className="ticket-tags">{ticket.tags.map(tag => <span key={tag}>{tag}</span>)}</div>}
+            {ticket.aiSummary && <p className="ticket-summary-preview"><strong>Resumen:</strong> {ticket.aiSummary}</p>}
             {ticket.imagenUrl && <div className="ticket-card-file"><FilePreview url={ticket.imagenUrl} compact /></div>}
             <div className="ticket-card-actions">
+              <Button onClick={() => setDetailId(ticket.id)}>Ver detalle</Button>
               <Button disabled={consultationMode} onClick={() => openEdit(ticket)}>Editar</Button>
               <select className="input" value={ticket.estado} disabled={consultationMode} onChange={e => changeEstado(ticket, e.target.value as TicketState)}>
                 {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
@@ -327,6 +345,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               </button>
             ))}
           </div>
+          {!editingId && templates.length > 0 && <label>Usar plantilla<select className="input" value={draft.templateId || ''} onChange={e => { const template = templates.find(item => item.id === Number(e.target.value)); setDraft(current => template ? { ...current, templateId: template.id, titulo: template.title, descripcion: template.description, prioridad: template.priority, categoria: template.category, responsables: template.suggestedAssignee ? [template.suggestedAssignee] : [], checklist: template.checklist, tags: template.tags } : { ...current, templateId: undefined }); }}><option value="">Sin plantilla</option>{templates.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
           <div className="grid-2">
             <label>{draft.origen === 'handing' ? 'Referencia de ticket (Handing)' : 'Número de ticket (InVgate)'}
               <input
@@ -345,6 +364,19 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               </select>
             </label>
           </div>
+          <div className="grid-2"><label>Prioridad<select className="input" value={draft.prioridad || 'Media'} onChange={e => setDraft(d => ({ ...d, prioridad: e.target.value }))}><option>Baja</option><option>Media</option><option>Alta</option><option>Urgente</option></select></label><label>Responsables (separados por coma)<input className="input" value={(draft.responsables || []).join(', ')} onChange={e => setDraft(d => ({ ...d, responsables: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))} /></label></div>
+          <div className="grid-2">
+            <label>Escuela<input className="input" value={draft.school || ''} onChange={e => setDraft(d => ({ ...d, school: e.target.value }))} placeholder="Sede o escuela" /></label>
+            <label>Aula (opcional)
+              <select className="input" value={draft.classroomKey || ''} onChange={e => { const selectedRoom = classrooms.find(room => room.roomKey === e.target.value); setDraft(d => ({ ...d, classroomKey: selectedRoom?.roomKey || '', classroom: selectedRoom?.nombre || '' })); }}>
+                <option value="">Sin aula vinculada</option>
+                {classrooms.map(room => <option key={room.roomKey} value={room.roomKey}>{room.nombre}{room.piso ? ` · ${room.piso}` : ''}</option>)}
+              </select>
+              {!draft.classroomKey && draft.classroom && <span className="muted">Dato anterior: {draft.classroom}</span>}
+            </label>
+          </div>
+          <label>Tags (separados por coma)<input className="input" value={(draft.tags || []).join(', ')} onChange={e => setDraft(d => ({ ...d, tags: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))} /></label>
+          {!editingId && <label>Checklist inicial (un paso por línea)<textarea className="input" rows={3} value={(draft.checklist || []).join('\n')} onChange={e => setDraft(d => ({ ...d, checklist: e.target.value.split('\n').map(x => x.trim()).filter(Boolean) }))} /></label>}
           <div className="grid-2">
             <label>Titulo
               <input
@@ -394,6 +426,8 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           </div>
         </Modal>
       )}
+      {templatesOpen && <TicketTemplateManager templates={templates} onClose={() => setTemplatesOpen(false)} onChanged={loadTemplates} />}
+      {detailId != null && <TicketDetailModal initialId={detailId} tickets={tickets} consultationMode={consultationMode} onClose={() => setDetailId(null)} onChanged={load} />}
     </section>
   );
 }

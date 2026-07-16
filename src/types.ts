@@ -1,8 +1,18 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'tasks' | 'classrooms' | 'tickets' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'settings';
+export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'suggestions' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'settings';
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
-export type ClassroomEquipmentKey = 'proyector' | 'nuc' | 'monitor' | 'tecladoMouse' | 'tele' | 'notebook' | 'parlantes' | 'conectividad' | 'otro';
+export type ClassroomEquipmentKey = string;
+
+export interface ClassroomCategory {
+  id: number;
+  key: string;
+  label: string;
+  type: 'status' | string;
+  options: ClassroomItemState[];
+  sortOrder: number;
+  builtIn: boolean;
+}
 
 export interface ClassroomEquipmentItem {
   key: ClassroomEquipmentKey;
@@ -137,7 +147,7 @@ export interface AgendaItem {
   createdAt?: string;
 }
 
-export type TaskState = 'Pendiente' | 'En proceso' | 'Hecha';
+export type TaskState = string;
 
 export interface TaskItem {
   id: string;
@@ -145,7 +155,13 @@ export interface TaskItem {
   descripcion?: string;
   responsable: Operator | string;
   responsables?: string[];
+  assigneeEmails?: string[];
   estado: TaskState;
+  columnId?: number | null;
+  columnColor?: string;
+  done?: boolean;
+  visibility?: 'team' | 'private';
+  ownerEmail?: string;
   prioridad: 'Baja' | 'Media' | 'Urgente' | string;
   tipo?: string;
   turno?: 'Mañana' | 'Tarde' | 'Todo el día' | 'Sin turno' | string;
@@ -159,7 +175,31 @@ export interface TaskItem {
   items?: TaskChecklistItem[];
   checklistTotal?: number;
   checklistDone?: number;
+  attachments?: Array<{ name: string; url: string; mimeType?: string }>;
+  commentsCount?: number;
 }
+
+export interface ClassroomIncident {
+  id: number; numero: string; titulo: string; descripcion: string; estado: TicketState; prioridad: string; categoria: string;
+  responsables: string[]; createdAt: string; updatedAt: string; resolvedAt: string;
+}
+
+export interface ClassroomIncidentSummary {
+  open: number; closed: number; total: number; lastIncidentAt: string; commonCategories: Array<{ label: string; value: number }>;
+}
+
+export interface TaskColumn { id: number; name: string; color: string; position: number; isDone: boolean; createdBy?: string }
+export interface TaskComment { id: number; taskId: string; body: string; authorEmail: string; authorName: string; createdAt: string; updatedAt: string }
+
+export interface TeacherScheduleEntry { id: number; teacher: string; course: string; subject: string; room: string; dayOfWeek: number; startTime: string; endTime: string; createdBy?: string; updatedAt?: string }
+export interface RecessSlot { id?: number; label: string; startTime: string; endTime: string; sortOrder?: number }
+export interface RecessGroup { id?: number; name: string; sortOrder?: number; slots: RecessSlot[] }
+
+export type CanvasItemType = 'sticky' | 'text' | 'checklist' | 'image' | 'file' | 'link';
+export interface CanvasItem { id: number; itemType: CanvasItemType; title: string; content: Record<string, unknown>; x: number; y: number; width: number; height: number; zIndex: number; color: string; createdBy?: string; createdAt?: string; updatedAt?: string }
+
+export interface PettyCashExpense { id: number; expenseDate: string; description: string; supplier: string; amount: number; category: string; receiptUrl: string; purchaseRequestId?: number | null; inventoryItemId?: number | null; createdBy?: string; createdAt?: string }
+export interface PurchaseRequest { id: number; description: string; category: string; estimatedAmount: number; requestedSupplier: string; justification: string; receiptUrl: string; status: 'Pendiente' | 'Aprobada' | 'Rechazada'; requesterEmail: string; requesterName: string; finalCost: number; finalSupplier: string; resolutionNote: string; resolvedBy: string; resolvedAt: string; createdAt: string }
 
 export interface TaskChecklistItem {
   id: number;
@@ -222,7 +262,29 @@ export interface Ticket {
   operadorUltimoCambio: string;
   createdAt: string;
   updatedAt: string;
+  tags?: string[];
+  templateId?: number | null;
+  classroom?: string;
+  classroomKey?: string;
+  school?: string;
+  aiSummary?: string;
+  aiSummaryUpdatedAt?: string;
+  firstResponseAt?: string;
+  resolvedAt?: string;
+  checklist?: string[];
 }
+
+export interface TicketTemplate { id: number; title: string; description: string; priority: string; category: string; suggestedAssignee: string; checklist: string[]; tags: string[]; createdBy?: string; createdAt?: string; updatedAt?: string }
+export interface TicketComment { id: number; ticketId: number; body: string; authorEmail: string; authorName: string; createdAt: string }
+export interface TicketActivity { id: number; action: string; detail: string; actorEmail: string; actorName: string; createdAt: string }
+export interface TicketChecklistItem { id: number; ticketId: number; text: string; done: boolean; position: number; completedBy: string; completedAt: string }
+export interface TicketRelation { relationId: number; relationType: 'related' | 'parent'; role: 'related' | 'parent' | 'child'; ticket: Ticket }
+export interface KnowledgeArticle { id: number; title: string; content: string; contentText: string; category: string; tags: string[]; attachments: Array<{ name: string; url: string; mimeType?: string }>; createdBy: string; updatedBy: string; createdAt: string; updatedAt: string; score?: number }
+
+export type SuggestionStatus = 'Proposed' | 'Under Review' | 'Planned' | 'In Progress' | 'Implemented' | 'Rejected';
+export interface Suggestion { id:number; title:string; description:string; category:string; status:SuggestionStatus; authorEmail:string; authorName:string; voteCount:number; commentCount:number; hasVoted:boolean; canEdit:boolean; canDelete:boolean; createdAt:string; updatedAt:string }
+export interface SuggestionComment { id:number; suggestionId:number; body:string; authorEmail:string; authorName:string; createdAt:string }
+export interface SuggestionStats { total:number; mostVoted:{ id:number; title:string; votes:number } | null; implemented:number; pendingReview:number }
 
 export interface PreviousDayLoan {
   id: number;
@@ -235,6 +297,7 @@ export interface PreviousDayLoan {
   curso: string;
   motivo: string;
   operador: string;
+  accessories?: string[];
   timestamp: string;
 }
 

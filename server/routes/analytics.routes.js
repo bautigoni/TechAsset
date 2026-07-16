@@ -144,6 +144,46 @@ function avgTicketResponseDays(siteCode) {
   return Math.round((total / rows.length) * 10) / 10;
 }
 
+function buildTicketMetrics(siteCode, from, to) {
+  const rows = getDb().prepare(`
+    SELECT * FROM tickets
+    WHERE site_code=? AND activo=1 AND created_at>=? AND created_at<=?
+    ORDER BY created_at
+  `).all(siteCode, from, to);
+  const resolved = rows.filter(row => row.estado === 'Hecho' || row.resolved_at);
+  const avgHours = (items, endKey) => {
+    const values = items.map(row => (new Date(row[endKey]).getTime() - new Date(row.created_at).getTime()) / 3600000).filter(Number.isFinite).filter(value => value >= 0);
+    return values.length ? Math.round(values.reduce((sum,value)=>sum+value,0)/values.length*10)/10 : 0;
+  };
+  const technicians = [];
+  for (const row of rows) {
+    let people=[]; try{const parsed=JSON.parse(row.responsables_json||'[]');if(Array.isArray(parsed))people=parsed;}catch{/* noop */}
+    if(!people.length) people=['Sin asignar'];
+    people.forEach(person=>technicians.push({...row,_technician:String(person)}));
+  }
+  const recurrence = new Map();
+  for(const row of rows){const key=String(row.categoria||row.titulo||'Sin categoría').trim().toLowerCase();const current=recurrence.get(key)||{label:row.categoria||row.titulo||'Sin categoría',value:0};current.value+=1;recurrence.set(key,current);}
+  return {
+    created:rows.length,resolved:resolved.length,averageResolutionHours:avgHours(resolved,'resolved_at'),averageResponseHours:avgHours(rows.filter(row=>row.first_response_at),'first_response_at'),
+    byCategory:countBy(rows,row=>row.categoria||'Sin categoría'),byPriority:countBy(rows,row=>row.prioridad||'Sin prioridad'),byTechnician:countBy(technicians,row=>row._technician),
+    bySchool:countBy(rows,row=>row.school||siteCode),byClassroom:countBy(rows,row=>row.classroom||row.classroom_key||'Sin aula'),
+    openClosed:[{label:'Abiertos',value:rows.filter(row=>row.estado!=='Hecho').length},{label:'Cerrados',value:resolved.length}],
+    recurring:[...recurrence.values()].filter(item=>item.value>1).sort((a,b)=>b.value-a.value).slice(0,12),
+    monthly:buildTicketMonthly(rows)
+  };
+}
+
+function buildTicketMonthly(rows) {
+  const buckets = new Map();
+  for (const row of rows) {
+    const date = new Date(row.created_at);
+    if (Number.isNaN(date.getTime())) continue;
+    const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+    buckets.set(key,(buckets.get(key)||0)+1);
+  }
+  return [...buckets.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([label,value])=>({label,value}));
+}
+
 function buildHourSeries(events) {
   const buckets = new Map(Array.from({ length: 12 }, (_, index) => [`${String(index + 7).padStart(2, '0')}:00`, 0]));
   for (const ev of events) {
@@ -177,7 +217,8 @@ analyticsRouter.get('/analytics', (req, res) => {
   const { from, to } = parseRange(req.query);
   const rows = getDb().prepare(`
     SELECT id, tipo, etiqueta, alias, filtro, persona, rol, ubicacion, ubicacion_detalle AS ubicacionDetalle,
-           curso, motivo, motivo_detalle AS motivoDetalle, comentarios, operador, origen, timestamp
+           curso, motivo, motivo_detalle AS motivoDetalle, comentarios, operador, origen,
+           loan_session_id AS loanSessionId, accessories_json, expected_accessories_json, timestamp
     FROM loan_events
     WHERE site_code=? AND timestamp>=? AND timestamp<=?
     ORDER BY timestamp DESC
@@ -187,7 +228,8 @@ analyticsRouter.get('/analytics', (req, res) => {
   const devoluciones = rows.filter(r => r.tipo === 'devolucion');
   const allEvents = getDb().prepare(`
     SELECT id, tipo, etiqueta, alias, filtro, persona, rol, ubicacion, ubicacion_detalle AS ubicacionDetalle,
-           curso, motivo, motivo_detalle AS motivoDetalle, comentarios, operador, origen, timestamp
+           curso, motivo, motivo_detalle AS motivoDetalle, comentarios, operador, origen,
+           loan_session_id AS loanSessionId, accessories_json, expected_accessories_json, timestamp
     FROM loan_events
     WHERE site_code=?
     ORDER BY timestamp ASC
@@ -232,5 +274,11 @@ analyticsRouter.get('/analytics', (req, res) => {
     series: buildSeries(prestamos, from, to)
   };
 
-  res.json({ ok: true, from, to, events: rows, summary });
+  summary.ticketMetrics = buildTicketMetrics(siteCode, from, to);
+
+  res.json({ ok: true, from, to, events: rows.map(row => ({ ...row, accessories: safeJsonArray(row.accessories_json), expectedAccessories: safeJsonArray(row.expected_accessories_json), accessories_json: undefined, expected_accessories_json: undefined })), summary });
 });
+
+function safeJsonArray(value) {
+  try { const parsed = JSON.parse(String(value || '[]')); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []; } catch { return []; }
+}

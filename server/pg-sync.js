@@ -14,7 +14,7 @@ const DATA_BYTES = 16 * 1024 * 1024;  // 16MB para el payload de resultados
 // Tablas SIN columna `id` autonumérica: no se les puede pedir RETURNING id.
 const NO_ID_TABLES = new Set([
   'local_devices', 'local_states', 'hidden_devices', 'app_settings',
-  'classrooms', 'user_sessions'
+  'classrooms', 'user_sessions', 'petty_cash_config', 'device_ai_summaries'
 ]);
 
 function translateDialect(sql) {

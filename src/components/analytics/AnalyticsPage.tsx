@@ -66,6 +66,9 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
     { label: 'Tickets abiertos', value: summary?.ticketsAbiertos ?? 0 },
     { label: 'Tareas abiertas', value: summary?.tareasAbiertas ?? 0 },
     { label: 'Tiempo resp. tickets', value: `${summary?.ticketResponseDays ?? 0} d`, hint: 'Promedio de tickets cerrados' },
+    { label: 'Tickets creados', value: summary?.ticketMetrics?.created ?? 0, hint: `${summary?.ticketMetrics?.resolved ?? 0} resueltos` },
+    { label: 'Resolución tickets', value: `${summary?.ticketMetrics?.averageResolutionHours ?? 0} h`, hint: 'promedio del período' },
+    { label: 'Primera respuesta', value: `${summary?.ticketMetrics?.averageResponseHours ?? 0} h`, hint: 'promedio del período' },
     { label: 'Promedio prestado', value: formatTopAverage(summary?.avgLoanHoursByDevice), hint: 'horas por equipo' },
   ];
 
@@ -83,6 +86,14 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
     { title: 'Actividad TIC', rows: summary.byOperator || [], type: 'bar', size: 'sm' },
     { title: 'Equipos con mas fallas', rows: summary.byTicketDevice || [], type: 'bar', size: 'sm' },
     { title: 'Agenda TIC ocupacion', rows: summary.agendaOccupation || [], type: 'vertical', size: 'sm' },
+    { title: 'Tickets abiertos vs cerrados', rows: summary.ticketMetrics?.openClosed || [], type: 'donut', size: 'sm' },
+    { title: 'Tickets por categoría', rows: summary.ticketMetrics?.byCategory || [], type: 'bar', size: 'md' },
+    { title: 'Tickets por prioridad', rows: summary.ticketMetrics?.byPriority || [], type: 'donut', size: 'sm' },
+    { title: 'Tickets por técnico', rows: summary.ticketMetrics?.byTechnician || [], type: 'bar', size: 'md' },
+    { title: 'Tickets por escuela', rows: summary.ticketMetrics?.bySchool || [], type: 'bar', size: 'sm' },
+    { title: 'Tickets por aula', rows: summary.ticketMetrics?.byClassroom || [], type: 'bar', size: 'md' },
+    { title: 'Incidentes recurrentes', rows: summary.ticketMetrics?.recurring || [], type: 'bar', size: 'md' },
+    { title: 'Tendencia mensual de tickets', rows: summary.ticketMetrics?.monthly || [], type: 'line', size: 'wide' },
   ] : [];
 
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { Classroom, ClassroomEquipmentItem, ClassroomEquipmentKey, ClassroomGeneralState, ClassroomHistoryEntry, ClassroomItemState, Operator } from '../../types';
-import { fetchClassroom, fetchClassroomHistory, updateClassroom } from '../../services/classroomsApi';
+import type { Classroom, ClassroomCategory, ClassroomEquipmentItem, ClassroomEquipmentKey, ClassroomGeneralState, ClassroomHistoryEntry, ClassroomIncident, ClassroomIncidentSummary, ClassroomItemState, Operator } from '../../types';
+import { fetchClassroom, fetchClassroomHistory, fetchClassroomIncidents, updateClassroom } from '../../services/classroomsApi';
 import { Button } from '../layout/Button';
 
 const ITEM_STATES: ClassroomItemState[] = ['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar'];
@@ -18,7 +18,7 @@ function migrateLegacyState(value: string | undefined): ClassroomItemState {
   return 'Sin revisar';
 }
 
-const EQUIPMENT_OPTIONS: Array<{ key: ClassroomEquipmentKey; label: string }> = [
+const DEFAULT_EQUIPMENT_OPTIONS: Array<{ key: ClassroomEquipmentKey; label: string; options?: ClassroomItemState[] }> = [
   { key: 'proyector', label: 'Proyector' },
   { key: 'nuc', label: 'NUC' },
   { key: 'monitor', label: 'Monitor' },
@@ -30,7 +30,6 @@ const EQUIPMENT_OPTIONS: Array<{ key: ClassroomEquipmentKey; label: string }> = 
   { key: 'otro', label: 'Otro' }
 ];
 
-const OPTION_BY_KEY = new Map(EQUIPMENT_OPTIONS.map(item => [item.key, item]));
 const LEGACY_STATE_KEYS: Partial<Record<ClassroomEquipmentKey, keyof Pick<Classroom, 'proyector' | 'nuc' | 'monitor' | 'tecladoMouse'>>> = {
   proyector: 'proyector',
   nuc: 'nuc',
@@ -38,9 +37,9 @@ const LEGACY_STATE_KEYS: Partial<Record<ClassroomEquipmentKey, keyof Pick<Classr
   tecladoMouse: 'tecladoMouse'
 };
 
-function getEquipment(item: Classroom): ClassroomEquipmentItem[] {
+function getEquipment(item: Classroom, categories: Array<{ key: string; label: string }>): ClassroomEquipmentItem[] {
   if (Array.isArray(item.equipment) && item.equipment.length) return item.equipment;
-  return EQUIPMENT_OPTIONS.slice(0, 4).map(option => {
+  return (categories.length ? categories : DEFAULT_EQUIPMENT_OPTIONS).slice(0, 4).map(option => {
     const stateKey = LEGACY_STATE_KEYS[option.key];
     return {
       key: option.key,
@@ -58,17 +57,20 @@ function calcGeneral(equipment: ClassroomEquipmentItem[]): ClassroomGeneralState
   return 'Sin revisar';
 }
 
-export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultationMode, onClose }: {
+export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultationMode, categories, onClose }: {
   roomKey: string;
   nombre: string;
   piso: string;
   operator: Operator;
   consultationMode: boolean;
+  categories: ClassroomCategory[];
   onClose: (saved?: boolean) => void;
 }) {
   const [classroom, setClassroom] = useState<Classroom | null>(null);
   const [draft, setDraft] = useState<Classroom | null>(null);
   const [history, setHistory] = useState<ClassroomHistoryEntry[]>([]);
+  const [incidents, setIncidents] = useState<ClassroomIncident[]>([]);
+  const [incidentSummary, setIncidentSummary] = useState<ClassroomIncidentSummary>({ open: 0, closed: 0, total: 0, lastIncidentAt: '', commonCategories: [] });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [configuringEquipment, setConfiguringEquipment] = useState(false);
@@ -84,13 +86,14 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
         nuc: migrateLegacyState(r.item.nuc),
         monitor: migrateLegacyState(r.item.monitor),
         tecladoMouse: migrateLegacyState(r.item.tecladoMouse),
-        equipment: getEquipment(r.item).map(entry => ({ ...entry, state: migrateLegacyState(entry.state) }))
+        equipment: getEquipment(r.item, categories).map(entry => ({ ...entry, state: migrateLegacyState(entry.state) }))
       };
       setClassroom(item); setDraft(item);
     });
     fetchClassroomHistory(roomKey).then(r => { if (!cancelled && r.ok) setHistory(r.items); });
+    fetchClassroomIncidents(roomKey).then(r => { if (!cancelled && r.ok) { setIncidents(r.items || []); setIncidentSummary(r.summary); } }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [roomKey, nombre, piso]);
+  }, [roomKey, nombre, piso, categories]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -120,7 +123,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   const updateItem = (key: ClassroomEquipmentKey, value: ClassroomItemState) => {
     setDraft(d => {
       if (!d) return d;
-      const equipment = getEquipment(d).map(item => item.key === key ? { ...item, state: value } : item);
+      const equipment = getEquipment(d, categories).map(item => item.key === key ? { ...item, state: value } : item);
       return { ...d, [key]: value, equipment, estadoGeneral: calcGeneral(equipment) };
     });
   };
@@ -128,9 +131,9 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   const toggleEquipment = (key: ClassroomEquipmentKey) => {
     setDraft(d => {
       if (!d) return d;
-      const option = OPTION_BY_KEY.get(key);
+      const option = categories.find(item => item.key === key) || DEFAULT_EQUIPMENT_OPTIONS.find(item => item.key === key);
       if (!option) return d;
-      const current = getEquipment(d);
+      const current = getEquipment(d, categories);
       const exists = current.some(item => item.key === key);
       if (exists && current.length === 1) return d;
       const equipment = exists
@@ -151,12 +154,12 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
         nuc: draft.nuc,
         monitor: draft.monitor,
         tecladoMouse: draft.tecladoMouse,
-        equipment: getEquipment(draft),
+        equipment: getEquipment(draft, categories),
         observaciones: draft.observaciones,
         operator
       });
       if (!r.ok) { setError('No se pudo guardar'); return; }
-      const saved = { ...r.item, equipment: getEquipment(r.item) };
+      const saved = { ...r.item, equipment: getEquipment(r.item, categories) };
       setClassroom(saved); setDraft(saved);
       const hist = await fetchClassroomHistory(roomKey);
       if (hist.ok) setHistory(hist.items);
@@ -182,6 +185,26 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
           Estado general: <strong>{draft.estadoGeneral}</strong>
         </div>
 
+        <section className="classroom-incidents-section">
+          <div className="card-head"><div><h4>Incidentes del aula</h4><span className="muted">Los tickets vinculados aparecen automáticamente.</span></div></div>
+          <div className="classroom-incident-kpis">
+            <div><span>Abiertos</span><strong>{incidentSummary.open}</strong></div>
+            <div><span>Cerrados</span><strong>{incidentSummary.closed}</strong></div>
+            <div><span>Total</span><strong>{incidentSummary.total}</strong></div>
+            <div><span>Último incidente</span><strong>{incidentSummary.lastIncidentAt ? new Date(incidentSummary.lastIncidentAt).toLocaleDateString('es-AR') : '—'}</strong></div>
+          </div>
+          {incidentSummary.commonCategories.length > 0 && <div className="classroom-incident-categories"><strong>Problemas frecuentes</strong>{incidentSummary.commonCategories.map(item => <span key={item.label}>{item.label} · {item.value}</span>)}</div>}
+          <div className="classroom-incident-timeline">
+            {incidents.slice(0, 8).map(item => (
+              <article key={item.id}>
+                <span className={`badge ${item.estado === 'Hecho' ? 'available' : 'loaned'}`}>{item.estado}</span>
+                <div><strong>{item.numero ? `#${item.numero} · ` : ''}{item.titulo || 'Incidente sin título'}</strong><span>{[item.categoria, item.prioridad, item.createdAt ? new Date(item.createdAt).toLocaleString('es-AR') : ''].filter(Boolean).join(' · ')}</span></div>
+              </article>
+            ))}
+            {!incidents.length && <div className="empty-state">Esta aula todavía no tiene incidentes vinculados.</div>}
+          </div>
+        </section>
+
         <div className="classroom-equipment-toolbar">
           <strong>Equipamiento del espacio</strong>
           <Button onClick={() => setConfiguringEquipment(v => !v)} disabled={consultationMode}>
@@ -191,8 +214,8 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
 
         {configuringEquipment && (
           <div className="classroom-equipment-config">
-            {EQUIPMENT_OPTIONS.map(option => {
-              const current = getEquipment(draft);
+            {(categories.length ? categories : DEFAULT_EQUIPMENT_OPTIONS).map(option => {
+              const current = getEquipment(draft, categories);
               const active = current.some(item => item.key === option.key);
               return (
                 <label key={option.key} className={`equipment-option ${active ? 'active' : ''}`}>
@@ -210,11 +233,11 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
         )}
 
         <div className="classroom-items">
-          {getEquipment(draft).map(item => (
+          {getEquipment(draft, categories).map(item => (
             <div key={item.key} className="classroom-item-row">
               <div className="classroom-item-label">{item.label}</div>
               <div className="classroom-item-states">
-                {ITEM_STATES.map(s => (
+                {(categories.find(category => category.key === item.key)?.options || ITEM_STATES).map(s => (
                   <button
                     key={s}
                     type="button"

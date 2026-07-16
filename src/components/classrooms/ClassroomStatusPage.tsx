@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ComponentType } from 'react';
-import type { Classroom, ClassroomSummary, Operator } from '../../types';
-import { fetchClassrooms } from '../../services/classroomsApi';
+import type { Classroom, ClassroomCategory, ClassroomSummary, Operator } from '../../types';
+import { fetchClassroomCategories, fetchClassrooms } from '../../services/classroomsApi';
 import { ClassroomInfoPanel } from './ClassroomInfoPanel';
+import { ClassroomCategoryManager } from './ClassroomCategoryManager';
 import {
   ALL_FLOOR_ROOMS,
   FirstFloorModel,
@@ -68,12 +69,17 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedNombre, setSelectedNombre] = useState<string>('');
   const [message, setMessage] = useState('');
+  const [categories, setCategories] = useState<ClassroomCategory[]>([]);
+  const [canManageCategories, setCanManageCategories] = useState(false);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!siteMaps) return;
     try {
-      const list = await fetchClassrooms();
+      const [list, categoryResponse] = await Promise.all([fetchClassrooms(), fetchClassroomCategories()]);
       if (list.ok) setItems(list.items);
+      setCategories(categoryResponse.items || []);
+      setCanManageCategories(Boolean(categoryResponse.canManage));
     } catch { /* ignore */ }
   }, [siteMaps]);
 
@@ -131,7 +137,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
     <section className="view active">
       <div className="classrooms-page">
         {message && <div className="tool-info">{message}</div>}
-        <div className="classrooms-floor-selector">
+        <div className="classrooms-controls"><div className="classrooms-floor-selector">
           {FLOORS.map(f => (
             <button
               key={f.key}
@@ -145,7 +151,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
               {!f.enabled && <small>Próximamente</small>}
             </button>
           ))}
-        </div>
+        </div>{canManageCategories && <button className="btn" type="button" disabled={consultationMode} onClick={() => setCategoryManagerOpen(true)}>Administrar categorías</button>}</div>
 
         <div className="classroom-summary-grid">
           <SummaryCard label="Total aulas" value={summary.total} />
@@ -193,9 +199,11 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
           piso={activeFloor.piso}
           operator={operator}
           consultationMode={consultationMode}
+          categories={categories}
           onClose={handleClose}
         />
       )}
+      {categoryManagerOpen && <ClassroomCategoryManager categories={categories} onClose={() => setCategoryManagerOpen(false)} onChanged={refresh} />}
     </section>
   );
 }

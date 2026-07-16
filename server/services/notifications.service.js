@@ -10,6 +10,7 @@ export const DEFAULT_NOTIFICATION_PREFS = {
   releases: true,
   tasks: true,
   tickets: true,
+  suggestions: true,
   registrations: true,
   system: true
 };
@@ -19,6 +20,7 @@ export function notificationKindKey(kind = '') {
   if (value.startsWith('release')) return 'releases';
   if (value.startsWith('task')) return 'tasks';
   if (value.startsWith('ticket')) return 'tickets';
+  if (value.startsWith('suggestion')) return 'suggestions';
   if (value.startsWith('registration') || value.startsWith('invite') || value.startsWith('user.')) return 'registrations';
   return 'system';
 }

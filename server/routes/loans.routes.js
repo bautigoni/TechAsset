@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import { addLocalMovement, addLoanEvent, getDb, nowIso, setLocalState } from '../db.js';
 import { buildLocalInventory, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
 import { requireSite } from '../services/siteContext.service.js';
@@ -18,6 +19,8 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
     const validation = validateLoanPayload(req.body);
     if (validation) return res.status(400).json({ ok: false, error: validation });
     const fechaPrestado = nowIso();
+    const loanSessionId = crypto.randomUUID();
+    const accessories = normalizeAccessories(req.body.accessories);
     setLocalState(etiqueta, {
       estado: 'Prestado',
       prestadoA: req.body.person || '',
@@ -42,6 +45,7 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
       ubicacion: req.body.location || '', ubicacionDetalle: req.body.locationDetail || '',
       curso: formatCourse(req.body), motivo: req.body.reason || '', motivoDetalle: req.body.reasonDetail || '',
       comentarios: req.body.comment || '', operador: req.body.operator || '', timestamp: fechaPrestado
+      , loanSessionId, accessories
     });
     res.json({ ok: true, synced: true, syncing: false, message: 'Préstamo registrado en base local.' });
   } catch (error) {
@@ -66,6 +70,9 @@ loansRouter.post('/loans/return', async (req, res, next) => {
       });
     }
     const fechaDevuelto = nowIso();
+    const activeLoan = findActiveLoanEvent(siteCode, etiqueta);
+    const returnedAccessories = normalizeAccessories(req.body.returnedAccessories ?? req.body.accessories);
+    const expectedAccessories = parseAccessories(activeLoan?.accessories_json);
     setLocalState(etiqueta, {
       estado: 'Disponible',
       prestadoA: '',
@@ -89,11 +96,25 @@ loansRouter.post('/loans/return', async (req, res, next) => {
       persona: device.prestadoA || '', rol: device.rol || '',
       ubicacion: device.ubicacion || '', motivo: device.motivo || '',
       comentarios: req.body.comment || '', operador: req.body.operator || '', timestamp: fechaDevuelto
+      , loanSessionId: activeLoan?.loan_session_id || '', accessories: returnedAccessories, expectedAccessories
     });
     res.json({ ok: true, synced: true, syncing: false, message: 'Devolución registrada en base local.' });
   } catch (error) {
     next(error);
   }
+});
+
+loansRouter.get('/loans/:etiqueta/accessories', (req, res) => {
+  const siteCode = requireSite(req);
+  const etiqueta = normalizeEtiqueta(req.params.etiqueta);
+  if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
+  const event = findActiveLoanEvent(siteCode, etiqueta);
+  res.json({
+    ok: true,
+    loanSessionId: event?.loan_session_id || '',
+    accessories: parseAccessories(event?.accessories_json),
+    registered: Boolean(event)
+  });
 });
 
 // Recomendador: sugiere personas conocidas (match flexible) con su rol/ubicación/
@@ -140,7 +161,7 @@ loansRouter.get('/loans/previous-day', (req, res) => {
   const siteCode = requireSite(req);
   const today = localDateKey(new Date());
   const rows = getDb().prepare(`
-    SELECT id, etiqueta, alias, filtro, persona, rol, ubicacion, curso, motivo, operador, timestamp
+    SELECT id, etiqueta, alias, filtro, persona, rol, ubicacion, curso, motivo, operador, accessories_json, timestamp
     FROM loan_events
     WHERE site_code=? AND tipo='prestamo'
     ORDER BY timestamp DESC, id DESC
@@ -164,6 +185,7 @@ loansRouter.get('/loans/previous-day', (req, res) => {
       curso: row.curso || '',
       motivo: row.motivo || '',
       operador: row.operador || '',
+      accessories: parseAccessories(row.accessories_json),
       timestamp: row.timestamp || ''
     }));
   res.json({ ok: true, date, items });
@@ -171,6 +193,26 @@ loansRouter.get('/loans/previous-day', (req, res) => {
 
 function normalizeName(value) {
   return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+}
+
+function findActiveLoanEvent(siteCode, etiqueta) {
+  const latest = getDb().prepare(`
+    SELECT id, tipo, loan_session_id, accessories_json, timestamp
+    FROM loan_events
+    WHERE site_code=? AND upper(etiqueta)=upper(?)
+    ORDER BY timestamp DESC, id DESC
+    LIMIT 1
+  `).get(siteCode, etiqueta);
+  return latest?.tipo === 'prestamo' ? latest : null;
+}
+
+function normalizeAccessories(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(item => String(item || '').trim()).filter(Boolean))].slice(0, 30);
+}
+
+function parseAccessories(value) {
+  try { return normalizeAccessories(JSON.parse(String(value || '[]'))); } catch { return []; }
 }
 
 function bump(map, value) {

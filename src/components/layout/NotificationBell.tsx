@@ -13,7 +13,7 @@ function linkToView(link: string): ViewKey | null {
   const clean = String(link || '').split('?')[0].replace(/\/+$/, '');
   const match = clean.match(/\/sede\/[^/]+\/([^/]+)$/);
   const view = match?.[1] || clean.replace(/^\//, '');
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'tasks', 'classrooms', 'tickets', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
   return allowed.includes(view as ViewKey) ? view as ViewKey : null;
 }
 
