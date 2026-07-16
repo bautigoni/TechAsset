@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { Classroom, ClassroomCategory, ClassroomEquipmentItem, ClassroomEquipmentKey, ClassroomGeneralState, ClassroomHistoryEntry, ClassroomIncident, ClassroomIncidentSummary, ClassroomItemState, Operator } from '../../types';
-import { fetchClassroom, fetchClassroomHistory, fetchClassroomIncidents, updateClassroom } from '../../services/classroomsApi';
+import { fetchClassroom, fetchClassroomHistory, fetchClassroomIncidents, generateClassroomHealth, updateClassroom, type ClassroomHealthReport } from '../../services/classroomsApi';
 import { Button } from '../layout/Button';
+import { RelatedReminders } from '../reminders/RelatedReminders';
 
 const ITEM_STATES: ClassroomItemState[] = ['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar'];
 const ITEM_COLORS: Record<ClassroomItemState, string> = {
@@ -74,6 +75,8 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [configuringEquipment, setConfiguringEquipment] = useState(false);
+  const [health, setHealth] = useState<ClassroomHealthReport | null>(null);
+  const [healthBusy, setHealthBusy] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -94,6 +97,8 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
     fetchClassroomIncidents(roomKey).then(r => { if (!cancelled && r.ok) { setIncidents(r.items || []); setIncidentSummary(r.summary); } }).catch(() => undefined);
     return () => { cancelled = true; };
   }, [roomKey, nombre, piso, categories]);
+
+  useEffect(()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context',{detail:{type:'classroom',id:roomKey,label:nombre,data:{piso}}}));return()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context-clear',{detail:{type:'classroom',id:roomKey}}));};},[roomKey,nombre,piso]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -185,6 +190,8 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
           Estado general: <strong>{draft.estadoGeneral}</strong>
         </div>
 
+        <section className="classroom-health-section card"><div className="card-head"><div><h4>Classroom Health</h4><span className="muted">Se genera únicamente cuando lo pedís.</span></div><Button disabled={healthBusy} onClick={async()=>{setHealthBusy(true);setError('');try{const response=await generateClassroomHealth(roomKey);setHealth(response.report);}catch(reason){setError(reason instanceof Error?reason.message:'No se pudo generar el análisis.');}finally{setHealthBusy(false);}}}>{healthBusy?'Analizando…':'Generar análisis'}</Button></div>{health&&<div className="classroom-health-report"><div className="classroom-health-score"><strong>{health.score}</strong><span>{health.status}</span></div><p>{health.summary}</p><HealthList title="Problemas recurrentes" items={health.recurringProblems}/><HealthList title="Puntos positivos" items={health.positives}/><HealthList title="Riesgos" items={health.risks}/><HealthList title="Acciones preventivas" items={health.preventiveActions}/></div>}</section>
+
         <section className="classroom-incidents-section">
           <div className="card-head"><div><h4>Incidentes del aula</h4><span className="muted">Los tickets vinculados aparecen automáticamente.</span></div></div>
           <div className="classroom-incident-kpis">
@@ -204,6 +211,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
             {!incidents.length && <div className="empty-state">Esta aula todavía no tiene incidentes vinculados.</div>}
           </div>
         </section>
+        <RelatedReminders type="classroom" id={roomKey} label={nombre||draft.nombre} consultationMode={consultationMode}/>
 
         <div className="classroom-equipment-toolbar">
           <strong>Equipamiento del espacio</strong>
@@ -298,3 +306,5 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
 function normalize(s: string) {
   return s.toLowerCase().replace(/\s+/g, '-').normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
+
+function HealthList({title,items}:{title:string;items:string[]}){if(!items.length)return null;return <div><strong>{title}</strong><ul>{items.map((item,index)=><li key={`${item}-${index}`}>{item}</li>)}</ul></div>;}

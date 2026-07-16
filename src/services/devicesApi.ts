@@ -89,11 +89,22 @@ export interface DeviceOverviewResponse {
   purchaseInformation: null;
   warrantyInformation: null;
   aiSummary: { text: string; generatedAt: string; cached: boolean };
+  condition: string;
+  conditionNotes: string;
+  group: DeviceGroup | null;
 }
+
+export interface DeviceGroup { id:number; name:string; description:string; classroomKey:string; members:Device[]; createdBy?:string }
 
 export function getDeviceOverview(etiqueta: string) {
   return apiGet<DeviceOverviewResponse>(`/api/devices/${encodeURIComponent(etiqueta)}/overview`);
 }
+
+export const updateDeviceMetadata = (etiqueta:string, payload:{condition:string;notes?:string}) => apiSend<{ok:true;condition:string;notes:string}>(`/api/devices/${encodeURIComponent(etiqueta)}/metadata`, 'PATCH', payload);
+export const getDeviceGroups = () => apiGet<{ok:true;items:DeviceGroup[]}>('/api/device-groups');
+export const createDeviceGroup = (payload:{name:string;description?:string;classroomKey?:string;deviceTags:string[]}) => apiSend<{ok:true;id:number}>('/api/device-groups','POST',payload);
+export const updateDeviceGroup = (id:number,payload:{name?:string;description?:string;classroomKey?:string;deviceTags?:string[]}) => apiSend<{ok:true}>(`/api/device-groups/${id}`,'PATCH',payload);
+export const deleteDeviceGroup = (id:number) => apiSend<{ok:true;deleted:boolean}>(`/api/device-groups/${id}`,'DELETE');
 
 export function updateDeviceStatus(payload: { etiqueta: string; estado: string; operator: string; comentario?: string }) {
   return apiSend<{ ok: true }>('/api/devices/status', 'POST', payload);

@@ -5,8 +5,9 @@ export interface AssistantResponse {
   suggestedRoute?: string | null;
 }
 
-export function sendAssistantMessage(messages: Array<{ role: string; content: string }>) {
-  return apiSend<AssistantResponse>('/api/asistente/chat', 'POST', { messages });
+export interface AssistantContext { type:string; id?:string; label?:string; data?:Record<string,unknown>; view?:string }
+export function sendAssistantMessage(messages: Array<{ role: string; content: string }>, context?:AssistantContext|null) {
+  return apiSend<AssistantResponse>('/api/asistente/chat', 'POST', { messages, context });
 }
 
 function blobToBase64(blob: Blob): Promise<string> {

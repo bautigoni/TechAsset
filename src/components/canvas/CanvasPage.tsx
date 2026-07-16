@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CanvasItem, CanvasItemType } from '../../types';
+import type { CanvasItem, CanvasItemType, TaskItem } from '../../types';
 import { createCanvasItem, deleteCanvasItem, getCanvasItems, updateCanvasItem, uploadCanvasFile } from '../../services/canvasApi';
 import { Button } from '../layout/Button';
+import { getTasks } from '../../services/tasksApi';
 
 const COLORS = ['#fef08a', '#bfdbfe', '#bbf7d0', '#fecdd3', '#ddd6fe'];
 
@@ -9,26 +10,36 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
   const [items, setItems] = useState<CanvasItem[]>([]);
   const [viewport, setViewport] = useState({ x: 140, y: 100, zoom: 1 });
   const [message, setMessage] = useState('');
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef(viewport);
+  const pendingRef = useRef(new Map<number, Partial<CanvasItem>>());
+  const timersRef = useRef(new Map<number, number>());
   viewportRef.current = viewport;
 
   const refresh = useCallback(async () => { const response = await getCanvasItems(); setItems(response.items); }, []);
-  useEffect(() => { refresh().catch(() => setMessage('No se pudo cargar el canvas.')); }, [refresh]);
+  useEffect(() => { refresh().catch(() => setMessage('No se pudo cargar el canvas.')); getTasks('team').then(response => setTasks(response.items)).catch(() => undefined); }, [refresh]);
+  useEffect(() => () => { timersRef.current.forEach(timer => window.clearTimeout(timer)); pendingRef.current.forEach((patch, id) => { void updateCanvasItem(id, patch); }); }, []);
 
   const addItem = async (itemType: CanvasItemType) => {
     const center = screenToWorld(surfaceRef.current?.clientWidth ? surfaceRef.current.clientWidth / 2 : 400, surfaceRef.current?.clientHeight ? surfaceRef.current.clientHeight / 2 : 300, viewportRef.current);
     const defaults: Record<CanvasItemType, Record<string, unknown>> = {
-      sticky: { text: 'Nueva idea' }, text: { text: 'Bloque de texto' }, checklist: { items: [{ text: 'Primer paso', checked: false }] }, image: {}, file: {}, link: { url: 'https://', text: 'Enlace' }
+      sticky: { text: 'Nueva idea' }, text: { text: 'Bloque de texto' }, checklist: { items: [{ text: 'Primer paso', checked: false }] }, image: {}, file: {}, link: { url: 'https://', text: 'Enlace' }, 'task-group': { taskIds: [] }
     };
-    const response = await createCanvasItem({ itemType, title: itemType === 'sticky' ? 'Nota' : '', content: defaults[itemType], x: center.x - 120, y: center.y - 90, color: COLORS[items.length % COLORS.length] });
+    const response = await createCanvasItem({ itemType, title: itemType === 'sticky' ? 'Nota' : itemType === 'task-group' ? 'Grupo de tareas' : '', content: defaults[itemType], x: center.x - 120, y: center.y - 90, width: itemType === 'task-group' ? 380 : 260, height: itemType === 'task-group' ? 260 : 180, color: COLORS[items.length % COLORS.length] });
     setItems(current => [...current, response.item]);
   };
 
-  const patchItem = async (id: number, patch: Partial<CanvasItem>) => {
+  const patchItem = (id: number, patch: Partial<CanvasItem>) => {
     setItems(current => current.map(item => item.id === id ? { ...item, ...patch } : item));
-    try { const response = await updateCanvasItem(id, patch); setItems(current => current.map(item => item.id === id ? response.item : item)); }
-    catch { setMessage('No se pudo guardar el cambio.'); await refresh(); }
+    pendingRef.current.set(id, { ...(pendingRef.current.get(id) || {}), ...patch });
+    const currentTimer = timersRef.current.get(id);
+    if (currentTimer) window.clearTimeout(currentTimer);
+    timersRef.current.set(id, window.setTimeout(async () => {
+      const queued = pendingRef.current.get(id); pendingRef.current.delete(id); timersRef.current.delete(id);
+      if (!queued) return;
+      try { await updateCanvasItem(id, queued); } catch { setMessage('No se pudo guardar el cambio.'); void refresh(); }
+    }, 450));
   };
 
   const startPan = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -93,6 +104,7 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
           <Button disabled={consultationMode} onClick={() => addItem('sticky')}>Nota</Button>
           <Button disabled={consultationMode} onClick={() => addItem('text')}>Texto</Button>
           <Button disabled={consultationMode} onClick={() => addItem('checklist')}>Checklist</Button>
+          <Button disabled={consultationMode} onClick={() => addItem('task-group')}>Grupo de tareas</Button>
           <Button disabled={consultationMode} onClick={() => addItem('link')}>Enlace</Button>
           <label className={`btn ${consultationMode ? 'disabled' : ''}`}>Archivo<input type="file" disabled={consultationMode} accept="image/*,.pdf,.docx,.xlsx,.txt" onChange={event => { const file = event.target.files?.[0]; if (file) void upload(file); event.currentTarget.value = ''; }} /></label>
         </div>
@@ -101,7 +113,7 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
       {message && <div className="tool-info">{message}</div>}
       <div ref={surfaceRef} className="infinite-canvas" onPointerDown={startPan} onWheel={event => { event.preventDefault(); zoomAt(viewport.zoom * (event.deltaY > 0 ? .9 : 1.1), event.clientX, event.clientY); }}>
         <div className="canvas-origin" style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}>
-          {items.map(item => <CanvasNode key={item.id} item={item} consultationMode={consultationMode} onDrag={startDrag} onPatch={patch => patchItem(item.id, patch)} onDelete={async () => { await deleteCanvasItem(item.id); setItems(current => current.filter(value => value.id !== item.id)); }} />)}
+          {items.map(item => <CanvasNode key={item.id} item={item} tasks={tasks} consultationMode={consultationMode} onDrag={startDrag} onPatch={patch => patchItem(item.id, patch)} onDelete={async () => { await deleteCanvasItem(item.id); setItems(current => current.filter(value => value.id !== item.id)); }} />)}
         </div>
         {!items.length && <div className="canvas-empty"><strong>El canvas está vacío</strong><span>Agregá una nota, un checklist, un enlace o un archivo.</span></div>}
       </div>
@@ -109,7 +121,7 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
   );
 }
 
-function CanvasNode({ item, consultationMode, onDrag, onPatch, onDelete }: { item: CanvasItem; consultationMode: boolean; onDrag: (event: React.PointerEvent, item: CanvasItem) => void; onPatch: (patch: Partial<CanvasItem>) => void; onDelete: () => void }) {
+function CanvasNode({ item, tasks, consultationMode, onDrag, onPatch, onDelete }: { item: CanvasItem; tasks: TaskItem[]; consultationMode: boolean; onDrag: (event: React.PointerEvent, item: CanvasItem) => void; onPatch: (patch: Partial<CanvasItem>) => void; onDelete: () => void }) {
   const content = item.content || {};
   const updateText = (text: string) => onPatch({ content: { ...content, text } });
   return <article className={`canvas-node canvas-node-${item.itemType}`} onPointerDown={event => onDrag(event, item)} style={{ transform: `translate(${item.x}px, ${item.y}px)`, width: item.width, minHeight: item.height, zIndex: item.zIndex, '--node-color': item.color || '#bfdbfe' } as React.CSSProperties}>
@@ -119,7 +131,14 @@ function CanvasNode({ item, consultationMode, onDrag, onPatch, onDelete }: { ite
     {item.itemType === 'image' && <img src={String(content.url || '')} alt={item.title || 'Imagen del canvas'} />}
     {item.itemType === 'file' && <a href={String(content.url || '#')} target="_blank" rel="noreferrer"><span>📎</span>{String(content.name || item.title || 'Abrir archivo')}</a>}
     {item.itemType === 'link' && <div className="canvas-link"><input value={String(content.text || '')} disabled={consultationMode} onChange={event => onPatch({ content: { ...content, text: event.target.value } })} /><input value={String(content.url || '')} disabled={consultationMode} onChange={event => onPatch({ content: { ...content, url: event.target.value } })} /><a href={safeLink(String(content.url || ''))} target="_blank" rel="noreferrer">Abrir enlace</a></div>}
+    {item.itemType === 'task-group' && <TaskGroup content={content} tasks={tasks} disabled={consultationMode} onChange={taskIds => onPatch({ content: { ...content, taskIds } })} />}
   </article>;
+}
+
+function TaskGroup({ content, tasks, disabled, onChange }: { content: Record<string, unknown>; tasks: TaskItem[]; disabled: boolean; onChange: (ids: string[]) => void }) {
+  const ids = Array.isArray(content.taskIds) ? content.taskIds.map(String) : [];
+  const selected = ids.map(id => tasks.find(task => task.id === id)).filter(Boolean) as TaskItem[];
+  return <div className="canvas-task-group"><details><summary>Agregar tareas</summary><div className="canvas-task-picker">{tasks.filter(task => !task.done).map(task => <label key={task.id}><input type="checkbox" disabled={disabled} checked={ids.includes(task.id)} onChange={event => onChange(event.target.checked ? [...ids, task.id] : ids.filter(id => id !== task.id))} /><span>{task.titulo}</span></label>)}</div></details><div className="canvas-task-list">{selected.map(task => <div key={task.id} className={task.done ? 'done' : ''}><span>{task.done ? '✓' : '○'}</span><strong>{task.titulo}</strong><small>{task.prioridad}</small></div>)}{!selected.length && <p>Elegí tareas para armar este grupo.</p>}</div></div>;
 }
 
 function screenToWorld(x: number, y: number, viewport: { x: number; y: number; zoom: number }) { return { x: (x - viewport.x) / viewport.zoom, y: (y - viewport.y) / viewport.zoom }; }

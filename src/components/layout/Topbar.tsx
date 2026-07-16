@@ -16,6 +16,7 @@ const TITLES: Record<ViewKey, string> = {
   agenda: 'Agenda TIC',
   schedules: 'Horarios',
   tasks: 'Tareas TIC',
+  reminders: 'Recordatorios',
   canvas: 'Canvas de proyectos',
   pettycash: 'Caja chica',
   classrooms: 'Estado aulas',

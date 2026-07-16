@@ -30,9 +30,12 @@ import { canvasRouter } from './routes/canvas.routes.js';
 import { pettyCashRouter } from './routes/pettyCash.routes.js';
 import { knowledgeRouter } from './routes/knowledge.routes.js';
 import { suggestionsRouter } from './routes/suggestions.routes.js';
+import { remindersRouter } from './routes/reminders.routes.js';
+import { startNotificationWorkers } from './services/notifications.service.js';
 import { authMiddleware, requireEditor } from './services/siteContext.service.js';
 
 getDb();
+startNotificationWorkers();
 
 const app = express();
 app.use(cors());
@@ -54,6 +57,7 @@ app.use('/api', analyticsRouter);
 // Sugerencias permite crear, votar y comentar a cualquier usuario con acceso de
 // lectura al módulo; el router aplica propiedad y permisos de gestión por acción.
 app.use('/api', suggestionsRouter);
+app.use('/api', remindersRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.
 // (sitesRouter ya valida manager/superadmin por endpoint.)
 app.use('/api', requireEditor);

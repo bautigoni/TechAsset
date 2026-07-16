@@ -10,12 +10,12 @@ import { callOpenAiResponses } from '../openaiResponses.service.js';
 const MAX_ROUNDS = 5;
 
 // Vistas válidas de App.tsx (setView). El asistente navega solo a estas.
-const SECTIONS = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tools', 'quickaccess', 'tickets', 'knowledge', 'settings'];
+const SECTIONS = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tools', 'quickaccess', 'tickets', 'knowledge', 'suggestions', 'settings'];
 
 const SECTION_LABELS = {
   dashboard: 'Inicio', devices: 'Dispositivos', loans: 'Préstamos', inventory: 'Inventario maker',
   analytics: 'Analítica', agenda: 'Agenda TIC', tasks: 'Tareas TIC', classrooms: 'Estado de aulas',
-  schedules: 'Horarios', canvas: 'Canvas', pettycash: 'Caja chica', tools: 'Herramientas', quickaccess: 'Accesos rápidos', tickets: 'Tickets', knowledge: 'Base de conocimiento', settings: 'Configuración'
+  schedules: 'Horarios', reminders:'Recordatorios', canvas: 'Canvas', pettycash: 'Caja chica', tools: 'Herramientas', quickaccess: 'Accesos rápidos', tickets: 'Tickets', knowledge: 'Base de conocimiento', suggestions:'Sugerencias', settings: 'Configuración'
 };
 
 const SUGGESTED_ROUTES = {
@@ -30,11 +30,12 @@ const SUGGESTED_ROUTES = {
   registrar_devolucion: 'loans',
   crear_tarea: 'tasks',
   crear_evento_agenda: 'agenda',
+  crear_recordatorio: 'reminders',
   buscar_persona: 'loans',
   consulta_bd: null
 };
 
-function buildSystemPrompt(access, knowledgeContext = '') {
+function buildSystemPrompt(access, knowledgeContext = '', context = null) {
   const role = access?.role || 'Consulta';
   const siteCode = String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
   const nombre = access?.user?.nombre || access?.user?.email || 'Usuario';
@@ -54,10 +55,9 @@ LA POSTA DE CÓMO LABURO:
 PRÉSTAMOS — cuando te pidan prestar algo:
 1. Primero fijate con detalle_dispositivo que el equipo exista y esté disponible, y con buscar_persona fijate si ya tiene movimientos (rol/ubicación que usa siempre). Podés pedir ambas cosas al mismo tiempo.
 2. Si la persona ya tiene histórico, proponé directamente el rol y la ubicación que más usa.
-3. Todo en un solo mensaje: "¿Te confirmo? D1432 → Mili (rol DOE, en DOE)". Si falta algún dato que no está en el histórico, lo pedís ahí mismo, no en preguntas separadas.
-4. Cuando te digan que sí ("sí", "dale", "mandale", "confirmo"), ejecutá registrar_prestamo al toque, sin preguntar de nuevo nada.
+3. Si todos los datos obligatorios están claros, ejecutá registrar_prestamo inmediatamente y mostrale el resultado. No pidas confirmación extra. Si falta un dato obligatorio, preguntá únicamente ese dato.
 
-DEVOLUCIONES: verifica con detalle_dispositivo que esté prestado y ejecutá registrar_devolucion. Si no te dicen condición, asumí "bueno".
+DEVOLUCIONES: verificá con detalle_dispositivo que esté prestado y ejecutá registrar_devolucion de inmediato. Si no te dicen condición, asumí "bueno".
 
 TAREAS Y AGENDA: si el pedido es claro, crealas sin vueltas ni confirmación. Metele responsable, prioridad y detalles en el mismo llamado. NO podés editar ni borrar cosas existentes — si te lo piden, decí "mirá, no puedo modificar eso, pero te llevo a la sección y lo hacés vos".
 
@@ -68,6 +68,8 @@ LÍMITE DE SEDE: TODO lo que hago es exclusivamente de la sede ${siteCode}. No p
 BASE DE CONOCIMIENTO: antes de responder preguntas técnicas, priorizá siempre la documentación interna incluida abajo o consultá base_conocimiento. Si hay una respuesta interna relevante, usala por encima de una explicación genérica y mencioná el título del artículo. No inventes pasos que contradigan esa documentación.
 
 ${knowledgeContext ? `DOCUMENTACIÓN INTERNA RELEVANTE DE ${siteCode}:\n${knowledgeContext}` : 'No apareció documentación interna relevante para el último mensaje.'}
+
+${context ? `CONTEXTO DE LA PANTALLA ABIERTA (usalo para resolver referencias como "este", "acá" o "el actual"): ${JSON.stringify(context).slice(0,4000)}` : 'No hay una entidad abierta en este momento.'}
 
 CONSULTAS LIBRES: si una pregunta no se puede responder con las herramientas que tengo, avisá que por seguridad no podés hacer consultas libres a la base y ofreceles la pantalla más cercana o las herramientas que sí están disponibles.
 
@@ -192,7 +194,7 @@ const TOOLS = [
   {
     type: 'function',
     name: 'registrar_prestamo',
-    description: 'Registra un préstamo de dispositivo en el sistema. USAR SOLO después de que el usuario confirmó explícitamente el resumen del préstamo.',
+    description: 'Registra un préstamo. Usar inmediatamente cuando estén claros dispositivo, persona, rol y ubicación; no pedir confirmación adicional.',
     parameters: {
       type: 'object',
       properties: {
@@ -208,7 +210,7 @@ const TOOLS = [
   {
     type: 'function',
     name: 'registrar_devolucion',
-    description: 'Registra la devolución de un dispositivo prestado. USAR SOLO después de confirmación del usuario.',
+    description: 'Registra inmediatamente la devolución de un dispositivo prestado cuando el pedido sea claro.',
     parameters: {
       type: 'object',
       properties: {
@@ -255,8 +257,10 @@ const TOOLS = [
 ];
 
 const WRITE_TOOLS = new Set(['registrar_prestamo', 'registrar_devolucion', 'crear_tarea', 'crear_evento_agenda']);
+TOOLS.push({ type:'function', name:'crear_recordatorio', description:'Crea inmediatamente un recordatorio cuando título y fecha/hora están claros.', parameters:{ type:'object', properties:{ titulo:{type:'string'}, descripcion:{type:'string'}, fecha_hora:{type:'string',description:'Fecha y hora ISO'}, prioridad:{type:'string',enum:['Baja','Media','Alta','Urgente']}, tipo_relacion:{type:'string'}, id_relacion:{type:'string'}, nombre_relacion:{type:'string'} }, required:['titulo','fecha_hora'] } });
+WRITE_TOOLS.add('crear_recordatorio');
 
-export async function runToolLoop({ messages, access }) {
+export async function runToolLoop({ messages, access, context = null }) {
   const lastUserMessage = getLastUserMessage(messages);
   if (!config.openaiApiKey) return localFallback(messages, access);
 
@@ -265,7 +269,7 @@ export async function runToolLoop({ messages, access }) {
     .join('\n\n');
 
   const input = [
-    { role: 'system', content: buildSystemPrompt(access, knowledgeContext) },
+    { role: 'system', content: buildSystemPrompt(access, knowledgeContext, context) },
     ...(messages || []).slice(-20)
   ];
 
@@ -337,6 +341,7 @@ async function dispatchTool(name, args, access) {
     case 'registrar_devolucion': return registerReturn(args, siteCode, access);
     case 'crear_tarea': return createTask(args, siteCode, access);
     case 'crear_evento_agenda': return createAgenda(args, siteCode, access);
+    case 'crear_recordatorio': return createReminder(args, siteCode, access);
     case 'consulta_bd': return runSqlQuery(args, siteCode);
     default: return { ok: false, error: `Herramienta desconocida: ${name}` };
   }
@@ -618,6 +623,14 @@ function createAgenda(args, siteCode, access) {
 }
 
 // Próxima ocurrencia del día de la semana pedido (si hoy es ese día, usa hoy).
+function createReminder(args, siteCode, access) {
+  const title=String(args.titulo||'').trim(); const date=new Date(String(args.fecha_hora||''));
+  if(!title||Number.isNaN(date.getTime())) return {ok:false,error:'Faltan título o una fecha y hora válida.'};
+  const ts=nowIso(); const relatedType=['device','classroom','ticket','loan','task','purchase','suggestion','group','knowledge'].includes(String(args.tipo_relacion||''))?String(args.tipo_relacion):'';
+  const info=getDb().prepare(`INSERT INTO reminders (site_code,title,description,remind_at,owner_email,owner_name,priority,related_type,related_id,related_label,status,created_by_email,created_by_name,active,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?, 'pending',?,?,1,?,?)`).run(siteCode,title,String(args.descripcion||''),date.toISOString(),String(access?.user?.email||'').toLowerCase(),access?.user?.nombre||'',String(args.prioridad||'Media'),relatedType,String(args.id_relacion||''),String(args.nombre_relacion||''),String(access?.user?.email||'').toLowerCase(),access?.user?.nombre||'',ts,ts);
+  return {ok:true,id:Number(info.lastInsertRowid),titulo:title,fechaHora:date.toISOString()};
+}
+
 function nextDateForDay(diaNombre) {
   const target = normalize(diaNombre);
   if (!target) return '';

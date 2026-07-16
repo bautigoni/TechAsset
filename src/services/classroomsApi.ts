@@ -18,6 +18,8 @@ export const updateClassroom = (roomKey: string, payload: Partial<Classroom> & {
 export const fetchClassroomHistory = (roomKey: string) => apiGet<{ ok: true; items: ClassroomHistoryEntry[] }>(`/api/classrooms/${encodeURIComponent(roomKey)}/history`);
 
 export const fetchClassroomIncidents = (roomKey: string) => apiGet<{ ok: true; summary: ClassroomIncidentSummary; items: ClassroomIncident[] }>(`/api/classrooms/${encodeURIComponent(roomKey)}/incidents`);
+export interface ClassroomHealthReport { score:number; status:string; summary:string; recurringProblems:string[]; positives:string[]; risks:string[]; preventiveActions:string[] }
+export const generateClassroomHealth = (roomKey:string) => apiSend<{ok:true;report:ClassroomHealthReport;generatedAt:string}>(`/api/classrooms/${encodeURIComponent(roomKey)}/health`,'POST',{});
 
 export const fetchClassroomCategories = () => apiGet<{ ok: true; items: ClassroomCategory[]; canManage: boolean }>('/api/classroom-categories');
 export const createClassroomCategory = (payload: Partial<ClassroomCategory>) => apiSend<{ ok: true; item: ClassroomCategory }>('/api/classroom-categories', 'POST', payload);

@@ -6,6 +6,7 @@ const DEFAULT_TYPES: NotificationTypePrefs = {
   tasks: true,
   tickets: true,
   suggestions: true,
+  reminders: true,
   registrations: true,
   system: true
 };
@@ -13,6 +14,7 @@ const DEFAULT_TYPES: NotificationTypePrefs = {
 const TYPE_OPTIONS: Array<{ key: keyof NotificationTypePrefs; title: string; text: string }> = [
   { key: 'suggestions', title: 'Sugerencias e ideas', text: 'Comentarios y cambios de estado de las ideas que seguís.' },
   { key: 'tasks', title: 'Tareas TIC', text: 'Tareas creadas o asignadas por otros integrantes de la sede.' },
+  { key: 'reminders', title: 'Recordatorios', text: 'Avisos cuando vence un recordatorio propio o asignado.' },
   { key: 'tickets', title: 'Tickets', text: 'Tickets nuevos o cambios relevantes.' },
   { key: 'releases', title: 'Novedades de TechAsset', text: 'Avisos de actualizacion y cambios de version.' },
   { key: 'registrations', title: 'Altas e invitaciones', text: 'Registros, aprobaciones e invitaciones de usuarios.' },

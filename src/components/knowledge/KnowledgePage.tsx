@@ -3,10 +3,12 @@ import type { KnowledgeArticle } from '../../types';
 import { createKnowledgeArticle, deleteKnowledgeArticle, getKnowledgeArticles, updateKnowledgeArticle, uploadKnowledgeAttachment } from '../../services/knowledgeApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { useAssistantContext } from '../../hooks/useAssistantContext';
 
 const EMPTY:Partial<KnowledgeArticle>={title:'',content:'',category:'General',tags:[],attachments:[]};
 export function KnowledgePage({consultationMode}:{consultationMode:boolean}){
   const[items,setItems]=useState<KnowledgeArticle[]>([]);const[search,setSearch]=useState('');const[draft,setDraft]=useState<Partial<KnowledgeArticle>|null>(null);const[selected,setSelected]=useState<KnowledgeArticle|null>(null);const[uploading,setUploading]=useState(false);const[error,setError]=useState('');
+  useAssistantContext(selected?{type:'knowledge',id:String(selected.id),label:selected.title,data:{category:selected.category,tags:selected.tags}}:null);
   const load=useCallback(async()=>{try{const response=await getKnowledgeArticles();setItems(response.items);}catch(reason){setError(reason instanceof Error?reason.message:'No se pudo cargar la base.');}},[]);useEffect(()=>{void load();},[load]);
   const visible=useMemo(()=>{const q=search.toLowerCase().trim();return items.filter(item=>!q||`${item.title} ${item.category} ${item.tags.join(' ')} ${item.contentText}`.toLowerCase().includes(q));},[items,search]);
   const save=async()=>{if(!draft?.title?.trim()||!draft.content?.trim())return;if(draft.id)await updateKnowledgeArticle(draft.id,draft);else await createKnowledgeArticle(draft);setDraft(null);await load();};

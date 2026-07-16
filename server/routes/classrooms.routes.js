@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb, nowIso } from '../db.js';
 import { isSiteManager, requireSite } from '../services/siteContext.service.js';
 import { notifySiteAdmins } from '../services/notifications.service.js';
+import { callOpenAiResponses, responseOutputText } from '../services/openaiResponses.service.js';
 
 export const classroomsRouter = Router();
 
@@ -498,6 +499,36 @@ classroomsRouter.get('/classrooms/:roomKey/incidents', (req, res) => {
     items: incidents
   });
 });
+
+classroomsRouter.post('/classrooms/:roomKey/health', async (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const classroom = ensureClassroom(req.params.roomKey, {}, siteCode);
+    const tickets = getDb().prepare(`SELECT numero,titulo,descripcion,estado,prioridad,categoria,created_at,updated_at FROM tickets WHERE site_code=? AND activo=1 AND (classroom_key=? OR lower(trim(classroom))=lower(trim(?))) ORDER BY created_at DESC LIMIT 80`).all(siteCode, req.params.roomKey, classroom.nombre || '');
+    const devices = getDb().prepare(`SELECT etiqueta,categoria,modelo,estado,ubicacion,comentarios FROM local_devices WHERE site_code=? AND activo=1 AND eliminado=0 AND lower(COALESCE(ubicacion,'')) LIKE lower(?) LIMIT 80`).all(siteCode, `%${classroom.nombre || req.params.roomKey}%`);
+    const equipment = parseHealthEquipment(classroom.equipment_json, classroom);
+    let report;
+    try {
+      const data = await callOpenAiResponses({
+        instructions: 'Sos analista de salud de aulas escolares. Respondé SOLO JSON válido, conciso, en español, con score (0-100), status, summary, recurringProblems[], positives[], risks[], preventiveActions[]. No inventes datos.',
+        input: `Aula: ${JSON.stringify({ name:classroom.nombre, state:classroom.estado_general, observations:classroom.observaciones, equipment, tickets, devices })}`,
+        maxOutputTokens: 900
+      });
+      report = parseHealthReport(responseOutputText(data));
+    } catch {
+      report = localHealthReport(classroom, equipment, tickets, devices);
+    }
+    const ts=nowIso();
+    getDb().prepare(`INSERT INTO classroom_health_reports (site_code,room_key,report_json,generated_by,generated_at) VALUES (?,?,?,?,?) ON CONFLICT(site_code,room_key) DO UPDATE SET report_json=excluded.report_json,generated_by=excluded.generated_by,generated_at=excluded.generated_at`)
+      .run(siteCode,req.params.roomKey,JSON.stringify(report),req.user?.nombre||req.user?.email||'',ts);
+    res.json({ok:true,report,generatedAt:ts});
+  } catch(error){ next(error); }
+});
+
+function parseHealthReport(text){ const clean=String(text||'').replace(/^```json\s*/i,'').replace(/```$/,'').trim(); const value=JSON.parse(clean); return {score:Math.max(0,Math.min(100,Number(value.score)||0)),status:String(value.status||'Sin datos'),summary:String(value.summary||''),recurringProblems:list(value.recurringProblems),positives:list(value.positives),risks:list(value.risks),preventiveActions:list(value.preventiveActions)}; }
+function list(value){ return Array.isArray(value)?value.map(String).filter(Boolean).slice(0,6):[]; }
+function parseHealthEquipment(value,row){ try{const parsed=JSON.parse(value||'[]');if(Array.isArray(parsed))return parsed;}catch{} return [{label:'Proyector',state:row.proyector_estado},{label:'NUC',state:row.nuc_estado},{label:'Monitor',state:row.monitor_estado},{label:'Teclado/Mouse',state:row.teclado_mouse_estado}]; }
+function localHealthReport(classroom,equipment,tickets,devices){ const bad=equipment.filter(item=>!['OK','No tiene'].includes(String(item.state))).map(item=>`${item.label}: ${item.state}`); const open=tickets.filter(item=>item.estado!=='Hecho'); const score=Math.max(10,100-bad.length*12-open.length*7); const counts={}; tickets.forEach(item=>{const key=item.categoria||'Sin categoría';counts[key]=(counts[key]||0)+1;}); const recurring=Object.entries(counts).filter(([,n])=>n>1).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([key,n])=>`${key} (${n})`); return {score,status:score>=85?'Saludable':score>=65?'Atención':'Crítico',summary:`${classroom.nombre||'El aula'} tiene ${open.length} incidentes abiertos y ${bad.length} componentes para revisar.`,recurringProblems:recurring,positives:[...equipment.filter(item=>item.state==='OK').map(item=>`${item.label} funciona correctamente`),devices.length?`${devices.length} dispositivos vinculados`:''].filter(Boolean).slice(0,4),risks:[...bad,...open.slice(0,3).map(item=>item.titulo||item.descripcion)].filter(Boolean),preventiveActions:[bad.length?'Revisar el equipamiento marcado antes de la próxima clase':'Mantener la revisión periódica',open.length?'Resolver y documentar los incidentes abiertos':'Continuar registrando incidentes por aula']}; }
 
 function ensureClassroomCategories(siteCode) {
   const count = Number(getDb().prepare('SELECT COUNT(*) AS total FROM classroom_categories WHERE site_code=?').get(siteCode).total || 0);
