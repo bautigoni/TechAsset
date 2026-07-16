@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ThemeProfile } from '../../utils/themeProfile';
-import { sendAssistantMessage, transcribeAssistantAudio, type AssistantResponse } from '../../services/assistantApi';
+import { sendAssistantMessage, transcribeAssistantAudio, type AssistantContext, type AssistantResponse } from '../../services/assistantApi';
 
 export const ASSISTANT_LOGO = '/assistant-logo.png';
 
@@ -59,9 +59,10 @@ function spanishVoice(): SpeechSynthesisVoice | undefined {
     || voices.find(voice => /^es-/i.test(voice.lang));
 }
 
-export function AssistantPanel({ onNavigate, canEdit, open: openProp, onOpenChange, themeProfile = 'classic' }: {
+export function AssistantPanel({ onNavigate, canEdit, context, open: openProp, onOpenChange, themeProfile = 'classic' }: {
   onNavigate: (view: string) => void;
   canEdit?: boolean;
+  context?: AssistantContext | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   themeProfile?: ThemeProfile;
@@ -128,7 +129,7 @@ export function AssistantPanel({ onNavigate, canEdit, open: openProp, onOpenChan
     setMessages(newMessages);
     try {
       const response = await sendAssistantMessage(
-        newMessages.slice(-12).map(m => ({ role: m.role, content: m.content }))
+        newMessages.slice(-12).map(m => ({ role: m.role, content: m.content })), context
       );
       setMessages(prev => [...prev, { role: 'assistant', content: stripMarkdown(response.reply), response }]);
       if (response.suggestedRoute) {

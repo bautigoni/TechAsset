@@ -64,8 +64,14 @@ devicesRouter.get('/devices/:etiqueta/overview', async (req, res, next) => {
     const repairs = ticketRows.filter(row => /repar|manten|service/i.test(`${row.categoria || ''} ${row.titulo || ''} ${row.descripcion || ''}`));
     const incidents = ticketRows.map(row => ({ id:Number(row.id), numero:row.numero || '', titulo:row.titulo || '', estado:row.estado || '', prioridad:row.prioridad || '', categoria:row.categoria || '', updatedAt:row.updated_at || '' }));
     const aiSummary = await getDeviceAiSummary({ siteCode, device, events: loanEvents, tickets: ticketRows });
+    const metadata = getDb().prepare('SELECT condition, notes, updated_at FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').get(siteCode, tag);
+    const group = getDb().prepare(`SELECT g.* FROM device_groups g JOIN device_group_members m ON m.group_id=g.id AND m.site_code=g.site_code WHERE g.site_code=? AND upper(m.device_tag)=upper(?) AND g.active=1`).get(siteCode, tag);
+    const groupMembers = group ? getDb().prepare('SELECT device_tag FROM device_group_members WHERE site_code=? AND group_id=? ORDER BY id').all(siteCode, group.id).map(row => {
+      const found = items.find(item => normalizeTag(item.etiqueta) === normalizeTag(row.device_tag));
+      return found || { etiqueta: row.device_tag, id: row.device_tag, estado: 'Sin revisar' };
+    }) : [];
     res.json({
-      ok:true, device, timeline,
+      ok:true, device:{ ...device, condition: metadata?.condition || 'Excelente' }, condition:metadata?.condition || 'Excelente', conditionNotes:metadata?.notes || '', group:group ? { id:Number(group.id), name:group.name, description:group.description || '', classroomKey:group.classroom_key || '', members:groupMembers } : null, timeline,
       stats:{ totalLoans:loans.length, totalRepairs:repairs.length, incidents:ticketRows.length, lastMaintenance:repairs[0]?.updated_at || '', lastLoan:loans[0]?.timestamp || '', lastRepair:repairs[0]?.updated_at || '' },
       activeLoan: device.estado === 'Prestado' ? { person:device.prestadoA || '', role:device.rol || '', location:device.ubicacion || '', since:device.loanedAt || '' } : null,
       openTickets:incidents.filter(item=>item.estado!=='Hecho'), recentTickets:incidents.slice(0,8),
@@ -74,6 +80,50 @@ devicesRouter.get('/devices/:etiqueta/overview', async (req, res, next) => {
     });
   } catch(error){ next(error); }
 });
+
+devicesRouter.patch('/devices/:etiqueta/metadata', (req, res) => {
+  const siteCode = requireSite(req);
+  const tag = normalizeTag(req.params.etiqueta);
+  const condition = ['Excelente','Bueno','Regular','Malo'].includes(String(req.body?.condition)) ? String(req.body.condition) : 'Excelente';
+  const ts = nowIso();
+  getDb().prepare(`INSERT INTO device_metadata (site_code,device_tag,condition,notes,updated_by,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(site_code,device_tag) DO UPDATE SET condition=excluded.condition,notes=excluded.notes,updated_by=excluded.updated_by,updated_at=excluded.updated_at`)
+    .run(siteCode, tag, condition, String(req.body?.notes || ''), req.user?.nombre || req.user?.email || '', ts);
+  res.json({ ok: true, condition, notes: String(req.body?.notes || ''), updatedAt: ts });
+});
+
+devicesRouter.get('/device-groups', async (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const { items } = await getMergedDevices({ siteCode });
+    const groups = getDb().prepare('SELECT * FROM device_groups WHERE site_code=? AND active=1 ORDER BY name').all(siteCode).map(group => ({
+      id:Number(group.id), name:group.name, description:group.description || '', classroomKey:group.classroom_key || '', createdBy:group.created_by || '',
+      members:getDb().prepare('SELECT device_tag FROM device_group_members WHERE site_code=? AND group_id=? ORDER BY id').all(siteCode, group.id).map(row => items.find(item => normalizeTag(item.etiqueta) === normalizeTag(row.device_tag)) || { etiqueta:row.device_tag, id:row.device_tag, estado:'Sin revisar' })
+    }));
+    res.json({ ok:true, items:groups });
+  } catch (error) { next(error); }
+});
+
+devicesRouter.post('/device-groups', (req, res) => {
+  const siteCode=requireSite(req); const name=String(req.body?.name||'').trim();
+  if(!name) return res.status(400).json({ok:false,error:'Ingresá un nombre para el grupo.'});
+  try {
+    const ts=nowIso(); const info=getDb().prepare('INSERT INTO device_groups (site_code,name,description,classroom_key,created_by,active,created_at,updated_at) VALUES (?,?,?,?,?,1,?,?)').run(siteCode,name,String(req.body?.description||''),String(req.body?.classroomKey||''),req.user?.nombre||req.user?.email||'',ts,ts);
+    replaceGroupMembers(siteCode,info.lastInsertRowid,req.body?.deviceTags); res.json({ok:true,id:Number(info.lastInsertRowid)});
+  } catch(error) { res.status(409).json({ok:false,error:/unique/i.test(String(error?.message))?'Ya existe un grupo con ese nombre.':'No se pudo crear el grupo.'}); }
+});
+
+devicesRouter.patch('/device-groups/:id', (req, res) => {
+  const siteCode=requireSite(req); const row=getDb().prepare('SELECT * FROM device_groups WHERE id=? AND site_code=? AND active=1').get(req.params.id,siteCode);
+  if(!row) return res.status(404).json({ok:false,error:'Grupo no encontrado.'});
+  const name=String(req.body?.name??row.name).trim();
+  getDb().prepare('UPDATE device_groups SET name=?,description=?,classroom_key=?,updated_at=? WHERE id=? AND site_code=?').run(name,String(req.body?.description??row.description),String(req.body?.classroomKey??row.classroom_key),nowIso(),row.id,siteCode);
+  if(Array.isArray(req.body?.deviceTags)) replaceGroupMembers(siteCode,row.id,req.body.deviceTags);
+  res.json({ok:true});
+});
+
+devicesRouter.delete('/device-groups/:id', (req,res)=>{ const siteCode=requireSite(req); getDb().prepare('UPDATE device_groups SET active=0,updated_at=? WHERE id=? AND site_code=?').run(nowIso(),req.params.id,siteCode); getDb().prepare('DELETE FROM device_group_members WHERE group_id=? AND site_code=?').run(req.params.id,siteCode); res.json({ok:true,deleted:true}); });
+
+function replaceGroupMembers(siteCode,groupId,deviceTags=[]){ const db=getDb(); db.prepare('DELETE FROM device_group_members WHERE group_id=? AND site_code=?').run(groupId,siteCode); const insert=db.prepare('INSERT INTO device_group_members (site_code,group_id,device_tag,created_at) VALUES (?,?,?,?) ON CONFLICT(site_code,device_tag) DO UPDATE SET group_id=excluded.group_id,created_at=excluded.created_at'); for(const raw of [...new Set((Array.isArray(deviceTags)?deviceTags:[]).map(normalizeTag).filter(Boolean))]) insert.run(siteCode,groupId,raw,nowIso()); }
 
 function parseJsonArray(value) {
   try { const parsed = JSON.parse(String(value || '[]')); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []; } catch { return []; }

@@ -77,7 +77,7 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
         </thead>
         <tbody>
           {devices.map(device => (
-            <tr key={device.id} data-device-tag={device.etiqueta}>
+            <tr key={device.id} data-device-tag={device.etiqueta} className={onProfile ? 'device-row-clickable' : ''} role={onProfile ? 'button' : undefined} tabIndex={onProfile ? 0 : undefined} onClick={() => onProfile?.(device)} onKeyDown={event => { if (onProfile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onProfile(device); } }}>
               <td data-label="Etiqueta">
                 <strong>{device.etiqueta}</strong>
                 <div className="cell-sub operational-alias">{getOperationalAlias(device)}</div>
@@ -102,7 +102,7 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               </td>
               <td data-label="Horario devolución">{tableValue(formatLoanDateTime(device.returnedAt))}</td>
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
-              <td data-label="Acciones" className="device-actions-cell">
+              <td data-label="Acciones" className="device-actions-cell" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
                 <div className="table-actions device-actions">
                   {onLoan && normalizeState(device.estado) === 'available' && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
                   {onReturn && normalizeState(device.estado) === 'loaned' && <Button className="mini-action-btn" variant="success" disabled={returningTag === device.etiqueta} onClick={() => handleReturn(device)}>{returningTag === device.etiqueta ? 'Devolviendo...' : 'Devolver'}</Button>}

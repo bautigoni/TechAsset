@@ -14,6 +14,7 @@ import { LoansPage } from './components/loans/LoansPage';
 import { InventoryPage } from './components/inventory/InventoryPage';
 import { AgendaPage } from './components/agenda/AgendaPage';
 import { TasksPage } from './components/tasks/TasksPage';
+import { RemindersPage } from './components/reminders/RemindersPage';
 import { SchedulesPage } from './components/schedules/SchedulesPage';
 import { CanvasPage } from './components/canvas/CanvasPage';
 import { PettyCashPage } from './components/pettycash/PettyCashPage';
@@ -41,6 +42,7 @@ import { TenantsDashboard } from './components/settings/TenantsDashboard';
 import { activeSiteRole, canViewModule, isReadOnlyRole, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
 import { parseScannedCode } from './utils/normalizeSearch';
+import type { AssistantContext } from './services/assistantApi';
 
 export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
@@ -50,6 +52,7 @@ export function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('techasset_sidebar_collapsed') === '1');
   const [themeProfile, setThemeProfile] = useState<ThemeProfile>(() => readThemeProfile());
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantContext, setAssistantContext] = useState<AssistantContext | null>(null);
   const [consultationMode, setConsultationMode] = useState(false);
   const [profile, setProfile] = useState<Device | null>(null);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
@@ -67,6 +70,17 @@ export function App() {
   const agenda = useAgenda(operator);
   const tasks = useTasks(operator);
   useScrollReveal([view, filteredDevices.length, agenda.items.length, tasks.items.length, movements.length]);
+
+  useEffect(() => {
+    const setContext = (event: Event) => setAssistantContext((event as CustomEvent<AssistantContext>).detail || null);
+    const clearContext = (event: Event) => setAssistantContext(current => {
+      const detail = (event as CustomEvent<AssistantContext>).detail;
+      return current?.type === detail?.type && current?.id === detail?.id ? null : current;
+    });
+    window.addEventListener('techasset:assistant-context', setContext);
+    window.addEventListener('techasset:assistant-context-clear', clearContext);
+    return () => { window.removeEventListener('techasset:assistant-context', setContext); window.removeEventListener('techasset:assistant-context-clear', clearContext); };
+  }, []);
 
   useEffect(() => {
     const fromUrl = readSiteFromUrl();
@@ -365,13 +379,14 @@ export function App() {
       <main className="main main-content">
         <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} onOpenAssistant={() => setAssistantOpen(true)} />
         {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} />}
-        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={openLoanFlow} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
-        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} initialCode={loanSeed} />}
+        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={openLoanFlow} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
+        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onProfile={setProfile} initialCode={loanSeed} />}
         {view === 'inventory' && <InventoryPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
         {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
         {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
+        {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
@@ -387,11 +402,12 @@ export function App() {
       <AssistantPanel
         onNavigate={next => setView(next as ViewKey)}
         canEdit={!effectiveConsultation}
+        context={assistantContext || { type: 'view', view, label: view }}
         open={assistantOpen}
         onOpenChange={setAssistantOpen}
         themeProfile={themeProfile}
       />
-      {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}
+      {profile && <DeviceProfile device={profile} consultationMode={effectiveConsultation} onOpenDevice={setProfile} onClose={() => setProfile(null)} />}
       {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}
     </div>
   );

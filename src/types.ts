@@ -1,4 +1,4 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'suggestions' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'settings';
+export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'reminders' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'suggestions' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'settings';
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
@@ -112,6 +112,7 @@ export interface Device {
   returnedAt?: string;
   changedAt?: string;
   ultima?: string;
+  condition?: string;
 }
 
 export interface Movement {
@@ -195,8 +196,9 @@ export interface TeacherScheduleEntry { id: number; teacher: string; course: str
 export interface RecessSlot { id?: number; label: string; startTime: string; endTime: string; sortOrder?: number }
 export interface RecessGroup { id?: number; name: string; sortOrder?: number; slots: RecessSlot[] }
 
-export type CanvasItemType = 'sticky' | 'text' | 'checklist' | 'image' | 'file' | 'link';
+export type CanvasItemType = 'sticky' | 'text' | 'checklist' | 'image' | 'file' | 'link' | 'task-group';
 export interface CanvasItem { id: number; itemType: CanvasItemType; title: string; content: Record<string, unknown>; x: number; y: number; width: number; height: number; zIndex: number; color: string; createdBy?: string; createdAt?: string; updatedAt?: string }
+export interface Reminder { id:number; siteCode?:string; title:string; description:string; remindAt:string; ownerEmail:string; ownerName:string; priority:string; relatedType:string; relatedId:string; relatedLabel:string; status:'pending'|'completed'; createdByEmail:string; createdByName:string; completedAt:string; createdAt:string; updatedAt:string }
 
 export interface PettyCashExpense { id: number; expenseDate: string; description: string; supplier: string; amount: number; category: string; receiptUrl: string; purchaseRequestId?: number | null; inventoryItemId?: number | null; createdBy?: string; createdAt?: string }
 export interface PurchaseRequest { id: number; description: string; category: string; estimatedAmount: number; requestedSupplier: string; justification: string; receiptUrl: string; status: 'Pendiente' | 'Aprobada' | 'Rechazada'; requesterEmail: string; requesterName: string; finalCost: number; finalSupplier: string; resolutionNote: string; resolvedBy: string; resolvedAt: string; createdAt: string }

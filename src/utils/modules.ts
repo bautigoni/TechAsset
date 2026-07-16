@@ -3,7 +3,7 @@ import type { ViewKey } from '../types';
 // Módulos que cada sede puede prender/apagar desde Configuración (rol manager).
 export type ModuleKey =
   | 'devices' | 'loans' | 'inventory' | 'analytics'
-  | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'suggestions'
+  | 'agenda' | 'schedules' | 'tasks' | 'reminders' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'suggestions'
   | 'tools' | 'quickaccess';
 
 export type ModuleCategory = 'Operación' | 'Análisis' | 'Planificación' | 'Aulas y soporte' | 'Comunicaciones';
@@ -20,6 +20,7 @@ export const TOGGLEABLE_MODULES: ToggleableModule[] = [
   { key: 'agenda', label: 'Agenda TIC', description: 'Reservas y planificación semanal.', category: 'Planificación', icon: '🗓️' },
   { key: 'schedules', label: 'Horarios', description: 'Horarios docentes y recreos por grupo.', category: 'Planificación', icon: '🕐' },
   { key: 'tasks', label: 'Tareas TIC', description: 'Tareas del equipo y seguimiento.', category: 'Planificación', icon: '✅' },
+  { key: 'reminders', label: 'Recordatorios', description: 'Avisos manuales con fecha y relación opcional.', category: 'Planificación', icon: '🔔' },
   { key: 'canvas', label: 'Canvas de proyectos', description: 'Espacio visual infinito para planificar.', category: 'Planificación', icon: '🧩' },
   { key: 'pettycash', label: 'Caja chica', description: 'Fondo fijo, gastos y solicitudes de compra.', category: 'Operación', icon: '💳' },
   { key: 'knowledge', label: 'Base de conocimiento', description: 'Documentación interna priorizada por el asistente IA.', category: 'Aulas y soporte', icon: '📚' },

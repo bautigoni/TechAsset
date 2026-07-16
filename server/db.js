@@ -711,6 +711,89 @@ export function initDb(database = getDb()) {
       UNIQUE(site_code, category_key)
     );
     CREATE INDEX IF NOT EXISTS idx_classroom_categories_site_order ON classroom_categories(site_code, active, sort_order);
+    CREATE TABLE IF NOT EXISTS notification_outbox (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      audience TEXT DEFAULT 'site',
+      user_email TEXT DEFAULT '',
+      kind TEXT DEFAULT 'general',
+      title TEXT NOT NULL,
+      body TEXT DEFAULT '',
+      link TEXT DEFAULT '',
+      payload_json TEXT DEFAULT '',
+      due_at TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      attempts INTEGER DEFAULT 0,
+      result_count INTEGER DEFAULT 0,
+      last_error TEXT DEFAULT '',
+      created_at TEXT,
+      processed_at TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_notification_outbox_due ON notification_outbox(status, due_at, id);
+    CREATE TABLE IF NOT EXISTS reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      remind_at TEXT NOT NULL,
+      owner_email TEXT DEFAULT '',
+      owner_name TEXT DEFAULT '',
+      priority TEXT DEFAULT 'Media',
+      related_type TEXT DEFAULT '',
+      related_id TEXT DEFAULT '',
+      related_label TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      created_by_email TEXT DEFAULT '',
+      created_by_name TEXT DEFAULT '',
+      completed_at TEXT DEFAULT '',
+      completed_by TEXT DEFAULT '',
+      notification_sent_at TEXT DEFAULT '',
+      active INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(site_code, active, status, remind_at);
+    CREATE INDEX IF NOT EXISTS idx_reminders_related ON reminders(site_code, related_type, related_id, active);
+    CREATE TABLE IF NOT EXISTS device_groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      classroom_key TEXT DEFAULT '',
+      created_by TEXT DEFAULT '',
+      active INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT,
+      UNIQUE(site_code, name)
+    );
+    CREATE TABLE IF NOT EXISTS device_group_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      group_id INTEGER NOT NULL,
+      device_tag TEXT NOT NULL,
+      created_at TEXT,
+      UNIQUE(site_code, device_tag)
+    );
+    CREATE INDEX IF NOT EXISTS idx_device_group_members_group ON device_group_members(site_code, group_id);
+    CREATE TABLE IF NOT EXISTS device_metadata (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      device_tag TEXT NOT NULL,
+      condition TEXT DEFAULT 'Excelente',
+      notes TEXT DEFAULT '',
+      updated_by TEXT DEFAULT '',
+      updated_at TEXT,
+      UNIQUE(site_code, device_tag)
+    );
+    CREATE TABLE IF NOT EXISTS classroom_health_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      room_key TEXT NOT NULL,
+      report_json TEXT DEFAULT '{}',
+      generated_by TEXT DEFAULT '',
+      generated_at TEXT,
+      UNIQUE(site_code, room_key)
+    );
   `);
 
   ensureColumn(database, 'agenda', 'site_code', "TEXT DEFAULT 'NFPT'");
@@ -838,7 +921,43 @@ export function initDb(database = getDb()) {
   ensureFixedAgenda(database);
 
   backfillLoanEventsFromMovements(database);
-  if (isPg()) ensurePgRls(database);
+  if (isPg()) {
+    ensurePgNotificationFunction(database);
+    ensurePgRls(database);
+  }
+}
+
+function ensurePgNotificationFunction(database) {
+  database.exec(`
+    CREATE OR REPLACE FUNCTION public.enqueue_techasset_notification(
+      p_title TEXT,
+      p_body TEXT DEFAULT '',
+      p_site_code TEXT DEFAULT 'NFPT',
+      p_audience TEXT DEFAULT 'site',
+      p_user_email TEXT DEFAULT '',
+      p_kind TEXT DEFAULT 'general',
+      p_link TEXT DEFAULT '',
+      p_due_at TEXT DEFAULT ''
+    ) RETURNS BIGINT
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = public
+    AS $$
+    DECLARE new_id BIGINT;
+    BEGIN
+      IF trim(COALESCE(p_title, '')) = '' THEN RAISE EXCEPTION 'title is required'; END IF;
+      IF lower(COALESCE(p_audience, 'site')) NOT IN ('all', 'site', 'user') THEN RAISE EXCEPTION 'invalid audience'; END IF;
+      INSERT INTO public.notification_outbox
+        (site_code, audience, user_email, kind, title, body, link, due_at, status, attempts, created_at)
+      VALUES
+        (upper(COALESCE(NULLIF(trim(p_site_code), ''), 'NFPT')), lower(COALESCE(p_audience, 'site')),
+         lower(COALESCE(p_user_email, '')), COALESCE(NULLIF(trim(p_kind), ''), 'general'), trim(p_title),
+         COALESCE(p_body, ''), COALESCE(p_link, ''), COALESCE(p_due_at, ''), 'pending', 0, now()::text)
+      RETURNING id INTO new_id;
+      RETURN new_id;
+    END $$;
+    REVOKE ALL ON FUNCTION public.enqueue_techasset_notification(TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT,TEXT) FROM PUBLIC;
+  `);
 }
 
 function ensurePgRls(database) {
@@ -1076,11 +1195,11 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'loan.gradeOptions': ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
-    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'],
-    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'],
+    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'],
+    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'],
     'roles.config': [
       { name: 'Administrador', admin: true, view: ['*'], edit: ['*'] },
-      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'] },
+      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'] },
       { name: 'Consulta', admin: false, view: ['*'], edit: [] }
     ],
     'shift.options': ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'],
@@ -1102,7 +1221,7 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
 }
 
 function migrateNewModuleSettings(database) {
-  const added = ['schedules', 'canvas', 'pettycash', 'knowledge', 'suggestions'];
+  const added = ['schedules', 'canvas', 'pettycash', 'knowledge', 'suggestions', 'reminders'];
   const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
   const update = database.prepare('UPDATE site_settings SET value_json=?, updated_at=? WHERE site_code=? AND key=?');
   const ts = nowIso();

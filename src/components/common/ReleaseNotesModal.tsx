@@ -36,20 +36,18 @@ export function ReleaseNotesModal() {
     setRelease(null);
   };
 
-  const lines = release.bodyMd.split('\n').map(l => l.trim()).filter(Boolean);
+  const blocks = parseRelease(release.bodyMd);
 
   return (
     <div className="release-modal-overlay" role="dialog" aria-modal="true" onClick={close}>
       <div className="release-modal" onClick={e => e.stopPropagation()}>
-        <span className="release-modal-tag">Novedades · v{release.version}</span>
+        <span className="release-modal-tag">Novedades · {release.version.startsWith('v') ? release.version : `v${release.version}`}</span>
         <h2 className="release-modal-title">{release.title}</h2>
-        <ul className="release-modal-list">
-          {lines.map((line, i) => (
-            <li key={i}>{line.replace(/^[-*]\s+/, '').replace(/\*\*/g, '')}</li>
-          ))}
-        </ul>
+        <div className="release-modal-content">{blocks.map((block,index)=>block.type==='heading'?<h3 key={index}>{block.text}</h3>:block.type==='item'?<div className="release-modal-item" key={index}><span>✓</span><p>{block.text}</p></div>:<p key={index}>{block.text}</p>)}</div>
         <button type="button" className="btn btn-primary release-modal-cta" onClick={close}>¡Buenísimo!</button>
       </div>
     </div>
   );
 }
+
+function parseRelease(markdown:string){return String(markdown||'').split('\n').map(line=>line.trim()).filter(Boolean).map(line=>{const heading=line.match(/^#{1,6}\s+(.+)/);const item=line.match(/^[-*+]\s+(.+)/);const text=(heading?.[1]||item?.[1]||line).replace(/\*\*(.*?)\*\*/g,'$1').replace(/`([^`]+)`/g,'$1').replace(/\[(.*?)\]\([^)]*\)/g,'$1');return {type:heading?'heading':item?'item':'paragraph',text} as {type:'heading'|'item'|'paragraph';text:string};});}

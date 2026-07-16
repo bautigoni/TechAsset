@@ -4,7 +4,7 @@ import { classifyDeviceType, matchesOperationalAlias, sortByOperationalAlias } f
 import { Button } from '../layout/Button';
 import { StatCard } from '../layout/StatCard';
 import { DeviceTable } from './DeviceTable';
-import { DeviceProfile } from './DeviceProfile';
+import { DeviceGroupsManager } from './DeviceGroupsManager';
 import { AddDeviceModal } from './AddDeviceModal';
 import { downloadDevicesCsv, importDevicesFromCsv } from '../../services/devicesApi';
 
@@ -28,17 +28,18 @@ function matchesFilter(device: Device, filter: DeviceFilter) {
   return classifyDeviceType(device) === filter;
 }
 
-export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan, onReturn, onDelete, onImported }: {
+export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan, onReturn, onProfile, onDelete, onImported }: {
   devices: Device[];
   consultationMode: boolean;
   operator: string;
   onAdd: (device: Partial<Device>) => Promise<void>;
   onLoan: (device: Device) => void;
   onReturn: (device: Device) => Promise<unknown> | void;
+  onProfile: (device: Device) => void;
   onDelete?: (device: Device) => Promise<void> | void;
   onImported?: () => Promise<void> | void;
 }) {
-  const [profile, setProfile] = useState<Device | null>(null);
+  const [groupsOpen, setGroupsOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Device | null>(null);
   const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all');
@@ -171,17 +172,18 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
             <Button onClick={() => exportCsv('/api/movements/export.csv', 'techasset_movimientos.csv')}>Exportar movimientos</Button>
             <Button onClick={() => exportCsv('/api/loans/export/active.csv', 'techasset_prestamos_activos.csv')}>Exportar préstamos</Button>
             <Button onClick={exportQrPdf}>Exportar PDF QR</Button>
+            <Button onClick={() => setGroupsOpen(true)}>Grupos</Button>
             {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Añadir dispositivo</Button>}
           </div>
         </div>
         {message && <div className={message.tone === 'error' ? 'tool-error' : 'tool-info'}>{message.text}</div>}
         {visibleDevices.length ? (
-          <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={setProfile} onEdit={consultationMode ? undefined : setEditing} onDelete={consultationMode ? undefined : handleDelete} />
+          <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={onProfile} onEdit={consultationMode ? undefined : setEditing} onDelete={consultationMode ? undefined : handleDelete} />
         ) : (
           <div className="empty-state">No hay dispositivos para este filtro o búsqueda.</div>
         )}
       </section>
-      {profile && <DeviceProfile device={profile} onClose={() => setProfile(null)} />}
+      {groupsOpen && <DeviceGroupsManager devices={devices} consultationMode={consultationMode} onOpenDevice={device => { setGroupsOpen(false); onProfile(device); }} onClose={() => setGroupsOpen(false)} />}
       {adding && <AddDeviceModal onClose={() => setAdding(false)} onSave={onAdd} />}
       {editing && <AddDeviceModal title={`Editar ${editing.etiqueta}`} initialDevice={editing} onClose={() => setEditing(null)} onSave={onAdd} />}
     </section>

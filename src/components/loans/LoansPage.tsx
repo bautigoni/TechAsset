@@ -16,7 +16,7 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
 
 type LoanActionResult = { synced?: boolean; message?: string } | void;
 
-export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; initialCode?: string }) {
+export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, onProfile, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onProfile?: (device:Device)=>void; initialCode?: string }) {
   const [returnSeed, setReturnSeed] = useState(initialCode);
   const [previousLoans, setPreviousLoans] = useState<PreviousDayLoan[]>([]);
   const [previousDate, setPreviousDate] = useState('');
@@ -110,7 +110,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                   </thead>
                   <tbody>
                     {previousLoans.map(item => (
-                      <tr key={item.id}>
+                      <tr key={item.id} className="device-row-clickable" onClick={()=>{const device=devices.find(value=>value.etiqueta===item.etiqueta);if(device)onProfile?.(device);}}>
                         <td>{formatTimeOnly(item.timestamp) || '-'}</td>
                         <td>
                           <strong>{item.etiqueta}</strong>
@@ -132,11 +132,11 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <div className="card-head"><h3>Actualmente prestados</h3><span className="muted">{loaned.length}</span></div>
             <div className="loaned-now-list">
               {recentLoaned.map(device => (
-                <div className={`loaned-now-item loan-age-${loanAgeTone(device.loanedAt)}`} key={device.id}>
+                <div className={`loaned-now-item loan-age-${loanAgeTone(device.loanedAt)} device-row-clickable`} key={device.id} onClick={()=>onProfile?.(device)}>
                   <strong>{device.etiqueta} · {getOperationalAlias(device)}</strong>
                   <span>{device.prestadoA || 'Sin persona'} · {[device.ubicacion, device.curso].filter(Boolean).join(' · ') || 'Sin ubicación'}</span>
                   <span className="loaned-now-time">{formatLoanDateTime(device.loanedAt) || 'Sin fecha'} · {loanAgeLabel(device.loanedAt) || 'sin antiguedad'}</span>
-                  <button type="button" onClick={() => { setReturnSeed(''); window.setTimeout(() => setReturnSeed(device.etiqueta), 0); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={consultationMode}>Revisar devolución</button>
+                  <button type="button" onClick={event => { event.stopPropagation(); setReturnSeed(''); window.setTimeout(() => setReturnSeed(device.etiqueta), 0); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={consultationMode}>Revisar devolución</button>
                 </div>
               ))}
               {!loaned.length && <div className="empty-state">No hay equipos prestados ahora.</div>}

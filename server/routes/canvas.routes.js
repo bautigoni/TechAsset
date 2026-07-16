@@ -8,7 +8,7 @@ import { canEditModule, canViewModule, requireSite } from '../services/siteConte
 import { notifySiteAdmins } from '../services/notifications.service.js';
 
 export const canvasRouter = Router();
-const TYPES = new Set(['sticky', 'text', 'checklist', 'image', 'file', 'link']);
+const TYPES = new Set(['sticky', 'text', 'checklist', 'image', 'file', 'link', 'task-group']);
 const MIME_EXT = new Map([
   ['image/png', 'png'], ['image/jpeg', 'jpg'], ['image/webp', 'webp'], ['image/gif', 'gif'],
   ['application/pdf', 'pdf'], ['text/plain', 'txt'],
@@ -97,5 +97,5 @@ function rowToCanvasItem(row) {
 
 function finite(value, fallback) { const number = Number(value); return Number.isFinite(number) ? number : fallback; }
 function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
-function labelForType(type) { return ({ sticky: 'Nota adhesiva', text: 'Texto', checklist: 'Checklist', image: 'Imagen', file: 'Archivo', link: 'Enlace' })[type] || 'Elemento'; }
+function labelForType(type) { return ({ sticky: 'Nota adhesiva', text: 'Texto', checklist: 'Checklist', image: 'Imagen', file: 'Archivo', link: 'Enlace', 'task-group': 'Grupo de tareas' })[type] || 'Elemento'; }
 function forbidden(res) { return res.status(403).json({ ok: false, error: 'No tenés permiso para usar el canvas.' }); }

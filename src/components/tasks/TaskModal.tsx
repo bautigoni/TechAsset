@@ -5,6 +5,7 @@ import { Button } from '../layout/Button';
 import { ddMmToIso, formatDdMm, isValidDdMm } from '../../utils/taskDate';
 import { getSiteAssistants } from '../../services/authApi';
 import { uploadTaskAttachment } from '../../services/tasksApi';
+import { useAssistantContext } from '../../hooks/useAssistantContext';
 
 const TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'] as const;
 
@@ -16,6 +17,7 @@ function initialResponsables(initial?: Partial<TaskItem>, operator?: string): st
 }
 
 export function TaskModal({ onClose, onSave, initial, operator, defaultVisibility = 'team' }: { onClose: () => void; onSave: (task: Partial<TaskItem>) => Promise<unknown>; initial?: Partial<TaskItem>; operator: string; defaultVisibility?: 'team' | 'private' }) {
+  useAssistantContext(initial?.id ? { type: 'task', id: initial.id, label: initial.titulo || initial.id, data: { estado: initial.estado, prioridad: initial.prioridad } } : null);
   const [assistants, setAssistants] = useState<Array<{ name: string; email?: string }>>([]);
   const [task, setTask] = useState<Partial<TaskItem>>({ prioridad: 'Media', estado: 'Pendiente', visibility: defaultVisibility, ...initial });
   const [selected, setSelected] = useState<string[]>(() => initialResponsables(initial, operator));

@@ -13,6 +13,6 @@ export function assistantStatus() {
   };
 }
 
-export async function handleAssistantChat({ messages = [], access = DEFAULT_ACCESS }) {
-  return runToolLoop({ messages, access });
+export async function handleAssistantChat({ messages = [], access = DEFAULT_ACCESS, context = null }) {
+  return runToolLoop({ messages, access, context });
 }

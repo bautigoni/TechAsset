@@ -6,6 +6,8 @@ import type { AppNotification } from '../../services/notificationsApi';
 function kindToView(kind: string): ViewKey | null {
   if (kind.startsWith('task')) return 'tasks';
   if (kind.startsWith('ticket')) return 'tickets';
+  if (kind.startsWith('reminder')) return 'reminders';
+  if (kind.startsWith('suggestion')) return 'suggestions';
   return null;
 }
 
@@ -13,7 +15,7 @@ function linkToView(link: string): ViewKey | null {
   const clean = String(link || '').split('?')[0].replace(/\/+$/, '');
   const match = clean.match(/\/sede\/[^/]+\/([^/]+)$/);
   const view = match?.[1] || clean.replace(/^\//, '');
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
   return allowed.includes(view as ViewKey) ? view as ViewKey : null;
 }
 
@@ -90,8 +92,8 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
             {items.length === 0 && <div className="notif-empty">No tenés notificaciones.</div>}
             {items.map(n => (
               <button type="button" key={n.id} className={`notif-item ${n.read ? '' : 'is-unread'}`} onClick={() => handleItem(n)}>
-                <span className="notif-item-title">{n.title}</span>
-                {n.body && <span className="notif-item-body">{n.body}</span>}
+                <span className="notif-item-title">{plainText(n.title)}</span>
+                {n.body && <span className="notif-item-body">{plainText(n.body)}</span>}
                 <span className="notif-item-time">{timeAgo(n.createdAt)}</span>
               </button>
             ))}
@@ -102,8 +104,8 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
       {toast && (
         <div className="notif-toast" role="status">
           <div className="notif-toast-body">
-            <strong>{toast.title}</strong>
-            {toast.body && <span>{toast.body}</span>}
+            <strong>{plainText(toast.title)}</strong>
+            {toast.body && <span>{plainText(toast.body)}</span>}
           </div>
           <div className="notif-toast-actions">
             <button type="button" className="btn btn-primary" onClick={openFromToast}>Ver</button>
@@ -114,3 +116,5 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
     </div>
   );
 }
+
+function plainText(value:string){return String(value||'').replace(/^#{1,6}\s*/gm,'').replace(/\*\*(.*?)\*\*/g,'$1').replace(/`([^`]+)`/g,'$1').replace(/^[-*+]\s+/gm,'').replace(/\[(.*?)\]\([^)]*\)/g,'$1').trim();}

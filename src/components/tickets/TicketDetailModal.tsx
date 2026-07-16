@@ -3,10 +3,12 @@ import type { Ticket } from '../../types';
 import { addTicketChecklistItem, addTicketComment, addTicketRelation, deleteTicketChecklistItem, deleteTicketRelation, getTicketDetail, regenerateTicketSummary, updateTicketChecklistItem } from '../../services/ticketsApi';
 import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
+import { useAssistantContext } from '../../hooks/useAssistantContext';
 
 type Detail=Awaited<ReturnType<typeof getTicketDetail>>;
 export function TicketDetailModal({initialId,tickets,consultationMode,onClose,onChanged}:{initialId:number;tickets:Ticket[];consultationMode:boolean;onClose:()=>void;onChanged:()=>void}){
   const [ticketId,setTicketId]=useState(initialId);const[data,setData]=useState<Detail|null>(null);const[comment,setComment]=useState('');const[itemText,setItemText]=useState('');const[relatedId,setRelatedId]=useState('');const[relationType,setRelationType]=useState<'related'|'parent'>('related');const[busy,setBusy]=useState(false);
+  const contextTicket=tickets.find(item=>item.id===ticketId);useAssistantContext({type:'ticket',id:String(ticketId),label:contextTicket?.titulo||`Ticket ${ticketId}`,data:{estado:contextTicket?.estado,prioridad:contextTicket?.prioridad,classroom:contextTicket?.classroom}});
   const load=useCallback(async()=>setData(await getTicketDetail(ticketId)),[ticketId]);useEffect(()=>{void load();},[load]);
   const regenerate=async()=>{setBusy(true);try{const response=await regenerateTicketSummary(ticketId);setData(value=>value?{...value,item:{...value.item,aiSummary:response.summary,aiSummaryUpdatedAt:response.updatedAt}}:value);onChanged();}finally{setBusy(false);}};
   if(!data)return <Modal title="Detalle de ticket" onClose={onClose}><div className="tool-info">Cargando ticket…</div></Modal>;

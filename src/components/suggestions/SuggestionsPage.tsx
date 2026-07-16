@@ -3,6 +3,7 @@ import type { Suggestion, SuggestionComment, SuggestionStats, SuggestionStatus }
 import { addSuggestionComment, createSuggestion, deleteSuggestion, getSuggestionComments, getSuggestions, toggleSuggestionVote, updateSuggestion } from '../../services/suggestionsApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { useAssistantContext } from '../../hooks/useAssistantContext';
 
 const STATUSES: SuggestionStatus[] = ['Proposed','Under Review','Planned','In Progress','Implemented','Rejected'];
 const STATUS_LABEL: Record<SuggestionStatus,string> = { Proposed:'Propuesta','Under Review':'En revisión',Planned:'Planificada','In Progress':'En progreso',Implemented:'Implementada',Rejected:'Rechazada' };
@@ -17,6 +18,7 @@ export function SuggestionsPage() {
   const [editing,setEditing]=useState<Suggestion|null>(null); const [formOpen,setFormOpen]=useState(false);
   const [title,setTitle]=useState(''); const [description,setDescription]=useState(''); const [formCategory,setFormCategory]=useState('General');
   const [detail,setDetail]=useState<Suggestion|null>(null); const [comments,setComments]=useState<SuggestionComment[]>([]); const [comment,setComment]=useState('');
+  useAssistantContext(detail?{type:'suggestion',id:String(detail.id),label:detail.title,data:{status:detail.status,category:detail.category,votes:detail.voteCount}}:null);
   const [busy,setBusy]=useState(false); const [loading,setLoading]=useState(true); const [error,setError]=useState('');
 
   const load=useCallback(async()=>{setLoading(true);setError('');try{const response=await getSuggestions({status,category,sort});setItems(response.items||[]);setStats(response.stats||EMPTY_STATS);setCategories(response.categories||[]);setCanManage(response.canManage);}catch(e){setError(e instanceof Error?e.message:'No se pudieron cargar las sugerencias.');}finally{setLoading(false);}},[status,category,sort]);
