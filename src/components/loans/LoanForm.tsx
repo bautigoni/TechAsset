@@ -469,23 +469,38 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
             </div>
             {expectedAccessories.length ? (
               <div className="loan-accessory-grid">
-                {expectedAccessories.map(item => <AccessoryCheck key={item} label={item} checked={returnedAccessories.includes(item)} onChange={() => setReturnedAccessories(toggleList(returnedAccessories, item))} />)}
+                {expectedAccessories.map(item => <AccessoryToggle key={item} label={item} checked={returnedAccessories.includes(item)} onChange={() => setReturnedAccessories(toggleList(returnedAccessories, item))} />)}
               </div>
             ) : <p className="muted loan-accessories-empty">No se registraron accesorios para este préstamo.</p>}
           </section>
         )}
         {(selectedLoanState === 'available' || continuousScan) && (
-          <details className="loan-accessories-card" open={accessoriesOpen} onToggle={event => setAccessoriesOpen(event.currentTarget.open)}>
-            <summary>Checklist de entrega <span>Opcional</span></summary>
-            <p className="muted">Si no lo usás, el préstamo continúa normalmente y se registra sin accesorios.</p>
-            <div className="loan-accessory-grid">
-              {[...new Set([...DEFAULT_ACCESSORIES, ...loanAccessories])].map(item => <AccessoryCheck key={item} label={item} checked={loanAccessories.includes(item)} onChange={() => setLoanAccessories(toggleList(loanAccessories, item))} />)}
-            </div>
-            <div className="loan-custom-accessory">
-              <input className="input" value={customAccessory} onChange={event => setCustomAccessory(event.target.value)} placeholder="Otro accesorio" />
-              <Button type="button" onClick={() => { const item = customAccessory.trim(); if (!item) return; setLoanAccessories(list => [...new Set([...list, item])]); setCustomAccessory(''); }}>Agregar</Button>
-            </div>
-          </details>
+          <section className={`loan-accessories-card ${accessoriesOpen ? 'is-open' : ''}`}>
+            <button
+              className="loan-accessories-trigger"
+              type="button"
+              aria-expanded={accessoriesOpen}
+              onClick={() => setAccessoriesOpen(value => !value)}
+            >
+              <span>
+                <strong>Accesorios de entrega</strong>
+                <small>Opcional</small>
+              </span>
+              <span className="loan-accessories-chevron" aria-hidden="true">⌄</span>
+            </button>
+            {accessoriesOpen && (
+              <div className="loan-accessories-body">
+                <p className="muted">Activá únicamente lo que entregás con el equipo.</p>
+                <div className="loan-accessory-grid">
+                  {[...new Set([...DEFAULT_ACCESSORIES, ...loanAccessories])].map(item => <AccessoryToggle key={item} label={item} checked={loanAccessories.includes(item)} onChange={() => setLoanAccessories(toggleList(loanAccessories, item))} />)}
+                </div>
+                <div className="loan-custom-accessory">
+                  <input className="input" value={customAccessory} onChange={event => setCustomAccessory(event.target.value)} placeholder="Agregar otro accesorio" />
+                  <Button type="button" onClick={() => { const item = customAccessory.trim(); if (!item) return; setLoanAccessories(list => [...new Set([...list, item])]); setCustomAccessory(''); }}>Agregar</Button>
+                </div>
+              </div>
+            )}
+          </section>
         )}
       <div className="actions">
         {continuousScan ? (
@@ -507,8 +522,19 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   );
 }
 
-function AccessoryCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
-  return <label className={`loan-accessory-check ${checked ? 'checked' : ''}`}><input type="checkbox" checked={checked} onChange={onChange} /><span>{label}</span></label>;
+function AccessoryToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      className={`loan-accessory-toggle ${checked ? 'checked' : ''}`}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+    >
+      <span>{label}</span>
+      <span className="app-switch" aria-hidden="true"><span /></span>
+    </button>
+  );
 }
 
 function toggleList(items: string[], item: string) {

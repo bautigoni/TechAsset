@@ -29,8 +29,8 @@ export function AgendaModal({ onClose, onSave }: { onClose: () => void; onSave: 
           <label>Turno<select className="input" value={item.turno} onChange={e => update('turno', e.target.value)}><option>Mañana</option><option>Tarde</option></select></label>
         </div>
         <div className="grid-2">
-          <label>Desde<input className="input" type="time" value={item.desde} onChange={e => update('desde', e.target.value)} /></label>
-          <label>Hasta<input className="input" type="time" value={item.hasta} onChange={e => update('hasta', e.target.value)} /></label>
+          <label>Desde<input className="input" inputMode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="08:00" value={item.desde} onChange={e => update('desde', e.target.value)} /></label>
+          <label>Hasta<input className="input" inputMode="numeric" pattern="[0-2][0-9]:[0-5][0-9]" placeholder="08:45" value={item.hasta} onChange={e => update('hasta', e.target.value)} /></label>
         </div>
         <label>Curso<input className="input" required value={item.curso || ''} onChange={e => update('curso', e.target.value)} /></label>
         <label>Actividad<input className="input" value={item.actividad || ''} onChange={e => update('actividad', e.target.value)} /></label>

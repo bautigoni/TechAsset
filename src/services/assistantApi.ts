@@ -3,6 +3,7 @@ import { apiSend } from './apiClient';
 export interface AssistantResponse {
   reply: string;
   suggestedRoute?: string | null;
+  suggestedDevice?: string | null;
 }
 
 export interface AssistantContext { type:string; id?:string; label?:string; data?:Record<string,unknown>; view?:string }

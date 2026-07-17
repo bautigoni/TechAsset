@@ -59,8 +59,9 @@ function spanishVoice(): SpeechSynthesisVoice | undefined {
     || voices.find(voice => /^es-/i.test(voice.lang));
 }
 
-export function AssistantPanel({ onNavigate, canEdit, context, open: openProp, onOpenChange, themeProfile = 'classic' }: {
+export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, open: openProp, onOpenChange, themeProfile = 'classic' }: {
   onNavigate: (view: string) => void;
+  onOpenDevice?: (deviceTag: string) => boolean;
   canEdit?: boolean;
   context?: AssistantContext | null;
   open?: boolean;
@@ -132,7 +133,9 @@ export function AssistantPanel({ onNavigate, canEdit, context, open: openProp, o
         newMessages.slice(-12).map(m => ({ role: m.role, content: m.content })), context
       );
       setMessages(prev => [...prev, { role: 'assistant', content: stripMarkdown(response.reply), response }]);
-      if (response.suggestedRoute) {
+      if (response.suggestedDevice && onOpenDevice?.(response.suggestedDevice)) {
+        setOpen(false);
+      } else if (response.suggestedRoute) {
         onNavigate(response.suggestedRoute);
       }
     } catch {

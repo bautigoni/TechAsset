@@ -192,7 +192,8 @@ export interface ClassroomIncidentSummary {
 export interface TaskColumn { id: number; name: string; color: string; position: number; isDone: boolean; createdBy?: string }
 export interface TaskComment { id: number; taskId: string; body: string; authorEmail: string; authorName: string; createdAt: string; updatedAt: string }
 
-export interface TeacherScheduleEntry { id: number; teacher: string; course: string; subject: string; room: string; dayOfWeek: number; startTime: string; endTime: string; createdBy?: string; updatedAt?: string }
+export type SchoolLevel = 'primary_first' | 'primary_second' | 'secondary';
+export interface TeacherScheduleEntry { id: number; teacher: string; course: string; subject: string; room: string; schoolLevel: SchoolLevel; dayOfWeek: number; startTime: string; endTime: string; createdBy?: string; updatedAt?: string }
 export interface RecessSlot { id?: number; label: string; startTime: string; endTime: string; sortOrder?: number }
 export interface RecessGroup { id?: number; name: string; sortOrder?: number; slots: RecessSlot[] }
 

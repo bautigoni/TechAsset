@@ -578,6 +578,7 @@ export function initDb(database = getDb()) {
       course TEXT NOT NULL,
       subject TEXT DEFAULT '',
       room TEXT DEFAULT '',
+      school_level TEXT DEFAULT 'primary_first',
       day_of_week INTEGER DEFAULT 1,
       start_time TEXT NOT NULL,
       end_time TEXT NOT NULL,
@@ -872,6 +873,7 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'loan_events', 'loan_session_id', "TEXT DEFAULT ''");
   ensureColumn(database, 'loan_events', 'accessories_json', "TEXT DEFAULT '[]'");
   ensureColumn(database, 'loan_events', 'expected_accessories_json', "TEXT DEFAULT '[]'");
+  ensureColumn(database, 'teacher_schedule_entries', 'school_level', "TEXT DEFAULT 'primary_first'");
   migrateInventorySiteCodes(database);
 
   seedDefaultSite(database);
@@ -1195,11 +1197,11 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'loan.gradeOptions': ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
-    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'],
-    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'],
+    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
+    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
     'roles.config': [
       { name: 'Administrador', admin: true, view: ['*'], edit: ['*'] },
-      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess'] },
+      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'] },
       { name: 'Consulta', admin: false, view: ['*'], edit: [] }
     ],
     'shift.options': ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'],
@@ -1221,7 +1223,7 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
 }
 
 function migrateNewModuleSettings(database) {
-  const added = ['schedules', 'canvas', 'pettycash', 'knowledge', 'suggestions', 'reminders'];
+  const added = ['schedules', 'pettycash', 'suggestions', 'reminders'];
   const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
   const update = database.prepare('UPDATE site_settings SET value_json=?, updated_at=? WHERE site_code=? AND key=?');
   const ts = nowIso();

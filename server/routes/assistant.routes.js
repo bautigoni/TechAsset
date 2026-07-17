@@ -70,7 +70,7 @@ assistantRouter.post('/asistente/chat', async (req, res, next) => {
 
 function normalizeContext(value) {
   if (!value || typeof value !== 'object') return null;
-  const allowed = new Set(['view','device','classroom','ticket','loan','task','purchase','knowledge','suggestion','group']);
+  const allowed = new Set(['view','device','classroom','ticket','loan','task','purchase','suggestion','group']);
   const type = allowed.has(String(value.type)) ? String(value.type) : 'view';
   return { type, id:String(value.id||'').slice(0,120), label:String(value.label||'').slice(0,200), view:String(value.view||'').slice(0,80), data:value.data && typeof value.data==='object' ? value.data : {} };
 }

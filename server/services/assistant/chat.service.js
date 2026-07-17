@@ -10,12 +10,12 @@ import { callOpenAiResponses } from '../openaiResponses.service.js';
 const MAX_ROUNDS = 5;
 
 // Vistas válidas de App.tsx (setView). El asistente navega solo a estas.
-const SECTIONS = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tools', 'quickaccess', 'tickets', 'knowledge', 'suggestions', 'settings'];
+const SECTIONS = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tools', 'quickaccess', 'tickets', 'suggestions', 'settings'];
 
 const SECTION_LABELS = {
   dashboard: 'Inicio', devices: 'Dispositivos', loans: 'Préstamos', inventory: 'Inventario maker',
   analytics: 'Analítica', agenda: 'Agenda TIC', tasks: 'Tareas TIC', classrooms: 'Estado de aulas',
-  schedules: 'Horarios', reminders:'Recordatorios', canvas: 'Canvas', pettycash: 'Caja chica', tools: 'Herramientas', quickaccess: 'Accesos rápidos', tickets: 'Tickets', knowledge: 'Base de conocimiento', suggestions:'Sugerencias', settings: 'Configuración'
+  schedules: 'Horarios', reminders:'Recordatorios', pettycash: 'Caja chica', tools: 'Herramientas', quickaccess: 'Accesos rápidos', tickets: 'Tickets', suggestions:'Sugerencias', settings: 'Configuración'
 };
 
 const SUGGESTED_ROUTES = {
@@ -62,6 +62,7 @@ DEVOLUCIONES: verificá con detalle_dispositivo que esté prestado y ejecutá re
 TAREAS Y AGENDA: si el pedido es claro, crealas sin vueltas ni confirmación. Metele responsable, prioridad y detalles en el mismo llamado. NO podés editar ni borrar cosas existentes — si te lo piden, decí "mirá, no puedo modificar eso, pero te llevo a la sección y lo hacés vos".
 
 NAVEGACIÓN: si te piden ir a algún lado ("llevame a tareas", "abrí préstamos"), usá abrir_seccion. Si además te pidieron un dato específico, buscalo primero con la herramienta y decí algo como "te llevo a Tareas, por cierto la tarea Maker está pendiente, vence el 19/06".
+- Si te piden abrir, entrar, ver la ficha o el reporte de un dispositivo concreto, usá detalle_dispositivo. Eso abre la ficha del equipo directamente. No mandes un dispositivo a Inventario maker: los equipos Dxxxx, Dell, Touch, Plani y TIC viven en Dispositivos.
 
 LÍMITE DE SEDE: TODO lo que hago es exclusivamente de la sede ${siteCode}. No puedo ver ni modificar datos de otras sedes. Si te piden algo de otra sede, decí que los tenants están separados y que necesitan cambiarse a esa sede con los permisos correspondientes.
 
@@ -274,6 +275,7 @@ export async function runToolLoop({ messages, access, context = null }) {
   ];
 
   let suggestedRoute = null;
+  let suggestedDevice = null;
 
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -286,13 +288,19 @@ export async function runToolLoop({ messages, access, context = null }) {
         if (!reply) return { reply: 'No pude procesar el mensaje. ¿Podés reformularlo?', suggestedRoute: null };
         const deterministic = await deterministicLoanDraft(lastUserMessage, access);
         if (deterministic && isGenericAssistantReply(reply)) return deterministic;
-        return { reply, suggestedRoute };
+        return { reply, suggestedRoute, suggestedDevice };
       }
 
       for (const call of toolCalls) {
         const result = await runAssistantTool(call.name, parseArgs(call.arguments), access);
         if (result?.ok !== false) {
-          if (call.name === 'abrir_seccion' && result?.seccion) suggestedRoute = result.seccion;
+          if (call.name === 'detalle_dispositivo' && result?.item?.etiqueta) {
+            suggestedDevice = result.item.etiqueta;
+            suggestedRoute = 'devices';
+          } else if (call.name === 'buscar_dispositivos' && result?.items?.length === 1 && /(abr|entr|ficha|reporte|detalle|llev)/i.test(lastUserMessage)) {
+            suggestedDevice = result.items[0].etiqueta;
+            suggestedRoute = 'devices';
+          } else if (call.name === 'abrir_seccion' && result?.seccion) suggestedRoute = result.seccion;
           else if (SUGGESTED_ROUTES[call.name]) suggestedRoute = SUGGESTED_ROUTES[call.name];
         }
         input.push({ type: 'function_call', call_id: call.call_id, name: call.name, arguments: call.arguments });
@@ -304,7 +312,7 @@ export async function runToolLoop({ messages, access, context = null }) {
     return { reply: 'No pude conectarme con el servicio de IA en este momento. Probá de nuevo en unos segundos.', suggestedRoute: null };
   }
 
-  return { reply: 'Hice varias consultas pero no llegué a una respuesta clara. ¿Podés reformular el pedido?', suggestedRoute };
+  return { reply: 'Hice varias consultas pero no llegué a una respuesta clara. ¿Podés reformular el pedido?', suggestedRoute, suggestedDevice };
 }
 
 // Ejecuta una herramienta con permisos y captura de errores. Cualquier excepción
@@ -647,14 +655,15 @@ function localFallback(messages, access) {
   const last = messages?.[messages.length - 1]?.content || '';
   const siteCode = String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
   const knowledge = searchKnowledgeArticles(siteCode, last, 1)[0];
-  if (knowledge && !/hola|buenas/i.test(last)) return { reply: `${knowledge.title}: ${knowledge.contentText.slice(0, 900)}`, suggestedRoute: 'knowledge' };
+  if (knowledge && !/hola|buenas/i.test(last)) return { reply: `${knowledge.title}: ${knowledge.contentText.slice(0, 900)}`, suggestedRoute: null };
   const match = last.match(/\bD\s*0*(\d{1,5})\b/i);
   if (match) {
     const code = normalizeCode(`D${match[1]}`);
     const device = buildLocalInventory(siteCode).find(item => normalizeCode(item.etiqueta) === code);
-    if (!device) return { reply: `No encontré ${code} en el inventario de ${siteCode}.`, suggestedRoute: 'devices' };
-    if (isLoanedState(device.estado)) return { reply: `${code} está prestado a ${device.prestadoA || 'alguien sin registrar'}.`, suggestedRoute: 'loans' };
-    return { reply: `${code} está ${device.estado || 'disponible'} en el inventario.`, suggestedRoute: 'devices' };
+    if (!device) return { reply: `No encontré ${code} en Dispositivos de ${siteCode}.`, suggestedRoute: 'devices' };
+    const openProfile = /(abr|entr|ficha|reporte|detalle|llev)/i.test(last);
+    if (isLoanedState(device.estado)) return { reply: `${code} está prestado a ${device.prestadoA || 'alguien sin registrar'}.`, suggestedRoute: openProfile ? 'devices' : 'loans', suggestedDevice: openProfile ? code : null };
+    return { reply: `${code} está ${device.estado || 'disponible'}.`, suggestedRoute: 'devices', suggestedDevice: openProfile ? code : null };
   }
   if (/prestamo|prestar|prestale|devol/i.test(last)) return { reply: 'El asistente con IA no está configurado. Podés registrar préstamos y devoluciones desde la pantalla de Préstamos.', suggestedRoute: 'loans' };
   if (/hola|buenas|ayuda/i.test(last)) return { reply: 'Hola. Puedo decirte el estado de un equipo si me pasás la etiqueta (ej. D1436). Para el asistente completo hace falta configurar la API de IA.', suggestedRoute: null };

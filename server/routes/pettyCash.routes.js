@@ -21,12 +21,12 @@ pettyCashRouter.get('/petty-cash', (req, res) => {
   const spent = expenses.reduce((total, item) => total + item.amount, 0);
   res.json({
     ok: true,
-    config: { initialAmount: Number(configRow.initial_amount || 0), requestsEnabled: Boolean(configRow.requests_enabled) },
+    config: { initialAmount: Number(configRow.initial_amount || 0), requestsEnabled: true },
     balance: Number(configRow.initial_amount || 0) - spent,
     spent,
     expenses,
     requests,
-    permissions: { manager: isSiteManager(req, siteCode), canRequest: canEditModule(req, 'pettycash', siteCode) && Boolean(configRow.requests_enabled) }
+    permissions: { manager: isSiteManager(req, siteCode), canRequest: canEditModule(req, 'pettycash', siteCode) }
   });
 });
 
@@ -36,9 +36,9 @@ pettyCashRouter.patch('/petty-cash/config', (req, res) => {
   ensureConfig(siteCode);
   const amount = Number(req.body?.initialAmount);
   if (!Number.isFinite(amount) || amount < 0) return res.status(400).json({ ok: false, error: 'El fondo inicial debe ser un importe válido.' });
-  getDb().prepare('UPDATE petty_cash_config SET initial_amount=?, requests_enabled=?, updated_by=?, updated_at=? WHERE site_code=?')
-    .run(amount, req.body?.requestsEnabled ? 1 : 0, req.user?.nombre || req.user?.email || '', nowIso(), siteCode);
-  res.json({ ok: true, config: { initialAmount: amount, requestsEnabled: Boolean(req.body?.requestsEnabled) } });
+  getDb().prepare('UPDATE petty_cash_config SET initial_amount=?, requests_enabled=1, updated_by=?, updated_at=? WHERE site_code=?')
+    .run(amount, req.user?.nombre || req.user?.email || '', nowIso(), siteCode);
+  res.json({ ok: true, config: { initialAmount: amount, requestsEnabled: true } });
 });
 
 pettyCashRouter.post('/petty-cash/expenses', (req, res) => {
@@ -59,8 +59,6 @@ pettyCashRouter.post('/petty-cash/requests', (req, res) => {
   const siteCode = requireSite(req);
   if (!canEditModule(req, 'pettycash', siteCode)) return forbidden(res);
   ensureConfig(siteCode);
-  const cfg = getDb().prepare('SELECT requests_enabled FROM petty_cash_config WHERE site_code=?').get(siteCode);
-  if (!cfg?.requests_enabled) return res.status(403).json({ ok: false, error: 'Las solicitudes de compra no están habilitadas.' });
   const description = String(req.body?.description || '').trim();
   if (!description) return res.status(400).json({ ok: false, error: 'La descripción es obligatoria.' });
   const estimated = Number(req.body?.estimatedAmount || 0);
@@ -143,7 +141,7 @@ pettyCashRouter.post('/petty-cash/upload-receipt', (req, res) => {
 });
 
 function ensureConfig(siteCode) {
-  getDb().prepare('INSERT INTO petty_cash_config (site_code, initial_amount, requests_enabled, updated_at) VALUES (?, 0, 0, ?) ON CONFLICT(site_code) DO NOTHING').run(siteCode, nowIso());
+  getDb().prepare('INSERT INTO petty_cash_config (site_code, initial_amount, requests_enabled, updated_at) VALUES (?, 0, 1, ?) ON CONFLICT(site_code) DO NOTHING').run(siteCode, nowIso());
 }
 
 function currentBalance(siteCode) {

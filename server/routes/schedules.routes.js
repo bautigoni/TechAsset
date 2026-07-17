@@ -5,6 +5,7 @@ import { notifySiteAdmins } from '../services/notifications.service.js';
 
 export const schedulesRouter = Router();
 const DAYS = new Set([1, 2, 3, 4, 5, 6, 7]);
+const SCHOOL_LEVELS = new Set(['primary_first', 'primary_second', 'secondary']);
 
 schedulesRouter.get('/teacher-schedules', (req, res) => {
   const siteCode = requireSite(req);
@@ -26,9 +27,9 @@ schedulesRouter.post('/teacher-schedules', (req, res) => {
   if (error) return res.status(400).json({ ok: false, error });
   const ts = nowIso();
   const info = getDb().prepare(`
-    INSERT INTO teacher_schedule_entries (site_code, teacher, course, subject, room, day_of_week, start_time, end_time, active, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
-  `).run(siteCode, payload.teacher, payload.course, payload.subject, payload.room, payload.dayOfWeek, payload.startTime, payload.endTime, req.user?.nombre || req.user?.email || '', ts, ts);
+    INSERT INTO teacher_schedule_entries (site_code, teacher, course, subject, room, school_level, day_of_week, start_time, end_time, active, created_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+  `).run(siteCode, payload.teacher, payload.course, payload.subject, payload.room, payload.schoolLevel, payload.dayOfWeek, payload.startTime, payload.endTime, req.user?.nombre || req.user?.email || '', ts, ts);
   notifyAdmins(siteCode, req, 'schedule.created', 'Horario docente actualizado', `${payload.teacher} · ${payload.course} · ${dayLabel(payload.dayOfWeek)} ${payload.startTime}`);
   res.json({ ok: true, item: rowToSchedule(getDb().prepare('SELECT * FROM teacher_schedule_entries WHERE id=?').get(info.lastInsertRowid)) });
 });
@@ -42,9 +43,9 @@ schedulesRouter.patch('/teacher-schedules/:id', (req, res) => {
   const error = validateSchedule(payload);
   if (error) return res.status(400).json({ ok: false, error });
   getDb().prepare(`
-    UPDATE teacher_schedule_entries SET teacher=?, course=?, subject=?, room=?, day_of_week=?, start_time=?, end_time=?, updated_at=?
+    UPDATE teacher_schedule_entries SET teacher=?, course=?, subject=?, room=?, school_level=?, day_of_week=?, start_time=?, end_time=?, updated_at=?
     WHERE id=? AND site_code=?
-  `).run(payload.teacher, payload.course, payload.subject, payload.room, payload.dayOfWeek, payload.startTime, payload.endTime, nowIso(), req.params.id, siteCode);
+  `).run(payload.teacher, payload.course, payload.subject, payload.room, payload.schoolLevel, payload.dayOfWeek, payload.startTime, payload.endTime, nowIso(), req.params.id, siteCode);
   notifyAdmins(siteCode, req, 'schedule.updated', 'Horario docente actualizado', `${payload.teacher} · ${payload.course} · ${dayLabel(payload.dayOfWeek)} ${payload.startTime}`);
   res.json({ ok: true, item: rowToSchedule(getDb().prepare('SELECT * FROM teacher_schedule_entries WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
@@ -105,6 +106,7 @@ function normalizeSchedule(raw = {}) {
     course: String(raw.course || raw.curso || '').trim(),
     subject: String(raw.subject || raw.materia || '').trim(),
     room: String(raw.room || raw.aula || '').trim(),
+    schoolLevel: String(raw.schoolLevel || raw.school_level || 'primary_first').trim(),
     dayOfWeek: Number(raw.dayOfWeek || raw.day_of_week || 1),
     startTime: String(raw.startTime || raw.start_time || '').trim(),
     endTime: String(raw.endTime || raw.end_time || '').trim()
@@ -113,13 +115,14 @@ function normalizeSchedule(raw = {}) {
 
 function validateSchedule(item) {
   if (!item.teacher || !item.course) return 'Docente y curso son obligatorios.';
+  if (!SCHOOL_LEVELS.has(item.schoolLevel)) return 'Nivel escolar inválido.';
   if (!DAYS.has(item.dayOfWeek)) return 'Día inválido.';
   if (!/^\d{2}:\d{2}$/.test(item.startTime) || !/^\d{2}:\d{2}$/.test(item.endTime) || item.startTime >= item.endTime) return 'El rango horario no es válido.';
   return '';
 }
 
 function rowToSchedule(row) {
-  return { id: row.id, teacher: row.teacher, course: row.course, subject: row.subject || '', room: row.room || '', dayOfWeek: Number(row.day_of_week), startTime: row.start_time, endTime: row.end_time, createdBy: row.created_by || '', updatedAt: row.updated_at || '' };
+  return { id: row.id, teacher: row.teacher, course: row.course, subject: row.subject || '', room: row.room || '', schoolLevel: SCHOOL_LEVELS.has(row.school_level) ? row.school_level : 'primary_first', dayOfWeek: Number(row.day_of_week), startTime: row.start_time, endTime: row.end_time, createdBy: row.created_by || '', updatedAt: row.updated_at || '' };
 }
 
 function localClock() {

@@ -16,9 +16,7 @@ import { AgendaPage } from './components/agenda/AgendaPage';
 import { TasksPage } from './components/tasks/TasksPage';
 import { RemindersPage } from './components/reminders/RemindersPage';
 import { SchedulesPage } from './components/schedules/SchedulesPage';
-import { CanvasPage } from './components/canvas/CanvasPage';
 import { PettyCashPage } from './components/pettycash/PettyCashPage';
-import { KnowledgePage } from './components/knowledge/KnowledgePage';
 import { SuggestionsPage } from './components/suggestions/SuggestionsPage';
 import { AnalyticsPage } from './components/analytics/AnalyticsPage';
 import { SettingsPage } from './components/settings/SettingsPage';
@@ -41,7 +39,7 @@ import { LandingPage } from './components/auth/LandingPage';
 import { TenantsDashboard } from './components/settings/TenantsDashboard';
 import { activeSiteRole, canViewModule, isReadOnlyRole, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
-import { parseScannedCode } from './utils/normalizeSearch';
+import { parseScannedCode, resolveDeviceMatches } from './utils/normalizeSearch';
 import type { AssistantContext } from './services/assistantApi';
 
 export function App() {
@@ -387,9 +385,7 @@ export function App() {
         {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
         {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
         {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
         {view === 'tools' && <ToolsPage operator={operator} />}
@@ -401,6 +397,12 @@ export function App() {
       <MobileNav items={navItems} active={view} onNavigate={setView} onMore={() => setMenuOpen(true)} themeProfile={themeProfile} />
       <AssistantPanel
         onNavigate={next => setView(next as ViewKey)}
+        onOpenDevice={deviceTag => {
+          const match = resolveDeviceMatches(devices, deviceTag)[0];
+          if (!match) return false;
+          setProfile(match);
+          return true;
+        }}
         canEdit={!effectiveConsultation}
         context={assistantContext || { type: 'view', view, label: view }}
         open={assistantOpen}
@@ -420,7 +422,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 

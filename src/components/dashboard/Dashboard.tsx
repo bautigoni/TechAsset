@@ -55,7 +55,7 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
     .sort(([a], [b]) => a.localeCompare(b)), [counts]);
 
   return (
-    <section className="view active">
+    <section className="view active dashboard-page">
       <div className="dashboard-stat-groups">
         <div className="stats-grid stats-main">
           <StatCard label="Total" value={counts.total || 0} large active={deviceFilter === 'all'} onClick={() => applyDeviceFilter('all')} />
