@@ -14,8 +14,53 @@ const ctrl = new Int32Array(ctrlSab); // [0]=status (0 idle,1 ok,2 error), [1]=b
 const data = new Uint8Array(dataSab);
 const enc = new TextEncoder();
 
-const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } });
-const ready = client.connect();
+let client = null;
+let connecting = null;
+
+function connectionError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return ['connection terminated', 'connection closed', 'client has encountered a connection error', 'econnreset', 'econnrefused', 'socket hang up'].some(value => message.includes(value));
+}
+
+async function getClient() {
+  if (client) return client;
+  if (connecting) return connecting;
+  const next = new pg.Client({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS || 10000),
+    keepAlive: true
+  });
+  // `pg` emite `error` cuando Supabase/pgbouncer corta una conexión idle. Sin
+  // listener Node termina el worker y el hilo principal queda bloqueado.
+  next.on('error', error => {
+    if (client === next) client = null;
+    connecting = null;
+    console.error('[pgworker] conexión perdida; se reconectará en la próxima consulta:', error?.message || error);
+  });
+  connecting = next.connect()
+    .then(() => {
+      client = next;
+      return next;
+    })
+    .finally(() => {
+      connecting = null;
+    });
+  return connecting;
+}
+
+async function query(sql, params) {
+  const active = await getClient();
+  try {
+    return await active.query(sql, params);
+  } catch (error) {
+    if (connectionError(error)) {
+      if (client === active) client = null;
+      try { await active.end(); } catch { /* already closed */ }
+    }
+    throw error;
+  }
+}
 
 function respond(status, payloadObj) {
   let bytes = enc.encode(JSON.stringify(payloadObj));
@@ -31,12 +76,11 @@ function respond(status, payloadObj) {
 
 parentPort.on('message', async (req) => {
   try {
-    await ready;
     if (req.method === 'exec') {
-      await client.query(req.sql);
+      await query(req.sql);
       respond(1, { rows: [], rowCount: 0 });
     } else {
-      const res = await client.query(req.sql, req.params || []);
+      const res = await query(req.sql, req.params || []);
       respond(1, { rows: res.rows, rowCount: res.rowCount });
     }
   } catch (e) {
