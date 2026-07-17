@@ -10,6 +10,7 @@ import { Worker } from 'node:worker_threads';
 
 const CTRL_BYTES = 8;                 // Int32Array[2]
 const DATA_BYTES = 16 * 1024 * 1024;  // 16MB para el payload de resultados
+const RPC_TIMEOUT_MS = Math.max(5000, Number(process.env.PG_SYNC_TIMEOUT_MS || 30000));
 
 // Tablas SIN columna `id` autonumérica: no se les puede pedir RETURNING id.
 const NO_ID_TABLES = new Set([
@@ -87,15 +88,34 @@ export function createPgSync(connectionString) {
   const data = new Uint8Array(dataSab);
   const dec = new TextDecoder();
 
-  const worker = new Worker(new URL('./pgworker.js', import.meta.url), {
-    workerData: { connectionString, ctrlSab, dataSab }
-  });
-  worker.on('error', (e) => { console.error('[pg-sync worker]', e); });
+  let worker;
+  const startWorker = () => {
+    const next = new Worker(new URL('./pgworker.js', import.meta.url), {
+      workerData: { connectionString, ctrlSab, dataSab }
+    });
+    next.on('error', (e) => { console.error('[pg-sync worker]', e); });
+    return next;
+  };
+  const resetWorker = () => {
+    try { void worker?.terminate(); } catch { /* noop */ }
+    Atomics.store(ctrl, 0, 0);
+    worker = startWorker();
+  };
+  worker = startWorker();
 
   function rpc(method, sql, params) {
     Atomics.store(ctrl, 0, 0);
     worker.postMessage({ method, sql, params });
-    while (Atomics.load(ctrl, 0) === 0) Atomics.wait(ctrl, 0, 0);
+    const deadline = Date.now() + RPC_TIMEOUT_MS;
+    while (Atomics.load(ctrl, 0) === 0) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0 || Atomics.wait(ctrl, 0, 0, remaining) === 'timed-out') {
+        resetWorker();
+        const error = new Error(`Postgres no respondió dentro de ${RPC_TIMEOUT_MS} ms; la conexión fue reiniciada.`);
+        error.code = 'PG_SYNC_TIMEOUT';
+        throw error;
+      }
+    }
     const status = Atomics.load(ctrl, 0);
     const len = Atomics.load(ctrl, 1);
     const payload = JSON.parse(dec.decode(data.subarray(0, len)));
