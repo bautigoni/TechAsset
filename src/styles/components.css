@@ -3145,31 +3145,47 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
   box-shadow: 0 24px 70px rgba(30, 80, 160, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
-/* ============= Métricas/categorías: grid auto-fit pareja ============= */
-/* Dashboard y Dispositivos: las cards de stats/filtros se redistribuyen
-   solas sin dejar huecos verticales ni columnas muertas, sin importar
-   cuántas categorías haya cargadas. */
+/* ============= Métricas/categorías: filas siempre completas ============= */
+/* Flex y no grid, a propósito: con grid, la última fila conserva el ancho de
+   columna y una categoría suelta quedaba chiquita con un hueco al lado
+   (6 categorías => 5 + 1). Con flex-wrap + flex-grow, las tarjetas de la
+   última fila se reparten el ancho sobrante y la fila siempre queda completa,
+   con cualquier cantidad de categorías y en cualquier monitor.
+   El ancho base (--card-basis) lo mide Dashboard.tsx sobre el contenedor real;
+   el valor de reserva mantiene el layout usable si el JS todavía no corrió.
+   Estas reglas ganan por especificidad a las definiciones de .stats-grid de
+   más arriba, que quedan para las otras vistas. */
 .dashboard-stat-groups .stats-grid,
 .device-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   align-items: stretch;
   margin-bottom: 16px;
 }
-.dashboard-stat-groups .stats-grid .stat-card,
-.device-filter-grid .stat-card {
+.dashboard-stat-groups .stats-grid > .stat-card,
+.device-filter-grid > .stat-card {
+  flex: 1 1 var(--card-basis, 170px);
   min-width: 0;
   min-height: 100px;
 }
-.dashboard-stat-groups .stats-grid.stats-main .stat-card {
+/* Total / Disponibles / Prestados: base más ancha para que sean 3 en una fila
+   mientras entren, y que al no entrar se estiren en vez de dejar hueco. */
+.dashboard-stat-groups .stats-grid.stats-main > .stat-card {
+  flex: 1 1 240px;
   min-height: 120px;
 }
 @media (max-width: 640px) {
   .dashboard-stat-groups .stats-grid,
   .device-filter-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 10px;
+  }
+  .dashboard-stat-groups .stats-grid > .stat-card,
+  .device-filter-grid > .stat-card {
+    flex-basis: var(--card-basis, 140px);
+  }
+  .dashboard-stat-groups .stats-grid.stats-main > .stat-card {
+    flex-basis: 150px;
   }
 }
 
