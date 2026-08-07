@@ -45,11 +45,27 @@ export function formatTimeOnly(value?: string): string {
   return directTime ? `${directTime[1].padStart(2, '0')}:${directTime[2]}` : value;
 }
 
+const LOAN_TZ = 'America/Argentina/Buenos_Aires';
+
+// Día calendario (YYYY-MM-DD) en horario de Argentina.
+function localDayKey(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: LOAN_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
+}
+
+// Diferencia en días de CALENDARIO, no en ventanas de 24 horas: un préstamo
+// de ayer 20:00 visto hoy 09:00 son 13 horas, pero es "1 día", no "Hoy".
 export function loanAgeDays(value?: string): number {
   if (!value) return 0;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 0;
-  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+  const loanDay = Date.parse(`${localDayKey(date)}T00:00:00Z`);
+  const today = Date.parse(`${localDayKey(new Date())}T00:00:00Z`);
+  return Math.max(0, Math.round((today - loanDay) / 86400000));
 }
 
 export function loanAgeLabel(value?: string): string {
