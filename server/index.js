@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'node:path';
@@ -36,6 +37,10 @@ getDb();
 startNotificationWorkers();
 
 const app = express();
+// gzip para HTML/CSS/JS/JSON. El CSS del bundle pasa de ~250 kB a ~46 kB y las
+// respuestas de /api/devices bajan muchísimo. No asumimos que el reverse proxy
+// comprima: en Caddy el `encode` es opt-in.
+app.use(compression());
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
@@ -75,8 +80,24 @@ app.use('/api', toolsRouter);
 app.use('/api', operationsRouter);
 
 const distDir = path.join(config.rootDir, 'dist');
-app.use(express.static(distDir));
+// Los assets de Vite llevan hash en el nombre: se pueden cachear para siempre y
+// el browser deja de revalidarlos en cada carga. index.html y sw.js, en cambio,
+// siempre se revalidan para que un deploy nuevo se tome enseguida.
+app.use('/assets', express.static(path.join(distDir, 'assets'), {
+  immutable: true,
+  maxAge: '1y'
+}));
+app.use(express.static(distDir, {
+  maxAge: '1h',
+  setHeaders(res, filePath) {
+    const name = path.basename(filePath);
+    if (name === 'index.html' || name === 'sw.js' || name === 'manifest.webmanifest') {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 app.get('*', (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(distDir, 'index.html'), error => {
     if (error) res.status(200).send('TechAsset - NFS backend activo. En desarrollo abrí http://127.0.0.1:5173; para producción ejecutá npm run build.');
   });

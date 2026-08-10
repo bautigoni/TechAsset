@@ -13,6 +13,34 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="TechAsset" />
+    <!--
+      Speculation Rules (estándar web, sin librerías): el browser prerenderiza el
+      destino de un link antes del click (hover / touchstart) con eagerness moderate.
+      Soporte parcial (Chromium sí, Safari/Firefox lo ignoran sin romper nada).
+      Ojo: TechAsset navega client-side (setView), así que esto solo aplica a las
+      pocas navegaciones reales de documento (landing → /login, deep links pegados).
+      Excluimos todo lo que NO es una página: API, descargas, uploads y logout —
+      prerenderizarlas dispararía efectos (descargas, cierre de sesión).
+    -->
+    <script type="speculationrules">
+      {
+        "prerender": [{
+          "where": {
+            "and": [
+              { "href_matches": "/*" },
+              { "not": { "href_matches": "/api/*" } },
+              { "not": { "href_matches": "/uploads/*" } },
+              { "not": { "href_matches": "/downloads/*" } },
+              { "not": { "href_matches": "/logout" } },
+              { "not": { "selector_matches": "[rel~=nofollow]" } },
+              { "not": { "selector_matches": "[download]" } },
+              { "not": { "selector_matches": "[data-no-prerender]" } }
+            ]
+          },
+          "eagerness": "moderate"
+        }]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

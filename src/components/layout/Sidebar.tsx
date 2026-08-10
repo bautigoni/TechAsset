@@ -74,9 +74,10 @@ export function getStairsMargin(index: number, activeIndex: number): number {
   return 5;
 }
 
-export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null, themeProfile = 'classic', impersonating = false }: {
+export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null, themeProfile = 'classic', impersonating = false }: {
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
+  onPrefetch?: (view: ViewKey) => void;
   open: boolean;
   onClose: () => void;
   collapsed: boolean;
@@ -95,6 +96,12 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
     onNavigate(view);
     onClose();
   };
+  // Hover/foco/touch = intención de click: pedimos el chunk de la vista antes del click.
+  const warm = (view: ViewKey) => ({
+    onMouseEnter: () => onPrefetch?.(view),
+    onFocus: () => onPrefetch?.(view),
+    onTouchStart: () => onPrefetch?.(view)
+  });
 
   if (hasVariantNav(themeProfile)) {
     const style = variantStyle(themeProfile);
@@ -130,6 +137,7 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
                   className={`nav-item ${stairs ? 'stairs' : ''} ${peek ? 'peek' : ''} ${isActive ? 'active' : ''}`.replace(/\s+/g, ' ').trim()}
                   style={stairs ? { marginLeft: getStairsMargin(index, activeIndex) } : undefined}
                   onClick={() => navigate(item.key)}
+                  {...warm(item.key)}
                   aria-label={item.label}
                   aria-current={isActive ? 'page' : undefined}
                 >
@@ -168,7 +176,7 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
           {mainNav.map(item => {
             const Icon = item.Icon;
             return (
-              <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
+              <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} {...warm(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
                 <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={2.1} /></span>
                 <span className="nav-label">{item.label}</span>
               </button>
@@ -179,7 +187,7 @@ export function Sidebar({ active, onNavigate, open, onClose, collapsed, onToggle
           {bottomNav.map(item => {
             const Icon = item.Icon;
             return (
-              <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
+              <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} {...warm(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
                 <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={2.1} /></span>
                 <span className="nav-label">{item.label}</span>
               </button>

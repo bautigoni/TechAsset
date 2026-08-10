@@ -11,6 +11,9 @@ export function useDevices(search: string, siteCode = '') {
   const refreshInFlight = useRef<Promise<void> | null>(null);
   const hasDevices = useRef(false);
   const requestSeq = useRef(0);
+  // Huella del último payload: el auto-refresh corre cada 5s y casi siempre trae
+  // exactamente lo mismo. Comparar acá evita re-renderizar tabla + dashboard al pedo.
+  const payloadKey = useRef('');
 
   const refresh = useCallback((options: { force?: boolean; wait?: boolean } = {}) => {
     if (!siteCode) return Promise.resolve();
@@ -21,11 +24,18 @@ export function useDevices(search: string, siteCode = '') {
       try {
         const data = await getDevices(options);
         if (requestId !== requestSeq.current) return;
-        const nextDevices = withOperationalAliases(data.items);
-        hasDevices.current = nextDevices.length > 0;
-        setDevices(nextDevices);
+        const nextKey = JSON.stringify(data.items);
+        const unchanged = hasDevices.current && nextKey === payloadKey.current;
+        // Poll de fondo sin novedades: cortamos antes de tocar estado.
+        if (unchanged && !options.force) return;
+        payloadKey.current = nextKey;
+        if (!unchanged) {
+          const nextDevices = withOperationalAliases(data.items);
+          hasDevices.current = nextDevices.length > 0;
+          setDevices(nextDevices);
+        }
         const lastImportAt = typeof data.diagnostics?.lastImportAt === 'string' ? data.diagnostics.lastImportAt : '';
-        const syncState: SyncStatus['state'] = nextDevices.length || lastImportAt ? 'ok' : 'warning';
+        const syncState: SyncStatus['state'] = data.items.length || lastImportAt ? 'ok' : 'warning';
         const cacheNote = lastImportAt ? `última importación: ${lastImportAt}` : 'base local sin importación registrada';
         const diagMessage = typeof data.diagnostics?.message === 'string' ? data.diagnostics.message : '';
         setSync({ state: syncState, loadedAt: data.loadedAt, message: diagMessage || `${data.source} · ${cacheNote}` });
@@ -47,6 +57,7 @@ export function useDevices(search: string, siteCode = '') {
     requestSeq.current += 1;
     refreshInFlight.current = null;
     hasDevices.current = false;
+    payloadKey.current = '';
     setDevices([]);
     setSync({ state: 'loading', message: `Cargando inventario ${siteCode}...` });
     refresh();

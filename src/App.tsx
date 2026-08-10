@@ -1,29 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { AuthUser, Device, Movement, SiteInfo, TaskState, ViewKey } from './types';
 import { Sidebar, visibleNavItems } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { MobileNav } from './components/layout/MobileNav';
-import { AssistantPanel } from './components/assistant/AssistantPanel';
 import { applyThemeProfile, isSmartProfile, profileForThemeAndStyle, readThemeProfile, saveThemeProfile, variantStyle, THEME_PROFILE_EVENT, type ThemeProfile } from './utils/themeProfile';
 import { getUserPrefs } from './services/userPrefsApi';
+import { lazyView, prefetchView, prefetchViewsWhenIdle } from './utils/lazyView';
 import { Dashboard } from './components/dashboard/Dashboard';
-import { DevicesPage } from './components/devices/DevicesPage';
-import { DeviceProfile } from './components/devices/DeviceProfile';
-import { AddDeviceModal } from './components/devices/AddDeviceModal';
-import { LoansPage } from './components/loans/LoansPage';
-import { InventoryPage } from './components/inventory/InventoryPage';
-import { AgendaPage } from './components/agenda/AgendaPage';
-import { TasksPage } from './components/tasks/TasksPage';
-import { RemindersPage } from './components/reminders/RemindersPage';
-import { SchedulesPage } from './components/schedules/SchedulesPage';
-import { PettyCashPage } from './components/pettycash/PettyCashPage';
-import { SuggestionsPage } from './components/suggestions/SuggestionsPage';
-import { AnalyticsPage } from './components/analytics/AnalyticsPage';
-import { SettingsPage } from './components/settings/SettingsPage';
-import { ToolsPage } from './components/tools/ToolsPage';
-import { QuickAccessPage } from './components/tools/QuickAccessPage';
-import { ClassroomStatusPage } from './components/classrooms/ClassroomStatusPage';
-import { TicketsPage } from './components/tickets/TicketsPage';
 import { useOperator } from './hooks/useOperator';
 import { useDevices } from './hooks/useDevices';
 import { useAgenda } from './hooks/useAgenda';
@@ -34,13 +17,38 @@ import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
 import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
-import { LoginPage } from './components/auth/LoginPage';
-import { LandingPage } from './components/auth/LandingPage';
-import { TenantsDashboard } from './components/settings/TenantsDashboard';
 import { activeSiteRole, canViewModule, isReadOnlyRole, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
 import { parseScannedCode, resolveDeviceMatches } from './utils/normalizeSearch';
 import type { AssistantContext } from './services/assistantApi';
+
+// Cada vista viaja en su propio chunk: el bundle inicial baja de ~570 kB a lo que
+// hace falta para pintar el dashboard. Los chunks del resto se precargan en idle
+// (ver prefetchViewsWhenIdle más abajo), así el cambio de vista sigue siendo
+// instantáneo. La clave del lazyView es la ViewKey para poder prefetchear por nav.
+const DevicesPage = lazyView('devices', () => import('./components/devices/DevicesPage'), 'DevicesPage');
+const LoansPage = lazyView('loans', () => import('./components/loans/LoansPage'), 'LoansPage');
+const InventoryPage = lazyView('inventory', () => import('./components/inventory/InventoryPage'), 'InventoryPage');
+const AnalyticsPage = lazyView('analytics', () => import('./components/analytics/AnalyticsPage'), 'AnalyticsPage');
+const AgendaPage = lazyView('agenda', () => import('./components/agenda/AgendaPage'), 'AgendaPage');
+const SchedulesPage = lazyView('schedules', () => import('./components/schedules/SchedulesPage'), 'SchedulesPage');
+const TasksPage = lazyView('tasks', () => import('./components/tasks/TasksPage'), 'TasksPage');
+const RemindersPage = lazyView('reminders', () => import('./components/reminders/RemindersPage'), 'RemindersPage');
+const PettyCashPage = lazyView('pettycash', () => import('./components/pettycash/PettyCashPage'), 'PettyCashPage');
+const SuggestionsPage = lazyView('suggestions', () => import('./components/suggestions/SuggestionsPage'), 'SuggestionsPage');
+const ClassroomStatusPage = lazyView('classrooms', () => import('./components/classrooms/ClassroomStatusPage'), 'ClassroomStatusPage');
+const ToolsPage = lazyView('tools', () => import('./components/tools/ToolsPage'), 'ToolsPage');
+const QuickAccessPage = lazyView('quickaccess', () => import('./components/tools/QuickAccessPage'), 'QuickAccessPage');
+const TicketsPage = lazyView('tickets', () => import('./components/tickets/TicketsPage'), 'TicketsPage');
+const TenantsDashboard = lazyView('tenants', () => import('./components/settings/TenantsDashboard'), 'TenantsDashboard');
+const SettingsPage = lazyView('settings', () => import('./components/settings/SettingsPage'), 'SettingsPage');
+// Fuera del nav: modales y pantallas de auth. La landing solo la ve quien no
+// tiene sesión, así que no tiene por qué pesar en el bundle del que ya entró.
+const DeviceProfile = lazyView('device-profile', () => import('./components/devices/DeviceProfile'), 'DeviceProfile');
+const AddDeviceModal = lazyView('add-device', () => import('./components/devices/AddDeviceModal'), 'AddDeviceModal');
+const AssistantPanel = lazyView('assistant', () => import('./components/assistant/AssistantPanel'), 'AssistantPanel');
+const LoginPage = lazyView('login', () => import('./components/auth/LoginPage'), 'LoginPage');
+const LandingPage = lazyView('landing', () => import('./components/auth/LandingPage'), 'LandingPage');
 
 export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
@@ -112,19 +120,47 @@ export function App() {
     if (user) setOperator(user.nombre || user.email);
   }, [user, setOperator]);
 
+  // Movimientos: un solo pedido a la vez y sin re-render cuando el historial no
+  // cambió. Antes se pedía desde el auto-refresh y además cada vez que cambiaba
+  // la identidad de devices/agenda/tasks: varias llamadas por segundo al pedo.
+  const movementsInFlight = useRef<Promise<void> | null>(null);
+  const movementsKey = useRef('');
+  // force = después de una mutación: no reusar un pedido que salió antes del cambio.
+  const refreshMovements = useCallback((force = false) => {
+    if (movementsInFlight.current && !force) return movementsInFlight.current;
+    const promise = getMovements()
+      .then(data => {
+        const nextKey = JSON.stringify(data.items);
+        if (nextKey === movementsKey.current) return;
+        movementsKey.current = nextKey;
+        setMovements(data.items);
+      })
+      .catch(() => { /* el historial no es crítico para operar */ })
+      .finally(() => { movementsInFlight.current = null; });
+    movementsInFlight.current = promise;
+    return promise;
+  }, []);
+
+  // La URL sí sigue a la vista (deep link + refresh del browser).
+  useEffect(() => {
+    if (!user || !activeSite) return;
+    const next = `/sede/${activeSite.toLowerCase()}/${view}`;
+    if (window.location.pathname !== next) window.history.replaceState(null, '', next);
+  }, [activeSite, view, user]);
+
+  // La recarga completa de datos, en cambio, solo al cambiar de sede o de usuario.
+  // Antes se disparaba en cada cambio de vista: un /api/devices?refresh=1 (que
+  // fuerza el merge completo del inventario) + agenda + tareas + movimientos cada
+  // vez que tocabas el menú. El auto-refresh ya mantiene todo fresco.
   useEffect(() => {
     if (!user || !activeSite) return;
     localStorage.setItem('techasset_active_site', activeSite);
-    const next = `/sede/${activeSite.toLowerCase()}/${view}`;
-    if (window.location.pathname !== next) window.history.replaceState(null, '', next);
-    if (user) {
-      void refresh({ force: true });
-      void agenda.refresh();
-      void tasks.refresh();
-      getMovements().then(data => setMovements(data.items)).catch(() => {});
-    }
+    void refresh({ force: true });
+    void agenda.refresh();
+    void tasks.refresh();
+    void refreshMovements(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSite, view, user?.id]);
+  }, [activeSite, user?.id]);
 
   // Settings de la sede activa (incluye módulos habilitados).
   const reloadSiteSettings = () => {
@@ -151,7 +187,7 @@ export function App() {
   useAutoRefresh(() => {
     if (document.hidden) return;
     void refresh();
-    getMovements().then(data => setMovements(data.items)).catch(() => {});
+    void refreshMovements();
   }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 5));
 
   useEffect(() => {
@@ -183,9 +219,8 @@ export function App() {
     return () => document.body.classList.remove('mobile-menu-open');
   }, [menuOpen]);
 
-  useEffect(() => {
-    getMovements().then(data => setMovements(data.items)).catch(() => setMovements([]));
-  }, [devices, agenda.items, tasks.items]);
+  // (El refetch de movimientos por cambio de devices/agenda/tasks se sacó: era
+  // redundante con el auto-refresh y con el refresh que hace cada mutación.)
 
   useEffect(() => {
     const code = search.trim().match(/\bD\s*0*\d{1,5}\b/i)?.[0]?.replace(/\s+/g, '').toUpperCase();
@@ -266,7 +301,7 @@ export function App() {
     await deleteDevice(device.etiqueta, operator);
     removeLocal(device.etiqueta);
     await refresh({ force: true, wait: true });
-    getMovements().then(data => setMovements(data.items)).catch(() => {});
+    void refreshMovements(true);
   };
 
   const onLend = async (payload: Record<string, unknown>) => {
@@ -275,7 +310,7 @@ export function App() {
       await refresh({ force: true, wait: true });
       return result;
     } finally {
-      getMovements().then(data => setMovements(data.items)).catch(() => {});
+      void refreshMovements(true);
     }
   };
 
@@ -285,7 +320,7 @@ export function App() {
       await refresh({ force: true, wait: true });
       return result;
     } finally {
-      getMovements().then(data => setMovements(data.items)).catch(() => {});
+      void refreshMovements(true);
     }
   };
 
@@ -347,6 +382,15 @@ export function App() {
     if (home) setActiveSite(home.siteCode);
   };
   const navItems = visibleNavItems(siteSettings, superadmin, access);
+  const navKeys = navItems.map(item => item.key).join(',');
+
+  // Con la sesión y los módulos resueltos, bajamos en idle los chunks de las
+  // vistas que este rol puede abrir + los modales que se usan en todas.
+  // Al hacer click el módulo ya está en memoria: cambio de vista instantáneo.
+  useEffect(() => {
+    if (!user || siteSettings === null) return;
+    prefetchViewsWhenIdle([...navKeys.split(',').filter(Boolean), 'device-profile', 'assistant']);
+  }, [navKeys, siteSettings, user]);
 
   if (authLoading) return <main className="login-shell"><section className="card login-card">Cargando sesión...</section></main>;
   if (!user) {
@@ -355,9 +399,13 @@ export function App() {
       window.history.replaceState(null, '', mode === 'landing' ? '/' : `/${mode}`);
     };
     if (authMode === 'landing') {
-      return <LandingPage onLogin={() => goMode('login')} onRegister={() => goMode('register')} />;
+      return (
+        <Suspense fallback={<main className="login-shell"><section className="card login-card">Cargando...</section></main>}>
+          <LandingPage onLogin={() => goMode('login')} onRegister={() => goMode('register')} />
+        </Suspense>
+      );
     }
-    return <LoginPage mode={authMode} onMode={mode => {
+    return <Suspense fallback={<main className="login-shell"><section className="card login-card">Cargando...</section></main>}><LoginPage mode={authMode} onMode={mode => {
       setAuthMode(mode);
       window.history.replaceState(null, '', mode === 'landing' ? '/' : `/${mode}`);
     }} onReady={session => {
@@ -368,14 +416,15 @@ export function App() {
       setActiveSite(site.siteCode);
       localStorage.setItem('techasset_active_site', site.siteCode);
       setView('dashboard');
-    }} />;
+    }} /></Suspense>;
   }
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar active={view} onNavigate={setView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
+      <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
       <main className="main main-content">
         <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} onOpenAssistant={() => setAssistantOpen(true)} />
+        <Suspense fallback={<section className="card"><span className="muted">Cargando vista...</span></section>}>
         {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={openLoanFlow} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onProfile={setProfile} initialCode={loanSeed} />}
@@ -393,24 +442,27 @@ export function App() {
         {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
+        </Suspense>
       </main>
-      <MobileNav items={navItems} active={view} onNavigate={setView} onMore={() => setMenuOpen(true)} themeProfile={themeProfile} />
-      <AssistantPanel
-        onNavigate={next => setView(next as ViewKey)}
-        onOpenDevice={deviceTag => {
-          const match = resolveDeviceMatches(devices, deviceTag)[0];
-          if (!match) return false;
-          setProfile(match);
-          return true;
-        }}
-        canEdit={!effectiveConsultation}
-        context={assistantContext || { type: 'view', view, label: view }}
-        open={assistantOpen}
-        onOpenChange={setAssistantOpen}
-        themeProfile={themeProfile}
-      />
-      {profile && <DeviceProfile device={profile} consultationMode={effectiveConsultation} onOpenDevice={setProfile} onClose={() => setProfile(null)} />}
-      {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}
+      <MobileNav items={navItems} active={view} onNavigate={setView} onPrefetch={prefetchView} onMore={() => setMenuOpen(true)} themeProfile={themeProfile} />
+      <Suspense fallback={null}>
+        <AssistantPanel
+          onNavigate={next => setView(next as ViewKey)}
+          onOpenDevice={deviceTag => {
+            const match = resolveDeviceMatches(devices, deviceTag)[0];
+            if (!match) return false;
+            setProfile(match);
+            return true;
+          }}
+          canEdit={!effectiveConsultation}
+          context={assistantContext || { type: 'view', view, label: view }}
+          open={assistantOpen}
+          onOpenChange={setAssistantOpen}
+          themeProfile={themeProfile}
+        />
+        {profile && <DeviceProfile device={profile} consultationMode={effectiveConsultation} onOpenDevice={setProfile} onClose={() => setProfile(null)} />}
+        {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}
+      </Suspense>
     </div>
   );
 }

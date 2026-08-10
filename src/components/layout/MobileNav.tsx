@@ -8,10 +8,11 @@ const MAX_SLOTS = 4;
 
 // Bottom nav flotante del Tema B (solo mobile, ver nav-smart.css).
 // En el tema clásico no renderiza nada, igual que siempre.
-export function MobileNav({ items, active, onNavigate, onMore, themeProfile = 'classic' }: {
+export function MobileNav({ items, active, onNavigate, onPrefetch, onMore, themeProfile = 'classic' }: {
   items: NavItem[];
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
+  onPrefetch?: (view: ViewKey) => void;
   onMore: () => void;
   themeProfile?: ThemeProfile;
 }) {
@@ -38,6 +39,7 @@ export function MobileNav({ items, active, onNavigate, onMore, themeProfile = 'c
               className={`bottom-nav-item ${isActive ? 'active' : ''}`}
               aria-current={isActive ? 'page' : undefined}
               onClick={() => onNavigate(item.key)}
+              onTouchStart={() => onPrefetch?.(item.key)}
             >
               <Icon size={22} strokeWidth={2.1} />
               <span>{item.label}</span>
