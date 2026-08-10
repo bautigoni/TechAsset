@@ -2,6 +2,10 @@ node_modules/
 dist/
 logs
 
+# Caché incremental de tsc: cada build la reescribe. Versionada rompía el
+# "git pull" del deploy en la VM (local changes would be overwritten by merge).
+*.tsbuildinfo
+
 # Variables de entorno reales (.env.example sí se versiona)
 .env
 .env.local
