@@ -957,7 +957,10 @@ body.menu-open{overflow:hidden}
 .analytics-filters .analytics-summary-pill.is-active{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
 .module-toggle-row{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;background:var(--panel-2);border:1px solid var(--border);cursor:pointer;font-size:14px}
 .module-toggle-row input{margin:0}
-.loan-person-field{position:relative}
+/* `display:block` porque el mismo campo se usa como <label> (préstamo de
+   equipos) y como <span> adentro de un <label> (cartelitos): sin esto el
+   segundo caso queda inline y el input no toma el ancho. */
+.loan-person-field{position:relative;display:block}
 .loan-suggest{position:absolute;z-index:30;top:100%;left:0;right:0;margin:4px 0 0;padding:4px;list-style:none;max-height:260px;overflow:auto;background:var(--panel);border:1px solid var(--surface-border-strong);border-radius:12px;box-shadow:var(--surface-shadow)}
 .loan-suggest li{margin:0}
 .loan-suggest button{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;background:transparent;border:0;border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--text)}

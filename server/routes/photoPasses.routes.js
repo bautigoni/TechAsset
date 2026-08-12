@@ -102,6 +102,97 @@ photoPassesRouter.get('/photo-passes/options', (req, res) => {
   res.json({ ok: true, alumnos, cursos, docentes });
 });
 
+/* Recomendador de personas, mismo criterio que el de préstamos de equipos.
+   El <datalist> nativo listaba todo lo que alguna vez se escribió, tal cual se
+   escribió: "mile", "Mile", "Mile STAFF", "mili", "Mili", "mili doe", "Mili
+   doe"... y encima ordenado alfabéticamente, así que lo que más usás quedaba
+   perdido en el medio. Acá se agrupa por nombre normalizado (misma persona
+   escrita distinto = una sola fila), se ordena por uso y por lo más reciente,
+   y se devuelve el curso y el docente con los que suele venir, para que elegir
+   al alumno complete el resto. */
+photoPassesRouter.get('/photo-passes/suggest', (req, res) => {
+  const siteCode = requireSite(req);
+  const q = normalizarNombre(req.query.q);
+  const campo = String(req.query.field || 'alumno').toLowerCase() === 'docente' ? 'docente' : 'alumno';
+
+  const filas = campo === 'alumno'
+    ? getDb().prepare(`
+        SELECT persona AS nombre, curso, docente AS acompania, timestamp
+        FROM photo_pass_events
+        WHERE site_code=? AND tipo='prestamo' AND TRIM(COALESCE(persona,''))<>''
+      `).all(siteCode)
+    : [
+        // Los horarios son el padrón real de docentes; el historial suma a los
+        // que aparecieron por préstamos o por cartelitos y no están en la grilla.
+        ...getDb().prepare("SELECT teacher AS nombre, '' AS curso, '' AS acompania, '' AS timestamp FROM teacher_schedule_entries WHERE site_code=? AND TRIM(COALESCE(teacher,''))<>''").all(siteCode),
+        ...getDb().prepare("SELECT docente AS nombre, curso, '' AS acompania, timestamp FROM photo_pass_events WHERE site_code=? AND TRIM(COALESCE(docente,''))<>''").all(siteCode),
+        ...getDb().prepare("SELECT persona AS nombre, curso, '' AS acompania, timestamp FROM loan_events WHERE site_code=? AND tipo='prestamo' AND TRIM(COALESCE(persona,''))<>''").all(siteCode)
+      ];
+
+  const grupos = new Map();
+  for (const fila of filas) {
+    const nombre = String(fila.nombre || '').trim();
+    const clave = normalizarNombre(nombre);
+    // Restos de pruebas: "123", "12", una letra suelta.
+    if (!clave || clave.length < 3 || !/\p{L}/u.test(clave) || /^\d+$/.test(clave)) continue;
+    if (q && !clave.includes(q)) continue;
+    let grupo = grupos.get(clave);
+    if (!grupo) { grupo = { veces: 0, ultimo: '', variantes: {}, cursos: {}, docentes: {} }; grupos.set(clave, grupo); }
+    grupo.veces += 1;
+    const ts = String(fila.timestamp || '');
+    if (ts && ts > grupo.ultimo) grupo.ultimo = ts;
+    contar(grupo.variantes, nombre);
+    contar(grupo.cursos, fila.curso);
+    contar(grupo.docentes, fila.acompania);
+  }
+
+  const items = [...grupos.values()]
+    .sort((a, b) => b.veces - a.veces || b.ultimo.localeCompare(a.ultimo))
+    .slice(0, 8)
+    .map(grupo => ({
+      nombre: mejorEscritura(grupo.variantes),
+      veces: grupo.veces,
+      ultimoAt: grupo.ultimo,
+      curso: masUsado(grupo.cursos),
+      docente: masUsado(grupo.docentes)
+    }));
+
+  res.json({ ok: true, items });
+});
+
+function normalizarNombre(value) {
+  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+}
+
+function contar(mapa, value) {
+  const clave = String(value || '').trim();
+  if (!clave) return;
+  mapa[clave] = (mapa[clave] || 0) + 1;
+}
+
+/* De todas las formas en que se escribió un mismo nombre, cuál mostrar. Gana la
+   más repetida —los horarios cargan cada docente muchas veces con su escritura
+   buena— y, si empatan, la que arranca en mayúscula: entre "mile" y "Mile" se
+   muestra "Mile". */
+function mejorEscritura(variantes) {
+  let mejor = '';
+  let mejorCuenta = -1;
+  for (const [texto, cuenta] of Object.entries(variantes)) {
+    const empata = cuenta === mejorCuenta && /^\p{Lu}/u.test(texto) && !/^\p{Lu}/u.test(mejor);
+    if (cuenta > mejorCuenta || empata) { mejor = texto; mejorCuenta = cuenta; }
+  }
+  return mejor;
+}
+
+function masUsado(mapa) {
+  let mejor = '';
+  let mejorCuenta = 0;
+  for (const [clave, cuenta] of Object.entries(mapa)) {
+    if (cuenta > mejorCuenta) { mejor = clave; mejorCuenta = cuenta; }
+  }
+  return mejor;
+}
+
 // Alta por rango: cargar del 1 al 30 de una sola vez sin repetir el formulario.
 photoPassesRouter.post('/photo-passes/generate', (req, res) => {
   const siteCode = requireSite(req);

@@ -6,6 +6,7 @@ import {
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { SkeletonLine } from '../layout/Skeleton';
+import { PersonSuggestInput } from './PersonSuggestInput';
 
 /**
  * Cartelitos de autorización de fotos, dentro de Préstamos.
@@ -120,8 +121,23 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
             setLending(null);
           }}>
             <label>Alumno
-              <input className="input" list="pass-alumnos" required autoFocus value={form.persona} onChange={event => setForm(v => ({ ...v, persona: event.target.value }))} placeholder="Nombre y apellido" />
-              <datalist id="pass-alumnos">{options.alumnos.map(value => <option key={value} value={value} />)}</datalist>
+              {/* Elegir al alumno completa curso y docente con los que suele
+                  venir: casi siempre es el mismo, y así queda un solo campo
+                  para llenar en vez de tres. */}
+              <PersonSuggestInput
+                field="alumno"
+                required
+                autoFocus
+                placeholder="Nombre y apellido"
+                value={form.persona}
+                onChange={persona => setForm(v => ({ ...v, persona }))}
+                onPick={item => setForm(v => ({
+                  ...v,
+                  persona: item.nombre,
+                  curso: v.curso || item.curso,
+                  docente: v.docente || item.docente
+                }))}
+              />
             </label>
             <div className="grid-2">
               <label>Curso
@@ -129,8 +145,12 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
                 <datalist id="pass-cursos">{options.cursos.map(value => <option key={value} value={value} />)}</datalist>
               </label>
               <label>Docente a cargo
-                <input className="input" list="pass-docentes" value={form.docente} onChange={event => setForm(v => ({ ...v, docente: event.target.value }))} placeholder="Con quién está" />
-                <datalist id="pass-docentes">{options.docentes.map(value => <option key={value} value={value} />)}</datalist>
+                <PersonSuggestInput
+                  field="docente"
+                  placeholder="Con quién está"
+                  value={form.docente}
+                  onChange={docente => setForm(v => ({ ...v, docente }))}
+                />
               </label>
             </div>
             <label>Motivo<input className="input" value={form.motivo} onChange={event => setForm(v => ({ ...v, motivo: event.target.value }))} placeholder="Acto, salida, proyecto... (opcional)" /></label>
