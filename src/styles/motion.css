@@ -60,6 +60,23 @@
   --tabs-dur: 260ms;
   --tabs-ease: var(--m-ease);
 
+  /* toggle */
+  --toggle-dur: 320ms;
+  --toggle-track: 180ms;
+
+  /* texto que cambia */
+  --text-swap-dur: 180ms;
+  --text-swap-translate-y: 6px;
+  --text-swap-blur: 2px;
+  --text-swap-ease: var(--m-ease);
+
+  /* shimmer de carga */
+  --shimmer-base: var(--muted);
+  --shimmer-highlight: var(--text);
+  --shimmer-band: 55%;
+  --shimmer-dur: 1.8s;
+  --shimmer-ease: linear;
+
   /* dígitos */
   --digit-dur: 420ms;
   --digit-distance: 10px;
@@ -128,6 +145,29 @@
     transform var(--modal-close-dur) var(--modal-ease),
     opacity   var(--modal-close-dur) var(--modal-ease),
     filter    var(--modal-close-dur) var(--modal-ease);
+}
+
+/* Par genérico para overlays que NO usan la estructura .modal/.modal-card
+   (ReleaseNotesModal, el popup de agenda). Sólo el overlay lleva la clase de
+   estado; la tarjeta de adentro la hereda por descendencia, así el llamador
+   maneja un solo string. El overlay se ocupa de la opacidad y la tarjeta sólo
+   de la escala: si las dos animaran opacidad, el fade se multiplicaría y la
+   tarjeta quedaría más transparente que el fondo. */
+.t-fade {
+  opacity: 0;
+  transition: opacity var(--modal-open-dur) var(--modal-ease);
+}
+.t-fade.is-open { opacity: 1; }
+.t-fade.is-closing { opacity: 0; transition-duration: var(--modal-close-dur); }
+
+.t-fade .t-pop {
+  transform: scale(var(--modal-scale));
+  transition: transform var(--modal-open-dur) var(--modal-ease);
+}
+.t-fade.is-open .t-pop { transform: scale(1); }
+.t-fade.is-closing .t-pop {
+  transform: scale(var(--modal-scale-close));
+  transition-duration: var(--modal-close-dur);
 }
 
 /* ================================================================
@@ -260,6 +300,53 @@
 }
 .tasks-subnav.t-tabs button { transition: color var(--tabs-dur) var(--tabs-ease); }
 
+/* Espacio de tareas (Equipo / Mis tareas). Eran dos tarjetas con borde propio,
+   así que el estado activo saltaba de una a la otra. Ahora el grupo es un solo
+   control —igual que la subnav de abajo— y lo que se mueve es la píldora. */
+.task-space-toggle.t-tabs {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 3px;
+  gap: 3px;
+}
+.task-space-toggle.t-tabs button,
+.task-space-toggle.t-tabs button.active {
+  background: transparent;
+  border-color: transparent;
+  transition: color var(--tabs-dur) var(--tabs-ease);
+}
+.task-space-toggle.t-tabs > .t-tabs-pill {
+  background: rgba(59, 130, 246, .16);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .6);
+  border-radius: 13px;
+}
+
+/* ================================================================
+   6b. TOGGLES — receta `toggle`.
+   El rebote corto al llegar sale de la curva spring que ya existía en
+   variables.css. Se aplica sobre las clases de switch que ya usa la
+   app, sin tocar el markup: así entran los dos sistemas de toggle
+   (el de checkbox y el de botón) de una.
+   ================================================================ */
+.switch-ui::after,
+.switch-knob {
+  transition:
+    transform var(--toggle-dur) var(--ease-spring),
+    background var(--toggle-track) var(--m-ease);
+}
+.switch,
+.switch-ui {
+  transition:
+    background var(--toggle-track) var(--m-ease),
+    border-color var(--toggle-track) var(--m-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch-ui::after,
+  .switch-knob { transition-duration: 1ms !important; }
+}
+
 /* ================================================================
    7. NÚMEROS — receta `number-pop-in`. Sólo para los KPI del
    dashboard, que son pocos y cambian poco. No usar en celdas de
@@ -306,6 +393,72 @@
 .t-digit-group.is-animating .t-digit[data-stagger="1"] { animation-delay: var(--digit-stagger); }
 .t-digit-group.is-animating .t-digit[data-stagger="2"] { animation-delay: calc(var(--digit-stagger) * 2); }
 .t-digit-group.is-animating .t-digit[data-stagger="3"] { animation-delay: calc(var(--digit-stagger) * 3); }
+
+/* ================================================================
+   7b. TEXTO QUE CAMBIA — receta `text-states-swap`.
+   Lo monta el <Button> compartido cuando su label es un string, así
+   todo "Guardar → Guardando…" de la app se anima solo.
+   ================================================================ */
+.t-text-swap {
+  display: inline-block;
+  transform: translateY(0);
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    transform var(--text-swap-dur) var(--text-swap-ease),
+    filter    var(--text-swap-dur) var(--text-swap-ease),
+    opacity   var(--text-swap-dur) var(--text-swap-ease);
+}
+.t-text-swap.is-exit {
+  transform: translateY(calc(var(--text-swap-translate-y) * -1));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+}
+.t-text-swap.is-enter-start {
+  transform: translateY(var(--text-swap-translate-y));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+  transition: none;
+}
+
+/* ================================================================
+   7c. CARGANDO — receta `shimmer-text`.
+   Una banda de luz barre las letras mientras se espera. Va sobre los
+   textos de carga, que antes eran texto plano y quieto: sin señal de
+   movimiento no se distingue "cargando" de "colgado".
+   El texto se duplica en ::before vía content: attr(data-text), así
+   que el elemento necesita ese atributo además del contenido.
+   ================================================================ */
+.t-shimmer {
+  position: relative;
+  display: inline-block;
+  color: var(--shimmer-base);
+}
+.t-shimmer::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 40%,
+    var(--shimmer-highlight) 50%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-size: var(--shimmer-band) 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: t-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite;
+}
+@keyframes t-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: 0% 0; }
+}
 
 /* ================================================================
    8. ERROR — receta `error-state-shake`. Feedback de formulario:

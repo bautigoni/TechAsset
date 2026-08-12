@@ -3,6 +3,7 @@ import type { Classroom, ClassroomCategory, ClassroomEquipmentItem, ClassroomEqu
 import { fetchClassroom, fetchClassroomHistory, fetchClassroomIncidents, generateClassroomHealth, updateClassroom, type ClassroomHealthReport } from '../../services/classroomsApi';
 import { Button } from '../layout/Button';
 import { RelatedReminders } from '../reminders/RelatedReminders';
+import { useCloseChoreography } from '../../hooks/useMountTransition';
 
 // Igual que en Modal.tsx: tiene que coincidir con --modal-close-dur.
 const MODAL_CLOSE_MS = 150;
@@ -103,27 +104,17 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
 
   useEffect(()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context',{detail:{type:'classroom',id:roomKey,label:nombre,data:{piso}}}));return()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context-clear',{detail:{type:'classroom',id:roomKey}}));};},[roomKey,nombre,piso]);
 
-  // Misma coreografía que el <Modal> genérico: este panel no pasa por ese
-  // componente (tiene su propio layout de aula), así que orquesta las fases a
-  // mano. Sin esto quedaba como el único modal de la app que aparece de golpe.
-  const [phase, setPhase] = useState<'entering' | 'open' | 'closing'>('entering');
-  const closingRef = useRef(false);
-
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setPhase('open'));
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  // `saved` viaja hasta el padre (refresca el plano si se guardó), así que la
-  // salida animada tiene que preservarlo, no cerrar en seco.
+  // Este panel no pasa por <Modal> (tiene su propio layout de aula), así que
+  // usa el mismo hook de coreografía. `saved` viaja hasta el padre para que
+  // refresque el plano, así que se guarda en un ref: el hook cierra sin
+  // argumentos y ese dato no se puede perder en la salida animada.
+  const savedRef = useRef<boolean | undefined>(undefined);
+  const closeWithSaved = useCallback(() => onClose(savedRef.current), [onClose]);
+  const { stateClass, requestClose: runClose } = useCloseChoreography(closeWithSaved, MODAL_CLOSE_MS);
   const requestClose = useCallback((saved?: boolean) => {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-    if (reduced) { onClose(saved); return; }
-    setPhase('closing');
-    window.setTimeout(() => onClose(saved), MODAL_CLOSE_MS);
-  }, [onClose]);
+    savedRef.current = saved;
+    runClose();
+  }, [runClose]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -140,7 +131,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
     };
   }, [requestClose]);
 
-  const wrapClass = `modal t-modal classroom-modal-wrap ${phase === 'open' ? 'is-open' : phase === 'closing' ? 'is-closing' : ''}`.trim();
+  const wrapClass = `modal t-modal classroom-modal-wrap ${stateClass}`.trim();
 
   if (!draft) {
     return (

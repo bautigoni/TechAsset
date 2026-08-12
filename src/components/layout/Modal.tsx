@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { useEffect, type PropsWithChildren } from 'react';
 import { createPortal } from 'react-dom';
+import { useCloseChoreography } from '../../hooks/useMountTransition';
 
 type ModalSize = 'default' | 'wide' | 'full';
 
@@ -10,9 +11,6 @@ const openModals: object[] = [];
 // esperamos antes de desmontar para que se vea la animación de salida.
 const CLOSE_MS = 150;
 
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
 const SIZE_CLASS: Record<ModalSize, string> = {
   default: '',
@@ -21,32 +19,14 @@ const SIZE_CLASS: Record<ModalSize, string> = {
 };
 
 export function Modal({ title, children, onClose, wide = false, size }: PropsWithChildren<{ title: string; onClose: () => void; wide?: boolean; size?: ModalSize }>) {
-  // Fase de la animación. `entering` sólo dura un frame: hace falta que el
-  // nodo se pinte en su estado inicial (escalado y con blur) antes de que
-  // llegue .is-open, si no el browser no tiene qué interpolar.
-  const [phase, setPhase] = useState<'entering' | 'open' | 'closing'>('entering');
-  const closingRef = useRef(false);
+  // Cerrar es en dos tiempos: se marca .is-closing, corre la salida y recién
+  // ahí se le avisa al padre para que desmonte.
+  const { stateClass, requestClose } = useCloseChoreography(onClose, CLOSE_MS);
 
   useEffect(() => {
     document.body.classList.add('modal-open');
     return () => document.body.classList.remove('modal-open');
   }, []);
-
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setPhase('open'));
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  // Cerrar es en dos tiempos: marcamos .is-closing, dejamos correr la
-  // salida y recién ahí avisamos al padre para que desmonte. El ref evita
-  // que un doble click (o Escape + backdrop) dispare dos timers.
-  const requestClose = useCallback(() => {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    if (prefersReducedMotion()) { onClose(); return; }
-    setPhase('closing');
-    window.setTimeout(onClose, CLOSE_MS);
-  }, [onClose]);
 
   // Escape cierra, igual que el modal de aula. Antes el único escape era la "x".
   // Con modales encimados solo responde el último abierto, para no cerrar los
@@ -72,7 +52,7 @@ export function Modal({ title, children, onClose, wide = false, size }: PropsWit
 
   return createPortal(
     <div
-      className={`modal t-modal ${phase === 'open' ? 'is-open' : phase === 'closing' ? 'is-closing' : ''}`.trim()}
+      className={`modal t-modal ${stateClass}`.trim()}
       role="dialog"
       aria-modal="true"
       // Solo el backdrop cierra: un click que empezó adentro de la tarjeta

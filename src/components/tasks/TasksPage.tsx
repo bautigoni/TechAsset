@@ -17,6 +17,7 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
   const [space, setSpace] = useState<'my' | 'team'>('team');
   const [tab, setTab] = useState<'board' | 'priority'>('board');
   const tabPill = useTabPill<HTMLDivElement>(tab);
+  const spacePill = useTabPill<HTMLDivElement>(space);
   const [columns, setColumns] = useState<TaskColumn[]>([]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaskItem | null>(null);
@@ -40,7 +41,11 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
 
   return <section className="view active tasks-workspace">
     <div className="tasks-compact-toolbar card">
-      <div className="task-space-toggle" aria-label="Espacio de tareas"><button className={space === 'team' ? 'active' : ''} onClick={() => setSpace('team')}>Equipo</button><button className={space === 'my' ? 'active' : ''} onClick={() => setSpace('my')}>Mis tareas</button></div>
+      <div className="task-space-toggle t-tabs" aria-label="Espacio de tareas" ref={spacePill.ref}>
+        <span className="t-tabs-pill" style={spacePill.style} aria-hidden="true" />
+        <button className={space === 'team' ? 'active' : ''} data-tab-active={space === 'team'} onClick={() => setSpace('team')}>Equipo</button>
+        <button className={space === 'my' ? 'active' : ''} data-tab-active={space === 'my'} onClick={() => setSpace('my')}>Mis tareas</button>
+      </div>
       <div className="tasks-subnav t-tabs" ref={tabPill.ref}>
         <span className="t-tabs-pill" style={tabPill.style} aria-hidden="true" />
         <button className={tab === 'board' ? 'active' : ''} data-tab-active={tab === 'board'} onClick={() => setTab('board')}>Tablero</button>

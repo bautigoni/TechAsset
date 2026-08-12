@@ -399,7 +399,7 @@ export function App() {
     prefetchViewsWhenIdle([...navKeys.split(',').filter(Boolean), 'device-profile', 'assistant']);
   }, [navKeys, siteSettings, user]);
 
-  if (authLoading) return <main className="login-shell"><section className="card login-card">Cargando sesión...</section></main>;
+  if (authLoading) return <main className="login-shell"><section className="card login-card"><span className="t-shimmer" data-text="Cargando sesión...">Cargando sesión...</span></section></main>;
   if (!user) {
     const goMode = (mode: 'landing' | 'login' | 'register') => {
       setAuthMode(mode);
@@ -407,12 +407,12 @@ export function App() {
     };
     if (authMode === 'landing') {
       return (
-        <Suspense fallback={<main className="login-shell"><section className="card login-card">Cargando...</section></main>}>
+        <Suspense fallback={<main className="login-shell"><section className="card login-card"><span className="t-shimmer" data-text="Cargando...">Cargando...</span></section></main>}>
           <LandingPage onLogin={() => goMode('login')} onRegister={() => goMode('register')} />
         </Suspense>
       );
     }
-    return <Suspense fallback={<main className="login-shell"><section className="card login-card">Cargando...</section></main>}><LoginPage mode={authMode} onMode={mode => {
+    return <Suspense fallback={<main className="login-shell"><section className="card login-card"><span className="t-shimmer" data-text="Cargando...">Cargando...</span></section></main>}><LoginPage mode={authMode} onMode={mode => {
       setAuthMode(mode);
       window.history.replaceState(null, '', mode === 'landing' ? '/' : `/${mode}`);
     }} onReady={session => {
@@ -436,7 +436,7 @@ export function App() {
             árbol viejo para animar la salida agrega espera, y en una app de
             trabajo la espera se siente como lentitud. */}
         <div key={view} className="view-enter">
-        <Suspense fallback={<section className="card"><span className="muted">Cargando vista...</span></section>}>
+        <Suspense fallback={<section className="card"><span className="t-shimmer" data-text="Cargando vista...">Cargando vista...</span></section>}>
         {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onProfile={setProfile} initialCode={loanSeed} />}

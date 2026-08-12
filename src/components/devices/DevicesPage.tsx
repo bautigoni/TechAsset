@@ -7,8 +7,6 @@ import { DeviceTable } from './DeviceTable';
 import { DeviceGroupsManager } from './DeviceGroupsManager';
 import { AddDeviceModal } from './AddDeviceModal';
 import { downloadDevicesCsv, importDevicesFromCsv } from '../../services/devicesApi';
-import { GooeyMenu } from '../layout/GooeyMenu';
-import { Boxes, PackagePlus, Upload } from 'lucide-react';
 
 type DeviceFilter = string;
 type DeviceSort = 'default' | 'operational';
@@ -168,21 +166,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
               <option value="default">Orden original</option>
               <option value="operational">Ordenar por número operativo</option>
             </select>
-            {/* El "+" del gooey junta las tres acciones de alta de la página. */}
-            {!consultationMode && (
-              <GooeyMenu
-                ariaLabel="Agregar dispositivo"
-                // Va primero en la fila (los botones de exportar vienen
-                // después), así que abre hacia la derecha: al revés se saldría
-                // por el borde de la tarjeta.
-                direction="right"
-                items={[
-                  { id: 'add', label: 'Agregar dispositivo', icon: <PackagePlus size={16} />, onSelect: () => setAdding(true) },
-                  { id: 'groups', label: 'Grupos de dispositivos', icon: <Boxes size={16} />, onSelect: () => setGroupsOpen(true) },
-                  { id: 'import', label: 'Importar CSV', icon: <Upload size={16} />, onSelect: importCsv }
-                ]}
-              />
-            )}
+            {!consultationMode && <Button onClick={importCsv}>Importar CSV</Button>}
             <Button onClick={() => exportCsv('/api/devices/export/inventory.csv', 'techasset_inventario.csv')}>Exportar inventario</Button>
             <Button onClick={() => exportCsv('/api/devices/export/summary.csv', 'techasset_resumen.csv')}>Exportar resumen</Button>
             <Button onClick={() => exportCsv('/api/movements/export.csv', 'techasset_movimientos.csv')}>Exportar movimientos</Button>
