@@ -1,10 +1,16 @@
 import { config } from '../config.js';
-import { getDb, getLocalStates } from '../db.js';
+import { getDb, getLocalStates, isPg } from '../db.js';
 
 const diagnosticsBySite = new Map();
 
+// El origen que se muestra en la barra de estado tiene que decir la verdad:
+// el mismo código corre sobre Postgres o SQLite según el driver configurado.
+function dbLabel() {
+  return isPg() ? 'Base Postgres' : 'Base local SQLite';
+}
+
 const baseDiagnostics = {
-  source: 'Base local SQLite',
+  source: '',
   lastSuccessfulReadAt: '',
   lastExternalFetchMs: 0,
   lastParseMs: 0,
@@ -35,7 +41,7 @@ export async function getMergedDevices({ siteCode = config.defaultSiteCode || 'N
     const items = buildLocalInventory(normalizedSite);
     const loadedAt = new Date().toISOString();
     const lastImport = getLastImport(normalizedSite);
-    const source = lastImport ? `Base local SQLite · Última importación: ${lastImport}` : 'Base local SQLite';
+    const source = lastImport ? `${dbLabel()} · Última importación: ${lastImport}` : dbLabel();
     const diagnostics = setDiagnostics(normalizedSite, {
       ...baseDiagnostics,
       source,
@@ -54,7 +60,7 @@ export async function getMergedDevices({ siteCode = config.defaultSiteCode || 'N
     const message = error instanceof Error ? error.message : String(error || 'Error local');
     const diagnostics = setDiagnostics(normalizedSite, {
       ...baseDiagnostics,
-      source: 'Error en base local SQLite',
+      source: `Error en ${dbLabel()}`,
       lastSuccessfulReadAt: loadedAt,
       lastTotalMs: Date.now() - started,
       lastError: message
@@ -65,14 +71,14 @@ export async function getMergedDevices({ siteCode = config.defaultSiteCode || 'N
 
 export function invalidateDeviceInventoryCache(reason = 'manual', siteCode = config.defaultSiteCode || 'NFPT') {
   const normalizedSite = normalizeSite(siteCode);
-  setDiagnostics(normalizedSite, { ...getDiagnostics(normalizedSite), source: `SQLite invalidado: ${reason}`, cacheAgeSeconds: null });
+  setDiagnostics(normalizedSite, { ...getDiagnostics(normalizedSite), source: `${dbLabel()} invalidada: ${reason}`, cacheAgeSeconds: null });
 }
 
 export function getDeviceInventoryDiagnostics(siteCode = config.defaultSiteCode || 'NFPT') {
   const normalizedSite = normalizeSite(siteCode);
   return {
     ...getDiagnostics(normalizedSite),
-    source: getDiagnostics(normalizedSite).source || 'Base local SQLite',
+    source: getDiagnostics(normalizedSite).source || dbLabel(),
     memoryCacheReady: true,
     localStateCacheAgeSeconds: null,
     lastImportAt: getLastImport(normalizedSite)
