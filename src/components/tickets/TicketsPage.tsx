@@ -10,6 +10,7 @@ import { Modal } from '../layout/Modal';
 import { TicketTemplateManager } from './TicketTemplateManager';
 import { TicketDetailModal } from './TicketDetailModal';
 import { GooeyMenu } from '../layout/GooeyMenu';
+import { useCardResize } from '../../hooks/useCardResize';
 import { LayoutTemplate, TicketPlus } from 'lucide-react';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
@@ -107,6 +108,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'todos' | TicketState>('todos');
   const [sourceFilter, setSourceFilter] = useState<'todos' | TicketSource>('todos');
+  const gridResizeRef = useCardResize<HTMLDivElement>(`${filter}:${sourceFilter}`);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -313,7 +315,9 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
       {loading && <div className="tool-info" style={{ marginTop: 12 }}>Cargando tickets…</div>}
       {!loading && visible.length === 0 && <div className="tool-info" style={{ marginTop: 12 }}>No hay tickets en este filtro.</div>}
 
-      <div className="ticket-grid" style={{ marginTop: 12 }}>
+      {/* Cambiar de filtro cambia cuántas tarjetas entran, así que la grilla
+          cambia de alto. Con el resize se estira en vez de saltar. */}
+      <div className="ticket-grid t-resize" style={{ marginTop: 12 }} ref={gridResizeRef}>
         {visible.map(ticket => (
           <section className="ticket-card" key={ticket.id}>
             {/* A5: header limpio con #numero azul + badge estado */}

@@ -7,6 +7,8 @@ import { TaskCard } from './TaskCard';
 import { TaskAnalytics } from './TaskAnalytics';
 import { createTaskColumn, deleteTaskColumn, getTaskColumns, reorderTaskColumns, updateTaskColumn } from '../../services/tasksApi';
 import { useTabPill } from '../../hooks/useTabPill';
+import { useCardResize } from '../../hooks/useCardResize';
+import { AnimatedNumber } from '../layout/AnimatedNumber';
 import { GooeyMenu } from '../layout/GooeyMenu';
 import { Lock, Users } from 'lucide-react';
 
@@ -18,6 +20,7 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
   const [tab, setTab] = useState<'board' | 'priority'>('board');
   const tabPill = useTabPill<HTMLDivElement>(tab);
   const spacePill = useTabPill<HTMLDivElement>(space);
+  const resizeRef = useCardResize<HTMLDivElement>(`${space}:${tab}`);
   const [columns, setColumns] = useState<TaskColumn[]>([]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaskItem | null>(null);
@@ -68,9 +71,15 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
     </div>
     {message && <div className="tool-info">{message}</div>}
 
-    {tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} onSave={onSave} onMove={onMove} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onCreateColumn={createColumn} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle">{byPriority[priority].length}</span></header><div className="task-schedule-list">{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
+    {/* El alto entre Tablero y Prioridad (y entre Equipo y Mis tareas) cambia
+        bastante. Sin esto el bloque salta de una altura a la otra y el resto de
+        la página pega un tirón; ahora se estira. */}
+    <div className="t-resize" ref={resizeRef}>
+    {tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} onSave={onSave} onMove={onMove} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onCreateColumn={createColumn} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle"><AnimatedNumber value={byPriority[priority].length} /></span></header><div className="task-schedule-list">{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
 
     {space === 'team' && <TaskAnalytics tasks={visibleTasks} />}
+    </div>
+
     {creating && <TaskModal operator={operator} defaultVisibility={space === 'my' ? 'private' : 'team'} onClose={() => setCreating(false)} onSave={onSave} />}
     {editing && <TaskModal operator={operator} initial={editing} defaultVisibility={editing.visibility || 'team'} onClose={() => setEditing(null)} onSave={onSave} />}
 

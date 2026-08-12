@@ -64,6 +64,17 @@
   --toggle-dur: 320ms;
   --toggle-track: 180ms;
 
+  /* card resize */
+  --resize-dur: 300ms;
+  --resize-ease: var(--m-ease);
+
+  /* badge de notificaciones */
+  --badge-pop-dur: 320ms;
+  --badge-fade-dur: 180ms;
+  --badge-pop-close-dur: 180ms;
+  --badge-fade-close-dur: 140ms;
+  --badge-blur: 3px;
+
   /* texto que cambia */
   --text-swap-dur: 180ms;
   --text-swap-translate-y: 6px;
@@ -395,6 +406,18 @@
 .t-digit-group.is-animating .t-digit[data-stagger="3"] { animation-delay: calc(var(--digit-stagger) * 3); }
 
 /* ================================================================
+   6c. CARD RESIZE — receta `card-resize`.
+   El alto lo escribe useCardResize (el CSS no tweenea contra `auto`).
+   Sirve para que al cambiar de Tablero a Prioridad, o de Equipo a Mis
+   tareas, el bloque no salte de una altura a la otra.
+   ================================================================ */
+.t-resize {
+  transition:
+    width  var(--resize-dur) var(--resize-ease),
+    height var(--resize-dur) var(--resize-ease);
+}
+
+/* ================================================================
    7b. TEXTO QUE CAMBIA — receta `text-states-swap`.
    Lo monta el <Button> compartido cuando su label es un string, así
    todo "Guardar → Guardando…" de la app se anima solo.
@@ -458,6 +481,34 @@
 @keyframes t-shimmer {
   0%   { background-position: 100% 0; }
   100% { background-position: 0% 0; }
+}
+
+/* ================================================================
+   7d. BADGE — receta `notification-badge`.
+   El contador de la campana aparecía y desaparecía de golpe: llegaba
+   una notificación y nada la anunciaba. Ahora entra con un pop corto
+   y se va encogiendo con blur.
+   Se monta sobre `.notif-badge`, que ya está posicionado por
+   components.css — la receta sólo aporta el movimiento.
+   ================================================================ */
+.notif-badge.t-badge-dot {
+  transform-origin: center;
+  transform: scale(1);
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    transform var(--badge-pop-dur)  var(--ease-spring),
+    opacity   var(--badge-fade-dur) var(--m-ease),
+    filter    var(--badge-pop-dur)  var(--m-ease);
+}
+.notif-badge.t-badge-dot.is-hidden {
+  transform: scale(0);
+  opacity: 0;
+  filter: blur(var(--badge-blur));
+  transition:
+    transform var(--badge-pop-close-dur)  var(--m-ease),
+    opacity   var(--badge-fade-close-dur) var(--m-ease),
+    filter    var(--badge-pop-close-dur)  var(--m-ease);
 }
 
 /* ================================================================
@@ -698,7 +749,10 @@ table th.num { font-variant-numeric: tabular-nums; }
     transform: none !important;
     filter: none !important;
   }
-  .t-tabs-pill { transition: none !important; }
+  .t-tabs-pill,
+  .t-resize,
+  .t-text-swap { transition: none !important; }
+  .t-shimmer::before { animation: none !important; }
   /* El gooey conserva el despliegue (sin él los satélites no existen),
      pero sin amague ni stagger: el movimiento se vuelve funcional. */
   .t-goo-blob,

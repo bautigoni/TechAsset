@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ViewKey } from '../../types';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useMountTransition } from '../../hooks/useMountTransition';
+import { AnimatedNumber } from './AnimatedNumber';
 import type { AppNotification } from '../../services/notificationsApi';
 
 function kindToView(kind: string): ViewKey | null {
@@ -84,6 +85,9 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
   if (toast) lastToastRef.current = toast;
   const toastShown = toast || lastToastRef.current;
 
+  const lastBadgeRef = useRef('0');
+  if (unread > 0) lastBadgeRef.current = unread > 9 ? '9+' : String(unread);
+
   return (
     <div className="notif-wrap" ref={wrapRef}>
       <button type="button" className="notif-bell" aria-label="Notificaciones" onClick={() => setOpen(o => !o)}>
@@ -91,7 +95,16 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
-        {unread > 0 && <span className="notif-badge">{unread > 9 ? '9+' : unread}</span>}
+        {/* Siempre montado: si se desmontara al llegar a cero, la salida no se
+            vería (mismo problema que tenían los modales). Se esconde con la
+            clase y retiene el último número para tener qué dibujar mientras
+            se encoge. */}
+        <span
+          className={`notif-badge t-badge-dot ${unread > 0 ? '' : 'is-hidden'}`.trim()}
+          aria-hidden={unread === 0}
+        >
+          <AnimatedNumber value={lastBadgeRef.current} />
+        </span>
       </button>
 
       {popover.mounted && (
