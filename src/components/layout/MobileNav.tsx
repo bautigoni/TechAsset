@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, X } from 'lucide-react';
 import type { ViewKey } from '../../types';
 import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
 import type { NavItem } from './Sidebar';
@@ -8,12 +8,13 @@ const MAX_SLOTS = 4;
 
 // Bottom nav flotante del Tema B (solo mobile, ver nav-smart.css).
 // En el tema clásico no renderiza nada, igual que siempre.
-export function MobileNav({ items, active, onNavigate, onPrefetch, onMore, themeProfile = 'classic' }: {
+export function MobileNav({ items, active, onNavigate, onPrefetch, onMore, menuOpen = false, themeProfile = 'classic' }: {
   items: NavItem[];
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
   onPrefetch?: (view: ViewKey) => void;
   onMore: () => void;
+  menuOpen?: boolean;
   themeProfile?: ThemeProfile;
 }) {
   if (!hasVariantNav(themeProfile) || items.length === 0) return null;
@@ -47,9 +48,14 @@ export function MobileNav({ items, active, onNavigate, onPrefetch, onMore, theme
           );
         })}
         {hasMore && (
-          <button type="button" className="bottom-nav-item more-btn" onClick={onMore} aria-label="Más secciones">
-            <MoreHorizontal size={22} strokeWidth={1.7} />
-            <span>Más</span>
+          <button type="button" className="bottom-nav-item more-btn" onClick={onMore} aria-label={menuOpen ? 'Cerrar menú' : 'Más secciones'} aria-expanded={menuOpen}>
+            {/* Los dos íconos apilados y cruzados con blur: el botón no cambia
+                de tamaño al pasar de "más" a "cerrar". */}
+            <span className="t-icon-swap" data-state={menuOpen ? 'b' : 'a'} aria-hidden="true">
+              <span className="t-icon" data-icon="a"><MoreHorizontal size={22} strokeWidth={1.7} /></span>
+              <span className="t-icon" data-icon="b"><X size={22} strokeWidth={1.7} /></span>
+            </span>
+            <span>{menuOpen ? 'Cerrar' : 'Más'}</span>
           </button>
         )}
       </div>

@@ -68,6 +68,32 @@
   --resize-dur: 300ms;
   --resize-ease: var(--m-ease);
 
+  /* icon swap */
+  --icon-swap-dur: 220ms;
+  --icon-swap-blur: 3px;
+  --icon-swap-start-scale: 0.7;
+  --icon-swap-ease: var(--m-ease);
+
+  /* páginas lado a lado */
+  --page-slide-distance: 24px;
+  --page-slide-dur: 380ms;
+  --page-fade-dur: 260ms;
+  --page-blur: 3px;
+  --page-slide-ease: var(--m-ease-entrance);
+  --page-fade-ease: var(--m-ease);
+
+  /* barras de progreso */
+  --bar-dur: 520ms;
+
+  /* tilde de éxito */
+  --check-opacity-dur: 220ms;
+  --check-rotate-dur: 420ms;
+  --check-blur-dur: 260ms;
+  --check-path-dur: 380ms;
+  --check-path-delay: 80ms;
+  --check-rotate-from: -18deg;
+  --check-blur-from: 4px;
+
   /* badge de notificaciones */
   --badge-pop-dur: 320ms;
   --badge-fade-dur: 180ms;
@@ -333,6 +359,14 @@
   border-radius: 13px;
 }
 
+/* Switch de login/registro: acá el activo se marca con subrayado, no con
+   fondo. La barra ahora se desliza entre las dos opciones en vez de saltar. */
+.auth-switch.t-tabs > .t-tabs-pill {
+  background: var(--accent);
+  border-radius: 2px;
+}
+.auth-switch.t-tabs button.active { border-bottom-color: transparent; }
+
 /* ================================================================
    6b. TOGGLES — receta `toggle`.
    El rebote corto al llegar sale de la curva spring que ya existía en
@@ -484,6 +518,66 @@
 }
 
 /* ================================================================
+   7c-bis. ICON SWAP — receta `icon-swap`.
+   Los dos íconos viven apilados en la misma celda de grid y se
+   cruzan con blur, así el botón no cambia de tamaño ni pega un salto
+   cuando el ícono cambia. Va en los botones que abren y cierran algo:
+   el "Más" de la nav mobile y el colapso del sidebar.
+   ================================================================ */
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  transition:
+    opacity   var(--icon-swap-dur) var(--icon-swap-ease),
+    filter    var(--icon-swap-dur) var(--icon-swap-ease),
+    transform var(--icon-swap-dur) var(--icon-swap-ease);
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+  opacity: 0;
+  filter: blur(var(--icon-swap-blur));
+  transform: scale(var(--icon-swap-start-scale));
+}
+
+/* ================================================================
+   7e. PÁGINAS LADO A LADO — receta `page-side-by-side`.
+   Landing / Login / Registro comparten shell: en vez de reemplazarse
+   de golpe, entran desde el lado del que vienen. La dirección la da
+   data-page, así el movimiento cuenta hacia dónde vas.
+   ================================================================ */
+.t-page-slide { position: relative; }
+.t-page-slide .t-page[data-page-id="1"] { --t-page-from-x: calc(var(--page-slide-distance) * -1); }
+.t-page-slide .t-page[data-page-id="2"] { --t-page-from-x: var(--page-slide-distance); }
+.t-page-slide .t-page {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(var(--t-page-from-x, 0px));
+  filter: blur(var(--page-blur));
+  transition:
+    opacity   var(--page-fade-dur)  var(--page-fade-ease),
+    transform var(--page-slide-dur) var(--page-slide-ease),
+    filter    var(--page-slide-dur) var(--page-slide-ease);
+}
+.t-page-slide[data-page="1"] .t-page[data-page-id="1"],
+.t-page-slide[data-page="2"] .t-page[data-page-id="2"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  filter: blur(0);
+}
+
+/* ================================================================
    7d. BADGE — receta `notification-badge`.
    El contador de la campana aparecía y desaparecía de golpe: llegaba
    una notificación y nada la anunciaba. Ahora entra con un pop corto
@@ -510,6 +604,75 @@
     opacity   var(--badge-fade-close-dur) var(--m-ease),
     filter    var(--badge-pop-close-dur)  var(--m-ease);
 }
+
+/* ================================================================
+   7g. BARRAS DE PROGRESO.
+   Estaban sin transición: al cambiar el dato el relleno saltaba a su
+   nueva posición. Ahora fluye con la curva spring, que le da el
+   asentamiento corto al llegar — que es lo que se lee como líquido en
+   una barra.
+   Nota: el goo de blobs fusionándose es para un pulgar arrastrable
+   (un slider). Estas barras son de sólo lectura, no tienen pulgar,
+   así que ese filtro no tendría a qué agarrarse.
+
+   EXCEPCIÓN CONSCIENTE a la regla de no animar `width`: `.parque-bar`
+   es una barra segmentada en flex, donde el ancho ES el layout — con
+   `scaleX` los segmentos se superpondrían en vez de repartirse. Y en
+   las otras dos, `scaleX` deformaría el border-radius de las puntas.
+   El costo acá es acotado: son barras de 3 a 10px de alto, hay pocas
+   en pantalla y sólo se mueven cuando cambia el dato, no en loop.
+   ================================================================ */
+.assistant-bar-fill,
+.inv-kpi-progress i b,
+.parque-bar i {
+  transition: width var(--bar-dur) var(--ease-spring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-bar-fill,
+  .inv-kpi-progress i b,
+  .parque-bar i { transition-duration: 1ms !important; }
+}
+
+/* ================================================================
+   7f. SUCCESS CHECK — receta `success-check`.
+   El tilde se dibuja solo mientras el conjunto entra con un giro
+   corto y blur. Va SÓLO en los dos cierres reales del flujo de
+   préstamos (prestar y devolver): es el momento en que el operario
+   necesita confirmación sin leer. No se usa en cada guardado.
+   ================================================================ */
+.t-success-check {
+  display: inline-block;
+  transform-origin: center;
+  opacity: 0;
+  flex: 0 0 auto;
+}
+.t-success-check svg { display: block; overflow: visible; }
+/* 20 es el largo del path de abajo; con puntas redondeadas cualquier
+   sobrepaso de subpíxel es invisible. */
+.t-success-check svg path {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+}
+.t-success-check[data-state="in"] {
+  animation:
+    t-check-fade   var(--check-opacity-dur) var(--m-ease)        forwards,
+    t-check-rotate var(--check-rotate-dur)  var(--ease-spring)   forwards,
+    t-check-blur   var(--check-blur-dur)    var(--m-ease)        forwards;
+}
+.t-success-check[data-state="in"] svg path {
+  animation: t-check-draw var(--check-path-dur) var(--m-ease-entrance) var(--check-path-delay) forwards;
+}
+@keyframes t-check-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes t-check-rotate {
+  from { transform: rotate(var(--check-rotate-from)); }
+  to   { transform: rotate(0deg); }
+}
+@keyframes t-check-blur {
+  from { filter: blur(var(--check-blur-from)); }
+  to   { filter: blur(0); }
+}
+@keyframes t-check-draw { to { stroke-dashoffset: 0; } }
 
 /* ================================================================
    8. ERROR — receta `error-state-shake`. Feedback de formulario:

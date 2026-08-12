@@ -456,7 +456,7 @@ export function App() {
         </Suspense>
         </div>
       </main>
-      <MobileNav items={navItems} active={view} onNavigate={setView} onPrefetch={prefetchView} onMore={() => setMenuOpen(true)} themeProfile={themeProfile} />
+      <MobileNav items={navItems} active={view} onNavigate={setView} onPrefetch={prefetchView} onMore={() => setMenuOpen(open => !open)} menuOpen={menuOpen} themeProfile={themeProfile} />
       <Suspense fallback={null}>
         <AssistantPanel
           onNavigate={next => setView(next as ViewKey)}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { AuthUser, SiteInfo } from '../../types';
 import { getGoogleOAuthConfig, login, register } from '../../services/authApi';
+import { useTabPill } from '../../hooks/useTabPill';
+import { useCardResize } from '../../hooks/useCardResize';
 
 type AuthMode = 'landing' | 'login' | 'register';
 
@@ -42,6 +44,8 @@ export function LoginPage({ mode, onMode, onReady }: {
   onReady: (session: { user: AuthUser; sites: SiteInfo[] }) => void;
 }) {
   const activeMode = mode === 'register' ? 'register' : 'login';
+  const authPill = useTabPill<HTMLDivElement>(activeMode, 'underline');
+  const authResizeRef = useCardResize<HTMLDivElement>(activeMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
@@ -121,12 +125,15 @@ export function LoginPage({ mode, onMode, onReady }: {
           <p>{activeMode === 'register' ? 'Necesitás un código de invitación de tu administrador.' : 'Usá tu mail autorizado para tu sede.'}</p>
         </div>
 
-        <div className="auth-switch" role="tablist">
-          <button type="button" role="tab" aria-selected={activeMode === 'login'} className={activeMode === 'login' ? 'active' : ''} onClick={() => onMode('login')}>Iniciar sesión</button>
-          <button type="button" role="tab" aria-selected={activeMode === 'register'} className={activeMode === 'register' ? 'active' : ''} onClick={() => onMode('register')}>Registrarse</button>
+        <div className="auth-switch t-tabs" role="tablist" ref={authPill.ref}>
+          <span className="t-tabs-pill" style={authPill.style} aria-hidden="true" />
+          <button type="button" role="tab" aria-selected={activeMode === 'login'} data-tab-active={activeMode === 'login'} className={activeMode === 'login' ? 'active' : ''} onClick={() => onMode('login')}>Iniciar sesión</button>
+          <button type="button" role="tab" aria-selected={activeMode === 'register'} data-tab-active={activeMode === 'register'} className={activeMode === 'register' ? 'active' : ''} onClick={() => onMode('register')}>Registrarse</button>
         </div>
 
-        <div className="auth-fields">
+        {/* Registrarse suma campos (nombre, código), así que el panel cambia de
+            alto. Con el resize se estira en vez de dar un salto. */}
+        <div className="auth-fields t-resize" ref={authResizeRef}>
           {activeMode === 'register' && (
             <label>Nombre
               <input className="auth-input" required value={nombre} onChange={event => setNombre(event.target.value)} placeholder="Tu nombre" autoComplete="name" />

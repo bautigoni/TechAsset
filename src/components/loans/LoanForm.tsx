@@ -57,7 +57,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const [showSuggest, setShowSuggest] = useState(false);
   const [continuousScan, setContinuousScan] = useState(false);
   const [scanItems, setScanItems] = useState<ScanItem[]>([]);
-  const [scanMessage, setScanMessage] = useState<{ tone: 'info' | 'warn' | 'error'; text: string } | null>(null);
+  const [scanMessage, setScanMessage] = useState<{ tone: 'info' | 'warn' | 'error'; text: string; success?: boolean } | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -162,7 +162,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     setBusy(true);
     try {
       const result = await onLend(data);
-      setScanMessage({ tone: result && result.synced === false ? 'warn' : 'info', text: result?.message || 'Préstamo registrado.' });
+      const synced = !(result && result.synced === false);
+      setScanMessage({ tone: synced ? 'info' : 'warn', text: result?.message || 'Préstamo registrado.', success: synced });
       reset();
     } catch (error) {
       setScanMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo registrar el préstamo.' });
@@ -179,7 +180,8 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     setBusy(true);
     try {
       const result = await onReturn(data);
-      setScanMessage({ tone: result && result.synced === false ? 'warn' : 'info', text: result?.message || 'Devolución registrada.' });
+      const synced = !(result && result.synced === false);
+      setScanMessage({ tone: synced ? 'info' : 'warn', text: result?.message || 'Devolución registrada.', success: synced });
       reset();
     } catch (error) {
       setScanMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo registrar la devolución.' });
@@ -387,7 +389,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           {cameraOpen && <p className="muted">Cámara activa. Escaneá el QR con tu lector habitual o usala como apoyo visual.</p>}
         </div>
       )}
-      {!continuousScan && scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} />}
+      {!continuousScan && scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} success={scanMessage.success} />}
       {!continuousScan && unavailableMessage && <div className="tool-warning">{unavailableMessage}</div>}
       <button className={`toggle-row toggle-row-button ${continuousScan ? 'active' : ''}`} type="button" role="switch" aria-checked={continuousScan} onClick={toggleContinuous}>
         <span className="toggle-pill"><span /></span>
@@ -397,7 +399,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
       {continuousScan && (
         <div className="continuous-scan-panel">
-          {scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} />}
+          {scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} success={scanMessage.success} />}
           <div className="continuous-scan-summary">
             <span>Total: <strong>{scanItems.length}</strong></span>
             <span>Disponibles: <strong>{validScanItems.length}</strong></span>

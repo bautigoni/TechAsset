@@ -19,14 +19,31 @@ const TONE_CLASS: Record<ScanTone, string> = {
  * El `key` remonta el nodo en cada mensaje distinto: es lo que rearranca la
  * animación aunque el tono no cambie (dos errores seguidos también sacuden).
  */
-export function ScanMessage({ tone, text }: { tone: ScanTone; text: string }) {
+export function ScanMessage({ tone, text, success = false }: { tone: ScanTone; text: string; success?: boolean }) {
   return (
     <div
       key={`${tone}:${text}`}
       className={`${TONE_CLASS[tone]} t-msg-enter ${tone === 'error' ? 't-input is-shaking' : ''}`.trim()}
       role={tone === 'error' ? 'alert' : 'status'}
     >
+      {success && <SuccessCheck />}
       {text}
     </div>
+  );
+}
+
+/**
+ * Receta `success-check`. El tilde se dibuja solo mientras entra con un giro
+ * corto. Va únicamente en el cierre de prestar y devolver: es el momento en
+ * que el operario necesita confirmación sin llegar a leer el cartel. Meterlo
+ * en cada guardado le sacaría todo el peso.
+ */
+function SuccessCheck() {
+  return (
+    <span className="t-success-check" data-state="in" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M4 9.5 L7.5 13 L14 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
   );
 }

@@ -22,7 +22,16 @@ const HIDDEN: TabPillStyle = { transform: 'translateX(0)', width: '0px', top: '0
  * `data-tab-active="true"` y renderizar `<span className="t-tabs-pill" style={style} />`
  * como primer hijo.
  */
-export function useTabPill<T extends HTMLElement = HTMLDivElement>(activeKey: string | number) {
+/**
+ * `fill` cubre todo el botón (barras tipo píldora). `underline` deja una barra
+ * fina pegada al borde inferior, para las barras que marcan el activo con un
+ * subrayado en vez de un fondo.
+ */
+export type TabPillMode = 'fill' | 'underline';
+
+const UNDERLINE_HEIGHT = 2;
+
+export function useTabPill<T extends HTMLElement = HTMLDivElement>(activeKey: string | number, mode: TabPillMode = 'fill') {
   const ref = useRef<T | null>(null);
   const [style, setStyle] = useState<TabPillStyle>(HIDDEN);
 
@@ -34,14 +43,15 @@ export function useTabPill<T extends HTMLElement = HTMLDivElement>(activeKey: st
       setStyle(current => ({ ...current, opacity: 0 }));
       return;
     }
+    const underline = mode === 'underline';
     setStyle({
       transform: `translateX(${active.offsetLeft}px)`,
       width: `${active.offsetWidth}px`,
-      top: `${active.offsetTop}px`,
-      height: `${active.offsetHeight}px`,
+      top: `${underline ? active.offsetTop + active.offsetHeight - UNDERLINE_HEIGHT : active.offsetTop}px`,
+      height: `${underline ? UNDERLINE_HEIGHT : active.offsetHeight}px`,
       opacity: 1
     });
-  }, []);
+  }, [mode]);
 
   // useLayoutEffect: medir antes del paint evita que la píldora se vea un frame
   // en la posición vieja al cambiar de tab.
