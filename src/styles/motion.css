@@ -64,9 +64,15 @@
   --toggle-dur: 320ms;
   --toggle-track: 180ms;
 
+  /* esqueleto de carga */
+  --pulse-dur: 1.5s;
+  --pulse-min: .42;
+
   /* entrada escalonada */
-  --stagger-dur: 320ms;
-  --stagger-step: 40ms;
+  --stagger-dur: 380ms;
+  --stagger-step: 45ms;
+  --stagger-col-dur: 420ms;
+  --stagger-col-step: 60ms;
 
   /* card resize */
   --resize-dur: 300ms;
@@ -341,6 +347,28 @@
 }
 .tasks-subnav.t-tabs button { transition: color var(--tabs-dur) var(--tabs-ease); }
 
+/* ---- Esqueleto del tablero — receta `skeleton-reveal` -------------------
+   El pulso va en los bloques hijos y no en el contenedor, así el contenedor
+   queda libre para el cross-fade cuando llega el contenido real. */
+@keyframes t-skel-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: var(--pulse-min); }
+}
+.t-skel-col { display: grid; gap: 10px; align-content: start; }
+.t-skel-line,
+.t-skel-card {
+  border-radius: 12px;
+  background: var(--panel-2);
+  animation: t-skel-pulse var(--pulse-dur) ease-in-out infinite;
+}
+.t-skel-head { height: 22px; width: 55%; border-radius: 8px; }
+.t-skel-card { height: 84px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .t-skel-line,
+  .t-skel-card { animation: none !important; }
+}
+
 /* ---- Tarjeta de tarea ----------------------------------------------------
    Barra propia en vez del <progress> nativo (que se dibuja distinto en cada
    browser y no toma el tema), y las cuatro acciones detrás de un solo menú:
@@ -473,18 +501,36 @@
 /* Barra de Tareas en tres partes: solapas a la izquierda, el "+" al medio y el
    espacio a la derecha. Sin tarjeta de fondo — las píldoras ya se leen como
    controles y la caja alrededor sólo agregaba peso visual. */
+/* Grid de tres columnas y no space-between: con tres bloques de anchos
+   distintos, space-between deja el del medio corrido hacia el lado del bloque
+   más angosto. Con `1fr auto 1fr` el "+" cae en el centro real de la barra,
+   sin importar cuánto midan las píldoras de los costados. */
 .tasks-compact-toolbar {
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   background: transparent;
   border: 0;
   box-shadow: none;
   padding-left: 0;
   padding-right: 0;
 }
-.tasks-compact-toolbar .tasks-primary-actions {
+.tasks-compact-toolbar > .tasks-subnav { justify-self: start; }
+.tasks-compact-toolbar > .tasks-primary-actions {
+  justify-self: center;
   display: flex;
   align-items: center;
-  justify-content: center;
+}
+.tasks-compact-toolbar > .task-space-toggle { justify-self: end; }
+
+@media (max-width: 720px) {
+  /* En pantallas angostas los tres bloques no entran en una fila: pasan a
+     dos, con el "+" acompañando al espacio. */
+  .tasks-compact-toolbar {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+  .tasks-compact-toolbar > .task-space-toggle { grid-column: 1 / -1; justify-self: stretch; }
 }
 
 /* Espacio de tareas (Equipo / Mis tareas). Eran dos tarjetas con borde propio,
@@ -611,13 +657,33 @@
    muchas tarjetas un delay por fila arruina justo la fluidez que hay
    que cuidar. De la 11 en adelante entran todas juntas.
    ================================================================ */
+/* Entra desde el costado, no desde abajo: el tablero se lee en horizontal, así
+   que un desplazamiento lateral es el que cuenta que la lista se rearmó. */
 @keyframes t-list-enter {
-  from { opacity: 0; transform: translateY(8px) scale(.985); filter: blur(2px); }
+  from { opacity: 0; transform: translate3d(-22px, 6px, 0) scale(.965); filter: blur(3px); }
   to   { opacity: 1; transform: none; filter: blur(0); }
 }
 .t-stagger > * {
   animation: t-list-enter var(--stagger-dur) var(--m-ease-entrance) both;
 }
+
+/* Las columnas también entran de a una, corridas desde la derecha. Es lo que
+   hace que el cambio de espacio se lea como un barrido y no como un parpadeo.
+   Tope de 6: pasando eso el barrido se vuelve espera. */
+@keyframes t-col-enter {
+  from { opacity: 0; transform: translate3d(34px, 0, 0); filter: blur(3px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+.t-stagger-x > * {
+  animation: t-col-enter var(--stagger-col-dur) var(--m-ease-entrance) both;
+}
+.t-stagger-x > *:nth-child(1) { animation-delay: 0ms; }
+.t-stagger-x > *:nth-child(2) { animation-delay: calc(var(--stagger-col-step) * 1); }
+.t-stagger-x > *:nth-child(3) { animation-delay: calc(var(--stagger-col-step) * 2); }
+.t-stagger-x > *:nth-child(4) { animation-delay: calc(var(--stagger-col-step) * 3); }
+.t-stagger-x > *:nth-child(5) { animation-delay: calc(var(--stagger-col-step) * 4); }
+.t-stagger-x > *:nth-child(6) { animation-delay: calc(var(--stagger-col-step) * 5); }
+.t-stagger-x > *:nth-child(n + 7) { animation-delay: 0ms; }
 .t-stagger > *:nth-child(1)  { animation-delay: 0ms; }
 .t-stagger > *:nth-child(2)  { animation-delay: calc(var(--stagger-step) * 1); }
 .t-stagger > *:nth-child(3)  { animation-delay: calc(var(--stagger-step) * 2); }
@@ -1097,7 +1163,8 @@ table th.num { font-variant-numeric: tabular-nums; }
   .t-tabs-pill,
   .t-resize,
   .t-text-swap { transition: none !important; }
-  .t-stagger > * { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
+  .t-stagger > *,
+  .t-stagger-x > * { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
   .t-shimmer::before { animation: none !important; }
   /* El gooey conserva el despliegue (sin él los satélites no existen),
      pero sin amague ni stagger: el movimiento se vuelve funcional. */

@@ -8,6 +8,28 @@ import { TaskCard } from './TaskCard';
 import { useDragScroll } from '../../hooks/useDragScroll';
 import { AnimatedNumber } from '../layout/AnimatedNumber';
 
+/**
+ * Fantasma del tablero mientras cargan las columnas.
+ *
+ * Sin esto el tablero renderizaba vacío, la analítica de abajo saltaba hasta
+ * arriba y después la empujaban las columnas al llegar: parecía que la página
+ * cargaba dos veces. Ahora el espacio queda reservado desde el primer frame.
+ */
+export function TaskBoardSkeleton() {
+  return (
+    <div className="infinite-board-shell" aria-hidden="true">
+      <div className="infinite-board">
+        {[0, 1, 2].map(column => (
+          <section className="infinite-task-column t-skel-col" key={column}>
+            <div className="t-skel-line t-skel-head" />
+            {[0, 1, 2].map(card => <div className="t-skel-card" key={card} style={{ animationDelay: `${(column * 3 + card) * 90}ms` }} />)}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TaskBoard({ tasks, columns, operator, consultationMode, animKey = '', onSave, onMove, onDelete, onEdit, onRefresh, onRenameColumn, onDeleteColumn, onReorderColumns }: {
   tasks: TaskItem[];
   columns: TaskColumn[];
@@ -68,7 +90,9 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, animKey 
   return <>
   {moveError && <div className="tool-error">{moveError}</div>}
   <div className="infinite-board-shell" ref={pan.ref} onPointerDown={pan.onPointerDown}>
-    <div className="infinite-board" role="region" aria-label="Tablero horizontal de tareas">
+    {/* Las columnas entran corridas desde la derecha, de a una. La key las
+        remonta al cambiar de espacio o solapa para que el barrido se repita. */}
+    <div className="infinite-board t-stagger-x" role="region" aria-label="Tablero horizontal de tareas" key={animKey}>
       {columns.map(column => {
         const group = tasks.filter(task => task.columnId === column.id || (!task.columnId && task.estado === column.name));
         return <section className={`infinite-task-column ${dragOver === column.id ? 'drag-over' : ''}`} key={column.id} onDragOver={event => { event.preventDefault(); setDragOver(column.id); }} onDragLeave={() => setDragOver(value => value === column.id ? null : value)} onDrop={event => void drop(event, column)}>

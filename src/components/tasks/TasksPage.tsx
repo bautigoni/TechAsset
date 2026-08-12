@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { TaskColumn, TaskItem, TaskState } from '../../types';
 import { Button } from '../layout/Button';
-import { TaskBoard } from './TaskBoard';
+import { TaskBoard, TaskBoardSkeleton } from './TaskBoard';
 import { TaskModal } from './TaskModal';
 import { TaskCard } from './TaskCard';
 import { TaskAnalytics } from './TaskAnalytics';
@@ -29,7 +29,18 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
   // `null` = cerrado. Un string vacío abre el modal de nueva columna.
   const [columnDraft, setColumnDraft] = useState<string | null>(null);
 
-  const refreshColumns = useCallback(async () => { const response = await getTaskColumns(); setColumns(response.items); }, []);
+  // Las columnas llegan por red. Hasta que estén, el tablero se dibuja como
+  // esqueleto: si no, renderiza vacío, la analítica de abajo sube hasta el tope
+  // y después la empujan las columnas al llegar — parecía que cargaba dos veces.
+  const [columnsLoading, setColumnsLoading] = useState(true);
+  const refreshColumns = useCallback(async () => {
+    try {
+      const response = await getTaskColumns();
+      setColumns(response.items);
+    } finally {
+      setColumnsLoading(false);
+    }
+  }, []);
   useEffect(() => { refreshColumns().catch(() => setMessage('No se pudieron cargar las columnas.')); }, [refreshColumns]);
 
   const visibleTasks = useMemo(() => tasks.filter(task => {
@@ -83,7 +94,7 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
         bastante. Sin esto el bloque salta de una altura a la otra y el resto de
         la página pega un tirón; ahora se estira. */}
     <div className="t-resize" ref={resizeRef}>
-    {tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} animKey={`${space}:${tab}`} onSave={onSave} onMove={onMove} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle"><AnimatedNumber value={byPriority[priority].length} /></span></header><div className="task-schedule-list t-stagger" key={`${space}:${tab}`}>{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
+    {tab === 'board' && columnsLoading ? <TaskBoardSkeleton /> : tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} animKey={`${space}:${tab}`} onSave={onSave} onMove={onMove} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle"><AnimatedNumber value={byPriority[priority].length} /></span></header><div className="task-schedule-list t-stagger" key={`${space}:${tab}`}>{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
 
     {space === 'team' && <TaskAnalytics tasks={visibleTasks} />}
     </div>
