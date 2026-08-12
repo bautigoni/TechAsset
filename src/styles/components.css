@@ -2443,6 +2443,36 @@ body.consulta-mode #returnBtn {
   .inv-toolbar .inventory-segmented button{flex:1}
 }
 
+/* Accesos rápidos en la topbar (solo desktop; en mobile sigue siendo vista). */
+.quick-pop-wrap{position:relative;display:inline-flex}
+.quick-pop{
+  position:absolute;right:0;top:calc(100% + 8px);z-index:60;
+  width:min(340px,calc(100vw - 32px));max-height:min(70vh,520px);overflow:auto;
+  display:grid;gap:12px;padding:14px;
+  border:1px solid var(--border);border-radius:12px;background:var(--panel);
+  box-shadow:0 18px 44px rgba(0,0,0,.34);
+}
+.quick-pop-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.quick-pop-head strong{font-size:14px;color:var(--text)}
+.quick-pop-head button{appearance:none;border:0;background:transparent;color:var(--blue);font-size:12px;cursor:pointer}
+.quick-pop-head button:hover{text-decoration:underline}
+.quick-pop-group{display:grid;gap:2px}
+.quick-pop-group > span{
+  font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+  padding:6px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px;
+}
+.quick-pop-group a{
+  display:grid;gap:1px;padding:8px 10px;border-radius:8px;
+  color:var(--text);text-decoration:none;
+}
+.quick-pop-group a:hover{background:var(--panel-2)}
+.quick-pop-group a strong{font-size:13px;font-weight:550}
+.quick-pop-group a small{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quick-access-group{display:grid;gap:10px;margin-top:14px}
+.quick-access-group > h4{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+/* En mobile el módulo de la sidebar cubre esto: el botón sobra en la topbar. */
+@media (max-width:900px){ .quick-pop-wrap{display:none} }
+
 /* Barra apilada de condición: se lee de un vistazo, a diferencia del donut. */
 .parque-condition{display:grid;gap:12px}
 .parque-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--panel-2)}
@@ -3589,7 +3619,7 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
 .calendar-sync-steps { margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.7; }
 
 /* Horarios docentes y recreos */
-.schedules-page,.tasks-workspace,.petty-cash-page,.canvas-page{display:grid;gap:16px;min-width:0}
+.schedules-page,.tasks-workspace,.petty-cash-page,.canvas-page{display:grid;gap:22px;min-width:0}
 .planning-hero,.tasks-hero,.petty-hero{padding:clamp(18px,2.4vw,30px);display:flex;align-items:center;justify-content:space-between;gap:22px;min-width:0}
 .planning-hero h2,.tasks-hero h2,.petty-hero h2,.canvas-toolbar h2{margin:4px 0 6px;font-size:clamp(24px,2.4vw,36px)}
 .planning-hero p,.tasks-hero p,.petty-hero p{margin:0;color:var(--muted)}
@@ -3597,11 +3627,14 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
 .planning-tabs,.segmented-control,.tasks-subnav{display:flex;gap:5px;padding:5px;border:1px solid var(--border);border-radius:14px;background:var(--panel-2)}
 .planning-tabs button,.segmented-control button,.tasks-subnav button{border:0;border-radius:10px;padding:9px 14px;background:transparent;color:var(--muted);cursor:pointer;font-weight:700}
 .planning-tabs button.active,.segmented-control button.active,.tasks-subnav button.active{background:rgba(59,130,246,.2);color:var(--text);box-shadow:inset 0 0 0 1px rgba(59,130,246,.3)}
-.schedule-now-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.schedule-now-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
 .schedule-now{padding:16px;border-color:rgba(34,197,94,.35)}
 .schedule-now>span,.schedule-now small{display:block;color:var(--muted);font-size:12px}.schedule-now>span{color:#86efac;font-weight:800;text-transform:uppercase}.schedule-now p{margin:5px 0}
-.schedule-controls{padding:12px;display:grid;grid-template-columns:minmax(240px,1fr) auto auto;gap:10px;align-items:center}
-.schedule-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+.schedule-controls{padding:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.schedule-controls > .input{flex:1 1 260px;min-width:220px;height:42px}
+.schedule-controls > .segmented-control{flex:0 0 auto}
+.schedule-controls > .btn{flex:0 0 auto}
+.schedule-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:18px}
 .schedule-group{padding:18px}.schedule-group>header{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px}.schedule-group h3{margin:2px 0}.schedule-group>header span,.schedule-group>header>strong{color:var(--muted);font-size:12px}
 .schedule-days{display:grid;gap:16px;margin-top:14px}.schedule-days section{display:grid;gap:7px}.schedule-days h4{margin:0;color:#93c5fd;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
 .schedule-row{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px;border-radius:11px;background:var(--panel-2);border:1px solid transparent}.schedule-row:hover{border-color:var(--border)}.schedule-row time{font-weight:800}.schedule-row time small,.schedule-row div>span{display:block;color:var(--muted);font-size:11px}.schedule-row-actions{display:flex;gap:4px}.schedule-row-actions button,.recess-group-card header>button,.recess-slot>button{border:0;background:transparent;color:var(--muted);cursor:pointer}.schedule-row-actions button:hover{color:var(--text)}
@@ -4123,20 +4156,22 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
   border-radius: 16px;
   box-shadow: var(--surface-inset), 0 10px 28px rgba(0, 0, 0, .16);
   display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding: 7px;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  padding: 10px;
 }
 
 .schedule-level-tabs button {
-  background: transparent;
-  border: 1px solid transparent;
+  /* Sin borde, las pestañas inactivas quedaban como texto suelto y la fila no
+     se leía como un selector. */
+  background: var(--panel-2);
+  border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text);
   cursor: pointer;
   display: grid;
-  gap: 4px;
-  padding: 12px 14px;
+  gap: 5px;
+  padding: 16px 18px;
   position: relative;
   text-align: left;
   transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;

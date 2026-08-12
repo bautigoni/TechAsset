@@ -906,6 +906,8 @@ export function initDb(database = getDb()) {
   seedTaskColumns(database);
   seedClassroomCategories(database);
   migrateNewModuleSettings(database);
+  migrateRetiredModules(database);
+  migrateLegacyQuickLinks(database);
   cleanupNonDefaultSeedInventory(database);
   seedAllowedUsers(database);
   // Las migraciones de identidad usan RENAME/DROP TABLE (semántica SQLite).
@@ -1242,11 +1244,11 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'loan.gradeOptions': ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
-    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
-    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
+    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
+    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
     'roles.config': [
       { name: 'Administrador', admin: true, view: ['*'], edit: ['*'] },
-      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'] },
+      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'] },
       { name: 'Consulta', admin: false, view: ['*'], edit: [] }
     ],
     'shift.options': ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'],
@@ -1267,8 +1269,55 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
   for (const name of defaults['devices.categories']) catStmt.run(siteCode, name, ts, ts);
 }
 
+// Módulos retirados: se sacan de la config de cada sede para que no queden
+// colgados en el menú. Las tablas y la API no se tocan: los datos quedan.
+// Los accesos institucionales estaban hardcodeados en el front, así que nadie
+// podía editarlos. Se pasan a `quick_links` una sola vez, y solo para las sedes
+// que ya existían: un tenant nuevo arranca con la lista vacía, no con los links
+// de Northfield.
+const LEGACY_QUICK_LINKS = [
+  { titulo: 'Listas EP', descripcion: 'Planilla de listas de Escuela Primaria', url: 'https://docs.google.com/spreadsheets/d/1ppF2IBLxlLUTZ5HS35_C8SOy07VsjtI2WC9JGlqec7U/edit?gid=1611662790#gid=1611662790' },
+  { titulo: 'Listas ES', descripcion: 'Planilla de listas de Escuela Secundaria', url: 'https://docs.google.com/spreadsheets/d/1uVsdBk3McaT8WQI7Svv3e2wRvx6i5XpV52GlEasVJ0w/edit?gid=1617997660#gid=1617997660' },
+  { titulo: 'Hosking', descripcion: 'Portal Northfield Hosking', url: 'https://northfield.hosking.ar/' },
+  { titulo: 'Tiknology / InvGate', descripcion: 'Crear incidente en mesa de ayuda', url: 'https://tikno.sd.cloud.invgate.net/incident/create' },
+  { titulo: 'Drive TIC', descripcion: 'Carpeta general del equipo TIC', url: 'https://drive.google.com/drive/folders/0AGIDB9iIjXK4Uk9PVA' },
+  { titulo: 'Drive recursos presentaciones/pantalla', descripcion: 'Logos, imágenes y recursos visuales institucionales', url: 'https://drive.google.com/drive/folders/1uhfmwUrYrrWAEtTUGxjCO4xLoGVlGUEV' }
+];
+
+function migrateLegacyQuickLinks(database) {
+  const done = database.prepare("SELECT value FROM app_settings WHERE key='quicklinks.legacy_seeded'").get();
+  if (done?.value === '1') return;
+  const sites = database.prepare('SELECT site_code FROM sites WHERE COALESCE(activo,1)=1').all().map(row => row.site_code);
+  const ts = nowIso();
+  const exists = database.prepare('SELECT id FROM quick_links WHERE site_code=? AND url=? LIMIT 1');
+  const insert = database.prepare(`
+    INSERT INTO quick_links (site_code, titulo, url, descripcion, categoria, icono, creado_por, activo, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 'Institucionales', '', 'Sistema', 1, ?, ?)
+  `);
+  for (const siteCode of sites) {
+    for (const link of LEGACY_QUICK_LINKS) {
+      if (exists.get(siteCode, link.url)) continue;
+      insert.run(siteCode, link.titulo, link.url, link.descripcion, ts, ts);
+    }
+  }
+  database.prepare("INSERT INTO app_settings (key, value, updated_at) VALUES ('quicklinks.legacy_seeded','1',?) ON CONFLICT(key) DO UPDATE SET value='1', updated_at=excluded.updated_at").run(ts);
+}
+
+function migrateRetiredModules(database) {
+  const retired = new Set(['reminders']);
+  const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
+  const update = database.prepare('UPDATE site_settings SET value_json=? WHERE site_code=? AND key=?');
+  for (const row of rows) {
+    let list;
+    try { list = JSON.parse(row.value_json || '[]'); } catch { continue; }
+    if (!Array.isArray(list)) continue;
+    const next = list.filter(item => !retired.has(String(item)));
+    if (next.length !== list.length) update.run(JSON.stringify(next), row.site_code, row.key);
+  }
+}
+
 function migrateNewModuleSettings(database) {
-  const added = ['schedules', 'pettycash', 'suggestions', 'reminders'];
+  const added = ['schedules', 'pettycash', 'suggestions'];
   const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
   const update = database.prepare('UPDATE site_settings SET value_json=?, updated_at=? WHERE site_code=? AND key=?');
   const ts = nowIso();

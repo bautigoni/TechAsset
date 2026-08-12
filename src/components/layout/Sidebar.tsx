@@ -18,7 +18,6 @@ import {
   Ticket,
   Wrench,
   WalletCards,
-  BellRing,
   X
 } from 'lucide-react';
 import type { SiteInfo, ViewKey } from '../../types';
@@ -40,9 +39,7 @@ const NAV: NavItem[] = [
   { key: 'analytics', label: 'Analítica', Icon: BarChart3 },
   { key: 'agenda', label: 'Agenda TIC', Icon: CalendarDays },
   { key: 'schedules', label: 'Horarios', Icon: Clock3 },
-  { key: 'tasks', label: 'Tareas TIC', Icon: ClipboardCheck },
-  { key: 'reminders', label: 'Recordatorios', Icon: BellRing },
-  { key: 'pettycash', label: 'Caja chica', Icon: WalletCards },
+  { key: 'tasks', label: 'Tareas TIC', Icon: ClipboardCheck },  { key: 'pettycash', label: 'Caja chica', Icon: WalletCards },
   { key: 'classrooms', label: 'Estado aulas', Icon: School },
   { key: 'tickets', label: 'Tickets', Icon: Ticket },
   { key: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },

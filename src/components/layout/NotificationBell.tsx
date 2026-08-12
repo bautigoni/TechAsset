@@ -6,7 +6,6 @@ import type { AppNotification } from '../../services/notificationsApi';
 function kindToView(kind: string): ViewKey | null {
   if (kind.startsWith('task')) return 'tasks';
   if (kind.startsWith('ticket')) return 'tickets';
-  if (kind.startsWith('reminder')) return 'reminders';
   if (kind.startsWith('suggestion')) return 'suggestions';
   return null;
 }
@@ -15,7 +14,7 @@ function linkToView(link: string): ViewKey | null {
   const clean = String(link || '').split('?')[0].replace(/\/+$/, '');
   const match = clean.match(/\/sede\/[^/]+\/([^/]+)$/);
   const view = match?.[1] || clean.replace(/^\//, '');
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
   return allowed.includes(view as ViewKey) ? view as ViewKey : null;
 }
 

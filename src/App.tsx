@@ -33,7 +33,6 @@ const AnalyticsPage = lazyView('analytics', () => import('./components/analytics
 const AgendaPage = lazyView('agenda', () => import('./components/agenda/AgendaPage'), 'AgendaPage');
 const SchedulesPage = lazyView('schedules', () => import('./components/schedules/SchedulesPage'), 'SchedulesPage');
 const TasksPage = lazyView('tasks', () => import('./components/tasks/TasksPage'), 'TasksPage');
-const RemindersPage = lazyView('reminders', () => import('./components/reminders/RemindersPage'), 'RemindersPage');
 const PettyCashPage = lazyView('pettycash', () => import('./components/pettycash/PettyCashPage'), 'PettyCashPage');
 const SuggestionsPage = lazyView('suggestions', () => import('./components/suggestions/SuggestionsPage'), 'SuggestionsPage');
 const ClassroomStatusPage = lazyView('classrooms', () => import('./components/classrooms/ClassroomStatusPage'), 'ClassroomStatusPage');
@@ -433,7 +432,6 @@ export function App() {
         {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
         {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState) => tasks.move(id, state)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
-        {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
         {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
@@ -474,7 +472,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 

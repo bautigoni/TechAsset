@@ -5,6 +5,7 @@ import type { AuthUser, SiteInfo, SyncStatus, ViewKey } from '../../types';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
 import { NotificationBell } from './NotificationBell';
+import { QuickAccessPopover } from '../tools/QuickAccessPopover';
 import { TenantLogo } from './TenantLogo';
 
 const TITLES: Record<ViewKey, string> = {
@@ -15,9 +16,7 @@ const TITLES: Record<ViewKey, string> = {
   analytics: 'Analítica',
   agenda: 'Agenda TIC',
   schedules: 'Horarios',
-  tasks: 'Tareas TIC',
-  reminders: 'Recordatorios',
-  canvas: 'Canvas de proyectos',
+  tasks: 'Tareas TIC',  canvas: 'Canvas de proyectos',
   pettycash: 'Caja chica',
   classrooms: 'Estado aulas',
   tickets: 'Tickets',
@@ -176,6 +175,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
                 <path d="M5.8 15A7 7 0 0 0 17.4 17.4L20 15" />
               </svg>
             </button>
+            <QuickAccessPopover onOpenFull={() => onNavigate?.('quickaccess')} />
             <NotificationBell enabled={!!user} onNavigate={onNavigate} />
             <div className="account-menu-wrap">
               <button className="topbar-icon-btn account-trigger" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
@@ -222,7 +222,8 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
         <button className="theme-icon-btn" type="button" aria-label="Cambiar modo claro u oscuro" title="Modo claro / oscuro" onClick={onToggleTheme}>
           <span className="theme-icon-half" />
         </button>
-        <NotificationBell enabled={!!user} onNavigate={onNavigate} />
+        <QuickAccessPopover onOpenFull={() => onNavigate?.('quickaccess')} />
+            <NotificationBell enabled={!!user} onNavigate={onNavigate} />
         <div className="account-menu-wrap">
           <button className="account-chip" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
             <span className="account-avatar">{initials}</span>

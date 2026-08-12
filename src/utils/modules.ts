@@ -3,7 +3,7 @@ import type { ViewKey } from '../types';
 // Módulos que cada sede puede prender/apagar desde Configuración (rol manager).
 export type ModuleKey =
   | 'devices' | 'loans' | 'inventory' | 'analytics'
-  | 'agenda' | 'schedules' | 'tasks' | 'reminders' | 'pettycash' | 'classrooms' | 'tickets' | 'suggestions'
+  | 'agenda' | 'schedules' | 'tasks' | 'pettycash' | 'classrooms' | 'tickets' | 'suggestions'
   | 'tools' | 'quickaccess';
 
 export type ModuleCategory = 'Operación' | 'Análisis' | 'Planificación' | 'Aulas y soporte' | 'Comunicaciones';
@@ -20,7 +20,6 @@ export const TOGGLEABLE_MODULES: ToggleableModule[] = [
   { key: 'agenda', label: 'Agenda TIC', description: 'Reservas y planificación semanal.', category: 'Planificación', icon: '🗓️' },
   { key: 'schedules', label: 'Horarios', description: 'Horarios docentes y recreos por grupo.', category: 'Planificación', icon: '🕐' },
   { key: 'tasks', label: 'Tareas TIC', description: 'Tareas del equipo y seguimiento.', category: 'Planificación', icon: '✅' },
-  { key: 'reminders', label: 'Recordatorios', description: 'Avisos manuales con fecha y relación opcional.', category: 'Planificación', icon: '🔔' },
   { key: 'pettycash', label: 'Caja chica', description: 'Fondo fijo, gastos y solicitudes de compra.', category: 'Operación', icon: '💳' },
   { key: 'suggestions', label: 'Sugerencias', description: 'Ideas, votos y seguimiento transparente de mejoras.', category: 'Comunicaciones', icon: '💡' },
   { key: 'classrooms', label: 'Estado aulas', description: 'Revisión de proyectores y equipos por aula.', category: 'Aulas y soporte', icon: '🏫' },
