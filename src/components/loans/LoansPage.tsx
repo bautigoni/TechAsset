@@ -95,7 +95,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
               <div className="tool-error previous-loans-error">
                 <span>{previousError}</span>
                 <button type="button" onClick={() => void loadPreviousLoans()} disabled={previousLoading}>
-                  {previousLoading ? 'Cargando...' : 'Reintentar'}
+                  Reintentar
                 </button>
               </div>
             )}

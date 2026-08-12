@@ -3,6 +3,7 @@ import type { Device } from '../../types';
 import { classifyDeviceType } from '../../utils/classifyDevice';
 import { getAnalytics, type AnalyticsResponse } from '../../services/analyticsApi';
 import { Button } from '../layout/Button';
+import { SkeletonLine } from '../layout/Skeleton';
 import { ChartCard, type ChartSize, type ChartType } from './ChartCard';
 import { ParqueSection } from './ParqueSection';
 
@@ -100,7 +101,9 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
   return (
     <section className="view active">
       <div className="analytics-reload-bar">
-        <span className="muted">{loading ? 'Cargando...' : `${summary?.totalPrestamos ?? 0} préstamos en el período`}</span>
+        {loading
+          ? <SkeletonLine width={190} height={13} />
+          : <span className="muted">{`${summary?.totalPrestamos ?? 0} préstamos en el período`}</span>}
         <Button variant="primary" disabled={loading} onClick={() => void load()}>{loading ? 'Actualizando...' : 'Recargar'}</Button>
       </div>
 

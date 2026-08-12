@@ -3,6 +3,7 @@ import type { AuthUser, Device, Movement, SiteInfo, TaskState, ViewKey } from '.
 import { Sidebar, visibleNavItems } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { MobileNav } from './components/layout/MobileNav';
+import { SkeletonView } from './components/layout/Skeleton';
 import { applyThemeProfile, isSmartProfile, profileForThemeAndStyle, readThemeProfile, saveThemeProfile, variantStyle, THEME_PROFILE_EVENT, type ThemeProfile } from './utils/themeProfile';
 import { getUserPrefs } from './services/userPrefsApi';
 import { lazyView, prefetchView, prefetchViewsWhenIdle } from './utils/lazyView';
@@ -92,17 +93,36 @@ export function App() {
     const fromUrl = readSiteFromUrl();
     const fromView = readViewFromUrl();
     if (fromView) setView(fromView);
+
+    // Elegir sede: la de la URL si el usuario la tiene, si no su default.
+    const aplicarSesion = (usuario: AuthUser, sedes: SiteInfo[]) => {
+      setUser(usuario);
+      setSites(sedes);
+      const allowed = fromUrl ? sedes.find(site => site.siteCode.toLowerCase() === fromUrl.toLowerCase()) : null;
+      const fallback = sedes.find(site => site.isDefault) || sedes[0];
+      const site = allowed || fallback;
+      if (fromUrl && !allowed) setView('dashboard');
+      setActiveSite(site.siteCode);
+      localStorage.setItem('techasset_active_site', site.siteCode);
+    };
+
+    // Arranque optimista: si quedó la última sesión guardada, se pinta la app
+    // en el primer frame y la validación contra el servidor corre por detrás.
+    // Sin esto había que esperar el round-trip completo mirando el fondo vacío,
+    // y encima los dispositivos ni empezaban a pedirse hasta que ese terminaba.
+    // No guarda credenciales: la cookie sigue siendo la única llave, así que si
+    // la sesión ya no vale el servidor la rechaza igual y esto se cae al login.
+    const cache = readSessionCache();
+    if (cache) {
+      aplicarSesion(cache.user, cache.sites);
+      setAuthLoading(false);
+    }
+
     getAuthSession()
       .then(session => {
         if (session.authenticated && session.user && session.sites?.length) {
-          setUser(session.user);
-          setSites(session.sites);
-          const allowed = fromUrl ? session.sites.find(site => site.siteCode.toLowerCase() === fromUrl.toLowerCase()) : null;
-          const fallback = session.sites.find(site => site.isDefault) || session.sites[0];
-          const site = allowed || fallback;
-          if (fromUrl && !allowed) setView('dashboard');
-          setActiveSite(site.siteCode);
-          localStorage.setItem('techasset_active_site', site.siteCode);
+          aplicarSesion(session.user, session.sites);
+          writeSessionCache(session.user, session.sites);
           // Cargar preferencias del usuario (tema, etc.)
           getUserPrefs().then(data => {
             if (data.prefs?.themeProfile) {
@@ -110,8 +130,16 @@ export function App() {
               saveThemeProfile(p);
             }
           }).catch(() => {});
+        } else {
+          // La cookie ya no vale: se limpia lo que habíamos pintado de más.
+          clearSessionCache();
+          setUser(null);
+          setSites([]);
+          setActiveSite('');
         }
       })
+      // Un error de red no tiene que expulsar a alguien que ya estaba adentro.
+      .catch(() => undefined)
       .finally(() => setAuthLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -350,6 +378,7 @@ export function App() {
 
   const handleLogout = async () => {
     await logoutSession().catch(() => undefined);
+    clearSessionCache();
     setUser(null);
     setSites([]);
     setActiveSite('');
@@ -399,7 +428,10 @@ export function App() {
     prefetchViewsWhenIdle([...navKeys.split(',').filter(Boolean), 'device-profile', 'assistant']);
   }, [navKeys, siteSettings, user]);
 
-  if (authLoading) return <main className="login-shell"><section className="card login-card"><span className="t-shimmer" data-text="Cargando sesión...">Cargando sesión...</span></section></main>;
+  // Nada mientras se resuelve la sesión. El pedido tarda ~170 ms: cualquier
+  // cartel o placeholder alcanza a dibujarse y a irse, y ese parpadeo se nota
+  // más que la espera. Queda el fondo de la página y listo.
+  if (authLoading) return null;
   if (!user) {
     const goMode = (mode: 'landing' | 'login' | 'register') => {
       setAuthMode(mode);
@@ -407,12 +439,12 @@ export function App() {
     };
     if (authMode === 'landing') {
       return (
-        <Suspense fallback={<main className="login-shell"><section className="card login-card"><span className="t-shimmer" data-text="Cargando...">Cargando...</span></section></main>}>
+        <Suspense fallback={null}>
           <LandingPage onLogin={() => goMode('login')} onRegister={() => goMode('register')} />
         </Suspense>
       );
     }
-    return <Suspense fallback={<main className="login-shell"><section className="card login-card"><span className="t-shimmer" data-text="Cargando...">Cargando...</span></section></main>}><LoginPage mode={authMode} onMode={mode => {
+    return <Suspense fallback={null}><LoginPage mode={authMode} onMode={mode => {
       setAuthMode(mode);
       window.history.replaceState(null, '', mode === 'landing' ? '/' : `/${mode}`);
     }} onReady={session => {
@@ -422,6 +454,9 @@ export function App() {
       const site = session.sites.find(item => item.isDefault) || session.sites[0];
       setActiveSite(site.siteCode);
       localStorage.setItem('techasset_active_site', site.siteCode);
+      // Recién logueado: dejar la sesión recordada para que el próximo ingreso
+      // pinte de una en vez de esperar la verificación.
+      writeSessionCache(session.user, session.sites);
       setView('dashboard');
     }} /></Suspense>;
   }
@@ -436,7 +471,7 @@ export function App() {
             árbol viejo para animar la salida agrega espera, y en una app de
             trabajo la espera se siente como lentitud. */}
         <div key={view} className="view-enter">
-        <Suspense fallback={<section className="card"><span className="t-shimmer" data-text="Cargando vista...">Cargando vista...</span></section>}>
+        <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
         {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onProfile={setProfile} initialCode={loanSeed} />}
@@ -477,6 +512,47 @@ export function App() {
       </Suspense>
     </div>
   );
+}
+
+/* ── Sesión recordada ──────────────────────────────────────────────────────
+   Guarda quién sos y a qué sedes entrás para poder pintar la app en el primer
+   frame, en vez de esperar el round-trip de /api/auth/session mirando el fondo.
+   No es una credencial: la cookie httpOnly sigue siendo lo único que autoriza,
+   acá sólo vive lo necesario para dibujar el sidebar y la topbar.
+
+   Vence a las 12 h a propósito. La cookie dura 30 días, pero estas máquinas se
+   comparten: pasado el día, mejor esperar los 170 ms y no mostrarle a nadie el
+   nombre ni las sedes del turno anterior mientras el servidor contesta. */
+const SESSION_CACHE_KEY = 'techasset_session_cache';
+const SESSION_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+
+function readSessionCache(): { user: AuthUser; sites: SiteInfo[] } | null {
+  try {
+    const raw = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt?: number; user?: AuthUser; sites?: SiteInfo[] };
+    if (!parsed?.user?.email || !parsed.sites?.length) return null;
+    if (!parsed.savedAt || Date.now() - parsed.savedAt > SESSION_CACHE_TTL_MS) return null;
+    return { user: parsed.user, sites: parsed.sites };
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionCache(user: AuthUser, sites: SiteInfo[]) {
+  try {
+    localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), user, sites }));
+  } catch {
+    // Modo incógnito o storage lleno: se pierde el arranque rápido, nada más.
+  }
+}
+
+function clearSessionCache() {
+  try {
+    localStorage.removeItem(SESSION_CACHE_KEY);
+  } catch {
+    // Ídem: no hay nada que hacer y no puede romper el logout.
+  }
 }
 
 function readSiteFromUrl() {

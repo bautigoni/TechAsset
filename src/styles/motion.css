@@ -384,6 +384,16 @@
 .t-skel-head { height: 22px; width: 55%; border-radius: 8px; }
 .t-skel-card { height: 84px; }
 
+/* Esqueleto de página entera: es el reemplazo de los carteles "Cargando
+   vista..." / "Cargando sesión...". Dibuja la forma de lo que viene (título,
+   bajada, fila de tarjetas, cuerpo) para que nada salte cuando llega. */
+.t-skel-view { display: grid; gap: 14px; align-content: start; }
+.t-skel-title { height: 26px; width: min(240px, 45%); border-radius: 8px; }
+.t-skel-sub { height: 14px; width: min(360px, 65%); border-radius: 7px; }
+.t-skel-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.t-skel-stat { height: 78px; }
+.t-skel-body { height: min(340px, 45vh); }
+
 @media (prefers-reduced-motion: reduce) {
   .t-skel-line,
   .t-skel-card { animation: none !important; }

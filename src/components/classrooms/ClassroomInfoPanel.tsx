@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Classroom, ClassroomCategory, ClassroomEquipmentItem, ClassroomEquipmentKey, ClassroomGeneralState, ClassroomHistoryEntry, ClassroomIncident, ClassroomIncidentSummary, ClassroomItemState, Operator } from '../../types';
 import { fetchClassroom, fetchClassroomHistory, fetchClassroomIncidents, generateClassroomHealth, updateClassroom, type ClassroomHealthReport } from '../../services/classroomsApi';
 import { Button } from '../layout/Button';
+import { SkeletonPanel } from '../layout/Skeleton';
 import { RelatedReminders } from '../reminders/RelatedReminders';
 import { useCloseChoreography } from '../../hooks/useMountTransition';
 
@@ -137,7 +138,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
     return (
       <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true">
         <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
-          <p>Cargando aula...</p>
+          <SkeletonPanel rows={4} />
         </div>
       </div>
     );

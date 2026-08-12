@@ -52,7 +52,7 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
             </label>
           </div>
           <div className="sync-status ok">
-            Base local: {sync.state === 'ok' ? 'OK' : sync.state === 'warning' ? 'Con advertencia' : sync.state === 'error' ? 'Error' : 'Cargando'}
+            Base local: {sync.state === 'ok' ? 'OK' : sync.state === 'warning' ? 'Con advertencia' : sync.state === 'error' ? 'Error' : 'Sincronizando'}
             {sync.message ? ` · ${sync.message}` : ''}
           </div>
         </section>

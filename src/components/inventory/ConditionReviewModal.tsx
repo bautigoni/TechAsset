@@ -5,6 +5,8 @@ import { getDeviceReviewQueue, updateDeviceMetadata, type ReviewQueueItem } from
 import { updateInventoryItem } from '../../services/inventoryApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { SelectField } from '../layout/SelectField';
+import { SkeletonPanel } from '../layout/Skeleton';
 
 // Recorrido de revisión. No hay tabla de sesión: la cola se recalcula cada vez
 // que abrís (sin condición primero, después la revisión más vieja), así que
@@ -135,7 +137,7 @@ export function ConditionReviewModal({ items, onClose, onDone }: {
   return (
     <Modal title="Revisión de condición" onClose={() => { void finish(); }}>
       <div className="review-wizard">
-        {loading && <p className="muted">Cargando cola...</p>}
+        {loading && <SkeletonPanel rows={3} />}
 
         {!loading && !total && <p className="muted">No hay nada para revisar en esta sede.</p>}
 
@@ -155,10 +157,13 @@ export function ConditionReviewModal({ items, onClose, onDone }: {
 
             <label className="review-class">
               <span className="field-label">{current.kind === 'equipo' ? 'Clase de activo' : 'Categoría'}</span>
-              <select className="input" value={claseOverride} onChange={event => setClaseOverride(event.target.value)}>
-                {[...new Set([claseOverride, ...(current.kind === 'equipo' ? assetClasses : [current.clase])].filter(Boolean))]
-                  .map(value => <option key={value} value={value}>{value}</option>)}
-              </select>
+              <SelectField
+                ariaLabel={current.kind === 'equipo' ? 'Clase de activo' : 'Categoría'}
+                value={claseOverride}
+                options={[...new Set([claseOverride, ...(current.kind === 'equipo' ? assetClasses : [current.clase])].filter(Boolean))]
+                  .map(value => ({ value, label: value }))}
+                onChange={setClaseOverride}
+              />
             </label>
 
             <div className="review-options">

@@ -10,6 +10,7 @@ import { Modal } from '../layout/Modal';
 import { TicketTemplateManager } from './TicketTemplateManager';
 import { TicketDetailModal } from './TicketDetailModal';
 import { GooeyMenu } from '../layout/GooeyMenu';
+import { SkeletonPanel } from '../layout/Skeleton';
 import { useCardResize } from '../../hooks/useCardResize';
 import { LayoutTemplate, TicketPlus } from 'lucide-react';
 
@@ -312,7 +313,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
       </div>
 
       {error && !modalOpen && <div className="tool-error" style={{ marginTop: 12 }}>{error}</div>}
-      {loading && <div className="tool-info" style={{ marginTop: 12 }}>Cargando tickets…</div>}
+      {loading && <div style={{ marginTop: 12 }}><SkeletonPanel rows={3} head={false} rowHeight={96} /></div>}
       {!loading && visible.length === 0 && <div className="tool-info" style={{ marginTop: 12 }}>No hay tickets en este filtro.</div>}
 
       {/* Cambiar de filtro cambia cuántas tarjetas entran, así que la grilla

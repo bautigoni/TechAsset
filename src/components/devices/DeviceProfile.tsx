@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import type { Device } from '../../types';
 import { getDeviceOverview, updateDeviceMetadata, type DeviceOverviewResponse } from '../../services/devicesApi';
 import { Modal } from '../layout/Modal';
+import { SelectField } from '../layout/SelectField';
+import { DateField } from '../layout/DateField';
 import { getOperationalAlias, classifyDeviceType } from '../../utils/classifyDevice';
+
+const CONDICIONES = [
+  { value: '', label: 'Sin revisar' },
+  ...['Excelente', 'Bueno', 'Regular', 'Malo'].map(value => ({ value, label: value }))
+];
 import { RelatedReminders } from '../reminders/RelatedReminders';
 
 export function DeviceProfile({ device, consultationMode = false, onOpenDevice, onClose }: { device: Device; consultationMode?: boolean; onOpenDevice?: (device:Device)=>void; onClose: () => void }) {
@@ -37,7 +44,7 @@ export function DeviceProfile({ device, consultationMode = false, onOpenDevice, 
         {!overview && !error && <div className="tool-info">Armando el historial del dispositivo…</div>}
         <section className="device-overview-hero">
           <div><span className="eyebrow">{current.etiqueta}</span><h2>{getOperationalAlias(current) || current.dispositivo || current.etiqueta}</h2><p>{classifyDeviceType(current)} · {current.marca || 'Sin fabricante'} {current.modelo || ''}</p></div>
-          <div className="device-profile-status"><span className={`badge ${current.estado === 'Disponible' ? 'available' : current.estado === 'Prestado' ? 'loaned' : 'off'}`}>{current.estado || 'Sin revisar'}</span><label>Condición<select className="input" disabled={consultationMode} value={condition} onChange={event=>{const value=event.target.value;setCondition(value);void saveMetadata({condition:value});}}><option value="">Sin revisar</option>{['Excelente','Bueno','Regular','Malo'].map(value=><option key={value}>{value}</option>)}</select></label><label>Vida útil (meses)<input className="input" type="number" min="0" disabled={consultationMode} placeholder={String(overview?.lifecycle?.meses||'')} value={lifeMonths} onChange={event=>setLifeMonths(event.target.value)} onBlur={()=>void saveMetadata({expectedLifeMonths:lifeMonths?Number(lifeMonths):null})} /></label><label>Fecha de alta<input className="input" type="date" disabled={consultationMode} value={fechaAlta} onChange={event=>setFechaAlta(event.target.value)} onBlur={()=>void saveMetadata({fechaAlta})} /></label></div>
+          <div className="device-profile-status"><span className={`badge ${current.estado === 'Disponible' ? 'available' : current.estado === 'Prestado' ? 'loaned' : 'off'}`}>{current.estado || 'Sin revisar'}</span><label>Condición<SelectField ariaLabel="Condición" options={CONDICIONES} disabled={consultationMode} value={condition} onChange={value=>{setCondition(value);void saveMetadata({condition:value});}} /></label><label>Vida útil (meses)<input className="input" type="number" min="0" disabled={consultationMode} placeholder={String(overview?.lifecycle?.meses||'')} value={lifeMonths} onChange={event=>setLifeMonths(event.target.value)} onBlur={()=>void saveMetadata({expectedLifeMonths:lifeMonths?Number(lifeMonths):null})} /></label><label>Fecha de alta<DateField ariaLabel="Fecha de alta" disabled={consultationMode} value={fechaAlta} onChange={value=>{setFechaAlta(value);void saveMetadata({fechaAlta:value});}} /></label></div>
         </section>
         {overview?.aiSummary && <section className="card device-ai-summary"><div><span className="eyebrow">Resumen IA</span><p>{overview.aiSummary.text}</p></div><small>Actualizado {formatDate(overview.aiSummary.generatedAt)}</small></section>}
         <section className="device-overview-grid">

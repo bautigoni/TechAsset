@@ -718,7 +718,7 @@
 :root[data-theme-profile^="smart"] .stat-card.active,
 :root[data-theme-profile^="smart"] .stat-card.active-filter {
   border-color: rgba(37, 99, 235, 0.55) !important;
-  background: linear-gradient(165deg, rgba(37, 99, 235, 0.12), rgba(255, 253, 249, 0.96)) !important;
+  background: color-mix(in srgb, var(--blue) 11%, var(--surface)) !important;
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2) inset, var(--surface-shadow) !important;
 }
 
@@ -841,9 +841,9 @@
   border-radius: 8px;
 }
 
-.theme-preview .preview-content.dark { background: linear-gradient(165deg, #16264a, #0b142a); }
+.theme-preview .preview-content.dark { background: #121b2d; }
 
-.theme-preview .preview-content.warm { background: linear-gradient(165deg, #FBF8F3, #F0EAE0); }
+.theme-preview .preview-content.warm { background: #FBF8F3; }
 
 .sidebar-style-selector { margin-top: 16px; }
 

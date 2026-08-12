@@ -2,6 +2,12 @@ import { useMemo, useState } from 'react';
 import type { Device } from '../../types';
 import { classifyDeviceType, matchesOperationalAlias, sortByOperationalAlias } from '../../utils/classifyDevice';
 import { Button } from '../layout/Button';
+import { SelectField } from '../layout/SelectField';
+
+const ORDENES = [
+  { value: 'default', label: 'Orden original' },
+  { value: 'operational', label: 'Ordenar por número operativo' }
+];
 import { StatCard } from '../layout/StatCard';
 import { DeviceTable } from './DeviceTable';
 import { DeviceGroupsManager } from './DeviceGroupsManager';
@@ -162,10 +168,13 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
               onChange={event => setAliasQuery(event.target.value)}
               title="Buscar D1433, Touch 31, touch31, Plani 5..."
             />
-            <select className="input compact-select" value={sort} onChange={event => setSort(event.target.value as DeviceSort)} title="Ordenar dispositivos">
-              <option value="default">Orden original</option>
-              <option value="operational">Ordenar por número operativo</option>
-            </select>
+            <SelectField
+              className="compact-select"
+              ariaLabel="Ordenar dispositivos"
+              value={sort}
+              options={ORDENES}
+              onChange={value => setSort(value as DeviceSort)}
+            />
             {!consultationMode && <Button onClick={importCsv}>Importar CSV</Button>}
             <Button onClick={() => exportCsv('/api/devices/export/inventory.csv', 'techasset_inventario.csv')}>Exportar inventario</Button>
             <Button onClick={() => exportCsv('/api/devices/export/summary.csv', 'techasset_resumen.csv')}>Exportar resumen</Button>

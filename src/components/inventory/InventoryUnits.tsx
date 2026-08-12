@@ -4,6 +4,7 @@ import { CONDITION_VALUES } from '../../types';
 import { createInventoryUnit, deleteInventoryUnit, getInventoryUnits, updateInventoryUnit } from '../../services/inventoryApi';
 import { Button } from '../layout/Button';
 import { SelectField } from '../layout/SelectField';
+import { SkeletonLine, SkeletonPanel } from '../layout/Skeleton';
 import { conditionClass } from './inventoryEntries';
 
 const CONDITION_OPTIONS = [{ value: '', label: 'Sin revisar' }, ...CONDITION_VALUES.map(value => ({ value, label: value }))];
@@ -95,11 +96,13 @@ export function InventoryUnits({ item, consultationMode, onItemChange }: {
       <header className="inv-units-head">
         <div>
           <strong>Unidades</strong>
-          <span>
-            {loading ? 'Cargando…' : units.length
-              ? `${units.length} ${units.length === 1 ? 'unidad cargada' : 'unidades cargadas'}${conFalla ? ` · ${conFalla} con falla` : ''}`
-              : 'Todavía no se detalló ninguna unidad'}
-          </span>
+          {loading
+            ? <SkeletonLine width={150} height={11} />
+            : <span>
+                {units.length
+                  ? `${units.length} ${units.length === 1 ? 'unidad cargada' : 'unidades cargadas'}${conFalla ? ` · ${conFalla} con falla` : ''}`
+                  : 'Todavía no se detalló ninguna unidad'}
+              </span>}
         </div>
         {!consultationMode && !loading && (
           <div className="inv-units-head-actions">
@@ -112,6 +115,8 @@ export function InventoryUnits({ item, consultationMode, onItemChange }: {
           </div>
         )}
       </header>
+
+      {loading && <SkeletonPanel rows={2} head={false} rowHeight={44} />}
 
       {!loading && !units.length && editing !== 'new' && (
         <p className="muted inv-units-empty">

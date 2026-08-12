@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { Device } from '../../types';
 import { Modal } from '../layout/Modal';
+import { SelectField } from '../layout/SelectField';
+
+const ESTADOS = ['Disponible', 'Prestado', 'No encontrada', 'Fuera de servicio'].map(value => ({ value, label: value }));
 import { Button } from '../layout/Button';
 import { getDeviceCategories } from '../../services/devicesApi';
 
@@ -64,12 +67,12 @@ export function AddDeviceModal({ onClose, onSave, initialDevice, title = '+ Aña
           <label>MAC<input className="input" value={device.mac || ''} onChange={e => update('mac', e.target.value)} /></label>
         </div>
         <label>Estado
-          <select className="input" value={device.estado || 'Disponible'} onChange={e => update('estado', e.target.value)}>
-            <option>Disponible</option>
-            <option>Prestado</option>
-            <option>No encontrada</option>
-            <option>Fuera de servicio</option>
-          </select>
+          <SelectField
+            ariaLabel="Estado del dispositivo"
+            value={device.estado || 'Disponible'}
+            options={ESTADOS}
+            onChange={value => update('estado', value)}
+          />
         </label>
         <label>Alias operativo opcional<input className="input" value={device.aliasOperativo || ''} onChange={e => update('aliasOperativo', e.target.value)} placeholder="TIC1, TIC 1, 1TIC, 1 TIC" /></label>
         <label>Observaciones<textarea className="input" rows={3} value={device.comentarios || ''} onChange={e => update('comentarios', e.target.value)} /></label>

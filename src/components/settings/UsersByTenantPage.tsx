@@ -5,6 +5,7 @@ import {
 } from '../../services/adminUsersApi';
 import { Button } from '../layout/Button';
 import { MailStatusChip } from './MailStatusChip';
+import { SkeletonPanel } from '../layout/Skeleton';
 
 /**
  * Panel de usuarios de todos los tenants, solo para superadmin.
@@ -109,7 +110,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
 
       {message && <div className="tool-info">{message}</div>}
       {error && <div className="tool-error">{error}</div>}
-      {!data && !error && <p className="muted">Cargando usuarios...</p>}
+      {!data && !error && <SkeletonPanel rows={4} head={false} rowHeight={54} />}
 
       <div className="inv-toolbar">
         <div className="inventory-segmented" role="group" aria-label="Filtro">

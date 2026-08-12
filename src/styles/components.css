@@ -71,17 +71,27 @@ label{display:block;margin-bottom:6px;font-size:13px;color:var(--muted)}.input{w
    anchos (17+24+18+18+13+10 = 100%): Estado y Acciones quedaban fuera del 100%,
    la tabla se pasaba del contenedor y aparecía scroll horizontal con los
    botones cortados. Acá se reparten las 8. */
-/* 7 columnas desde que se saco "Horario prestamo". */
-.device-table th:nth-child(1){width:12%}
-.device-table th:nth-child(2){width:18%}
-.device-table th:nth-child(3){width:15%}
-.device-table th:nth-child(4){width:19%}
-.device-table th:nth-child(5){width:12%}
-.device-table th:nth-child(6){width:10%}
-.device-table th:nth-child(7){width:14%}
+/* 7 columnas desde que se saco "Horario prestamo".
+   Doble clase a propósito: `.compact-table th:nth-child(N)` se declara más
+   abajo con la MISMA especificidad, así que ganaba por orden y esta tabla
+   terminaba usando los anchos de 6 columnas. Acciones se quedaba con el resto
+   y sobraba un hueco a la derecha. Suman 100. */
+.device-table.compact-table th:nth-child(1){width:13%}
+.device-table.compact-table th:nth-child(2){width:19%}
+.device-table.compact-table th:nth-child(3){width:16%}
+.device-table.compact-table th:nth-child(4){width:20%}
+.device-table.compact-table th:nth-child(5){width:12%}
+.device-table.compact-table th:nth-child(6){width:9%}
+.device-table.compact-table th:nth-child(7){width:11%}
 .device-table td{overflow-wrap:anywhere}
 .device-table td:nth-child(3){font-size:12px;line-height:1.35}
-.device-table .device-actions-cell{overflow:visible}
+/* Estado y Acciones centrados: son una pastilla y dos botones, alineados a la
+   izquierda dejaban el aire de la celda todo junto de un lado. Va acotado a
+   esta tabla: el `vertical-align: top` global lo usan las demás. */
+.device-table td,.device-table th{vertical-align:middle}
+.device-table th:nth-child(6),.device-table td:nth-child(6),
+.device-table th:nth-child(7),.device-table td:nth-child(7){text-align:center}
+.device-table .device-actions-cell .device-actions{justify-content:center}
 /* Nada de overflow visible acá: la tabla tiene min-width y se escapaba de la
    tarjeta, encimandose con el resto del layout. El wrap siempre recorta. */
 .compact-table th:nth-child(1){width:17%}
@@ -2064,13 +2074,21 @@ body.consulta-mode #returnBtn {
 /* ============= Sidebar scrollable ============= */
 .sidebar{display:flex;flex-direction:column;overflow:hidden}
 .sidebar .brand{flex-shrink:0}
-.sidebar .nav-scrollable{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:4px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+/* La barra del menú se muestra sólo cuando el mouse está en el sidebar. Fija
+   era una franja gris de punta a punta al lado de la navegación: el canal
+   sigue reservado (scrollbar-width no cambia), así que mostrarla no corre nada. */
+.sidebar .nav-scrollable{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:4px;scrollbar-width:thin;scrollbar-color:transparent transparent}
+.sidebar:hover .nav-scrollable,
+.sidebar .nav-scrollable:focus-within{scrollbar-color:var(--border) transparent}
 .sidebar .sidebar-bottom-nav{flex:0 0 auto;margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
 .sidebar .sidebar-bottom-nav .nav-btn{min-height:46px}
+/* Fallback para navegadores que todavía no toman `scrollbar-color`. */
 .sidebar .nav-scrollable::-webkit-scrollbar{width:6px}
 .sidebar .nav-scrollable::-webkit-scrollbar-track{background:transparent}
-.sidebar .nav-scrollable::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px}
-.sidebar .nav-scrollable::-webkit-scrollbar-thumb:hover{background:var(--blue)}
+.sidebar .nav-scrollable::-webkit-scrollbar-thumb{background:transparent;border-radius:6px}
+.sidebar:hover .nav-scrollable::-webkit-scrollbar-thumb,
+.sidebar .nav-scrollable:focus-within::-webkit-scrollbar-thumb{background:var(--border)}
+.sidebar:hover .nav-scrollable::-webkit-scrollbar-thumb:hover{background:var(--blue)}
 .sidebar .sidebar-footer{flex-shrink:0;padding-top:12px;border-top:1px solid var(--border)}
 @media (max-width:980px){
   .sidebar{height:auto}
@@ -2665,6 +2683,60 @@ body.consulta-mode #returnBtn {
 .field-select-option.is-selected{font-weight:600}
 .field-select-option em{font-style:normal;font-size:11px;color:var(--muted)}
 
+/* ── Calendario propio ─────────────────────────────────────────────────────
+   El popup de <input type="date"> lo dibuja Chrome y no se puede estilar: caja
+   blanca, tipografía del sistema y celeste de selección en medio de la app. */
+.field-date{position:relative;width:100%}
+.field-date .field-select-trigger{font-variant-numeric:tabular-nums}
+.field-date.is-open .field-select-trigger{border-color:var(--blue)}
+.field-date-icon{
+  flex:0 0 auto;width:11px;height:11px;border:1.4px solid var(--muted);border-radius:2px;
+  border-top-width:3px;transform:none;
+}
+.field-date-pop{
+  position:absolute;left:0;top:calc(100% + 6px);z-index:40;
+  width:268px;max-width:calc(100vw - 32px);
+  display:grid;gap:8px;padding:12px;
+  border:1px solid var(--border);border-radius:12px;background:var(--panel);
+  box-shadow:0 16px 40px rgba(0,0,0,.32);
+}
+.field-date-pop.is-right{left:auto;right:0}
+/* .compact-select viene de la toolbar y fija min-height: que el disparador lo
+   llene, si no queda una franja muerta abajo. */
+.field-select.compact-select .field-select-trigger{height:40px}
+/* En la ficha del equipo los controles van chicos, al lado de la pastilla de
+   estado: mismas medidas que tenía el .input de ahí. */
+.device-profile-status .field-select,
+.device-profile-status .field-date{min-width:132px}
+.device-profile-status .field-select-trigger{height:32px;padding:0 9px;font-size:12.5px}
+.field-date-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.field-date-head strong{font-size:13px;font-weight:600;color:var(--text)}
+.field-date-head span{display:flex;gap:2px}
+.field-date-head button{
+  appearance:none;border:1px solid transparent;background:transparent;color:var(--muted);
+  width:24px;height:24px;border-radius:7px;cursor:pointer;font-size:15px;line-height:1;
+}
+.field-date-head button:hover{border-color:var(--border);color:var(--text)}
+.field-date-week{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.field-date-week span{
+  text-align:center;font-size:10px;letter-spacing:.04em;color:var(--muted);
+}
+.field-date-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.field-date-grid button{
+  appearance:none;border:1px solid transparent;background:transparent;color:var(--text);
+  height:28px;border-radius:7px;cursor:pointer;font-size:12.5px;font-variant-numeric:tabular-nums;
+}
+.field-date-grid button:hover{background:var(--panel-2)}
+.field-date-grid button.is-out{color:var(--muted);opacity:.5}
+.field-date-grid button.is-today{border-color:var(--border)}
+.field-date-grid button.is-selected{background:var(--blue);color:#fff;font-weight:600;border-color:transparent}
+.field-date-foot{display:flex;justify-content:space-between;gap:8px;padding-top:2px;border-top:1px solid var(--border)}
+.field-date-foot button{
+  appearance:none;border:0;background:transparent;color:var(--muted);
+  font-size:12px;padding:6px 2px;cursor:pointer;
+}
+.field-date-foot button:hover{color:var(--text);text-decoration:underline}
+
 @media (prefers-reduced-motion:reduce){
   .field-select-trigger,
   .field-select-trigger i,
@@ -2770,6 +2842,9 @@ body.consulta-mode #returnBtn {
 .pass-panel .card-head{margin-bottom:0}
 .pass-panel .card-head span{font-size:12px}
 .pass-chips{display:flex;flex-wrap:wrap;gap:7px}
+/* Fantasma del cartelito: mismo cuadrado que el real, así el panel ya nace del
+   alto que va a tener y no empuja el formulario al llegar los datos. */
+.pass-chips .pass-chip-skel{width:36px;height:36px;border-radius:8px;flex:0 0 auto}
 .pass-chip{
   width:36px;height:36px;display:grid;place-items:center;
   border:1px solid var(--border);border-radius:8px;background:var(--panel-2);
@@ -3102,14 +3177,8 @@ body.consulta-mode #returnBtn {
 
 /* ============= Tabla dispositivos: acciones en una línea (desktop) ============= */
 @media (min-width: 901px) {
-  .device-table .device-actions-cell {
-    min-width: 240px;
-    white-space: nowrap;
-  }
-
-  /* Arriba de 1200 la tabla ya no tiene min-width, así que la celda de acciones
-     no puede exigir 240px ni una sola línea: los botones envuelven y la tabla
-     entra sin scroll horizontal. */
+  /* Arriba de 1200 la tabla entra entera: los botones envuelven si hace falta
+     y no se exige una sola línea. */
   @media (min-width: 1200px) {
     .device-table .device-actions-cell { min-width: 0; white-space: normal; }
     .device-table .device-actions { flex-wrap: wrap; }
@@ -3249,7 +3318,7 @@ body.consulta-mode #returnBtn {
 .stat-card.active,
 .stat-card.active-filter {
   border-color: rgba(59, 130, 246, 0.52) !important;
-  background: linear-gradient(165deg, rgba(37, 99, 235, 0.15), rgba(11, 20, 42, 0.96)) !important;
+  background: color-mix(in srgb, var(--blue) 13%, var(--surface)) !important;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) inset, var(--surface-shadow) !important;
 }
 
@@ -3412,14 +3481,14 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
 
 /* ── MODAL ───────────────────────────────────────────────────── */
 .modal-card {
-  background: linear-gradient(165deg, rgba(14, 26, 54, 0.99), rgba(8, 16, 38, 0.99)) !important;
+  background: var(--surface) !important;
   border: 1px solid rgba(68, 108, 168, 0.32) !important;
   box-shadow: 0 32px 90px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
 }
 
 /* ── AGENDA CARDS ────────────────────────────────────────────── */
 .agenda-card {
-  background: linear-gradient(165deg, rgba(18, 32, 62, 0.84), rgba(10, 18, 40, 0.96));
+  background: var(--surface-raised);
   border-color: rgba(68, 108, 168, 0.24);
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.2);
   transition: border-color .18s ease, box-shadow .18s ease;
@@ -3432,7 +3501,7 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
 
 /* ── TASK CARDS ──────────────────────────────────────────────── */
 .task-card {
-  background: linear-gradient(165deg, rgba(18, 32, 62, 0.82), rgba(10, 18, 40, 0.96));
+  background: var(--surface-raised);
   border-color: rgba(68, 108, 168, 0.24);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   transition: border-color .18s ease, box-shadow .18s ease;
@@ -3445,7 +3514,7 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
 
 /* ── INVENTORY ITEM CARDS ────────────────────────────────────── */
 .inventory-item-card {
-  background: linear-gradient(165deg, rgba(18, 32, 62, 0.8), rgba(10, 18, 40, 0.96));
+  background: var(--surface-raised);
   border: 1px solid rgba(68, 108, 168, 0.24);
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.18);
   transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
@@ -3473,20 +3542,20 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
 
 /* ── AHORA ITEMS / PANEL DASHBOARD ───────────────────────────── */
 .ahora-item {
-  background: linear-gradient(160deg, rgba(18, 34, 66, 0.72), rgba(10, 18, 42, 0.9));
+  background: var(--surface-raised);
   border-color: rgba(68, 108, 168, 0.22);
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.16);
 }
 
 /* ── LOAN ITEMS ──────────────────────────────────────────────── */
 .loaned-now-item {
-  background: linear-gradient(160deg, rgba(18, 34, 66, 0.78), rgba(10, 18, 42, 0.94));
+  background: var(--surface-raised);
   border-color: rgba(68, 108, 168, 0.24);
 }
 
 /* ── BATCH ITEMS (préstamos múltiples) ───────────────────────── */
 .batch-item {
-  background: linear-gradient(160deg, rgba(18, 34, 66, 0.78), rgba(10, 18, 42, 0.94));
+  background: var(--surface-raised);
   border-color: rgba(68, 108, 168, 0.24);
 }
 

@@ -5,6 +5,7 @@ import {
 } from '../../services/photoPassesApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { SkeletonLine } from '../layout/Skeleton';
 
 /**
  * Cartelitos de autorización de fotos, dentro de Préstamos.
@@ -16,17 +17,29 @@ import { Modal } from '../layout/Modal';
  */
 const EMPTY = { persona: '', curso: '', docente: '', motivo: '' };
 
+// Cuántos cartelitos dibujar mientras llega la respuesta. El panel se monta
+// con la vista pero sus datos son un pedido aparte, así que sin esto aparecía
+// vacío y ~300 ms después crecía de golpe con los 30 chips: se leía como si
+// entrara mucho más tarde que el resto de Préstamos. Arranca en el tamaño
+// sembrado por defecto y después de la primera carga es exacto.
+let ultimoTotalConocido = 30;
+
 export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean }) {
   const [items, setItems] = useState<PhotoPass[]>([]);
   const [options, setOptions] = useState<PhotoPassOptions>({ alumnos: [], cursos: [], docentes: [] });
   const [lending, setLending] = useState<PhotoPass | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const refresh = () => getPhotoPasses()
-    .then(response => setItems(response.items))
-    .catch(() => setError('No se pudieron cargar los cartelitos.'));
+    .then(response => {
+      setItems(response.items);
+      if (response.items.length) ultimoTotalConocido = response.items.length;
+    })
+    .catch(() => setError('No se pudieron cargar los cartelitos.'))
+    .finally(() => setLoading(false));
 
   useEffect(() => {
     void refresh();
@@ -55,12 +68,17 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
       <div className="card-head">
         <div>
           <h3>Cartelitos de fotos</h3>
-          <span className="muted">{prestados.length} de {items.length} entregados</span>
+          {loading
+            ? <SkeletonLine width={110} height={11} />
+            : <span className="muted">{prestados.length} de {items.length} entregados</span>}
         </div>
       </div>
       {error && <div className="tool-error">{error}</div>}
       <div className="pass-chips">
-        {items.map(pass => (
+        {loading && Array.from({ length: ultimoTotalConocido }, (_, index) => (
+          <span className="pass-chip-skel t-skel-card" key={index} aria-hidden="true" style={{ animationDelay: `${(index % 10) * 60}ms` }} />
+        ))}
+        {!loading && items.map(pass => (
           <button
             key={pass.numero}
             type="button"

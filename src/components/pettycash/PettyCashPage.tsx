@@ -5,6 +5,7 @@ import type { PurchaseRequest } from '../../types';
 import { createPettyCashExpense, createPurchaseRequest, getPettyCash, resolvePurchaseRequest, savePettyCashConfig, uploadPettyCashReceipt, type PettyCashResponse } from '../../services/pettyCashApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { SkeletonView } from '../layout/Skeleton';
 
 const EMPTY_EXPENSE = { expenseDate: displayDate(new Date().toISOString().slice(0, 10)), description: '', supplier: '', amount: 0, category: 'General', receiptUrl: '' };
 const EMPTY_REQUEST = { description: '', category: 'General', estimatedAmount: 0, supplier: '', justification: '', receiptUrl: '' };
@@ -35,7 +36,7 @@ export function PettyCashPage({ consultationMode }: { consultationMode: boolean 
     return (await uploadPettyCashReceipt({ mimeType: file.type, base64 })).url;
   };
 
-  if (!data) return <section className="view active petty-cash-page"><div className="empty-state">Cargando caja chica...</div></section>;
+  if (!data) return <section className="view active petty-cash-page"><SkeletonView /></section>;
 
   const openExpense = () => {
     setModalError('');

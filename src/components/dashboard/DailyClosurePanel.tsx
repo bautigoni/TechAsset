@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createDailyClosure, fetchDailyClosurePreview, fetchDailyClosures } from '../../services/operationsApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { SkeletonBlock } from '../layout/Skeleton';
 
 export function DailyClosurePanel({ operator, consultationMode }: { operator: string; consultationMode: boolean }) {
   const [open, setOpen] = useState(false);
@@ -26,7 +27,7 @@ export function DailyClosurePanel({ operator, consultationMode }: { operator: st
       {open && (
         <Modal title="Cierre del día TIC" onClose={() => setOpen(false)}>
           <div className="stack">
-            <pre className="closure-preview">{text || 'Cargando resumen...'}</pre>
+            {text ? <pre className="closure-preview">{text}</pre> : <SkeletonBlock height={180} />}
             <label>Observaciones manuales<textarea className="input" rows={4} value={observaciones} onChange={event => setObservaciones(event.target.value)} /></label>
             <div className="actions">
               <Button disabled={!text} onClick={() => navigator.clipboard?.writeText(text).then(() => setInfo('Copiado al portapapeles.'))}>Copiar</Button>

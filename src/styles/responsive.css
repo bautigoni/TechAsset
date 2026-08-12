@@ -382,7 +382,7 @@ body.mobile-menu-open {
 }
 
 .floor-btn.active {
-  background: linear-gradient(165deg, rgba(37, 99, 235, .15), rgba(11, 20, 42, .96)) !important;
+  background: color-mix(in srgb, var(--blue) 13%, var(--surface)) !important;
   border-color: rgba(59, 130, 246, .52);
   box-shadow: 0 0 0 1px rgba(59, 130, 246, .2) inset, var(--surface-shadow);
 }
@@ -791,18 +791,18 @@ body.mobile-menu-open {
   }
 
   .device-table thead th {
-    background: rgba(18, 32, 62, .86);
+    background: var(--surface-raised);
     background-clip: padding-box;
     border-bottom-color: var(--surface-border);
   }
 
   .device-table tbody td {
-    background: rgba(14, 27, 56, .78);
+    background: var(--surface);
     background-clip: padding-box;
   }
 
   .device-table tbody tr:hover td {
-    background: rgba(37, 99, 235, .12) !important;
+    background: color-mix(in srgb, var(--blue) 12%, var(--surface)) !important;
   }
 
   .device-table th:last-child,
@@ -814,16 +814,16 @@ body.mobile-menu-open {
   }
 
   .device-table td.device-actions-cell {
-    background: rgba(14, 27, 56, .78) !important;
+    background: var(--surface) !important;
   }
 
   .device-table th:last-child {
-    background: rgba(18, 32, 62, .86) !important;
+    background: var(--surface-raised) !important;
     z-index: 3;
   }
 
   .device-table tr:hover td.device-actions-cell {
-    background: rgba(37, 99, 235, .12) !important;
+    background: color-mix(in srgb, var(--blue) 12%, var(--surface)) !important;
   }
 
   .device-table .device-actions {

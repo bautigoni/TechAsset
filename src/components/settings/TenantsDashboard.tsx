@@ -6,6 +6,7 @@ import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { StatCard } from '../layout/StatCard';
 import { TenantLogo } from '../layout/TenantLogo';
+import { SkeletonPanel } from '../layout/Skeleton';
 
 type TenantDraft = Partial<SiteInfo> & {
   isNew?: boolean;
@@ -148,7 +149,7 @@ export function TenantsDashboard({ activeSite, onSwitch, onChanged }: { activeSi
       </div>
 
       {error && <div className="tool-error">{error}</div>}
-      {loading && <div className="tool-info">Cargando tenants...</div>}
+      {loading && <SkeletonPanel rows={3} head={false} rowHeight={110} />}
 
       <div className="tenant-grid">
         {filteredSites.map(site => (

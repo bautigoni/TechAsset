@@ -67,7 +67,7 @@ export function useDevices(search: string, siteCode = '') {
     hasDevices.current = false;
     payloadKey.current = '';
     setDevices([]);
-    setSync({ state: 'loading', message: `Cargando inventario ${siteCode}...` });
+    setSync({ state: 'loading', message: `Sincronizando inventario ${siteCode}…` });
     refresh();
   }, [refresh, siteCode]);
 
