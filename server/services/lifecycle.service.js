@@ -114,7 +114,8 @@ export function getDeviceMetadataMap(siteCode) {
   const rows = getDb().prepare(`
     SELECT device_tag, COALESCE(condition,'') AS condition, COALESCE(notes,'') AS notes,
            COALESCE(asset_class,'') AS asset_class, expected_life_months,
-           COALESCE(fecha_alta,'') AS fecha_alta, COALESCE(last_reviewed_at,'') AS last_reviewed_at
+           COALESCE(fecha_alta,'') AS fecha_alta, COALESCE(last_reviewed_at,'') AS last_reviewed_at,
+           COALESCE(teamviewer_id,'') AS teamviewer_id
     FROM device_metadata WHERE site_code=?
   `).all(siteCode);
   return new Map(rows.map(row => [String(row.device_tag || '').trim().toUpperCase(), row]));
@@ -135,6 +136,7 @@ export function decorateDevicesWithLifecycle(devices, siteCode, now = new Date()
       condition: meta?.condition || '',
       conditionNotes: meta?.notes || '',
       lastReviewedAt: meta?.last_reviewed_at || '',
+      teamviewerId: meta?.teamviewer_id || '',
       assetClass,
       assetClassConfirmed: Boolean(meta?.asset_class),
       lifecycleSource: origen,

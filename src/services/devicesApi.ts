@@ -113,11 +113,13 @@ export function getDeviceOverview(etiqueta: string) {
 }
 
 export interface DeviceMetadataPayload {
-  condition: string;
+  /** Ausente = edición parcial: el backend conserva la condición y su fecha. */
+  condition?: string;
   notes?: string;
   assetClass?: string;
   expectedLifeMonths?: number | null;
   fechaAlta?: string;
+  teamviewerId?: string;
   origen?: string;
 }
 

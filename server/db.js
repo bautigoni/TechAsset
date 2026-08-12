@@ -832,6 +832,28 @@ export function initDb(database = getDb()) {
       generated_at TEXT,
       UNIQUE(site_code, room_key)
     );
+    /* Unidades individuales de un recurso de inventario. Un recurso con 8
+       unidades (los 8 dash) deja de ser un número suelto: cada unidad tiene su
+       identificador, su condición y sus datos de identificación física. Es lo
+       que evita tener que duplicar la ficha para anotar "uno está roto". */
+    CREATE TABLE IF NOT EXISTS inventory_units (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      item_id INTEGER NOT NULL,
+      numero TEXT DEFAULT '',
+      descripcion TEXT DEFAULT '',
+      sn TEXT DEFAULT '',
+      mac TEXT DEFAULT '',
+      teamviewer_id TEXT DEFAULT '',
+      condicion TEXT DEFAULT '',
+      condicion_updated_at TEXT DEFAULT '',
+      activo INTEGER DEFAULT 1,
+      deleted_at TEXT DEFAULT '',
+      deleted_by TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_inventory_units_item ON inventory_units(site_code, item_id, activo);
   `);
 
   ensureColumn(database, 'agenda', 'site_code', "TEXT DEFAULT 'NFPT'");
@@ -903,6 +925,9 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'device_metadata', 'expected_life_months', 'INTEGER');
   ensureColumn(database, 'device_metadata', 'fecha_alta', "TEXT DEFAULT ''");
   ensureColumn(database, 'device_metadata', 'last_reviewed_at', "TEXT DEFAULT ''");
+  // Soporte remoto: el ID de TeamViewer del equipo. Opcional a propósito — en
+  // Chrome OS muchas veces no aplica y no puede bloquear la carga.
+  ensureColumn(database, 'device_metadata', 'teamviewer_id', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'condicion', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'min_stock', 'INTEGER DEFAULT 3');
   ensureColumn(database, 'inventory_items', 'estado_legacy', "TEXT DEFAULT ''");

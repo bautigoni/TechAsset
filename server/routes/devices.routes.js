@@ -97,7 +97,11 @@ devicesRouter.patch('/devices/:etiqueta/metadata', (req, res) => {
   const tag = normalizeTag(req.params.etiqueta);
   const previous = getDb().prepare('SELECT * FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').get(siteCode, tag);
   // '' significa sin revisar: no se asume 'Excelente' para un equipo que nadie miró.
-  const condition = CONDITIONS.includes(String(req.body?.condition)) ? String(req.body.condition) : '';
+  // Si el body no trae `condition` es una edición parcial (por ejemplo cargar el
+  // TeamViewer ID): se conserva la condición y, más abajo, su fecha de revisión.
+  const condition = req.body?.condition === undefined
+    ? String(previous?.condition || '')
+    : (CONDITIONS.includes(String(req.body.condition)) ? String(req.body.condition) : '');
   const notes = req.body?.notes === undefined ? String(previous?.notes || '') : String(req.body.notes || '');
   const assetClass = req.body?.assetClass === undefined ? String(previous?.asset_class || '') : String(req.body.assetClass || '').trim();
   const expectedLifeParsed = Number(req.body?.expectedLifeMonths);
@@ -105,20 +109,25 @@ devicesRouter.patch('/devices/:etiqueta/metadata', (req, res) => {
     ? (previous?.expected_life_months ?? null)
     : (Number.isFinite(expectedLifeParsed) && expectedLifeParsed > 0 ? Math.round(expectedLifeParsed) : null);
   const fechaAlta = req.body?.fechaAlta === undefined ? String(previous?.fecha_alta || '') : String(req.body.fechaAlta || '').trim();
+  // Nunca obligatorio: buena parte del parque corre Chrome OS, donde no aplica.
+  const teamviewerId = req.body?.teamviewerId === undefined
+    ? String(previous?.teamviewer_id || '')
+    : String(req.body.teamviewerId || '').trim().slice(0, 60);
   const ts = nowIso();
-  const reviewed = condition ? ts : String(previous?.last_reviewed_at || '');
+  const reviewed = req.body?.condition !== undefined && condition ? ts : String(previous?.last_reviewed_at || '');
   getDb().prepare(`
-    INSERT INTO device_metadata (site_code,device_tag,condition,notes,asset_class,expected_life_months,fecha_alta,last_reviewed_at,updated_by,updated_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO device_metadata (site_code,device_tag,condition,notes,asset_class,expected_life_months,fecha_alta,last_reviewed_at,teamviewer_id,updated_by,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(site_code,device_tag) DO UPDATE SET
       condition=excluded.condition, notes=excluded.notes, asset_class=excluded.asset_class,
       expected_life_months=excluded.expected_life_months, fecha_alta=excluded.fecha_alta,
-      last_reviewed_at=excluded.last_reviewed_at, updated_by=excluded.updated_by, updated_at=excluded.updated_at
-  `).run(siteCode, tag, condition, notes, assetClass, expectedLifeMonths, fechaAlta, reviewed, req.user?.nombre || req.user?.email || '', ts);
+      last_reviewed_at=excluded.last_reviewed_at, teamviewer_id=excluded.teamviewer_id,
+      updated_by=excluded.updated_by, updated_at=excluded.updated_at
+  `).run(siteCode, tag, condition, notes, assetClass, expectedLifeMonths, fechaAlta, reviewed, teamviewerId, req.user?.nombre || req.user?.email || '', ts);
   if (condition && condition !== String(previous?.condition || '')) {
     recordConditionChange({ siteCode, etiqueta: tag, condicion: condition, operador: req.user?.nombre || req.user?.email || '', origen: String(req.body?.origen || 'Dispositivos') });
   }
-  res.json({ ok: true, condition, notes, assetClass, expectedLifeMonths, fechaAlta, lastReviewedAt: reviewed, updatedAt: ts });
+  res.json({ ok: true, condition, notes, assetClass, expectedLifeMonths, fechaAlta, teamviewerId, lastReviewedAt: reviewed, updatedAt: ts });
 });
 
 // Cola de revisión: primero los que nunca se revisaron, después los más viejos.

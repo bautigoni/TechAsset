@@ -91,7 +91,7 @@ export function ConditionReviewModal({ items, onClose, onDone }: {
           origen: 'Revisión'
         });
       } else {
-        await updateInventoryItem(current.item.id, { condicion, categoria: claseOverride || current.clase });
+        await updateInventoryItem(current.item.id, { condicion, categoria: claseOverride || current.clase, revisado: true });
       }
       setSaved(value => value + 1);
       advance();

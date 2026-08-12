@@ -6,15 +6,26 @@ import { updateDeviceMetadata } from '../../services/devicesApi';
 import { csvCell } from '../../utils/formatters';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { SelectField } from '../layout/SelectField';
 import { ConditionReviewModal } from './ConditionReviewModal';
 import { InventoryCard } from './InventoryCard';
-import { conditionClass, deviceToEntry, groupEntries, itemToEntry, type Entry } from './inventoryEntries';
+import { InventoryCategoryGrid } from './InventoryCategoryGrid';
+import { conditionClass, deviceToEntry, groupEntries, isReviewFresh, itemToEntry, reviewLabel, type Entry } from './inventoryEntries';
 import { InventoryTree } from './InventoryTree';
 import { InventoryDetail } from './InventoryDetail';
 
 type Segment = 'todo' | 'equipo' | 'recurso';
+// Los KPI no son decorativos: cada uno es el filtro de lo que está contando.
+type KpiFilter = '' | 'malos' | 'vencidos' | 'bajoStock' | 'sinFoto' | 'aRevisar';
 
 const FORM_CATEGORIES = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Filamento 3D', 'Otro'];
+const CONDITION_FILTER_OPTIONS = [
+  { value: '', label: 'Toda condición' },
+  ...CONDITION_VALUES.map(value => ({ value, label: value })),
+  { value: 'Sin revisar', label: 'Sin revisar' }
+];
+const CONDITION_FORM_OPTIONS = [{ value: '', label: 'Sin revisar' }, ...CONDITION_VALUES.map(value => ({ value, label: value }))];
+
 const EMPTY_FORM: Partial<InventoryItem> = {
   nombre: '',
   categoria: 'Otro',
@@ -38,10 +49,11 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [detail, setDetail] = useState<Entry | null>(null);
+  const [detailKey, setDetailKey] = useState('');
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState<Segment>('recurso');
   const [condicionFilter, setCondicionFilter] = useState('');
+  const [kpiFilter, setKpiFilter] = useState<KpiFilter>('');
   const [view, setView] = useState<'grid' | 'table'>('grid');
   const [selected, setSelected] = useState<{ categoria: string; subcategoria: string } | null>(null);
   const [expanded, setExpanded] = useState<string[]>([]);
@@ -67,9 +79,19 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     return entries
       .filter(entry => segment === 'todo' || entry.kind === segment)
       .filter(entry => !condicionFilter || (condicionFilter === 'Sin revisar' ? !entry.condicion : entry.condicion === condicionFilter))
+      .filter(entry => {
+        switch (kpiFilter) {
+          case 'malos': return entry.condicion === 'Regular' || entry.condicion === 'Malo';
+          case 'vencidos': return entry.vencido;
+          case 'bajoStock': return entry.kind === 'recurso' && entry.bajoStock;
+          case 'sinFoto': return entry.kind === 'recurso' && !entry.imagenUrl;
+          case 'aRevisar': return !isReviewFresh(entry);
+          default: return true;
+        }
+      })
       .filter(entry => !needle || [entry.nombre, entry.detalle, entry.categoria, entry.subcategoria, entry.condicion]
         .some(value => String(value || '').toLowerCase().includes(needle)));
-  }, [entries, search, segment, condicionFilter]);
+  }, [entries, search, segment, condicionFilter, kpiFilter]);
 
   const groups = useMemo(() => groupEntries(filtered), [filtered]);
 
@@ -80,16 +102,29 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
       && (!selected.subcategoria || entry.subcategoria === selected.subcategoria));
   }, [filtered, selected]);
 
+  // Cuando algo ya está acotando la vista (una búsqueda, un KPI, una condición)
+  // mostrar la portada de categorías escondería justo lo que se pidió ver.
+  const narrowed = Boolean(search.trim() || kpiFilter || condicionFilter);
+  const showCategories = !selected && !narrowed;
+
   const subcategoryCards = useMemo(() => {
     if (!selected) return [];
     const group = groups.find(item => item.categoria === selected.categoria);
     return (group?.subgroups || []).filter(sub => sub.subcategoria);
   }, [groups, selected]);
 
+  // El detalle se resuelve por key contra las entradas vivas: así, después de
+  // guardar una condición o una unidad, el modal muestra el dato nuevo.
+  const detail = useMemo(() => entries.find(entry => entry.key === detailKey) || null, [entries, detailKey]);
+
   const kpis = useMemo(() => {
+    const now = Date.now();
     const equipos = entries.filter(entry => entry.kind === 'equipo');
     const recursos = entries.filter(entry => entry.kind === 'recurso');
-    const revisados = entries.filter(entry => entry.condicion).length;
+    // Misma regla que el cartelito de la tarjeta: revisado = hace menos de 3
+    // meses. El porcentaje viejo contaba como revisado cualquier cosa que
+    // alguna vez se miró, sin importar hace cuánto.
+    const revisados = entries.filter(entry => isReviewFresh(entry, now)).length;
     return {
       equipos: equipos.length,
       recursos: recursos.length,
@@ -97,9 +132,23 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
       vencidos: equipos.filter(entry => entry.vencido).length,
       bajoStock: recursos.filter(entry => entry.bajoStock).length,
       sinFoto: recursos.filter(entry => !entry.imagenUrl).length,
+      aRevisar: entries.length - revisados,
       cobertura: entries.length ? Math.round((revisados / entries.length) * 100) : 0
     };
   }, [entries]);
+
+  // Tocar un KPI deja la vista mostrando exactamente lo que ese número cuenta.
+  const applyKpi = (next: KpiFilter, nextSegment?: Segment) => {
+    const isActive = kpiFilter === next;
+    setKpiFilter(isActive ? '' : next);
+    if (!isActive && nextSegment) setSegment(nextSegment);
+    setDetailKey('');
+  };
+
+  const toggleSegment = (next: Segment) => {
+    setSegment(next);
+    setKpiFilter('');
+  };
 
   const categorias = useMemo(() => {
     const set = new Set([...FORM_CATEGORIES, ...items.map(item => item.categoria).filter(Boolean)]);
@@ -166,7 +215,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     try {
       await deleteInventoryItem(item.id);
       setMessage('Recurso ocultado.');
-      setDetail(null);
+      setDetailKey('');
       await refresh();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo ocultar el recurso.');
@@ -180,21 +229,29 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
         await updateDeviceMetadata(entry.device.etiqueta, { condition: condicion, assetClass: entry.categoria, origen: 'Inventario' });
         await onRefreshDevices?.();
       } else if (entry.item) {
-        await updateInventoryItem(entry.item.id, { condicion });
+        // `revisado`: esto es una revisión de verdad, refrescá la fecha aunque
+        // la condición quede igual que antes.
+        await updateInventoryItem(entry.item.id, { condicion, revisado: true });
         await refresh();
       }
       setMessage(`${entry.nombre}: ${condicion || 'sin revisar'}.`);
-      setDetail(current => current && current.key === entry.key ? { ...current, condicion } : current);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo guardar la condición.');
     }
   };
 
+  // Guardar una unidad devuelve el recurso con los contadores nuevos: se
+  // reemplaza en el listado sin tener que releer todo el inventario.
+  const replaceItem = (next: InventoryItem) => {
+    setItems(current => current.map(item => (item.id === next.id ? next : item)));
+  };
+
   const exportCsv = () => {
-    const headers = ['Tipo', 'Nombre', 'Categoría', 'Subcategoría', 'Condición', 'Cantidad', 'Unidad', 'Vida consumida %', 'Renovación'];
+    const headers = ['Tipo', 'Nombre', 'Categoría', 'Subcategoría', 'Condición', 'Última revisión', 'Cantidad', 'Unidad', 'Vida consumida %', 'Renovación'];
     const rows = filtered.map(entry => [
       entry.kind === 'equipo' ? 'Equipo' : 'Recurso',
       entry.nombre, entry.categoria, entry.subcategoria, entry.condicion || 'Sin revisar',
+      entry.revisadoAt ? entry.revisadoAt.slice(0, 10) : '',
       entry.cantidad ?? '', entry.unidad, entry.vidaPct ?? '', entry.renovacion
     ]);
     downloadCsv(`inventario-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
@@ -254,6 +311,8 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
           <h3>Inventario</h3>
           <p>Equipos y recursos de la sede, con su condición y vida útil estimada.</p>
         </div>
+        {/* Los tres controles comparten alto, radio y tipografía: antes se veían
+            como tres piezas de sistemas distintos puestas una al lado de la otra. */}
         <div className="inv-head-actions">
           <Button disabled={consultationMode} onClick={() => setReviewOpen(true)}>Revisar condición</Button>
           <div className="inv-menu">
@@ -271,18 +330,35 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
         </div>
       </header>
 
-      <div className="inv-kpis">
-        <div><span>Equipos</span><strong>{kpis.equipos}</strong></div>
-        <div><span>Recursos</span><strong>{kpis.recursos}</strong></div>
-        <div className={kpis.malos ? 'is-warn' : ''}><span>Regular o malo</span><strong>{kpis.malos}</strong></div>
-        <div className={kpis.vencidos ? 'is-bad' : ''}><span>Vida útil vencida</span><strong>{kpis.vencidos}</strong></div>
-        <div className={kpis.bajoStock ? 'is-warn' : ''}><span>Bajo stock</span><strong>{kpis.bajoStock}</strong></div>
-        <div className={kpis.sinFoto ? 'is-warn' : ''}><span>Sin foto</span><strong>{kpis.sinFoto}</strong></div>
-        <div className="inv-kpi-progress">
+      <div className="inv-kpis" role="group" aria-label="Resumen del inventario">
+        <button type="button" className={segment === 'equipo' && !kpiFilter ? 'is-active' : ''} onClick={() => toggleSegment('equipo')}>
+          <span>Equipos</span><strong>{kpis.equipos}</strong>
+        </button>
+        <button type="button" className={segment === 'recurso' && !kpiFilter ? 'is-active' : ''} onClick={() => toggleSegment('recurso')}>
+          <span>Recursos</span><strong>{kpis.recursos}</strong>
+        </button>
+        <button type="button" className={`${kpis.malos ? 'is-warn' : ''} ${kpiFilter === 'malos' ? 'is-active' : ''}`.trim()} onClick={() => applyKpi('malos', 'todo')}>
+          <span>Regular o malo</span><strong>{kpis.malos}</strong>
+        </button>
+        <button type="button" className={`${kpis.vencidos ? 'is-bad' : ''} ${kpiFilter === 'vencidos' ? 'is-active' : ''}`.trim()} onClick={() => applyKpi('vencidos', 'equipo')}>
+          <span>Vida útil vencida</span><strong>{kpis.vencidos}</strong>
+        </button>
+        <button type="button" className={`${kpis.bajoStock ? 'is-warn' : ''} ${kpiFilter === 'bajoStock' ? 'is-active' : ''}`.trim()} onClick={() => applyKpi('bajoStock', 'recurso')}>
+          <span>Bajo stock</span><strong>{kpis.bajoStock}</strong>
+        </button>
+        <button type="button" className={`${kpis.sinFoto ? 'is-warn' : ''} ${kpiFilter === 'sinFoto' ? 'is-active' : ''}`.trim()} onClick={() => applyKpi('sinFoto', 'recurso')}>
+          <span>Sin foto</span><strong>{kpis.sinFoto}</strong>
+        </button>
+        <button
+          type="button"
+          className={`inv-kpi-progress ${kpiFilter === 'aRevisar' ? 'is-active' : ''}`.trim()}
+          onClick={() => applyKpi('aRevisar', 'todo')}
+          title="Revisado = última revisión de hace menos de 3 meses"
+        >
           <span>Revisado</span>
           <strong>{kpis.cobertura}%</strong>
           <i><b style={{ width: `${kpis.cobertura}%` }} /></i>
-        </div>
+        </button>
       </div>
 
       {message && <div className="tool-info">{message}</div>}
@@ -290,16 +366,18 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
 
       <div className="inv-toolbar">
         <div className="inventory-segmented" role="group" aria-label="Tipo de activo">
-          <button type="button" className={segment === 'recurso' ? 'is-active' : ''} onClick={() => setSegment('recurso')}>Recursos</button>
-          <button type="button" className={segment === 'equipo' ? 'is-active' : ''} onClick={() => setSegment('equipo')}>Equipos</button>
-          <button type="button" className={segment === 'todo' ? 'is-active' : ''} onClick={() => setSegment('todo')}>Todo</button>
+          <button type="button" className={segment === 'recurso' ? 'is-active' : ''} onClick={() => toggleSegment('recurso')}>Recursos</button>
+          <button type="button" className={segment === 'equipo' ? 'is-active' : ''} onClick={() => toggleSegment('equipo')}>Equipos</button>
+          <button type="button" className={segment === 'todo' ? 'is-active' : ''} onClick={() => toggleSegment('todo')}>Todo</button>
         </div>
         <input className="input" type="search" placeholder="Buscar por nombre, categoría o etiqueta" value={search} onChange={event => setSearch(event.target.value)} />
-        <select className="input" value={condicionFilter} onChange={event => setCondicionFilter(event.target.value)}>
-          <option value="">Toda condición</option>
-          {CONDITION_VALUES.map(value => <option key={value} value={value}>{value}</option>)}
-          <option value="Sin revisar">Sin revisar</option>
-        </select>
+        <SelectField
+          className="inv-toolbar-select"
+          value={condicionFilter}
+          options={CONDITION_FILTER_OPTIONS}
+          onChange={setCondicionFilter}
+          ariaLabel="Filtrar por condición"
+        />
         <div className="inventory-segmented inv-view-toggle" role="group" aria-label="Vista">
           <button type="button" className={view === 'grid' ? 'is-active' : ''} onClick={() => setView('grid')} title="Tarjetas">▦</button>
           <button type="button" className={view === 'table' ? 'is-active' : ''} onClick={() => setView('table')} title="Tabla">☰</button>
@@ -320,73 +398,100 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
             <button type="button" onClick={() => setSelected(null)}>Categorías</button>
             {selected && <><i>›</i><button type="button" onClick={() => setSelected({ categoria: selected.categoria, subcategoria: '' })}>{selected.categoria}</button></>}
             {selected?.subcategoria && <><i>›</i><span>{selected.subcategoria}</span></>}
-            <em>{listed.length} {listed.length === 1 ? 'recurso' : 'recursos'}</em>
+            <em>{showCategories
+              ? `${groups.length} ${groups.length === 1 ? 'categoría' : 'categorías'}`
+              : `${listed.length} ${listed.length === 1 ? 'ítem' : 'ítems'}`}</em>
           </div>
 
-          {/* Fila de subcategorías de la categoría abierta, para saltar entre
-              ellas sin volver al árbol. */}
-          {subcategoryCards.length > 0 && (
-            <div className="inv-subcards">
-              {subcategoryCards.map(sub => (
-                <button
-                  key={sub.subcategoria}
-                  type="button"
-                  className={selected?.subcategoria === sub.subcategoria ? 'is-active' : ''}
-                  onClick={() => setSelected({ categoria: selected!.categoria, subcategoria: selected?.subcategoria === sub.subcategoria ? '' : sub.subcategoria })}
-                >
-                  <span className="inv-subcard-thumb">{sub.entries.find(item => item.imagenUrl) ? <img src={sub.entries.find(item => item.imagenUrl)!.imagenUrl} alt="" /> : null}</span>
-                  <span className="inv-subcard-text">
-                    <strong>{sub.subcategoria}</strong>
-                    <small>{sub.entries.length} {sub.entries.length === 1 ? 'ítem' : 'ítems'}</small>
-                  </span>
-                </button>
-              ))}
+          {kpiFilter && (
+            <div className="inv-active-filter">
+              <span>{KPI_LABELS[kpiFilter]}</span>
+              <button type="button" onClick={() => setKpiFilter('')}>Quitar filtro</button>
             </div>
           )}
 
-          {view === 'grid' ? (
-            <div className="inv-grid">
-              {listed.map(entry => <InventoryCard key={entry.key} entry={entry} onOpen={() => setDetail(entry)} />)}
-            </div>
-          ) : (
-            <div className="inv-table-wrap">
-              <table className="inv-table">
-                <thead>
-                  <tr><th>Foto</th><th>Recurso</th><th>Categoría</th><th>Seguimiento</th><th>Stock / vida</th><th>Condición</th></tr>
-                </thead>
-                <tbody>
-                  {listed.map(entry => (
-                    <tr key={entry.key} className={detail?.key === entry.key ? 'is-selected' : ''} onClick={() => setDetail(entry)}>
-                      <td><span className="inv-table-thumb">{entry.imagenUrl ? <img src={entry.imagenUrl} alt="" loading="lazy" /> : <i />}</span></td>
-                      <td><strong>{entry.nombre}</strong>{entry.detalle && <small>{entry.detalle}</small>}</td>
-                      <td>{[entry.categoria, entry.subcategoria].filter(Boolean).join(' › ')}</td>
-                      <td><span className="inv-track">{entry.kind === 'equipo' ? 'Individual' : 'Stock'}</span></td>
-                      <td className={entry.bajoStock || entry.vencido ? 'is-warn' : ''}>
-                        {entry.kind === 'recurso' ? `${entry.cantidad} ${entry.unidad}` : entry.vidaPct === null ? '—' : entry.vencido ? 'Vencida' : `${entry.vidaPct}%`}
-                      </td>
-                      <td><span className={`condition-dot ${conditionClass(entry.condicion)}`}>{entry.condicion || 'Sin revisar'}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {!listed.length && <div className="inventory-empty">No hay nada para este filtro.</div>}
-
-          {detail && (
-            <InventoryDetail
-              entry={detail}
-              consultationMode={consultationMode}
-              onClose={() => setDetail(null)}
-              onCondition={condicion => void setEntryCondition(detail, condicion)}
-              onEdit={item => { openEdit(item); setDetail(null); }}
-              onHide={item => void hideItem(item)}
-              onProfile={device => { onProfile?.(device); setDetail(null); }}
+          {showCategories ? (
+            <InventoryCategoryGrid
+              groups={groups}
+              onOpen={categoria => {
+                setSelected({ categoria, subcategoria: '' });
+                setExpanded(current => (current.includes(categoria) ? current : [...current, categoria]));
+              }}
             />
+          ) : (
+            <>
+              {/* Fila de subcategorías de la categoría abierta, para saltar entre
+                  ellas sin volver al árbol. */}
+              {subcategoryCards.length > 0 && (
+                <div className="inv-subcards">
+                  {subcategoryCards.map(sub => (
+                    <button
+                      key={sub.subcategoria}
+                      type="button"
+                      className={selected?.subcategoria === sub.subcategoria ? 'is-active' : ''}
+                      onClick={() => setSelected({ categoria: selected!.categoria, subcategoria: selected?.subcategoria === sub.subcategoria ? '' : sub.subcategoria })}
+                    >
+                      <span className="inv-subcard-thumb">{sub.entries.find(item => item.imagenUrl) ? <img src={sub.entries.find(item => item.imagenUrl)!.imagenUrl} alt="" /> : null}</span>
+                      <span className="inv-subcard-text">
+                        <strong>{sub.subcategoria}</strong>
+                        <small>{sub.entries.length} {sub.entries.length === 1 ? 'ítem' : 'ítems'}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {view === 'grid' ? (
+                <div className="inv-grid">
+                  {listed.map(entry => <InventoryCard key={entry.key} entry={entry} onOpen={() => setDetailKey(entry.key)} />)}
+                </div>
+              ) : (
+                <div className="inv-table-wrap">
+                  <table className="inv-table">
+                    <thead>
+                      <tr><th>Foto</th><th>Recurso</th><th>Categoría</th><th>Seguimiento</th><th>Stock / vida</th><th>Condición</th><th>Revisión</th></tr>
+                    </thead>
+                    <tbody>
+                      {listed.map(entry => (
+                        <tr key={entry.key} className={detailKey === entry.key ? 'is-selected' : ''} onClick={() => setDetailKey(entry.key)}>
+                          <td><span className="inv-table-thumb">{entry.imagenUrl ? <img src={entry.imagenUrl} alt="" loading="lazy" /> : <i />}</span></td>
+                          <td><strong>{entry.nombre}</strong>{entry.detalle && <small>{entry.detalle}</small>}</td>
+                          <td>{[entry.categoria, entry.subcategoria].filter(Boolean).join(' › ')}</td>
+                          <td><span className="inv-track">{entry.kind === 'equipo' ? 'Individual' : 'Stock'}</span></td>
+                          <td className={entry.bajoStock || entry.vencido ? 'is-warn' : ''}>
+                            {entry.kind === 'recurso' ? `${entry.cantidad} ${entry.unidad}` : entry.vidaPct === null ? '—' : entry.vencido ? 'Vencida' : `${entry.vidaPct}%`}
+                          </td>
+                          <td><span className={`condition-dot ${conditionClass(entry.condicion)}`}>{entry.condicion || 'Sin revisar'}</span></td>
+                          <td className={isReviewFresh(entry) ? '' : 'is-warn'}>{reviewLabel(entry)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {!listed.length && <div className="inventory-empty">No hay nada para este filtro.</div>}
+            </>
           )}
         </div>
       </div>
+
+      {/* El detalle abre como modal: desplegado al final de la página el click
+          no tenía respuesta visible y parecía que no había pasado nada. */}
+      {detail && (
+        <Modal title={detail.nombre} size="wide" onClose={() => setDetailKey('')}>
+          <InventoryDetail
+            entry={detail}
+            consultationMode={consultationMode}
+            onCondition={condicion => void setEntryCondition(detail, condicion)}
+            onEdit={item => { openEdit(item); setDetailKey(''); }}
+            onHide={item => void hideItem(item)}
+            onProfile={device => { onProfile?.(device); setDetailKey(''); }}
+            onItemChange={replaceItem}
+            onDeviceSaved={onRefreshDevices}
+          />
+        </Modal>
+      )}
 
       {reviewOpen && (
         <ConditionReviewModal
@@ -414,9 +519,12 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
             <label>Nombre<input className="input" required value={form.nombre || ''} onChange={event => setForm(current => ({ ...current, nombre: event.target.value }))} /></label>
             <div className="grid-2">
               <label>Categoría
-                <select className="input" value={form.categoria || 'Otro'} onChange={event => setForm(current => ({ ...current, categoria: event.target.value }))}>
-                  {categorias.map(item => <option key={item}>{item}</option>)}
-                </select>
+                <SelectField
+                  value={form.categoria || 'Otro'}
+                  options={categorias.map(item => ({ value: item, label: item }))}
+                  onChange={categoria => setForm(current => ({ ...current, categoria }))}
+                  ariaLabel="Categoría"
+                />
               </label>
               <label>Subcategoría
                 <input className="input" list="inv-subcats" placeholder="Opcional" value={form.subcategoria || ''} onChange={event => setForm(current => ({ ...current, subcategoria: event.target.value }))} />
@@ -430,10 +538,12 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
             <div className="grid-2">
               <label>Stock mínimo<input className="input" type="number" min="0" value={form.minStock ?? 3} onChange={event => setForm(current => ({ ...current, minStock: Number(event.target.value) }))} /></label>
               <label>Condición
-                <select className="input" value={form.condicion || ''} onChange={event => setForm(current => ({ ...current, condicion: event.target.value }))}>
-                  <option value="">Sin revisar</option>
-                  {CONDITION_VALUES.map(item => <option key={item} value={item}>{item}</option>)}
-                </select>
+                <SelectField
+                  value={form.condicion || ''}
+                  options={CONDITION_FORM_OPTIONS}
+                  onChange={condicion => setForm(current => ({ ...current, condicion }))}
+                  ariaLabel="Condición del recurso"
+                />
               </label>
             </div>
             <label>Observaciones<textarea className="input" rows={3} value={form.observaciones || ''} onChange={event => setForm(current => ({ ...current, observaciones: event.target.value }))} /></label>
@@ -448,6 +558,14 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     </section>
   );
 }
+
+const KPI_LABELS: Record<Exclude<KpiFilter, ''>, string> = {
+  malos: 'Mostrando solo lo que está Regular o Malo',
+  vencidos: 'Mostrando solo lo que tiene la vida útil vencida',
+  bajoStock: 'Mostrando solo los recursos en bajo stock',
+  sinFoto: 'Mostrando solo los recursos sin foto',
+  aRevisar: 'Mostrando lo que no se revisa hace más de 3 meses'
+};
 
 function downloadCsv(fileName: string, headers: string[], rows: unknown[][]) {
   const blob = new Blob([[headers, ...rows].map(row => row.map(csvCell).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Entry } from './inventoryEntries';
+import { isReviewFresh, type Entry } from './inventoryEntries';
 
 // Iniciales para la placa de los equipos: no tienen foto de producto, así que
 // en vez de un placeholder vacío se muestra su alias operativo en grande.
@@ -34,9 +34,17 @@ export function InventoryCard({ entry, onOpen, children }: {
             // mismas dos letras, y el alias es lo que se busca a simple vista.
             ? <span className="inv-card-alias">{entry.nombre}</span>
             : <span className="inv-card-initials">{initials(entry.nombre)}</span>}
-        {!hasPhoto && entry.kind === 'recurso' && <span className="inv-card-flag is-hint">Sin foto</span>}
-        {entry.kind === 'recurso' && entry.bajoStock && <span className="inv-card-flag is-warn">Bajo stock</span>}
-        {entry.kind === 'equipo' && entry.vencido && <span className="inv-card-flag is-bad">Vida útil vencida</span>}
+        {/* Los cartelitos van apilados en una fila propia: sueltos y absolutos
+            se pisaban entre sí en cuanto una tarjeta juntaba dos. */}
+        <span className="inv-card-flags">
+          {entry.kind === 'recurso' && entry.bajoStock && <span className="inv-card-flag is-warn">Bajo stock</span>}
+          {entry.kind === 'equipo' && entry.vencido && <span className="inv-card-flag is-bad">Vida útil vencida</span>}
+          {/* Misma regla que el KPI "Revisado": menos de 3 meses o no cuenta.
+              Los que nunca se revisaron ya lo dicen abajo con "Sin revisar", así
+              que acá solo se marcan los que quedaron viejos. */}
+          {entry.condicion && !isReviewFresh(entry) && <span className="inv-card-flag is-warn">Revisar</span>}
+          {!hasPhoto && entry.kind === 'recurso' && <span className="inv-card-flag is-hint">Sin foto</span>}
+        </span>
       </button>
 
       <div className="inv-card-body">
@@ -55,6 +63,14 @@ export function InventoryCard({ entry, onOpen, children }: {
                 {entry.vidaPct === null ? '—' : entry.vencido ? 'Vencida' : `${entry.vidaPct}% de vida`}
               </span>}
         </div>
+
+        {/* Un recurso con unidades detalladas ya no necesita una ficha aparte
+            para el que está roto: se dice acá y se ve adentro. */}
+        {entry.kind === 'recurso' && entry.unidadesCargadas > 0 && (
+          <span className={`inv-card-units ${entry.unidadesConFalla ? 'is-warn' : ''}`}>
+            {entry.unidadesCargadas} detalladas{entry.unidadesConFalla ? ` · ${entry.unidadesConFalla} con falla` : ''}
+          </span>
+        )}
 
         {children && <div className="inv-card-actions">{children}</div>}
       </div>

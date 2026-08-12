@@ -116,6 +116,7 @@ export interface Device {
   condition?: string;
   conditionNotes?: string;
   lastReviewedAt?: string;
+  teamviewerId?: string;
   assetClass?: string;
   assetClassConfirmed?: boolean;
   lifecycleSource?: 'equipo' | 'sede' | 'global';
@@ -261,8 +262,25 @@ export interface InventoryItem {
   minStock?: number;
   bajoStock?: boolean;
   condicionUpdatedAt?: string;
+  unidadesCargadas?: number;
+  unidadesConFalla?: number;
   observaciones?: string;
   activo?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Unidad individual de un recurso: los 8 dash dejan de ser un número suelto.
+export interface InventoryUnit {
+  id: number;
+  itemId: number;
+  numero: string;
+  descripcion: string;
+  sn: string;
+  mac: string;
+  teamviewerId: string;
+  condicion: string;
+  condicionUpdatedAt: string;
   createdAt?: string;
   updatedAt?: string;
 }
