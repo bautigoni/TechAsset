@@ -4,6 +4,7 @@ import { classifyDeviceType } from '../../utils/classifyDevice';
 import { getAnalytics, type AnalyticsResponse } from '../../services/analyticsApi';
 import { Button } from '../layout/Button';
 import { ChartCard, type ChartSize, type ChartType } from './ChartCard';
+import { ParqueSection } from './ParqueSection';
 
 type RangePreset = 'week' | 'month' | 'quarter' | 'year' | 'all';
 
@@ -120,6 +121,8 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
       </section>
 
       {error && <div className="tool-error">{error}</div>}
+
+      <ParqueSection />
 
       <div className="analytics-bento">
         {kpis.map(kpi => (

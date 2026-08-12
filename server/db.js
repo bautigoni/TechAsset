@@ -786,6 +786,15 @@ export function initDb(database = getDb()) {
       updated_at TEXT,
       UNIQUE(site_code, device_tag)
     );
+    CREATE TABLE IF NOT EXISTS lifecycle_defaults (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      asset_class TEXT NOT NULL,
+      meses INTEGER DEFAULT 0,
+      updated_by TEXT DEFAULT '',
+      updated_at TEXT,
+      UNIQUE(site_code, asset_class)
+    );
     CREATE TABLE IF NOT EXISTS classroom_health_reports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       site_code TEXT DEFAULT 'NFPT',
@@ -860,6 +869,16 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'inventory_items', 'activo', "INTEGER DEFAULT 1");
   ensureColumn(database, 'inventory_items', 'deleted_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'deleted_by', "TEXT DEFAULT ''");
+  // Ciclo de vida / condición. Los campos por dispositivo viven en device_metadata
+  // (NO en local_devices: esa tabla la pisa la reimportación del padrón CSV).
+  ensureColumn(database, 'device_metadata', 'asset_class', "TEXT DEFAULT ''");
+  ensureColumn(database, 'device_metadata', 'expected_life_months', 'INTEGER');
+  ensureColumn(database, 'device_metadata', 'fecha_alta', "TEXT DEFAULT ''");
+  ensureColumn(database, 'device_metadata', 'last_reviewed_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'condicion', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'min_stock', 'INTEGER DEFAULT 3');
+  ensureColumn(database, 'inventory_items', 'estado_legacy', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'condicion_updated_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'tickets', 'origen', "TEXT DEFAULT 'tik'");
   ensureColumn(database, 'tickets', 'tags_json', "TEXT DEFAULT '[]'");
   ensureColumn(database, 'tickets', 'template_id', 'INTEGER');
@@ -875,6 +894,7 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'loan_events', 'expected_accessories_json', "TEXT DEFAULT '[]'");
   ensureColumn(database, 'teacher_schedule_entries', 'school_level', "TEXT DEFAULT 'primary_first'");
   migrateInventorySiteCodes(database);
+  migrateInventoryConditionFromEstado(database);
 
   seedDefaultSite(database);
   seedDefaultSettings(database);
@@ -1043,6 +1063,30 @@ function migrateInventorySiteCodes(database) {
   const defaultSite = String(config.defaultSiteCode || 'NFPT').trim().toUpperCase();
   database.prepare("UPDATE inventory_items SET site_code=? WHERE site_code IS NULL OR TRIM(site_code)=''").run(defaultSite);
   database.prepare("UPDATE inventory_items SET site_code=UPPER(TRIM(site_code)) WHERE site_code IS NOT NULL AND TRIM(site_code)<>''").run();
+}
+
+// El `estado` viejo de inventario mezclaba disponibilidad, stock y condición.
+// Traducimos a `condicion` (misma escala que device_metadata) una sola vez y
+// guardamos el valor original en `estado_legacy`: se traduce, no se borra.
+function migrateInventoryConditionFromEstado(database) {
+  const pending = database.prepare(`
+    SELECT id, COALESCE(estado,'') AS estado
+    FROM inventory_items
+    WHERE COALESCE(estado_legacy,'')='' AND COALESCE(estado,'')<>''
+  `).all();
+  if (!pending.length) return;
+  const update = database.prepare('UPDATE inventory_items SET condicion=?, estado_legacy=? WHERE id=?');
+  const tx = database.transaction(() => {
+    for (const row of pending) {
+      const estado = String(row.estado || '').trim();
+      // 'Disponible'/'Operativo'/'No disponible' no dicen nada de la condición
+      // real (o son ambiguos entre roto y sin stock): quedan sin revisar.
+      const normalized = estado.toLowerCase();
+      const condicion = normalized === 'revisar' || normalized === 'incompleto' ? 'Regular' : '';
+      update.run(condicion, estado, row.id);
+    }
+  });
+  tx();
 }
 
 function cleanupNonDefaultSeedInventory(database) {

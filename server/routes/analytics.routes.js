@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { getMergedDevices } from '../services/deviceInventory.service.js';
+import { decorateDevicesWithLifecycle } from '../services/lifecycle.service.js';
 
 export const analyticsRouter = Router();
 
@@ -211,6 +213,85 @@ function buildWeekdaySeries(events) {
     .filter(([, value]) => value > 0)
     .map(([label, value]) => ({ label, value }));
 }
+
+// Foto del parque: condición y vida útil NO dependen del período elegido en
+// analítica (son estado presente, no eventos), por eso viven en su propio
+// endpoint y su propia sección.
+analyticsRouter.get('/analytics/parque', async (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const { items } = await getMergedDevices({ siteCode });
+    const devices = decorateDevicesWithLifecycle(items, siteCode);
+    const recursos = getDb().prepare(`
+      SELECT nombre, categoria, cantidad, unidad, COALESCE(condicion,'') AS condicion, COALESCE(min_stock,3) AS min_stock
+      FROM inventory_items
+      WHERE site_code=? AND COALESCE(activo,1)=1 AND (deleted_at IS NULL OR TRIM(deleted_at)='')
+    `).all(siteCode);
+
+    const malos = value => value === 'Regular' || value === 'Malo';
+    const revisados = devices.filter(item => item.condition).length + recursos.filter(item => item.condicion).length;
+    const universo = devices.length + recursos.length;
+    const proximos12 = devices.filter(item => !item.vencido && typeof item.mesesRestantes === 'number' && item.mesesRestantes <= 12);
+
+    const condicionPorClase = new Map();
+    for (const device of devices) {
+      const clase = device.assetClass || 'Otro';
+      if (!condicionPorClase.has(clase)) condicionPorClase.set(clase, { Excelente: 0, Bueno: 0, Regular: 0, Malo: 0, 'Sin revisar': 0 });
+      const bucket = condicionPorClase.get(clase);
+      bucket[device.condition || 'Sin revisar'] += 1;
+    }
+
+    const porAnio = new Map();
+    for (const device of devices) {
+      if (!device.fechaRenovacion) continue;
+      const anio = device.fechaRenovacion.slice(0, 4);
+      porAnio.set(anio, (porAnio.get(anio) || 0) + 1);
+    }
+
+    const tramos = { '0-50%': 0, '50-80%': 0, '80-100%': 0, Vencido: 0 };
+    for (const device of devices) {
+      if (device.vidaConsumidaPct === null) continue;
+      if (device.vencido) tramos.Vencido += 1;
+      else if (device.vidaConsumidaPct >= 80) tramos['80-100%'] += 1;
+      else if (device.vidaConsumidaPct >= 50) tramos['50-80%'] += 1;
+      else tramos['0-50%'] += 1;
+    }
+
+    res.json({
+      ok: true,
+      summary: {
+        equipos: devices.length,
+        recursos: recursos.length,
+        equiposMalos: devices.filter(item => malos(item.condition)).length,
+        recursosMalos: recursos.filter(item => malos(item.condicion)).length,
+        vencidos: devices.filter(item => item.vencido).length,
+        aRenovar12: proximos12.length,
+        bajoStock: recursos.filter(item => Number(item.cantidad || 0) <= Number(item.min_stock || 3)).length,
+        cobertura: universo ? Math.round((revisados / universo) * 100) : 0
+      },
+      condicionPorClase: [...condicionPorClase.entries()].map(([label, valores]) => ({ label, ...valores })),
+      renovacionPorAnio: [...porAnio.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([label, value]) => ({ label, value })),
+      vidaConsumida: Object.entries(tramos).map(([label, value]) => ({ label, value })),
+      aRenovar: [...devices]
+        .filter(item => item.vencido || (typeof item.mesesRestantes === 'number' && item.mesesRestantes <= 12))
+        .sort((a, b) => (a.mesesRestantes ?? 0) - (b.mesesRestantes ?? 0))
+        .slice(0, 100)
+        .map(item => ({
+          etiqueta: item.etiqueta,
+          alias: item.aliasOperativo || '',
+          assetClass: item.assetClass,
+          condition: item.condition || '',
+          fechaAlta: item.fechaAlta || '',
+          fechaRenovacion: item.fechaRenovacion || '',
+          mesesRestantes: item.mesesRestantes,
+          vencido: item.vencido,
+          estimada: item.estimada
+        }))
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 analyticsRouter.get('/analytics', (req, res) => {
   const siteCode = requireSite(req);

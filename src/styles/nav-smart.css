@@ -696,22 +696,10 @@
 }
 
 /* Filtros del Inventario */
-:root[data-theme-profile^="smart"] .inventory-category-filter {
+:root[data-theme-profile^="smart"] .inventory-segmented {
   border-color: var(--border);
-  background: var(--panel-2);
 }
-:root[data-theme-profile^="smart"] .inventory-category-filter label {
-  border-color: var(--border);
-  background: var(--panel);
-  color: var(--text);
-}
-:root[data-theme-profile^="smart"] .inventory-category-filter label.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--text);
-}
-:root[data-theme-profile^="smart"] .inventory-category-filter button {
-  border-color: var(--accent);
+:root[data-theme-profile^="smart"] .inventory-segmented button.is-active {
   background: var(--accent-soft);
   color: var(--text);
 }
@@ -719,10 +707,6 @@
   border-color: var(--border);
   background: var(--panel);
   color: transparent !important;
-}
-:root[data-theme-profile^="smart"] .inventory-category-filter label.active .filter-check {
-  background: var(--accent);
-  color: #fff !important;
 }
 
 /* Sombras del menú de cuenta sobre fondo claro */

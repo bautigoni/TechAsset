@@ -8,11 +8,23 @@ import { RelatedReminders } from '../reminders/RelatedReminders';
 export function DeviceProfile({ device, consultationMode = false, onOpenDevice, onClose }: { device: Device; consultationMode?: boolean; onOpenDevice?: (device:Device)=>void; onClose: () => void }) {
   const [overview, setOverview] = useState<DeviceOverviewResponse | null>(null);
   const [error, setError] = useState('');
-  const [condition, setCondition] = useState('Excelente');
-  useEffect(() => { setOverview(null); setError(''); getDeviceOverview(device.etiqueta).then(response=>{setOverview(response);setCondition(response.condition||'Excelente');}).catch(reason => setError(reason instanceof Error ? reason.message : 'No se pudo cargar el resumen.')); }, [device.etiqueta]);
+  // '' es "sin revisar": nunca asumir Excelente para un equipo que nadie miró.
+  const [condition, setCondition] = useState('');
+  const [lifeMonths, setLifeMonths] = useState('');
+  const [fechaAlta, setFechaAlta] = useState('');
+  useEffect(() => { setOverview(null); setError(''); getDeviceOverview(device.etiqueta).then(response=>{setOverview(response);setCondition(response.condition||'');setLifeMonths(response.lifecycle?.origen==='equipo'?String(response.lifecycle.meses||''):'');setFechaAlta(response.lifecycle?.estimada?'':(response.lifecycle?.fechaAlta||''));}).catch(reason => setError(reason instanceof Error ? reason.message : 'No se pudo cargar el resumen.')); }, [device.etiqueta]);
   useEffect(()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context',{detail:{type:'device',id:device.etiqueta,label:getOperationalAlias(device)||device.etiqueta,data:{estado:device.estado,ubicacion:device.ubicacion}}}));return()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context-clear',{detail:{type:'device',id:device.etiqueta}}));};},[device.etiqueta]);
   const current = overview?.device || device;
   const siteCode = current.siteCode || localStorage.getItem('techasset_active_site') || 'NFPT';
+  // El PATCH conserva los campos que no se mandan, así que cada control guarda
+  // solo lo suyo sin pisar la condición ni la vida útil del otro.
+  const saveMetadata = async (patch: { condition?: string; expectedLifeMonths?: number | null; fechaAlta?: string }) => {
+    try {
+      await updateDeviceMetadata(current.etiqueta, { condition, ...patch, origen: 'Perfil' });
+    } catch {
+      setError('No se pudo guardar el dato.');
+    }
+  };
   const basic = [
     ['Nombre', getOperationalAlias(current) || current.dispositivo], ['Activo', current.etiqueta], ['Número operativo', current.numeroOperativo || current.numero],
     ['Serie', current.sn], ['Modelo', current.modelo], ['Fabricante', current.marca], ['Tipo', classifyDeviceType(current)], ['Estado', current.estado],
@@ -25,7 +37,7 @@ export function DeviceProfile({ device, consultationMode = false, onOpenDevice, 
         {!overview && !error && <div className="tool-info">Armando el historial del dispositivo…</div>}
         <section className="device-overview-hero">
           <div><span className="eyebrow">{current.etiqueta}</span><h2>{getOperationalAlias(current) || current.dispositivo || current.etiqueta}</h2><p>{classifyDeviceType(current)} · {current.marca || 'Sin fabricante'} {current.modelo || ''}</p></div>
-          <div className="device-profile-status"><span className={`badge ${current.estado === 'Disponible' ? 'available' : current.estado === 'Prestado' ? 'loaned' : 'off'}`}>{current.estado || 'Sin revisar'}</span><label>Condición<select className="input" disabled={consultationMode} value={condition} onChange={async event=>{const value=event.target.value;setCondition(value);try{await updateDeviceMetadata(current.etiqueta,{condition:value});}catch{setError('No se pudo guardar la condición.');}}}>{['Excelente','Bueno','Regular','Malo'].map(value=><option key={value}>{value}</option>)}</select></label></div>
+          <div className="device-profile-status"><span className={`badge ${current.estado === 'Disponible' ? 'available' : current.estado === 'Prestado' ? 'loaned' : 'off'}`}>{current.estado || 'Sin revisar'}</span><label>Condición<select className="input" disabled={consultationMode} value={condition} onChange={event=>{const value=event.target.value;setCondition(value);void saveMetadata({condition:value});}}><option value="">Sin revisar</option>{['Excelente','Bueno','Regular','Malo'].map(value=><option key={value}>{value}</option>)}</select></label><label>Vida útil (meses)<input className="input" type="number" min="0" disabled={consultationMode} placeholder={String(overview?.lifecycle?.meses||'')} value={lifeMonths} onChange={event=>setLifeMonths(event.target.value)} onBlur={()=>void saveMetadata({expectedLifeMonths:lifeMonths?Number(lifeMonths):null})} /></label><label>Fecha de alta<input className="input" type="date" disabled={consultationMode} value={fechaAlta} onChange={event=>setFechaAlta(event.target.value)} onBlur={()=>void saveMetadata({fechaAlta})} /></label></div>
         </section>
         {overview?.aiSummary && <section className="card device-ai-summary"><div><span className="eyebrow">Resumen IA</span><p>{overview.aiSummary.text}</p></div><small>Actualizado {formatDate(overview.aiSummary.generatedAt)}</small></section>}
         <section className="device-overview-grid">

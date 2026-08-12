@@ -68,6 +68,38 @@ export interface AnalyticsResponse {
   summary: AnalyticsSummary;
 }
 
+export interface ParqueRenewalItem {
+  etiqueta: string;
+  alias: string;
+  assetClass: string;
+  condition: string;
+  fechaAlta: string;
+  fechaRenovacion: string;
+  mesesRestantes: number | null;
+  vencido: boolean;
+  estimada: boolean;
+}
+
+export interface ParqueResponse {
+  ok: true;
+  summary: {
+    equipos: number;
+    recursos: number;
+    equiposMalos: number;
+    recursosMalos: number;
+    vencidos: number;
+    aRenovar12: number;
+    bajoStock: number;
+    cobertura: number;
+  };
+  condicionPorClase: Array<{ label: string; Excelente: number; Bueno: number; Regular: number; Malo: number; 'Sin revisar': number }>;
+  renovacionPorAnio: AnalyticsRow[];
+  vidaConsumida: AnalyticsRow[];
+  aRenovar: ParqueRenewalItem[];
+}
+
+export const getParque = () => apiGet<ParqueResponse>('/api/analytics/parque');
+
 export const getAnalytics = (from?: string, to?: string) => {
   const params = new URLSearchParams();
   if (from) params.set('from', from);

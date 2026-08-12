@@ -18,7 +18,7 @@ export function deleteInventoryItem(id: number) {
 }
 
 export function importInventoryCsv(csvText: string) {
-  return apiSend<{ ok: true; read: number; created: number; updated: number; skipped: number; preservedImages?: number; errors: Array<{ row: number; error: string }> }>('/api/inventory/import', 'POST', { csvText });
+  return apiSend<{ ok: true; read: number; created: number; updated: number; skipped: number; preservedImages?: number; preservedConditions?: number; errors: Array<{ row: number; error: string }> }>('/api/inventory/import', 'POST', { csvText });
 }
 
 export function uploadInventoryImage(payload: { fileName: string; dataUrl: string }) {

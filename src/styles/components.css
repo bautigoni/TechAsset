@@ -2274,107 +2274,139 @@ body.consulta-mode #returnBtn {
 .diagnostic-item span{font-size:11px;color:var(--muted)}
 .diagnostic-item strong{font-size:12px;color:var(--text);overflow-wrap:anywhere}
 
-/* ============= Maker inventory ============= */
-.inventory-page{display:grid;gap:22px}
-.inventory-hero{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:20px;
-  padding:24px;
-  border:1px solid rgba(125,211,252,.2);
-  border-radius:20px;
-  background:
-    radial-gradient(circle at 14% 20%,rgba(14,165,233,.2),transparent 34%),
-    linear-gradient(135deg,rgba(15,23,42,.9),rgba(15,23,42,.5));
-}
-.inventory-hero h3{margin:0 0 5px;font-size:28px;color:#fff}
-.inventory-hero p{margin:0;color:var(--muted)}
-.inventory-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-.inventory-kpis div{padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--panel)}
-.inventory-kpis span{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
-.inventory-kpis strong{font-size:28px;color:#fff}
+/* ============= Inventario ============= */
+/* Sobrio y tipográfico: la jerarquía la dan el tamaño y el espacio, no cajas
+   ni degradados. Todo con tokens del tema para que funcione en dark/claro/sepia. */
+.inventory-page{display:grid;gap:20px}
+.inventory-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.inventory-hero h3{margin:0 0 4px;font-size:22px;font-weight:650;letter-spacing:-.01em;color:var(--text)}
+.inventory-hero p{margin:0;color:var(--muted);font-size:13px}
+.inventory-hero .actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* KPIs al ras, sin cajas: una fila de números separados por líneas finas. */
+.inventory-kpis{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.inventory-kpis div{flex:1 1 130px;min-width:130px;padding:14px 18px 14px 0;display:grid;gap:2px}
+.inventory-kpis div + div{padding-left:18px;border-left:1px solid var(--border)}
+.inventory-kpis span{color:var(--muted);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.inventory-kpis strong{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
+.inventory-kpis div.is-warn strong{color:var(--yellow)}
+.inventory-kpis div.is-bad strong{color:var(--red)}
+
 .inventory-form{display:grid;gap:12px}
-.inventory-list-card{display:grid;gap:18px;padding:18px}
-.inventory-toolbar{display:grid;grid-template-columns:minmax(260px,1fr) minmax(190px,220px);gap:14px;align-items:start}
-.inventory-category-filter{
-  grid-column:1 / -1;
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  padding:12px;
-  border:1px solid rgba(148,163,184,.18);
-  border-radius:16px;
-  background:rgba(15,23,42,.42);
+.inventory-list-card{display:grid;gap:0;padding:0;overflow:hidden}
+.inventory-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--border)}
+.inventory-toolbar .input{height:36px;font-size:13px}
+.inventory-toolbar .input[type="search"]{flex:1 1 220px;min-width:180px}
+.inventory-toolbar select.input{flex:0 0 auto;width:auto;min-width:150px}
+
+/* Segmentado Equipos / Recursos / Todo: un solo control, sin checkboxes. */
+.inventory-segmented{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.inventory-segmented button{
+  appearance:none;border:0;background:transparent;color:var(--muted);
+  padding:0 14px;height:36px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;
 }
-.inventory-category-filter label{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  min-height:36px;
-  padding:0 12px;
-  border:1px solid rgba(148,163,184,.22);
-  border-radius:999px;
-  background:rgba(255,255,255,.035);
-  color:#dbeafe;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
-}
-.inventory-category-filter label.active{
-  border-color:rgba(125,211,252,.55);
-  background:linear-gradient(135deg,rgba(14,165,233,.22),rgba(45,212,191,.12));
-  color:#fff;
-}
-.inventory-category-filter input{accent-color:#38bdf8}
-.inventory-category-filter button{
-  min-height:36px;
-  padding:0 12px;
-  border:1px solid rgba(125,211,252,.28);
-  border-radius:999px;
-  background:rgba(14,165,233,.08);
-  color:#bae6fd;
-  font-weight:750;
-  cursor:pointer;
-}
-.inventory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
-.inventory-item-card{
+.inventory-segmented button + button{border-left:1px solid var(--border)}
+.inventory-segmented button:hover{color:var(--text)}
+.inventory-segmented button.is-active{background:var(--panel-2);color:var(--text);font-weight:600}
+
+/* Filas densas en vez de grilla de tarjetas. */
+.inventory-rows{display:grid}
+.inventory-row{
   display:grid;
-  gap:14px;
-  padding:18px;
-  border:1px solid rgba(148,163,184,.22);
-  border-radius:18px;
-  background:linear-gradient(180deg,rgba(30,41,59,.82),rgba(15,23,42,.82));
+  grid-template-columns:28px minmax(0,2.4fr) minmax(0,1fr) 130px 110px auto;
+  align-items:center;gap:14px;
+  padding:10px 16px;
+  border-bottom:1px solid var(--border);
   min-width:0;
-  box-shadow:0 18px 40px rgba(2,6,23,.16);
 }
-.inventory-thumb{
-  width:100%;
-  aspect-ratio:16/10;
-  border-radius:14px;
-  overflow:hidden;
+.inventory-row:last-child{border-bottom:0}
+.inventory-row:hover{background:var(--panel-2)}
+.inventory-row-thumb{width:28px;height:28px;border-radius:5px;overflow:hidden;background:var(--panel-2);display:grid;place-items:center}
+.inventory-row-thumb img{width:100%;height:100%;object-fit:cover}
+.inventory-row-thumb span{width:6px;height:6px;border-radius:50%;background:var(--border)}
+.inventory-row-name{display:grid;gap:2px;min-width:0}
+.inventory-row-name strong{font-size:14px;font-weight:550;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inventory-row-name span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inventory-row-name button{
+  appearance:none;border:0;background:transparent;padding:0;text-align:left;cursor:pointer;
+  font-size:14px;font-weight:550;color:var(--text);
+}
+.inventory-row-name button:hover{text-decoration:underline}
+.inventory-row-class{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inventory-row-qty{font-size:13px;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.inventory-row-qty small{color:var(--muted);font-size:12px;margin-left:4px}
+.inventory-row-qty.is-low{color:var(--yellow)}
+
+/* Condición: texto con un punto mínimo, sin pills ni glows. */
+.condition-dot{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text);white-space:nowrap}
+.condition-dot::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--border);flex:0 0 auto}
+.condition-dot.is-excelente::before{background:var(--green)}
+.condition-dot.is-bueno::before{background:var(--blue)}
+.condition-dot.is-regular::before{background:var(--yellow)}
+.condition-dot.is-malo::before{background:var(--red)}
+.condition-dot.is-sin-revisar{color:var(--muted)}
+
+.inventory-row-life{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.inventory-row-life.is-due{color:var(--yellow)}
+.inventory-row-life.is-over{color:var(--red)}
+.inventory-row-actions{display:flex;gap:4px;justify-content:flex-end}
+.inventory-row-actions button{
+  appearance:none;border:1px solid transparent;background:transparent;color:var(--muted);
+  font-size:12px;padding:5px 9px;border-radius:6px;cursor:pointer;white-space:nowrap;
+}
+.inventory-row-actions button:hover:not(:disabled){border-color:var(--border);color:var(--text)}
+.inventory-row-actions button:disabled{opacity:.4;cursor:not-allowed}
+.inventory-rows-head{
   display:grid;
-  place-items:center;
-  background:linear-gradient(135deg,rgba(14,165,233,.24),rgba(45,212,191,.14));
-  border:1px solid rgba(191,219,254,.12);
+  grid-template-columns:28px minmax(0,2.4fr) minmax(0,1fr) 130px 110px auto;
+  gap:14px;padding:9px 16px;border-bottom:1px solid var(--border);
+  font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
 }
-.inventory-thumb img{width:100%;height:100%;object-fit:cover}
-.inventory-thumb span{color:#dff7ff;font-size:28px;font-weight:800}
-.inventory-item-main{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.inventory-item-card strong{display:block;line-height:1.25}
-.inventory-item-card span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
-.inventory-item-card em{font-style:normal;font-size:11px;color:#bfdbfe;border:1px solid rgba(125,211,252,.24);border-radius:999px;padding:4px 8px;background:rgba(14,165,233,.08);white-space:nowrap}
-.inventory-item-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.4}
-.inventory-qty{display:flex;align-items:end;gap:7px;padding-top:2px}
-.inventory-qty strong{font-size:32px;color:#e0f2fe}
-.inventory-item-card .small-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}
-.inventory-item-card .small-actions button{width:100%;border-radius:999px;padding:9px 12px}
+.inventory-rows-head span:last-child{text-align:right}
+.inventory-empty{padding:36px 16px;text-align:center;color:var(--muted);font-size:13px}
+
+/* Bloque de parque en analítica: foto del presente, arriba de los préstamos. */
+.parque-section{display:grid;gap:16px;margin-bottom:24px}
+.parque-section > .card-head{margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.parque-section > .card-head h3{margin:0;font-size:18px;font-weight:600;color:var(--text)}
+
+/* Wizard de revisión de condición: teclado primero, una decisión por pantalla. */
+.review-wizard{display:grid;gap:16px;min-width:min(420px,80vw)}
+.review-progress{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:12px}
+.review-progress span:first-child{font-size:13px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.review-bar{height:2px;background:var(--border);border-radius:2px;overflow:hidden}
+.review-bar i{display:block;height:100%;background:var(--blue);transition:width .2s ease}
+.review-subject{display:grid;gap:4px;padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.review-subject strong{font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.review-subject span{font-size:13px;color:var(--muted)}
+.review-class{display:grid;gap:6px}
+.review-class .input{height:34px;font-size:13px}
+.review-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.review-options button{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border:1px solid var(--border);border-radius:8px;
+  background:transparent;color:var(--text);font-size:14px;cursor:pointer;text-align:left;
+}
+.review-options button:hover:not(:disabled){background:var(--panel-2)}
+.review-options button:disabled{opacity:.5;cursor:progress}
+.review-options kbd{
+  display:grid;place-items:center;width:22px;height:22px;flex:0 0 auto;
+  border:1px solid var(--border);border-radius:5px;
+  font-size:11px;font-family:inherit;color:var(--muted);
+}
+.review-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px}
+.review-done{display:grid;gap:10px;justify-items:start;padding:12px 0}
+.review-done strong{font-size:18px;font-weight:600;color:var(--text)}
+.review-done p{margin:0;font-size:13px}
+
 .modal-actions-sticky{position:sticky;bottom:-18px;margin:4px -18px -18px;padding:12px 18px;background:linear-gradient(180deg,rgba(18,27,45,.82),var(--panel));border-top:1px solid var(--border)}
 @media (max-width:980px){
-  .inventory-hero{display:grid}
-  .inventory-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .inventory-toolbar{grid-template-columns:1fr}
-  .inventory-category-filter{padding:10px}
+  .review-wizard{min-width:0}
+  .review-options{grid-template-columns:1fr}
+  .inventory-kpis div{flex-basis:50%;min-width:0}
+  .inventory-kpis div:nth-child(odd){padding-left:0;border-left:0}
+  .inventory-row,.inventory-rows-head{grid-template-columns:24px minmax(0,1fr) 96px auto;gap:10px}
+  .inventory-row-class,.inventory-row-life,.inventory-rows-head span:nth-child(3),.inventory-rows-head span:nth-child(5){display:none}
 }
 
 /* ============= Login ============= */

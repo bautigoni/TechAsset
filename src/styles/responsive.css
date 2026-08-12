@@ -612,40 +612,16 @@ body.mobile-menu-open {
   }
 
   /* ── INVENTORY PAGE ────────────────────────────────────────────── */
-  .inventory-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 10px;
-  }
-
   .inventory-toolbar {
-    grid-template-columns: 1fr !important;
-    gap: 10px;
+    gap: 8px;
   }
 
-  /* Chips de filtro: wrap sin scroll horizontal */
-  .inventory-category-filter {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    overflow-x: visible !important;
-    padding: 10px !important;
+  .inventory-toolbar .inventory-segmented {
+    width: 100%;
   }
 
-  .inventory-category-filter label {
-    max-width: 100%;
-    white-space: normal !important;
-    overflow-wrap: anywhere;
-    flex: 0 1 auto;
-  }
-
-  .inventory-grid {
-    grid-template-columns: 1fr !important;
-    gap: 14px;
-  }
-
-  .inventory-item-card {
-    overflow-wrap: anywhere;
-    word-break: break-word;
+  .inventory-toolbar .inventory-segmented button {
+    flex: 1;
   }
 
   /* ── TASKS PAGE ────────────────────────────────────────────────── */
@@ -742,10 +718,6 @@ body.mobile-menu-open {
     grid-template-columns: 1fr !important;
   }
 
-  .inventory-kpis {
-    grid-template-columns: 1fr 1fr !important;
-  }
-
   /* Toolbar acciones: 1 columna */
   .card-head .actions {
     grid-template-columns: 1fr !important;
@@ -794,10 +766,6 @@ body.mobile-menu-open {
 /* ── BREAKPOINT 380px ─────────────────────────────────────────────── */
 @media (max-width: 380px) {
   .device-filter-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .inventory-kpis {
     grid-template-columns: 1fr !important;
   }
 }

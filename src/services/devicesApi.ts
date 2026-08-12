@@ -91,6 +91,18 @@ export interface DeviceOverviewResponse {
   aiSummary: { text: string; generatedAt: string; cached: boolean };
   condition: string;
   conditionNotes: string;
+  lifecycle: {
+    assetClass: string;
+    origen: 'equipo' | 'sede' | 'global';
+    meses: number;
+    fechaAlta: string;
+    fechaRenovacion: string;
+    mesesRestantes: number | null;
+    vidaConsumidaPct: number | null;
+    vencido: boolean;
+    estimada: boolean;
+    lastReviewedAt: string;
+  };
   group: DeviceGroup | null;
 }
 
@@ -100,7 +112,36 @@ export function getDeviceOverview(etiqueta: string) {
   return apiGet<DeviceOverviewResponse>(`/api/devices/${encodeURIComponent(etiqueta)}/overview`);
 }
 
-export const updateDeviceMetadata = (etiqueta:string, payload:{condition:string;notes?:string}) => apiSend<{ok:true;condition:string;notes:string}>(`/api/devices/${encodeURIComponent(etiqueta)}/metadata`, 'PATCH', payload);
+export interface DeviceMetadataPayload {
+  condition: string;
+  notes?: string;
+  assetClass?: string;
+  expectedLifeMonths?: number | null;
+  fechaAlta?: string;
+  origen?: string;
+}
+
+export const updateDeviceMetadata = (etiqueta:string, payload:DeviceMetadataPayload) => apiSend<{ok:true;condition:string;notes:string;assetClass:string;lastReviewedAt:string}>(`/api/devices/${encodeURIComponent(etiqueta)}/metadata`, 'PATCH', payload);
+
+export interface ReviewQueueItem {
+  etiqueta: string;
+  alias: string;
+  categoria: string;
+  marca: string;
+  modelo: string;
+  estado: string;
+  assetClass: string;
+  assetClassConfirmed: boolean;
+  condition: string;
+  conditionNotes: string;
+  lastReviewedAt: string;
+}
+
+export const getDeviceReviewQueue = () => apiGet<{ ok: true; assetClasses: string[]; total: number; reviewed: number; items: ReviewQueueItem[] }>('/api/devices/review-queue');
+
+export interface LifecycleDefault { assetClass: string; meses: number; origen: 'equipo' | 'sede' | 'global' }
+export const getLifecycleDefaults = () => apiGet<{ ok: true; items: LifecycleDefault[] }>('/api/lifecycle/defaults');
+export const updateLifecycleDefault = (payload: { assetClass: string; meses: number }) => apiSend<{ ok: true } & LifecycleDefault>('/api/lifecycle/defaults', 'PATCH', payload);
 export const getDeviceGroups = () => apiGet<{ok:true;items:DeviceGroup[]}>('/api/device-groups');
 export const createDeviceGroup = (payload:{name:string;description?:string;classroomKey?:string;deviceTags:string[]}) => apiSend<{ok:true;id:number}>('/api/device-groups','POST',payload);
 export const updateDeviceGroup = (id:number,payload:{name?:string;description?:string;classroomKey?:string;deviceTags?:string[]}) => apiSend<{ok:true}>(`/api/device-groups/${id}`,'PATCH',payload);

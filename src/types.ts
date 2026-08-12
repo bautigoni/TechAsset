@@ -112,8 +112,24 @@ export interface Device {
   returnedAt?: string;
   changedAt?: string;
   ultima?: string;
+  createdAt?: string;
   condition?: string;
+  conditionNotes?: string;
+  lastReviewedAt?: string;
+  assetClass?: string;
+  assetClassConfirmed?: boolean;
+  lifecycleSource?: 'equipo' | 'sede' | 'global';
+  fechaAlta?: string;
+  meses?: number;
+  fechaRenovacion?: string;
+  mesesRestantes?: number | null;
+  vidaConsumidaPct?: number | null;
+  vencido?: boolean;
+  estimada?: boolean;
 }
+
+export type ConditionValue = 'Excelente' | 'Bueno' | 'Regular' | 'Malo';
+export const CONDITION_VALUES: ConditionValue[] = ['Excelente', 'Bueno', 'Regular', 'Malo'];
 
 export interface Movement {
   id?: string;
@@ -239,6 +255,11 @@ export interface InventoryItem {
   unidad: string;
   imagenUrl?: string;
   estado?: string;
+  estadoLegacy?: string;
+  condicion?: string;
+  minStock?: number;
+  bajoStock?: boolean;
+  condicionUpdatedAt?: string;
   observaciones?: string;
   activo?: boolean;
   createdAt?: string;

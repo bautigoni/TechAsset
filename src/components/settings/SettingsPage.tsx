@@ -4,6 +4,7 @@ import { AdvancedSettings } from './AdvancedSettings';
 import { fetchShiftSettings, updateShiftSettings } from '../../services/operationsApi';
 import { AllowedUsersPanel } from './AllowedUsersPanel';
 import { AppearancePanel } from './AppearancePanel';
+import { LifecyclePanel } from './LifecyclePanel';
 import { LoanSettingsPanel } from './LoanSettingsPanel';
 import { ModulesPanel } from './ModulesPanel';
 import { RolesPanel } from './RolesPanel';
@@ -71,6 +72,7 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
             <RolesPanel consultationMode={consultationMode} onChanged={onModulesChanged} />
             <InvitesPanel consultationMode={consultationMode} />
             <LoanSettingsPanel />
+            <LifecyclePanel consultationMode={consultationMode} />
             <AllowedUsersPanel canAssignSuperadmin={user.rolGlobal === 'Superadmin'} onChanged={onSitesChanged} />
             <AdvancedSettings />
           </>

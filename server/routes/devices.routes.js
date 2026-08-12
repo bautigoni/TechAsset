@@ -4,13 +4,15 @@ import { buildLocalInventory, getDeviceInventoryDiagnostics, getMergedDevices, i
 import { parseDevicesCsv, toCsvExportUrl } from '../services/googleSheets.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 import { getDeviceAiSummary } from '../services/aiSummaries.service.js';
+import { CONDITIONS, computeLifecycle, decorateDevicesWithLifecycle, deriveAssetClass, getAssetClasses, getLifecycleOverrides, recordConditionChange, resolveExpectedLifeMonths } from '../services/lifecycle.service.js';
 
 export const devicesRouter = Router();
 
 devicesRouter.get('/devices', async (_req, res, next) => {
   try {
-    const { items, source, loadedAt, diagnostics } = await getMergedDevices({ siteCode: requireSite(_req) });
-    res.json({ ok: true, items, loadedAt: loadedAt || new Date().toISOString(), source, diagnostics });
+    const siteCode = requireSite(_req);
+    const { items, source, loadedAt, diagnostics } = await getMergedDevices({ siteCode });
+    res.json({ ok: true, items: decorateDevicesWithLifecycle(items, siteCode), loadedAt: loadedAt || new Date().toISOString(), source, diagnostics });
   } catch (error) {
     next(error);
   }
@@ -64,14 +66,19 @@ devicesRouter.get('/devices/:etiqueta/overview', async (req, res, next) => {
     const repairs = ticketRows.filter(row => /repar|manten|service/i.test(`${row.categoria || ''} ${row.titulo || ''} ${row.descripcion || ''}`));
     const incidents = ticketRows.map(row => ({ id:Number(row.id), numero:row.numero || '', titulo:row.titulo || '', estado:row.estado || '', prioridad:row.prioridad || '', categoria:row.categoria || '', updatedAt:row.updated_at || '' }));
     const aiSummary = await getDeviceAiSummary({ siteCode, device, events: loanEvents, tickets: ticketRows });
-    const metadata = getDb().prepare('SELECT condition, notes, updated_at FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').get(siteCode, tag);
+    const metadata = getDb().prepare('SELECT * FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').get(siteCode, tag);
+    const assetClass = metadata?.asset_class || deriveAssetClass(device, getAssetClasses(siteCode));
+    const expectedLife = resolveExpectedLifeMonths({ assetClass, deviceOverride: metadata?.expected_life_months, overrides: getLifecycleOverrides(siteCode) });
+    const lifecycle = computeLifecycle({ fechaAlta: metadata?.fecha_alta, fallbackAlta: device.createdAt, meses: expectedLife.meses });
     const group = getDb().prepare(`SELECT g.* FROM device_groups g JOIN device_group_members m ON m.group_id=g.id AND m.site_code=g.site_code WHERE g.site_code=? AND upper(m.device_tag)=upper(?) AND g.active=1`).get(siteCode, tag);
     const groupMembers = group ? getDb().prepare('SELECT device_tag FROM device_group_members WHERE site_code=? AND group_id=? ORDER BY id').all(siteCode, group.id).map(row => {
       const found = items.find(item => normalizeTag(item.etiqueta) === normalizeTag(row.device_tag));
       return found || { etiqueta: row.device_tag, id: row.device_tag, estado: 'Sin revisar' };
     }) : [];
     res.json({
-      ok:true, device:{ ...device, condition: metadata?.condition || 'Excelente' }, condition:metadata?.condition || 'Excelente', conditionNotes:metadata?.notes || '', group:group ? { id:Number(group.id), name:group.name, description:group.description || '', classroomKey:group.classroom_key || '', members:groupMembers } : null, timeline,
+      ok:true, device:{ ...device, condition: metadata?.condition || '', assetClass, ...lifecycle }, condition:metadata?.condition || '', conditionNotes:metadata?.notes || '',
+      lifecycle:{ ...lifecycle, assetClass, origen:expectedLife.origen, lastReviewedAt:metadata?.last_reviewed_at || '' },
+      group:group ? { id:Number(group.id), name:group.name, description:group.description || '', classroomKey:group.classroom_key || '', members:groupMembers } : null, timeline,
       stats:{ totalLoans:loans.length, totalRepairs:repairs.length, incidents:ticketRows.length, lastMaintenance:repairs[0]?.updated_at || '', lastLoan:loans[0]?.timestamp || '', lastRepair:repairs[0]?.updated_at || '' },
       activeLoan: device.estado === 'Prestado' ? { person:device.prestadoA || '', role:device.rol || '', location:device.ubicacion || '', since:device.loanedAt || '' } : null,
       openTickets:incidents.filter(item=>item.estado!=='Hecho'), recentTickets:incidents.slice(0,8),
@@ -84,11 +91,104 @@ devicesRouter.get('/devices/:etiqueta/overview', async (req, res, next) => {
 devicesRouter.patch('/devices/:etiqueta/metadata', (req, res) => {
   const siteCode = requireSite(req);
   const tag = normalizeTag(req.params.etiqueta);
-  const condition = ['Excelente','Bueno','Regular','Malo'].includes(String(req.body?.condition)) ? String(req.body.condition) : 'Excelente';
+  const previous = getDb().prepare('SELECT * FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').get(siteCode, tag);
+  // '' significa sin revisar: no se asume 'Excelente' para un equipo que nadie miró.
+  const condition = CONDITIONS.includes(String(req.body?.condition)) ? String(req.body.condition) : '';
+  const notes = req.body?.notes === undefined ? String(previous?.notes || '') : String(req.body.notes || '');
+  const assetClass = req.body?.assetClass === undefined ? String(previous?.asset_class || '') : String(req.body.assetClass || '').trim();
+  const expectedLifeParsed = Number(req.body?.expectedLifeMonths);
+  const expectedLifeMonths = req.body?.expectedLifeMonths === undefined
+    ? (previous?.expected_life_months ?? null)
+    : (Number.isFinite(expectedLifeParsed) && expectedLifeParsed > 0 ? Math.round(expectedLifeParsed) : null);
+  const fechaAlta = req.body?.fechaAlta === undefined ? String(previous?.fecha_alta || '') : String(req.body.fechaAlta || '').trim();
   const ts = nowIso();
-  getDb().prepare(`INSERT INTO device_metadata (site_code,device_tag,condition,notes,updated_by,updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(site_code,device_tag) DO UPDATE SET condition=excluded.condition,notes=excluded.notes,updated_by=excluded.updated_by,updated_at=excluded.updated_at`)
-    .run(siteCode, tag, condition, String(req.body?.notes || ''), req.user?.nombre || req.user?.email || '', ts);
-  res.json({ ok: true, condition, notes: String(req.body?.notes || ''), updatedAt: ts });
+  const reviewed = condition ? ts : String(previous?.last_reviewed_at || '');
+  getDb().prepare(`
+    INSERT INTO device_metadata (site_code,device_tag,condition,notes,asset_class,expected_life_months,fecha_alta,last_reviewed_at,updated_by,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(site_code,device_tag) DO UPDATE SET
+      condition=excluded.condition, notes=excluded.notes, asset_class=excluded.asset_class,
+      expected_life_months=excluded.expected_life_months, fecha_alta=excluded.fecha_alta,
+      last_reviewed_at=excluded.last_reviewed_at, updated_by=excluded.updated_by, updated_at=excluded.updated_at
+  `).run(siteCode, tag, condition, notes, assetClass, expectedLifeMonths, fechaAlta, reviewed, req.user?.nombre || req.user?.email || '', ts);
+  if (condition && condition !== String(previous?.condition || '')) {
+    recordConditionChange({ siteCode, etiqueta: tag, condicion: condition, operador: req.user?.nombre || req.user?.email || '', origen: String(req.body?.origen || 'Dispositivos') });
+  }
+  res.json({ ok: true, condition, notes, assetClass, expectedLifeMonths, fechaAlta, lastReviewedAt: reviewed, updatedAt: ts });
+});
+
+// Cola de revisión: primero los que nunca se revisaron, después los más viejos.
+// No hay tabla de sesión — el "dónde iba" se recalcula con este mismo filtro,
+// así que cerrar el navegador y volver retoma donde estabas.
+devicesRouter.get('/devices/review-queue', async (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const { items } = await getMergedDevices({ siteCode });
+    const decorated = decorateDevicesWithLifecycle(items, siteCode);
+    const queue = [...decorated].sort((a, b) => {
+      const aReviewed = a.lastReviewedAt || '';
+      const bReviewed = b.lastReviewedAt || '';
+      if (!aReviewed && bReviewed) return -1;
+      if (aReviewed && !bReviewed) return 1;
+      if (aReviewed !== bReviewed) return String(aReviewed).localeCompare(String(bReviewed));
+      return String(a.etiqueta).localeCompare(String(b.etiqueta));
+    });
+    res.json({
+      ok: true,
+      assetClasses: getAssetClasses(siteCode),
+      total: queue.length,
+      reviewed: decorated.filter(item => item.condition).length,
+      items: queue.map(item => ({
+        etiqueta: item.etiqueta,
+        alias: item.aliasOperativo || '',
+        categoria: item.categoria || '',
+        marca: item.marca || '',
+        modelo: item.modelo || '',
+        estado: item.estado || '',
+        assetClass: item.assetClass,
+        assetClassConfirmed: item.assetClassConfirmed,
+        condition: item.condition || '',
+        conditionNotes: item.conditionNotes || '',
+        lastReviewedAt: item.lastReviewedAt || ''
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+devicesRouter.get('/lifecycle/defaults', (req, res) => {
+  const siteCode = requireSite(req);
+  const overrides = getLifecycleOverrides(siteCode);
+  const classes = getAssetClasses(siteCode);
+  res.json({
+    ok: true,
+    items: classes.map(assetClass => {
+      const { meses, origen } = resolveExpectedLifeMonths({ assetClass, overrides });
+      return { assetClass, meses, origen };
+    })
+  });
+});
+
+devicesRouter.patch('/lifecycle/defaults', (req, res) => {
+  const siteCode = requireSite(req);
+  const assetClass = String(req.body?.assetClass || '').trim();
+  if (!assetClass) return res.status(400).json({ ok: false, error: 'Falta la clase de activo.' });
+  const parsed = Number(req.body?.meses);
+  const meses = Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : 0;
+  const ts = nowIso();
+  if (!meses) {
+    // Borrar el override devuelve la clase al baseline global.
+    getDb().prepare('DELETE FROM lifecycle_defaults WHERE site_code=? AND asset_class=?').run(siteCode, assetClass);
+  } else {
+    getDb().prepare(`
+      INSERT INTO lifecycle_defaults (site_code, asset_class, meses, updated_by, updated_at)
+      VALUES (?,?,?,?,?)
+      ON CONFLICT(site_code, asset_class) DO UPDATE SET meses=excluded.meses, updated_by=excluded.updated_by, updated_at=excluded.updated_at
+    `).run(siteCode, assetClass, meses, req.user?.nombre || req.user?.email || '', ts);
+  }
+  const { meses: resolved, origen } = resolveExpectedLifeMonths({ assetClass, overrides: getLifecycleOverrides(siteCode) });
+  res.json({ ok: true, assetClass, meses: resolved, origen });
 });
 
 devicesRouter.get('/device-groups', async (req, res, next) => {
@@ -238,6 +338,9 @@ devicesRouter.patch('/devices/:etiqueta', async (req, res, next) => {
     if (!originalEtiqueta || !payload.etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
     saveCategory(payload.categoria, siteCode);
     if (payload.etiqueta !== originalEtiqueta) {
+      // La metadata (condición, clase, vida útil) está keyeada por etiqueta:
+      // si no la arrastramos, el rename la deja huérfana y se pierde la revisión.
+      carryDeviceMetadataOnRename(siteCode, originalEtiqueta, payload.etiqueta);
       getDb().prepare('DELETE FROM local_devices WHERE etiqueta=? AND site_code=?').run(originalEtiqueta, siteCode);
       getDb().prepare('DELETE FROM hidden_devices WHERE etiqueta=? AND site_code=?').run(payload.etiqueta, siteCode);
     }
@@ -436,6 +539,22 @@ function saveCategory(nombre, siteCode) {
     VALUES (?, ?, ?, ?)
     ON CONFLICT(site_code, nombre) DO UPDATE SET activo=1, updated_at=excluded.updated_at
   `).run(siteCode, clean, ts, ts);
+}
+
+// Mueve la fila de device_metadata a la etiqueta nueva. Si la nueva ya tenía
+// metadata propia se respeta la existente y se descarta la vieja (no se pisa
+// una revisión hecha con la de un equipo que dejó de existir con ese nombre).
+function carryDeviceMetadataOnRename(siteCode, fromTag, toTag) {
+  if (!fromTag || !toTag || fromTag === toTag) return;
+  const source = getDb().prepare('SELECT * FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').get(siteCode, fromTag);
+  if (!source) return;
+  const target = getDb().prepare('SELECT id FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').get(siteCode, toTag);
+  if (target) {
+    getDb().prepare('DELETE FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').run(siteCode, fromTag);
+    return;
+  }
+  getDb().prepare('UPDATE device_metadata SET device_tag=?, updated_at=? WHERE site_code=? AND upper(device_tag)=upper(?)')
+    .run(toTag, nowIso(), siteCode, fromTag);
 }
 
 function normalizeDevicePayload(raw) {

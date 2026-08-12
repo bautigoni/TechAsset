@@ -85,11 +85,13 @@ export function buildLocalInventory(siteCode = config.defaultSiteCode || 'NFPT')
 }
 
 function loadLocalDevices(siteCode) {
-  return getDb().prepare('SELECT etiqueta, payload FROM local_devices WHERE site_code=? AND COALESCE(eliminado,0)=0 ORDER BY etiqueta').all(siteCode).map(row => {
+  // created_at viaja con el dispositivo: es el fallback de "fecha de alta" para
+  // la vida útil cuando nadie cargó una fecha de compra real.
+  return getDb().prepare('SELECT etiqueta, payload, created_at FROM local_devices WHERE site_code=? AND COALESCE(eliminado,0)=0 ORDER BY etiqueta').all(siteCode).map(row => {
     try {
-      return { etiqueta: row.etiqueta, ...JSON.parse(row.payload || '{}') };
+      return { etiqueta: row.etiqueta, ...JSON.parse(row.payload || '{}'), createdAt: row.created_at || '' };
     } catch {
-      return { etiqueta: row.etiqueta };
+      return { etiqueta: row.etiqueta, createdAt: row.created_at || '' };
     }
   }).filter(device => device.etiqueta);
 }
