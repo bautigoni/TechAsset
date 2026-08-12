@@ -66,9 +66,11 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
           </div>
           <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={returnSeed || initialCode} />
+          {/* Los cartelitos van abajo del formulario, donde sobraba lugar, en vez
+              de apretar la columna lateral. */}
+          <PhotoPassPanel consultationMode={consultationMode} />
         </section>
         <div className="loans-side-stack">
-          <PhotoPassPanel consultationMode={consultationMode} />
           <section className="card loan-summary-card">
             <div className="card-head"><h3>Resumen rápido</h3></div>
             <div className="loan-summary-grid">

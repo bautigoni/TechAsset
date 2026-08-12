@@ -2563,12 +2563,12 @@ body.consulta-mode #returnBtn {
 .device-table-more span{margin-right:auto;font-variant-numeric:tabular-nums}
 
 /* Cartelitos dentro de Prestamos: grilla compacta de numeros. */
-.pass-panel{display:grid;gap:12px}
+.pass-panel{display:grid;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid var(--border);background:transparent;border-left:0;border-right:0;border-bottom:0;border-radius:0}
 .pass-panel .card-head{margin-bottom:0}
 .pass-panel .card-head span{font-size:12px}
-.pass-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pass-chips{display:flex;flex-wrap:wrap;gap:7px}
 .pass-chip{
-  width:34px;height:34px;display:grid;place-items:center;
+  width:36px;height:36px;display:grid;place-items:center;
   border:1px solid var(--border);border-radius:8px;background:var(--panel-2);
   color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;cursor:pointer;
   transition:border-color .12s ease,color .12s ease,background .12s ease;

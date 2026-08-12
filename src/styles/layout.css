@@ -963,17 +963,9 @@ html {
   gap: 14px;
 }
 
-/* La columna lateral apilaba cuatro tarjetas enteras y estiraba la pagina a
-   ~1570px. Cartelitos y Resumen van lado a lado, y las listas largas scrollean
-   adentro de su tarjeta en vez de empujar la pagina. */
-@media (min-width: 1200px) {
-  .loans-side-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-  .loans-side-stack > .previous-loans-card,
-  .loans-side-stack > .loaned-now-card { grid-column: 1 / -1; }
-}
-
-.loaned-now-card .loaned-now-list { max-height: 300px; overflow: auto; }
-.pass-panel .pass-chips { max-height: 148px; overflow: auto }
+/* Los cartelitos viven abajo del formulario de prestamo, donde sobraba lugar,
+   asi que la columna lateral queda como estaba: una tarjeta abajo de la otra. */
+.loaned-now-card .loaned-now-list { max-height: 340px; overflow: auto; }
 
 .loan-summary-grid {
   display: grid;
