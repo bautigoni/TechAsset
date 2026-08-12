@@ -8,7 +8,9 @@ import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { ConditionReviewModal } from './ConditionReviewModal';
 import { InventoryCard } from './InventoryCard';
-import { deviceToEntry, groupEntries, itemToEntry, type Entry } from './inventoryEntries';
+import { conditionClass, deviceToEntry, groupEntries, itemToEntry, type Entry } from './inventoryEntries';
+import { InventoryTree } from './InventoryTree';
+import { InventoryDetail } from './InventoryDetail';
 
 type Segment = 'todo' | 'equipo' | 'recurso';
 
@@ -40,7 +42,9 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState<Segment>('recurso');
   const [condicionFilter, setCondicionFilter] = useState('');
-  const [collapsed, setCollapsed] = useState<string[]>([]);
+  const [view, setView] = useState<'grid' | 'table'>('grid');
+  const [selected, setSelected] = useState<{ categoria: string; subcategoria: string } | null>(null);
+  const [expanded, setExpanded] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
@@ -69,6 +73,19 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
 
   const groups = useMemo(() => groupEntries(filtered), [filtered]);
 
+  // La seleccion del arbol define que se lista; sin seleccion, todo lo filtrado.
+  const listed = useMemo(() => {
+    if (!selected) return filtered;
+    return filtered.filter(entry => entry.categoria === selected.categoria
+      && (!selected.subcategoria || entry.subcategoria === selected.subcategoria));
+  }, [filtered, selected]);
+
+  const subcategoryCards = useMemo(() => {
+    if (!selected) return [];
+    const group = groups.find(item => item.categoria === selected.categoria);
+    return (group?.subgroups || []).filter(sub => sub.subcategoria);
+  }, [groups, selected]);
+
   const kpis = useMemo(() => {
     const equipos = entries.filter(entry => entry.kind === 'equipo');
     const recursos = entries.filter(entry => entry.kind === 'recurso');
@@ -93,10 +110,6 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     const set = new Set(items.filter(item => item.categoria === form.categoria).map(item => item.subcategoria).filter(Boolean));
     return [...set].sort((a, b) => String(a).localeCompare(String(b), 'es'));
   }, [items, form.categoria]);
-
-  const toggleGroup = (categoria: string) => {
-    setCollapsed(current => current.includes(categoria) ? current.filter(item => item !== categoria) : [...current, categoria]);
-  };
 
   const openCreate = () => {
     setEditing(null);
@@ -265,7 +278,11 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
         <div className={kpis.vencidos ? 'is-bad' : ''}><span>Vida útil vencida</span><strong>{kpis.vencidos}</strong></div>
         <div className={kpis.bajoStock ? 'is-warn' : ''}><span>Bajo stock</span><strong>{kpis.bajoStock}</strong></div>
         <div className={kpis.sinFoto ? 'is-warn' : ''}><span>Sin foto</span><strong>{kpis.sinFoto}</strong></div>
-        <div><span>Revisado</span><strong>{kpis.cobertura}%</strong></div>
+        <div className="inv-kpi-progress">
+          <span>Revisado</span>
+          <strong>{kpis.cobertura}%</strong>
+          <i><b style={{ width: `${kpis.cobertura}%` }} /></i>
+        </div>
       </div>
 
       {message && <div className="tool-info">{message}</div>}
@@ -283,59 +300,93 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
           {CONDITION_VALUES.map(value => <option key={value} value={value}>{value}</option>)}
           <option value="Sin revisar">Sin revisar</option>
         </select>
+        <div className="inventory-segmented inv-view-toggle" role="group" aria-label="Vista">
+          <button type="button" className={view === 'grid' ? 'is-active' : ''} onClick={() => setView('grid')} title="Tarjetas">▦</button>
+          <button type="button" className={view === 'table' ? 'is-active' : ''} onClick={() => setView('table')} title="Tabla">☰</button>
+        </div>
       </div>
 
-      {groups.map(group => {
-        const isCollapsed = collapsed.includes(group.categoria);
-        return (
-          <section className="inv-group" key={group.categoria}>
-            <button type="button" className="inv-group-head" onClick={() => toggleGroup(group.categoria)} aria-expanded={!isCollapsed}>
-              <h4>{group.categoria}</h4>
-              <span>{group.total}</span>
-              <i className={isCollapsed ? 'is-collapsed' : ''} aria-hidden="true" />
-            </button>
-            {!isCollapsed && group.subgroups.map(sub => (
-              <div className="inv-sub" key={sub.subcategoria || '_'}>
-                {sub.subcategoria && <h5>{sub.subcategoria} <span>{sub.entries.length}</span></h5>}
-                <div className="inv-grid">
-                  {sub.entries.map(entry => (
-                    <InventoryCard key={entry.key} entry={entry} onOpen={() => setDetail(entry)} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </section>
-        );
-      })}
+      <div className="inv-workspace">
+        <InventoryTree
+          groups={groups}
+          selected={selected}
+          onSelect={setSelected}
+          expanded={expanded}
+          onToggle={categoria => setExpanded(current => current.includes(categoria) ? current.filter(item => item !== categoria) : [...current, categoria])}
+        />
 
-      {!groups.length && <div className="inventory-empty">No hay nada para este filtro.</div>}
-
-      {detail && (
-        <Modal title={detail.nombre} onClose={() => setDetail(null)}>
-          <div className="inv-detail">
-            {detail.imagenUrl && <div className="inv-detail-media"><img src={detail.imagenUrl} alt="" /></div>}
-            <dl>
-              <div><dt>Categoría</dt><dd>{detail.categoria}</dd></div>
-              {detail.subcategoria && <div><dt>Subcategoría</dt><dd>{detail.subcategoria}</dd></div>}
-              {detail.detalle && <div><dt>Detalle</dt><dd>{detail.detalle}</dd></div>}
-              {detail.kind === 'recurso'
-                ? <div><dt>Stock</dt><dd>{detail.cantidad} {detail.unidad}</dd></div>
-                : <div><dt>Vida útil</dt><dd>{detail.vidaPct === null ? '—' : detail.vencido ? `Vencida (${detail.renovacion})` : `${detail.vidaPct}% · renueva ${detail.renovacion}`}</dd></div>}
-            </dl>
-            <label>Condición
-              <select className="input" value={detail.condicion} disabled={consultationMode} onChange={event => void setEntryCondition(detail, event.target.value)}>
-                <option value="">Sin revisar</option>
-                {CONDITION_VALUES.map(value => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </label>
-            <div className="actions">
-              {detail.device && onProfile && <Button onClick={() => { onProfile(detail.device as Device); setDetail(null); }}>Ver ficha completa</Button>}
-              {detail.item && <Button disabled={consultationMode} onClick={() => { openEdit(detail.item as InventoryItem); setDetail(null); }}>Editar</Button>}
-              {detail.item && <Button disabled={consultationMode} onClick={() => void hideItem(detail.item as InventoryItem)}>Ocultar</Button>}
-            </div>
+        <div className="inv-main">
+          <div className="inv-breadcrumb">
+            <button type="button" onClick={() => setSelected(null)}>Categorías</button>
+            {selected && <><i>›</i><button type="button" onClick={() => setSelected({ categoria: selected.categoria, subcategoria: '' })}>{selected.categoria}</button></>}
+            {selected?.subcategoria && <><i>›</i><span>{selected.subcategoria}</span></>}
+            <em>{listed.length} {listed.length === 1 ? 'recurso' : 'recursos'}</em>
           </div>
-        </Modal>
-      )}
+
+          {/* Fila de subcategorías de la categoría abierta, para saltar entre
+              ellas sin volver al árbol. */}
+          {subcategoryCards.length > 0 && (
+            <div className="inv-subcards">
+              {subcategoryCards.map(sub => (
+                <button
+                  key={sub.subcategoria}
+                  type="button"
+                  className={selected?.subcategoria === sub.subcategoria ? 'is-active' : ''}
+                  onClick={() => setSelected({ categoria: selected!.categoria, subcategoria: selected?.subcategoria === sub.subcategoria ? '' : sub.subcategoria })}
+                >
+                  <span className="inv-subcard-thumb">{sub.entries.find(item => item.imagenUrl) ? <img src={sub.entries.find(item => item.imagenUrl)!.imagenUrl} alt="" /> : null}</span>
+                  <span className="inv-subcard-text">
+                    <strong>{sub.subcategoria}</strong>
+                    <small>{sub.entries.length} {sub.entries.length === 1 ? 'ítem' : 'ítems'}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {view === 'grid' ? (
+            <div className="inv-grid">
+              {listed.map(entry => <InventoryCard key={entry.key} entry={entry} onOpen={() => setDetail(entry)} />)}
+            </div>
+          ) : (
+            <div className="inv-table-wrap">
+              <table className="inv-table">
+                <thead>
+                  <tr><th>Foto</th><th>Recurso</th><th>Categoría</th><th>Seguimiento</th><th>Stock / vida</th><th>Condición</th></tr>
+                </thead>
+                <tbody>
+                  {listed.map(entry => (
+                    <tr key={entry.key} className={detail?.key === entry.key ? 'is-selected' : ''} onClick={() => setDetail(entry)}>
+                      <td><span className="inv-table-thumb">{entry.imagenUrl ? <img src={entry.imagenUrl} alt="" loading="lazy" /> : <i />}</span></td>
+                      <td><strong>{entry.nombre}</strong>{entry.detalle && <small>{entry.detalle}</small>}</td>
+                      <td>{[entry.categoria, entry.subcategoria].filter(Boolean).join(' › ')}</td>
+                      <td><span className="inv-track">{entry.kind === 'equipo' ? 'Individual' : 'Stock'}</span></td>
+                      <td className={entry.bajoStock || entry.vencido ? 'is-warn' : ''}>
+                        {entry.kind === 'recurso' ? `${entry.cantidad} ${entry.unidad}` : entry.vidaPct === null ? '—' : entry.vencido ? 'Vencida' : `${entry.vidaPct}%`}
+                      </td>
+                      <td><span className={`condition-dot ${conditionClass(entry.condicion)}`}>{entry.condicion || 'Sin revisar'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {!listed.length && <div className="inventory-empty">No hay nada para este filtro.</div>}
+
+          {detail && (
+            <InventoryDetail
+              entry={detail}
+              consultationMode={consultationMode}
+              onClose={() => setDetail(null)}
+              onCondition={condicion => void setEntryCondition(detail, condicion)}
+              onEdit={item => { openEdit(item); setDetail(null); }}
+              onHide={item => void hideItem(item)}
+              onProfile={device => { onProfile?.(device); setDetail(null); }}
+            />
+          )}
+        </div>
+      </div>
 
       {reviewOpen && (
         <ConditionReviewModal

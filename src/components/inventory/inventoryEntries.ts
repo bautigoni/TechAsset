@@ -23,6 +23,14 @@ export interface Entry {
   item?: InventoryItem;
 }
 
+// Clase CSS del punto de condición. Vive acá porque la usan la tarjeta, la
+// tabla y el detalle.
+export function conditionClass(condicion: string) {
+  const value = String(condicion || '').trim().toLowerCase();
+  if (!value) return 'is-sin-revisar';
+  return `is-${value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+}
+
 export function deviceToEntry(device: Device): Entry {
   return {
     key: `d:${device.etiqueta}`,
