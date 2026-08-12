@@ -182,13 +182,27 @@ function defaultEquipment(row) {
   }));
 }
 
-function equipmentOption(siteCode, key) {
-  const configured = getDb().prepare('SELECT category_key AS key, label FROM classroom_categories WHERE site_code=? AND category_key=? AND active=1').get(siteCode || 'NFPT', key);
-  return configured || EQUIPMENT_BY_KEY.get(key);
-}
+// Las categorías de aula casi no cambian, pero `equipmentOption` se llama una vez
+// por ítem de cada aula: sin caché un GET /classrooms disparaba ~180 queries
+// sueltas (con Postgres remoto eso son varios segundos). Se cachea el mapa por
+// sede y se invalida desde los endpoints que las editan.
+const categoryCache = new Map();
 
 function activeCategoryMap(siteCode) {
-  return new Map(getDb().prepare('SELECT category_key AS key, label FROM classroom_categories WHERE site_code=? AND active=1 ORDER BY sort_order, id').all(siteCode).map(item => [item.key, item]));
+  const site = siteCode || 'NFPT';
+  const cached = categoryCache.get(site);
+  if (cached) return cached;
+  const map = new Map(getDb().prepare('SELECT category_key AS key, label FROM classroom_categories WHERE site_code=? AND active=1 ORDER BY sort_order, id').all(site).map(item => [item.key, item]));
+  categoryCache.set(site, map);
+  return map;
+}
+
+function invalidateCategoryCache(siteCode) {
+  categoryCache.delete(siteCode || 'NFPT');
+}
+
+function equipmentOption(siteCode, key) {
+  return activeCategoryMap(siteCode || 'NFPT').get(key) || EQUIPMENT_BY_KEY.get(key);
 }
 
 function parseEquipment(row) {
@@ -264,21 +278,42 @@ function ensureClassroom(roomKey, defaults = {}, siteCode = 'NFPT') {
   return row;
 }
 
+// El padrón se siembra una vez por sede por proceso. Antes esto corría en cada
+// GET /classrooms y hacía 2 queries por aula (44 en NFPT, 60 en NFND): ~120
+// round-trips bloqueantes por request. Ahora es un solo SELECT y solo se escribe
+// lo que falta o quedó desincronizado del código.
+const seededSites = new Set();
+
 function ensureDefaultClassrooms(siteCode = 'NFPT') {
+  if (seededSites.has(siteCode)) return;
   // Cada sede siembra su propio padrón de aulas. Sedes sin plano definido no
   // seedean nada (no heredan las aulas de NFPT).
   const defaults = SITE_DEFAULT_CLASSROOMS[siteCode];
-  if (!defaults) return;
+  if (!defaults) { seededSites.add(siteCode); return; }
+  const db = getDb();
+  const existing = new Map(
+    db.prepare('SELECT room_key, nombre, piso, sector FROM classrooms WHERE site_code=?').all(siteCode)
+      .map(row => [row.room_key, row])
+  );
+  const insert = db.prepare(`
+    INSERT INTO classrooms (room_key, site_code, nombre, nivel, piso, sector, estado_general, proyector_estado, nuc_estado, monitor_estado, teclado_mouse_estado, observaciones, ultima_actualizacion, operador_ultimo_cambio, equipment_json)
+    VALUES (?, ?, ?, '', ?, ?, 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', 'Sin revisar', '', '', '', '')
+  `);
+  const sync = db.prepare('UPDATE classrooms SET nombre=?, piso=?, sector=? WHERE room_key=? AND site_code=?');
+  const pending = [];
   for (const [roomKey, nombre, piso, sector] of defaults) {
-    ensureClassroom(roomKey, { nombre, piso, sector }, siteCode);
-    getDb().prepare(`
-      UPDATE classrooms
-      SET nombre = COALESCE(NULLIF(nombre, ''), ?),
-          piso = ?,
-          sector = COALESCE(NULLIF(sector, ''), ?)
-      WHERE room_key = ? AND site_code=?
-    `).run(nombre, piso, sector, roomKey, siteCode);
+    const row = existing.get(roomKey);
+    if (!row) { pending.push(() => insert.run(roomKey, siteCode, nombre, piso, sector)); continue; }
+    // Mismas reglas que antes: el nombre y el sector cargados a mano ganan, el
+    // piso lo manda siempre el código (los planos son la fuente de verdad).
+    const nextNombre = row.nombre || nombre;
+    const nextSector = row.sector || sector;
+    if (row.nombre !== nextNombre || row.piso !== piso || row.sector !== nextSector) {
+      pending.push(() => sync.run(nextNombre, piso, nextSector, roomKey, siteCode));
+    }
   }
+  if (pending.length) db.transaction(() => pending.forEach(run => run()))();
+  seededSites.add(siteCode);
 }
 
 function equipmentFromBody(body, old) {
@@ -335,6 +370,7 @@ classroomsRouter.post('/classroom-categories', (req, res) => {
     INSERT INTO classroom_categories (site_code, category_key, label, category_type, options_json, sort_order, built_in, active, created_at, updated_at)
     VALUES (?, ?, ?, 'status', ?, ?, 0, 1, ?, ?)
   `).run(siteCode, key, label, JSON.stringify(options), order, ts, ts);
+  invalidateCategoryCache(siteCode);
   try { notifySiteAdmins({ siteCode, kind: 'classroom.category.created', title: 'Nueva categoría de aula', body: label, link: `/sede/${siteCode}/classrooms`, exceptEmail: req.user?.email }); } catch { /* noop */ }
   res.json({ ok: true, item: rowToCategory(getDb().prepare('SELECT * FROM classroom_categories WHERE id=?').get(info.lastInsertRowid)) });
 });
@@ -346,6 +382,7 @@ classroomsRouter.patch('/classroom-categories/reorder', (req, res) => {
   const update = getDb().prepare('UPDATE classroom_categories SET sort_order=?, updated_at=? WHERE id=? AND site_code=? AND active=1');
   const ts = nowIso();
   getDb().transaction(() => ids.forEach((id, index) => update.run(index, ts, id, siteCode)))();
+  invalidateCategoryCache(siteCode);
   res.json({ ok: true });
 });
 
@@ -357,6 +394,7 @@ classroomsRouter.patch('/classroom-categories/:id', (req, res) => {
   const label = String(req.body?.label ?? old.label).trim();
   const options = req.body?.options == null ? parseOptions(old.options_json) : normalizeCategoryOptions(req.body.options);
   getDb().prepare('UPDATE classroom_categories SET label=?, options_json=?, updated_at=? WHERE id=? AND site_code=?').run(label, JSON.stringify(options), nowIso(), old.id, siteCode);
+  invalidateCategoryCache(siteCode);
   res.json({ ok: true, item: rowToCategory(getDb().prepare('SELECT * FROM classroom_categories WHERE id=?').get(old.id)) });
 });
 
@@ -364,6 +402,7 @@ classroomsRouter.delete('/classroom-categories/:id', (req, res) => {
   const siteCode = requireSite(req);
   if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'Solo un administrador puede eliminar categorías.' });
   const result = getDb().prepare('UPDATE classroom_categories SET active=0, updated_at=? WHERE id=? AND site_code=?').run(nowIso(), req.params.id, siteCode);
+  invalidateCategoryCache(siteCode);
   res.json({ ok: true, deleted: result.changes > 0 });
 });
 
@@ -530,13 +569,18 @@ function list(value){ return Array.isArray(value)?value.map(String).filter(Boole
 function parseHealthEquipment(value,row){ try{const parsed=JSON.parse(value||'[]');if(Array.isArray(parsed))return parsed;}catch{} return [{label:'Proyector',state:row.proyector_estado},{label:'NUC',state:row.nuc_estado},{label:'Monitor',state:row.monitor_estado},{label:'Teclado/Mouse',state:row.teclado_mouse_estado}]; }
 function localHealthReport(classroom,equipment,tickets,devices){ const bad=equipment.filter(item=>!['OK','No tiene'].includes(String(item.state))).map(item=>`${item.label}: ${item.state}`); const open=tickets.filter(item=>item.estado!=='Hecho'); const score=Math.max(10,100-bad.length*12-open.length*7); const counts={}; tickets.forEach(item=>{const key=item.categoria||'Sin categoría';counts[key]=(counts[key]||0)+1;}); const recurring=Object.entries(counts).filter(([,n])=>n>1).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([key,n])=>`${key} (${n})`); return {score,status:score>=85?'Saludable':score>=65?'Atención':'Crítico',summary:`${classroom.nombre||'El aula'} tiene ${open.length} incidentes abiertos y ${bad.length} componentes para revisar.`,recurringProblems:recurring,positives:[...equipment.filter(item=>item.state==='OK').map(item=>`${item.label} funciona correctamente`),devices.length?`${devices.length} dispositivos vinculados`:''].filter(Boolean).slice(0,4),risks:[...bad,...open.slice(0,3).map(item=>item.titulo||item.descripcion)].filter(Boolean),preventiveActions:[bad.length?'Revisar el equipamiento marcado antes de la próxima clase':'Mantener la revisión periódica',open.length?'Resolver y documentar los incidentes abiertos':'Continuar registrando incidentes por aula']}; }
 
+const seededCategorySites = new Set();
+
 function ensureClassroomCategories(siteCode) {
+  if (seededCategorySites.has(siteCode)) return;
   const count = Number(getDb().prepare('SELECT COUNT(*) AS total FROM classroom_categories WHERE site_code=?').get(siteCode).total || 0);
-  if (count) return;
+  if (count) { seededCategorySites.add(siteCode); return; }
   const ts = nowIso();
   const options = JSON.stringify([...VALID_ITEM_STATES]);
   const insert = getDb().prepare("INSERT INTO classroom_categories (site_code, category_key, label, category_type, options_json, sort_order, built_in, active, created_at, updated_at) VALUES (?, ?, ?, 'status', ?, ?, 1, 1, ?, ?) ON CONFLICT(site_code, category_key) DO NOTHING");
-  EQUIPMENT_OPTIONS.forEach((item, index) => insert.run(siteCode, item.key, item.label, options, index, ts, ts));
+  getDb().transaction(() => EQUIPMENT_OPTIONS.forEach((item, index) => insert.run(siteCode, item.key, item.label, options, index, ts, ts)))();
+  invalidateCategoryCache(siteCode);
+  seededCategorySites.add(siteCode);
 }
 
 function parseOptions(value) {
