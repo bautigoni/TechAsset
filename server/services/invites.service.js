@@ -44,7 +44,8 @@ export function listInvites(siteCode) {
   const site = normalizeSiteCode(siteCode);
   return getDb().prepare(`
     SELECT id, code, site_code AS siteCode, role, turno, kind, email, created_by AS createdBy,
-           expires_at AS expiresAt, used_at AS usedAt, used_by AS usedBy, revoked_at AS revokedAt, created_at AS createdAt
+           expires_at AS expiresAt, used_at AS usedAt, used_by AS usedBy, revoked_at AS revokedAt, created_at AS createdAt,
+           email_sent_at AS emailSentAt, email_error AS emailError, email_message_id AS emailMessageId
     FROM invites
     WHERE site_code=?
     ORDER BY (used_at='' AND revoked_at='') DESC, id DESC
@@ -53,6 +54,19 @@ export function listInvites(siteCode) {
     ...row,
     status: row.revokedAt ? 'Revocada' : row.usedAt ? 'Usada' : (row.expiresAt && new Date(row.expiresAt).getTime() < Date.now() ? 'Vencida' : 'Activa')
   }));
+}
+
+// Deja registrado como salio el mail de la invitacion.  es lo que
+// devuelve sendMail: { sent, provider, messageId, error, mocked, ... }.
+export function recordInviteEmail(id, siteCode, result) {
+  const sent = Boolean(result?.sent);
+  const error = sent ? '' : String(result?.error || (result?.mocked ? 'Modo prueba: no se envio' : result?.missingConfig ? 'Proveedor de mail sin configurar' : 'No se pudo enviar'));
+  getDb().prepare('UPDATE invites SET email_sent_at=?, email_error=?, email_message_id=? WHERE id=? AND site_code=?')
+    .run(sent ? nowIso() : '', error, String(result?.messageId || ''), id, normalizeSiteCode(siteCode));
+}
+
+export function findInviteById(id, siteCode) {
+  return getDb().prepare('SELECT * FROM invites WHERE id=? AND site_code=?').get(id, normalizeSiteCode(siteCode));
 }
 
 export function revokeInvite(id, siteCode) {

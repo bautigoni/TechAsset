@@ -39,7 +39,15 @@ export async function sendMail({ to, subject, text, html, replyTo }) {
   const recipients = Array.isArray(to) ? to.filter(Boolean) : [to];
   const safeSubject = String(subject || '(sin asunto)');
 
-  if (config.smtp.modoPrueba) {
+  // El modo prueba se resuelve UNA sola vez, antes de elegir proveedor.
+  // Antes se chequeaba el env arriba y el ajuste guardado recién después de la
+  // rama de Resend: con Resend configurado esa rama siempre retornaba y el
+  // toggle de la interfaz no tenía ningún efecto. Un admin creía estar
+  // probando y mandaba mails reales. La config de la base pisa al env, igual
+  // que en readMailSettings.
+  // readMailSettings ya resuelve la precedencia: base > env.
+  const settings = readMailSettings();
+  if (settings.modoPrueba) {
     console.info(`[mail/MODO_PRUEBA] subject="${safeSubject}" to=${recipients.join(',')} (no se envio, solo log)`);
     return { sent: false, mocked: true };
   }
@@ -49,12 +57,6 @@ export async function sendMail({ to, subject, text, html, replyTo }) {
     if (resendResult.sent) return resendResult;
     console.warn('[mail] Resend configurado pero no pudo enviar; no se intenta SMTP.');
     return resendResult;
-  }
-
-  const settings = readMailSettings();
-  if (settings.modoPrueba) {
-    console.info(`[mail/MODO_PRUEBA] subject="${safeSubject}" to=${recipients.join(',')} (no se envio, solo log)`);
-    return { sent: false, mocked: true };
   }
 
   if (!settingsAreComplete(settings)) {

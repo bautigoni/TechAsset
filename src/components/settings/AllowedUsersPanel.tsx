@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { SiteInfo } from '../../types';
-import { type AllowedUserItem, getAllowedUsers, getSites, saveAllowedUser, updateAllowedUserStatus } from '../../services/authApi';
+import { type AllowedUserItem, getAllowedUsers, getSites, getSiteSettings, saveAllowedUser, updateAllowedUserStatus } from '../../services/authApi';
 import { Button } from '../layout/Button';
 
+// Fallback: si el tenant no tiene roles.config, se usan estos.
 const ADMIN_ROLES = ['Superadmin', 'Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
 const SITE_ROLES = ['Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
 const TURNS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'];
@@ -17,7 +18,14 @@ export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { 
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [draft, setDraft] = useState<AllowedUserItem>(emptyUser());
   const [message, setMessage] = useState('');
-  const roles = canAssignSuperadmin ? ADMIN_ROLES : SITE_ROLES;
+  // Los roles salen del roles.config del tenant, igual que en InvitesPanel.
+  // Estaban hardcodeados y no coincidian con lo que se siembra en un tenant
+  // nuevo (Administrador/Asistente/Consulta): se podian crear usuarios con
+  // roles inexistentes en su propia sede.
+  const [tenantRoles, setTenantRoles] = useState<string[]>([]);
+  const roles = tenantRoles.length
+    ? (canAssignSuperadmin ? [...new Set(['Superadmin', ...tenantRoles])] : tenantRoles)
+    : (canAssignSuperadmin ? ADMIN_ROLES : SITE_ROLES);
 
   const load = async () => {
     const [u, s] = await Promise.all([getAllowedUsers(), getSites()]);
@@ -27,6 +35,15 @@ export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { 
   };
 
   useEffect(() => { load().catch(() => {}); }, []);
+
+  useEffect(() => {
+    getSiteSettings().then(response => {
+      const config = (response.settings as Record<string, unknown>)?.['roles.config'];
+      if (!Array.isArray(config) || !config.length) return;
+      const nombres = config.map(item => String((item as { name?: string }).name || '')).filter(Boolean);
+      if (nombres.length) setTenantRoles(nombres);
+    }).catch(() => {});
+  }, []);
 
   const selected = new Set((draft.sites || []).filter(site => site.activo !== false).map(site => site.siteCode));
   const toggleSite = (siteCode: string, checked: boolean) => {

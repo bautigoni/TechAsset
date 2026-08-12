@@ -2562,6 +2562,56 @@ body.consulta-mode #returnBtn {
 .device-table-more button:hover{border-color:var(--blue)}
 .device-table-more span{margin-right:auto;font-variant-numeric:tabular-nums}
 
+/* Faro de mail: donde se generan invitaciones hay que saber si van a salir. */
+.mail-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mail-status-chip{font-size:11.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.mail-status-chip.is-ok{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
+.mail-status-chip.is-warn{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 45%,transparent)}
+.mail-status-chip.is-bad{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,transparent)}
+.mail-status-chip.is-test{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 55%,transparent);font-weight:600}
+.mail-status-note{font-size:12px;color:var(--muted)}
+
+/* Panel de usuarios por tenant (superadmin). */
+.users-page{display:grid;gap:18px}
+.users-layout{display:grid;grid-template-columns:minmax(220px,270px) minmax(0,1fr);gap:18px;align-items:start}
+.users-tenants{display:grid;gap:8px;align-content:start}
+.users-tenant{
+  display:grid;gap:6px;text-align:left;cursor:pointer;
+  padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--panel);color:var(--text);
+  border-left:3px solid var(--border);
+}
+.users-tenant:hover{border-color:var(--blue)}
+.users-tenant.is-active{border-color:var(--blue);border-left-color:var(--blue);background:var(--panel-2)}
+.users-tenant-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.users-tenant-head strong{font-size:14px;font-weight:600}
+.users-tenant-head em{font-style:normal;font-size:11px;color:var(--muted);letter-spacing:.04em}
+.users-tenant-counts{display:flex;flex-wrap:wrap;gap:6px;font-size:11.5px;color:var(--muted)}
+.users-tenant-counts i{font-style:normal;border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+.users-tenant-counts i.is-warn{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 45%,transparent)}
+.users-detail{display:grid;gap:16px;min-width:0}
+.users-detail td strong{display:block;font-size:13px;font-weight:550;color:var(--text)}
+.users-detail td small{display:block;font-size:11.5px}
+.users-status{font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+.users-status.is-activo{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
+.users-status.is-pendiente{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 45%,transparent)}
+.users-status.is-rechazado{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,transparent)}
+.users-status.is-inactivo{color:var(--muted)}
+.users-tag{display:inline-block;margin-left:6px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--blue)}
+.users-detail td{vertical-align:middle}
+.users-actions{display:flex;flex-wrap:wrap;gap:5px}
+.users-actions button{
+  appearance:none;border:1px solid transparent;background:transparent;color:var(--muted);
+  font-size:11.5px;padding:4px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;
+}
+.users-actions button:hover:not(:disabled){border-color:var(--border);color:var(--text)}
+.users-actions button.is-danger:hover:not(:disabled){border-color:var(--red);color:var(--red)}
+.users-actions button:disabled{opacity:.4;cursor:not-allowed}
+.users-invites{display:grid;gap:8px}
+.users-invites h5{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.is-error{color:var(--red)}
+@media (max-width:1000px){ .users-layout{grid-template-columns:1fr} }
+
+
 /* Cartelitos dentro de Prestamos: grilla compacta de numeros. */
 .pass-panel{display:grid;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid var(--border);background:transparent;border-left:0;border-right:0;border-bottom:0;border-radius:0}
 .pass-panel .card-head{margin-bottom:0}

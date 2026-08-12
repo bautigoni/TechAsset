@@ -1,4 +1,4 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'suggestions' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'settings';
+export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'suggestions' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'adminusers' | 'settings';
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';

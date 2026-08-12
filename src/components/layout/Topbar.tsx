@@ -26,6 +26,7 @@ const TITLES: Record<ViewKey, string> = {
   quickaccess: 'Accesos rápidos',
   assistant: 'Asistente TIC',
   tenants: 'Tenants',
+  adminusers: 'Usuarios',
   settings: 'Configuración'
 };
 

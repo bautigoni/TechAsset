@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { createInvite, getInvites, getSiteSettings, revokeInvite, type Invite } from '../../services/authApi';
+import { createInvite, getInvites, getSiteSettings, resendInvite, revokeInvite, type Invite } from '../../services/authApi';
 import { Button } from '../layout/Button';
+import { MailStatusChip } from './MailStatusChip';
 
 const DEFAULT_TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'];
 
@@ -50,6 +51,22 @@ export function InvitesPanel({ consultationMode }: { consultationMode: boolean }
     }
   };
 
+  // Reenvia la misma invitacion en vez de generar un codigo nuevo, que dejaria
+  // a la persona con dos codigos vivos.
+  const resend = async (id: number) => {
+    setBusy(true);
+    setError('');
+    try {
+      const response = await resendInvite(id);
+      if (!response.emailSent) setError(response.emailError || 'No se pudo reenviar el mail.');
+      load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se pudo reenviar la invitacion.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const revoke = async (id: number) => {
     await revokeInvite(id).catch(() => {});
     load();
@@ -59,7 +76,7 @@ export function InvitesPanel({ consultationMode }: { consultationMode: boolean }
 
   return (
     <section className="card">
-      <div className="card-head"><h3>Invitaciones</h3></div>
+      <div className="card-head"><h3>Invitaciones</h3><MailStatusChip /></div>
       <p className="muted" style={{ marginTop: 0 }}>Generá un código de un solo uso para que alguien se registre con un rol y turno definidos.</p>
       <div className="grid-2">
         <label>Rol
@@ -96,7 +113,7 @@ export function InvitesPanel({ consultationMode }: { consultationMode: boolean }
 
       <div className="table-wrap" style={{ marginTop: 12 }}>
         <table className="compact-table">
-          <thead><tr><th>Código</th><th>Rol</th><th>Turno</th><th>Estado</th><th>Mail</th><th></th></tr></thead>
+          <thead><tr><th>Código</th><th>Rol</th><th>Turno</th><th>Estado</th><th>Mail</th><th>Envío</th><th></th></tr></thead>
           <tbody>
             {invites.map(inv => (
               <tr key={inv.id}>
@@ -105,10 +122,16 @@ export function InvitesPanel({ consultationMode }: { consultationMode: boolean }
                 <td>{inv.turno}</td>
                 <td>{inv.status}</td>
                 <td>{inv.email || '-'}</td>
-                <td>{inv.status === 'Activa' && !consultationMode && <Button className="mini-action-btn" onClick={() => revoke(inv.id)}>Revocar</Button>}</td>
+                <td className="muted">{inv.emailSentAt ? `Enviado ${new Date(inv.emailSentAt).toLocaleDateString('es-AR')}` : inv.emailError ? <span className="is-error">{inv.emailError}</span> : inv.email ? 'Sin registro' : '—'}</td>
+                <td>{inv.status === 'Activa' && !consultationMode && (
+                  <div className="table-actions">
+                    {inv.email && <Button className="mini-action-btn" disabled={busy} onClick={() => void resend(inv.id)}>Reenviar</Button>}
+                    <Button className="mini-action-btn" onClick={() => revoke(inv.id)}>Revocar</Button>
+                  </div>
+                )}</td>
               </tr>
             ))}
-            {!invites.length && <tr><td colSpan={6} className="empty-state">Todavía no generaste invitaciones.</td></tr>}
+            {!invites.length && <tr><td colSpan={7} className="empty-state">Todavía no generaste invitaciones.</td></tr>}
           </tbody>
         </table>
       </div>

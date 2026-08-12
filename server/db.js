@@ -914,6 +914,11 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'photo_passes', 'docente', "TEXT DEFAULT ''");
   ensureColumn(database, 'photo_pass_events', 'curso', "TEXT DEFAULT ''");
   ensureColumn(database, 'photo_pass_events', 'docente', "TEXT DEFAULT ''");
+  // Registro del envio del mail de invitacion: sin esto, 'no me llego' no tiene
+  // respuesta posible una vez que se recarga la pantalla.
+  ensureColumn(database, 'invites', 'email_sent_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'invites', 'email_error', "TEXT DEFAULT ''");
+  ensureColumn(database, 'invites', 'email_message_id', "TEXT DEFAULT ''");
   ensureColumn(database, 'tickets', 'origen', "TEXT DEFAULT 'tik'");
   ensureColumn(database, 'tickets', 'tags_json', "TEXT DEFAULT '[]'");
   ensureColumn(database, 'tickets', 'template_id', 'INTEGER');

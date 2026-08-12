@@ -40,6 +40,7 @@ const ToolsPage = lazyView('tools', () => import('./components/tools/ToolsPage')
 const QuickAccessPage = lazyView('quickaccess', () => import('./components/tools/QuickAccessPage'), 'QuickAccessPage');
 const TicketsPage = lazyView('tickets', () => import('./components/tickets/TicketsPage'), 'TicketsPage');
 const TenantsDashboard = lazyView('tenants', () => import('./components/settings/TenantsDashboard'), 'TenantsDashboard');
+const UsersByTenantPage = lazyView('adminusers', () => import('./components/settings/UsersByTenantPage'), 'UsersByTenantPage');
 const SettingsPage = lazyView('settings', () => import('./components/settings/SettingsPage'), 'SettingsPage');
 // Fuera del nav: modales y pantallas de auth. La landing solo la ve quien no
 // tiene sesión, así que no tiene por qué pesar en el bundle del que ya entró.
@@ -445,6 +446,7 @@ export function App() {
         {view === 'tools' && <ToolsPage operator={operator} />}
         {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}        {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
+        {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
         </Suspense>
       </main>
@@ -478,7 +480,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'adminusers', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 

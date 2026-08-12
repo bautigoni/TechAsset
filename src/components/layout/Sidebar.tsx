@@ -16,6 +16,7 @@ import {
   School,
   Settings,
   Ticket,
+  Users,
   Wrench,
   WalletCards,
   X
@@ -33,6 +34,7 @@ export type NavItem = { key: ViewKey; label: string; Icon: NavIcon; superadminOn
 const NAV: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', Icon: Gauge },
   { key: 'tenants', label: 'Tenants', Icon: Building2, superadminOnly: true },
+  { key: 'adminusers', label: 'Usuarios', Icon: Users, superadminOnly: true },
   { key: 'devices', label: 'Dispositivos', Icon: MonitorSmartphone },
   { key: 'loans', label: 'Préstamos', Icon: Repeat2 },
   { key: 'inventory', label: 'Inventario TIC', Icon: Boxes },

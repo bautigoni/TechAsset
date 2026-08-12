@@ -32,6 +32,8 @@ export interface Invite {
   expiresAt: string;
   usedAt: string;
   status: 'Activa' | 'Usada' | 'Vencida' | 'Revocada';
+  emailSentAt?: string;
+  emailError?: string;
   createdAt: string;
 }
 
@@ -39,6 +41,9 @@ export const getInvites = () => apiGet<{ ok: true; items: Invite[] }>('/api/invi
 
 export const createInvite = (payload: { role: string; turno?: string; kind?: 'admin' | 'standard'; email?: string; expiresInDays?: number; siteCode?: string }) =>
   apiSend<{ ok: true; invite: Invite & { registerUrl: string }; emailSent: boolean }>('/api/invites', 'POST', payload);
+
+export const resendInvite = (id: number) =>
+  apiSend<{ ok: true; registerUrl: string; emailSent: boolean; emailError: string }>(`/api/invites/${id}/resend`, 'POST');
 
 export const revokeInvite = (id: number) =>
   apiSend<{ ok: true; revoked: boolean }>(`/api/invites/${id}/revoke`, 'POST');
