@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Zap } from 'lucide-react';
 import type { QuickLink } from '../../types';
 import { groupLinks, useQuickLinks } from './QuickAccess';
+import { useMountTransition } from '../../hooks/useMountTransition';
 
 // Versión de escritorio de Accesos rápidos: un botón en la topbar que abre un
 // popover. En mobile el módulo sigue siendo una vista propia de la sidebar
@@ -10,6 +11,9 @@ export function QuickAccessPopover({ onOpenFull }: { onOpenFull?: () => void }) 
   const [open, setOpen] = useState(false);
   const { links } = useQuickLinks();
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  // Sostiene el popover montado durante la salida: si no, React lo desmonta en
+  // el mismo frame y el cierre no se ve.
+  const pop = useMountTransition(open, 120); // --dropdown-close-dur
 
   useEffect(() => {
     if (!open) return;
@@ -39,8 +43,8 @@ export function QuickAccessPopover({ onOpenFull }: { onOpenFull?: () => void }) 
       >
         <Zap size={18} strokeWidth={1.7} />
       </button>
-      {open && (
-        <div className="quick-pop" role="dialog" aria-label="Accesos rápidos">
+      {pop.mounted && (
+        <div className={`quick-pop t-dropdown ${pop.stateClass}`.trim()} data-origin="top-right" role="dialog" aria-label="Accesos rápidos">
           <div className="quick-pop-head">
             <strong>Accesos rápidos</strong>
             {onOpenFull && <button type="button" onClick={() => { setOpen(false); onOpenFull(); }}>Administrar</button>}

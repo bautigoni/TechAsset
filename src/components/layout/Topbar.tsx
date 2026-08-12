@@ -7,6 +7,7 @@ import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
 import { NotificationBell } from './NotificationBell';
 import { QuickAccessPopover } from '../tools/QuickAccessPopover';
 import { TenantLogo } from './TenantLogo';
+import { useMountTransition } from '../../hooks/useMountTransition';
 
 const TITLES: Record<ViewKey, string> = {
   dashboard: 'TechAsset',
@@ -53,6 +54,9 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
   const syncUi = useSyncStatus(sync);
   const [accountOpen, setAccountOpen] = useState(false);
   const [siteMenuOpen, setSiteMenuOpen] = useState(false);
+  // Los dos menús se sostienen montados mientras corre la salida.
+  const accountMenuAnim = useMountTransition(accountOpen, 120); // --dropdown-close-dur
+  const siteMenu = useMountTransition(siteMenuOpen, 120);
   const siteMenuRef = useRef<HTMLDivElement | null>(null);
   const displayName = user?.nombre || user?.email || 'Usuario';
   const initials = displayName.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
@@ -92,8 +96,8 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
         </span>
         <ChevronDown size={16} strokeWidth={1.7} />
       </button>
-      {siteMenuOpen && (
-        <div className="site-switcher-menu" role="menu">
+      {siteMenu.mounted && (
+        <div className={`site-switcher-menu t-dropdown ${siteMenu.stateClass}`.trim()} data-origin="top-left" role="menu">
           {sites.map(site => {
             const selected = site.siteCode === activeSite;
             return (
@@ -122,8 +126,10 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
     </div>
   ) : null;
 
-  const accountMenu = (open: boolean) => open ? (
-    <div className="account-menu">
+  // El menú de cuenta se monta en dos lugares (desktop y mobile), así que la
+  // fase la maneja el llamador y acá sólo se recibe la clase.
+  const accountMenu = (mounted: boolean, stateClass: string) => mounted ? (
+    <div className={`account-menu t-dropdown ${stateClass}`.trim()} data-origin="top-right">
       <div className="account-menu-item">
         <strong>Mi cuenta</strong>
         <span>{user?.email || '-'}</span>
@@ -182,7 +188,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
               <button className="topbar-icon-btn account-trigger" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
                 <span className="account-avatar">{initials}</span>
               </button>
-              {accountMenu(accountOpen)}
+              {accountMenu(accountMenuAnim.mounted, accountMenuAnim.stateClass)}
             </div>
           </div>
         </header>
@@ -230,7 +236,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
             <span className="account-avatar">{initials}</span>
             <span className="account-name">{displayName}</span>
           </button>
-          {accountMenu(accountOpen)}
+          {accountMenu(accountMenuAnim.mounted, accountMenuAnim.stateClass)}
         </div>
         <input className="input" type="search" placeholder="Buscar" value={search} onChange={event => setSearch(event.target.value)} />
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useMountTransition } from '../../hooks/useMountTransition';
 import { createPortal } from 'react-dom';
 import type { ThemeProfile } from '../../utils/themeProfile';
 import { sendAssistantMessage, transcribeAssistantAudio, type AssistantContext, type AssistantResponse } from '../../services/assistantApi';
@@ -74,6 +75,8 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
     setOpenState(value);
     onOpenChange?.(value);
   };
+  // Sostiene el panel montado durante la salida: antes desaparecía de golpe.
+  const panel = useMountTransition(open, 150); // --modal-close-dur
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -242,8 +245,8 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
   };
 
   const chatEl = (
-    <div className="assistant-backdrop" onClick={handleBackdrop}>
-    <section className="assistant-panel" aria-label="Asistente TechAsset">
+    <div className={`assistant-backdrop t-fade ${panel.stateClass}`.trim()} onClick={handleBackdrop}>
+    <section className="assistant-panel t-pop" aria-label="Asistente TechAsset">
       <header className="assistant-panel-head">
         <div className="assistant-panel-brand">
           <img className="assistant-logo" src={ASSISTANT_LOGO} alt="" aria-hidden="true" />
@@ -350,7 +353,7 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
           <span className="assistant-trigger-label">Asistente de IA</span>
         </button>
       )}
-      {open && createPortal(chatEl, document.body)}
+      {panel.mounted && createPortal(chatEl, document.body)}
     </>
   );
 }

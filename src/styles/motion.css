@@ -307,6 +307,26 @@
     opacity   var(--dropdown-close-dur) var(--dropdown-ease);
 }
 
+/* El drawer mobile del sidebar entra con `transform: translateX`, pero su
+   transición sólo declaraba `width`, así que aparecía de golpe.
+   El `width` se repite porque `transition` es shorthand y sacarlo mataría la
+   animación de colapsar el sidebar, que ya existía y no es nueva de acá. */
+.sidebar {
+  transition: width .2s ease, transform var(--m-in) var(--m-ease);
+}
+
+/* El menú de Inventario es un <details> nativo: no tiene estado en JS del que
+   colgarse, así que sólo lleva entrada, por keyframes. Salida no hay — el
+   browser cierra el <details> de una y no queda nada montado que animar. */
+.inv-menu details[open] > div {
+  animation: t-dropdown-in var(--dropdown-open-dur) var(--dropdown-ease) both;
+  transform-origin: top right;
+}
+@keyframes t-dropdown-in {
+  from { opacity: 0; transform: scale(var(--dropdown-pre-scale)); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
 /* ================================================================
    6. TABS — receta `tabs-sliding`. La píldora viaja entre tabs en
    vez de saltar; el ancho y la posición los escribe JS inline.
