@@ -74,8 +74,10 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
             <th>Etiqueta</th>
             <th>Dispositivo</th>
             <th>SN</th>
+            {/* "Horario préstamo" era una columna entera vacía salvo que el
+                equipo estuviera prestado, y ahí repetía lo de "Prestado a".
+                El dato pasó a esa celda. */}
             <th>Prestado a</th>
-            <th>Horario préstamo</th>
             <th>Última devolución</th>
             <th>Estado</th>
             <th>Acciones</th>
@@ -97,14 +99,12 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               <td data-label="Prestado a">
                 <div>{tableValue(device.prestadoA)}</div>
                 {device.estado === 'Prestado' && <div className="cell-sub">{[device.ubicacion, device.curso].filter(Boolean).join(' · ') || '-'}</div>}
-              </td>
-              <td data-label="Horario préstamo">
-                {device.estado === 'Prestado' ? (
-                  <div className="loan-time-cell">
-                    <strong>{tableValue(formatLoanDateTime(device.loanedAt))}</strong>
-                    {device.loanedAt && <span className={`loan-age-pill loan-age-${loanAgeTone(device.loanedAt)}`}>{loanAgeLabel(device.loanedAt)}</span>}
+                {device.estado === 'Prestado' && device.loanedAt && (
+                  <div className="cell-sub loan-time-cell">
+                    {formatLoanDateTime(device.loanedAt)}
+                    <span className={`loan-age-pill loan-age-${loanAgeTone(device.loanedAt)}`}>{loanAgeLabel(device.loanedAt)}</span>
                   </div>
-                ) : '-'}
+                )}
               </td>
               <td data-label="Última devolución">{tableValue(formatLoanDateTime(device.returnedAt))}</td>
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 import type { TaskItem, TaskState } from '../types';
 import { createTask, deleteTask, getTasks, updateTask } from '../services/tasksApi';
 import { fetchShiftSettings } from '../services/operationsApi';
@@ -53,10 +52,12 @@ export function useTasks(operator: string) {
     const previousItems = items;
     moving.current = true;
     const patch = { estado, ...(columnId === undefined ? {} : { columnId }) };
-    const updateLocal = () => flushSync(() => setItems(previous => previous.map(item => item.id === id ? { ...item, ...patch } : item)));
-    const transition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
-    if (transition) transition(updateLocal);
-    else updateLocal();
+    // Actualización optimista, sin adornos. Antes esto hacía
+    // `const t = document.startViewTransition; t(cb)`, que pierde el `this` y
+    // tira "Illegal invocation" en Chrome: la tarjeta no se movía nunca.
+    // Un setState en un handler de evento ya renderiza antes del próximo pintado,
+    // así que se ve instantáneo sin flushSync ni view transitions.
+    setItems(previous => previous.map(item => item.id === id ? { ...item, ...patch } : item));
     try {
       // El PATCH ya devuelve la tarea actualizada: se mergea en vez de volver a
       // pedir la lista completa.

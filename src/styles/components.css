@@ -71,14 +71,14 @@ label{display:block;margin-bottom:6px;font-size:13px;color:var(--muted)}.input{w
    anchos (17+24+18+18+13+10 = 100%): Estado y Acciones quedaban fuera del 100%,
    la tabla se pasaba del contenedor y aparecía scroll horizontal con los
    botones cortados. Acá se reparten las 8. */
-.device-table th:nth-child(1){width:11%}
-.device-table th:nth-child(2){width:16%}
+/* 7 columnas desde que se saco "Horario prestamo". */
+.device-table th:nth-child(1){width:12%}
+.device-table th:nth-child(2){width:18%}
 .device-table th:nth-child(3){width:15%}
-.device-table th:nth-child(4){width:13%}
-.device-table th:nth-child(5){width:11%}
-.device-table th:nth-child(6){width:11%}
-.device-table th:nth-child(7){width:10%}
-.device-table th:nth-child(8){width:13%}
+.device-table th:nth-child(4){width:19%}
+.device-table th:nth-child(5){width:12%}
+.device-table th:nth-child(6){width:10%}
+.device-table th:nth-child(7){width:14%}
 .device-table td{overflow-wrap:anywhere}
 .device-table td:nth-child(3){font-size:12px;line-height:1.35}
 .device-table .device-actions-cell{overflow:visible}
@@ -2897,6 +2897,14 @@ body.consulta-mode #returnBtn {
   .device-table .device-actions-cell {
     min-width: 240px;
     white-space: nowrap;
+  }
+
+  /* Arriba de 1200 la tabla ya no tiene min-width, así que la celda de acciones
+     no puede exigir 240px ni una sola línea: los botones envuelven y la tabla
+     entra sin scroll horizontal. */
+  @media (min-width: 1200px) {
+    .device-table .device-actions-cell { min-width: 0; white-space: normal; }
+    .device-table .device-actions { flex-wrap: wrap; }
   }
   .device-table .device-actions {
     display: flex;

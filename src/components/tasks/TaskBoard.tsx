@@ -20,6 +20,7 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
 }) {
   const pan = useDragScroll<HTMLDivElement>();
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [moveError, setMoveError] = useState('');
   const [newColumn, setNewColumn] = useState('');
   const [editingColumn, setEditingColumn] = useState<number | null>(null);
   const [columnName, setColumnName] = useState('');
@@ -42,10 +43,20 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
     const task = tasks.find(item => item.id === taskId);
     // onMove mueve la tarjeta en el acto y sincroniza de fondo; onSave esperaba
     // el PATCH + un refetch de la lista entera antes de dibujar nada.
-    if (task && task.columnId !== column.id) await onMove(task.id, column.name, column.id);
+    if (task && task.columnId !== column.id) {
+      try {
+        await onMove(task.id, column.name, column.id);
+        setMoveError('');
+      } catch (reason) {
+        // move() ya devolvio la tarjeta a su columna original; acá solo se avisa.
+        setMoveError(reason instanceof Error ? reason.message : 'No se pudo mover la tarea.');
+      }
+    }
   };
 
-  return <div className="infinite-board-shell" ref={pan.ref} onPointerDown={pan.onPointerDown}>
+  return <>
+  {moveError && <div className="tool-error">{moveError}</div>}
+  <div className="infinite-board-shell" ref={pan.ref} onPointerDown={pan.onPointerDown}>
     <div className="infinite-board" role="region" aria-label="Tablero horizontal de tareas">
       {columns.map(column => {
         const group = tasks.filter(task => task.columnId === column.id || (!task.columnId && task.estado === column.name));
@@ -58,5 +69,6 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
       })}
       {!consultationMode && <section className="add-task-column"><form onSubmit={async event => { event.preventDefault(); if (!newColumn.trim()) return; await onCreateColumn(newColumn.trim()); setNewColumn(''); }}><input className="input" value={newColumn} onChange={event => setNewColumn(event.target.value)} placeholder="Nueva columna" /><button type="submit">+ Agregar</button></form></section>}
     </div>
-  </div>;
+  </div>
+  </>;
 }

@@ -830,6 +830,22 @@ body.mobile-menu-open {
     justify-content: flex-start;
     min-width: max-content;
   }
+
+  /* Arriba de 1200 la tabla entra entera, asi que la celda de acciones no puede
+     seguir exigiendo 280px ni `max-content`: eso la empujaba mas ancha que el
+     contenedor y volvia el scroll horizontal. Los botones envuelven. */
+  @media (min-width: 1200px) {
+    .device-table th:last-child,
+    .device-table td.device-actions-cell {
+      min-width: 0;
+      position: static;
+    }
+
+    .device-table .device-actions {
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+  }
 }
 
 /* Collapsed sidebar: fixed rail, centered icons, internal vertical scroll. */
