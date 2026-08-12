@@ -1,45 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Check, ChevronDown, Menu } from 'lucide-react';
-import type { AuthUser, SiteInfo, SyncStatus, ViewKey } from '../../types';
-import { useSyncStatus } from '../../hooks/useSyncStatus';
-import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
+import type { AuthUser, SiteInfo, ViewKey } from '../../types';
+import { hasVariantNav, isSmartProfile, type ThemeProfile } from '../../utils/themeProfile';
 import { NotificationBell } from './NotificationBell';
 import { QuickAccessPopover } from '../tools/QuickAccessPopover';
 import { TenantLogo } from './TenantLogo';
 import { useMountTransition } from '../../hooks/useMountTransition';
 
-const TITLES: Record<ViewKey, string> = {
-  dashboard: 'TechAsset',
-  devices: 'Dispositivos',
-  loans: 'Préstamos',
-  inventory: 'Inventario TIC',
-  analytics: 'Analítica',
-  agenda: 'Agenda TIC',
-  schedules: 'Horarios',
-  tasks: 'Tareas TIC',  canvas: 'Canvas de proyectos',
-  pettycash: 'Caja chica',
-  classrooms: 'Estado aulas',
-  tickets: 'Tickets',
-  knowledge: 'Base de conocimiento',
-  suggestions: 'Sugerencias e ideas',
-  tools: 'Herramientas auxiliares',
-  quickaccess: 'Accesos rápidos',
-  assistant: 'Asistente TIC',
-  tenants: 'Tenants',
-  adminusers: 'Usuarios',
-  settings: 'Configuración'
-};
-
-export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu, onToggleTheme, onReload, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout, onNavigate, themeProfile = 'classic', impersonating = false, onExitImpersonation, onOpenAssistant }: {
-  view: ViewKey;
-  search: string;
-  setSearch: (value: string) => void;
-  sync: SyncStatus;
+/**
+ * Barra superior mínima.
+ *
+ * Antes repetía el nombre de la app y de la sede —que ya están en el sidebar y
+ * en el selector de sede— y juntaba cinco controles sueltos: recargar, cambiar
+ * tema, el punto de sincronización y un buscador. Quedó lo que se usa: sede,
+ * accesos rápidos, notificaciones y la cuenta. El tema pasó adentro del menú de
+ * la cuenta, que es donde se lo busca.
+ */
+export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout, onNavigate, themeProfile = 'classic', impersonating = false, onExitImpersonation }: {
   consultationMode: boolean;
   onMenu: () => void;
   onToggleTheme: () => void;
-  onReload?: () => void;
   activeSite?: string;
   sites?: SiteInfo[];
   onSiteChange?: (siteCode: string) => void;
@@ -49,9 +30,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
   themeProfile?: ThemeProfile;
   impersonating?: boolean;
   onExitImpersonation?: () => void;
-  onOpenAssistant?: () => void;
 }) {
-  const syncUi = useSyncStatus(sync);
   const [accountOpen, setAccountOpen] = useState(false);
   const [siteMenuOpen, setSiteMenuOpen] = useState(false);
   // Los dos menús se sostienen montados mientras corre la salida.
@@ -62,6 +41,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
   const initials = displayName.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
   const activeSiteInfo = sites.find(site => site.siteCode === activeSite);
   const canSwitchSites = user?.rolGlobal === 'Superadmin' && sites.length > 1;
+  const oscuro = !isSmartProfile(themeProfile);
 
   useEffect(() => {
     if (!siteMenuOpen) return;
@@ -131,12 +111,21 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
   const accountMenu = (mounted: boolean, stateClass: string) => mounted ? (
     <div className={`account-menu t-dropdown ${stateClass}`.trim()} data-origin="top-right">
       <div className="account-menu-item">
-        <strong>Mi cuenta</strong>
+        <strong>{displayName}</strong>
         <span>{user?.email || '-'}</span>
       </div>
       <div className="account-menu-item">
         <strong>Sede activa</strong>
         <span>{activeSiteInfo?.nombre ? `${activeSite} · ${activeSiteInfo.nombre}` : activeSite}</span>
+      </div>
+      {/* El tema vive acá y no como un botón suelto en la barra: se cambia una
+          vez cada tanto y es una preferencia de la cuenta, no una acción. */}
+      <div className="account-menu-theme">
+        <span>Tema</span>
+        <div className="account-theme-toggle" role="group" aria-label="Tema de la interfaz">
+          <button type="button" className={oscuro ? 'is-active' : ''} aria-pressed={oscuro} onClick={() => { if (!oscuro) onToggleTheme(); }}>Oscuro</button>
+          <button type="button" className={oscuro ? '' : 'is-active'} aria-pressed={!oscuro} onClick={() => { if (oscuro) onToggleTheme(); }}>Claro</button>
+        </div>
       </div>
       <button type="button" className="account-menu-action" onClick={() => void onLogout?.()}>Cerrar sesión</button>
     </div>
@@ -157,31 +146,10 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
             <button className="topbar-icon-btn topbar-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
               <Menu size={20} strokeWidth={1.7} />
             </button>
-            <TenantLogo className="topbar-smart-logo" site={activeSiteInfo} />
-            <span className="topbar-smart-brand">TechAsset</span>
             {consultationMode && <span className="consulta-banner">Modo consulta</span>}
           </div>
-          <div className="topbar-center">
-            <span className="topbar-smart-site" title={`${TITLES[view]} · ${activeSite}`}>
-              {activeSiteInfo?.nombre || activeSite}
-            </span>
-          </div>
           <div className="topbar-right">
-            <input className="input topbar-smart-search" type="search" placeholder="Buscar" value={search} onChange={event => setSearch(event.target.value)} />
-
             {siteSwitcher}
-            <div className={`sync-mini ${syncUi.className}`} title={syncUi.title}>
-              <span className="sync-mini-dot" />
-              <span className="sr-only">{syncUi.title}</span>
-            </div>
-            <button className="sync-refresh-btn" type="button" aria-label="Actualizar base local" title="Actualizar base local" onClick={onReload}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 6v5h-5" />
-                <path d="M4 18v-5h5" />
-                <path d="M18.2 9A7 7 0 0 0 6.6 6.6L4 9" />
-                <path d="M5.8 15A7 7 0 0 0 17.4 17.4L20 15" />
-              </svg>
-            </button>
             <QuickAccessPopover onOpenFull={() => onNavigate?.('quickaccess')} />
             <NotificationBell enabled={!!user} onNavigate={onNavigate} />
             <div className="account-menu-wrap">
@@ -192,53 +160,30 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
             </div>
           </div>
         </header>
-        <div className="topbar-smart-searchrow">
-          <input className="input" type="search" placeholder="Buscar" value={search} onChange={event => setSearch(event.target.value)} />
-        </div>
       </div>
     );
   }
 
   return (
-    <header className="topbar">
+    <header className="topbar topbar-min">
+      {/* Sólo el hamburguesa a la izquierda: en mobile el sidebar es un cajón y
+          sin esto no hay forma de abrirlo. En desktop no se dibuja. */}
       <div className="topbar-title-wrap">
         <button className="mobile-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
           <span className="hamburger-icon" aria-hidden="true" />
         </button>
-        <TenantLogo className="topbar-logo" site={activeSiteInfo} />
-        <div className="topbar-title-text">
-          <h2>{TITLES[view]}</h2>
-          <p>{activeSite} · {activeSiteInfo?.nombre || 'Sede activa'}</p>
-        </div>
+        {consultationMode && <span className="consulta-banner">Modo consulta</span>}
       </div>
       <div className="topbar-actions">
-        {consultationMode && <span className="consulta-banner">Modo consulta</span>}
         {siteSwitcher || <span className="operator-chip" title={activeSiteInfo?.nombre || user?.email || 'Sede'}>{activeSite}</span>}
-        <div className={`sync-mini ${syncUi.className}`} title={syncUi.title}>
-          <span className="sync-mini-dot" />
-          <span className="sr-only">{syncUi.title}</span>
-        </div>
-        <button className="sync-refresh-btn" type="button" aria-label="Actualizar base local" title="Actualizar base local" onClick={onReload}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M20 6v5h-5" />
-            <path d="M4 18v-5h5" />
-            <path d="M18.2 9A7 7 0 0 0 6.6 6.6L4 9" />
-            <path d="M5.8 15A7 7 0 0 0 17.4 17.4L20 15" />
-          </svg>
-        </button>
-        <button className="theme-icon-btn" type="button" aria-label="Cambiar modo claro u oscuro" title="Modo claro / oscuro" onClick={onToggleTheme}>
-          <span className="theme-icon-half" />
-        </button>
         <QuickAccessPopover onOpenFull={() => onNavigate?.('quickaccess')} />
-            <NotificationBell enabled={!!user} onNavigate={onNavigate} />
+        <NotificationBell enabled={!!user} onNavigate={onNavigate} />
         <div className="account-menu-wrap">
           <button className="account-chip" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
             <span className="account-avatar">{initials}</span>
-            <span className="account-name">{displayName}</span>
           </button>
           {accountMenu(accountMenuAnim.mounted, accountMenuAnim.stateClass)}
         </div>
-        <input className="input" type="search" placeholder="Buscar" value={search} onChange={event => setSearch(event.target.value)} />
       </div>
     </header>
   );

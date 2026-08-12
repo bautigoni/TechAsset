@@ -1167,7 +1167,10 @@ body.menu-open{overflow:hidden}
 /* ── Hover mejorado v1.0 ──────────────────────────────────── */
 tr:hover td { background: rgba(59,130,246,0.08); transition: background .15s ease; }
 .stat-card.clickable { transition: background .15s ease, border-color .15s ease, transform .1s ease; cursor: pointer; }
-.stat-card.clickable:hover { background: var(--panel-2); border-color: var(--blue); transform: translateY(-1px); }
+/* El hover del KPI es un tinte azul, no una superficie más clara: subir el
+   tono lo leía como un bloque gris apoyado sobre la fila. Misma familia que el
+   estado activo, un poco más flojo. */
+.stat-card.clickable:hover { background: color-mix(in srgb, var(--blue) 10%, var(--surface)); border-color: var(--blue); transform: translateY(-1px); }
 .small-actions button { transition: background .15s ease, border-color .15s ease; }
 .small-actions button:hover { background: rgba(59,130,246,0.18); border-color: var(--blue); color: #a8c8ff; }
 .nav-btn { transition: background .15s ease, border-color .15s ease; }
@@ -3891,63 +3894,120 @@ tr:hover td { background: rgba(59, 130, 246, 0.07) !important; }
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* La barra ya no tiene título ni fila de controles: alcanza con el alto de sus
+   botones. Si cambia, actualizar --topbar-h (lo usa el panel de categorías del
+   inventario, que es sticky y se metería abajo del encabezado). */
+.topbar-min {
+  padding: 12px 22px;
+  min-height: var(--topbar-h);
+}
+.topbar-min .topbar-title-wrap { min-width: 0; }
+.topbar-min .topbar-actions { margin-left: auto; gap: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .account-theme-toggle button { transition-duration: 1ms; }
+}
+
+/* ── Selector de sede ──────────────────────────────────────────────────────
+   Cada opción era una cápsula con borde propio, redondeada al 14 y con su
+   fondo tintado: cuatro botones flotando dentro de otra caja redondeada, todo
+   compitiendo. Ahora el menú es una superficie y las opciones son filas;
+   el color del tenant queda como una barrita a la izquierda, que es lo único
+   que hace falta para distinguirlas de un vistazo. */
 .site-switcher { position: relative; min-width: 0; }
-.site-switcher-trigger,
-.site-switcher-option {
+.site-switcher-trigger {
   --tenant-accent: #3b82f6;
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  min-height: 40px;
-  border: 1px solid color-mix(in srgb, var(--tenant-accent) 42%, var(--border));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--panel-2) 84%, var(--tenant-accent));
+  min-height: 38px;
+  padding: 4px 10px 4px 5px;
+  max-width: 230px;
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  background: var(--surface-raised);
   color: var(--text);
   cursor: pointer;
-  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+  transition: border-color .16s ease, background .16s ease;
 }
-.site-switcher-trigger { padding: 5px 10px 5px 6px; max-width: 230px; }
-.site-switcher-trigger:hover,
-.site-switcher-option:hover { transform: translateY(-1px); border-color: var(--tenant-accent); }
+.site-switcher-trigger:hover { border-color: color-mix(in srgb, var(--tenant-accent) 55%, var(--surface-border)); }
+.site-switcher-trigger svg { color: var(--muted); flex: 0 0 auto; }
 .site-switcher-logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   object-fit: cover;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.12);
+  background: color-mix(in srgb, var(--tenant-accent) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tenant-accent) 34%, transparent);
   flex: 0 0 auto;
 }
-.site-switcher-text { display: grid; line-height: 1.1; min-width: 0; text-align: left; }
-.site-switcher-text strong { font-size: 13px; font-weight: 800; }
+.site-switcher-text { display: grid; gap: 1px; line-height: 1.15; min-width: 0; text-align: left; }
+.site-switcher-text strong { font-size: 12.5px; font-weight: 600; letter-spacing: .01em; }
 .site-switcher-text small {
-  max-width: 140px;
+  max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--muted);
   font-size: 11px;
 }
+
 .site-switcher-menu {
   position: absolute;
   z-index: 40;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   right: 0;
-  width: min(320px, calc(100vw - 24px));
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: rgba(12, 22, 40, .98);
-  box-shadow: 0 24px 70px rgba(0,0,0,.42);
+  width: min(272px, calc(100vw - 24px));
+  padding: 5px;
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 20px 56px rgba(0, 0, 0, .42);
   display: grid;
-  gap: 6px;
+  gap: 1px;
 }
-.site-switcher-option { width: 100%; justify-content: flex-start; padding: 8px; }
-.site-switcher-option.active {
-  border-color: var(--tenant-accent);
-  background: color-mix(in srgb, var(--panel) 70%, var(--tenant-accent));
+.site-switcher-option {
+  --tenant-accent: #3b82f6;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px 8px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background .14s ease;
 }
-.site-switcher-option svg { margin-left: auto; color: var(--tenant-accent); }
+/* La barrita del color del tenant: aparece en la activa y al pasar el mouse. */
+.site-switcher-option::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 9px;
+  bottom: 9px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--tenant-accent);
+  opacity: 0;
+  transition: opacity .14s ease;
+}
+.site-switcher-option:hover { background: var(--panel-2); }
+.site-switcher-option:hover::before { opacity: .5; }
+.site-switcher-option.active { background: var(--panel-2); }
+.site-switcher-option.active::before { opacity: 1; }
+.site-switcher-option.active .site-switcher-text strong { font-weight: 650; }
+.site-switcher-option svg { margin-left: auto; color: var(--tenant-accent); flex: 0 0 auto; }
+.site-switcher-option .site-switcher-logo { width: 26px; height: 26px; border-radius: 7px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .site-switcher-trigger,
+  .site-switcher-option,
+  .site-switcher-option::before { transition-duration: 1ms; }
+}
 
 .tenants-view,
 .agenda-view { display: grid; gap: 16px; }

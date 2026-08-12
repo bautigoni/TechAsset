@@ -6,9 +6,10 @@
   --chart-4: #ef4444;
   --chart-5: #8b5cf6;
 
-  /* Alto aproximado de la topbar sticky. Lo usan los paneles que también son
-     sticky para no quedar tapados abajo del encabezado. */
-  --topbar-h: 92px;
+  /* Alto de la topbar sticky. Lo usan los paneles que también son sticky para
+     no quedar tapados abajo del encabezado. Bajó de 92 a 62 al sacarle el
+     título y la fila de controles. */
+  --topbar-h: 62px;
 
   /* Tokens de transición */
   --ease-out: cubic-bezier(.22, 1, .36, 1);
@@ -19,7 +20,11 @@
 
   --bg: #09101d;
   --panel: #121b2d;
-  --panel-2: #1a2740;
+  /* Era #1a2740: el gris. Lo usan el hover de los KPI, la caja del traspaso,
+     las tarjetas de tarea prioritaria, las filas de movimientos, los chips y
+     los selectores — o sea, casi todo lo que se apoya sobre una card. Mismo
+     azul que --surface-raised, que es lo mismo que es. */
+  --panel-2: #16264a;
   --border: #2c3d5f;
   --text: #e8eefb;
   --muted: #99a9c6;
@@ -37,10 +42,11 @@
 
      Los dos valores son azules, no grises: `--surface` para las cards y
      `--surface-raised` para lo que va apoyado adentro de una card (tarjetas de
-     tarea, de agenda, filas de la lista de "Ahora"). `--panel-2` NO sirve acá:
-     ese #1a2740 es el gris que molestaba. */
+     tarea, de agenda, filas de "Ahora", chips, selectores). Es el mismo tono
+     que `--panel-2`, y son un solo valor a propósito: tener dos parecidos fue
+     justamente lo que dejó medio dashboard en el gris viejo. */
   --surface: #0f1b36;
-  --surface-raised: #16264a;
+  --surface-raised: var(--panel-2);
   --surface-border: rgba(68, 108, 168, 0.28);
   --surface-border-strong: rgba(59, 130, 246, 0.52);
   --surface-shadow: 0 8px 30px rgba(0, 0, 0, 0.26);

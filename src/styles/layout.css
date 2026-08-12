@@ -344,6 +344,50 @@
   white-space: nowrap;
 }
 
+/* Tema: dos opciones, no un botón que hay que adivinar en qué estado dejó todo. */
+.account-menu-theme {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 8px;
+}
+
+.account-menu-theme > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.account-theme-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.account-theme-toggle button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease;
+}
+
+.account-theme-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+
+.account-theme-toggle button:hover { color: var(--text); }
+
+.account-theme-toggle button.is-active {
+  background: var(--panel-2);
+  color: var(--text);
+  font-weight: 600;
+}
+
 .account-menu-action {
   border: 1px solid rgba(248,113,113,.35);
   border-radius: 10px;
