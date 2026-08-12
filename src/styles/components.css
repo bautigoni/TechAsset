@@ -82,7 +82,8 @@ label{display:block;margin-bottom:6px;font-size:13px;color:var(--muted)}.input{w
 .device-table td{overflow-wrap:anywhere}
 .device-table td:nth-child(3){font-size:12px;line-height:1.35}
 .device-table .device-actions-cell{overflow:visible}
-@media (min-width:1100px){ .device-table-wrap.no-scroll-table{overflow-x:visible} }
+/* Nada de overflow visible acá: la tabla tiene min-width y se escapaba de la
+   tarjeta, encimandose con el resto del layout. El wrap siempre recorta. */
 .compact-table th:nth-child(1){width:17%}
 .compact-table th:nth-child(2){width:24%}
 .compact-table th:nth-child(3){width:18%}

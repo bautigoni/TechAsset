@@ -783,6 +783,13 @@ body.mobile-menu-open {
     min-width: 1080px;
   }
 
+  /* En pantallas anchas la tabla entra entera y no hace falta scroll lateral.
+     Abajo de 1200 se mantiene el mínimo y el wrap la recorta con scroll. */
+  @media (min-width: 1200px) {
+    .device-table { min-width: 0; }
+    .device-table .device-actions .mini-action-btn { padding: 6px 9px; font-size: 11.5px; }
+  }
+
   .device-table thead th {
     background: rgba(18, 32, 62, .86);
     background-clip: padding-box;
