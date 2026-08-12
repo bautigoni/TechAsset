@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDb, nowIso } from '../db.js';
+import { getDb, getSiteSetting, nowIso } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
 
 // Cartelitos numerados que autorizan a usar el celular para sacar fotos a
@@ -19,6 +19,8 @@ function rowToPass(row) {
     numero: Number(row.numero),
     estado: row.estado || 'Disponible',
     prestadoA: row.prestado_a || '',
+    curso: row.curso || '',
+    docente: row.docente || '',
     rol: row.rol || '',
     motivo: row.motivo || '',
     loanedAt: row.loaned_at || '',
@@ -66,6 +68,40 @@ photoPassesRouter.get('/photo-passes', (req, res) => {
   });
 });
 
+/**
+ * Sugerencias para el formulario de entrega.
+ *
+ * No hay padrón de alumnos en la base, así que los nombres se aprenden solos:
+ * cada alumno que se carga una vez queda disponible para autocompletar la
+ * próxima. Docentes y cursos sí salen de datos que ya existen (horarios y el
+ * historial de préstamos), para no escribirlos a mano.
+ */
+photoPassesRouter.get('/photo-passes/options', (req, res) => {
+  const siteCode = requireSite(req);
+  const uniq = rows => [...new Set(rows.map(row => String(row.value || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  // El historial de préstamos tiene restos de pruebas ("123", "123123"): para
+  // sugerir docentes se descarta lo que no parece un nombre.
+  const parecenNombres = values => values.filter(value => value.length >= 3 && /\p{L}/u.test(value) && !/^\d+$/.test(value));
+
+  const alumnos = uniq(getDb().prepare("SELECT DISTINCT persona AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(persona,'')<>'' ORDER BY persona LIMIT 500").all(siteCode));
+
+  const cursosDb = getDb().prepare("SELECT DISTINCT curso AS value FROM loan_events WHERE site_code=? AND COALESCE(curso,'')<>'' LIMIT 300").all(siteCode);
+  const cursosPasses = getDb().prepare("SELECT DISTINCT curso AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(curso,'')<>'' LIMIT 300").all(siteCode);
+  let grados = [];
+  try {
+    const raw = getSiteSetting(siteCode, 'loan.gradeOptions');
+    if (Array.isArray(raw)) grados = raw.map(value => ({ value }));
+  } catch { /* si no hay setting, alcanza con lo que hay en la base */ }
+  const cursos = uniq([...cursosDb, ...cursosPasses, ...grados]);
+
+  const docentesHorarios = getDb().prepare("SELECT DISTINCT teacher AS value FROM teacher_schedule_entries WHERE site_code=? AND COALESCE(teacher,'')<>'' LIMIT 300").all(siteCode);
+  const docentesPrestamos = getDb().prepare("SELECT DISTINCT persona AS value FROM loan_events WHERE site_code=? AND COALESCE(persona,'')<>'' LIMIT 500").all(siteCode);
+  const docentesPasses = getDb().prepare("SELECT DISTINCT docente AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(docente,'')<>'' LIMIT 300").all(siteCode);
+  const docentes = parecenNombres(uniq([...docentesHorarios, ...docentesPrestamos, ...docentesPasses]));
+
+  res.json({ ok: true, alumnos, cursos, docentes });
+});
+
 // Alta por rango: cargar del 1 al 30 de una sola vez sin repetir el formulario.
 photoPassesRouter.post('/photo-passes/generate', (req, res) => {
   const siteCode = requireSite(req);
@@ -94,14 +130,16 @@ photoPassesRouter.post('/photo-passes/:numero/lend', (req, res) => {
   if (!pass) return res.status(404).json({ ok: false, error: 'Cartelito no encontrado.' });
   if (pass.estado === 'Prestado') return res.status(409).json({ ok: false, error: `El cartelito ${numero} ya está prestado a ${pass.prestado_a || 'alguien'}.` });
   const persona = String(req.body?.persona || '').trim();
-  if (!persona) return res.status(400).json({ ok: false, error: 'Falta a quién se le entrega.' });
+  if (!persona) return res.status(400).json({ ok: false, error: 'Falta el nombre del alumno.' });
+  const curso = String(req.body?.curso || '').trim();
+  const docente = String(req.body?.docente || '').trim();
   const ts = nowIso();
   getDb().prepare(`
-    UPDATE photo_passes SET estado='Prestado', prestado_a=?, rol=?, motivo=?, loaned_at=?, returned_at='', updated_at=?
+    UPDATE photo_passes SET estado='Prestado', prestado_a=?, curso=?, docente=?, rol=?, motivo=?, loaned_at=?, returned_at='', updated_at=?
     WHERE site_code=? AND numero=?
-  `).run(persona, String(req.body?.rol || ''), String(req.body?.motivo || ''), ts, ts, siteCode, numero);
-  getDb().prepare('INSERT INTO photo_pass_events (site_code, numero, tipo, persona, rol, motivo, operador, timestamp) VALUES (?,?,?,?,?,?,?,?)')
-    .run(siteCode, numero, 'prestamo', persona, String(req.body?.rol || ''), String(req.body?.motivo || ''), operatorOf(req), ts);
+  `).run(persona, curso, docente, String(req.body?.rol || ''), String(req.body?.motivo || ''), ts, ts, siteCode, numero);
+  getDb().prepare('INSERT INTO photo_pass_events (site_code, numero, tipo, persona, curso, docente, rol, motivo, operador, timestamp) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .run(siteCode, numero, 'prestamo', persona, curso, docente, String(req.body?.rol || ''), String(req.body?.motivo || ''), operatorOf(req), ts);
   res.json({ ok: true, item: rowToPass(getDb().prepare('SELECT * FROM photo_passes WHERE site_code=? AND numero=?').get(siteCode, numero)) });
 });
 
@@ -113,11 +151,11 @@ photoPassesRouter.post('/photo-passes/:numero/return', (req, res) => {
   if (pass.estado !== 'Prestado') return res.status(409).json({ ok: false, error: `El cartelito ${numero} no está prestado.` });
   const ts = nowIso();
   getDb().prepare(`
-    UPDATE photo_passes SET estado='Disponible', prestado_a='', rol='', motivo='', returned_at=?, updated_at=?
+    UPDATE photo_passes SET estado='Disponible', prestado_a='', curso='', docente='', rol='', motivo='', returned_at=?, updated_at=?
     WHERE site_code=? AND numero=?
   `).run(ts, ts, siteCode, numero);
-  getDb().prepare('INSERT INTO photo_pass_events (site_code, numero, tipo, persona, rol, motivo, operador, timestamp) VALUES (?,?,?,?,?,?,?,?)')
-    .run(siteCode, numero, 'devolucion', pass.prestado_a || '', pass.rol || '', pass.motivo || '', operatorOf(req), ts);
+  getDb().prepare('INSERT INTO photo_pass_events (site_code, numero, tipo, persona, curso, docente, rol, motivo, operador, timestamp) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .run(siteCode, numero, 'devolucion', pass.prestado_a || '', pass.curso || '', pass.docente || '', pass.rol || '', pass.motivo || '', operatorOf(req), ts);
   res.json({ ok: true, item: rowToPass(getDb().prepare('SELECT * FROM photo_passes WHERE site_code=? AND numero=?').get(siteCode, numero)) });
 });
 
@@ -153,5 +191,5 @@ photoPassesRouter.delete('/photo-passes/:numero', (req, res) => {
 photoPassesRouter.get('/photo-passes/:numero/history', (req, res) => {
   const siteCode = requireSite(req);
   const rows = getDb().prepare('SELECT * FROM photo_pass_events WHERE site_code=? AND numero=? ORDER BY timestamp DESC LIMIT 100').all(siteCode, Number(req.params.numero));
-  res.json({ ok: true, items: rows.map(row => ({ id: Number(row.id), tipo: row.tipo, persona: row.persona || '', rol: row.rol || '', motivo: row.motivo || '', operador: row.operador || '', timestamp: row.timestamp || '' })) });
+  res.json({ ok: true, items: rows.map(row => ({ id: Number(row.id), tipo: row.tipo, persona: row.persona || '', curso: row.curso || '', docente: row.docente || '', rol: row.rol || '', motivo: row.motivo || '', operador: row.operador || '', timestamp: row.timestamp || '' })) });
 });

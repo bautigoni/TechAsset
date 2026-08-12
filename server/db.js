@@ -908,6 +908,12 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'inventory_items', 'estado_legacy', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'condicion_updated_at', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'subcategoria', "TEXT DEFAULT ''");
+  // Los cartelitos se le dan a un alumno: hace falta saber de qué curso es y
+  // con qué docente está.
+  ensureColumn(database, 'photo_passes', 'curso', "TEXT DEFAULT ''");
+  ensureColumn(database, 'photo_passes', 'docente', "TEXT DEFAULT ''");
+  ensureColumn(database, 'photo_pass_events', 'curso', "TEXT DEFAULT ''");
+  ensureColumn(database, 'photo_pass_events', 'docente', "TEXT DEFAULT ''");
   ensureColumn(database, 'tickets', 'origen', "TEXT DEFAULT 'tik'");
   ensureColumn(database, 'tickets', 'tags_json', "TEXT DEFAULT '[]'");
   ensureColumn(database, 'tickets', 'template_id', 'INTEGER');

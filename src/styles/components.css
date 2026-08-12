@@ -2578,7 +2578,9 @@ body.consulta-mode #returnBtn {
 .pass-lent-list{display:grid;gap:5px;margin:0;padding:0;list-style:none;border-top:1px solid var(--border);padding-top:10px}
 .pass-lent-list li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:8px;align-items:baseline;font-size:12px;color:var(--muted)}
 .pass-lent-list b{color:var(--yellow);font-variant-numeric:tabular-nums}
-.pass-lent-list span{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pass-lent-list span{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;gap:6px;align-items:baseline;min-width:0}
+.pass-lent-list em{font-style:normal;color:var(--muted);font-size:11px;border:1px solid var(--border);border-radius:4px;padding:0 5px;flex:0 0 auto}
+.pass-lent-list i{font-style:normal;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* Cartelitos: el número es lo que se busca, así que manda visualmente. */
 .passes-page{display:grid;gap:18px}

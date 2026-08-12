@@ -1,19 +1,26 @@
 import { useEffect, useState } from 'react';
-import { getPhotoPasses, lendPhotoPass, returnPhotoPass, type PhotoPass } from '../../services/photoPassesApi';
+import {
+  getPhotoPasses, getPhotoPassOptions, lendPhotoPass, returnPhotoPass,
+  type PhotoPass, type PhotoPassOptions
+} from '../../services/photoPassesApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 
 /**
  * Cartelitos de autorización de fotos, dentro de Préstamos.
  *
- * No son un módulo ni una categoría: son papeles numerados del 1 al 30 que se
- * entregan y se devuelven. La app los da de alta sola la primera vez, así que
- * acá solo se ve la grilla de números con su estado.
+ * Se le entregan a un alumno, y hay que dejar registrado de qué curso es y con
+ * qué docente está. No hay padrón de alumnos en la base: los nombres se
+ * aprenden solos, cada uno cargado una vez queda para autocompletar. Los
+ * docentes y cursos salen de datos que ya existen (horarios y préstamos).
  */
+const EMPTY = { persona: '', curso: '', docente: '', motivo: '' };
+
 export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean }) {
   const [items, setItems] = useState<PhotoPass[]>([]);
+  const [options, setOptions] = useState<PhotoPassOptions>({ alumnos: [], cursos: [], docentes: [] });
   const [lending, setLending] = useState<PhotoPass | null>(null);
-  const [form, setForm] = useState({ persona: '', rol: '', motivo: '' });
+  const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,7 +28,12 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
     .then(response => setItems(response.items))
     .catch(() => setError('No se pudieron cargar los cartelitos.'));
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    void refresh();
+    getPhotoPassOptions()
+      .then(response => setOptions({ alumnos: response.alumnos, cursos: response.cursos, docentes: response.docentes }))
+      .catch(() => undefined);
+  }, []);
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -54,10 +66,12 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
             type="button"
             className={`pass-chip ${pass.estado === 'Prestado' ? 'is-prestado' : ''}`}
             disabled={consultationMode || busy}
-            title={pass.estado === 'Prestado' ? `${pass.prestadoA}${pass.motivo ? ` · ${pass.motivo}` : ''} — clic para devolver` : 'Disponible — clic para entregar'}
+            title={pass.estado === 'Prestado'
+              ? `${pass.prestadoA}${pass.curso ? ` · ${pass.curso}` : ''}${pass.docente ? ` · con ${pass.docente}` : ''} — clic para devolver`
+              : 'Disponible — clic para entregar'}
             onClick={() => {
               if (pass.estado === 'Prestado') void run(() => returnPhotoPass(pass.numero));
-              else { setForm({ persona: '', rol: '', motivo: '' }); setLending(pass); }
+              else { setForm(EMPTY); setLending(pass); }
             }}
           >
             {pass.numero}
@@ -69,7 +83,11 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
           {prestados.map(pass => (
             <li key={pass.numero}>
               <b>{pass.numero}</b>
-              <span>{pass.prestadoA}{pass.motivo ? ` · ${pass.motivo}` : ''}</span>
+              <span>
+                {pass.prestadoA}
+                {pass.curso && <em>{pass.curso}</em>}
+                {pass.docente && <i>con {pass.docente}</i>}
+              </span>
               <time>{pass.loanedAt ? new Date(pass.loanedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : ''}</time>
             </li>
           ))}
@@ -83,11 +101,21 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
             await run(() => lendPhotoPass(lending.numero, form));
             setLending(null);
           }}>
-            <label>Persona<input className="input" required autoFocus value={form.persona} onChange={event => setForm(v => ({ ...v, persona: event.target.value }))} /></label>
+            <label>Alumno
+              <input className="input" list="pass-alumnos" required autoFocus value={form.persona} onChange={event => setForm(v => ({ ...v, persona: event.target.value }))} placeholder="Nombre y apellido" />
+              <datalist id="pass-alumnos">{options.alumnos.map(value => <option key={value} value={value} />)}</datalist>
+            </label>
             <div className="grid-2">
-              <label>Rol<input className="input" value={form.rol} onChange={event => setForm(v => ({ ...v, rol: event.target.value }))} placeholder="Docente, preceptor..." /></label>
-              <label>Motivo<input className="input" value={form.motivo} onChange={event => setForm(v => ({ ...v, motivo: event.target.value }))} placeholder="Acto, salida..." /></label>
+              <label>Curso
+                <input className="input" list="pass-cursos" value={form.curso} onChange={event => setForm(v => ({ ...v, curso: event.target.value }))} placeholder="Ej. EP · 5F" />
+                <datalist id="pass-cursos">{options.cursos.map(value => <option key={value} value={value} />)}</datalist>
+              </label>
+              <label>Docente a cargo
+                <input className="input" list="pass-docentes" value={form.docente} onChange={event => setForm(v => ({ ...v, docente: event.target.value }))} placeholder="Con quién está" />
+                <datalist id="pass-docentes">{options.docentes.map(value => <option key={value} value={value} />)}</datalist>
+              </label>
             </div>
+            <label>Motivo<input className="input" value={form.motivo} onChange={event => setForm(v => ({ ...v, motivo: event.target.value }))} placeholder="Acto, salida, proyecto... (opcional)" /></label>
             <div className="actions">
               <Button variant="primary" type="submit" disabled={busy || !form.persona.trim()}>Entregar</Button>
               <Button type="button" onClick={() => setLending(null)}>Cancelar</Button>
