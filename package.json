@@ -42,6 +42,8 @@
   "devDependencies": {
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "transitions-pro": "^0.1.1",
+    "transitions-refine": "^0.3.34",
     "typescript": "^5.7.3",
     "vite": "^6.1.0"
   }

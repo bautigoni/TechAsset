@@ -431,6 +431,11 @@ export function App() {
       <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
       <main className="main main-content">
         <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} onOpenAssistant={() => setAssistantOpen(true)} />
+        {/* El `key={view}` remonta este nodo en cada cambio de vista, y con eso
+            se redispara la animación de entrada. Sólo hay entrada: sostener el
+            árbol viejo para animar la salida agrega espera, y en una app de
+            trabajo la espera se siente como lentitud. */}
+        <div key={view} className="view-enter">
         <Suspense fallback={<section className="card"><span className="muted">Cargando vista...</span></section>}>
         {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
@@ -449,6 +454,7 @@ export function App() {
         {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
         </Suspense>
+        </div>
       </main>
       <MobileNav items={navItems} active={view} onNavigate={setView} onPrefetch={prefetchView} onMore={() => setMenuOpen(true)} themeProfile={themeProfile} />
       <Suspense fallback={null}>

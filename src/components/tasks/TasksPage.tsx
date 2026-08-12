@@ -6,6 +6,9 @@ import { TaskModal } from './TaskModal';
 import { TaskCard } from './TaskCard';
 import { TaskAnalytics } from './TaskAnalytics';
 import { createTaskColumn, deleteTaskColumn, getTaskColumns, reorderTaskColumns, updateTaskColumn } from '../../services/tasksApi';
+import { useTabPill } from '../../hooks/useTabPill';
+import { GooeyMenu } from '../layout/GooeyMenu';
+import { Lock, Users } from 'lucide-react';
 
 const PRIORITIES = ['Urgente', 'Media', 'Baja'];
 
@@ -13,6 +16,7 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
   const { tasks, operator, consultationMode, onSave, onMove, onDelete, onRefresh } = props;
   const [space, setSpace] = useState<'my' | 'team'>('team');
   const [tab, setTab] = useState<'board' | 'priority'>('board');
+  const tabPill = useTabPill<HTMLDivElement>(tab);
   const [columns, setColumns] = useState<TaskColumn[]>([]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaskItem | null>(null);
@@ -37,8 +41,25 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
   return <section className="view active tasks-workspace">
     <div className="tasks-compact-toolbar card">
       <div className="task-space-toggle" aria-label="Espacio de tareas"><button className={space === 'team' ? 'active' : ''} onClick={() => setSpace('team')}>Equipo</button><button className={space === 'my' ? 'active' : ''} onClick={() => setSpace('my')}>Mis tareas</button></div>
-      <div className="tasks-subnav"><button className={tab === 'board' ? 'active' : ''} onClick={() => setTab('board')}>Tablero</button><button className={tab === 'priority' ? 'active' : ''} onClick={() => setTab('priority')}>Prioridad</button></div>
-      <div className="tasks-primary-actions"><Button onClick={() => onRefresh?.()} aria-label="Actualizar">↻</Button><Button variant="primary" disabled={consultationMode} onClick={() => setCreating(true)}>+ Nueva tarea</Button></div>
+      <div className="tasks-subnav t-tabs" ref={tabPill.ref}>
+        <span className="t-tabs-pill" style={tabPill.style} aria-hidden="true" />
+        <button className={tab === 'board' ? 'active' : ''} data-tab-active={tab === 'board'} onClick={() => setTab('board')}>Tablero</button>
+        <button className={tab === 'priority' ? 'active' : ''} data-tab-active={tab === 'priority'} onClick={() => setTab('priority')}>Prioridad</button>
+      </div>
+      {/* El "+" del gooey ES el botón de crear: ocupa su lugar en la barra en
+          vez de flotar suelto por la página. */}
+      <div className="tasks-primary-actions">
+        <Button onClick={() => onRefresh?.()} aria-label="Actualizar">↻</Button>
+        {!consultationMode && (
+          <GooeyMenu
+            ariaLabel="Nueva tarea"
+            items={[
+              { id: 'team', label: 'Nueva tarea de equipo', icon: <Users size={16} />, onSelect: () => { setSpace('team'); setCreating(true); } },
+              { id: 'mine', label: 'Nueva tarea privada', icon: <Lock size={16} />, onSelect: () => { setSpace('my'); setCreating(true); } }
+            ]}
+          />
+        )}
+      </div>
     </div>
     {message && <div className="tool-info">{message}</div>}
 
@@ -47,5 +68,6 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
     {space === 'team' && <TaskAnalytics tasks={visibleTasks} />}
     {creating && <TaskModal operator={operator} defaultVisibility={space === 'my' ? 'private' : 'team'} onClose={() => setCreating(false)} onSave={onSave} />}
     {editing && <TaskModal operator={operator} initial={editing} defaultVisibility={editing.visibility || 'team'} onClose={() => setEditing(null)} onSave={onSave} />}
+
   </section>;
 }

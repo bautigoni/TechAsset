@@ -9,6 +9,8 @@ import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { TicketTemplateManager } from './TicketTemplateManager';
 import { TicketDetailModal } from './TicketDetailModal';
+import { GooeyMenu } from '../layout/GooeyMenu';
+import { LayoutTemplate, TicketPlus } from 'lucide-react';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
 const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
@@ -253,7 +255,19 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
     <section className="view active">
       <div className="card-head" style={{ marginBottom: 12 }}>
         <h3>Tickets</h3>
-        <div className="actions"><Button disabled={consultationMode} onClick={() => setTemplatesOpen(true)}>Plantillas</Button><Button variant="primary" disabled={consultationMode} onClick={openCreate}>Cargar ticket</Button></div>
+        {/* El "+" del gooey reemplaza a "Cargar ticket": las dos acciones de
+            creación viven adentro del mismo botón. */}
+        <div className="actions">
+          {!consultationMode && (
+            <GooeyMenu
+              ariaLabel="Cargar ticket"
+              items={[
+                { id: 'new', label: 'Cargar ticket', icon: <TicketPlus size={16} />, onSelect: openCreate },
+                { id: 'templates', label: 'Plantillas', icon: <LayoutTemplate size={16} />, onSelect: () => setTemplatesOpen(true) }
+              ]}
+            />
+          )}
+        </div>
       </div>
 
       {/* A3: búsqueda + chips de estado con contador */}
@@ -428,6 +442,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
       )}
       {templatesOpen && <TicketTemplateManager templates={templates} onClose={() => setTemplatesOpen(false)} onChanged={loadTemplates} />}
       {detailId != null && <TicketDetailModal initialId={detailId} tickets={tickets} consultationMode={consultationMode} onClose={() => setDetailId(null)} onChanged={load} />}
+
     </section>
   );
 }

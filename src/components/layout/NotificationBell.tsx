@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ViewKey } from '../../types';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useEnterTransition } from '../../hooks/useEnterTransition';
 import type { AppNotification } from '../../services/notificationsApi';
 
 function kindToView(kind: string): ViewKey | null {
@@ -71,6 +72,11 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
     dismissToast();
   };
 
+  // El popover crece desde la campana y el toast sube desde abajo; los dos se
+  // montan condicionalmente, así que necesitan el frame de gracia del hook.
+  const popoverEntered = useEnterTransition(open);
+  const toastEntered = useEnterTransition(!!toast);
+
   return (
     <div className="notif-wrap" ref={wrapRef}>
       <button type="button" className="notif-bell" aria-label="Notificaciones" onClick={() => setOpen(o => !o)}>
@@ -82,7 +88,7 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
       </button>
 
       {open && (
-        <div className="notif-popover">
+        <div className={`notif-popover t-dropdown ${popoverEntered ? 'is-open' : ''}`.trim()} data-origin="top-right">
           <div className="notif-popover-head">
             <strong>Notificaciones</strong>
             {unread > 0 && <button type="button" className="notif-mark-all" onClick={() => void markAllRead()}>Marcar todas</button>}
@@ -101,7 +107,7 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
       )}
 
       {toast && (
-        <div className="notif-toast" role="status">
+        <div className={`notif-toast t-toast ${toastEntered ? 'is-open' : ''}`.trim()} role="status">
           <div className="notif-toast-body">
             <strong>{plainText(toast.title)}</strong>
             {toast.body && <span>{plainText(toast.body)}</span>}

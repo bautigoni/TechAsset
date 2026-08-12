@@ -148,3 +148,11 @@ Botón opcional en la pantalla de login al lado del tradicional por mail. Si las
 - Cualquier feature operativa nueva debe respetar `consultationMode` (vista jefe = bloquea ediciones).
 - En español rioplatense (`vos`, `acordate`). Encoding UTF-8 — vigilar mojibake `Ã©`/`prÃ³xima` en CSVs y mails.
 - Logs: `[devices/perf]` está silenciado salvo que `DEBUG_DEVICE_PERF=1`. No volver a llenar la consola por default.
+- **Nunca puede haber scroll horizontal**, en ninguna vista, ancho o breakpoint — salvo que el usuario lo pida explícitamente para un contenedor puntual. El `<body>` jamás scrollea en X. Contenido ancho (tablas, planos SVG, bloques de código) scrollea *dentro* de su propio contenedor con `overflow-x: auto`, nunca empujando la página. Antes de cerrar un cambio de UI, verificar en mobile (360px) y desktop.
+
+## Animaciones y transiciones
+
+- Las animaciones salen de [transitions.dev](https://transitions.dev) (plan Pro). Antes de escribir un keyframe a mano, buscar si ya existe la receta: `npx transitions-pro list`. Catálogo local en `src/styles/transitions/`.
+- Estética sobria: micro-transiciones, easing y timing correctos. Nada de glows, confetti, bounces exagerados ni "AI slop".
+- **Siempre respetar `prefers-reduced-motion: reduce`** — toda animación nueva va con su guard.
+- Animar preferentemente `transform` y `opacity` (compositor). Evitar animar `width`, `height`, `top`/`left` o `box-shadow` en loops.

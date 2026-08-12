@@ -23,6 +23,10 @@ pnpm-debug.log*
 .npm-cache/
 .claude/
 
+# Skills de agente instaladas (npx skills add). Son ~3,7 MB de contenido
+# vendorizado que se reinstala solo desde skills-lock.json, que sí se versiona.
+.agents/
+
 # Bases SQLite locales
 data/techasset.db
 data/*.db

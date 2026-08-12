@@ -4,6 +4,7 @@ import { parseScannedCode, resolveDeviceMatches } from '../../utils/normalizeSea
 import { getOperationalAlias, operationalTypeLabel } from '../../utils/classifyDevice';
 import { Button } from '../layout/Button';
 import { ScannerPanel } from './ScannerPanel';
+import { ScanMessage } from './ScanMessage';
 import { getSiteSettings } from '../../services/authApi';
 import { getActiveLoanAccessories, getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
 
@@ -386,7 +387,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
           {cameraOpen && <p className="muted">Cámara activa. Escaneá el QR con tu lector habitual o usala como apoyo visual.</p>}
         </div>
       )}
-      {!continuousScan && scanMessage && <div className={`tool-${scanMessage.tone === 'error' ? 'error' : scanMessage.tone === 'warn' ? 'warning' : 'info'}`}>{scanMessage.text}</div>}
+      {!continuousScan && scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} />}
       {!continuousScan && unavailableMessage && <div className="tool-warning">{unavailableMessage}</div>}
       <button className={`toggle-row toggle-row-button ${continuousScan ? 'active' : ''}`} type="button" role="switch" aria-checked={continuousScan} onClick={toggleContinuous}>
         <span className="toggle-pill"><span /></span>
@@ -396,7 +397,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
       {continuousScan && (
         <div className="continuous-scan-panel">
-          {scanMessage && <div className={`tool-${scanMessage.tone === 'error' ? 'error' : scanMessage.tone === 'warn' ? 'warning' : 'info'}`}>{scanMessage.text}</div>}
+          {scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} />}
           <div className="continuous-scan-summary">
             <span>Total: <strong>{scanItems.length}</strong></span>
             <span>Disponibles: <strong>{validScanItems.length}</strong></span>

@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Classroom, ClassroomCategory, ClassroomEquipmentItem, ClassroomEquipmentKey, ClassroomGeneralState, ClassroomHistoryEntry, ClassroomIncident, ClassroomIncidentSummary, ClassroomItemState, Operator } from '../../types';
 import { fetchClassroom, fetchClassroomHistory, fetchClassroomIncidents, generateClassroomHealth, updateClassroom, type ClassroomHealthReport } from '../../services/classroomsApi';
 import { Button } from '../layout/Button';
 import { RelatedReminders } from '../reminders/RelatedReminders';
+
+// Igual que en Modal.tsx: tiene que coincidir con --modal-close-dur.
+const MODAL_CLOSE_MS = 150;
 
 const ITEM_STATES: ClassroomItemState[] = ['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar'];
 const ITEM_COLORS: Record<ClassroomItemState, string> = {
@@ -100,11 +103,33 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
 
   useEffect(()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context',{detail:{type:'classroom',id:roomKey,label:nombre,data:{piso}}}));return()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context-clear',{detail:{type:'classroom',id:roomKey}}));};},[roomKey,nombre,piso]);
 
+  // Misma coreografía que el <Modal> genérico: este panel no pasa por ese
+  // componente (tiene su propio layout de aula), así que orquesta las fases a
+  // mano. Sin esto quedaba como el único modal de la app que aparece de golpe.
+  const [phase, setPhase] = useState<'entering' | 'open' | 'closing'>('entering');
+  const closingRef = useRef(false);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setPhase('open'));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // `saved` viaja hasta el padre (refresca el plano si se guardó), así que la
+  // salida animada tiene que preservarlo, no cerrar en seco.
+  const requestClose = useCallback((saved?: boolean) => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+    if (reduced) { onClose(saved); return; }
+    setPhase('closing');
+    window.setTimeout(() => onClose(saved), MODAL_CLOSE_MS);
+  }, [onClose]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        requestClose();
       }
     };
     document.body.classList.add('modal-open');
@@ -113,11 +138,13 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
       document.body.classList.remove('modal-open');
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [onClose]);
+  }, [requestClose]);
+
+  const wrapClass = `modal t-modal classroom-modal-wrap ${phase === 'open' ? 'is-open' : phase === 'closing' ? 'is-closing' : ''}`.trim();
 
   if (!draft) {
     return (
-      <div className="modal classroom-modal-wrap" onClick={() => onClose()} role="dialog" aria-modal="true">
+      <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true">
         <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
           <p>Cargando aula...</p>
         </div>
@@ -168,22 +195,22 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
       setClassroom(saved); setDraft(saved);
       const hist = await fetchClassroomHistory(roomKey);
       if (hist.ok) setHistory(hist.items);
-      onClose(true);
+      requestClose(true);
     } catch { setError('Error de conexión'); }
     finally { setBusy(false); }
   };
 
-  const onCancel = () => { onClose(); };
+  const onCancel = () => { requestClose(); };
 
   return (
-    <div className="modal classroom-modal-wrap" onClick={() => onClose()} role="dialog" aria-modal="true">
+    <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true">
       <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
         <div className="card-head" style={{ marginBottom: 8 }}>
           <div>
             <h3 style={{ margin: 0 }}>{nombre || draft.nombre}</h3>
             <p className="muted" style={{ margin: '2px 0 0' }}>{piso}</p>
           </div>
-          <button type="button" className="icon-btn" onClick={() => onClose()} aria-label="Cerrar">✕</button>
+          <button type="button" className="icon-btn" onClick={() => requestClose()} aria-label="Cerrar">✕</button>
         </div>
 
         <div className={`classroom-general-badge estado-${normalize(draft.estadoGeneral)}`}>

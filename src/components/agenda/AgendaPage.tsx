@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CalendarPlus, Clipboard, RefreshCw, Rss } from 'lucide-react';
+import { GooeyMenu } from '../layout/GooeyMenu';
 import type { AgendaItem } from '../../types';
 import { getAgendaCalendarFeed, rotateAgendaCalendarFeed } from '../../services/agendaApi';
 import { Button } from '../layout/Button';
@@ -229,7 +230,16 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         <div className="agenda-hero-actions">
           <Button onClick={() => onRefresh?.()}><RefreshCw size={16} /> Actualizar</Button>
           <Button onClick={openSync}><Rss size={16} /> Sincronizar</Button>
-          <Button variant="primary" disabled={consultationMode} onClick={() => setCreating(true)}><CalendarPlus size={16} /> Nueva actividad</Button>
+          {/* El "+" del gooey reemplaza a "Nueva actividad". */}
+          {!consultationMode && (
+            <GooeyMenu
+              ariaLabel="Nueva actividad"
+              items={[
+                { id: 'new', label: 'Nueva actividad', icon: <CalendarPlus size={16} />, onSelect: () => setCreating(true) },
+                { id: 'sync', label: 'Sincronizar calendario', icon: <Rss size={16} />, onSelect: openSync }
+              ]}
+            />
+          )}
         </div>
       </div>
 
@@ -372,6 +382,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
           </div>
         </Modal>
       )}
+
     </section>
   );
 }

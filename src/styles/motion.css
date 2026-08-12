@@ -1,0 +1,557 @@
+/* ================================================================
+   SISTEMA DE MOVIMIENTO — TechAsset
+   ================================================================
+   Recetas de transitions.dev (plan Pro) adaptadas al proyecto.
+   El catálogo crudo vive en src/styles/transitions/*.md; acá sólo
+   entra lo que efectivamente se usa, con las variables semánticas
+   colgadas de los tokens que YA existían en variables.css
+   (--ease-out, --duration-*) en vez de duplicar valores.
+
+   Tesis: la app es modo "Operate" — el movimiento explica estado,
+   continuidad y feedback. No decora. Regla de oro: la salida es
+   más rápida que la entrada, así cerrar nunca se siente lento.
+
+   Material de firma: el cross-blur (filter: blur) en las
+   superficies que aparecen de a una — modal, toast, panel, cambio
+   de vista. Es lo que separa esto de un fade genérico.
+   PROHIBIDO en listas: blur y will-change por fila matan el scroll
+   de la tabla de dispositivos. Ver "Presupuesto" abajo.
+
+   Presupuesto de performance:
+   - transform + opacity siempre; filter sólo en superficies únicas.
+   - will-change únicamente mientras hay animación conocida, y nunca
+     en algo que se renderiza en cantidad.
+   - stagger tope 10 elementos (--stagger-max), después entra plano.
+   ================================================================ */
+
+:root {
+  /* Reloj compartido. Todo sale de acá: una sola escala para toda
+     la app es lo que hace que se sienta un sistema y no parches. */
+  --m-ease: var(--ease-out);                        /* cubic-bezier(.22,1,.36,1) */
+  --m-ease-entrance: cubic-bezier(0.16, 1, 0.3, 1); /* llegada confiada */
+  --m-in: var(--duration-base);                     /* .22s */
+  --m-out: var(--duration-fast);                    /* .15s — salir es más rápido */
+  --m-slow: var(--duration-slow);                   /* .35s */
+  --m-blur: 2px;
+
+  /* modal */
+  --modal-open-dur: 250ms;
+  --modal-close-dur: 150ms;
+  --modal-scale: 0.96;
+  --modal-scale-close: 0.98;
+  --modal-ease: var(--m-ease);
+
+  /* toast */
+  --toast-open: 350ms;
+  --toast-close: 250ms;
+  --toast-distance: 16px;
+  --toast-blur: var(--m-blur);
+  --toast-scale: 0.97;
+  --toast-ease: var(--m-ease);
+
+  /* dropdown */
+  --dropdown-open-dur: 180ms;
+  --dropdown-close-dur: 120ms;
+  --dropdown-pre-scale: 0.96;
+  --dropdown-closing-scale: 0.98;
+  --dropdown-ease: var(--m-ease);
+
+  /* tabs */
+  --tabs-dur: 260ms;
+  --tabs-ease: var(--m-ease);
+
+  /* dígitos */
+  --digit-dur: 420ms;
+  --digit-distance: 10px;
+  --digit-dir-x: 0;
+  --digit-dir-y: 1;
+  --digit-blur: 3px;
+  --digit-stagger: 40ms;
+  --digit-ease: var(--m-ease-entrance);
+
+  /* shake de error */
+  --shake-dur-a: 80ms;
+  --shake-dur-b: 60ms;
+  --shake-distance: 5px;
+  --shake-overshoot: -2px;
+  --shake-ease: var(--m-ease);
+  --revert-dur: 280ms;
+
+  /* cambio de vista */
+  --view-dur: 260ms;
+  --view-distance: 8px;
+}
+
+/* ================================================================
+   1. MODAL — receta `modal`.
+   Aplicado en src/components/layout/Modal.tsx, que orquesta
+   .is-open / .is-closing. Como TODOS los modales de la app pasan
+   por ese componente, esta sola regla los anima a todos.
+   El backdrop entra aparte y más lento: primero oscurece, después
+   llega la tarjeta.
+   ================================================================ */
+/* OJO: todo esto engancha de `.t-modal`, no de `.modal` a secas. El estado
+   inicial es invisible (opacity 0), así que si colgara de `.modal` cualquier
+   componente que use esa clase sin manejar `.is-open` quedaría en blanco.
+   `.t-modal` es la manera de decir "yo orquesto las fases". */
+.modal.t-modal {
+  background: rgba(0, 0, 0, 0);
+  transition: background var(--modal-open-dur) var(--modal-ease);
+}
+.modal.t-modal.is-open { background: rgba(0, 0, 0, 0.58); }
+.modal.t-modal.is-closing {
+  background: rgba(0, 0, 0, 0);
+  transition: background var(--modal-close-dur) var(--modal-ease);
+}
+
+.modal.t-modal > .modal-card {
+  transform-origin: center;
+  transform: scale(var(--modal-scale));
+  opacity: 0;
+  filter: blur(var(--m-blur));
+  transition:
+    transform var(--modal-open-dur) var(--modal-ease),
+    opacity   var(--modal-open-dur) var(--modal-ease),
+    filter    var(--modal-open-dur) var(--modal-ease);
+}
+.modal.t-modal.is-open > .modal-card {
+  transform: scale(1);
+  opacity: 1;
+  filter: blur(0);
+  will-change: transform, opacity;
+}
+.modal.t-modal.is-closing > .modal-card {
+  transform: scale(var(--modal-scale-close));
+  opacity: 0;
+  filter: blur(var(--m-blur));
+  transition:
+    transform var(--modal-close-dur) var(--modal-ease),
+    opacity   var(--modal-close-dur) var(--modal-ease),
+    filter    var(--modal-close-dur) var(--modal-ease);
+}
+
+/* ================================================================
+   2. CAMBIO DE VISTA — receta `panel-reveal`, acortada.
+   App.tsx no usa router: el estado `view` remonta la página, así
+   que alcanza con una animación de entrada keyeada. No hay salida
+   a propósito — sostener el árbol viejo para animar la salida
+   cuesta más de lo que suma, y en modo Operate la espera se siente
+   como lentitud.
+   ================================================================ */
+@keyframes t-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--view-distance));
+    filter: blur(var(--m-blur));
+  }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+.view-enter {
+  /* SIN fill-mode a propósito. Con `both` el último keyframe queda pegado, y
+     ese keyframe tiene `filter: blur(0)` — que no es lo mismo que `none`:
+     crea un containing block permanente y cualquier `position: fixed` de
+     adentro de la página se ancla acá en vez de al viewport. Sin fill, al
+     terminar la animación el nodo vuelve a su estado base sin filter. */
+  animation: t-view-enter var(--view-dur) var(--m-ease-entrance);
+  /* Contiene el translate para que nada empuje el ancho de página
+     mientras la animación corre (regla: cero scroll horizontal). */
+  overflow-x: clip;
+}
+
+/* ================================================================
+   3. TOAST — receta `toast`. NotificationBell.
+   ================================================================ */
+/* `.notif-toast` traía un `animation: toastIn .2s ease` propio que pelea con
+   la transición de la receta: la animación gana sobre el estado inicial y el
+   toast entra dos veces. Se apaga acá, no en components.css, para que la
+   estética vieja siga intacta si algún día se saca .t-toast. */
+.t-toast { animation: none !important; }
+
+.t-toast {
+  opacity: 0;
+  transform: translateY(var(--toast-distance)) scale(var(--toast-scale));
+  filter: blur(var(--toast-blur));
+  transition:
+    opacity   var(--toast-close) var(--toast-ease),
+    transform var(--toast-close) var(--toast-ease),
+    filter    var(--toast-close) var(--toast-ease);
+}
+.t-toast.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+  will-change: transform, opacity;
+  transition:
+    opacity   var(--toast-open) var(--toast-ease),
+    transform var(--toast-open) var(--toast-ease),
+    filter    var(--toast-open) var(--toast-ease);
+}
+
+/* ================================================================
+   4. DROPDOWN / POPOVER — receta `menu-dropdown`.
+   Crece desde la esquina que lo disparó: eso es lo que hace legible
+   de dónde salió el menú.
+   ================================================================ */
+.t-dropdown {
+  transform-origin: top left;
+  transform: scale(var(--dropdown-pre-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--dropdown-open-dur) var(--dropdown-ease),
+    opacity   var(--dropdown-open-dur) var(--dropdown-ease);
+}
+.t-dropdown[data-origin="top-right"]     { transform-origin: top right; }
+.t-dropdown[data-origin="top-center"]    { transform-origin: top center; }
+.t-dropdown[data-origin="bottom-left"]   { transform-origin: bottom left; }
+.t-dropdown[data-origin="bottom-center"] { transform-origin: bottom center; }
+.t-dropdown[data-origin="bottom-right"]  { transform-origin: bottom right; }
+.t-dropdown.is-open {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-dropdown.is-closing {
+  transform: scale(var(--dropdown-closing-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--dropdown-close-dur) var(--dropdown-ease),
+    opacity   var(--dropdown-close-dur) var(--dropdown-ease);
+}
+
+/* ================================================================
+   6. TABS — receta `tabs-sliding`. La píldora viaja entre tabs en
+   vez de saltar; el ancho y la posición los escribe JS inline.
+   Se monta sobre la estética existente, no la reemplaza.
+   ================================================================ */
+.t-tabs { position: relative; }
+/* Los tabs se apoyan sobre la píldora. Va PRIMERO para que la regla de la
+   píldora, que es más específica y viene después, no pueda perder: si el
+   `position: relative` de acá le gana, la píldora entra al flujo del flex y
+   aparece como una caja vacía de más adentro de la barra. */
+.t-tabs > * { position: relative; z-index: 1; }
+.t-tabs > .t-tabs-pill {
+  position: absolute;
+  left: 0;
+  width: 0;
+  background: var(--panel-2);
+  border-radius: 999px;
+  transform: translateX(0);
+  transition:
+    transform var(--tabs-dur) var(--tabs-ease),
+    width     var(--tabs-dur) var(--tabs-ease),
+    opacity   var(--tabs-dur) var(--tabs-ease);
+  will-change: transform, width;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Subnav de Tareas: el fondo que antes vivía en `button.active` pasa a la
+   píldora. Misma estética exacta — lo único que cambia es que ahora viaja. */
+.tasks-subnav.t-tabs > .t-tabs-pill {
+  background: rgba(59, 130, 246, .2);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3);
+  border-radius: 10px;
+}
+.tasks-subnav.t-tabs button.active {
+  background: transparent;
+  box-shadow: none;
+}
+.tasks-subnav.t-tabs button { transition: color var(--tabs-dur) var(--tabs-ease); }
+
+/* ================================================================
+   7. NÚMEROS — receta `number-pop-in`. Sólo para los KPI del
+   dashboard, que son pocos y cambian poco. No usar en celdas de
+   tabla.
+   ================================================================ */
+@keyframes t-digit-pop-in {
+  0% {
+    transform: translate(
+      calc(var(--digit-distance) * var(--digit-dir-x)),
+      calc(var(--digit-distance) * var(--digit-dir-y))
+    );
+    opacity: 0;
+    filter: blur(var(--digit-blur));
+  }
+  100% { transform: translate(0, 0); opacity: 1; filter: blur(0); }
+}
+/* Clase repetida a propósito para subir la especificidad a (0,2,0).
+   Los dígitos son <span> adentro del <strong> del KPI, y reglas viejas del
+   tipo `.stat-card span { display:block; color:muted; font-size:13px }`
+   —escritas pensando sólo en el label— los agarraban de rebote: cada cifra
+   caía en su propio renglón, apagada y chica. El número tiene que heredar
+   del <strong> que lo contiene, nunca del contenedor de más arriba. */
+.t-digit-group.t-digit-group {
+  display: inline-flex;
+  align-items: baseline;
+  color: inherit;
+  font: inherit;
+  /* Después de `font: inherit`, que resetea la variante numérica. Va acá y no
+     abajo con el resto por especificidad. */
+  font-variant-numeric: tabular-nums;
+  letter-spacing: inherit;
+  margin: 0;
+}
+.t-digit-group .t-digit {
+  display: inline-block;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  margin: 0;
+}
+.t-digit-group.is-animating .t-digit {
+  animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+}
+.t-digit-group.is-animating .t-digit[data-stagger="1"] { animation-delay: var(--digit-stagger); }
+.t-digit-group.is-animating .t-digit[data-stagger="2"] { animation-delay: calc(var(--digit-stagger) * 2); }
+.t-digit-group.is-animating .t-digit[data-stagger="3"] { animation-delay: calc(var(--digit-stagger) * 3); }
+
+/* ================================================================
+   8. ERROR — receta `error-state-shake`. Feedback de formulario:
+   el shake dice "esto no salió" sin robarle el lugar al mensaje.
+   Lo usa ScanMessage en el flujo de préstamos.
+   ================================================================ */
+@keyframes t-msg-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+.t-msg-enter { animation: t-msg-enter var(--m-in) var(--m-ease-entrance); }
+
+.t-input { transition: border-color var(--m-out) ease-out; }
+.t-input.is-error { transition: border-color var(--revert-dur) ease-out; }
+.t-input.is-shaking {
+  animation: t-input-shake calc(var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2) linear;
+}
+@keyframes t-input-shake {
+  0%     { transform: translateX(0);                                animation-timing-function: var(--shake-ease); }
+  28.57% { transform: translateX(var(--shake-distance));             animation-timing-function: var(--shake-ease); }
+  57.14% { transform: translateX(calc(var(--shake-distance) * -1));  animation-timing-function: var(--shake-ease); }
+  78.57% { transform: translateX(var(--shake-overshoot));            animation-timing-function: var(--shake-ease); }
+  100%   { transform: translateX(0); }
+}
+
+/* ================================================================
+   9. GOOEY PLUS MENU — receta Pro `gooey-plus-menu`.
+   Lo usa GooeyMenu.tsx como acción de creación flotante por página.
+   Las dos curvas de la receta ya existían en variables.css: su
+   --goo-open-ease es exactamente --ease-spring y su close es
+   --ease-out. Se enganchan, no se duplican.
+   ================================================================ */
+:root {
+  --goo-open-dur: 350ms;
+  --goo-open-ease: var(--ease-spring);
+  --goo-close-dur: 250ms;
+  --goo-close-ease: var(--ease-out);
+  --goo-stagger: 40ms;
+  --goo-spread: 1;
+  --goo-blur: 6;
+  --goo-contrast: 18;
+  --goo-icon-dur: 250ms;
+  --goo-icon-rotate: 45deg;
+  --goo-icon-ease: ease-in-out;
+  --goo-anticip: 5px;
+  --goo-anticip-dur: 700ms;
+  --goo-anticip-ease: var(--ease-out);
+  /* Sólido a propósito: es el `fill` de un <circle>, no acepta gradiente
+     ni transparencia sin romper la fusión del goo. */
+  --goo-surface: var(--panel-2);
+  --goo-icon-color: var(--text);
+}
+
+/* El ancla mide lo que el botón y va EN LÍNEA, dentro de la barra de
+   acciones de cada página, ocupando el lugar del botón de crear que
+   reemplaza. El abanico desborda sin empujar nada porque los satélites
+   son absolutos. Nada de position:fixed: flotando suelto quedaba
+   encima del contenido y no se entendía a qué pertenecía. */
+.t-goo-anchor {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  width: 40px;
+  height: 40px;
+  /* Por encima de las cards vecinas para que el abanico abierto no
+     quede por debajo de la tarjeta de al lado. */
+  z-index: 5;
+}
+
+.t-goo-layer {
+  position: absolute;
+  /* Lienzo cuadrado: el abanico horizontal necesita tanto lugar como el
+     vertical. El componente escribe left/top inline según la dirección. */
+  width: 200px;
+  height: 200px;
+  overflow: visible;
+  pointer-events: none;
+  /* Promover la capa filtrada: si no, WebKit repinta el goo un par de
+     frames detrás de los botones y se ve como si los íconos corrieran
+     adelante de su superficie. */
+  will-change: filter, transform;
+}
+
+/* `transform` clásico, NO la propiedad `translate:` — el soporte de las
+   propiedades individuales sobre elementos SVG es lo que desincroniza
+   el abanico en Safari. */
+.t-goo-blob {
+  fill: var(--goo-surface);
+  transform: translate(0, 0);
+  transform-box: fill-box;
+  transition: transform var(--goo-close-dur) var(--goo-close-ease);
+  will-change: transform;
+}
+.t-goo-anchor[data-open="true"] .t-goo-blob {
+  transform: translate(calc(var(--fx, 0px) * var(--goo-spread)), calc(var(--fy, 0px) * var(--goo-spread)));
+  transition: transform var(--goo-open-dur) var(--goo-open-ease);
+  transition-delay: calc(var(--i, 0) * var(--goo-stagger));
+}
+
+/* Capa de UI: sólo hit targets transparentes e íconos nítidos. La
+   superficie visible es el líquido de abajo. */
+.t-goo-item,
+.t-goo-main {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--goo-icon-color);
+  -webkit-tap-highlight-color: transparent;
+  transform: translate(0, 0);
+  transition: transform var(--goo-close-dur) var(--goo-close-ease), background-color 120ms ease;
+  will-change: transform;
+}
+/* Inertes mientras están apilados debajo del principal: si no, se comen
+   sus clicks. */
+.t-goo-item { pointer-events: none; }
+.t-goo-anchor[data-open="true"] .t-goo-item {
+  pointer-events: auto;
+  transform: translate(calc(var(--fx, 0px) * var(--goo-spread)), calc(var(--fy, 0px) * var(--goo-spread)));
+  transition: transform var(--goo-open-dur) var(--goo-open-ease), background-color 120ms ease;
+  transition-delay: calc(var(--i, 0) * var(--goo-stagger)), 0ms;
+}
+.t-goo-anchor[data-open="true"] .t-goo-item:hover { background: rgba(255, 255, 255, 0.06); }
+
+/* Los íconos de los satélites esperan mientras el blob sigue fusionado
+   y entran con cross-blur cuando se despega: un ícono flotando sin
+   superficie rompe la ilusión del líquido. */
+.t-goo-item svg {
+  display: block;
+  opacity: 0;
+  filter: blur(2px);
+  transition: opacity 120ms ease, filter 120ms ease;
+}
+.t-goo-anchor[data-open="true"] .t-goo-item svg {
+  opacity: 1;
+  filter: blur(0);
+  transition: opacity 180ms ease, filter 180ms ease;
+  transition-delay: calc(var(--i, 0) * var(--goo-stagger) + 120ms), calc(var(--i, 0) * var(--goo-stagger) + 120ms);
+}
+
+@keyframes t-goo-anticipate {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(var(--goo-anticip)); }
+  100% { transform: translateY(0); }
+}
+/* El amague va sobre TODA la capa, no sobre el blob principal: con
+   todos los círculos apilados en el centro, mover uno solo estira la
+   silueta en vez de leerse como que el botón se hunde. */
+.t-goo-anchor.is-anticipating .t-goo-layer,
+.t-goo-anchor.is-anticipating .t-goo-main {
+  /* Longhands, no el shorthand `animation`: WebKit parsea mal var()
+     adentro del shorthand y cae a 0s. */
+  animation-name: t-goo-anticipate;
+  animation-duration: var(--goo-anticip-dur);
+  animation-timing-function: var(--goo-anticip-ease);
+  animation-fill-mode: both;
+}
+
+.t-goo-swap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  transform: rotate(0deg);
+  transition: transform var(--goo-icon-dur) var(--goo-icon-ease);
+}
+.t-goo-anchor[data-open="true"] .t-goo-swap { transform: rotate(var(--goo-icon-rotate)); }
+.t-goo-icon { grid-area: 1 / 1; display: inline-flex; }
+.t-goo-icon svg { display: block; }
+
+/* ================================================================
+   10. SUPERFICIES DEL BROWSER
+   Lo que no dibujamos igual lleva el diseño: selección, caret,
+   scrollbar y foco vienen con defaults que no son de nadie.
+   Tematizarlos es la señal más barata de que la app se construyó
+   en vez de ensamblarse.
+   ================================================================ */
+::selection {
+  background: color-mix(in srgb, var(--blue) 32%, transparent);
+  color: var(--text);
+}
+:root { caret-color: var(--blue); scrollbar-color: var(--border) transparent; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background var(--m-in) var(--m-ease);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+
+/* Anillo de foco propio, sólo para teclado. Sin tocar border-radius: el
+   outline ya sigue el radio propio del elemento, y forzarlo acá le cuadraba
+   las esquinas a los botones pill al llegar con Tab. */
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Números tabulares donde se comparan cifras: sin esto las
+   columnas bailan al actualizarse. */
+.stat-card .stat-value,
+.t-digit-group,
+table td.num,
+table th.num { font-variant-numeric: tabular-nums; }
+
+/* ================================================================
+   11. REDUCED MOTION
+   "Menos movimiento", no "sin feedback": se sacan los
+   desplazamientos y el blur, se conservan opacidad y color para
+   que un cambio de estado siga siendo legible.
+   ================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .modal.t-modal > .modal-card,
+  .t-toast,
+  .t-dropdown {
+    filter: none !important;
+    transform: none !important;
+    transition-duration: 1ms !important;
+  }
+  .view-enter,
+  .t-msg-enter,
+  .t-digit-group.is-animating .t-digit,
+  .t-input.is-shaking {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  .t-tabs-pill { transition: none !important; }
+  /* El gooey conserva el despliegue (sin él los satélites no existen),
+     pero sin amague ni stagger: el movimiento se vuelve funcional. */
+  .t-goo-blob,
+  .t-goo-item,
+  .t-goo-item svg,
+  .t-goo-swap { transition-delay: 0ms !important; transition-duration: 1ms !important; }
+  .t-goo-anchor.is-anticipating .t-goo-layer,
+  .t-goo-anchor.is-anticipating .t-goo-main { animation: none !important; }
+}

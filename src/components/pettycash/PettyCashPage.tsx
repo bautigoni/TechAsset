@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowRight, Plus, ReceiptText, ShoppingCart, WalletCards } from 'lucide-react';
+import { GooeyMenu, type GooeyMenuItem } from '../layout/GooeyMenu';
 import type { PurchaseRequest } from '../../types';
 import { createPettyCashExpense, createPurchaseRequest, getPettyCash, resolvePurchaseRequest, savePettyCashConfig, uploadPettyCashReceipt, type PettyCashResponse } from '../../services/pettyCashApi';
 import { Button } from '../layout/Button';
@@ -44,6 +45,14 @@ export function PettyCashPage({ consultationMode }: { consultationMode: boolean 
     setModalError('');
     setRequest({ ...EMPTY_REQUEST });
   };
+  // Los satélites dependen de los permisos del usuario, así que pueden quedar
+  // dos, uno o ninguno. Se arma antes del render para poder decidir con el
+  // largo si va el gooey o los botones sueltos.
+  const gooeyItems: GooeyMenuItem[] = [
+    ...(data.permissions.manager ? [{ id: 'expense', label: 'Registrar gasto', icon: <ReceiptText size={16} />, onSelect: openExpense }] : []),
+    ...(data.permissions.canRequest ? [{ id: 'request', label: 'Solicitar compra', icon: <ShoppingCart size={16} />, onSelect: openRequest }] : [])
+  ];
+
   const openResolution = (item: PurchaseRequest) => {
     setModalError('');
     setResolving(item);
@@ -150,8 +159,12 @@ export function PettyCashPage({ consultationMode }: { consultationMode: boolean 
           </div>
         )}
         <div className="petty-actions">
-          {data.permissions.manager && <Button disabled={consultationMode} onClick={openExpense}><Plus size={16} /> Registrar gasto</Button>}
-          {data.permissions.canRequest && <Button variant="primary" disabled={consultationMode} onClick={openRequest}><Plus size={16} /> Solicitar compra</Button>}
+          {/* El "+" del gooey junta las dos acciones de alta. Los ítems dependen
+              de permisos: si queda uno solo, GooeyMenu no renderiza (un satélite
+              no se lee como cuerpo líquido) y caen los botones sueltos de abajo. */}
+          {!consultationMode && gooeyItems.length >= 2 && <GooeyMenu ariaLabel="Nuevo movimiento" items={gooeyItems} />}
+          {gooeyItems.length < 2 && data.permissions.manager && <Button disabled={consultationMode} onClick={openExpense}><Plus size={16} /> Registrar gasto</Button>}
+          {gooeyItems.length < 2 && data.permissions.canRequest && <Button variant="primary" disabled={consultationMode} onClick={openRequest}><Plus size={16} /> Solicitar compra</Button>}
         </div>
       </div>
 
@@ -278,6 +291,7 @@ export function PettyCashPage({ consultationMode }: { consultationMode: boolean 
           </form>
         </Modal>
       )}
+
     </section>
   );
 }

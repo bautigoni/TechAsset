@@ -7,6 +7,9 @@
 @import './auth.css';
 /* Navegación y overrides del Tema B (Smart Campus) — carga al final. */
 @import './nav-smart.css';
+/* Sistema de movimiento (recetas transitions.dev). Va último a propósito:
+   pisa el background estático de .modal para poder animarlo. */
+@import './motion.css';
 
 html,
 body,
