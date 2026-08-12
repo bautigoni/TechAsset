@@ -31,7 +31,7 @@ export function DeviceProfile({ device, consultationMode = false, onOpenDevice, 
     ['Ubicación', current.ubicacion], ['Asignado a', current.prestadoA]
   ];
   return (
-    <Modal title={`Overview · ${getOperationalAlias(current) || current.etiqueta}`} onClose={onClose} wide>
+    <Modal title={`Ficha · ${getOperationalAlias(current) || current.etiqueta}`} onClose={onClose} wide>
       <div className="device-overview">
         {error && <div className="tool-error">{error}</div>}
         {!overview && !error && <div className="tool-info">Armando el historial del dispositivo…</div>}

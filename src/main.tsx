@@ -8,7 +8,6 @@ import { applyThemeProfile, readThemeProfile } from './utils/themeProfile';
 
 // Aplicar el perfil de tema guardado antes del primer render para evitar flash.
 applyThemeProfile(readThemeProfile());
-installViewportZoomLock();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -29,14 +28,5 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   });
 }
 
-function installViewportZoomLock() {
-  const preventZoom = (event: Event) => event.preventDefault();
-  const preventMultitouch = (event: TouchEvent) => {
-    if (event.touches.length > 1) event.preventDefault();
-  };
-
-  document.addEventListener('gesturestart', preventZoom, { passive: false });
-  document.addEventListener('gesturechange', preventZoom, { passive: false });
-  document.addEventListener('gestureend', preventZoom, { passive: false });
-  document.addEventListener('touchmove', preventMultitouch, { passive: false });
-}
+// El bloqueo de pinch-zoom se sacó a propósito: la app se usa en celular y
+// impedir agrandar deja afuera a quien lo necesita para leer.

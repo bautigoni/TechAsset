@@ -61,7 +61,7 @@ export function AppearancePanel() {
             className={`style-chip ${!variant && option.value === 'normal' || variantStyle(profile) === option.value ? 'active' : ''}`}
             onClick={() => changeStyle(option.value)}
           >
-            {option.label}
+            <span>{option.label}</span>
             <small>{option.desc}</small>
           </button>
         ))}

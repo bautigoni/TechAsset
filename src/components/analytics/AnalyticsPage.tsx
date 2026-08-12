@@ -9,10 +9,10 @@ import { ParqueSection } from './ParqueSection';
 type RangePreset = 'week' | 'month' | 'quarter' | 'year' | 'all';
 
 const PRESETS: Array<{ key: RangePreset; label: string; days: number }> = [
-  { key: 'year', label: 'Ultimo ano', days: 365 },
-  { key: 'quarter', label: 'Ultimos 3 meses', days: 92 },
-  { key: 'month', label: 'Ultimo mes', days: 30 },
-  { key: 'week', label: 'Ultima semana', days: 7 },
+  { key: 'year', label: 'Último año', days: 365 },
+  { key: 'quarter', label: 'Últimos 3 meses', days: 92 },
+  { key: 'month', label: 'Último mes', days: 30 },
+  { key: 'week', label: 'Última semana', days: 7 },
   { key: 'all', label: 'Todo', days: 3650 },
 ];
 
@@ -39,7 +39,7 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
       const response = await getAnalytics(range.from, range.to);
       setData(response);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo cargar la analitica.');
+      setError(err instanceof Error ? err.message : 'No se pudo cargar la analítica.');
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
   }, [prestamoEvents]);
 
   const kpis: Array<{ label: string; value: string | number; hint?: string }> = [
-    { label: 'Prestamos en el periodo', value: summary?.totalPrestamos ?? 0, hint: `${summary?.totalDevoluciones ?? 0} devoluciones` },
+    { label: 'Préstamos en el período', value: summary?.totalPrestamos ?? 0, hint: `${summary?.totalDevoluciones ?? 0} devoluciones` },
     { label: 'Personas distintas', value: summary?.personasUnicas ?? 0, hint: 'que pidieron prestado' },
     { label: 'Equipos distintos', value: summary?.equiposUnicos ?? 0, hint: 'que se prestaron' },
     { label: 'Tickets abiertos', value: summary?.ticketsAbiertos ?? 0 },
@@ -74,19 +74,19 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
   ];
 
   const charts: Array<{ title: string; rows: Array<{ label: string; value: number; color?: string }>; type: ChartType; size: ChartSize }> = summary ? [
-    { title: 'Evolucion de prestamos', rows: summary.series.rows, type: 'line', size: 'wide' },
-    { title: 'Equipos mas utilizados', rows: summary.byDevice?.length ? summary.byDevice : typeRows, type: 'bar', size: 'md' },
+    { title: 'Evolución de préstamos', rows: summary.series.rows, type: 'line', size: 'wide' },
+    { title: 'Equipos más utilizados', rows: summary.byDevice?.length ? summary.byDevice : typeRows, type: 'bar', size: 'md' },
     { title: 'Tendencia anual', rows: summary.annualTrend || [], type: 'line', size: 'md' },
-    { title: 'Personas que mas prestaron', rows: summary.byPerson?.slice(0, 15) || [], type: 'bar', size: 'md' },
+    { title: 'Personas que más prestaron', rows: summary.byPerson?.slice(0, 15) || [], type: 'bar', size: 'md' },
     { title: 'Ubicaciones', rows: summary.byLocation || [], type: 'bar', size: 'md' },
-    { title: 'Motivos de prestamo', rows: summary.byReason, type: 'donut', size: 'md' },
+    { title: 'Motivos de préstamo', rows: summary.byReason, type: 'donut', size: 'md' },
     { title: 'Top cursos usuarios', rows: summary.byCourse, type: 'bar', size: 'md' },
-    { title: 'Prestamos por hora', rows: summary.byHour || [], type: 'vertical', size: 'md' },
-    { title: 'Dias con mas demanda', rows: summary.byWeekday || [], type: 'bar', size: 'sm' },
-    { title: 'Demanda por hora y dia', rows: summary.byHourWeekday || [], type: 'vertical', size: 'lg' },
+    { title: 'Préstamos por hora', rows: summary.byHour || [], type: 'vertical', size: 'md' },
+    { title: 'Días con más demanda', rows: summary.byWeekday || [], type: 'bar', size: 'sm' },
+    { title: 'Demanda por hora y día', rows: summary.byHourWeekday || [], type: 'vertical', size: 'lg' },
     { title: 'Actividad TIC', rows: summary.byOperator || [], type: 'bar', size: 'sm' },
-    { title: 'Equipos con mas fallas', rows: summary.byTicketDevice || [], type: 'bar', size: 'sm' },
-    { title: 'Agenda TIC ocupacion', rows: summary.agendaOccupation || [], type: 'vertical', size: 'sm' },
+    { title: 'Equipos con más fallas', rows: summary.byTicketDevice || [], type: 'bar', size: 'sm' },
+    { title: 'Agenda TIC ocupación', rows: summary.agendaOccupation || [], type: 'vertical', size: 'sm' },
     { title: 'Tickets abiertos vs cerrados', rows: summary.ticketMetrics?.openClosed || [], type: 'donut', size: 'sm' },
     { title: 'Tickets por categoría', rows: summary.ticketMetrics?.byCategory || [], type: 'bar', size: 'md' },
     { title: 'Tickets por prioridad', rows: summary.ticketMetrics?.byPriority || [], type: 'donut', size: 'sm' },
@@ -100,12 +100,12 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
   return (
     <section className="view active">
       <div className="analytics-reload-bar">
-        <span className="muted">{loading ? 'Cargando...' : `${summary?.totalPrestamos ?? 0} prestamos en el periodo`}</span>
+        <span className="muted">{loading ? 'Cargando...' : `${summary?.totalPrestamos ?? 0} préstamos en el período`}</span>
         <Button variant="primary" disabled={loading} onClick={() => void load()}>{loading ? 'Actualizando...' : 'Recargar'}</Button>
       </div>
 
       <section className="card analytics-filter-card">
-        <div className="card-head"><h3>Periodo</h3></div>
+        <div className="card-head"><h3>Período</h3></div>
         <div className="analytics-filters">
           {PRESETS.map(p => (
             <button
@@ -138,7 +138,7 @@ export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () =
       </div>
 
       {!loading && summary && summary.totalPrestamos === 0 && (
-        <div className="tool-info">No hay prestamos registrados en este periodo. Proba ampliar el rango.</div>
+        <div className="tool-info">No hay préstamos registrados en este período. Probá ampliar el rango.</div>
       )}
     </section>
   );

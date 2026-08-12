@@ -44,7 +44,7 @@ authRouter.post('/auth/login', (req, res) => {
   res.cookie(config.sessionCookieName, session.token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: config.sessionCookieSecure,
     expires: new Date(session.expires),
     path: '/'
   });

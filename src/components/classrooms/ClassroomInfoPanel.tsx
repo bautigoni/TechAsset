@@ -181,7 +181,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
         <div className="card-head" style={{ marginBottom: 8 }}>
           <div>
             <h3 style={{ margin: 0 }}>{nombre || draft.nombre}</h3>
-            <p className="muted" style={{ margin: '2px 0 0' }}>{piso} · {roomKey}</p>
+            <p className="muted" style={{ margin: '2px 0 0' }}>{piso}</p>
           </div>
           <button type="button" className="icon-btn" onClick={() => onClose()} aria-label="Cerrar">✕</button>
         </div>
@@ -190,7 +190,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
           Estado general: <strong>{draft.estadoGeneral}</strong>
         </div>
 
-        <section className="classroom-health-section card"><div className="card-head"><div><h4>Classroom Health</h4><span className="muted">Se genera únicamente cuando lo pedís.</span></div><Button disabled={healthBusy} onClick={async()=>{setHealthBusy(true);setError('');try{const response=await generateClassroomHealth(roomKey);setHealth(response.report);}catch(reason){setError(reason instanceof Error?reason.message:'No se pudo generar el análisis.');}finally{setHealthBusy(false);}}}>{healthBusy?'Analizando…':'Generar análisis'}</Button></div>{health&&<div className="classroom-health-report"><div className="classroom-health-score"><strong>{health.score}</strong><span>{health.status}</span></div><p>{health.summary}</p><HealthList title="Problemas recurrentes" items={health.recurringProblems}/><HealthList title="Puntos positivos" items={health.positives}/><HealthList title="Riesgos" items={health.risks}/><HealthList title="Acciones preventivas" items={health.preventiveActions}/></div>}</section>
+        <section className="classroom-health-section card"><div className="card-head"><div><h4>Diagnóstico del aula</h4><span className="muted">Se genera únicamente cuando lo pedís.</span></div><Button disabled={healthBusy} onClick={async()=>{setHealthBusy(true);setError('');try{const response=await generateClassroomHealth(roomKey);setHealth(response.report);}catch(reason){setError(reason instanceof Error?reason.message:'No se pudo generar el análisis.');}finally{setHealthBusy(false);}}}>{healthBusy?'Analizando…':'Generar análisis'}</Button></div>{health&&<div className="classroom-health-report"><div className="classroom-health-score"><strong>{health.score}</strong><span>{health.status}</span></div><p>{health.summary}</p><HealthList title="Problemas recurrentes" items={health.recurringProblems}/><HealthList title="Puntos positivos" items={health.positives}/><HealthList title="Riesgos" items={health.risks}/><HealthList title="Acciones preventivas" items={health.preventiveActions}/></div>}</section>
 
         <section className="classroom-incidents-section">
           <div className="card-head"><div><h4>Incidentes del aula</h4><span className="muted">Los tickets vinculados aparecen automáticamente.</span></div></div>

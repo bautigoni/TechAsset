@@ -52,6 +52,10 @@ export const config = {
     from: process.env.RESEND_FROM || process.env.MAIL_FROM || ''
   },
   appBaseUrl: publicUrl(process.env.APP_BASE_URL || process.env.TECHASSET_PUBLIC_URL),
+  // La cookie de sesión viaja con Secure cuando la app se sirve por HTTPS. Se
+  // deduce de APP_BASE_URL para no romper el desarrollo local por http.
+  sessionCookieSecure: String(process.env.SESSION_COOKIE_SECURE || '').toLowerCase() === 'true'
+    || /^https:/i.test(String(process.env.APP_BASE_URL || process.env.TECHASSET_PUBLIC_URL || '')),
   superadminEmails: String(process.env.SUPERADMIN_EMAILS || '')
     .split(',')
     .map(s => s.trim().toLowerCase())

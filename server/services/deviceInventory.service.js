@@ -39,6 +39,9 @@ export async function getMergedDevices({ siteCode = config.defaultSiteCode || 'N
     const diagnostics = setDiagnostics(normalizedSite, {
       ...baseDiagnostics,
       source,
+      // Sin esto el front nunca recibía la fecha y mostraba "sin importación
+      // registrada" al lado de la fecha que venía en `source`.
+      lastImportAt: lastImport || '',
       lastSuccessfulReadAt: loadedAt,
       lastTotalMs: Date.now() - started,
       deviceCount: items.length,

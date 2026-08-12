@@ -3,7 +3,7 @@ import { Button } from '../layout/Button';
 import { downloadC365Template, fetchToolsConfig, previewC365, sendC365, uploadC365Csv } from '../../services/toolsApi';
 
 const REQUIRED = ['Nombre para mostrar', 'Nombre de usuario', 'mail', 'Contraseña', 'Sede', 'Licencias'];
-const displayColumn = (value: string) => value === 'Contraseña' ? 'Contrasena' : value;
+const displayColumn = (value: string) => value;
 
 export function Credentials365Tool() {
   const [csv, setCsv] = useState('');
@@ -58,7 +58,7 @@ export function Credentials365Tool() {
   };
 
   const onPreview = async () => {
-    if (!csv) { setError('Subi un CSV primero'); return; }
+    if (!csv) { setError('Subí un CSV primero'); return; }
     reset();
     setBusy(true);
     try {
@@ -77,7 +77,7 @@ export function Credentials365Tool() {
   };
 
   const onSend = async () => {
-    if (!csv) { setError('Subi un CSV primero'); return; }
+    if (!csv) { setError('Subí un CSV primero'); return; }
     if (!modoPrueba) {
       const ok = window.confirm(`Vas a enviar credenciales reales a ${validos} destinatario(s). ${invalidos} se descartan por invalidos. Confirmas el envio?`);
       if (!ok) return;
@@ -89,7 +89,7 @@ export function Credentials365Tool() {
       if (!r.ok) { setError(r.error || 'Error al enviar'); return; }
       setStats(r.stats || null);
       if (r.reportUrl) setReportUrl(r.reportUrl);
-      setInfo(r.modoPrueba ? 'MODO PRUEBA: no se enviaron correos reales. Reporte generado.' : 'Envio finalizado. Reporte disponible.');
+      setInfo(r.modoPrueba ? 'Modo prueba: no se enviaron correos reales. Reporte generado.' : 'Envío finalizado. Reporte disponible.');
     } finally {
       setBusy(false);
     }
@@ -100,10 +100,10 @@ export function Credentials365Tool() {
   return (
     <section className="card tool-card">
       <div className="card-head"><h3>Envio de credenciales 365</h3></div>
-      <p className="muted">Subi un CSV con cuentas de Microsoft 365, valida los datos y envia las credenciales por mail. Se genera un reporte CSV exportable.</p>
+      <p className="muted">Subí un CSV con cuentas de Microsoft 365, validá los datos y enviá las credenciales por mail. Se genera un reporte CSV exportable.</p>
 
       <div className="tool-warning">
-        <strong>Atencion:</strong> revisa los destinatarios antes de enviar. {modoPrueba ? 'MODO_PRUEBA esta activado: no se enviaran correos reales.' : (mailOk ? `MODO_PRUEBA esta desactivado: el envio sera real${resendOk ? ' por Resend' : ''}.` : 'Proveedor de mail sin configurar: configura Resend antes de enviar.')}
+        <strong>Atención:</strong> revisá los destinatarios antes de enviar. {modoPrueba ? 'Modo prueba activado: no se envían correos reales.' : (mailOk ? `Modo prueba desactivado: el envío es real${resendOk ? ' por Resend' : ''}.` : 'Proveedor de mail sin configurar: configurá Resend antes de enviar.')}
         <span className="badge subtle" style={{ marginLeft: 8 }}>{providerLabel}</span>
       </div>
 

@@ -70,7 +70,7 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
             <th>SN</th>
             <th>Prestado a</th>
             <th>Horario préstamo</th>
-            <th>Horario devolución</th>
+            <th>Última devolución</th>
             <th>Estado</th>
             <th>Acciones</th>
           </tr>
@@ -100,7 +100,7 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
                   </div>
                 ) : '-'}
               </td>
-              <td data-label="Horario devolución">{tableValue(formatLoanDateTime(device.returnedAt))}</td>
+              <td data-label="Última devolución">{tableValue(formatLoanDateTime(device.returnedAt))}</td>
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
               <td data-label="Acciones" className="device-actions-cell" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
                 <div className="table-actions device-actions">

@@ -16,7 +16,7 @@ const TYPE_OPTIONS: Array<{ key: keyof NotificationTypePrefs; title: string; tex
   { key: 'tasks', title: 'Tareas TIC', text: 'Tareas creadas o asignadas por otros integrantes de la sede.' },
   { key: 'reminders', title: 'Recordatorios', text: 'Avisos cuando vence un recordatorio propio o asignado.' },
   { key: 'tickets', title: 'Tickets', text: 'Tickets nuevos o cambios relevantes.' },
-  { key: 'releases', title: 'Novedades de TechAsset', text: 'Avisos de actualizacion y cambios de version.' },
+  { key: 'releases', title: 'Novedades de TechAsset', text: 'Avisos de actualización y cambios de versión.' },
   { key: 'registrations', title: 'Altas e invitaciones', text: 'Registros, aprobaciones e invitaciones de usuarios.' },
   { key: 'system', title: 'Sistema', text: 'Avisos generales de la plataforma.' }
 ];

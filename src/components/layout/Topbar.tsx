@@ -178,7 +178,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
             </button>
             <NotificationBell enabled={!!user} onNavigate={onNavigate} />
             <div className="account-menu-wrap">
-              <button className="topbar-icon-btn account-trigger" type="button" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
+              <button className="topbar-icon-btn account-trigger" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
                 <span className="account-avatar">{initials}</span>
               </button>
               {accountMenu(accountOpen)}
@@ -224,7 +224,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
         </button>
         <NotificationBell enabled={!!user} onNavigate={onNavigate} />
         <div className="account-menu-wrap">
-          <button className="account-chip" type="button" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
+          <button className="account-chip" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
             <span className="account-avatar">{initials}</span>
             <span className="account-name">{displayName}</span>
           </button>

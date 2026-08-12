@@ -129,7 +129,10 @@ function Room({ room, statuses, hoveredId, selectedRoom, onHover, onClick }) {
   const lines = String(room.label || '').split('\n');
   const fontSize = room.smallText ? 8 : room.w < 90 ? 10 : 13;
   const lineH = fontSize + 2;
-  const labelColor = isHov || isSel ? C.glow : isTeam ? '#00d4ff' : !isInteractive ? '#3a5a82' : C.textPrimary;
+  // Los espacios no interactivos (Baños, Drama, Música, Escalera) estaban en
+  // #3a5a82 sobre azul casi negro: ilegibles. Siguen apagados respecto de las
+  // aulas clickeables, pero ahora se leen.
+  const labelColor = isHov || isSel ? C.glow : isTeam ? '#00d4ff' : !isInteractive ? '#7fa6d4' : C.textPrimary;
 
   const interactionProps = isInteractive
     ? {

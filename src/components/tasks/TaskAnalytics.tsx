@@ -21,21 +21,23 @@ export function TaskAnalytics({ tasks }: { tasks: TaskItem[] }) {
           const done = assigned.filter(task => task.estado === 'Hecha').length;
           const pending = assigned.filter(task => task.estado === 'Pendiente').length;
           const progress = assigned.filter(task => task.estado === 'En proceso').length;
-          const pct = assigned.length ? Math.round((done / assigned.length) * 100) : 100;
+          // Sin tareas asignadas no hay porcentaje que mostrar: 100% verde daba
+          // a entender que estaba todo hecho y obligaba a una nota al pie.
+          const pct = assigned.length ? Math.round((done / assigned.length) * 100) : null;
           return (
             <div className={`assistant-progress-card assistant-progress-${index}`} key={person}>
               <div className="assistant-progress-head">
                 <strong>{person}</strong>
-                <span>{pct}%</span>
+                <span>{pct === null ? '—' : `${pct}%`}</span>
               </div>
-              <div className="progress assistant-progress"><span style={{ width: `${pct}%` }} /></div>
+              <div className="progress assistant-progress"><span style={{ width: `${pct ?? 0}%` }} /></div>
               <div className="assistant-progress-grid">
                 <span>Asignadas</span><strong>{assigned.length}</strong>
                 <span>Pendientes</span><strong>{pending}</strong>
                 <span>En proceso</span><strong>{progress}</strong>
                 <span>Hechas</span><strong>{done}</strong>
               </div>
-              {!assigned.length && <p className="muted">Sin tareas pendientes asignadas: se muestra 100% porque no hay trabajo abierto.</p>}
+              {!assigned.length && <p className="muted">Sin tareas asignadas.</p>}
             </div>
           );
         })}

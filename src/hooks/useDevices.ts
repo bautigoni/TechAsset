@@ -36,9 +36,17 @@ export function useDevices(search: string, siteCode = '') {
         }
         const lastImportAt = typeof data.diagnostics?.lastImportAt === 'string' ? data.diagnostics.lastImportAt : '';
         const syncState: SyncStatus['state'] = data.items.length || lastImportAt ? 'ok' : 'warning';
-        const cacheNote = lastImportAt ? `última importación: ${lastImportAt}` : 'base local sin importación registrada';
+        // `source` ya trae la última importación; repetirla acá producía el
+        // mensaje contradictorio "Última importación: X · sin importación registrada".
+        const sourceMentionsImport = /importaci/i.test(String(data.source || ''));
+        const cacheNote = lastImportAt
+          ? `última importación: ${formatImportDate(lastImportAt)}`
+          : 'sin importación registrada';
         const diagMessage = typeof data.diagnostics?.message === 'string' ? data.diagnostics.message : '';
-        setSync({ state: syncState, loadedAt: data.loadedAt, message: diagMessage || `${data.source} · ${cacheNote}` });
+        const base = sourceMentionsImport && lastImportAt
+          ? String(data.source).replace(/Última importación:.*$/i, `Última importación: ${formatImportDate(lastImportAt)}`)
+          : `${data.source} · ${cacheNote}`;
+        setSync({ state: syncState, loadedAt: data.loadedAt, message: diagMessage || base });
       } catch (error) {
         if (requestId !== requestSeq.current) return;
         setSync(current => current.state === 'ok' || current.state === 'warning'
@@ -98,6 +106,13 @@ export function useDevices(search: string, siteCode = '') {
   }, []);
 
   return { devices, filteredDevices, counts, sync, refresh, setDevices, patchLocal, removeLocal };
+}
+
+// Un asistente TIC no tiene por qué leer un ISO con milisegundos y Z.
+function formatImportDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function getDashboardFilter(device: Device) {

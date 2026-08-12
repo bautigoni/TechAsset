@@ -14,7 +14,7 @@ function activityClass(activity: string) {
 
 function displayTurno(value: string) {
   const v = String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (v === 'manana') return 'Manana';
+  if (v === 'manana') return 'Mañana';
   if (v === 'tarde') return 'Tarde';
   return value || '';
 }

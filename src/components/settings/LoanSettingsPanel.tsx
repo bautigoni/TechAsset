@@ -18,7 +18,7 @@ const defaults = {
     { label: 'Aula', requiresCourse: true },
     { label: 'DOE' },
     { label: 'Planificación móvil' },
-    { label: 'Direccion / Coordinacion' },
+    { label: 'Dirección / Coordinación' },
     { label: 'Departamento' },
     { label: 'Otro', requiresDetail: true }
   ],
@@ -26,7 +26,7 @@ const defaults = {
     { label: 'Planificación' },
     { label: 'Préstamo autorizado' },
     { label: 'Proyecto / actividad de aula' },
-    { label: 'Evaluacion' },
+    { label: 'Evaluación' },
     { label: 'Soporte temporal' },
     { label: 'Otro', requiresDetail: true }
   ],

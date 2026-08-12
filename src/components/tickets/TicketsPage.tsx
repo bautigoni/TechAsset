@@ -285,7 +285,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               className={`ticket-chip ${sourceFilter === key ? 'is-active' : ''}`}
               onClick={() => setSourceFilter(key)}
             >
-              {key === 'todos' ? 'Todos los origenes' : ORIGENES.find(item => item.key === key)?.label}
+              {key === 'todos' ? 'Todos los orígenes' : ORIGENES.find(item => item.key === key)?.label}
               <span className="ticket-chip-count">{sourceCounts[key]}</span>
             </button>
           ))}
