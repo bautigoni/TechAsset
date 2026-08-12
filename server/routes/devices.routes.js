@@ -3,6 +3,7 @@ import { addLocalMovement, getDb, nowIso, setAppSetting, setLocalState } from '.
 import { buildLocalInventory, getDeviceInventoryDiagnostics, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
 import { parseDevicesCsv, toCsvExportUrl } from '../services/googleSheets.service.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { sendWithEtag } from '../services/etag.service.js';
 import { getDeviceAiSummary } from '../services/aiSummaries.service.js';
 import { CONDITIONS, computeLifecycle, decorateDevicesWithLifecycle, deriveAssetClass, getAssetClasses, getLifecycleOverrides, recordConditionChange, resolveExpectedLifeMonths } from '../services/lifecycle.service.js';
 
@@ -12,7 +13,10 @@ devicesRouter.get('/devices', async (_req, res, next) => {
   try {
     const siteCode = requireSite(_req);
     const { items, source, loadedAt, diagnostics } = await getMergedDevices({ siteCode });
-    res.json({ ok: true, items: decorateDevicesWithLifecycle(items, siteCode), loadedAt: loadedAt || new Date().toISOString(), source, diagnostics });
+    const decorated = decorateDevicesWithLifecycle(items, siteCode);
+    // Se hashea solo items+source: loadedAt y los tiempos cambian en cada
+    // request y arruinarían el 304.
+    sendWithEtag(_req, res, { ok: true, items: decorated, loadedAt: loadedAt || new Date().toISOString(), source, diagnostics }, { items: decorated, source });
   } catch (error) {
     next(error);
   }
@@ -416,7 +420,8 @@ devicesRouter.get('/movements', (_req, res) => {
     SELECT timestamp, accion AS tipo, titulo AS descripcion, operador, 'Tareas TIC' AS origen, '' AS etiqueta
     FROM task_history WHERE site_code=? ORDER BY id DESC LIMIT 100
   `).all(siteCode);
-  res.json({ ok: true, items: [...local, ...agenda, ...tasks].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))).slice(0, 100) });
+  const merged = [...local, ...agenda, ...tasks].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))).slice(0, 100);
+  sendWithEtag(_req, res, { ok: true, items: merged });
 });
 
 async function resolveImportCsv(body, siteCode) {

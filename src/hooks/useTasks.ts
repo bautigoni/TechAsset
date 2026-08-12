@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { TaskItem, TaskState } from '../types';
 import { createTask, deleteTask, getTasks, updateTask } from '../services/tasksApi';
@@ -9,9 +9,16 @@ export function useTasks(operator: string) {
   const [items, setItems] = useState<TaskItem[]>([]);
   const [shifts, setShifts] = useState({ morningOperator: '', afternoonOperator: '' });
 
+  // Misma guarda que en agenda: el hook pide al montar y App vuelve a pedir al
+  // cambiar de sede, y salían dos GET /api/tasks (el más pesado de todos).
+  const inFlight = useRef<Promise<void> | null>(null);
   const refresh = useCallback(async () => {
-    const data = await getTasks();
-    setItems(data.items);
+    if (inFlight.current) return inFlight.current;
+    const promise = getTasks()
+      .then(data => { setItems(data.items); })
+      .finally(() => { inFlight.current = null; });
+    inFlight.current = promise;
+    return promise;
   }, []);
 
   useEffect(() => {

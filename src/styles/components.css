@@ -2538,6 +2538,11 @@ body.consulta-mode #returnBtn {
   .inv-toolbar .inventory-segmented button{flex:1}
 }
 
+.device-table-more{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+.device-table-more button{appearance:none;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;padding:6px 12px;border-radius:7px;cursor:pointer}
+.device-table-more button:hover{border-color:var(--blue)}
+.device-table-more span{margin-right:auto;font-variant-numeric:tabular-nums}
+
 /* Cartelitos: el número es lo que se busca, así que manda visualmente. */
 .passes-page{display:grid;gap:18px}
 .passes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}

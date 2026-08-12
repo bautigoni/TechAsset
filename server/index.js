@@ -47,6 +47,14 @@ app.use(cookieParser());
 app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
 app.use('/uploads', express.static(path.join(config.rootDir, 'data', 'uploads')));
 
+// Los GET del API se revalidan siempre, pero con ETag: si el cuerpo no cambió
+// desde el último poll, el navegador recibe un 304 vacío en vez del JSON entero.
+// Es lo que hace que el auto-refresh cueste casi nada estando quieto.
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET') res.set('Cache-Control', 'no-cache, private');
+  next();
+});
+
 app.use('/api', healthRouter);
 app.use('/api', authRouter);
 app.use('/api', googleAuthRouter);

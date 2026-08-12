@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { getDb, nowIso, rowToTask, rowToTaskItem } from '../db.js';
 import { canEditModule, requireSite } from '../services/siteContext.service.js';
+import { sendWithEtag } from '../services/etag.service.js';
 import { notifySiteAdmins, notifyUser } from '../services/notifications.service.js';
 
 export const tasksRouter = Router();
@@ -28,7 +29,7 @@ tasksRouter.get('/tasks', (req, res) => {
     .filter(task => canSeeTask(task, email))
     .filter(task => space === 'team' ? task.visibility === 'team' : space === 'my' ? isMine(task, email, name) : true)
     .sort((a, b) => Number(a.done) - Number(b.done) || String(b.fechaCreacion || '').localeCompare(String(a.fechaCreacion || '')));
-  res.json({ ok: true, items: rows, loadedAt: nowIso(), space });
+  sendWithEtag(req, res, { ok: true, items: rows, loadedAt: nowIso(), space }, { items: rows, space });
 });
 
 tasksRouter.get('/tareas', (req, res) => {

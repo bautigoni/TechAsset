@@ -188,7 +188,7 @@ export function App() {
     if (document.hidden) return;
     void refresh();
     void refreshMovements();
-  }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 5));
+  }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 15));
 
   useEffect(() => {
     applyThemeProfile(themeProfile);

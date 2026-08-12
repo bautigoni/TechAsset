@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import type { Device } from '../../types';
 import { Badge } from '../layout/Badge';
 import { Button } from '../layout/Button';
@@ -48,6 +48,12 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
   onDelete?: (device: Device) => Promise<void> | void;
 }) {
   const [deletingTag, setDeletingTag] = useState('');
+  // Se renderizaban las 81 filas siempre (1948 nodos, 6300px de scroll). Ahora
+  // entran de a 30 y se van sumando: mismo contenido, un tercio del DOM.
+  const PAGE = 30;
+  const [limit, setLimit] = useState(PAGE);
+  useEffect(() => { setLimit(PAGE); }, [devices.length]);
+  const shown = devices.slice(0, limit);
   const [returningTag, setReturningTag] = useState('');
 
   const handleReturn = async (device: Device) => {
@@ -76,7 +82,7 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
           </tr>
         </thead>
         <tbody>
-          {devices.map(device => (
+          {shown.map(device => (
             <tr key={device.id} data-device-tag={device.etiqueta} className={onProfile ? 'device-row-clickable' : ''} role={onProfile ? 'button' : undefined} tabIndex={onProfile ? 0 : undefined} onClick={() => onProfile?.(device)} onKeyDown={event => { if (onProfile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onProfile(device); } }}>
               <td data-label="Etiqueta">
                 <strong>{device.etiqueta}</strong>
@@ -123,6 +129,13 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
           ))}
         </tbody>
       </table>
+      {devices.length > shown.length && (
+        <div className="device-table-more">
+          <span>{shown.length} de {devices.length}</span>
+          <button type="button" onClick={() => setLimit(value => value + PAGE)}>Ver más</button>
+          <button type="button" onClick={() => setLimit(devices.length)}>Ver todos</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,13 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AgendaItem } from '../types';
 import { createAgenda, deleteAgenda, getAgenda, updateAgenda } from '../services/agendaApi';
 
 export function useAgenda(operator: string) {
   const [items, setItems] = useState<AgendaItem[]>([]);
 
+  // El hook refresca al montar y App vuelve a pedir al cambiar de sede: sin esta
+  // guarda salían dos GET /api/agenda idénticos en cada arranque.
+  const inFlight = useRef<Promise<void> | null>(null);
   const refresh = useCallback(async () => {
-    const data = await getAgenda();
-    setItems(data.items);
+    if (inFlight.current) return inFlight.current;
+    const promise = getAgenda()
+      .then(data => { setItems(data.items); })
+      .finally(() => { inFlight.current = null; });
+    inFlight.current = promise;
+    return promise;
   }, []);
 
   useEffect(() => {

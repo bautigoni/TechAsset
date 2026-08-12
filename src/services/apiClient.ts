@@ -8,7 +8,10 @@ export function siteHeaders(extra?: HeadersInit): HeadersInit {
 }
 
 export async function apiGet<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: 'no-store', headers: headers() });
+  // 'no-cache' revalida SIEMPRE contra el servidor (no hay riesgo de dato viejo),
+  // pero deja que responda 304 sin cuerpo cuando nada cambió. Con 'no-store' se
+  // volvía a bajar el JSON completo en cada poll: ~1 MB por minuto por pestaña.
+  const response = await fetch(url, { cache: 'no-cache', headers: headers() });
   const data = await readApiResponse(response);
   if (!response.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${response.status}`);
   return data as T;

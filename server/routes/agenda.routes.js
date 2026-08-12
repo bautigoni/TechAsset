@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb, nowIso, rowToAgenda } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { sendWithEtag } from '../services/etag.service.js';
 
 export const agendaRouter = Router();
 
@@ -9,7 +10,9 @@ const CAPACITY = { touch: 25, tic: 99, plani: 99, dell: 99 };
 
 agendaRouter.get('/agenda', (_req, res) => {
   const rows = getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY dia, turno, desde').all(requireSite(_req));
-  res.json({ ok: true, items: rows.map(rowToAgenda), loadedAt: nowIso() });
+  // El hash va sobre los items: `loadedAt` cambia siempre y rompería el 304.
+  const items = rows.map(rowToAgenda);
+  sendWithEtag(_req, res, { ok: true, items, loadedAt: nowIso() }, { items });
 });
 
 agendaRouter.get('/agenda/today', (_req, res) => {
