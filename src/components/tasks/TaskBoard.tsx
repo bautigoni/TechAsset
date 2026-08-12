@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+// Tarjetas por columna en el primer render. Cada una trae checklist,
+// formulario y acciones, así que el costo por tarjeta es alto.
+const PAGE_SIZE = 8;
 import type { TaskColumn, TaskItem, TaskState } from '../../types';
 import { TaskCard } from './TaskCard';
 import { useDragScroll } from '../../hooks/useDragScroll';
 import { AnimatedNumber } from '../layout/AnimatedNumber';
 
-export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, onMove, onDelete, onEdit, onRefresh, onCreateColumn, onRenameColumn, onDeleteColumn, onReorderColumns }: {
+export function TaskBoard({ tasks, columns, operator, consultationMode, animKey = '', onSave, onMove, onDelete, onEdit, onRefresh, onRenameColumn, onDeleteColumn, onReorderColumns }: {
   tasks: TaskItem[];
   columns: TaskColumn[];
+  animKey?: string;
   operator: string;
   consultationMode: boolean;
   onSave: (task: Partial<TaskItem>) => Promise<unknown>;
@@ -14,7 +19,6 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
   onDelete: (id: string) => void;
   onEdit: (task: TaskItem) => void;
   onRefresh?: () => Promise<unknown> | void;
-  onCreateColumn: (name: string) => Promise<void>;
   onRenameColumn: (column: TaskColumn, name: string) => Promise<void>;
   onDeleteColumn: (column: TaskColumn) => Promise<void>;
   onReorderColumns: (ids: number[]) => Promise<void>;
@@ -22,9 +26,15 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
   const pan = useDragScroll<HTMLDivElement>();
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [moveError, setMoveError] = useState('');
-  const [newColumn, setNewColumn] = useState('');
   const [editingColumn, setEditingColumn] = useState<number | null>(null);
   const [columnName, setColumnName] = useState('');
+
+  // Cuántas tarjetas se muestran por columna. Se reinicia al cambiar de
+  // espacio o solapa (el animKey), así un filtro nuevo arranca corto.
+  const [shown, setShown] = useState<Record<number, number>>({});
+  useEffect(() => { setShown({}); }, [animKey]);
+  const shownIn = (columnId: number) => shown[columnId] ?? PAGE_SIZE;
+  const showMore = (columnId: number) => setShown(current => ({ ...current, [columnId]: (current[columnId] ?? PAGE_SIZE) + PAGE_SIZE }));
 
   const drop = async (event: React.DragEvent, column: TaskColumn) => {
     event.preventDefault();
@@ -65,10 +75,22 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
           <header className="infinite-column-head" draggable={!consultationMode && editingColumn !== column.id} onDragStart={event => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', `column:${column.id}`); }} style={{ '--column-color': column.color } as React.CSSProperties}>
             {editingColumn === column.id ? <form onSubmit={event => { event.preventDefault(); void onRenameColumn(column, columnName).then(() => setEditingColumn(null)); }}><input autoFocus className="input" value={columnName} onChange={event => setColumnName(event.target.value)} /><button type="submit">✓</button></form> : <><div><span className="column-grip" aria-hidden="true">⠿</span><strong>{column.name}</strong><span className="badge subtle"><AnimatedNumber value={group.length} /></span></div><div className="column-actions"><button disabled={consultationMode} title="Renombrar" onClick={() => { setEditingColumn(column.id); setColumnName(column.name); }}>✎</button><button disabled={consultationMode || columns.length === 1} title="Eliminar" onClick={() => void onDeleteColumn(column)}>×</button></div></>}
           </header>
-          <div className="infinite-column-stack">{group.map(task => <TaskCard key={task.id} task={task} operator={operator} consultationMode={consultationMode} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => onEdit(task)} onRefresh={onRefresh} />)}{!group.length && <div className="column-empty">Soltá una tarea acá</div>}</div>
+          {/* `key={animKey}` remonta la pila al cambiar de espacio o de solapa:
+              si React reusara las tarjetas que están en los dos conjuntos, esas
+              no volverían a animar y la entrada quedaría a medias. */}
+          {/* Sólo se renderizan las primeras PAGE_SIZE. Cada TaskCard trae
+              checklist, formulario y acciones: con 40 tareas eran miles de
+              nodos y la vista tardaba en abrir. El contador de arriba sigue
+              contando el grupo COMPLETO, no lo que se ve. */}
+          <div className="infinite-column-stack t-stagger" key={animKey}>{group.slice(0, shownIn(column.id)).map(task => <TaskCard key={task.id} task={task} operator={operator} consultationMode={consultationMode} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => onEdit(task)} onRefresh={onRefresh} />)}{!group.length && <div className="column-empty">Soltá una tarea acá</div>}{group.length > shownIn(column.id) && (
+            <button type="button" className="column-show-more" onClick={() => showMore(column.id)}>
+              Ver {Math.min(PAGE_SIZE, group.length - shownIn(column.id))} más <span className="muted">({group.length - shownIn(column.id)} restantes)</span>
+            </button>
+          )}</div>
         </section>;
       })}
-      {!consultationMode && <section className="add-task-column"><form onSubmit={async event => { event.preventDefault(); if (!newColumn.trim()) return; await onCreateColumn(newColumn.trim()); setNewColumn(''); }}><input className="input" value={newColumn} onChange={event => setNewColumn(event.target.value)} placeholder="Nueva columna" /><button type="submit">+ Agregar</button></form></section>}
+      {/* La columna-formulario "Nueva columna" se fue: crear columna ahora es
+          un satélite del "+" de la barra, junto al resto de las altas. */}
     </div>
   </div>
   </>;

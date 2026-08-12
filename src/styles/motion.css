@@ -64,6 +64,10 @@
   --toggle-dur: 320ms;
   --toggle-track: 180ms;
 
+  /* entrada escalonada */
+  --stagger-dur: 320ms;
+  --stagger-step: 40ms;
+
   /* card resize */
   --resize-dur: 300ms;
   --resize-ease: var(--m-ease);
@@ -337,6 +341,152 @@
 }
 .tasks-subnav.t-tabs button { transition: color var(--tabs-dur) var(--tabs-ease); }
 
+/* ---- Tarjeta de tarea ----------------------------------------------------
+   Barra propia en vez del <progress> nativo (que se dibuja distinto en cada
+   browser y no toma el tema), y las cuatro acciones detrás de un solo menú:
+   sueltas se comían media tarjeta. */
+.task-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.task-progress b { color: var(--text); font-variant-numeric: tabular-nums; }
+.task-progress-track {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+/* scaleX y no width: hay una de estas por tarjeta y puede haber decenas en
+   pantalla, así que acá el costo de layout sí se nota. La pista recorta con
+   su propio radio, así que el relleno no necesita el suyo. */
+.task-progress-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--blue);
+  transform: scaleX(var(--task-progress, 0));
+  transform-origin: left center;
+  transition: transform var(--bar-dur) var(--ease-spring);
+}
+
+.task-add-trigger {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color var(--m-in) var(--m-ease), border-color var(--m-in) var(--m-ease);
+}
+.task-add-trigger:hover { color: var(--text); border-color: var(--blue); }
+
+.task-card-menu { position: absolute; top: 10px; right: 10px; }
+.task-menu-trigger {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color var(--m-in) var(--m-ease), background var(--m-in) var(--m-ease);
+}
+.task-menu-trigger:hover { color: var(--text); background: var(--panel-2); }
+.task-menu {
+  position: absolute;
+  top: 32px;
+  right: 0;
+  z-index: 10;
+  min-width: 178px;
+  padding: 5px;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .45);
+}
+.task-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--m-out) var(--m-ease);
+}
+.task-menu button:hover:not(:disabled) { background: var(--panel-2); }
+.task-menu button:disabled { opacity: .45; cursor: not-allowed; }
+.task-menu button.is-danger { color: #f87171; }
+.task-menu button.is-danger:hover:not(:disabled) { background: rgba(239, 68, 68, .12); }
+.task-menu-count {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* El título necesita lugar para que el menú no se le encime. */
+.task-card { position: relative; }
+.task-card > strong { padding-right: 34px; display: block; }
+
+/* "Ver más" al pie de cada columna. Discreto a propósito: es un escalón para
+   seguir, no una acción principal. */
+.column-show-more {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--m-in) var(--m-ease), background var(--m-in) var(--m-ease);
+}
+.column-show-more:hover {
+  border-color: var(--blue);
+  background: rgba(59, 130, 246, .08);
+}
+
+/* Barra de Tareas en tres partes: solapas a la izquierda, el "+" al medio y el
+   espacio a la derecha. Sin tarjeta de fondo — las píldoras ya se leen como
+   controles y la caja alrededor sólo agregaba peso visual. */
+.tasks-compact-toolbar {
+  justify-content: space-between;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+.tasks-compact-toolbar .tasks-primary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Espacio de tareas (Equipo / Mis tareas). Eran dos tarjetas con borde propio,
    así que el estado activo saltaba de una a la otra. Ahora el grupo es un solo
    control —igual que la subnav de abajo— y lo que se mueve es la píldora. */
@@ -450,6 +600,38 @@
     width  var(--resize-dur) var(--resize-ease),
     height var(--resize-dur) var(--resize-ease);
 }
+
+/* ================================================================
+   6d. ENTRADA ESCALONADA DE LISTA.
+   Al cambiar de Equipo a Mis tareas (o de Tablero a Prioridad) las
+   tarjetas desaparecían y aparecían de golpe. Ahora entran de a una,
+   con un desfasaje corto que se lee como que la lista se rearma.
+
+   El tope de 10 es la regla, no una sugerencia: en una columna con
+   muchas tarjetas un delay por fila arruina justo la fluidez que hay
+   que cuidar. De la 11 en adelante entran todas juntas.
+   ================================================================ */
+@keyframes t-list-enter {
+  from { opacity: 0; transform: translateY(8px) scale(.985); filter: blur(2px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+.t-stagger > * {
+  animation: t-list-enter var(--stagger-dur) var(--m-ease-entrance) both;
+}
+.t-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.t-stagger > *:nth-child(2)  { animation-delay: calc(var(--stagger-step) * 1); }
+.t-stagger > *:nth-child(3)  { animation-delay: calc(var(--stagger-step) * 2); }
+.t-stagger > *:nth-child(4)  { animation-delay: calc(var(--stagger-step) * 3); }
+.t-stagger > *:nth-child(5)  { animation-delay: calc(var(--stagger-step) * 4); }
+.t-stagger > *:nth-child(6)  { animation-delay: calc(var(--stagger-step) * 5); }
+.t-stagger > *:nth-child(7)  { animation-delay: calc(var(--stagger-step) * 6); }
+.t-stagger > *:nth-child(8)  { animation-delay: calc(var(--stagger-step) * 7); }
+.t-stagger > *:nth-child(9)  { animation-delay: calc(var(--stagger-step) * 8); }
+.t-stagger > *:nth-child(10) { animation-delay: calc(var(--stagger-step) * 9); }
+.t-stagger > *:nth-child(n + 11) { animation-delay: 0ms; }
+/* Mientras se arrastra, la tarjeta no puede estar corriendo su
+   animación de entrada: se pelea con el transform del drag. */
+.t-stagger > .dragging { animation: none !important; }
 
 /* ================================================================
    7b. TEXTO QUE CAMBIA — receta `text-states-swap`.
@@ -915,6 +1097,7 @@ table th.num { font-variant-numeric: tabular-nums; }
   .t-tabs-pill,
   .t-resize,
   .t-text-swap { transition: none !important; }
+  .t-stagger > * { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
   .t-shimmer::before { animation: none !important; }
   /* El gooey conserva el despliegue (sin él los satélites no existen),
      pero sin amague ni stagger: el movimiento se vuelve funcional. */
