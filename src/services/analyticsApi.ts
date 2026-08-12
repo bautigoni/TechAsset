@@ -92,6 +92,7 @@ export interface ParqueResponse {
     bajoStock: number;
     cobertura: number;
   };
+  condicionTotales: AnalyticsRow[];
   condicionPorClase: Array<{ label: string; Excelente: number; Bueno: number; Regular: number; Malo: number; 'Sin revisar': number }>;
   renovacionPorAnio: AnalyticsRow[];
   vidaConsumida: AnalyticsRow[];

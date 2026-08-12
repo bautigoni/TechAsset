@@ -32,11 +32,14 @@ inventoryRouter.post('/inventory/items', (req, res) => {
   const siteCode = requireSite(req);
   const payload = normalizeInventoryPayload(req.body);
   if (!payload.nombre) return res.status(400).json({ ok: false, error: 'El nombre es obligatorio.' });
+  // La foto es obligatoria para dar de alta: el inventario se navega mirando,
+  // y un item sin imagen rompe la grilla.
+  if (!payload.imagenUrl) return res.status(400).json({ ok: false, error: 'La foto del recurso es obligatoria.' });
   const ts = nowIso();
   const info = getDb().prepare(`
-    INSERT INTO inventory_items (site_code, nombre, categoria, cantidad, unidad, imagen_url, estado, condicion, min_stock, condicion_updated_at, observaciones, activo, deleted_at, deleted_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '', '', ?, ?)
-  `).run(siteCode, payload.nombre, payload.categoria, payload.cantidad, payload.unidad, payload.imagenUrl, payload.estado, payload.condicion, payload.minStock, payload.condicion ? ts : '', payload.observaciones, ts, ts);
+    INSERT INTO inventory_items (site_code, nombre, categoria, subcategoria, cantidad, unidad, imagen_url, estado, condicion, min_stock, condicion_updated_at, observaciones, activo, deleted_at, deleted_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '', '', ?, ?)
+  `).run(siteCode, payload.nombre, payload.categoria, payload.subcategoria, payload.cantidad, payload.unidad, payload.imagenUrl, payload.estado, payload.condicion, payload.minStock, payload.condicion ? ts : '', payload.observaciones, ts, ts);
   if (payload.condicion) {
     recordConditionChange({ siteCode, etiqueta: payload.nombre, condicion: payload.condicion, operador: req.user?.nombre || req.user?.email || '', origen: 'Inventario' });
   }
@@ -51,11 +54,14 @@ inventoryRouter.patch('/inventory/items/:id', (req, res) => {
   if (!payload.nombre) return res.status(400).json({ ok: false, error: 'El nombre es obligatorio.' });
   const ts = nowIso();
   const condicionCambio = payload.condicion && payload.condicion !== String(old.condicion || '');
+  // En la edición no se puede borrar una foto ya cargada; los items viejos sin
+  // imagen se pueden seguir editando y la UI los marca para que se completen.
+  if (!payload.imagenUrl && old.imagen_url) return res.status(400).json({ ok: false, error: 'No se puede quitar la foto de un recurso.' });
   getDb().prepare(`
     UPDATE inventory_items
-    SET nombre=?, categoria=?, cantidad=?, unidad=?, imagen_url=?, estado=?, condicion=?, min_stock=?, condicion_updated_at=?, observaciones=?, updated_at=?
+    SET nombre=?, categoria=?, subcategoria=?, cantidad=?, unidad=?, imagen_url=?, estado=?, condicion=?, min_stock=?, condicion_updated_at=?, observaciones=?, updated_at=?
     WHERE id=? AND site_code=?
-  `).run(payload.nombre, payload.categoria, payload.cantidad, payload.unidad, payload.imagenUrl, payload.estado, payload.condicion, payload.minStock, condicionCambio ? ts : (old.condicion_updated_at || ''), payload.observaciones, ts, req.params.id, siteCode);
+  `).run(payload.nombre, payload.categoria, payload.subcategoria, payload.cantidad, payload.unidad, payload.imagenUrl, payload.estado, payload.condicion, payload.minStock, condicionCambio ? ts : (old.condicion_updated_at || ''), payload.observaciones, ts, req.params.id, siteCode);
   if (condicionCambio) {
     recordConditionChange({ siteCode, etiqueta: payload.nombre, condicion: payload.condicion, operador: req.user?.nombre || req.user?.email || '', origen: 'Inventario' });
   }
@@ -111,12 +117,12 @@ function importInventoryCsv(siteCode, csvText) {
   const summary = { read: 0, created: 0, updated: 0, skipped: 0, preservedImages: 0, preservedConditions: 0, errors: [] };
   const selectExisting = getDb().prepare('SELECT * FROM inventory_items WHERE site_code=? AND lower(nombre)=lower(?) LIMIT 1');
   const insert = getDb().prepare(`
-    INSERT INTO inventory_items (site_code, nombre, categoria, cantidad, unidad, imagen_url, estado, condicion, min_stock, observaciones, activo, deleted_at, deleted_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '', '', ?, ?)
+    INSERT INTO inventory_items (site_code, nombre, categoria, subcategoria, cantidad, unidad, imagen_url, estado, condicion, min_stock, observaciones, activo, deleted_at, deleted_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '', '', ?, ?)
   `);
   const update = getDb().prepare(`
     UPDATE inventory_items
-    SET nombre=?, categoria=?, cantidad=?, unidad=?, imagen_url=?, estado=?, condicion=?, min_stock=?, observaciones=?, activo=1, deleted_at='', deleted_by='', updated_at=?
+    SET nombre=?, categoria=?, subcategoria=?, cantidad=?, unidad=?, imagen_url=?, estado=?, condicion=?, min_stock=?, observaciones=?, activo=1, deleted_at='', deleted_by='', updated_at=?
     WHERE id=? AND site_code=?
   `);
 
@@ -129,6 +135,7 @@ function importInventoryCsv(siteCode, csvText) {
           nombre: valueAt(row, headerMap, ['nombre', 'name']),
           cantidad: valueAt(row, headerMap, ['cantidad', 'qty', 'stock']),
           categoria: valueAt(row, headerMap, ['categoria', 'categoría', 'category']),
+          subcategoria: valueAt(row, headerMap, ['subcategoria', 'subcategoría', 'subcategory']),
           unidad: valueAt(row, headerMap, ['unidad', 'unit']),
           estado: valueAt(row, headerMap, ['estado', 'state']),
           condicion: valueAt(row, headerMap, ['condicion', 'condición', 'condition']),
@@ -150,6 +157,7 @@ function importInventoryCsv(siteCode, csvText) {
           update.run(
             payload.nombre,
             payload.categoria,
+            payload.subcategoria,
             payload.cantidad,
             payload.unidad,
             nextImageUrl,
@@ -163,7 +171,7 @@ function importInventoryCsv(siteCode, csvText) {
           );
           summary.updated += 1;
         } else {
-          insert.run(siteCode, payload.nombre, payload.categoria, payload.cantidad, payload.unidad, payload.imagenUrl, payload.estado, payload.condicion, payload.minStock, payload.observaciones, ts, ts);
+          insert.run(siteCode, payload.nombre, payload.categoria, payload.subcategoria, payload.cantidad, payload.unidad, payload.imagenUrl, payload.estado, payload.condicion, payload.minStock, payload.observaciones, ts, ts);
           summary.created += 1;
         }
       } catch (error) {
@@ -182,6 +190,7 @@ function normalizeInventoryPayload(raw = {}) {
   return {
     nombre: String(raw.nombre || raw.name || '').trim(),
     categoria: String(raw.categoria || raw.category || 'Otro').trim() || 'Otro',
+    subcategoria: String(raw.subcategoria || raw.subcategory || '').trim(),
     cantidad: Number.isFinite(cantidad) && cantidad >= 0 ? Math.floor(cantidad) : 0,
     unidad: String(raw.unidad || raw.unit || 'unidades').trim() || 'unidades',
     imagenUrl: String(raw.imagenUrl || raw.imagen_url || raw.imageUrl || '').trim(),
@@ -201,6 +210,7 @@ function rowToInventoryItem(row) {
     siteCode: row.site_code,
     nombre: row.nombre || '',
     categoria: row.categoria || 'Otro',
+    subcategoria: row.subcategoria || '',
     cantidad: Number(row.cantidad || 0),
     unidad: row.unidad || 'unidades',
     imagenUrl: row.imagen_url || '',

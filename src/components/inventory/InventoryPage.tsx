@@ -7,35 +7,16 @@ import { csvCell } from '../../utils/formatters';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { ConditionReviewModal } from './ConditionReviewModal';
+import { InventoryCard } from './InventoryCard';
+import { deviceToEntry, groupEntries, itemToEntry, type Entry } from './inventoryEntries';
 
-// Dos mundos en una sola vista de lectura: los equipos siguen viviendo en
-// local_devices (padrón + préstamos) y los recursos en inventory_items. Acá se
-// mergean en el cliente; no hay endpoint unificado ni datos migrados.
-type EntryKind = 'equipo' | 'recurso';
 type Segment = 'todo' | 'equipo' | 'recurso';
 
-interface Entry {
-  key: string;
-  kind: EntryKind;
-  nombre: string;
-  detalle: string;
-  clase: string;
-  condicion: string;
-  cantidad: number | null;
-  unidad: string;
-  bajoStock: boolean;
-  imagenUrl: string;
-  vidaPct: number | null;
-  vencido: boolean;
-  renovacion: string;
-  device?: Device;
-  item?: InventoryItem;
-}
-
-const FORM_CATEGORIES = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Otro'];
+const FORM_CATEGORIES = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Filamento 3D', 'Otro'];
 const EMPTY_FORM: Partial<InventoryItem> = {
   nombre: '',
   categoria: 'Otro',
+  subcategoria: '',
   cantidad: 1,
   unidad: 'unidades',
   imagenUrl: '',
@@ -43,23 +24,6 @@ const EMPTY_FORM: Partial<InventoryItem> = {
   minStock: 3,
   observaciones: ''
 };
-
-function conditionClass(condicion: string) {
-  const value = String(condicion || '').trim().toLowerCase();
-  if (!value) return 'is-sin-revisar';
-  return `is-${value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
-}
-
-function ConditionCell({ condicion }: { condicion: string }) {
-  return <span className={`condition-dot ${conditionClass(condicion)}`}>{condicion || 'Sin revisar'}</span>;
-}
-
-function RowThumb({ url }: { url: string }) {
-  const [broken, setBroken] = useState(false);
-  useEffect(() => setBroken(false), [url]);
-  if (!url || broken) return <span className="inventory-row-thumb"><span /></span>;
-  return <span className="inventory-row-thumb"><img src={url} alt="" loading="lazy" onError={() => setBroken(true)} /></span>;
-}
 
 export function InventoryPage({ devices, consultationMode, onProfile, onRefreshDevices }: {
   devices: Device[];
@@ -72,11 +36,11 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [detail, setDetail] = useState<Entry | null>(null);
   const [search, setSearch] = useState('');
-  const [segment, setSegment] = useState<Segment>('todo');
-  const [claseFilter, setClaseFilter] = useState('');
+  const [segment, setSegment] = useState<Segment>('recurso');
   const [condicionFilter, setCondicionFilter] = useState('');
-  const [sort, setSort] = useState<'name' | 'condition' | 'life'>('name');
+  const [collapsed, setCollapsed] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
@@ -89,67 +53,21 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
 
   useEffect(() => { refresh(); }, []);
 
-  const entries = useMemo<Entry[]>(() => {
-    const fromDevices: Entry[] = devices.map(device => ({
-      key: `d:${device.etiqueta}`,
-      kind: 'equipo',
-      nombre: device.aliasOperativo || device.etiqueta,
-      detalle: [device.etiqueta, device.marca, device.modelo].filter(Boolean).join(' · '),
-      clase: device.assetClass || device.categoria || 'Otro',
-      condicion: device.condition || '',
-      cantidad: null,
-      unidad: '',
-      bajoStock: false,
-      imagenUrl: '',
-      vidaPct: device.vidaConsumidaPct ?? null,
-      vencido: Boolean(device.vencido),
-      renovacion: device.fechaRenovacion || '',
-      device
-    }));
-    const fromItems: Entry[] = items.map(item => ({
-      key: `i:${item.id}`,
-      kind: 'recurso',
-      nombre: item.nombre,
-      detalle: item.observaciones || '',
-      clase: item.categoria || 'Otro',
-      condicion: item.condicion || '',
-      cantidad: Number(item.cantidad || 0),
-      unidad: item.unidad || 'unidades',
-      bajoStock: Boolean(item.bajoStock),
-      imagenUrl: item.imagenUrl || '',
-      vidaPct: null,
-      vencido: false,
-      renovacion: '',
-      item
-    }));
-    return [...fromDevices, ...fromItems];
-  }, [devices, items]);
-
-  const clases = useMemo(() => {
-    const set = new Set(entries.map(entry => entry.clase).filter(Boolean));
-    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [entries]);
+  const entries = useMemo<Entry[]>(
+    () => [...devices.map(deviceToEntry), ...items.map(itemToEntry)],
+    [devices, items]
+  );
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return entries
       .filter(entry => segment === 'todo' || entry.kind === segment)
-      .filter(entry => !claseFilter || entry.clase === claseFilter)
       .filter(entry => !condicionFilter || (condicionFilter === 'Sin revisar' ? !entry.condicion : entry.condicion === condicionFilter))
-      .filter(entry => !needle || [entry.nombre, entry.detalle, entry.clase, entry.condicion].some(value => String(value || '').toLowerCase().includes(needle)))
-      .sort((a, b) => {
-        if (sort === 'condition') {
-          const rank = (value: string) => (value ? CONDITION_VALUES.indexOf(value as never) : 99);
-          const diff = rank(b.condicion) - rank(a.condicion);
-          if (diff) return diff;
-        }
-        if (sort === 'life') {
-          const diff = (b.vidaPct ?? -1) - (a.vidaPct ?? -1);
-          if (diff) return diff;
-        }
-        return a.nombre.localeCompare(b.nombre, 'es');
-      });
-  }, [entries, search, segment, claseFilter, condicionFilter, sort]);
+      .filter(entry => !needle || [entry.nombre, entry.detalle, entry.categoria, entry.subcategoria, entry.condicion]
+        .some(value => String(value || '').toLowerCase().includes(needle)));
+  }, [entries, search, segment, condicionFilter]);
+
+  const groups = useMemo(() => groupEntries(filtered), [filtered]);
 
   const kpis = useMemo(() => {
     const equipos = entries.filter(entry => entry.kind === 'equipo');
@@ -161,9 +79,24 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
       malos: entries.filter(entry => entry.condicion === 'Regular' || entry.condicion === 'Malo').length,
       vencidos: equipos.filter(entry => entry.vencido).length,
       bajoStock: recursos.filter(entry => entry.bajoStock).length,
+      sinFoto: recursos.filter(entry => !entry.imagenUrl).length,
       cobertura: entries.length ? Math.round((revisados / entries.length) * 100) : 0
     };
   }, [entries]);
+
+  const categorias = useMemo(() => {
+    const set = new Set([...FORM_CATEGORIES, ...items.map(item => item.categoria).filter(Boolean)]);
+    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+  }, [items]);
+
+  const subcategorias = useMemo(() => {
+    const set = new Set(items.filter(item => item.categoria === form.categoria).map(item => item.subcategoria).filter(Boolean));
+    return [...set].sort((a, b) => String(a).localeCompare(String(b), 'es'));
+  }, [items, form.categoria]);
+
+  const toggleGroup = (categoria: string) => {
+    setCollapsed(current => current.includes(categoria) ? current.filter(item => item !== categoria) : [...current, categoria]);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -177,6 +110,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     setForm({
       nombre: item.nombre,
       categoria: item.categoria,
+      subcategoria: item.subcategoria || '',
       cantidad: item.cantidad,
       unidad: item.unidad,
       imagenUrl: item.imagenUrl || '',
@@ -191,6 +125,10 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.nombre?.trim()) return;
+    if (!form.imagenUrl?.trim()) {
+      setError('Subí una foto del recurso: es obligatoria.');
+      return;
+    }
     setBusy(true);
     setError('');
     setMessage('');
@@ -212,58 +150,50 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   const hideItem = async (item: InventoryItem) => {
     if (!window.confirm(`¿Ocultar ${item.nombre}?`)) return;
     setError('');
-    setMessage('');
     try {
       await deleteInventoryItem(item.id);
       setMessage('Recurso ocultado.');
+      setDetail(null);
       await refresh();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo ocultar el recurso.');
     }
   };
 
-  // Cambiar la condición de un equipo desde acá escribe en device_metadata,
-  // que es la tabla que sobrevive la reimportación del padrón.
-  const setDeviceCondition = async (entry: Entry, condicion: string) => {
-    if (!entry.device) return;
+  const setEntryCondition = async (entry: Entry, condicion: string) => {
     setError('');
     try {
-      await updateDeviceMetadata(entry.device.etiqueta, {
-        condition: condicion,
-        assetClass: entry.clase,
-        origen: 'Inventario'
-      });
-      await onRefreshDevices?.();
+      if (entry.device) {
+        await updateDeviceMetadata(entry.device.etiqueta, { condition: condicion, assetClass: entry.categoria, origen: 'Inventario' });
+        await onRefreshDevices?.();
+      } else if (entry.item) {
+        await updateInventoryItem(entry.item.id, { condicion });
+        await refresh();
+      }
       setMessage(`${entry.nombre}: ${condicion || 'sin revisar'}.`);
+      setDetail(current => current && current.key === entry.key ? { ...current, condicion } : current);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo guardar la condición.');
     }
   };
 
   const exportCsv = () => {
-    const headers = ['Tipo', 'Nombre', 'Detalle', 'Clase', 'Condición', 'Cantidad', 'Unidad', 'Vida consumida %', 'Renovación'];
+    const headers = ['Tipo', 'Nombre', 'Categoría', 'Subcategoría', 'Condición', 'Cantidad', 'Unidad', 'Vida consumida %', 'Renovación'];
     const rows = filtered.map(entry => [
       entry.kind === 'equipo' ? 'Equipo' : 'Recurso',
-      entry.nombre,
-      entry.detalle,
-      entry.clase,
-      entry.condicion || 'Sin revisar',
-      entry.cantidad ?? '',
-      entry.unidad,
-      entry.vidaPct ?? '',
-      entry.renovacion
+      entry.nombre, entry.categoria, entry.subcategoria, entry.condicion || 'Sin revisar',
+      entry.cantidad ?? '', entry.unidad, entry.vidaPct ?? '', entry.renovacion
     ]);
     downloadCsv(`inventario-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
 
   const exportExample = () => {
-    const headers = ['Nombre', 'Cantidad', 'Categoría', 'Unidad', 'Condición', 'Stock mínimo', 'Observaciones', 'Imagen URL'];
-    const rows = [
-      ['LEDs', 100, 'Componentes', 'unidades', 'Bueno', 10, 'Stock general', ''],
-      ['Resistencias', 200, 'Componentes', 'unidades', 'Bueno', 20, 'Valores surtidos', ''],
-      ['Sensores de distancia', 34, 'Sensores', 'unidades', 'Regular', 5, 'HC-SR04', '']
-    ];
-    downloadCsv('plantilla-inventario-tic.csv', headers, rows);
+    downloadCsv('plantilla-inventario-tic.csv',
+      ['Nombre', 'Cantidad', 'Categoría', 'Subcategoría', 'Unidad', 'Condición', 'Stock mínimo', 'Observaciones', 'Imagen URL'],
+      [
+        ['LEDs', 100, 'Componentes', 'Diodos', 'unidades', 'Bueno', 10, 'Stock general', ''],
+        ['Sensores de distancia', 34, 'Sensores', 'Ultrasonido', 'unidades', 'Regular', 5, 'HC-SR04', '']
+      ]);
   };
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,8 +204,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     setError('');
     setMessage('');
     try {
-      const csvText = await readFileAsText(file);
-      const result = await importInventoryCsv(csvText);
+      const result = await importInventoryCsv(await readFileAsText(file));
       const preserved = [
         result.preservedImages ? `${result.preservedImages} fotos` : '',
         result.preservedConditions ? `${result.preservedConditions} condiciones` : ''
@@ -296,8 +225,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     setUploadingImage(true);
     setError('');
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const response = await uploadInventoryImage({ fileName: file.name, dataUrl });
+      const response = await uploadInventoryImage({ fileName: file.name, dataUrl: await readFileAsDataUrl(file) });
       setForm(current => ({ ...current, imagenUrl: response.url }));
     } catch (error) {
       setError(error instanceof Error ? error.message : 'No se pudo subir la imagen.');
@@ -308,155 +236,154 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
 
   return (
     <section className="view active inventory-page">
-      <div className="inventory-hero">
+      <header className="inv-head">
         <div>
           <h3>Inventario</h3>
           <p>Equipos y recursos de la sede, con su condición y vida útil estimada.</p>
         </div>
-        <div className="actions">
-          <Button onClick={exportCsv}>Exportar CSV</Button>
-          <Button onClick={exportExample}>Plantilla</Button>
-          <Button disabled={consultationMode || busy} onClick={() => importInputRef.current?.click()}>Importar CSV</Button>
-          <Button disabled={consultationMode} onClick={() => setReviewOpen(true)}>Comenzar revisión de condición</Button>
+        <div className="inv-head-actions">
+          <Button disabled={consultationMode} onClick={() => setReviewOpen(true)}>Revisar condición</Button>
+          <div className="inv-menu">
+            <details>
+              <summary>Importar / exportar</summary>
+              <div>
+                <button type="button" onClick={exportCsv}>Exportar CSV</button>
+                <button type="button" onClick={exportExample}>Descargar plantilla</button>
+                <button type="button" disabled={consultationMode || busy} onClick={() => importInputRef.current?.click()}>Importar CSV</button>
+              </div>
+            </details>
+          </div>
           <Button variant="primary" disabled={consultationMode} onClick={openCreate}>Agregar recurso</Button>
           <input ref={importInputRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={handleImportFile} />
         </div>
-      </div>
+      </header>
 
-      <div className="inventory-kpis">
+      <div className="inv-kpis">
         <div><span>Equipos</span><strong>{kpis.equipos}</strong></div>
         <div><span>Recursos</span><strong>{kpis.recursos}</strong></div>
         <div className={kpis.malos ? 'is-warn' : ''}><span>Regular o malo</span><strong>{kpis.malos}</strong></div>
         <div className={kpis.vencidos ? 'is-bad' : ''}><span>Vida útil vencida</span><strong>{kpis.vencidos}</strong></div>
         <div className={kpis.bajoStock ? 'is-warn' : ''}><span>Bajo stock</span><strong>{kpis.bajoStock}</strong></div>
+        <div className={kpis.sinFoto ? 'is-warn' : ''}><span>Sin foto</span><strong>{kpis.sinFoto}</strong></div>
         <div><span>Revisado</span><strong>{kpis.cobertura}%</strong></div>
       </div>
 
       {message && <div className="tool-info">{message}</div>}
       {error && <div className="tool-error">{error}</div>}
 
-      <section className="card inventory-list-card">
-        <div className="inventory-toolbar">
-          <div className="inventory-segmented" role="group" aria-label="Tipo de activo">
-            <button type="button" className={segment === 'todo' ? 'is-active' : ''} onClick={() => setSegment('todo')}>Todo</button>
-            <button type="button" className={segment === 'equipo' ? 'is-active' : ''} onClick={() => setSegment('equipo')}>Equipos</button>
-            <button type="button" className={segment === 'recurso' ? 'is-active' : ''} onClick={() => setSegment('recurso')}>Recursos</button>
-          </div>
-          <input className="input" type="search" placeholder="Buscar por nombre, etiqueta o clase" value={search} onChange={event => setSearch(event.target.value)} />
-          <select className="input" value={claseFilter} onChange={event => setClaseFilter(event.target.value)}>
-            <option value="">Todas las clases</option>
-            {clases.map(clase => <option key={clase} value={clase}>{clase}</option>)}
-          </select>
-          <select className="input" value={condicionFilter} onChange={event => setCondicionFilter(event.target.value)}>
-            <option value="">Toda condición</option>
-            {CONDITION_VALUES.map(value => <option key={value} value={value}>{value}</option>)}
-            <option value="Sin revisar">Sin revisar</option>
-          </select>
-          <select className="input" value={sort} onChange={event => setSort(event.target.value as typeof sort)}>
-            <option value="name">Nombre</option>
-            <option value="condition">Peor condición</option>
-            <option value="life">Más vida consumida</option>
-          </select>
+      <div className="inv-toolbar">
+        <div className="inventory-segmented" role="group" aria-label="Tipo de activo">
+          <button type="button" className={segment === 'recurso' ? 'is-active' : ''} onClick={() => setSegment('recurso')}>Recursos</button>
+          <button type="button" className={segment === 'equipo' ? 'is-active' : ''} onClick={() => setSegment('equipo')}>Equipos</button>
+          <button type="button" className={segment === 'todo' ? 'is-active' : ''} onClick={() => setSegment('todo')}>Todo</button>
         </div>
+        <input className="input" type="search" placeholder="Buscar por nombre, categoría o etiqueta" value={search} onChange={event => setSearch(event.target.value)} />
+        <select className="input" value={condicionFilter} onChange={event => setCondicionFilter(event.target.value)}>
+          <option value="">Toda condición</option>
+          {CONDITION_VALUES.map(value => <option key={value} value={value}>{value}</option>)}
+          <option value="Sin revisar">Sin revisar</option>
+        </select>
+      </div>
 
-        <div className="inventory-rows-head">
-          <span />
-          <span>Nombre</span>
-          <span>Clase</span>
-          <span>Condición</span>
-          <span>Vida / stock</span>
-          <span>Acciones</span>
-        </div>
+      {groups.map(group => {
+        const isCollapsed = collapsed.includes(group.categoria);
+        return (
+          <section className="inv-group" key={group.categoria}>
+            <button type="button" className="inv-group-head" onClick={() => toggleGroup(group.categoria)} aria-expanded={!isCollapsed}>
+              <h4>{group.categoria}</h4>
+              <span>{group.total}</span>
+              <i className={isCollapsed ? 'is-collapsed' : ''} aria-hidden="true" />
+            </button>
+            {!isCollapsed && group.subgroups.map(sub => (
+              <div className="inv-sub" key={sub.subcategoria || '_'}>
+                {sub.subcategoria && <h5>{sub.subcategoria} <span>{sub.entries.length}</span></h5>}
+                <div className="inv-grid">
+                  {sub.entries.map(entry => (
+                    <InventoryCard key={entry.key} entry={entry} onOpen={() => setDetail(entry)} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </section>
+        );
+      })}
 
-        <div className="inventory-rows">
-          {filtered.map(entry => (
-            <div className="inventory-row" key={entry.key}>
-              <RowThumb url={entry.imagenUrl} />
-              <div className="inventory-row-name">
-                {entry.device && onProfile
-                  ? <button type="button" onClick={() => onProfile(entry.device as Device)}>{entry.nombre}</button>
-                  : <strong>{entry.nombre}</strong>}
-                {entry.detalle && <span>{entry.detalle}</span>}
-              </div>
-              <span className="inventory-row-class">{entry.clase}</span>
-              <ConditionCell condicion={entry.condicion} />
-              {entry.kind === 'equipo' ? (
-                <span className={`inventory-row-life ${entry.vencido ? 'is-over' : (entry.vidaPct ?? 0) >= 80 ? 'is-due' : ''}`}>
-                  {entry.vidaPct === null ? '—' : entry.vencido ? 'Vencida' : `${entry.vidaPct}%`}
-                </span>
-              ) : (
-                <span className={`inventory-row-qty ${entry.bajoStock ? 'is-low' : ''}`}>
-                  {entry.cantidad}<small>{entry.unidad}</small>
-                </span>
-              )}
-              <div className="inventory-row-actions">
-                {entry.kind === 'equipo' ? (
-                  <select
-                    className="input"
-                    style={{ height: 30, fontSize: 12, width: 'auto' }}
-                    value={entry.condicion}
-                    disabled={consultationMode}
-                    onChange={event => void setDeviceCondition(entry, event.target.value)}
-                    aria-label={`Condición de ${entry.nombre}`}
-                  >
-                    <option value="">Sin revisar</option>
-                    {CONDITION_VALUES.map(value => <option key={value} value={value}>{value}</option>)}
-                  </select>
-                ) : (
-                  <>
-                    <button type="button" onClick={() => entry.item && openEdit(entry.item)} disabled={consultationMode}>Editar</button>
-                    <button type="button" onClick={() => entry.item && hideItem(entry.item)} disabled={consultationMode}>Ocultar</button>
-                  </>
-                )}
-              </div>
+      {!groups.length && <div className="inventory-empty">No hay nada para este filtro.</div>}
+
+      {detail && (
+        <Modal title={detail.nombre} onClose={() => setDetail(null)}>
+          <div className="inv-detail">
+            {detail.imagenUrl && <div className="inv-detail-media"><img src={detail.imagenUrl} alt="" /></div>}
+            <dl>
+              <div><dt>Categoría</dt><dd>{detail.categoria}</dd></div>
+              {detail.subcategoria && <div><dt>Subcategoría</dt><dd>{detail.subcategoria}</dd></div>}
+              {detail.detalle && <div><dt>Detalle</dt><dd>{detail.detalle}</dd></div>}
+              {detail.kind === 'recurso'
+                ? <div><dt>Stock</dt><dd>{detail.cantidad} {detail.unidad}</dd></div>
+                : <div><dt>Vida útil</dt><dd>{detail.vidaPct === null ? '—' : detail.vencido ? `Vencida (${detail.renovacion})` : `${detail.vidaPct}% · renueva ${detail.renovacion}`}</dd></div>}
+            </dl>
+            <label>Condición
+              <select className="input" value={detail.condicion} disabled={consultationMode} onChange={event => void setEntryCondition(detail, event.target.value)}>
+                <option value="">Sin revisar</option>
+                {CONDITION_VALUES.map(value => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <div className="actions">
+              {detail.device && onProfile && <Button onClick={() => { onProfile(detail.device as Device); setDetail(null); }}>Ver ficha completa</Button>}
+              {detail.item && <Button disabled={consultationMode} onClick={() => { openEdit(detail.item as InventoryItem); setDetail(null); }}>Editar</Button>}
+              {detail.item && <Button disabled={consultationMode} onClick={() => void hideItem(detail.item as InventoryItem)}>Ocultar</Button>}
             </div>
-          ))}
-          {!filtered.length && <div className="inventory-empty">No hay nada para este filtro.</div>}
-        </div>
-      </section>
+          </div>
+        </Modal>
+      )}
 
       {reviewOpen && (
         <ConditionReviewModal
           items={items}
           onClose={() => setReviewOpen(false)}
-          onDone={async () => {
-            await onRefreshDevices?.();
-            await refresh();
-          }}
+          onDone={async () => { await onRefreshDevices?.(); await refresh(); }}
         />
       )}
 
       {modalOpen && (
         <Modal title={editing ? 'Editar recurso' : 'Agregar recurso'} onClose={() => !busy && setModalOpen(false)}>
           <form className="inventory-form" onSubmit={save}>
+            <div className="form-field">
+              <span className="field-label">Foto del recurso <em>obligatoria</em></span>
+              <div className={`inv-photo-drop ${form.imagenUrl ? 'has-photo' : ''}`}>
+                {form.imagenUrl
+                  ? <img src={form.imagenUrl} alt="" />
+                  : <span>Sin foto todavía</span>}
+                <label className="btn btn-secondary">
+                  {uploadingImage ? 'Subiendo...' : form.imagenUrl ? 'Cambiar foto' : 'Subir foto'}
+                  <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleImageFile} disabled={uploadingImage || consultationMode} />
+                </label>
+              </div>
+            </div>
             <label>Nombre<input className="input" required value={form.nombre || ''} onChange={event => setForm(current => ({ ...current, nombre: event.target.value }))} /></label>
             <div className="grid-2">
               <label>Categoría
                 <select className="input" value={form.categoria || 'Otro'} onChange={event => setForm(current => ({ ...current, categoria: event.target.value }))}>
-                  {[...new Set([...FORM_CATEGORIES, ...clases])].sort((a, b) => a.localeCompare(b, 'es')).map(item => <option key={item}>{item}</option>)}
+                  {categorias.map(item => <option key={item}>{item}</option>)}
                 </select>
               </label>
-              <label>Condición
-                <select className="input" value={form.condicion || ''} onChange={event => setForm(current => ({ ...current, condicion: event.target.value }))}>
-                  <option value="">Sin revisar</option>
-                  {CONDITION_VALUES.map(item => <option key={item} value={item}>{item}</option>)}
-                </select>
+              <label>Subcategoría
+                <input className="input" list="inv-subcats" placeholder="Opcional" value={form.subcategoria || ''} onChange={event => setForm(current => ({ ...current, subcategoria: event.target.value }))} />
+                <datalist id="inv-subcats">{subcategorias.map(item => <option key={item} value={item} />)}</datalist>
               </label>
             </div>
             <div className="grid-2">
               <label>Cantidad<input className="input" type="number" min="0" value={form.cantidad ?? 0} onChange={event => setForm(current => ({ ...current, cantidad: Number(event.target.value) }))} /></label>
               <label>Unidad<input className="input" value={form.unidad || ''} onChange={event => setForm(current => ({ ...current, unidad: event.target.value }))} /></label>
             </div>
-            <label>Stock mínimo<input className="input" type="number" min="0" value={form.minStock ?? 3} onChange={event => setForm(current => ({ ...current, minStock: Number(event.target.value) }))} /></label>
-            <div className="form-field">
-              <span className="field-label">Imagen o URL de imagen</span>
-              <div className="inventory-image-field">
-                <input className="input" value={form.imagenUrl || ''} onChange={event => setForm(current => ({ ...current, imagenUrl: event.target.value }))} placeholder="https://... o /uploads/..." />
-                <label className="btn btn-secondary inventory-upload-button">
-                  {uploadingImage ? 'Subiendo...' : 'Subir foto'}
-                  <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleImageFile} disabled={uploadingImage || consultationMode} />
-                </label>
-              </div>
+            <div className="grid-2">
+              <label>Stock mínimo<input className="input" type="number" min="0" value={form.minStock ?? 3} onChange={event => setForm(current => ({ ...current, minStock: Number(event.target.value) }))} /></label>
+              <label>Condición
+                <select className="input" value={form.condicion || ''} onChange={event => setForm(current => ({ ...current, condicion: event.target.value }))}>
+                  <option value="">Sin revisar</option>
+                  {CONDITION_VALUES.map(item => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </label>
             </div>
             <label>Observaciones<textarea className="input" rows={3} value={form.observaciones || ''} onChange={event => setForm(current => ({ ...current, observaciones: event.target.value }))} /></label>
             {error && <div className="tool-error">{error}</div>}

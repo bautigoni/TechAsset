@@ -253,6 +253,7 @@ export interface InventoryItem {
   categoria: string;
   cantidad: number;
   unidad: string;
+  subcategoria?: string;
   imagenUrl?: string;
   estado?: string;
   estadoLegacy?: string;

@@ -879,6 +879,7 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'inventory_items', 'min_stock', 'INTEGER DEFAULT 3');
   ensureColumn(database, 'inventory_items', 'estado_legacy', "TEXT DEFAULT ''");
   ensureColumn(database, 'inventory_items', 'condicion_updated_at', "TEXT DEFAULT ''");
+  ensureColumn(database, 'inventory_items', 'subcategoria', "TEXT DEFAULT ''");
   ensureColumn(database, 'tickets', 'origen', "TEXT DEFAULT 'tik'");
   ensureColumn(database, 'tickets', 'tags_json', "TEXT DEFAULT '[]'");
   ensureColumn(database, 'tickets', 'template_id', 'INTEGER');

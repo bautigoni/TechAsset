@@ -233,6 +233,12 @@ analyticsRouter.get('/analytics/parque', async (req, res, next) => {
     const universo = devices.length + recursos.length;
     const proximos12 = devices.filter(item => !item.vencido && typeof item.mesesRestantes === 'number' && item.mesesRestantes <= 12);
 
+    // Totales de condición sobre TODO el parque (equipos + recursos): la barra
+    // de la analítica se dibuja con esto, así el ancho cierra con el total.
+    const condicionTotales = { Excelente: 0, Bueno: 0, Regular: 0, Malo: 0, 'Sin revisar': 0 };
+    for (const device of devices) condicionTotales[device.condition || 'Sin revisar'] += 1;
+    for (const recurso of recursos) condicionTotales[recurso.condicion || 'Sin revisar'] += 1;
+
     const condicionPorClase = new Map();
     for (const device of devices) {
       const clase = device.assetClass || 'Otro';
@@ -269,6 +275,7 @@ analyticsRouter.get('/analytics/parque', async (req, res, next) => {
         bajoStock: recursos.filter(item => Number(item.cantidad || 0) <= Number(item.min_stock || 3)).length,
         cobertura: universo ? Math.round((revisados / universo) * 100) : 0
       },
+      condicionTotales: Object.entries(condicionTotales).map(([label, value]) => ({ label, value })),
       condicionPorClase: [...condicionPorClase.entries()].map(([label, valores]) => ({ label, ...valores })),
       renovacionPorAnio: [...porAnio.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([label, value]) => ({ label, value })),
       vidaConsumida: Object.entries(tramos).map(([label, value]) => ({ label, value })),
