@@ -62,7 +62,9 @@ const FILTER_TITLES: Record<string, string> = {
   out: 'Dispositivos fuera de servicio'
 };
 
-export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigate, onLoan, onReturn, onProfile, onEdit }: {
+export function Dashboard({ devices, counts, agenda, tasks, movements, operator, consultationMode = false, onNavigate, onLoan, onReturn, onProfile, onEdit }: {
+  operator: string;
+  consultationMode?: boolean;
   devices: Device[];
   counts: Record<string, number>;
   agenda: AgendaItem[];
@@ -119,7 +121,7 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, onNavigat
           ))}
         </div>
       </div>
-      <NowPanel agenda={agenda} tasks={tasks} onAgenda={() => onNavigate('agenda')} onTasks={() => onNavigate('tasks')} />
+      <NowPanel agenda={agenda} tasks={tasks} operator={operator} consultationMode={consultationMode} onAgenda={() => onNavigate('agenda')} onTasks={() => onNavigate('tasks')} />
       <RecentMovements items={movements} />
       <section className="card dashboard-device-section" ref={tableRef}>
         <div className="card-head">

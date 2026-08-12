@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import {
   BarChart3,
   Boxes,
+  IdCard,
   Building2,
   CalendarDays,
   Clock3,
@@ -44,7 +45,8 @@ const NAV: NavItem[] = [
   { key: 'tickets', label: 'Tickets', Icon: Ticket },
   { key: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
   { key: 'tools', label: 'Herramientas auxiliares', Icon: Wrench },
-  { key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
+    { key: 'photopasses', label: 'Cartelitos', Icon: IdCard },
+{ key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
   { key: 'settings', label: 'Configuración', Icon: Settings }
 ];
 

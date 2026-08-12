@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { TaskColumn, TaskItem } from '../../types';
 import { TaskCard } from './TaskCard';
+import { useDragScroll } from '../../hooks/useDragScroll';
 
 export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, onDelete, onEdit, onRefresh, onCreateColumn, onRenameColumn, onDeleteColumn, onReorderColumns }: {
   tasks: TaskItem[];
@@ -16,6 +17,7 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
   onDeleteColumn: (column: TaskColumn) => Promise<void>;
   onReorderColumns: (ids: number[]) => Promise<void>;
 }) {
+  const pan = useDragScroll<HTMLDivElement>();
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [newColumn, setNewColumn] = useState('');
   const [editingColumn, setEditingColumn] = useState<number | null>(null);
@@ -40,7 +42,7 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
     if (task && task.columnId !== column.id) await onSave({ ...task, columnId: column.id, estado: column.name });
   };
 
-  return <div className="infinite-board-shell">
+  return <div className="infinite-board-shell" ref={pan.ref} onPointerDown={pan.onPointerDown}>
     <div className="infinite-board" role="region" aria-label="Tablero horizontal de tareas">
       {columns.map(column => {
         const group = tasks.filter(task => task.columnId === column.id || (!task.columnId && task.estado === column.name));

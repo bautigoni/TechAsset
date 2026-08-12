@@ -737,7 +737,7 @@ body.mobile-menu-open {
   .petty-layout { grid-template-columns: 1fr; }
   .petty-balance { min-width: 0; }
   .classrooms-controls, .recess-toolbar, .tasks-primary-actions { align-items: stretch; flex-wrap: wrap; }
-  .classroom-category-list article > form { grid-template-columns: 1fr; }
+  .cat-manager { min-width: 0; }
   .infinite-board-shell, .infinite-canvas { max-width: 100%; }
   .ticket-detail-grid, .device-overview-grid { grid-template-columns: 1fr; }
   .knowledge-hero, .device-ai-summary { align-items:stretch; flex-direction:column; }
@@ -750,7 +750,8 @@ body.mobile-menu-open {
   .petty-row > *, .inventory-linked { grid-column: auto; }
   .task-space-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .task-space-toggle, .tasks-subnav, .planning-tabs { width: 100%; overflow-x: auto; }
-  .classroom-category-list article { grid-template-columns: auto minmax(0, 1fr); }
+  .cat-row { grid-template-columns: auto minmax(0, 1fr); }
+  .cat-row .cat-actions { grid-column: 2; }
   .classroom-category-list article > .btn { grid-column: 2; justify-self: start; }
   .category-create-form, .receipt-field { grid-template-columns: 1fr; }
   .ticket-relation-form, .ticket-detail-section > form, .knowledge-toolbar { grid-template-columns:1fr; }

@@ -24,6 +24,7 @@ const TITLES: Record<ViewKey, string> = {
   suggestions: 'Sugerencias e ideas',
   tools: 'Herramientas auxiliares',
   quickaccess: 'Accesos rápidos',
+  photopasses: 'Cartelitos',
   assistant: 'Asistente TIC',
   tenants: 'Tenants',
   settings: 'Configuración'

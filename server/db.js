@@ -786,6 +786,34 @@ export function initDb(database = getDb()) {
       updated_at TEXT,
       UNIQUE(site_code, device_tag)
     );
+    CREATE TABLE IF NOT EXISTS photo_passes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      numero INTEGER NOT NULL,
+      estado TEXT DEFAULT 'Disponible',
+      prestado_a TEXT DEFAULT '',
+      rol TEXT DEFAULT '',
+      motivo TEXT DEFAULT '',
+      loaned_at TEXT DEFAULT '',
+      returned_at TEXT DEFAULT '',
+      notas TEXT DEFAULT '',
+      activo INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT,
+      UNIQUE(site_code, numero)
+    );
+    CREATE TABLE IF NOT EXISTS photo_pass_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT DEFAULT 'NFPT',
+      numero INTEGER NOT NULL,
+      tipo TEXT,
+      persona TEXT DEFAULT '',
+      rol TEXT DEFAULT '',
+      motivo TEXT DEFAULT '',
+      operador TEXT DEFAULT '',
+      timestamp TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_photo_pass_events ON photo_pass_events(site_code, numero, timestamp);
     CREATE TABLE IF NOT EXISTS lifecycle_defaults (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       site_code TEXT DEFAULT 'NFPT',
@@ -1244,11 +1272,11 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'loan.gradeOptions': ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
-    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
-    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
+    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'photopasses'],
+    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'photopasses'],
     'roles.config': [
       { name: 'Administrador', admin: true, view: ['*'], edit: ['*'] },
-      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'] },
+      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'photopasses'] },
       { name: 'Consulta', admin: false, view: ['*'], edit: [] }
     ],
     'shift.options': ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'],
@@ -1317,7 +1345,7 @@ function migrateRetiredModules(database) {
 }
 
 function migrateNewModuleSettings(database) {
-  const added = ['schedules', 'pettycash', 'suggestions'];
+  const added = ['schedules', 'pettycash', 'suggestions', 'photopasses'];
   const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
   const update = database.prepare('UPDATE site_settings SET value_json=?, updated_at=? WHERE site_code=? AND key=?');
   const ts = nowIso();

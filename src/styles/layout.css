@@ -517,14 +517,15 @@
   padding: 12px;
 }
 
+/* Verde plano y suave: el degradado + el doble borde interior hacían que la
+   tarjeta hecha gritara más que las pendientes. */
 .task-card.task-state-hecha {
-  background: linear-gradient(180deg, rgba(34, 197, 94, .18), rgba(15, 23, 42, 0)), var(--panel-2);
-  border-color: rgba(34, 197, 94, .55);
-  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, .35);
+  background: rgba(34, 197, 94, .09);
+  border-color: rgba(34, 197, 94, .3);
 }
 
 .task-card.task-state-hecha strong {
-  color: #bbf7d0;
+  color: var(--text);
 }
 
 .task-state-pill {
@@ -1405,16 +1406,21 @@ html {
   18%, 72% { box-shadow: inset 0 0 0 2px rgba(59, 130, 246, .95); background: rgba(59, 130, 246, .12); }
 }
 
+/* Antes eran 4 columnas iguales dentro de una tarjeta de 310px: "Comentarios (3)"
+   no entraba y se salía de la caja. Ahora cada botón ocupa lo suyo y envuelve. */
 .task-card-actions {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: 10px;
 }
 
 .task-card-actions .btn {
   min-width: 0;
-  padding: 9px 8px;
+  flex: 0 1 auto;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 8px 10px;
 }
 
 .task-done-btn {

@@ -650,11 +650,11 @@
 
 /* Tareas: estado Hecha / verde */
 :root[data-theme-profile^="smart"] .task-card.task-state-hecha {
-  background: linear-gradient(180deg, rgba(34, 197, 94, .08), var(--panel));
-  border-color: rgba(34, 197, 94, .4);
-  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, .2);
+  background: rgba(34, 197, 94, .07);
+  border-color: rgba(34, 197, 94, .28);
+  box-shadow: none;
 }
-:root[data-theme-profile^="smart"] .task-card.task-state-hecha strong { color: #15803d; }
+:root[data-theme-profile^="smart"] .task-card.task-state-hecha strong { color: var(--text); }
 :root[data-theme-profile^="smart"] .task-state-pill-hecha {
   background: rgba(34, 197, 94, .15);
   color: #15803d;

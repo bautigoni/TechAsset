@@ -495,14 +495,14 @@ async function sendViaConfiguredMail(rows) {
     const nombre = r['Nombre para mostrar'] || '';
     const usuario = r['Nombre de usuario'] || '';
     const destino = r.mail || '';
-    const password = r['ContraseÃ±a'] || '';
+    const password = r['Contraseña'] || '';
     const sede = r.Sede || '';
     const licencias = r.Licencias || '';
     try {
       const result = await sendMail({
         to: destino,
         subject: settings.mailSubject,
-        text: `Hola ${nombre}\n\nUsuario: ${usuario}\nContraseÃ±a: ${password}\nSede: ${sede}\nLicencias: ${licencias}`,
+        text: `Hola ${nombre}\n\nUsuario: ${usuario}\nContraseña: ${password}\nSede: ${sede}\nLicencias: ${licencias}`,
         html: buildEmailHtml({ nombre, usuario, password, sede, licencias })
       });
       if (result?.sent) {

@@ -38,6 +38,7 @@ const SuggestionsPage = lazyView('suggestions', () => import('./components/sugge
 const ClassroomStatusPage = lazyView('classrooms', () => import('./components/classrooms/ClassroomStatusPage'), 'ClassroomStatusPage');
 const ToolsPage = lazyView('tools', () => import('./components/tools/ToolsPage'), 'ToolsPage');
 const QuickAccessPage = lazyView('quickaccess', () => import('./components/tools/QuickAccessPage'), 'QuickAccessPage');
+const PhotoPassesPage = lazyView('photopasses', () => import('./components/photopasses/PhotoPassesPage'), 'PhotoPassesPage');
 const TicketsPage = lazyView('tickets', () => import('./components/tickets/TicketsPage'), 'TicketsPage');
 const TenantsDashboard = lazyView('tenants', () => import('./components/settings/TenantsDashboard'), 'TenantsDashboard');
 const SettingsPage = lazyView('settings', () => import('./components/settings/SettingsPage'), 'SettingsPage');
@@ -424,7 +425,7 @@ export function App() {
       <main className="main main-content">
         <Topbar view={view} search={search} setSearch={setSearch} sync={sync} consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} onReload={() => refresh({ force: true, wait: true })} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} onOpenAssistant={() => setAssistantOpen(true)} />
         <Suspense fallback={<section className="card"><span className="muted">Cargando vista...</span></section>}>
-        {view === 'dashboard' && <Dashboard key={activeSite} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} />}
+        {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={openLoanFlow} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onProfile={setProfile} initialCode={loanSeed} />}
         {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
@@ -437,6 +438,7 @@ export function App() {
         {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
         {view === 'tools' && <ToolsPage operator={operator} />}
         {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}
+        {view === 'photopasses' && <PhotoPassesPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
@@ -472,7 +474,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'photopasses', 'assistant', 'tenants', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 

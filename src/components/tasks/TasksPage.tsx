@@ -5,7 +5,6 @@ import { TaskBoard } from './TaskBoard';
 import { TaskModal } from './TaskModal';
 import { TaskCard } from './TaskCard';
 import { TaskAnalytics } from './TaskAnalytics';
-import { InternalNotesPanel } from '../dashboard/InternalNotesPanel';
 import { createTaskColumn, deleteTaskColumn, getTaskColumns, reorderTaskColumns, updateTaskColumn } from '../../services/tasksApi';
 
 const PRIORITIES = ['Urgente', 'Media', 'Baja'];
@@ -13,7 +12,7 @@ const PRIORITIES = ['Urgente', 'Media', 'Baja'];
 export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, number>; operator: string; consultationMode: boolean; onSave: (task: Partial<TaskItem>) => Promise<unknown>; onMove: (id: string, state: TaskState) => void; onDelete: (id: string) => void; onRefresh?: () => Promise<unknown> | void }) {
   const { tasks, operator, consultationMode, onSave, onDelete, onRefresh } = props;
   const [space, setSpace] = useState<'my' | 'team'>('team');
-  const [tab, setTab] = useState<'board' | 'priority' | 'handoff'>('board');
+  const [tab, setTab] = useState<'board' | 'priority'>('board');
   const [columns, setColumns] = useState<TaskColumn[]>([]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaskItem | null>(null);
@@ -38,14 +37,14 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
   return <section className="view active tasks-workspace">
     <div className="tasks-compact-toolbar card">
       <div className="task-space-toggle" aria-label="Espacio de tareas"><button className={space === 'team' ? 'active' : ''} onClick={() => setSpace('team')}>Equipo</button><button className={space === 'my' ? 'active' : ''} onClick={() => setSpace('my')}>Mis tareas</button></div>
-      <div className="tasks-subnav"><button className={tab === 'board' ? 'active' : ''} onClick={() => setTab('board')}>Tablero</button><button className={tab === 'priority' ? 'active' : ''} onClick={() => setTab('priority')}>Prioridad</button><button className={tab === 'handoff' ? 'active' : ''} onClick={() => setTab('handoff')}>Traspaso</button></div>
+      <div className="tasks-subnav"><button className={tab === 'board' ? 'active' : ''} onClick={() => setTab('board')}>Tablero</button><button className={tab === 'priority' ? 'active' : ''} onClick={() => setTab('priority')}>Prioridad</button></div>
       <div className="tasks-primary-actions"><Button onClick={() => onRefresh?.()} aria-label="Actualizar">↻</Button><Button variant="primary" disabled={consultationMode} onClick={() => setCreating(true)}>+ Nueva tarea</Button></div>
     </div>
     {message && <div className="tool-info">{message}</div>}
 
-    {tab === 'handoff' ? <InternalNotesPanel operator={operator} consultationMode={consultationMode} /> : tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} onSave={onSave} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onCreateColumn={createColumn} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle">{byPriority[priority].length}</span></header><div className="task-schedule-list">{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
+    {tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} onSave={onSave} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onCreateColumn={createColumn} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle">{byPriority[priority].length}</span></header><div className="task-schedule-list">{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
 
-    {tab !== 'handoff' && space === 'team' && <TaskAnalytics tasks={visibleTasks} />}
+    {space === 'team' && <TaskAnalytics tasks={visibleTasks} />}
     {creating && <TaskModal operator={operator} defaultVisibility={space === 'my' ? 'private' : 'team'} onClose={() => setCreating(false)} onSave={onSave} />}
     {editing && <TaskModal operator={operator} initial={editing} defaultVisibility={editing.visibility || 'team'} onClose={() => setEditing(null)} onSave={onSave} />}
   </section>;
