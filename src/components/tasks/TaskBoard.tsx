@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import type { TaskColumn, TaskItem } from '../../types';
+import type { TaskColumn, TaskItem, TaskState } from '../../types';
 import { TaskCard } from './TaskCard';
 import { useDragScroll } from '../../hooks/useDragScroll';
 
-export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, onDelete, onEdit, onRefresh, onCreateColumn, onRenameColumn, onDeleteColumn, onReorderColumns }: {
+export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, onMove, onDelete, onEdit, onRefresh, onCreateColumn, onRenameColumn, onDeleteColumn, onReorderColumns }: {
   tasks: TaskItem[];
   columns: TaskColumn[];
   operator: string;
   consultationMode: boolean;
   onSave: (task: Partial<TaskItem>) => Promise<unknown>;
+  onMove: (id: string, state: TaskState, columnId?: number | null) => Promise<unknown> | void;
   onDelete: (id: string) => void;
   onEdit: (task: TaskItem) => void;
   onRefresh?: () => Promise<unknown> | void;
@@ -39,7 +40,9 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, onSave, 
     }
     const taskId = raw.replace(/^task:/, '');
     const task = tasks.find(item => item.id === taskId);
-    if (task && task.columnId !== column.id) await onSave({ ...task, columnId: column.id, estado: column.name });
+    // onMove mueve la tarjeta en el acto y sincroniza de fondo; onSave esperaba
+    // el PATCH + un refetch de la lista entera antes de dibujar nada.
+    if (task && task.columnId !== column.id) await onMove(task.id, column.name, column.id);
   };
 
   return <div className="infinite-board-shell" ref={pan.ref} onPointerDown={pan.onPointerDown}>

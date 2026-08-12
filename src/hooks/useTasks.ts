@@ -35,21 +35,49 @@ export function useTasks(operator: string) {
     mine: items.filter(item => isAssignedTo(item, operator) && isOwnShift(item, operator, shifts)).length
   }), [items, operator, shifts]);
 
-  const move = async (id: string, estado: TaskState) => {
+  // Un arrastre a la vez: con la respuesta inmediata es fácil encadenar dos
+  // drops antes de que conteste el primero, y el segundo pisaría al primero.
+  const moving = useRef(false);
+
+  /**
+   * Mueve la tarjeta en el mismo frame y recién después habla con el servidor.
+   * Antes el tablero esperaba el PATCH + un GET de la lista entera (~6 s en dev)
+   * sin mostrar nada, así que el gesto parecía no haber funcionado.
+   * Si el PATCH falla se vuelve al estado anterior: la vista no puede mostrar
+   * algo que el servidor nunca aceptó.
+   */
+  const move = async (id: string, estado: TaskState, columnId?: number | null) => {
+    if (moving.current) return;
     const current = items.find(item => item.id === id);
     if (!current) return;
-    const updateLocal = () => flushSync(() => setItems(previous => previous.map(item => item.id === id ? { ...item, estado } : item)));
+    const previousItems = items;
+    moving.current = true;
+    const patch = { estado, ...(columnId === undefined ? {} : { columnId }) };
+    const updateLocal = () => flushSync(() => setItems(previous => previous.map(item => item.id === id ? { ...item, ...patch } : item)));
     const transition = (document as Document & { startViewTransition?: (callback: () => void) => void }).startViewTransition;
     if (transition) transition(updateLocal);
     else updateLocal();
-    await updateTask(id, { ...current, estado, operator });
-    await refresh();
+    try {
+      // El PATCH ya devuelve la tarea actualizada: se mergea en vez de volver a
+      // pedir la lista completa.
+      const data = await updateTask(id, { ...current, ...patch, operator });
+      if (data?.item) setItems(previous => previous.map(item => item.id === id ? data.item : item));
+    } catch (error) {
+      setItems(previousItems);
+      throw error;
+    } finally {
+      moving.current = false;
+    }
   };
 
   const save = async (payload: Partial<TaskItem>) => {
-    const data = payload.id
-      ? await updateTask(payload.id, { ...payload, operator })
-      : await createTask({ ...payload, operator });
+    if (payload.id) {
+      const data = await updateTask(payload.id, { ...payload, operator });
+      if (data?.item) setItems(previous => previous.map(item => item.id === payload.id ? data.item : item));
+      return data.item;
+    }
+    const data = await createTask({ ...payload, operator });
+    // Una tarea nueva puede caer en cualquier orden: acá sí conviene releer.
     await refresh();
     return data.item;
   };

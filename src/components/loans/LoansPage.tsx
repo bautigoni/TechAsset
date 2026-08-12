@@ -4,6 +4,7 @@ import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDev
 import { formatLoanDateTime, formatTimeOnly, loanAgeDays, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
 import { getPreviousDayLoans } from '../../services/loansApi';
 import { LoanForm } from './LoanForm';
+import { PhotoPassPanel } from './PhotoPassPanel';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
 
 function countBy(devices: Device[], getter: (device: Device) => string) {
@@ -67,6 +68,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
           <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={returnSeed || initialCode} />
         </section>
         <div className="loans-side-stack">
+          <PhotoPassPanel consultationMode={consultationMode} />
           <section className="card loan-summary-card">
             <div className="card-head"><h3>Resumen rápido</h3></div>
             <div className="loan-summary-grid">

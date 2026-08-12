@@ -1272,11 +1272,11 @@ export function seedDefaultSettings(database, siteCode = config.defaultSiteCode 
     'loan.gradeOptions': ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'],
     'devices.categories': ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'],
     'classrooms.floors': [{ key: 'planta', label: 'Planta baja', enabled: true, component: 'PrimerPisoModel' }],
-    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'photopasses'],
-    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'photopasses'],
+    'modules.enabled': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
+    'modules.order': ['devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'],
     'roles.config': [
       { name: 'Administrador', admin: true, view: ['*'], edit: ['*'] },
-      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'photopasses'] },
+      { name: 'Asistente', admin: false, view: ['*'], edit: ['devices', 'loans', 'inventory', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess'] },
       { name: 'Consulta', admin: false, view: ['*'], edit: [] }
     ],
     'shift.options': ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'],
@@ -1332,7 +1332,7 @@ function migrateLegacyQuickLinks(database) {
 }
 
 function migrateRetiredModules(database) {
-  const retired = new Set(['reminders']);
+  const retired = new Set(['reminders', 'photopasses']);
   const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
   const update = database.prepare('UPDATE site_settings SET value_json=? WHERE site_code=? AND key=?');
   for (const row of rows) {
@@ -1345,7 +1345,7 @@ function migrateRetiredModules(database) {
 }
 
 function migrateNewModuleSettings(database) {
-  const added = ['schedules', 'pettycash', 'suggestions', 'photopasses'];
+  const added = ['schedules', 'pettycash', 'suggestions'];
   const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
   const update = database.prepare('UPDATE site_settings SET value_json=?, updated_at=? WHERE site_code=? AND key=?');
   const ts = nowIso();
@@ -1669,13 +1669,48 @@ export function rowToAgenda(row) {
   };
 }
 
-export function rowToTask(row) {
+/**
+ * Precarga en 3 consultas lo que `rowToTask` pedía de a una por tarea.
+ *
+ * Sin esto, listar 39 tareas costaba 123 consultas (subtareas + columna +
+ * conteo de comentarios por cada una) y el GET /api/tasks tardaba ~5 s: era el
+ * 89% del tiempo que tardaba una tarjeta en moverse de columna.
+ */
+export function buildTaskContext(siteCode) {
+  const site = siteCode || config.defaultSiteCode || 'NFPT';
+  const itemsByTask = new Map();
+  for (const row of getDb().prepare('SELECT * FROM task_items WHERE site_code=? ORDER BY orden, id').all(site)) {
+    const list = itemsByTask.get(row.task_id) || [];
+    list.push(rowToTaskItem(row));
+    itemsByTask.set(row.task_id, list);
+  }
+  const columnsById = new Map();
+  for (const row of getDb().prepare('SELECT id, name, color, position, is_done FROM task_columns WHERE site_code=?').all(site)) {
+    columnsById.set(Number(row.id), row);
+  }
+  const commentsByTask = new Map();
+  for (const row of getDb().prepare("SELECT task_id, COUNT(*) AS total FROM task_comments WHERE site_code=? AND COALESCE(deleted_at,'')='' GROUP BY task_id").all(site)) {
+    commentsByTask.set(row.task_id, Number(row.total) || 0);
+  }
+  return { itemsByTask, columnsById, commentsByTask };
+}
+
+export function rowToTask(row, ctx) {
+  const site = row.site_code || config.defaultSiteCode || 'NFPT';
   const responsables = parseTaskResponsables(row);
-  const items = getDb().prepare('SELECT * FROM task_items WHERE task_id=? AND site_code=? ORDER BY orden, id').all(row.id, row.site_code || config.defaultSiteCode || 'NFPT').map(rowToTaskItem);
+  // Con contexto precargado no se toca la base; sin él (rutas de una sola
+  // tarea) se mantiene el comportamiento de siempre.
+  const items = ctx
+    ? (ctx.itemsByTask.get(row.id) || [])
+    : getDb().prepare('SELECT * FROM task_items WHERE task_id=? AND site_code=? ORDER BY orden, id').all(row.id, site).map(rowToTaskItem);
   const assigneeEmails = parseJsonArray(row.assignee_emails_json);
   const attachments = parseJsonArray(row.attachments_json);
-  const column = row.column_id ? getDb().prepare('SELECT id, name, color, position, is_done FROM task_columns WHERE id=? AND site_code=?').get(row.column_id, row.site_code || config.defaultSiteCode || 'NFPT') : null;
-  const commentsCount = getDb().prepare("SELECT COUNT(*) AS total FROM task_comments WHERE task_id=? AND site_code=? AND COALESCE(deleted_at,'')='' ").get(row.id, row.site_code || config.defaultSiteCode || 'NFPT').total || 0;
+  const column = !row.column_id ? null : ctx
+    ? (ctx.columnsById.get(Number(row.column_id)) || null)
+    : getDb().prepare('SELECT id, name, color, position, is_done FROM task_columns WHERE id=? AND site_code=?').get(row.column_id, site);
+  const commentsCount = ctx
+    ? (ctx.commentsByTask.get(row.id) || 0)
+    : (getDb().prepare("SELECT COUNT(*) AS total FROM task_comments WHERE task_id=? AND site_code=? AND COALESCE(deleted_at,'')='' ").get(row.id, site).total || 0);
   return {
     id: row.id,
     siteCode: row.site_code || config.defaultSiteCode || 'NFPT',

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { config } from '../config.js';
-import { getDb, nowIso, rowToTask, rowToTaskItem } from '../db.js';
+import { getDb, nowIso, buildTaskContext, rowToTask, rowToTaskItem } from '../db.js';
 import { canEditModule, requireSite } from '../services/siteContext.service.js';
 import { sendWithEtag } from '../services/etag.service.js';
 import { notifySiteAdmins, notifyUser } from '../services/notifications.service.js';
@@ -24,8 +24,10 @@ tasksRouter.get('/tasks', (req, res) => {
   const email = String(req.user?.email || '').toLowerCase();
   const name = String(req.user?.nombre || '').toLowerCase();
   const space = String(req.query.space || 'all');
+  // Contexto precargado: 3 consultas para toda la lista en vez de 3 por tarea.
+  const ctx = buildTaskContext(siteCode);
   const rows = getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? ORDER BY fecha_creacion DESC").all(siteCode)
-    .map(rowToTask)
+    .map(row => rowToTask(row, ctx))
     .filter(task => canSeeTask(task, email))
     .filter(task => space === 'team' ? task.visibility === 'team' : space === 'my' ? isMine(task, email, name) : true)
     .sort((a, b) => Number(a.done) - Number(b.done) || String(b.fechaCreacion || '').localeCompare(String(a.fechaCreacion || '')));

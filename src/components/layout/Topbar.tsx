@@ -24,7 +24,6 @@ const TITLES: Record<ViewKey, string> = {
   suggestions: 'Sugerencias e ideas',
   tools: 'Herramientas auxiliares',
   quickaccess: 'Accesos rápidos',
-  photopasses: 'Cartelitos',
   assistant: 'Asistente TIC',
   tenants: 'Tenants',
   settings: 'Configuración'
@@ -90,7 +89,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
           <strong>{activeSite}</strong>
           <small>{activeSiteInfo?.nombre || 'Sede activa'}</small>
         </span>
-        <ChevronDown size={16} strokeWidth={2.2} />
+        <ChevronDown size={16} strokeWidth={1.7} />
       </button>
       {siteMenuOpen && (
         <div className="site-switcher-menu" role="menu">
@@ -149,7 +148,7 @@ export function Topbar({ view, search, setSearch, sync, consultationMode, onMenu
         <header className="topbar-smart">
           <div className="topbar-left">
             <button className="topbar-icon-btn topbar-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
-              <Menu size={20} strokeWidth={2.2} />
+              <Menu size={20} strokeWidth={1.7} />
             </button>
             <TenantLogo className="topbar-smart-logo" site={activeSiteInfo} />
             <span className="topbar-smart-brand">TechAsset</span>

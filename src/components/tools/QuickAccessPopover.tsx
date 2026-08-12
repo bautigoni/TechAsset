@@ -37,7 +37,7 @@ export function QuickAccessPopover({ onOpenFull }: { onOpenFull?: () => void }) 
         title="Accesos rápidos"
         onClick={() => setOpen(value => !value)}
       >
-        <Zap size={18} strokeWidth={2.1} />
+        <Zap size={18} strokeWidth={1.7} />
       </button>
       {open && (
         <div className="quick-pop" role="dialog" aria-label="Accesos rápidos">

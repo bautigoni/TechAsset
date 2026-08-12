@@ -2,14 +2,13 @@ import type { ComponentType } from 'react';
 import {
   BarChart3,
   Boxes,
-  IdCard,
   Building2,
   CalendarDays,
   Clock3,
   ClipboardCheck,
   Gauge,
-	  Link2,
-	  Lightbulb,
+  Link2,
+  Lightbulb,
   MonitorSmartphone,
   PanelLeftClose,
   PanelLeftOpen,
@@ -40,13 +39,13 @@ const NAV: NavItem[] = [
   { key: 'analytics', label: 'Analítica', Icon: BarChart3 },
   { key: 'agenda', label: 'Agenda TIC', Icon: CalendarDays },
   { key: 'schedules', label: 'Horarios', Icon: Clock3 },
-  { key: 'tasks', label: 'Tareas TIC', Icon: ClipboardCheck },  { key: 'pettycash', label: 'Caja chica', Icon: WalletCards },
+  { key: 'tasks', label: 'Tareas TIC', Icon: ClipboardCheck },
+  { key: 'pettycash', label: 'Caja chica', Icon: WalletCards },
   { key: 'classrooms', label: 'Estado aulas', Icon: School },
   { key: 'tickets', label: 'Tickets', Icon: Ticket },
   { key: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
   { key: 'tools', label: 'Herramientas auxiliares', Icon: Wrench },
-    { key: 'photopasses', label: 'Cartelitos', Icon: IdCard },
-{ key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
+  { key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
   { key: 'settings', label: 'Configuración', Icon: Settings }
 ];
 
@@ -120,7 +119,7 @@ export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collaps
               </div>
             </div>
             <button className="sidebar-close-btn" type="button" aria-label="Cerrar menú" onClick={onClose}>
-              <X size={18} strokeWidth={2.2} />
+              <X size={18} strokeWidth={1.7} />
             </button>
           </div>
           <nav>
@@ -140,7 +139,7 @@ export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collaps
                   aria-label={item.label}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  <Icon size={18} strokeWidth={2.1} />
+                  <Icon size={18} strokeWidth={1.7} />
                   <span className="nav-item-label">{item.label}</span>
                 </button>
               );
@@ -167,7 +166,7 @@ export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collaps
             </div>
           </div>
           <button className="sidebar-collapse-btn brand-collapse-btn" type="button" aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'} title={collapsed ? 'Expandir menú' : 'Contraer menú'} onClick={onToggleCollapsed}>
-            {collapsed ? <PanelLeftOpen size={18} strokeWidth={2.2} /> : <PanelLeftClose size={18} strokeWidth={2.2} />}
+            {collapsed ? <PanelLeftOpen size={18} strokeWidth={1.7} /> : <PanelLeftClose size={18} strokeWidth={1.7} />}
           </button>
         </div>
 
@@ -176,7 +175,7 @@ export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collaps
             const Icon = item.Icon;
             return (
               <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} {...warm(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
-                <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={2.1} /></span>
+                <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={1.7} /></span>
                 <span className="nav-label">{item.label}</span>
               </button>
             );
@@ -187,7 +186,7 @@ export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collaps
             const Icon = item.Icon;
             return (
               <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} {...warm(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
-                <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={2.1} /></span>
+                <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={1.7} /></span>
                 <span className="nav-label">{item.label}</span>
               </button>
             );

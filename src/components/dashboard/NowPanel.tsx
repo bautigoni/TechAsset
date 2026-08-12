@@ -77,7 +77,9 @@ export function NowPanel({ agenda, tasks, operator, consultationMode = false, on
   const nextAgenda = currentAgenda || nextToday || futureAgenda;
   const openTasks = tasks.filter(isOpenTask);
   const mine = openTasks.filter(isMine).sort((a, b) => taskScore(a) - taskScore(b));
-  const topTask = mine[0] || [...openTasks].sort((a, b) => taskScore(a) - taskScore(b))[0];
+  // Hasta dos tareas tuyas. Si no tenés ninguna abierta, cae a la más urgente
+  // del equipo; si tampoco hay, el chat se queda con todo el ancho.
+  const topTasks = (mine.length ? mine : [...openTasks].sort((a, b) => taskScore(a) - taskScore(b))).slice(0, 2);
 
   return (
     <section className="card panel-ahora">
@@ -91,35 +93,36 @@ export function NowPanel({ agenda, tasks, operator, consultationMode = false, on
           <button className="btn btn-secondary mini-action-btn" type="button" onClick={onTasks}>Ver Tareas</button>
         </div>
       </div>
-      <div className="ahora-split">
+      <div className={`ahora-split ${topTasks.length ? '' : 'is-solo'}`}>
         <DailyHandoffChat operator={operator} consultationMode={consultationMode} />
 
-        <div className="ahora-task">
-          <div className="handoff-chat-head">
-            <strong>Tu tarea prioritaria</strong>
-            {activeRecess.length > 0 && <span className="muted">Recreo: {activeRecess.map(item => item.endTime).join(' · ')}</span>}
-          </div>
-          {topTask ? (
-            <button type="button" className={`ahora-task-card prioridad-${String(topTask.prioridad || '').toLowerCase()}`} onClick={() => onOpenTask ? onOpenTask(topTask) : onTasks()}>
-              <span className="ahora-task-flag">{topTask.prioridad || 'Sin prioridad'}{isMine(topTask) ? ' · asignada a vos' : ''}</span>
-              <strong>{topTask.titulo}</strong>
-              <span className="ahora-task-meta">
-                {[topTask.estado, topTask.responsable, topTask.fechaVencimiento ? `vence ${topTask.fechaVencimiento}` : ''].filter(Boolean).join(' · ')}
-              </span>
-              {topTask.descripcion && <p>{topTask.descripcion}</p>}
-            </button>
-          ) : (
-            <div className="ahora-task-empty">
-              <strong>{pendingTasks ? `${pendingTasks} tareas por resolver` : 'Sin tareas pendientes'}</strong>
-              <button type="button" className="btn btn-secondary mini-action-btn" onClick={onTasks}>Ir a Tareas</button>
+        {topTasks.length > 0 && (
+          <div className="ahora-task">
+            <div className="handoff-chat-head">
+              <strong>{topTasks.length > 1 ? 'Tus tareas prioritarias' : 'Tu tarea prioritaria'}</strong>
+              {activeRecess.length > 0 && <span className="muted">Recreo hasta {activeRecess.map(item => item.endTime).join(' · ')}</span>}
             </div>
-          )}
-          <div className="ahora-agenda-line">
-            {nextAgenda
-              ? <>{currentAgenda ? 'En curso' : `Próxima ${nextAgenda.desde}`} · {nextAgenda.curso || nextAgenda.actividad}</>
-              : pendingTodayCount ? `${pendingTodayCount} pendiente${pendingTodayCount === 1 ? '' : 's'} en agenda hoy` : 'Sin próximas actividades'}
+            {topTasks.map(task => (
+              <button
+                key={task.id}
+                type="button"
+                className={`ahora-task-card prioridad-${String(task.prioridad || '').toLowerCase()}`}
+                onClick={() => onOpenTask ? onOpenTask(task) : onTasks()}
+              >
+                <span className="ahora-task-flag">{task.prioridad || 'Sin prioridad'}{isMine(task) ? ' · asignada a vos' : ''}</span>
+                <strong>{task.titulo}</strong>
+                <span className="ahora-task-meta">
+                  {[task.estado, task.responsable, task.fechaVencimiento ? `vence ${task.fechaVencimiento}` : ''].filter(Boolean).join(' · ')}
+                </span>
+              </button>
+            ))}
+            <div className="ahora-agenda-line">
+              {nextAgenda
+                ? <>{currentAgenda ? 'En curso' : `Próxima ${nextAgenda.desde}`} · {nextAgenda.curso || nextAgenda.actividad}</>
+                : pendingTodayCount ? `${pendingTodayCount} pendiente${pendingTodayCount === 1 ? '' : 's'} en agenda hoy` : 'Sin próximas actividades'}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

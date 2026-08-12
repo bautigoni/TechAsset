@@ -29,8 +29,29 @@ function rowToPass(row) {
   };
 }
 
+// Los cartelitos son pedazos de papel numerados: no hay nada que "dar de alta".
+// La primera vez que una sede los pide se crean del 1 al 30 solos, así el
+// operador nunca ve una lista vacía ni tiene que configurar nada.
+const DEFAULT_RANGE = 30;
+
+function ensureDefaultPasses(siteCode) {
+  const total = getDb().prepare('SELECT COUNT(*) AS total FROM photo_passes WHERE site_code=?').get(siteCode).total;
+  if (total > 0) return;
+  const ts = nowIso();
+  const insert = getDb().prepare(`
+    INSERT INTO photo_passes (site_code, numero, estado, prestado_a, rol, motivo, loaned_at, returned_at, notas, activo, created_at, updated_at)
+    VALUES (?, ?, 'Disponible', '', '', '', '', '', '', 1, ?, ?)
+    ON CONFLICT(site_code, numero) DO NOTHING
+  `);
+  const tx = getDb().transaction(() => {
+    for (let numero = 1; numero <= DEFAULT_RANGE; numero += 1) insert.run(siteCode, numero, ts, ts);
+  });
+  tx();
+}
+
 photoPassesRouter.get('/photo-passes', (req, res) => {
   const siteCode = requireSite(req);
+  ensureDefaultPasses(siteCode);
   const rows = getDb().prepare('SELECT * FROM photo_passes WHERE site_code=? AND COALESCE(activo,1)=1 ORDER BY numero').all(siteCode);
   const items = rows.map(rowToPass);
   res.json({

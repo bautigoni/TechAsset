@@ -41,14 +41,14 @@ export function MobileNav({ items, active, onNavigate, onPrefetch, onMore, theme
               onClick={() => onNavigate(item.key)}
               onTouchStart={() => onPrefetch?.(item.key)}
             >
-              <Icon size={22} strokeWidth={2.1} />
+              <Icon size={22} strokeWidth={1.7} />
               <span>{item.label}</span>
             </button>
           );
         })}
         {hasMore && (
           <button type="button" className="bottom-nav-item more-btn" onClick={onMore} aria-label="Más secciones">
-            <MoreHorizontal size={22} strokeWidth={2.1} />
+            <MoreHorizontal size={22} strokeWidth={1.7} />
             <span>Más</span>
           </button>
         )}
