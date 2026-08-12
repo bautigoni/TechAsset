@@ -20,6 +20,15 @@ body,
   -ms-touch-action: manipulation;
 }
 
+/* Reserva el canal de la barra de scroll SIEMPRE, haya o no contenido para
+   scrollear. Sin esto, cambiar a una vista más corta (Mis tareas, Prioridad)
+   hace desaparecer la barra vertical, el viewport gana ~15px de ancho y TODO
+   el layout se corre de golpe — se ve como si la barra de arriba saltara.
+   No es un problema de la barra: es la página entera moviéndose. */
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   width: 100%;
