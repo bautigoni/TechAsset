@@ -18,7 +18,7 @@ import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
 import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
-import { activeSiteRole, canViewModule, isReadOnlyRole, isSuperadmin, roleAccess } from './utils/permissions';
+import { activeSiteRole, canViewModule, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
 import { parseScannedCode, resolveDeviceMatches } from './utils/normalizeSearch';
 import type { AssistantContext } from './services/assistantApi';
@@ -403,13 +403,14 @@ export function App() {
     setView('loans');
   };
 
-  // Rol real en la sede activa → permisos. Consulta/Otro = solo lectura forzada;
-  // editores pueden además activar el "modo consulta / vista jefe" manual.
+  // Rol real en la sede activa → permisos efectivos de roles.config. Un rol
+  // personalizado con permisos de edición no debe caer en modo consulta solo
+  // porque su nombre no figure en la lista legacy de managers/asistentes.
   const currentRole = activeSiteRole(user, sites, activeSite);
-  const roleReadOnly = isReadOnlyRole(currentRole);
-  const effectiveConsultation = roleReadOnly || consultationMode;
   const superadmin = isSuperadmin(user);
   const access = roleAccess(siteSettings, currentRole, superadmin);
+  const roleReadOnly = !access.admin && access.edit.size === 0;
+  const effectiveConsultation = roleReadOnly || consultationMode;
   // Superadmin parado en una sede que no es la suya por defecto → banner de impersonación (tema B).
   const activeSiteInfo = sites.find(site => site.siteCode === activeSite);
   const impersonating = superadmin && sites.length > 1 && !!activeSiteInfo && !activeSiteInfo.isDefault;

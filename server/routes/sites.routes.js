@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
-import { getDb, nowIso, seedDefaultSettings } from '../db.js';
+import { getDb, getSiteSetting, nowIso, seedDefaultSettings } from '../db.js';
 import { isSiteManager, isSuperadmin, normalizeSiteCode, requireSite } from '../services/siteContext.service.js';
 import { sendMail } from '../services/mail.service.js';
 import { buildUserApprovedMail, buildUserDeactivatedMail, buildUserRejectedMail } from '../services/mailTemplates.js';
@@ -17,9 +17,13 @@ const LOGO_TYPES = new Map([
   ['image/webp', 'webp']
 ]);
 
-function getAllowedRole(rawRole = 'Consulta') {
+function getAllowedRole(rawRole = 'Consulta', siteCode = config.defaultSiteCode) {
   const role = String(rawRole || 'Consulta').trim();
-  return ALLOWED_USER_ROLES.has(role) ? role : 'Consulta';
+  if (ALLOWED_USER_ROLES.has(role)) return role;
+  const configuredRoles = getSiteSetting(normalizeSiteCode(siteCode), 'roles.config');
+  const isConfigured = Array.isArray(configuredRoles)
+    && configuredRoles.some(item => String(item?.name || '').trim() === role);
+  return isConfigured ? role : 'Consulta';
 }
 
 function assertAssignableRole(req, role) {
@@ -176,7 +180,7 @@ sitesRouter.post('/allowed-users', (req, res) => {
   if (existingAllowed?.default_role === 'Superadmin' && !isSuperadmin(req.user)) {
     return res.status(403).json({ ok: false, error: 'Solo Superadmin puede editar otro Superadmin.' });
   }
-  const defaultRole = getAllowedRole(req.body?.defaultRole || req.body?.default_role || 'Consulta');
+  const defaultRole = getAllowedRole(req.body?.defaultRole || req.body?.default_role || 'Consulta', siteCode);
   const status = normalizeUserStatus(req.body?.status || (req.body?.activo === false ? 'Inactivo' : 'Activo'));
   const active = status === 'Activo' ? 1 : 0;
   try { assertAssignableRole(req, defaultRole); }
@@ -205,7 +209,7 @@ sitesRouter.patch('/allowed-users/:id', (req, res) => {
   if (old.default_role === 'Superadmin' && !isSuperadmin(req.user)) {
     return res.status(403).json({ ok: false, error: 'Solo Superadmin puede editar otro Superadmin.' });
   }
-  const defaultRole = getAllowedRole(req.body?.defaultRole ?? req.body?.default_role ?? old.default_role);
+  const defaultRole = getAllowedRole(req.body?.defaultRole ?? req.body?.default_role ?? old.default_role, siteCode);
   const status = normalizeUserStatus(req.body?.status || (req.body?.activo === false ? 'Inactivo' : old.status || 'Activo'));
   const active = status === 'Activo' ? 1 : 0;
   try { assertAssignableRole(req, defaultRole); }
