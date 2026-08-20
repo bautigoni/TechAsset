@@ -2867,6 +2867,21 @@ body.consulta-mode #returnBtn {
 .pass-lent-list em{font-style:normal;color:var(--muted);font-size:11px;border:1px solid var(--border);border-radius:4px;padding:0 5px;flex:0 0 auto}
 .pass-lent-list i{font-style:normal;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* Equipos por tipo dentro de Prestamos: misma grilla que los cartelitos. */
+.device-pass-stack{display:grid;gap:0}
+/* Los grupos ya vienen separados por su propio borde superior, asi que el
+   primero no necesita duplicar la linea que deja el formulario. */
+.device-pass-panel{margin-top:14px;padding-top:14px}
+.device-pass-panel .card-head h3{font-size:14px}
+/* Sin numero operativo el chip muestra la etiqueta (D1436), que no entra en
+   el cuadrado de 36px: crece a lo ancho y mantiene el alto de la fila. */
+.pass-chip.is-wide{width:auto;min-width:36px;padding:0 9px;font-size:11px;letter-spacing:.02em}
+/* Fuera de servicio o no encontrada: se ve, pero no se presta desde aca. */
+.pass-chip.is-bloqueado{background:repeating-linear-gradient(135deg,transparent,transparent 4px,rgba(148,163,184,.12) 4px,rgba(148,163,184,.12) 8px);border-style:dashed;color:var(--muted)}
+/* La etiqueta completa necesita mas lugar que el numero suelto del cartelito. */
+.device-pass-panel .pass-lent-list li{grid-template-columns:minmax(26px,auto) minmax(0,1fr) auto}
+
+
 /* Cartelitos: el número es lo que se busca, así que manda visualmente. */
 .passes-page{display:grid;gap:18px}
 .passes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}

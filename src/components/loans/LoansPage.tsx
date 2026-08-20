@@ -5,6 +5,7 @@ import { formatLoanDateTime, formatTimeOnly, loanAgeDays, loanAgeLabel, loanAgeT
 import { getPreviousDayLoans } from '../../services/loansApi';
 import { LoanForm } from './LoanForm';
 import { PhotoPassPanel } from './PhotoPassPanel';
+import { DeviceChipsPanel } from './DeviceChipsPanel';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
 
 function countBy(devices: Device[], getter: (device: Device) => string) {
@@ -30,6 +31,15 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
   const recentLoaned = [...loaned]
     .sort((a, b) => loanAgeDays(b.loanedAt) - loanAgeDays(a.loanedAt) || String(a.loanedAt || '').localeCompare(String(b.loanedAt || '')))
     .slice(0, 8);
+
+  // Carga una etiqueta en el formulario de arriba y sube la vista. El paso por
+  // '' fuerza que LoanForm reaccione aunque sea la misma etiqueta que la vez
+  // anterior (su efecto depende del valor recibido).
+  const seedLoanCode = useCallback((etiqueta: string) => {
+    setReturnSeed('');
+    window.setTimeout(() => setReturnSeed(etiqueta), 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const loadPreviousLoans = useCallback(async (alive: () => boolean = () => true) => {
     setPreviousLoading(true);
@@ -66,8 +76,9 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
           </div>
           <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={returnSeed || initialCode} />
-          {/* Los cartelitos van abajo del formulario, donde sobraba lugar, en vez
-              de apretar la columna lateral. */}
+          {/* Equipos y cartelitos van abajo del formulario, donde sobraba lugar,
+              en vez de apretar la columna lateral. */}
+          <DeviceChipsPanel devices={devices} consultationMode={consultationMode} onReturn={onReturn} onSeedCode={seedLoanCode} />
           <PhotoPassPanel consultationMode={consultationMode} />
         </section>
         <div className="loans-side-stack">
@@ -140,7 +151,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                   <strong>{device.etiqueta} · {getOperationalAlias(device)}</strong>
                   <span>{device.prestadoA || 'Sin persona'} · {[device.ubicacion, device.curso].filter(Boolean).join(' · ') || 'Sin ubicación'}</span>
                   <span className="loaned-now-time">{formatLoanDateTime(device.loanedAt) || 'Sin fecha'} · {loanAgeLabel(device.loanedAt) || 'sin antiguedad'}</span>
-                  <button type="button" onClick={event => { event.stopPropagation(); setReturnSeed(''); window.setTimeout(() => setReturnSeed(device.etiqueta), 0); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={consultationMode}>Revisar devolución</button>
+                  <button type="button" onClick={event => { event.stopPropagation(); seedLoanCode(device.etiqueta); }} disabled={consultationMode}>Revisar devolución</button>
                 </div>
               ))}
               {!loaned.length && <div className="empty-state">No hay equipos prestados ahora.</div>}
