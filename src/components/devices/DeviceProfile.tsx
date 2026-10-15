@@ -11,6 +11,7 @@ const CONDICIONES = [
   ...['Excelente', 'Bueno', 'Regular', 'Malo'].map(value => ({ value, label: value }))
 ];
 import { RelatedReminders } from '../reminders/RelatedReminders';
+import { getActiveSiteCode } from '../../services/activeSite';
 
 export function DeviceProfile({ device, consultationMode = false, onOpenDevice, onClose }: { device: Device; consultationMode?: boolean; onOpenDevice?: (device:Device)=>void; onClose: () => void }) {
   const [overview, setOverview] = useState<DeviceOverviewResponse | null>(null);
@@ -22,7 +23,7 @@ export function DeviceProfile({ device, consultationMode = false, onOpenDevice, 
   useEffect(() => { setOverview(null); setError(''); getDeviceOverview(device.etiqueta).then(response=>{setOverview(response);setCondition(response.condition||'');setLifeMonths(response.lifecycle?.origen==='equipo'?String(response.lifecycle.meses||''):'');setFechaAlta(response.lifecycle?.estimada?'':(response.lifecycle?.fechaAlta||''));}).catch(reason => setError(reason instanceof Error ? reason.message : 'No se pudo cargar el resumen.')); }, [device.etiqueta]);
   useEffect(()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context',{detail:{type:'device',id:device.etiqueta,label:getOperationalAlias(device)||device.etiqueta,data:{estado:device.estado,ubicacion:device.ubicacion}}}));return()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context-clear',{detail:{type:'device',id:device.etiqueta}}));};},[device.etiqueta]);
   const current = overview?.device || device;
-  const siteCode = current.siteCode || localStorage.getItem('techasset_active_site') || 'NFPT';
+  const siteCode = current.siteCode || getActiveSiteCode();
   // El PATCH conserva los campos que no se mandan, así que cada control guarda
   // solo lo suyo sin pisar la condición ni la vida útil del otro.
   const saveMetadata = async (patch: { condition?: string; expectedLifeMonths?: number | null; fechaAlta?: string }) => {

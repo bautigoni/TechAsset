@@ -44,10 +44,13 @@ Todo dato operativo (dispositivos, préstamos, tareas, agenda, aulas, inventario
 
 ## Auth y mails
 
-- Login por mail autorizado (sin password); registro queda en estado `Pendiente`.
+- Login por mail autorizado + contraseña (o Google). El alta es por código de invitación.
 - `server/routes/auth.routes.js`:
-  - `POST /api/auth/register` → crea `allowed_users` con `Pendiente`, dispara `notifyRegistration` (no bloqueante).
-  - `POST /api/auth/login` → rechaza pendientes/rechazados/inactivos con mensajes específicos.
+  - `POST /api/auth/register` → canjea la invitación, crea `allowed_users`, dispara `notifyRegistration` (no bloqueante).
+  - `POST /api/auth/login` → mismo mensaje para mail inexistente y contraseña errónea (no revela qué mails tienen cuenta); el estado Pendiente/Rechazado se informa recién con la contraseña correcta. Límite de intentos fallidos en memoria (8 por IP+mail, 100 por IP, ventana 15 min).
+  - Cuentas sin contraseña (allowlist viejo) **no** se reclaman con la primera contraseña tipeada: se les manda un link de un solo uso (`password_tokens`, hash SHA-256, vence en 1 h). `POST /api/auth/password/request` ("olvidé mi contraseña", respuesta idéntica exista o no la cuenta) y `POST /api/auth/password/confirm`. El link abre `/login?password=<token>`.
+- Seguridad de la API (`server/index.js`): `/uploads/<categoría>/<SEDE>/...` exige sesión con acceso a esa sede (solo `site-logos` es público); CORS solo para orígenes propios; `trust proxy` loopback (Caddy local); el `operator`/`operador` de cualquier escritura se pisa con el usuario de la sesión; `requireModuleEditor` (en `siteContext.service.js`) exige `canEditModule` por prefijo de ruta para los routers viejos. `PATCH /settings/mail` es solo superadmin; enviar credenciales 365, solo admin de sede.
+- Frontend: la sede activa es **por pestaña** (`src/services/activeSite.ts`, memoria + sessionStorage); un 401 fuera de `/api/auth` dispara `techasset:session-expired` y la app vuelve al login.
 - `server/routes/sites.routes.js` `POST /api/allowed-users/:id/:action` (`approve|reject|deactivate|delete`) dispara `notifyAllowedUserAction`.
 - Mail bot: `server/services/mail.service.js` (`sendMail`) + plantillas card-style en `server/services/mailTemplates.js` (`buildRegistrationUserMail`, `buildRegistrationAdminMail`, `buildUserApprovedMail`, `buildUserRejectedMail`, `buildUserDeactivatedMail`).
 - Variables `.env` que controlan envíos:

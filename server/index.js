@@ -33,20 +33,47 @@ import { pettyCashRouter } from './routes/pettyCash.routes.js';
 import { suggestionsRouter } from './routes/suggestions.routes.js';
 import { remindersRouter } from './routes/reminders.routes.js';
 import { startNotificationWorkers } from './services/notifications.service.js';
-import { authMiddleware, requireEditor } from './services/siteContext.service.js';
+import { authMiddleware, getUserSession, isSuperadmin, normalizeSiteCode, requireEditor, requireModuleEditor } from './services/siteContext.service.js';
 
 getDb();
 startNotificationWorkers();
 
 const app = express();
+// Caddy corre en el mismo host (127.0.0.1): confiar en su X-Forwarded-For para
+// que req.ip sea el cliente real y no el proxy (lo usa el límite de intentos de login).
+app.set('trust proxy', 'loopback, uniquelocal');
 // gzip para HTML/CSS/JS/JSON. El CSS del bundle pasa de ~250 kB a ~46 kB y las
 // respuestas de /api/devices bajan muchísimo. No asumimos que el reverse proxy
 // comprima: en Caddy el `encode` es opt-in.
 app.use(compression());
-app.use(cors());
+// El frontend se sirve desde el mismo origen (en dev, Vite proxea), así que CORS
+// solo hace falta para los orígenes propios. Antes respondía a cualquiera.
+const allowedOrigins = new Set([
+  config.appBaseUrl,
+  config.techassetPublicUrl,
+  'http://localhost:5173', 'http://127.0.0.1:5173',
+  'http://localhost:8000', 'http://127.0.0.1:8000'
+].filter(Boolean).map(value => { try { return new URL(value).origin; } catch { return ''; } }).filter(Boolean));
+app.use(cors({ origin: (origin, done) => done(null, !origin || allowedOrigins.has(origin)) }));
 app.use(cookieParser());
 app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
-app.use('/uploads', express.static(path.join(config.rootDir, 'data', 'uploads')));
+// Adjuntos: viven en /uploads/<categoría>/<SEDE>/<archivo> y solo los ve quien
+// tiene sesión con acceso a esa sede (comprobantes de caja chica, fotos de
+// inventario, PDFs de tickets...). Los logos de sede quedan públicos porque
+// van en mails y antes del login.
+const serveUploads = express.static(path.join(config.rootDir, 'data', 'uploads'), { maxAge: '7d', immutable: true });
+app.use('/uploads', (req, res, next) => {
+  const [category, siteSegment, ...rest] = req.path.split('/').filter(Boolean);
+  if (category === 'site-logos') return serveUploads(req, res, next);
+  const session = getUserSession(req);
+  if (!session) return res.status(401).type('text').send('Necesitás iniciar sesión.');
+  // Adjuntos viejos sin carpeta de sede (/uploads/<categoría>/<archivo>): basta con la sesión.
+  if (!rest.length) return serveUploads(req, res, next);
+  const site = normalizeSiteCode(siteSegment);
+  const allowed = isSuperadmin(session.user) || session.sites.some(item => normalizeSiteCode(item.siteCode) === site);
+  if (!allowed) return res.status(403).type('text').send('No tenés permiso para esta sede.');
+  return serveUploads(req, res, next);
+});
 
 // Los GET del API se revalidan siempre, pero con ETag: si el cuerpo no cambió
 // desde el último poll, el navegador recibe un 304 vacío en vez del JSON entero.
@@ -61,6 +88,20 @@ app.use('/api', authRouter);
 app.use('/api', googleAuthRouter);
 app.use('/', publicCalendarRouter);
 app.use('/api', authMiddleware);
+// El operador de cada movimiento es quien tiene la sesión, no lo que diga el
+// body: antes el historial registraba cualquier nombre que mandara el cliente.
+app.use('/api', (req, _res, next) => {
+  const method = String(req.method || 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD') {
+    const nombre = req.user?.nombre || req.user?.email || '';
+    if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
+      req.body.operator = nombre;
+      req.body.operador = nombre;
+    }
+    if (req.query?.operator) req.query.operator = nombre;
+  }
+  next();
+});
 app.use('/api', sitesRouter);
 app.use('/api', invitesRouter);
 app.use('/api', adminUsersRouter);
@@ -75,6 +116,7 @@ app.use('/api', remindersRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.
 // (sitesRouter ya valida manager/superadmin por endpoint.)
 app.use('/api', requireEditor);
+app.use('/api', requireModuleEditor);
 app.use('/api', devicesRouter);
 app.use('/api', loansRouter);
 app.use('/api', inventoryRouter);

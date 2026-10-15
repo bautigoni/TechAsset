@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
 import { getAppSetting, setAppSetting } from '../db.js';
 import { sendMail } from '../services/mail.service.js';
+import { isSiteManager, isSuperadmin } from '../services/siteContext.service.js';
 
 const MAIL_KEYS = ['smtpServer', 'smtpPort', 'smtpUser', 'smtpAppPassword', 'mailFrom', 'mailSubject', 'modoPrueba', 'microsoftLoginUrl'];
 
@@ -518,6 +519,8 @@ async function sendViaConfiguredMail(rows) {
 }
 
 toolsRouter.post('/tools/credentials365/send', async (req, res, next) => {
+  // Manda contraseñas reales por mail: solo administradores de la sede.
+  if (!isSiteManager(req)) return res.status(403).json({ ok: false, error: 'Solo un administrador de la sede puede enviar credenciales.' });
   try {
     pruneOldJobs();
     const csv = await getCsvFromRequest(req);
@@ -623,6 +626,8 @@ toolsRouter.get('/settings/mail', (_req, res) => {
 });
 
 toolsRouter.patch('/settings/mail', (req, res) => {
+  // La configuración de mail es global (la usan todas las sedes): solo superadmin.
+  if (!isSuperadmin(req.user)) return res.status(403).json({ ok: false, error: 'Solo un superadmin puede cambiar la configuración de mail.' });
   const body = req.body || {};
   const allowed = {
     smtpServer: 'smtpServer',

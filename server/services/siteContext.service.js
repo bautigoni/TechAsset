@@ -168,6 +168,31 @@ export function requireEditor(req, res, next) {
   return res.status(403).json({ ok: false, error: 'Tu rol es de solo consulta: no podés modificar datos en esta sede.' });
 }
 
+// Qué módulo protege cada escritura, por prefijo de ruta. Los routers nuevos
+// (tickets, tareas, caja chica...) ya chequean canEditModule adentro; estos son
+// los que solo pasaban por requireEditor, que deja escribir en TODO a cualquier
+// rol con algún permiso de edición (un "Profesor" podía borrar dispositivos).
+const MODULE_BY_WRITE_PREFIX = [
+  [/^\/(devices|device-groups|lifecycle)\b/, 'devices'],
+  [/^\/(loans|prestamos|devoluciones|photo-passes)\b/, 'loans'],
+  [/^\/inventory\b/, 'inventory'],
+  [/^\/agenda\b/, 'agenda'],
+  [/^\/(classrooms|classroom-categories)\b/, 'classrooms'],
+  [/^\/(internal-notes|tareas)\b/, 'tasks'],
+  [/^\/(teacher-schedules|recess-schedules)\b/, 'schedules'],
+  [/^\/quick-links\b/, 'quickaccess'],
+  [/^\/tools\b/, 'tools']
+];
+export function requireModuleEditor(req, res, next) {
+  const method = String(req.method || 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
+  const match = MODULE_BY_WRITE_PREFIX.find(([rx]) => rx.test(req.path));
+  if (match && !canEditModule(req, match[1])) {
+    return res.status(403).json({ ok: false, error: 'Tu rol no tiene permiso para modificar este módulo.' });
+  }
+  return next();
+}
+
 export function getAllowedSitesForAllowedUser(allowed) {
   const rows = getDb().prepare(`
     SELECT aus.site_code AS siteCode, aus.site_role AS siteRole, aus.turno, aus.is_default AS isDefault,

@@ -1,5 +1,6 @@
 import type { Device, Movement } from '../types';
 import { apiGet, apiSend, siteHeaders } from './apiClient';
+import { getActiveSiteCode } from './activeSite';
 
 type DevicesResponse = { ok: true; items: Device[]; loadedAt: string; source: string; diagnostics?: Record<string, unknown> };
 type DevicesDiagnosticsResponse = { ok: true; diagnostics: Record<string, unknown> };
@@ -11,7 +12,7 @@ type DevicesImportResponse = {
 const devicesRequests = new Map<string, Promise<DevicesResponse>>();
 
 function activeSiteKey() {
-  return localStorage.getItem('techasset_active_site') || 'NFPT';
+  return getActiveSiteCode();
 }
 
 export function getDevices(options: { force?: boolean; wait?: boolean } = {}) {

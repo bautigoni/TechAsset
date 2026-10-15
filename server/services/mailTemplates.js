@@ -282,4 +282,25 @@ Si necesitás recuperar el acceso, contactá al equipo TIC de tu sede.
   return { subject, html, text };
 }
 
+// ─────────────────────────────────────────────────────────────────────
+//  Contraseña: link de un solo uso para crearla o cambiarla
+// ─────────────────────────────────────────────────────────────────────
+export function buildPasswordLinkMail({ nombre, url, firstTime }) {
+  const subject = firstTime ? 'Creá tu contraseña de TechAsset' : 'Cambiá tu contraseña de TechAsset';
+  const html = shell({
+    title: subject,
+    body: `
+      <h1 style="margin:0 0 8px;font-size:24px;color:#ffffff;">${escapeHtml(firstTime ? 'Creá tu contraseña' : 'Cambiá tu contraseña')}</h1>
+      <p style="margin:0 0 22px;color:#cbd5e1;font-size:15px;line-height:1.5;">
+        Hola <strong>${escapeHtml(nombre)}</strong>, alguien pidió ${firstTime ? 'crear la contraseña' : 'cambiar la contraseña'} de tu cuenta de TechAsset.
+        El link vale por 1 hora y se puede usar una sola vez.
+      </p>
+      ${ctaButton(url, firstTime ? 'Crear contraseña' : 'Cambiar contraseña')}
+      <p style="margin:22px 0 0;color:#9ca3af;font-size:13px;">Si no fuiste vos, ignorá este mail: tu cuenta no cambia.</p>
+    `
+  });
+  const text = `Hola ${nombre},\n\nPara ${firstTime ? 'crear' : 'cambiar'} tu contraseña de TechAsset entrá a:\n${url}\n\nEl link vale por 1 hora y es de un solo uso. Si no fuiste vos, ignorá este mail.\n\n— TechAsset`;
+  return { subject, html, text };
+}
+
 export { appUrl, approvalUrl };

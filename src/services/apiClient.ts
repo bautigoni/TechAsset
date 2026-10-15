@@ -1,5 +1,28 @@
+import { getActiveSiteCode } from './activeSite';
+
+/** Error de la API con el status y el cuerpo, para quien necesite más que el mensaje. */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number, readonly data: Record<string, unknown> = {}) {
+    super(message);
+  }
+}
+
+export const SESSION_EXPIRED_EVENT = 'techasset:session-expired';
+
+// Un 401 fuera de /api/auth es una sesión vencida o cerrada en otro lado: se
+// avisa una vez a la app para que mande al login, en vez de que cada pantalla
+// muestre "HTTP 401" por su cuenta.
+function checkResponse(url: string, response: Response, data: Record<string, unknown> | undefined) {
+  if (response.status === 401 && !url.startsWith('/api/auth/')) {
+    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+  }
+  if (!response.ok || data?.ok === false) {
+    throw new ApiError(String(data?.error || `HTTP ${response.status}`), response.status, data || {});
+  }
+}
+
 function headers(extra?: HeadersInit): HeadersInit {
-  const siteCode = localStorage.getItem('techasset_active_site') || 'NFPT';
+  const siteCode = getActiveSiteCode();
   return { Accept: 'application/json', 'X-Site-Code': siteCode, ...(extra || {}) };
 }
 
@@ -13,7 +36,7 @@ export async function apiGet<T>(url: string): Promise<T> {
   // volvía a bajar el JSON completo en cada poll: ~1 MB por minuto por pestaña.
   const response = await fetch(url, { cache: 'no-cache', headers: headers() });
   const data = await readApiResponse(response);
-  if (!response.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${response.status}`);
+  checkResponse(url, response, data);
   return data as T;
 }
 
@@ -24,7 +47,7 @@ export async function apiSend<T>(url: string, method: 'POST' | 'PUT' | 'PATCH' |
     body: body === undefined ? undefined : JSON.stringify(body)
   });
   const data = await readApiResponse(response);
-  if (!response.ok || data?.ok === false) throw new Error(data?.error || `HTTP ${response.status}`);
+  checkResponse(url, response, data);
   return data as T;
 }
 

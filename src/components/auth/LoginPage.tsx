@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AuthUser, SiteInfo } from '../../types';
-import { getGoogleOAuthConfig, login, register } from '../../services/authApi';
+import { confirmPasswordLink, getGoogleOAuthConfig, login, register, requestPasswordLink } from '../../services/authApi';
+import { ApiError } from '../../services/apiClient';
 import { useTabPill } from '../../hooks/useTabPill';
 import { useCardResize } from '../../hooks/useCardResize';
 
@@ -34,6 +35,7 @@ function translateGoogleError(slug: string): string {
     case 'not_authorized': return 'Tu mail de Google no está autorizado. Pedile a tu administrador que te agregue como usuario permitido.';
     case 'account_pending': return 'Tu cuenta está pendiente de aprobación.';
     case 'account_disabled': return 'Tu cuenta fue rechazada o está desactivada.';
+    case 'session_expired': return 'Tu sesión venció. Volvé a ingresar.';
     default: return 'No pudimos iniciar sesión con Google. Probá de nuevo.';
   }
 }
@@ -54,6 +56,9 @@ export function LoginPage({ mode, onMode, onReady }: {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  // Token del link de contraseña que llega por mail (?password=...).
+  const [passwordToken, setPasswordToken] = useState(() => new URLSearchParams(window.location.search).get('password') || '');
+  const [passwordRepeat, setPasswordRepeat] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -61,7 +66,7 @@ export function LoginPage({ mode, onMode, onReady }: {
     if (fromUrl) setCode(fromUrl.toUpperCase());
     const errSlug = params.get('error');
     if (errSlug) setError(translateGoogleError(errSlug));
-    if (fromUrl || errSlug) {
+    if (fromUrl || errSlug || params.get('password')) {
       window.history.replaceState(null, '', window.location.pathname);
     }
   }, []);
@@ -84,11 +89,78 @@ export function LoginPage({ mode, onMode, onReady }: {
       if (!session.authenticated || !session.user || !session.sites?.length) throw new Error('No se pudo iniciar sesión.');
       onReady({ user: session.user, sites: session.sites });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión.');
+      // Cuenta sin contraseña: no es un error, le llegó un link por mail.
+      if (err instanceof ApiError && err.data.passwordLinkSent) setSuccess(err.message);
+      else setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión.');
     } finally {
       setBusy(false);
     }
   };
+
+  const forgotPassword = async () => {
+    setError('');
+    setSuccess('');
+    if (!email.includes('@')) {
+      setError('Escribí tu mail arriba y tocá de nuevo "Olvidé mi contraseña".');
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await requestPasswordLink(email);
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo pedir el link.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitNewPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+    if (password !== passwordRepeat) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await confirmPasswordLink(passwordToken, password);
+      setPasswordToken('');
+      setPasswordRepeat('');
+      setPassword('');
+      if (response.email) setEmail(response.email);
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la contraseña.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (passwordToken) {
+    return (
+      <main className="auth">
+        <div className="auth-bg-orb" aria-hidden="true" />
+        <form className="auth-panel" onSubmit={submitNewPassword}>
+          <div className="auth-heading">
+            <h1>Elegí tu contraseña</h1>
+            <p>Mínimo 6 caracteres. Después entrás con tu mail y esta contraseña.</p>
+          </div>
+          <div className="auth-fields">
+            <label>Contraseña nueva
+              <input className="auth-input" type="password" required minLength={6} autoFocus value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" />
+            </label>
+            <label>Repetila
+              <input className="auth-input" type="password" required minLength={6} value={passwordRepeat} onChange={event => setPasswordRepeat(event.target.value)} autoComplete="new-password" />
+            </label>
+            {error && <div className="auth-msg is-error">{error}</div>}
+            <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar contraseña'}</button>
+          </div>
+        </form>
+      </main>
+    );
+  }
 
   const submitRegister = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -144,7 +216,11 @@ export function LoginPage({ mode, onMode, onReady }: {
           </label>
           <label>Contraseña
             <input className="auth-input" type="password" required minLength={6} value={password} onChange={event => setPassword(event.target.value)} placeholder="••••••••" autoComplete={activeMode === 'register' ? 'new-password' : 'current-password'} />
-            {activeMode === 'login' && <span className="auth-hint">¿Primera vez? La contraseña que pongas queda registrada para tu cuenta.</span>}
+            {activeMode === 'login' && (
+              <button type="button" className="auth-link" onClick={() => void forgotPassword()} disabled={busy}>
+                Olvidé mi contraseña / es mi primera vez
+              </button>
+            )}
           </label>
           {activeMode === 'register' && (
             <label>Código de invitación

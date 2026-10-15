@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AuthUser, Device, Movement, SiteInfo, TaskState, ViewKey } from './types';
 import { Sidebar, visibleNavItems } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
@@ -18,6 +18,8 @@ import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
 import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
+import { setActiveSiteCode } from './services/activeSite';
+import { SESSION_EXPIRED_EVENT } from './services/apiClient';
 import { activeSiteRole, canViewModule, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
 import { parseScannedCode, resolveDeviceMatches } from './utils/normalizeSearch';
@@ -103,7 +105,6 @@ export function App() {
       const site = allowed || fallback;
       if (fromUrl && !allowed) setView('dashboard');
       setActiveSite(site.siteCode);
-      localStorage.setItem('techasset_active_site', site.siteCode);
     };
 
     // Arranque optimista: si quedó la última sesión guardada, se pinta la app
@@ -176,13 +177,18 @@ export function App() {
     if (window.location.pathname !== next) window.history.replaceState(null, '', next);
   }, [activeSite, view, user]);
 
+  // La sede de los requests se fija en layout effect: corre antes que los
+  // useEffect de los hijos, así ninguna vista pide datos con la sede anterior.
+  useLayoutEffect(() => {
+    if (activeSite) setActiveSiteCode(activeSite);
+  }, [activeSite]);
+
   // La recarga completa de datos, en cambio, solo al cambiar de sede o de usuario.
   // Antes se disparaba en cada cambio de vista: un /api/devices?refresh=1 (que
   // fuerza el merge completo del inventario) + agenda + tareas + movimientos cada
   // vez que tocabas el menú. El auto-refresh ya mantiene todo fresco.
   useEffect(() => {
     if (!user || !activeSite) return;
-    localStorage.setItem('techasset_active_site', activeSite);
     void refresh({ force: true });
     void agenda.refresh();
     void tasks.refresh();
@@ -376,6 +382,21 @@ export function App() {
     }
   };
 
+  // Sesión vencida (cualquier 401 de la API): limpiar y mandar al login con aviso.
+  useEffect(() => {
+    const onExpired = () => {
+      if (!user) return;
+      clearSessionCache();
+      setUser(null);
+      setSites([]);
+      setActiveSite('');
+      setAuthMode('login');
+      window.history.replaceState(null, '', '/login?error=session_expired');
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [user]);
+
   const handleLogout = async () => {
     await logoutSession().catch(() => undefined);
     clearSessionCache();
@@ -454,7 +475,6 @@ export function App() {
       setSites(session.sites);
       const site = session.sites.find(item => item.isDefault) || session.sites[0];
       setActiveSite(site.siteCode);
-      localStorage.setItem('techasset_active_site', site.siteCode);
       // Recién logueado: dejar la sesión recordada para que el próximo ingreso
       // pinte de una en vez de esperar la verificación.
       writeSessionCache(session.user, session.sites);
