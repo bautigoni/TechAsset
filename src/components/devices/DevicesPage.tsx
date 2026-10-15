@@ -13,6 +13,7 @@ import { DeviceTable } from './DeviceTable';
 import { DeviceGroupsManager } from './DeviceGroupsManager';
 import { AddDeviceModal } from './AddDeviceModal';
 import { downloadDevicesCsv, importDevicesFromCsv } from '../../services/devicesApi';
+import { promptDialog } from '../layout/Feedback';
 
 type DeviceFilter = string;
 type DeviceSort = 'default' | 'operational';
@@ -82,7 +83,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
       setMessage({ tone: 'error', text: 'Modo consulta activo.' });
       return;
     }
-    const csvUrl = window.prompt('Pegá la URL CSV publicada de esta sede. Si dejás vacío, se usa la URL configurada en la sede.');
+    const csvUrl = await promptDialog({ title: 'Importar dispositivos', message: 'Pegá la URL CSV publicada de esta sede. Si la dejás vacía se usa la URL configurada en la sede.', label: 'URL del CSV', inputType: 'url', placeholder: 'https://docs.google.com/...', confirmLabel: 'Importar', required: false });
     if (csvUrl === null) return;
     setMessage({ tone: 'info', text: 'Importando dispositivos a la base local...' });
     try {

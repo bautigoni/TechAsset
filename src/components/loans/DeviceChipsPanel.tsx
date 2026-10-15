@@ -6,6 +6,7 @@ import { Button } from '../layout/Button';
 import { CollapsiblePanel, SelectModeToggle, SelectionBar, batchResultMessage, useChipSelection } from './ChipPanelKit';
 import { TIME_HM, formatDate } from '../../utils/formatters';
 import type { LoanBatchResponse } from '../../services/loansApi';
+import { confirmDialog } from '../layout/Feedback';
 
 /**
  * Grilla de equipos por tipo dentro de Préstamos, con la misma mecánica que los
@@ -90,7 +91,7 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onS
 
   const returnSelected = async () => {
     const list = toReturn;
-    if (list.length > 1 && !window.confirm(`¿Devolver ${list.length} equipos?`)) return;
+    if (list.length > 1 && !(await confirmDialog({ title: `Devolver ${list.length} equipos`, message: list.map(device => device.etiqueta).join(', '), confirmLabel: 'Devolver' }))) return;
     exitSelection();
     await returnDevices(list);
   };

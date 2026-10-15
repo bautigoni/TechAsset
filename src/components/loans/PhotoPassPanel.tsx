@@ -8,6 +8,7 @@ import { Modal } from '../layout/Modal';
 import { PersonSuggestInput } from './PersonSuggestInput';
 import { CollapsiblePanel, SelectModeToggle, SelectionBar, batchResultMessage, useChipSelection } from './ChipPanelKit';
 import { TIME_HM, formatDate } from '../../utils/formatters';
+import { confirmDialog } from '../layout/Feedback';
 
 /**
  * Cartelitos de autorización de fotos, dentro de Préstamos.
@@ -97,7 +98,7 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
 
   const returnSelected = async () => {
     const list = toReturn;
-    if (list.length > 1 && !window.confirm(`¿Devolver ${list.length} cartelitos?`)) return;
+    if (list.length > 1 && !(await confirmDialog({ title: `Devolver ${list.length} cartelitos`, message: list.map(pass => pass.numero).join(', '), confirmLabel: 'Devolver' }))) return;
     exitSelection();
     await runBatch(list, 'Se devolvieron', pass => returnPhotoPass(pass.numero));
   };

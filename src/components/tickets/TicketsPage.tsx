@@ -13,6 +13,7 @@ import { GooeyMenu } from '../layout/GooeyMenu';
 import { SkeletonPanel } from '../layout/Skeleton';
 import { useCardResize } from '../../hooks/useCardResize';
 import { LayoutTemplate, TicketPlus } from 'lucide-react';
+import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
 const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
@@ -249,8 +250,12 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   };
 
   const remove = async (ticket: Ticket) => {
-    if (!window.confirm(`¿Borrar el ticket #${ticket.numero}?`)) return;
-    await deleteTicket(ticket.id).catch(() => {});
+    if (!(await confirmDialog({ title: `Borrar ticket #${ticket.numero}`, message: ticket.titulo || undefined, confirmLabel: 'Borrar', danger: true }))) return;
+    try {
+      await deleteTicket(ticket.id);
+    } catch (reason) {
+      toast({ message: errorMessage(reason, 'No se pudo borrar el ticket.'), tone: 'error' });
+    }
     load();
   };
 

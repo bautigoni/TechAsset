@@ -13,6 +13,7 @@ import { InventoryCategoryGrid } from './InventoryCategoryGrid';
 import { conditionClass, deviceToEntry, groupEntries, isReviewFresh, itemToEntry, reviewLabel, type Entry } from './inventoryEntries';
 import { InventoryTree } from './InventoryTree';
 import { InventoryDetail } from './InventoryDetail';
+import { confirmDialog } from '../layout/Feedback';
 
 type Segment = 'todo' | 'equipo' | 'recurso';
 // Los KPI no son decorativos: cada uno es el filtro de lo que está contando.
@@ -210,7 +211,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   };
 
   const hideItem = async (item: InventoryItem) => {
-    if (!window.confirm(`¿Ocultar ${item.nombre}?`)) return;
+    if (!(await confirmDialog({ title: 'Ocultar ítem', message: `¿Ocultar ${item.nombre} del inventario?`, confirmLabel: 'Ocultar', danger: true }))) return;
     setError('');
     try {
       await deleteInventoryItem(item.id);

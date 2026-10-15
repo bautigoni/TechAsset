@@ -5,6 +5,7 @@ import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
 import { getOperationalAlias } from '../../utils/classifyDevice';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
+import { confirmDialog } from '../layout/Feedback';
 
 export function DeviceGroupsManager({
   devices,
@@ -109,7 +110,7 @@ export function DeviceGroupsManager({
             {selected && !consultationMode && (
               <Button
                 onClick={async () => {
-                  if (confirm(`¿Eliminar ${selected.name}?`)) {
+                  if (await confirmDialog({ title: 'Eliminar grupo', message: `¿Eliminar el grupo ${selected.name}? Los equipos no se borran.`, confirmLabel: 'Eliminar', danger: true })) {
                     await deleteDeviceGroup(selected.id);
                     await refresh();
                     edit(null);

@@ -12,6 +12,7 @@ import {
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
+import { confirmDialog } from '../layout/Feedback';
 
 const STATUSES: SuggestionStatus[] = ['Proposed', 'Under Review', 'Planned', 'In Progress', 'Implemented', 'Rejected'];
 const STATUS_LABEL: Record<SuggestionStatus, string> = {
@@ -249,7 +250,7 @@ export function SuggestionsPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (window.confirm('¿Eliminar esta sugerencia?')) {
+                    if (await confirmDialog({ title: 'Eliminar sugerencia', message: '¿Eliminar esta sugerencia y sus votos?', confirmLabel: 'Eliminar', danger: true })) {
                       await deleteSuggestion(item.id);
                       await load();
                     }

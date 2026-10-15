@@ -5096,3 +5096,25 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Avisos de la app (Feedback.tsx): apilados abajo a la derecha, arriba de la
+   barra de navegacion en mobile. La entrada/salida es la receta .t-toast. */
+.app-toasts{position:fixed;right:18px;bottom:18px;z-index:120;display:grid;gap:8px;justify-items:end;pointer-events:none;max-width:min(380px,calc(100vw - 32px))}
+.app-toast{pointer-events:auto;display:flex;align-items:center;gap:10px;min-width:0;max-width:100%;padding:11px 12px 11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--panel);color:var(--text);box-shadow:0 14px 40px rgba(0,0,0,.4);font-size:13.5px;line-height:1.4}
+.app-toast.tone-ok{border-color:color-mix(in srgb,var(--green) 55%,var(--border))}
+.app-toast.tone-warn{border-color:color-mix(in srgb,var(--yellow) 60%,var(--border))}
+.app-toast.tone-error{border-color:color-mix(in srgb,var(--red) 60%,var(--border))}
+.app-toast-message{min-width:0;overflow-wrap:anywhere}
+.app-toast-action{appearance:none;flex:0 0 auto;border:1px solid var(--blue);background:transparent;color:var(--text);font-weight:650;font-size:12.5px;padding:5px 10px;border-radius:8px;cursor:pointer}
+.app-toast-action:hover{background:color-mix(in srgb,var(--blue) 18%,transparent)}
+.app-toast-close{appearance:none;flex:0 0 auto;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;padding:2px 4px;cursor:pointer}
+.app-toast-close:hover{color:var(--text)}
+.feedback-dialog .feedback-message{margin:0;color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
+@media (max-width:980px){
+  .app-toasts{left:16px;right:16px;bottom:calc(88px + env(safe-area-inset-bottom,0px));justify-items:stretch;max-width:none}
+}
+/* Foco visible de teclado en toda la app: antes casi ningun control lo tenia
+   (.input:focus incluso lo sacaba) y navegar con Tab era a ciegas. */
+:where(button,a,input,select,textarea,[role="button"],[tabindex]):focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.modal-card:focus{outline:none}

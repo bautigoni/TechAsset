@@ -7,6 +7,7 @@ import { ScannerPanel } from './ScannerPanel';
 import { ScanMessage } from './ScanMessage';
 import { getSiteSettings } from '../../services/authApi';
 import { getActiveLoanAccessories, getLoanSuggestions, type LoanBatchResponse, type LoanSuggestion } from '../../services/loansApi';
+import { confirmDialog } from '../layout/Feedback';
 
 type ScanItem = {
   id: string;
@@ -286,11 +287,11 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
     setScanMessage(null);
   };
 
-  const cancelContinuousScan = () => {
-    setContinuousScan(false);
-    if (scanItems.length && !window.confirm('¿Querés conservar la lista de escaneados?')) {
+  const cancelContinuousScan = async () => {
+    if (scanItems.length && !(await confirmDialog({ title: 'Salir del escaneo continuo', message: `Hay ${scanItems.length} equipos en la lista. ¿Los conservás para la próxima vez?`, confirmLabel: 'Conservar lista', cancelLabel: 'Vaciar lista' }))) {
       setScanItems([]);
     }
+    setContinuousScan(false);
     setScanMessage(null);
   };
 

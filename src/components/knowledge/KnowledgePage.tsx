@@ -10,6 +10,7 @@ import {
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
+import { confirmDialog } from '../layout/Feedback';
 
 const EMPTY: Partial<KnowledgeArticle> = { title: '', content: '', category: 'General', tags: [], attachments: [] };
 export function KnowledgePage({ consultationMode }: { consultationMode: boolean }) {
@@ -107,7 +108,7 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
               <Button
                 disabled={consultationMode}
                 onClick={async () => {
-                  if (!window.confirm(`¿Eliminar el artículo "${item.title}"?`)) return;
+                  if (!(await confirmDialog({ title: 'Eliminar artículo', message: `¿Eliminar el artículo "${item.title}"?`, confirmLabel: 'Eliminar', danger: true }))) return;
                   await deleteKnowledgeArticle(item.id);
                   await load();
                 }}

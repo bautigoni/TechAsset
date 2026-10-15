@@ -10,6 +10,7 @@ import {
 } from '../../services/schedulesApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { confirmDialog } from '../layout/Feedback';
 
 const DAY_NAMES = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const LEVEL_OPTIONS: Array<{ value: SchoolLevel; label: string; short: string }> = [
@@ -207,6 +208,7 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
                               <button
                                 disabled={consultationMode}
                                 onClick={async () => {
+                                  if (!(await confirmDialog({ title: 'Borrar horario', message: 'Se borra este bloque del horario docente.', confirmLabel: 'Borrar', danger: true }))) return;
                                   await deleteTeacherSchedule(row.id);
                                   await refresh();
                                 }}

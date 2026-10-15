@@ -6,6 +6,7 @@ import { Button } from '../layout/Button';
 import { SelectField } from '../layout/SelectField';
 import { SkeletonLine, SkeletonPanel } from '../layout/Skeleton';
 import { conditionClass } from './inventoryEntries';
+import { confirmDialog } from '../layout/Feedback';
 
 const CONDITION_OPTIONS = [{ value: '', label: 'Sin revisar' }, ...CONDITION_VALUES.map(value => ({ value, label: value }))];
 // Tope de seguridad para el alta en lote: nadie va a cargar 500 unidades de una.
@@ -152,8 +153,8 @@ export function InventoryUnits({ item, consultationMode, onItemChange }: {
                   onChange={setDraft}
                   onSubmit={() => void run(() => updateInventoryUnit(unit.id, draft))}
                   onCancel={() => setEditing(null)}
-                  onDelete={() => {
-                    if (!window.confirm(`¿Quitar la unidad #${unit.numero || unit.id}?`)) return;
+                  onDelete={async () => {
+                    if (!(await confirmDialog({ title: 'Quitar unidad', message: `¿Quitar la unidad #${unit.numero || unit.id}?`, confirmLabel: 'Quitar', danger: true }))) return;
                     void run(() => deleteInventoryUnit(unit.id));
                   }}
                 />

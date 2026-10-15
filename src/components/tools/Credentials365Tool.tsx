@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../layout/Button';
 import { downloadC365Template, fetchToolsConfig, previewC365, sendC365, uploadC365Csv } from '../../services/toolsApi';
+import { confirmDialog } from '../layout/Feedback';
 
 const REQUIRED = ['Nombre para mostrar', 'Nombre de usuario', 'mail', 'Contraseña', 'Sede', 'Licencias'];
 const displayColumn = (value: string) => value;
@@ -79,7 +80,7 @@ export function Credentials365Tool() {
   const onSend = async () => {
     if (!csv) { setError('Subí un CSV primero'); return; }
     if (!modoPrueba) {
-      const ok = window.confirm(`Vas a enviar credenciales reales a ${validos} destinatario(s). ${invalidos} se descartan por invalidos. Confirmas el envio?`);
+      const ok = await confirmDialog({ title: 'Enviar credenciales reales', message: `Vas a mandar credenciales reales por mail a ${validos} destinatario(s). ${invalidos} se descartan por inválidos.`, confirmLabel: `Enviar a ${validos}`, danger: true });
       if (!ok) return;
     }
     reset();

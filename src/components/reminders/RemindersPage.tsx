@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Reminder } from '../../types';
 import { completeReminder, createReminder, deleteReminder, getReminders, postponeReminder } from '../../services/remindersApi';
 import { Button } from '../layout/Button';
+import { confirmDialog, errorMessage, promptDialog, toast } from '../layout/Feedback';
 
 const initial = {
   title: '',
@@ -135,18 +136,25 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
                   <Button
                     disabled={consultationMode}
                     onClick={async () => {
-                      const value = prompt('Nueva fecha y hora (YYYY-MM-DD HH:mm)');
-                      if (value) {
-                        await postponeReminder(item.id, new Date(value).toISOString());
-                        await refresh();
+                      const value = await promptDialog({ title: 'Posponer recordatorio', message: item.title, label: 'Nueva fecha y hora', inputType: 'datetime-local', initial: nextHourLocal(), confirmLabel: 'Posponer' });
+                      if (!value) return;
+                      const date = new Date(value);
+                      if (Number.isNaN(date.getTime())) return toast({ message: 'La fecha no es válida.', tone: 'error' });
+                      try {
+                        await postponeReminder(item.id, date.toISOString());
+                      } catch (reason) {
+                        toast({ message: errorMessage(reason, 'No se pudo posponer.'), tone: 'error' });
                       }
+                      await refresh();
                     }}
                   >
                     Posponer
                   </Button>
                   <Button
                     disabled={consultationMode}
+                    aria-label={`Borrar recordatorio ${item.title}`}
                     onClick={async () => {
+                      if (!(await confirmDialog({ title: 'Borrar recordatorio', message: item.title, confirmLabel: 'Borrar', danger: true }))) return;
                       await deleteReminder(item.id);
                       await refresh();
                     }}
@@ -161,4 +169,12 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
       </div>
     </section>
   );
+}
+
+// Valor inicial del selector de fecha: la próxima hora en punto, en hora local.
+function nextHourLocal() {
+  const date = new Date(Date.now() + 3600000);
+  date.setMinutes(0, 0, 0);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }

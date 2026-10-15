@@ -3,6 +3,7 @@ import type { TaskItem, TaskState } from '../types';
 import { createTask, deleteTask, getTasks, updateTask } from '../services/tasksApi';
 import { fetchShiftSettings } from '../services/operationsApi';
 import { isOverdue } from '../utils/dates';
+import { confirmDialog } from '../components/layout/Feedback';
 
 export function useTasks(operator: string) {
   const [items, setItems] = useState<TaskItem[]>([]);
@@ -84,6 +85,8 @@ export function useTasks(operator: string) {
   };
 
   const remove = async (id: string) => {
+    const task = items.find(entry => entry.id === id);
+    if (!(await confirmDialog({ title: 'Borrar tarea', message: task?.titulo || undefined, confirmLabel: 'Borrar', danger: true }))) return;
     await deleteTask(id, operator);
     await refresh();
   };

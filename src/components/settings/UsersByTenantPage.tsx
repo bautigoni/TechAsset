@@ -7,6 +7,7 @@ import { Button } from '../layout/Button';
 import { MailStatusChip } from './MailStatusChip';
 import { SkeletonPanel } from '../layout/Skeleton';
 import { formatDate } from '../../utils/formatters';
+import { confirmDialog } from '../layout/Feedback';
 
 /**
  * Panel de usuarios de todos los tenants, solo para superadmin.
@@ -52,7 +53,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
   useEffect(() => { void refresh(); }, []);
 
   const accion = async (user: TenantUser, action: AllowedUserAction, texto: string) => {
-    if (action === 'delete' && !window.confirm(`¿Dar de baja a ${user.email}? Se oculta sin borrar el historial.`)) return;
+    if (action === 'delete' && !(await confirmDialog({ title: 'Dar de baja', message: `¿Dar de baja a ${user.email}? Se oculta sin borrar el historial.`, confirmLabel: 'Dar de baja', danger: true }))) return;
     setBusy(user.id);
     setError('');
     setMessage('');

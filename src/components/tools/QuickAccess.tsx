@@ -4,6 +4,7 @@ import type { QuickLink } from '../../types';
 import { createQuickLink, deleteQuickLink, fetchQuickLinks, updateQuickLink } from '../../services/operationsApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { confirmDialog } from '../layout/Feedback';
 
 // Archivos servidos desde public/downloads: no son links configurables, son
 // parte de la app, por eso siguen acá y no en la base.
@@ -112,7 +113,7 @@ export function QuickAccess({ operator, consultationMode }: { operator: string; 
                     <a className="btn btn-primary" href={link.url} target="_blank" rel="noreferrer">Abrir</a>
                     {!consultationMode && <button className="btn btn-secondary" type="button" onClick={() => setEditing(link)}>Editar</button>}
                     {!consultationMode && <button className="btn btn-secondary" type="button" onClick={async () => {
-                      if (!window.confirm(`¿Borrar "${link.titulo}"?`)) return;
+                      if (!(await confirmDialog({ title: 'Borrar acceso', message: `¿Borrar "${link.titulo}"?`, confirmLabel: 'Borrar', danger: true }))) return;
                       await deleteQuickLink(link.id, operator);
                       await reload();
                     }}>Borrar</button>}

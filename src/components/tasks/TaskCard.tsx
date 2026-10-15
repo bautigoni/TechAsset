@@ -7,6 +7,7 @@ import { AnimatedNumber } from '../layout/AnimatedNumber';
 import { useMountTransition } from '../../hooks/useMountTransition';
 import { formatDdMm } from '../../utils/taskDate';
 import { createTaskComment, createTaskItem, deleteTaskItem, getTaskComments, updateTaskItem } from '../../services/tasksApi';
+import { toast } from '../layout/Feedback';
 
 export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
@@ -86,7 +87,14 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
                 }}
               />
               <span>{item.texto}</span>
-              <button type="button" disabled={consultationMode} onClick={async event => { event.preventDefault(); await deleteTaskItem(task.id, item.id, operator); await onRefresh?.(); }}>×</button>
+              <button type="button" disabled={consultationMode} aria-label={`Quitar subtarea ${item.texto}`} onClick={async event => {
+                event.preventDefault();
+                await deleteTaskItem(task.id, item.id, operator);
+                await onRefresh?.();
+                // Una subtarea se borra seguido y de a muchas: en vez de preguntar
+                // cada vez, se puede deshacer (la vuelve a crear con el mismo texto).
+                toast({ message: `Subtarea quitada: ${item.texto}`, action: { label: 'Deshacer', onClick: async () => { await createTaskItem(task.id, { texto: item.texto, operator }); await onRefresh?.(); } } });
+              }}>×</button>
             </label>
           ))}
         </div>

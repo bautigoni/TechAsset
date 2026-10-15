@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Reminder } from '../../types';
 import { completeReminder, createReminder, getReminders } from '../../services/remindersApi';
 import { Button } from '../layout/Button';
+import { promptDialog, toast, errorMessage } from '../layout/Feedback';
 
 export function RelatedReminders({
   type,
@@ -20,11 +21,20 @@ export function RelatedReminders({
     refresh().catch(() => undefined);
   }, [type, id]);
   const add = async () => {
-    const title = prompt(`Recordatorio para ${label}`);
+    // Antes eran dos prompt() nativos y una fecha tipeada a mano ("YYYY-MM-DD HH:mm")
+    // que en Safari/iPhone daba Invalid Date y rompía sin aviso.
+    const title = await promptDialog({ title: 'Nuevo recordatorio', message: label, label: 'Qué hay que recordar', confirmLabel: 'Siguiente' });
     if (!title) return;
-    const when = prompt('Fecha y hora (YYYY-MM-DD HH:mm)');
+    const when = await promptDialog({ title: 'Nuevo recordatorio', message: title, label: 'Fecha y hora', inputType: 'datetime-local', initial: nextHourLocal(), confirmLabel: 'Guardar' });
     if (!when) return;
-    await createReminder({ title, remindAt: new Date(when).toISOString(), relatedType: type, relatedId: id, relatedLabel: label });
+    const date = new Date(when);
+    if (Number.isNaN(date.getTime())) return toast({ message: 'La fecha no es válida.', tone: 'error' });
+    try {
+      await createReminder({ title, remindAt: date.toISOString(), relatedType: type, relatedId: id, relatedLabel: label });
+      toast({ message: 'Recordatorio guardado.', tone: 'ok' });
+    } catch (reason) {
+      toast({ message: errorMessage(reason, 'No se pudo guardar el recordatorio.'), tone: 'error' });
+    }
     await refresh();
   };
   return (
@@ -62,4 +72,12 @@ export function RelatedReminders({
       )}
     </section>
   );
+}
+
+// Valor inicial del selector de fecha: la próxima hora en punto, en hora local.
+function nextHourLocal() {
+  const date = new Date(Date.now() + 3600000);
+  date.setMinutes(0, 0, 0);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }

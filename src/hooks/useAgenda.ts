@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AgendaItem } from '../types';
 import { createAgenda, deleteAgenda, getAgenda, updateAgenda } from '../services/agendaApi';
+import { confirmDialog } from '../components/layout/Feedback';
 
 export function useAgenda(operator: string) {
   const [items, setItems] = useState<AgendaItem[]>([]);
@@ -41,7 +42,11 @@ export function useAgenda(operator: string) {
     return data.item;
   };
 
+  // Borrar una actividad no pedía confirmación: un clic de más la perdía.
   const remove = async (id: string) => {
+    const item = items.find(entry => entry.id === id);
+    const label = item ? [item.curso, item.actividad].filter(Boolean).join(' · ') : '';
+    if (!(await confirmDialog({ title: 'Borrar actividad', message: label || undefined, confirmLabel: 'Borrar', danger: true }))) return;
     await deleteAgenda(id, operator);
     await refresh();
   };

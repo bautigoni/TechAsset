@@ -4,6 +4,7 @@ import { Badge } from '../layout/Badge';
 import { Button } from '../layout/Button';
 import { getOperationalAlias } from '../../utils/classifyDevice';
 import { formatLoanDateTime, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
+import { confirmDialog } from '../layout/Feedback';
 
 type ActionMode = 'full' | 'dashboard';
 
@@ -125,7 +126,7 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
                   {actionMode !== 'dashboard' && onProfile && <Button className="mini-action-btn" onClick={() => onProfile(device)}>Ficha</Button>}
                   {onEdit && <Button className="mini-action-btn" onClick={() => onEdit(device)}>Editar</Button>}
                   {onDelete && actionMode !== 'dashboard' && <Button className="mini-action-btn device-delete-btn" disabled={deletingTag === device.etiqueta} onClick={async () => {
-                    if (!window.confirm(`¿Borrar ${device.etiqueta}? Se ocultará de la app sin borrar el historial.`)) return;
+                    if (!(await confirmDialog({ title: `Borrar ${device.etiqueta}`, message: 'Se oculta de la app sin borrar su historial. Se puede restaurar desde la papelera.', confirmLabel: 'Borrar', danger: true }))) return;
                     setDeletingTag(device.etiqueta);
                     try {
                       await onDelete(device);
