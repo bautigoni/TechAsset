@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Device, Movement, PreviousDayLoan } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
 import { formatLoanDateTime, formatTimeOnly, loanAgeDays, loanAgeLabel, loanAgeTone, formatDate } from '../../utils/formatters';
-import { getPreviousDayLoans } from '../../services/loansApi';
+import { getPreviousDayLoans, type LoanBatchResponse } from '../../services/loansApi';
 import { LoanForm } from './LoanForm';
 import { PhotoPassPanel } from './PhotoPassPanel';
 import { DeviceChipsPanel } from './DeviceChipsPanel';
@@ -18,7 +18,7 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
 
 type LoanActionResult = { synced?: boolean; message?: string } | void;
 
-export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, onProfile, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onProfile?: (device:Device)=>void; initialCode?: string }) {
+export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, onLendBatch, onReturnBatch, onProfile, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; onReturnBatch: (etiquetas: string[]) => Promise<LoanBatchResponse>; onProfile?: (device:Device)=>void; initialCode?: string }) {
   const [returnSeed, setReturnSeed] = useState(initialCode);
   const [batchSeed, setBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
   const [previousLoans, setPreviousLoans] = useState<PreviousDayLoan[]>([]);
@@ -82,10 +82,10 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <h3>Préstamo / devolución</h3>
             <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
           </div>
-          <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={returnSeed || initialCode} batchSeed={batchSeed} />
+          <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} initialCode={returnSeed || initialCode} batchSeed={batchSeed} />
           {/* Equipos y cartelitos van abajo del formulario, donde sobraba lugar,
               en vez de apretar la columna lateral. */}
-          <DeviceChipsPanel devices={devices} consultationMode={consultationMode} onReturn={onReturn} onSeedCode={seedLoanCode} onBatchLend={seedLoanBatch} />
+          <DeviceChipsPanel devices={devices} consultationMode={consultationMode} onReturnBatch={onReturnBatch} onSeedCode={seedLoanCode} onBatchLend={seedLoanBatch} />
           <PhotoPassPanel consultationMode={consultationMode} />
         </section>
         <div className="loans-side-stack">

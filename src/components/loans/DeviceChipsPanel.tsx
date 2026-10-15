@@ -5,8 +5,7 @@ import { getDeviceStateKey } from '../../utils/deviceState';
 import { Button } from '../layout/Button';
 import { CollapsiblePanel, SelectModeToggle, SelectionBar, batchResultMessage, useChipSelection } from './ChipPanelKit';
 import { TIME_HM, formatDate } from '../../utils/formatters';
-
-type LoanActionResult = { synced?: boolean; message?: string } | void;
+import type { LoanBatchResponse } from '../../services/loansApi';
 
 /**
  * Grilla de equipos por tipo dentro de Préstamos, con la misma mecánica que los
@@ -21,10 +20,10 @@ type LoanActionResult = { synced?: boolean; message?: string } | void;
  * No tiene API propia: dibuja los mismos `devices` que el resto de la página y
  * presta/devuelve por los mismos caminos, así que todo termina en la misma base.
  */
-export function DeviceChipsPanel({ devices, consultationMode, onReturn, onSeedCode, onBatchLend }: {
+export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onSeedCode, onBatchLend }: {
   devices: Device[];
   consultationMode: boolean;
-  onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>;
+  onReturnBatch: (etiquetas: string[]) => Promise<LoanBatchResponse>;
   onSeedCode: (etiqueta: string) => void;
   onBatchLend: (etiquetas: string[]) => void;
 }) {
@@ -73,14 +72,13 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturn, onSeedCo
     if (busy || !list.length) return;
     setBusyTags(new Set(list.map(device => device.etiqueta)));
     setMessage(null);
-    const errors: string[] = [];
-    for (const device of list) {
-      try {
-        const result = await onReturn({ etiqueta: device.etiqueta });
-        if (result && result.synced === false) errors.push(`${device.etiqueta}: ${result.message || 'no se pudo registrar'}`);
-      } catch (reason) {
-        errors.push(`${device.etiqueta}: ${reason instanceof Error ? reason.message : 'error'}`);
-      }
+    // Todo el lote en un solo request (antes: uno por equipo + recarga del inventario cada vez).
+    let errors: string[] = [];
+    try {
+      const response = await onReturnBatch(list.map(device => device.etiqueta));
+      errors = response.results.filter(item => !item.ok).map(item => `${item.etiqueta}: ${item.error || 'no se pudo registrar'}`);
+    } catch (reason) {
+      errors = [reason instanceof Error ? reason.message : 'No se pudo registrar la devolución.'];
     }
     setBusyTags(new Set());
     if (list.length === 1) {

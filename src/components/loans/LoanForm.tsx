@@ -6,7 +6,7 @@ import { Button } from '../layout/Button';
 import { ScannerPanel } from './ScannerPanel';
 import { ScanMessage } from './ScanMessage';
 import { getSiteSettings } from '../../services/authApi';
-import { getActiveLoanAccessories, getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
+import { getActiveLoanAccessories, getLoanSuggestions, type LoanBatchResponse, type LoanSuggestion } from '../../services/loansApi';
 
 type ScanItem = {
   id: string;
@@ -36,7 +36,7 @@ const DEFAULT_GRADE_OPTIONS = [
 const SCHOOL_LEVEL_OPTIONS = ['EP', 'ES'];
 const DEFAULT_ACCESSORIES = ['Cargador', 'Mouse', 'Bolso', 'Cable HDMI', 'Adaptador', 'Lápiz óptico', 'Auriculares'];
 
-export function LoanForm({ devices, onLend, onReturn, consultationMode, initialCode = '', batchSeed }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; consultationMode: boolean; initialCode?: string; batchSeed?: { etiquetas: string[]; nonce: number } }) {
+export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationMode, initialCode = '', batchSeed }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; consultationMode: boolean; initialCode?: string; batchSeed?: { etiquetas: string[]; nonce: number } }) {
   const [code, setCode] = useState('');
   const [person, setPerson] = useState('');
   const [role, setRole] = useState('');
@@ -374,20 +374,22 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
   const handleConfirmMultipleLoan = async () => {
     if (consultationMode || !validScanItems.length) return;
-    if (!person.trim() || !location.trim() || location === 'Seleccionar ubicación' || (selectedLocation?.requiresDetail && !locationDetail.trim()) || (requiresSchoolCourse && (!schoolLevel.trim() || !course.trim())) || (selectedReason?.requiresDetail && !reasonDetail.trim())) {
-      setScanMessage({ tone: 'error', text: 'Completá persona y ubicación antes de confirmar.' });
+    // Mismas validaciones que el préstamo suelto (antes el lote no pedía rol y el
+    // server lo rechazaba entero).
+    const validation = validateLoanFields();
+    if (validation) {
+      setScanMessage({ tone: 'error', text: validation });
       return;
     }
     setBusy(true);
     try {
-      const errors: string[] = [];
-      for (const item of validScanItems) {
-        try {
-          const result = await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment, accessories: loanAccessories });
-          if (result?.synced === false) errors.push(`${item.etiqueta}: ${result.message || 'no se pudo registrar'}`);
-        } catch (error) {
-          errors.push(`${item.etiqueta}: ${error instanceof Error ? error.message : 'error'}`);
-        }
+      // Un solo request para todo el lote.
+      let errors: string[] = [];
+      try {
+        const response = await onLendBatch({ etiquetas: validScanItems.map(item => item.etiqueta), person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment, accessories: loanAccessories });
+        errors = response.results.filter(item => !item.ok).map(item => `${item.etiqueta}: ${item.error || 'no se pudo registrar'}`);
+      } catch (error) {
+        errors = validScanItems.map(item => `${item.etiqueta}: ${error instanceof Error ? error.message : 'error'}`);
       }
       const okCount = validScanItems.length - errors.length;
       setScanMessage({

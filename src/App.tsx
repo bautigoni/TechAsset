@@ -15,7 +15,7 @@ import { useTasks } from './hooks/useTasks';
 import { useScrollReveal } from './hooks/useScrollReveal';
 import { useAutoRefresh } from './hooks/useAutoRefresh';
 import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
-import { lendDevice, returnDevice } from './services/loansApi';
+import { lendDevice, lendDevicesBatch, returnDevice, returnDevicesBatch, type LoanBatchResponse } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
 import { setActiveSiteCode } from './services/activeSite';
@@ -358,6 +358,27 @@ export function App() {
     }
   };
 
+  // Lotes: un request y un solo refresco al final, en vez de uno por equipo.
+  const onLendBatch = async (payload: Record<string, unknown> & { etiquetas: string[] }): Promise<LoanBatchResponse> => {
+    try {
+      const result = await lendDevicesBatch({ ...payload, operator });
+      await refresh({ force: true, wait: true });
+      return result;
+    } finally {
+      void refreshMovements(true);
+    }
+  };
+
+  const onReturnBatch = async (etiquetas: string[]): Promise<LoanBatchResponse> => {
+    try {
+      const result = await returnDevicesBatch(etiquetas, { operator });
+      await refresh({ force: true, wait: true });
+      return result;
+    } finally {
+      void refreshMovements(true);
+    }
+  };
+
   // Devolver desde una tabla (dashboard o dispositivos) resuelve en el acto en
   // vez de mandarte a Préstamos a repetir el equipo que ya elegiste.
   const returnFromTable = async (device: Device) => {
@@ -496,7 +517,7 @@ export function App() {
         <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
         {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
-        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onProfile={setProfile} initialCode={loanSeed} />}
+        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} />}
         {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
         {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
         {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}

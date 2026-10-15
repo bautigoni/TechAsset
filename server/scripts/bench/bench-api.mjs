@@ -156,6 +156,23 @@ try {
     console.log(`Verificación caché: prestar ${libre.etiqueta} -> "${afterLend}", devolver -> "${afterReturn}" => ${ok ? 'OK' : 'FALLA'}`);
     if (!ok) process.exitCode = 1;
   }
+
+  // Lotes: prestar y devolver varios equipos en un request.
+  const libres = devices.filter(item => /disponible|devuelto|^$/i.test(String(item.estado || '').trim())).slice(0, 3).map(item => item.etiqueta);
+  if (libres.length === 3) {
+    await stats('reset');
+    const lend = await send('/api/loans/lend-batch', { etiquetas: [...libres, 'D99999'], person: 'Bench', role: 'Otro', location: 'DOE' });
+    const lendQueries = (await stats('stats')).queries;
+    const lent = await Promise.all(libres.map(estadoDe));
+    await stats('reset');
+    const ret = await send('/api/loans/return-batch', { etiquetas: libres });
+    const returnQueries = (await stats('stats')).queries;
+    const back = await Promise.all(libres.map(estadoDe));
+    const ok = lend.done === 3 && lend.results.find(item => item.etiqueta === 'D99999')?.ok === false
+      && lent.every(estado => /prest/i.test(estado || '')) && ret.done === 3 && back.every(estado => !/prest/i.test(estado || ''));
+    console.log(`Verificación lotes: prestar 3 (+1 inexistente) en ${lendQueries} queries, devolver 3 en ${returnQueries} => ${ok ? 'OK' : 'FALLA'}`);
+    if (!ok) process.exitCode = 1;
+  }
 } finally {
   const exited = new Promise(resolve => child.once('exit', resolve));
   child.kill();
