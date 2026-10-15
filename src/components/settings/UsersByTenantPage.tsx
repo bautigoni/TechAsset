@@ -124,7 +124,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
       </div>
 
       {search.trim() && coincidenciasGlobales.length > 0 && (
-        <p className="muted" style={{ fontSize: 12 }}>
+        <p className="muted text-12">
           {coincidenciasGlobales.length} coincidencia{coincidenciasGlobales.length === 1 ? '' : 's'} en total:{' '}
           {[...new Set(coincidenciasGlobales.map(item => item.tenant))].join(', ')}
         </p>
@@ -158,7 +158,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
             <>
               <div className="card-head">
                 <div>
-                  <h4 style={{ margin: 0 }}>{tenantAbierto.nombre}</h4>
+                  <h4 className="m-0">{tenantAbierto.nombre}</h4>
                   <span className="muted">{usuariosVisibles.length} de {tenantAbierto.total} usuarios</span>
                 </div>
               </div>
@@ -226,7 +226,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
           {data && data.sinSede.length > 0 && (
             <div className="users-invites">
               <h5>Sin sede asignada</h5>
-              <p className="muted" style={{ fontSize: 12, margin: '0 0 8px' }}>
+              <p className="muted text-12 m-0 mb-8">
                 Estos usuarios existen pero no tienen acceso a ningún tenant.
               </p>
               <div className="table-wrap">

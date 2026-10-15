@@ -89,7 +89,7 @@ export function NotificationsPanel() {
   return (
     <section className="card">
       <div className="card-head"><h3>Notificaciones</h3></div>
-      <p className="muted" style={{ marginTop: 0 }}>Elegi como y sobre que queres recibir avisos en TechAsset.</p>
+      <p className="muted mt-0">Elegi como y sobre que queres recibir avisos en TechAsset.</p>
 
       <div className="notif-pref-row">
         <div className="notif-pref-text">
@@ -130,12 +130,12 @@ export function NotificationsPanel() {
         ))}
       </div>
 
-      <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>
+      <p className="muted text-12 mb-0">
         En iPhone, para recibir push primero instala la app desde Compartir / Agregar a pantalla de inicio.
       </p>
 
-      {msg && <div className="tool-info" style={{ marginTop: 10 }}>{msg}</div>}
-      {err && <div className="tool-error" style={{ marginTop: 10 }}>{err}</div>}
+      {msg && <div className="tool-info mt-10">{msg}</div>}
+      {err && <div className="tool-error mt-10">{err}</div>}
     </section>
   );
 }

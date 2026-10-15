@@ -81,7 +81,7 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
               </button>
             ))}
           </div>
-          <span className="muted" style={{ fontSize: 12 }}>Asignado a: <strong>{resumen}</strong></span>
+          <span className="muted text-12">Asignado a: <strong>{resumen}</strong></span>
         </div>
 
         <div className="grid-2">
@@ -103,7 +103,7 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
               setDateInput(formatted);
             }}
           />
-          {!isValidDdMm(dateInput) && <span className="muted" style={{ color: '#ff9b9b' }}>Formato inválido. Usá DD/MM.</span>}
+          {!isValidDdMm(dateInput) && <span className="muted text-danger">Formato inválido. Usá DD/MM.</span>}
         </label>
         <label>Comentario<textarea className="input" rows={3} value={task.comentario || ''} onChange={e => update('comentario', e.target.value)} /></label>
         <div className="task-attachment-editor">

@@ -105,7 +105,7 @@ export function Credentials365Tool() {
 
       <div className="tool-warning">
         <strong>Atención:</strong> revisá los destinatarios antes de enviar. {modoPrueba ? 'Modo prueba activado: no se envían correos reales.' : (mailOk ? `Modo prueba desactivado: el envío es real${resendOk ? ' por Resend' : ''}.` : 'Proveedor de mail sin configurar: configurá Resend antes de enviar.')}
-        <span className="badge subtle" style={{ marginLeft: 8 }}>{providerLabel}</span>
+        <span className="badge subtle ml-8">{providerLabel}</span>
       </div>
 
       <div className="tool-format">
@@ -115,7 +115,7 @@ export function Credentials365Tool() {
 
       <div className="actions wrap-actions">
         <Button onClick={downloadC365Template}>Descargar plantilla CSV</Button>
-        <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+        <label className="btn btn-secondary cursor-pointer">
           {filename ? `Cambiar archivo (${filename})` : 'Subir CSV'}
           <input type="file" accept=".csv,text/csv" hidden onChange={e => onFile(e.target.files?.[0] || null)} />
         </label>
@@ -143,7 +143,7 @@ export function Credentials365Tool() {
       )}
 
       {preview.length > 0 && (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <div className="table-wrap mt-12">
           <table>
             <thead><tr>{REQUIRED.map(c => <th key={c}>{displayColumn(c)}</th>)}</tr></thead>
             <tbody>
@@ -156,8 +156,8 @@ export function Credentials365Tool() {
       )}
 
       {invalidPreview.length > 0 && (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
-          <h4 className="muted" style={{ padding: '8px 12px 0' }}>Filas invalidas</h4>
+        <div className="table-wrap mt-12">
+          <h4 className="muted pad-8-12-0">Filas invalidas</h4>
           <table>
             <thead><tr><th>Nombre</th><th>Usuario</th><th>Mail</th><th>Motivo</th></tr></thead>
             <tbody>

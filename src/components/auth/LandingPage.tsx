@@ -50,12 +50,12 @@ const SCREENS = [
           </div>
         </div>
         <div className="demo-floorplan">
-          <div className="demo-room" style={{ borderColor: '#22c55e' }}>Aula 1<div className="demo-room-status ok" /></div>
-          <div className="demo-room" style={{ borderColor: '#22c55e' }}>Aula 2<div className="demo-room-status ok" /></div>
+          <div className="demo-room border-ok">Aula 1<div className="demo-room-status ok" /></div>
+          <div className="demo-room border-ok">Aula 2<div className="demo-room-status ok" /></div>
           <div className="demo-room" style={{ borderColor: '#f59e0b' }}>Aula 3<div className="demo-room-status warn" /></div>
           <div className="demo-room" style={{ borderColor: '#ef4444' }}>Aula 4<div className="demo-room-status err" /></div>
-          <div className="demo-room" style={{ borderColor: '#22c55e' }}>Aula 5<div className="demo-room-status ok" /></div>
-          <div className="demo-room" style={{ borderColor: '#22c55e' }}>Aula 6<div className="demo-room-status ok" /></div>
+          <div className="demo-room border-ok">Aula 5<div className="demo-room-status ok" /></div>
+          <div className="demo-room border-ok">Aula 6<div className="demo-room-status ok" /></div>
         </div>
       </div>
     ),

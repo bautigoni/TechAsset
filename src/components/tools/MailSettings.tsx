@@ -100,7 +100,7 @@ export function MailSettings() {
         </label>
       </div>
 
-      <div className="actions" style={{ marginTop: 12 }}>
+      <div className="actions mt-12">
         <Button variant="primary" disabled={busy} onClick={onSave}>Guardar configuración</Button>
       </div>
 

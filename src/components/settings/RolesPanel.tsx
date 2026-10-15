@@ -78,15 +78,15 @@ export function RolesPanel({ consultationMode, onChanged }: { consultationMode: 
         <h3>Roles y permisos</h3>
         <Button disabled={consultationMode} onClick={addRole}>+ Rol</Button>
       </div>
-      <p className="muted" style={{ marginTop: 0 }}>Definí los roles de esta sede y qué puede ver/editar cada uno. "Admin" da acceso total (usuarios, sedes, configuración).</p>
+      <p className="muted mt-0">Definí los roles de esta sede y qué puede ver/editar cada uno. "Admin" da acceso total (usuarios, sedes, configuración).</p>
 
       {roles.map((role, idx) => (
         <div key={idx} className="role-config-card">
-          <div className="grid-2" style={{ alignItems: 'end' }}>
+          <div className="grid-2 items-end">
             <label>Nombre del rol
               <input className="input" value={role.name} disabled={consultationMode} onChange={e => rename(idx, e.target.value)} />
             </label>
-            <label className="module-toggle-row" style={{ alignSelf: 'center' }}>
+            <label className="module-toggle-row self-center">
               <input type="checkbox" checked={role.admin} disabled={consultationMode} onChange={e => setAdmin(idx, e.target.checked)} />
               <span>Administrador del tenant</span>
             </label>
@@ -109,9 +109,9 @@ export function RolesPanel({ consultationMode, onChanged }: { consultationMode: 
         </div>
       ))}
 
-      <div className="actions" style={{ marginTop: 12 }}>
+      <div className="actions mt-12">
         <Button variant="primary" disabled={saving || consultationMode} onClick={save}>{saving ? 'Guardando…' : 'Guardar roles'}</Button>
-        {saved && <span className="muted" style={{ alignSelf: 'center' }}>Guardado ✓</span>}
+        {saved && <span className="muted self-center">Guardado ✓</span>}
       </div>
     </section>
   );

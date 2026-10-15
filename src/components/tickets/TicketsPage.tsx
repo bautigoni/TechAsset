@@ -69,7 +69,7 @@ function FilePreview({ url, compact = false }: { url: string; compact?: boolean 
               <object data={`${url}#toolbar=0&navpanes=0`} type="application/pdf" className="ticket-file-embed">
                 <a href={url} target="_blank" rel="noreferrer">Abrir PDF en pestaña nueva ↗</a>
               </object>
-              <div className="actions" style={{ marginTop: 8 }}>
+              <div className="actions mt-8">
                 <a className="btn btn-secondary" href={url} target="_blank" rel="noreferrer">Abrir en pestaña ↗</a>
               </div>
             </Modal>
@@ -300,7 +300,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
 
   return (
     <section className="view active">
-      <div className="card-head" style={{ marginBottom: 12 }}>
+      <div className="card-head mb-12">
         <h3>Tickets</h3>
         {/* El "+" del gooey reemplaza a "Cargar ticket": las dos acciones de
             creación viven adentro del mismo botón. */}
@@ -352,17 +352,17 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           ))}
         </div>
       </div>
-      <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+      <div className="muted text-13 mt-6">
         {visible.length} {visible.length === 1 ? 'resultado' : 'resultados'}
       </div>
 
-      {error && !modalOpen && <div className="tool-error" style={{ marginTop: 12 }}>{error}</div>}
-      {loading && <div style={{ marginTop: 12 }}><SkeletonPanel rows={3} head={false} rowHeight={96} /></div>}
-      {!loading && visible.length === 0 && <div className="tool-info" style={{ marginTop: 12 }}>No hay tickets en este filtro.</div>}
+      {error && !modalOpen && <div className="tool-error mt-12">{error}</div>}
+      {loading && <div className="mt-12"><SkeletonPanel rows={3} head={false} rowHeight={96} /></div>}
+      {!loading && visible.length === 0 && <div className="tool-info mt-12">No hay tickets en este filtro.</div>}
 
       {/* Cambiar de filtro cambia cuántas tarjetas entran, así que la grilla
           cambia de alto. Con el resize se estira en vez de saltar. */}
-      <div className="ticket-grid t-resize" style={{ marginTop: 12 }} ref={gridResizeRef}>
+      <div className="ticket-grid t-resize mt-12" ref={gridResizeRef}>
         {visible.map(ticket => (
           <section className={`ticket-card ${selection.selected.has(String(ticket.id)) ? 'is-selected' : ''}`} key={ticket.id}>
             {/* A5: header limpio con #numero azul + badge estado */}
@@ -435,7 +435,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
                 inputMode={draft.origen === 'handing' ? 'text' : 'numeric'}
                 autoFocus
               />
-              <span className="muted" style={{ fontSize: 12 }}>{draft.origen === 'handing' ? 'No usa #id: podés dejarlo vacío o escribir una referencia interna.' : <>Solo el número, sin <code>#</code> - ej. <code>2103</code></>}</span>
+              <span className="muted text-12">{draft.origen === 'handing' ? 'No usa #id: podés dejarlo vacío o escribir una referencia interna.' : <>Solo el número, sin <code>#</code> - ej. <code>2103</code></>}</span>
             </label>
             <label>Estado
               <SelectField ariaLabel="Estado" value={draft.estado || 'No hecho'} onChange={value => setDraft(d => ({ ...d, estado: value as TicketState }))} options={ESTADOS.map(value => ({ value, label: value }))} />
@@ -479,12 +479,12 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
             />
           </label>
           {normalizeReference(draft.numero, draft.origen || 'tik') && (
-            <a href={(draft.origen || 'tik') === 'handing' ? handingLink(draft.numero || '') : invgateLink(draft.numero || '')} target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 13 }}>
+            <a href={(draft.origen || 'tik') === 'handing' ? handingLink(draft.numero || '') : invgateLink(draft.numero || '')} target="_blank" rel="noreferrer" className="muted text-13">
               Abrir en {(draft.origen || 'tik') === 'handing' ? 'Handing' : 'InVgate'} ↗
             </a>
           )}
           <label>Ticket exportado (PDF o foto)
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="row-wrap">
               <label className="btn btn-secondary">
                 {uploading ? 'Subiendo…' : (draft.imagenUrl ? 'Reemplazar archivo' : 'Subir PDF / foto')}
                 <input type="file" accept="application/pdf,image/png,image/jpeg,image/jpg,image/webp" className="sr-only" onChange={e => handleFile(e.target.files?.[0])} disabled={uploading} />
@@ -494,7 +494,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           </label>
           {draft.imagenUrl && <FilePreview url={draft.imagenUrl} />}
           {error && <div className="tool-error">{error}</div>}
-          <div className="actions" style={{ marginTop: 8 }}>
+          <div className="actions mt-8">
             <Button variant="primary" disabled={busy || uploading} onClick={save}>{busy ? 'Guardando…' : 'Guardar ticket'}</Button>
             <Button onClick={() => setModalOpen(false)}>Cancelar</Button>
           </div>
