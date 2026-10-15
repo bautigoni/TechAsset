@@ -44,11 +44,22 @@ export function CollapsiblePanel({ id, title, used, total, usedLabel, loading = 
   className?: string;
 }>) {
   const [open, setOpen] = usePanelOpen(id);
+  // El contenido se monta recién la primera vez que se abre: cerrados, los
+  // paneles de Préstamos tenían igual todos sus chips y listas en el DOM.
+  // Después queda montado para que cerrar/abrir siga animando.
+  const [mounted, setMounted] = useState(open);
+  const toggle = () => {
+    if (open) return setOpen(false);
+    if (mounted) return setOpen(true);
+    setMounted(true);
+    // Un frame cerrado con el contenido ya montado, para que la apertura anime.
+    requestAnimationFrame(() => requestAnimationFrame(() => setOpen(true)));
+  };
   const percent = total ? Math.round((used / total) * 100) : 0;
   return (
     <section className={`chip-panel ${open ? 'is-open' : ''} ${className}`.trim()}>
       <div className="chip-panel-head">
-        <button type="button" className="chip-panel-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <button type="button" className="chip-panel-toggle" aria-expanded={open} onClick={toggle}>
           <ChevronDown className="chip-panel-chevron" size={18} aria-hidden="true" />
           <span className="chip-panel-title">{title}</span>
           <span className="chip-panel-meter" aria-hidden="true"><span style={{ width: `${percent}%` }} /></span>
@@ -59,7 +70,7 @@ export function CollapsiblePanel({ id, title, used, total, usedLabel, loading = 
         {open && extra}
       </div>
       <div className="chip-panel-body" inert={!open}>
-        <div className="chip-panel-inner">{children}</div>
+        <div className="chip-panel-inner">{mounted && children}</div>
       </div>
     </section>
   );

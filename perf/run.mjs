@@ -79,7 +79,22 @@ function topSelfTime(profile, limit = 25) {
     const key = `${frame.functionName || '(anónima)'} ${file}:${frame.lineNumber + 1}`;
     self.set(key, (self.get(key) || 0) + (deltas[index] || 0) / 1000);
   });
-  return [...self.entries()].filter(([key]) => !/^\((idle|program|garbage collector)\)/.test(key)).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([k, v]) => `${v.toFixed(1).padStart(7)} ms  ${k}`);
+  // Para las funciones nativas (sin archivo), quién las llamó: así se ve qué
+  // código fuerza un layout (getBoundingClientRect, offsetWidth...).
+  const parent = new Map();
+  for (const node of profile.nodes) for (const child of node.children || []) parent.set(child, node);
+  const callers = new Map();
+  (profile.samples || []).forEach((id, index) => {
+    const node = byId.get(id);
+    if (!node || node.callFrame.url) return;
+    const up = parent.get(id)?.callFrame;
+    if (!up) return;
+    const key = `${node.callFrame.functionName} <- ${up.functionName || '(anónima)'} ${(up.url || '').split('/').pop()}:${up.lineNumber + 1}`;
+    callers.set(key, (callers.get(key) || 0) + (deltas[index] || 0) / 1000);
+  });
+  const top = [...self.entries()].filter(([key]) => !/^\((idle|program|garbage collector)\)/.test(key)).sort((a, b) => b[1] - a[1]).slice(0, limit).map(([k, v]) => `${v.toFixed(1).padStart(7)} ms  ${k}`);
+  const natives = [...callers.entries()].filter(([, ms]) => ms >= 5).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${v.toFixed(1).padStart(7)} ms  [nativa] ${k}`);
+  return [...top, ...natives];
 }
 
 const median = values => [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
@@ -144,7 +159,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 1500));
   }));
   const viewBreakdown = {};
-  for (const view of ['Préstamos', 'Dispositivos']) {
+  for (const view of (process.env.PERF_PROFILE_VIEWS || 'Préstamos,Dispositivos').split(',')) {
     viewBreakdown[view] = await traceBreakdown(tracePage, () => profileDuring(view, () => tracePage.evaluate(label => window.__perf.views([label]), view)));
   }
   await traced.close();

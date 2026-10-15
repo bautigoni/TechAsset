@@ -6,6 +6,23 @@
 // servidor ni sesión en el navegador. Ver perf/README.md.
 type Fixture = { status: number; body: unknown };
 
+// Pedidos a la API en vuelo: una pantalla está lista cuando además de montarse
+// llegaron sus datos.
+const inflight = { count: 0 };
+
+// Cuenta los commits de React (cada vez que React aplica un render al DOM) con
+// el mismo gancho que usan las DevTools; funciona también en build de producción.
+const commits: number[] = [];
+(window as unknown as { __REACT_DEVTOOLS_GLOBAL_HOOK__: unknown }).__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+  supportsFiber: true,
+  renderers: new Map(),
+  inject() { return 1; },
+  onCommitFiberRoot() { commits.push(performance.now()); },
+  onCommitFiberUnmount() {},
+  onPostCommitFiberRoot() {},
+  checkDCE() {}
+};
+
 const params = new URLSearchParams(location.search);
 const latency = Number(params.get('latency') || 0);
 
@@ -22,7 +39,14 @@ async function boot() {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.pathname + input.search : input.url;
     if (!url.startsWith('/api/')) return realFetch(input, init);
     (window as unknown as { __perfRequests: string[] }).__perfRequests.push(url);
-    if (latency) await new Promise(resolve => setTimeout(resolve, latency));
+    // Las revalidaciones en segundo plano no hacen esperar a la pantalla.
+    const background = new Headers(init?.headers).get('X-Revalidate') === '1';
+    if (!background) inflight.count += 1;
+    try {
+      if (latency) await new Promise(resolve => setTimeout(resolve, latency));
+    } finally {
+      if (!background) inflight.count -= 1;
+    }
     const method = String(init?.method || 'GET').toUpperCase();
     const fixture = method === 'GET' ? (fixtures[url] || byPath.get(url.split('?')[0])) : undefined;
     const body = fixture && fixture.status === 200 ? fixture.body : { ok: true, items: [], settings: {} };
@@ -74,7 +98,9 @@ async function settle(from: number) {
   const deadline = performance.now() + 10000;
   while (performance.now() < deadline) {
     await yieldTask();
-    void document.body.getBoundingClientRect().height;
+    // Solo con la pestaña oculta (sin frames) se fuerza el layout para medirlo;
+    // visible, forzarlo acá multiplicaba el layout de las páginas pesadas.
+    if (document.visibilityState !== "visible") void document.body.getBoundingClientRect().height;
     if (performance.now() - lastMutation > 150) break;
   }
   observer.disconnect();
@@ -96,7 +122,9 @@ const perfApi = {
       appReady: Math.round(ready),
       jsKB: bytes(/\.js(\?|$)/), cssKB: bytes(/\.css(\?|$)/),
       longTasks: blockingOver(0),
-      domNodes: document.getElementsByTagName('*').length
+      domNodes: document.getElementsByTagName('*').length,
+      reactCommits: commits.length,
+      reactCommitsBeforeReady: commits.filter(at => at <= ready).length
     };
   },
   /** Abre cada pantalla del menú y mide hasta que el DOM se aquieta. */
@@ -114,12 +142,16 @@ const perfApi = {
       const deadline = started + 15000;
       while (performance.now() < deadline) {
         const current = document.querySelector('.view.active');
-        if (current && current !== previous && current.childElementCount > 0 && !current.querySelector('.t-skel-card, .skeleton')) break;
+        if (current && current !== previous && current.childElementCount > 0 && inflight.count === 0 && !current.querySelector('.t-skel-card, .skeleton')) {
+          // Los datos pueden disparar más pedidos encadenados: confirmar un momento.
+          await yieldTask();
+          if (inflight.count === 0) break;
+        }
         await yieldTask();
       }
       if (document.visibilityState === 'visible') await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const ms = performance.now() - started;
-      results.push({ view: label, ms: Math.round(ms), longTasks: blockingOver(started), domNodes: document.getElementsByTagName('*').length });
+      results.push({ view: label, ms: Math.round(ms), longTasks: blockingOver(started), domNodes: document.getElementsByTagName('*').length, reactCommits: commits.filter(at => at >= started).length });
     }
     return results;
   },

@@ -40,7 +40,7 @@ async function openApp(base) {
   await page.setViewport({ width: 1366, height: 800 });
   const cdp = await page.createCDPSession();
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: throttle });
-  await page.goto(`${base}/`, { waitUntil: 'load' });
+  await page.goto(`${base}/${process.env.PERF_LATENCY ? `?latency=${process.env.PERF_LATENCY}` : ""}`, { waitUntil: "load" });
   await page.waitForFunction(() => performance.getEntriesByName('perf-app-ready').length > 0, { timeout: 60000 });
   await new Promise(resolve => setTimeout(resolve, 1500));
   return { context, page };
@@ -73,7 +73,8 @@ try {
   row('arranque: bloqueo (TBT)', samples.map(s => median(s.startup.map(x => x.longTasks.blocking))));
   row('pantalla 1ra vez (prom)', samples.map(s => median(s.first)));
   row('pantalla otra vez (prom)', samples.map(s => median(s.again)));
-  VIEWS.forEach((view, index) => row(`  ${view}`, samples.flatMap(s => [median(s.perView[index].first)])));
+  console.log("por pantalla: 1ra vez / otra vez");
+  VIEWS.forEach((view, index) => console.log(`  ${view}`.padEnd(26) + samples.map(s => `${Math.round(median(s.perView[index].first))} / ${Math.round(median(s.perView[index].again))}`.padStart(14)).join("")));
 } finally {
   await browser.close();
   targets.forEach(target => target.server.close());

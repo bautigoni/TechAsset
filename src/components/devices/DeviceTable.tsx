@@ -51,8 +51,18 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
   // Se renderizaban las 81 filas siempre (1948 nodos, 6300px de scroll). Ahora
   // entran de a 30 y se van sumando: mismo contenido, un tercio del DOM.
   const PAGE = 30;
-  const [limit, setLimit] = useState(PAGE);
-  useEffect(() => { setLimit(PAGE); }, [devices.length]);
+  // El primer pintado lleva solo las filas que entran en pantalla; el resto de
+  // la tanda se completa apenas el navegador queda libre. Mismo contenido, pero
+  // la tabla era ~60% del DOM del dashboard y frenaba el primer pintado.
+  const FIRST_PAINT = 12;
+  const [limit, setLimit] = useState(FIRST_PAINT);
+  useEffect(() => {
+    setLimit(FIRST_PAINT);
+    const idle = window.requestIdleCallback
+      ? window.requestIdleCallback(() => setLimit(value => Math.max(value, PAGE)), { timeout: 400 })
+      : window.setTimeout(() => setLimit(value => Math.max(value, PAGE)), 50);
+    return () => { if (window.cancelIdleCallback) window.cancelIdleCallback(idle); else window.clearTimeout(idle); };
+  }, [devices.length]);
   const shown = devices.slice(0, limit);
   const [returningTag, setReturningTag] = useState('');
 

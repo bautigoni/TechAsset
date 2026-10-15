@@ -19,7 +19,7 @@ import { lendDevice, returnDevice } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
 import { setActiveSiteCode } from './services/activeSite';
-import { SESSION_EXPIRED_EVENT } from './services/apiClient';
+import { clearApiCache, SESSION_EXPIRED_EVENT } from './services/apiClient';
 import { activeSiteRole, canViewModule, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
 import { parseScannedCode, resolveDeviceMatches } from './utils/normalizeSearch';
@@ -400,6 +400,7 @@ export function App() {
   const handleLogout = async () => {
     await logoutSession().catch(() => undefined);
     clearSessionCache();
+    clearApiCache();
     setUser(null);
     setSites([]);
     setActiveSite('');
