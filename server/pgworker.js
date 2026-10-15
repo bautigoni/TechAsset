@@ -27,7 +27,9 @@ async function getClient() {
   if (connecting) return connecting;
   const next = new pg.Client({
     connectionString,
-    ssl: { rejectUnauthorized: false },
+    // Supabase exige SSL. Un Postgres local de pruebas (sin SSL) se usa con
+    // ?sslmode=disable en la URL; producción no lo lleva y sigue igual.
+    ssl: /[?&]sslmode=disable\b/.test(connectionString) ? false : { rejectUnauthorized: false },
     connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS || 10000),
     keepAlive: true
   });
