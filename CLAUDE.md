@@ -61,8 +61,7 @@ Todo dato operativo (dispositivos, préstamos, tareas, agenda, aulas, inventario
 
 ## Dispositivos / inventario
 
-- `server/services/deviceInventory.service.js` mergea: padrón estático del CSV (`data/cache_sheet.csv`) + estado vivo de SQLite (`local_states` / `local_devices`). Tiene caché en memoria con TTL (`SHEET_CACHE_TTL_MS`, default 5 s) y stale-while-revalidate.
-- Bug histórico a no repetir: si el fetch externo fallaba, la caché en memoria quedaba congelada. Ahora el fallback a `buildFromLocalCsvCache` actualiza `inventoryCache`. No volver a romper ese fix.
+- `server/services/deviceInventory.service.js` arma el inventario desde la base (`local_devices` + `local_states`, sin los `hidden_devices`). Caché en memoria por sede (60 s) que se invalida en cada escritura de equipos/préstamos (las rutas llaman `invalidateDeviceInventoryCache` y además hay un hook global en `server/index.js`); `getInventoryVersion` sirve de clave para cachés derivadas (la vida útil de `GET /api/devices`). Si agregás una escritura que cambia equipos por fuera de esas rutas, invalidá.
 - Merge de estado (`mergeStateOverrides`): cuando la planilla dice `Prestado | No encontrada | Fuera de servicio` y `local_states` dice `Disponible | Devuelto | vacío`, **gana la planilla** salvo que el local tenga `updated_at` con menos de 90 segundos (ventana para tolerar sync en curso). Esto evita que filas viejas de `local_states` pisen ediciones manuales en la hoja.
 - Importación CSV: Borrar dispositivo = ocultar (`activo=0`, `deleted_at`). Reimportar el mismo `site_code+etiqueta` lo reactiva (`activo=1`, `deleted_at=NULL`). No hay blacklist permanente.
 - Alias operativo: `Filtro + Numero Operativo` (ej. `Touch 34`). Función central `getOperationalAlias` en `src/utils/classifyDevice.ts`. Se autonumeran los `PLANI` que no tengan número (estable por etiqueta) en `withOperationalAliases` desde `useDevices`.
@@ -151,6 +150,15 @@ Botón opcional en la pantalla de login al lado del tradicional por mail. Si las
 - Cualquier feature operativa nueva debe respetar `consultationMode` (vista jefe = bloquea ediciones).
 - En español rioplatense (`vos`, `acordate`). Encoding UTF-8 — vigilar mojibake `Ã©`/`prÃ³xima` en CSVs y mails.
 - Logs: `[devices/perf]` está silenciado salvo que `DEBUG_DEVICE_PERF=1`. No volver a llenar la consola por default.
+
+## Rendimiento
+
+- **En producción cada query es un viaje SINCRÓNICO a Supabase** (`pg-sync` bloquea el proceso con `Atomics.wait`): un request cuesta queries × latencia y frena a todos los demás. Cada query que se saca de un endpoint que se pollea vale. Antes de sumar queries a algo que corre en cada request (auth, middlewares, `/api/devices`, `/api/movements`, notificaciones), medí.
+- Cachés del server: sesión en memoria 30 s (`getUserSession`, `last_seen_at` cada 5 min, se limpia ante escrituras de usuarios/sedes/accesos), inventario por sede (ver arriba).
+- Caché del front: `apiGet` responde 15 s con lo último visto y revalida en segundo plano (`X-Revalidate: 1`); `apiSend` la vacía. Lo polleado/crítico está excluido (`NO_CACHE` en `apiClient.ts`). Toda escritura tiene que pasar por `apiSend` (o llamar `clearApiCache`).
+- Fechas: usar `formatDate` / `dateFormatter` de `utils/formatters` (formateador cacheado), nunca `toLocaleString` en listas.
+- Layout: no alternar lecturas de layout (`getBoundingClientRect`, `offsetWidth`) con escrituras en un loop; medir con `ResizeObserver`.
+- Bancos de prueba: `server/scripts/bench/bench-api.mjs` (queries y latencia de la API) y `perf/` (arranque, pantallas y scroll del front en Edge headless con CPU 4×; `perf/compare.mjs` compara builds intercalados). Ver `perf/README.md`.
 - **Nunca puede haber scroll horizontal**, en ninguna vista, ancho o breakpoint — salvo que el usuario lo pida explícitamente para un contenedor puntual. El `<body>` jamás scrollea en X. Contenido ancho (tablas, planos SVG, bloques de código) scrollea *dentro* de su propio contenedor con `overflow-x: auto`, nunca empujando la página. Antes de cerrar un cambio de UI, verificar en mobile (360px) y desktop.
 
 ## Animaciones y transiciones
