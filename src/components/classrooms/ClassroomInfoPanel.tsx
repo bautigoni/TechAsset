@@ -6,6 +6,7 @@ import { SkeletonPanel } from '../layout/Skeleton';
 import { RelatedReminders } from '../reminders/RelatedReminders';
 import { useCloseChoreography } from '../../hooks/useMountTransition';
 import { DATE_TIME, formatDate, DATE_ONLY } from '../../utils/formatters';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 
 // Igual que en Modal.tsx: tiene que coincidir con --modal-close-dur.
 const MODAL_CLOSE_MS = 150;
@@ -119,25 +120,19 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   }, [runClose]);
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        requestClose();
-      }
-    };
     document.body.classList.add('modal-open');
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.body.classList.remove('modal-open');
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [requestClose]);
+    return () => document.body.classList.remove('modal-open');
+  }, []);
+  // Foco, Tab y Escape como en el Modal genérico.
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const closeFromKeyboard = useCallback(() => requestClose(), [requestClose]);
+  useDialogFocus(wrapRef, closeFromKeyboard);
 
   const wrapClass = `modal t-modal classroom-modal-wrap ${stateClass}`.trim();
 
   if (!draft) {
     return (
-      <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true">
+      <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true" aria-label={`Aula ${nombre}`} ref={wrapRef} tabIndex={-1}>
         <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
           <SkeletonPanel rows={4} />
         </div>
@@ -196,7 +191,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   const onCancel = () => { requestClose(); };
 
   return (
-    <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true">
+    <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true" aria-label={`Aula ${nombre}`} ref={wrapRef} tabIndex={-1}>
       <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
         <div className="card-head" style={{ marginBottom: 8 }}>
           <div>
