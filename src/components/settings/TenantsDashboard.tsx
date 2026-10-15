@@ -7,6 +7,7 @@ import { Modal } from '../layout/Modal';
 import { StatCard } from '../layout/StatCard';
 import { TenantLogo } from '../layout/TenantLogo';
 import { SkeletonPanel } from '../layout/Skeleton';
+import { copyToClipboard } from '../layout/Feedback';
 
 type TenantDraft = Partial<SiteInfo> & {
   isNew?: boolean;
@@ -110,7 +111,7 @@ export function TenantsDashboard({ activeSite, onSwitch, onChanged }: { activeSi
     }
   };
 
-  const copy = (text: string) => { navigator.clipboard?.writeText(text).catch(() => {}); };
+  const copy = (text: string) => { void copyToClipboard(text); };
 
   const handleLogoFile = async (file: File | null) => {
     if (!file) return;

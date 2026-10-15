@@ -4,7 +4,7 @@ import type { QuickLink } from '../../types';
 import { createQuickLink, deleteQuickLink, fetchQuickLinks, updateQuickLink } from '../../services/operationsApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
-import { confirmDialog } from '../layout/Feedback';
+import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
 
 // Archivos servidos desde public/downloads: no son links configurables, son
 // parte de la app, por eso siguen acá y no en la base.
@@ -18,7 +18,7 @@ const DOWNLOAD_LINKS: DownloadLink[] = [
 export function useQuickLinks() {
   const [links, setLinks] = useState<QuickLink[]>([]);
   const [handingUrl, setHandingUrl] = useState('');
-  const reload = () => fetchQuickLinks().then(r => { if (r.ok) setLinks(r.items); }).catch(() => {});
+  const reload = () => fetchQuickLinks().then(r => { if (r.ok) setLinks(r.items); }).catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar los accesos rápidos.'), tone: 'error' }));
   useEffect(() => {
     void reload();
     fetchToolsConfig().then(c => setHandingUrl(c.handingTicketUrl || '')).catch(() => {});

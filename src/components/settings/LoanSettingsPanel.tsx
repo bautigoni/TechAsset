@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSiteSettings, updateSiteSettings } from '../../services/authApi';
 import { Button } from '../layout/Button';
+import { toast, errorMessage } from '../layout/Feedback';
 
 type ToggleOption = { label: string; requiresDetail?: boolean; requiresCourse?: boolean };
 const DEFAULT_GRADES = [
@@ -55,7 +56,7 @@ export function LoanSettingsPanel() {
       setMotives(readOptionList(settings['loan.motives'], defaults.motives));
       setGrades(mergeStringList(settings['loan.gradeOptions'], defaults.grades));
       setCategories(readStringList(settings['devices.categories'], defaults.categories));
-    }).catch(() => {});
+    }).catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar la configuración de préstamos.'), tone: 'error' }));
   }, []);
 
   const save = async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { enableBrowserPush, getNotificationPrefs, setNotificationEmailPref, setNotificationTypePrefs, type NotificationTypePrefs } from '../../services/notificationsApi';
+import { toast, errorMessage } from '../layout/Feedback';
 
 const DEFAULT_TYPES: NotificationTypePrefs = {
   releases: true,
@@ -36,7 +37,7 @@ export function NotificationsPanel() {
         setPushSubscribed(p.pushSubscribed);
         setPushAvailable(p.pushAvailable);
       })
-      .catch(() => {});
+      .catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar tus preferencias de notificaciones.'), tone: 'error' }));
   };
 
   useEffect(load, []);

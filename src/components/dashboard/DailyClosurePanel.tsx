@@ -4,6 +4,7 @@ import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { SkeletonBlock } from '../layout/Skeleton';
 import { formatDate } from '../../utils/formatters';
+import { toast, errorMessage } from '../layout/Feedback';
 
 export function DailyClosurePanel({ operator, consultationMode }: { operator: string; consultationMode: boolean }) {
   const [open, setOpen] = useState(false);
@@ -18,7 +19,7 @@ export function DailyClosurePanel({ operator, consultationMode }: { operator: st
     if (closures.ok) setHistory(closures.items);
   };
 
-  useEffect(() => { if (open) load().catch(() => {}); }, [open]);
+  useEffect(() => { if (open) load().catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar el resumen del día.'), tone: 'error' })); }, [open]);
 
   const text = resumen ? renderClosureText(resumen, observaciones, operator) : '';
 

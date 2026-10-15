@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { SiteInfo } from '../../types';
 import { type AllowedUserItem, getAllowedUsers, getSites, getSiteSettings, saveAllowedUser, updateAllowedUserStatus } from '../../services/authApi';
 import { Button } from '../layout/Button';
-import { confirmDialog } from '../layout/Feedback';
+import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
 
 // Fallback: si el tenant no tiene roles.config, se usan estos.
 const ADMIN_ROLES = ['Superadmin', 'Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
@@ -35,7 +35,7 @@ export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { 
     setDraft(current => current.email ? current : emptyUser(s.items[0]?.siteCode || 'NFPT'));
   };
 
-  useEffect(() => { load().catch(() => {}); }, []);
+  useEffect(() => { load().catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar la lista de usuarios.'), tone: 'error' })); }, []);
 
   useEffect(() => {
     getSiteSettings().then(response => {

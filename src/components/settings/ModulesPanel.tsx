@@ -10,6 +10,7 @@ import {
   orderedToggleableModules,
   type ModuleKey
 } from '../../utils/modules';
+import { toast as notify, errorMessage } from '../layout/Feedback';
 
 export function ModulesPanel({ consultationMode, onChanged }: { consultationMode: boolean; onChanged?: () => void }) {
   const [enabled, setEnabled] = useState<Set<string>>(new Set(TOGGLEABLE_MODULES.map(m => m.key)));
@@ -23,7 +24,7 @@ export function ModulesPanel({ consultationMode, onChanged }: { consultationMode
         setEnabled(enabledModuleSet(response.settings));
         setOrder(moduleOrder(response.settings));
       })
-      .catch(() => {});
+      .catch(reason => notify({ message: errorMessage(reason, 'No se pudo cargar la configuración de módulos.'), tone: 'error' }));
   }, []);
 
   useEffect(() => {

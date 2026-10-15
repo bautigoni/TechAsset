@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getSiteSettings, updateSiteSettings } from '../../services/authApi';
 import { TOGGLEABLE_MODULES } from '../../utils/modules';
 import { Button } from '../layout/Button';
+import { toast, errorMessage } from '../layout/Feedback';
 
 const ALL_KEYS = TOGGLEABLE_MODULES.map(m => m.key as string);
 
@@ -43,7 +44,7 @@ export function RolesPanel({ consultationMode, onChanged }: { consultationMode: 
       } else {
         setRoles([{ name: 'Administrador', admin: true, view: new Set(ALL_KEYS), edit: new Set(ALL_KEYS) }]);
       }
-    }).catch(() => {});
+    }).catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar los roles.'), tone: 'error' }));
   }, []);
 
   const mutate = (fn: (roles: RoleDraft[]) => RoleDraft[]) => { if (consultationMode) return; setSaved(false); setRoles(fn); };

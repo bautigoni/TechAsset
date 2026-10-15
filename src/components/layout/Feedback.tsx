@@ -197,3 +197,16 @@ function ToastView({ item }: { item: ToastItem }) {
     </div>
   );
 }
+
+/** Copia al portapapeles y avisa (antes los "copiar" fallaban en silencio, p. ej. sin HTTPS). */
+export async function copyToClipboard(text: string, okMessage = 'Copiado al portapapeles.') {
+  try {
+    if (!navigator.clipboard) throw new Error('El navegador no permite copiar acá.');
+    await navigator.clipboard.writeText(text);
+    toast({ message: okMessage, tone: 'ok', durationMs: 2000 });
+    return true;
+  } catch (reason) {
+    toast({ message: errorMessage(reason, 'No se pudo copiar. Seleccioná el texto y copialo a mano.'), tone: 'error' });
+    return false;
+  }
+}
