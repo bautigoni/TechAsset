@@ -95,6 +95,23 @@ Ojo con el orden de rutas en Express: un `/:id` declarado antes tapa a las rutas
 - `LoanForm.tsx` soporta escaneo continuo: toggle abre tabla de equipos escaneados, agrega por scanner USB (Enter) o manual, marca duplicados / no disponibles, y un único form de persona/rol/ubicación/motivo aplica al lote.
 - `POST /api/loans/lend` y `/return` actualizan SQLite y registran en `local_movements`. **No** hacen llamadas externas a Apps Script. Si alguien introduce esa dependencia de nuevo, romper la review.
 
+- Lotes: `POST /api/loans/lend-batch` y `/return-batch` (un request, inventario armado una vez, cada equipo se resuelve por separado). Los usan la selección múltiple de Préstamos/Dispositivos y el escaneo continuo.
+- El estado de un equipo se decide en UN lugar: `getLoanState` / `getDeviceStateKey` en `src/utils/deviceState.ts`, con la misma regla que `isAvailableState`/`isLoanedState` del server. Si cambia una, cambiar la otra.
+
+## Historial y papelera
+
+- `GET /api/history?kind=loans|all&q&from&to&tipo&before&limit` (`server/routes/history.routes.js`): filtros en SQL y paginado por cursor (`timestamp|id`). Pantalla `HistoryPage` (visible si el rol ve Préstamos o Dispositivos).
+- Papelera de dispositivos: `GET /api/devices/deleted` + `POST /api/devices/:etiqueta/restore`. Borrar = ocultar; al borrar sale un toast con "Deshacer".
+- `GET /api/agenda` omite por defecto las terminadas de más de 120 días (`?all=1` trae todo; la respuesta trae `olderHidden`).
+
+## UI compartida
+
+- `src/components/layout/Feedback.tsx`: `confirmDialog`, `promptDialog` (texto o `options`), `toast` (con acción "Deshacer"), `copyToClipboard`, `errorMessage`. **No usar `window.confirm/prompt/alert`** ni tragarse errores con `.catch(() => {})` en acciones del usuario.
+- `src/components/layout/Selection.tsx`: `useSelection` + `SelectionBar` (`floating` la monta en el body). Selección múltiple en Préstamos, Dispositivos, Tickets y Tareas.
+- `useDialogFocus`: foco, Tab y Escape de cualquier diálogo (lo usan `Modal`, el de aula y el de novedades).
+- `utils/a11y` `clickableProps` para filas/tarjetas clickeables; `utils/download` para descargas/CSV (con BOM); `SelectField` en vez de `<select>` nativo (no queda ninguno).
+- Módulos que cada sede prende en Configuración: además de los de siempre, `knowledge`, `reminders` y `canvas` (arrancan apagados en sedes existentes).
+
 ## Cierre del día
 
 `/api/daily-closures` (GET/POST + `/preview`) genera un resumen automático: préstamos activos, tareas pendientes/en proceso/hechas hoy, agenda del día y sus incidencias, aulas con problema, notas importantes. El operador agrega observaciones desde `DailyClosureModal` y se persiste en `daily_closures`.
