@@ -20,9 +20,10 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
 
 type LoanActionResult = { synced?: boolean; message?: string } | void;
 
-export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, onLendBatch, onReturnBatch, onProfile, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; onReturnBatch: (etiquetas: string[]) => Promise<LoanBatchResponse>; onProfile?: (device:Device)=>void; initialCode?: string }) {
+export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, onLendBatch, onReturnBatch, onProfile, initialCode = '', initialBatch }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; onReturnBatch: (etiquetas: string[]) => Promise<LoanBatchResponse>; onProfile?: (device:Device)=>void; initialCode?: string; initialBatch?: { etiquetas: string[]; nonce: number } }) {
   const [returnSeed, setReturnSeed] = useState(initialCode);
-  const [batchSeed, setBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
+  // El lote puede venir de afuera (selección en Dispositivos) o de la grilla de acá.
+  const [batchSeed, setBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>(initialBatch);
   const [previousLoans, setPreviousLoans] = useState<PreviousDayLoan[]>([]);
   const [previousDate, setPreviousDate] = useState('');
   const [previousError, setPreviousError] = useState('');

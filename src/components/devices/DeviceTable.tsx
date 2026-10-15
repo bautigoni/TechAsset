@@ -27,8 +27,12 @@ function deviceModel(device: Device) {
   return parts.length ? parts.join(' · ') : '';
 }
 
-export function DeviceTable({ devices, compact = false, actionMode = 'full', onLoan, onReturn, onProfile, onEdit, onDelete }: {
+export type TableSelection = { selected: Set<string>; onToggle: (etiqueta: string) => void; onToggleMany: (etiquetas: string[]) => void };
+
+export function DeviceTable({ devices, compact = false, actionMode = 'full', onLoan, onReturn, onProfile, onEdit, onDelete, selection }: {
   devices: Device[];
+  /** Con selección aparece una columna de casillas (acciones en lote). */
+  selection?: TableSelection;
   compact?: boolean;
   actionMode?: ActionMode;
   onLoan?: (device: Device) => Promise<unknown> | void;
@@ -71,6 +75,16 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
       <table className="compact-table device-table">
         <thead>
           <tr>
+            {selection && (
+              <th className="device-select-cell">
+                <input
+                  type="checkbox"
+                  aria-label="Seleccionar todos los equipos visibles"
+                  checked={shown.length > 0 && shown.every(device => selection.selected.has(device.etiqueta))}
+                  onChange={() => selection.onToggleMany(shown.map(device => device.etiqueta))}
+                />
+              </th>
+            )}
             <th>Etiqueta</th>
             <th>Dispositivo</th>
             <th>SN</th>
@@ -86,6 +100,16 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
         <tbody>
           {shown.map(device => (
             <tr key={device.id} data-device-tag={device.etiqueta} className={onProfile ? 'device-row-clickable' : ''} role={onProfile ? 'button' : undefined} tabIndex={onProfile ? 0 : undefined} onClick={() => onProfile?.(device)} onKeyDown={event => { if (onProfile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onProfile(device); } }}>
+              {selection && (
+                <td data-label="Seleccionar" className="device-select-cell" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Seleccionar ${device.etiqueta}`}
+                    checked={selection.selected.has(device.etiqueta)}
+                    onChange={() => selection.onToggle(device.etiqueta)}
+                  />
+                </td>
+              )}
               <td data-label="Etiqueta">
                 <strong>{device.etiqueta}</strong>
                 <div className="cell-sub operational-alias">{getOperationalAlias(device)}</div>

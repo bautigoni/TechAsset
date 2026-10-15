@@ -76,45 +76,8 @@ export function CollapsiblePanel({ id, title, used, total, usedLabel, loading = 
   );
 }
 
-/** Conjunto de claves seleccionadas, con alta/baja de a una o de a muchas. */
-export function useChipSelection() {
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
-  const toggle = useCallback((key: string) => {
-    setSelected(current => {
-      const next = new Set(current);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
-  // Si ya estaban todas, las saca; si no, completa las que faltan.
-  const toggleMany = useCallback((keys: string[]) => {
-    setSelected(current => {
-      const next = new Set(current);
-      const all = keys.length > 0 && keys.every(key => next.has(key));
-      for (const key of keys) {
-        if (all) next.delete(key);
-        else next.add(key);
-      }
-      return next;
-    });
-  }, []);
-  const clear = useCallback(() => setSelected(new Set()), []);
-  return { selected, toggle, toggleMany, clear };
-}
-
-export function SelectionBar({ count, onClear, children }: PropsWithChildren<{ count: number; onClear: () => void }>) {
-  if (!count) return null;
-  return (
-    <div className="chip-selection-bar" role="region" aria-label="Acciones sobre la selección">
-      <span className="chip-selection-count"><b>{count}</b> {count === 1 ? 'seleccionado' : 'seleccionados'}</span>
-      <div className="chip-selection-actions">
-        {children}
-        <button type="button" className="chip-selection-clear" onClick={onClear}>Limpiar</button>
-      </div>
-    </div>
-  );
-}
+// La selección vive en layout/Selection (la comparten Préstamos y Dispositivos).
+export { useSelection as useChipSelection, SelectionBar } from '../layout/Selection';
 
 export function SelectModeToggle({ active, disabled, onChange }: { active: boolean; disabled?: boolean; onChange: (next: boolean) => void }) {
   return (

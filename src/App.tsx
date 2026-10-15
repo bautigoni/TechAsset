@@ -70,6 +70,8 @@ export function App() {
   const [profile, setProfile] = useState<Device | null>(null);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [loanSeed, setLoanSeed] = useState('');
+  // Lote elegido en Dispositivos para prestar: llega a la lista del formulario.
+  const [loanBatchSeed, setLoanBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -458,6 +460,19 @@ export function App() {
     setView('loans');
   };
 
+  // Lo que se mandó a Préstamos se usa una vez: al salir de la vista se olvida,
+  // si no, volver a Préstamos más tarde volvía a cargar el mismo equipo o lote.
+  useEffect(() => {
+    if (view === 'loans') return;
+    setLoanSeed('');
+    setLoanBatchSeed(undefined);
+  }, [view]);
+
+  const openLoanBatch = (etiquetas: string[]) => {
+    setLoanBatchSeed(current => ({ etiquetas, nonce: (current?.nonce || 0) + 1 }));
+    setView('loans');
+  };
+
   // Rol real en la sede activa → permisos efectivos de roles.config. Un rol
   // personalizado con permisos de edición no debe caer en modo consulta solo
   // porque su nombre no figure en la lista legacy de managers/asistentes.
@@ -528,8 +543,8 @@ export function App() {
         <div key={view} className="view-enter">
         <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
         {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
-        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
-        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} />}
+        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} />}
+        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} />}
         {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
         {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
         {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}

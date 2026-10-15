@@ -18,6 +18,9 @@ import { AddDeviceModal } from './AddDeviceModal';
 import { downloadDevicesCsv, importDevicesFromCsv } from '../../services/devicesApi';
 import { promptDialog } from '../layout/Feedback';
 import { getDeviceStateKey } from '../../utils/deviceState';
+import { useSelection } from '../layout/Selection';
+import { DeviceBulkBar } from './DeviceBulkBar';
+import type { LoanBatchResponse } from '../../services/loansApi';
 
 type DeviceFilter = string;
 type DeviceSort = 'default' | 'operational';
@@ -36,7 +39,7 @@ function matchesFilter(device: Device, filter: DeviceFilter) {
   return classifyDeviceType(device) === filter;
 }
 
-export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan, onReturn, onProfile, onDelete, onImported }: {
+export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan, onReturn, onProfile, onDelete, onImported, onLoanBatch, onReturnBatch }: {
   devices: Device[];
   consultationMode: boolean;
   operator: string;
@@ -46,7 +49,12 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
   onProfile: (device: Device) => void;
   onDelete?: (device: Device) => Promise<void> | void;
   onImported?: () => Promise<void> | void;
+  onLoanBatch?: (etiquetas: string[]) => void;
+  onReturnBatch?: (etiquetas: string[]) => Promise<LoanBatchResponse>;
 }) {
+  // Selección para acciones en lote (barra flotante abajo).
+  const selection = useSelection();
+  const selectedDevices = useMemo(() => devices.filter(device => selection.selected.has(device.etiqueta)), [devices, selection.selected]);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -206,11 +214,21 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
         </div>
         {message && <div className={message.tone === 'error' ? 'tool-error' : 'tool-info'}>{message.text}</div>}
         {visibleDevices.length ? (
-          <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={onProfile} onEdit={consultationMode ? undefined : setEditing} onDelete={consultationMode ? undefined : handleDelete} />
+          <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={onProfile} onEdit={consultationMode ? undefined : setEditing} onDelete={consultationMode ? undefined : handleDelete} selection={consultationMode ? undefined : { selected: selection.selected, onToggle: selection.toggle, onToggleMany: selection.toggleMany }} />
         ) : (
           <div className="empty-state">No hay dispositivos para este filtro o búsqueda.</div>
         )}
       </section>
+      {!consultationMode && (
+        <DeviceBulkBar
+          selectedDevices={selectedDevices}
+          operator={operator}
+          onClear={selection.clear}
+          onLoanBatch={onLoanBatch}
+          onReturnBatch={onReturnBatch}
+          onChanged={() => onImported?.()}
+        />
+      )}
       {trashOpen && <DeviceTrashModal consultationMode={consultationMode} onRestored={() => onImported?.()} onClose={() => setTrashOpen(false)} />}
       {groupsOpen && <DeviceGroupsManager devices={devices} consultationMode={consultationMode} onOpenDevice={device => { setGroupsOpen(false); onProfile(device); }} onClose={() => setGroupsOpen(false)} />}
       {adding && <AddDeviceModal onClose={() => setAdding(false)} onSave={onAdd} />}

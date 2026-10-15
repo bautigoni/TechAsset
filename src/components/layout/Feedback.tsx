@@ -35,6 +35,8 @@ type PromptRequest = {
   inputType: 'text' | 'datetime-local' | 'date' | 'url' | 'number';
   confirmLabel: string;
   required: boolean;
+  /** Si viene, en vez de un campo de texto se elige de esta lista. */
+  options?: string[];
   resolve: (value: string | null) => void;
 };
 
@@ -68,12 +70,12 @@ export function confirmDialog(options: { title: string; message?: string; confir
   });
 }
 
-export function promptDialog(options: { title: string; message?: string; label: string; initial?: string; placeholder?: string; inputType?: PromptRequest['inputType']; confirmLabel?: string; required?: boolean }): Promise<string | null> {
+export function promptDialog(options: { title: string; message?: string; label: string; initial?: string; placeholder?: string; inputType?: PromptRequest['inputType']; confirmLabel?: string; required?: boolean; options?: string[] }): Promise<string | null> {
   return new Promise(resolve => {
     dialogQueue = [...dialogQueue, {
       kind: 'prompt', title: options.title, message: options.message, label: options.label,
       initial: options.initial || '', placeholder: options.placeholder, inputType: options.inputType || 'text',
-      confirmLabel: options.confirmLabel || 'Aceptar', required: options.required ?? true, resolve
+      confirmLabel: options.confirmLabel || 'Aceptar', required: options.required ?? true, options: options.options, resolve
     }];
     emit();
   });
@@ -152,13 +154,19 @@ function ConfirmView({ request }: { request: ConfirmRequest }) {
 }
 
 function PromptView({ request }: { request: PromptRequest }) {
-  const [value, setValue] = useState(request.initial);
+  const [value, setValue] = useState(request.initial || request.options?.[0] || '');
   return (
     <Modal title={request.title} onClose={() => closeDialog(request, null)}>
       <form className="stack feedback-dialog" onSubmit={event => { event.preventDefault(); if (request.required && !value.trim()) return; closeDialog(request, value); }}>
         {request.message && <p className="feedback-message">{request.message}</p>}
         <label>{request.label}
-          <input className="input" autoFocus type={request.inputType} value={value} placeholder={request.placeholder} required={request.required} onChange={event => setValue(event.target.value)} />
+          {request.options
+            ? (
+              <select className="input" autoFocus value={value} onChange={event => setValue(event.target.value)}>
+                {request.options.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+            )
+            : <input className="input" autoFocus type={request.inputType} value={value} placeholder={request.placeholder} required={request.required} onChange={event => setValue(event.target.value)} />}
         </label>
         <div className="actions">
           <Button variant="primary" type="submit" disabled={request.required && !value.trim()}>{request.confirmLabel}</Button>

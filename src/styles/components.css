@@ -5155,3 +5155,12 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
 /* "Archivo" del canvas es un label (para el input file): sin esto heredaba el
    display:block y el margen de los labels de formulario y caia debajo. */
 .canvas-tools .canvas-file-btn{display:inline-flex;align-items:center;margin:0;font-size:inherit;color:var(--text)}
+
+/* Columna de seleccion de la tabla de dispositivos */
+.device-table .device-select-cell{width:38px;text-align:center}
+.device-table .device-select-cell input{width:17px;height:17px;cursor:pointer;accent-color:var(--blue)}
+.chip-selection-bar .btn-danger{padding:8px 14px}
+.chip-selection-bar.is-floating{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:min(760px,calc(100vw - 32px));z-index:60;animation:chip-bar-float-in .16s ease-out}
+@keyframes chip-bar-float-in{from{transform:translate(-50%,8px);opacity:0}}
+@media (max-width:980px){.chip-selection-bar.is-floating{bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
+@media (prefers-reduced-motion:reduce){.chip-selection-bar.is-floating{animation:none}}
