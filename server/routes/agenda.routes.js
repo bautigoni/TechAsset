@@ -8,11 +8,24 @@ export const agendaRouter = Router();
 const VALID_STATES = new Set(['Pendiente', 'Entregado', 'Realizado', 'Cancelado', 'Faltaron equipos']);
 const CAPACITY = { touch: 25, tic: 99, plani: 99, dell: 99 };
 
+// Por defecto no viajan las actividades TERMINADAS (realizadas o canceladas)
+// con más de AGENDA_RECENT_DAYS: la agenda se pollea y, sin tope, crecía año a
+// año. Las pendientes viajan siempre. ?all=1 trae todo (historial completo).
+const AGENDA_RECENT_DAYS = 120;
+const FINISHED = "estado IN ('Realizado','Cancelado')";
+const LAST_TOUCH = "COALESCE(NULLIF(ultima_modificacion,''), NULLIF(fecha,''), created_at, '')";
+
 agendaRouter.get('/agenda', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY dia, turno, desde').all(requireSite(_req));
+  const siteCode = requireSite(_req);
+  const all = _req.query.all === '1';
+  const since = new Date(Date.now() - AGENDA_RECENT_DAYS * 86400000).toISOString().slice(0, 10);
+  const rows = all
+    ? getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY dia, turno, desde').all(siteCode)
+    : getDb().prepare(`SELECT * FROM agenda WHERE eliminada=0 AND site_code=? AND (NOT ${FINISHED} OR ${LAST_TOUCH} >= ?) ORDER BY dia, turno, desde`).all(siteCode, since);
+  const olderHidden = all ? 0 : Number(getDb().prepare(`SELECT COUNT(*) AS total FROM agenda WHERE eliminada=0 AND site_code=? AND ${FINISHED} AND ${LAST_TOUCH} < ?`).get(siteCode, since)?.total || 0);
   // El hash va sobre los items: `loadedAt` cambia siempre y rompería el 304.
   const items = rows.map(rowToAgenda);
-  sendWithEtag(_req, res, { ok: true, items, loadedAt: nowIso() }, { items });
+  sendWithEtag(_req, res, { ok: true, items, olderHidden, loadedAt: nowIso() }, { items, olderHidden });
 });
 
 agendaRouter.get('/agenda/today', (_req, res) => {

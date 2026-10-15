@@ -5171,3 +5171,4 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
 .task-card-title-row{display:flex;align-items:flex-start;gap:8px}
 .task-card .task-select{width:16px;height:16px;margin:2px 0 0;flex:0 0 auto;accent-color:var(--blue);cursor:pointer}
 .task-card.is-selected{border-color:var(--blue);box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 30%,transparent)}
+.agenda-older{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:14px}

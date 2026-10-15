@@ -5,6 +5,10 @@ import { confirmDialog } from '../components/layout/Feedback';
 
 export function useAgenda(operator: string) {
   const [items, setItems] = useState<AgendaItem[]>([]);
+  // Terminadas viejas que el server no mandó (ver GET /api/agenda). Al pedirlas
+  // una vez, el auto-refresh sigue trayendo todo.
+  const [olderHidden, setOlderHidden] = useState(0);
+  const includeAll = useRef(false);
 
   // El hook refresca al montar y App vuelve a pedir al cambiar de sede: sin esta
   // guarda salían dos GET /api/agenda idénticos en cada arranque.
@@ -13,8 +17,9 @@ export function useAgenda(operator: string) {
   const refresh = useCallback(async () => {
     if (inFlight.current) return inFlight.current;
     // Se pollea (App, cada 30 s): si no cambió nada no hay re-render.
-    const promise = getAgenda()
+    const promise = getAgenda(includeAll.current)
       .then(data => {
+        setOlderHidden(data.olderHidden || 0);
         const key = JSON.stringify(data.items);
         if (key === lastKey.current) return;
         lastKey.current = key;
@@ -58,5 +63,11 @@ export function useAgenda(operator: string) {
     await refresh();
   };
 
-  return { items, kpis, refresh, save, remove };
+  const loadOlder = useCallback(async () => {
+    includeAll.current = true;
+    lastKey.current = '';
+    await refresh();
+  }, [refresh]);
+
+  return { items, kpis, refresh, save, remove, olderHidden, loadOlder };
 }

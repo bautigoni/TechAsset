@@ -97,7 +97,9 @@ function monthMatrix(date = new Date()) {
   });
 }
 
-export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, onRefresh }: { items: AgendaItem[]; kpis?: Record<string, number>; consultationMode: boolean; onSave: (item: Partial<AgendaItem>) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onTask: (item: AgendaItem) => void; onRefresh?: () => Promise<unknown> | void }) {
+export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, onRefresh, olderHidden = 0, onLoadOlder }: {
+  olderHidden?: number;
+  onLoadOlder?: () => Promise<unknown>; items: AgendaItem[]; kpis?: Record<string, number>; consultationMode: boolean; onSave: (item: Partial<AgendaItem>) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onTask: (item: AgendaItem) => void; onRefresh?: () => Promise<unknown> | void }) {
   const [day, setDay] = useState('Hoy');
   const [tab, setTab] = useState<AgendaTab>('today');
   const [turno, setTurno] = useState<TurnoFilter>('completo');
@@ -351,6 +353,12 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         <div className="agenda-cards">
           {historyItems.map(item => <AgendaCard key={item.id} item={item} consultationMode={consultationMode} onUpdate={(current, patch) => onSave({ ...current, ...patch })} onDelete={id => onDelete(id)} onTask={onTask} />)}
           {!historyItems.length && <div className="empty-state">Aún no hay actividades realizadas o canceladas.</div>}
+          {olderHidden > 0 && onLoadOlder && (
+            <div className="agenda-older">
+              <span className="muted">Hay {olderHidden} actividades terminadas de hace más de 4 meses.</span>
+              <Button onClick={() => void onLoadOlder()}>Ver anteriores</Button>
+            </div>
+          )}
         </div>
       )}
 
