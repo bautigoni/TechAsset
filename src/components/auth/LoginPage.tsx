@@ -53,7 +53,10 @@ export function LoginPage({ mode, onMode, onReady }: {
   const [nombre, setNombre] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setErrorText] = useState('');
+  // Cuenta cada error para que el mismo mensaje dos veces seguidas vuelva a sacudir.
+  const [errorCount, setErrorCount] = useState(0);
+  const setError = (text: string) => { setErrorText(text); if (text) setErrorCount(count => count + 1); };
   const [success, setSuccess] = useState('');
   const [googleEnabled, setGoogleEnabled] = useState(false);
   // Token del link de contraseña que llega por mail (?password=...).
@@ -154,7 +157,9 @@ export function LoginPage({ mode, onMode, onReady }: {
             <label>Repetila
               <input className="auth-input" type="password" required minLength={6} value={passwordRepeat} onChange={event => setPasswordRepeat(event.target.value)} autoComplete="new-password" />
             </label>
-            {error && <div className="auth-msg is-error">{error}</div>}
+            {/* Receta error-state-shake, como en el escaneo de préstamos: el key la rearranca
+                aunque se repita el mismo error (dos contraseñas mal seguidas). */}
+            {error && <div key={`${error}:${errorCount}`} className="auth-msg is-error t-input is-shaking" role="alert">{error}</div>}
             <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar contraseña'}</button>
           </div>
         </form>
@@ -228,7 +233,9 @@ export function LoginPage({ mode, onMode, onReady }: {
             </label>
           )}
 
-          {error && <div className="auth-msg is-error">{error}</div>}
+          {/* Receta error-state-shake, como en el escaneo de préstamos: el key la rearranca
+                aunque se repita el mismo error (dos contraseñas mal seguidas). */}
+            {error && <div key={`${error}:${errorCount}`} className="auth-msg is-error t-input is-shaking" role="alert">{error}</div>}
           {success && <div className="auth-msg is-ok">{success}</div>}
 
           <button className="auth-submit" type="submit" disabled={busy}>
