@@ -28,7 +28,8 @@ const ENDPOINTS = [
   '/api/classroom-categories', '/api/device-categories', '/api/device-groups', '/api/devices/review-queue',
   '/api/inventory/items', '/api/tickets', '/api/ticket-templates', '/api/petty-cash', '/api/suggestions',
   '/api/reminders', '/api/lifecycle/defaults', '/api/agenda/history', '/api/tasks/history', '/api/tasks/analytics',
-  '/api/notifications/prefs', '/api/site-assistants', '/api/agenda/upcoming', '/api/push/vapid-public-key'
+  '/api/notifications/prefs', '/api/site-assistants', '/api/push/vapid-public-key',
+  '/api/history?kind=loans&limit=50', '/api/history?kind=all&limit=50', '/api/devices/deleted'
 ];
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'techasset-record-'));

@@ -32,6 +32,7 @@ import { schedulesRouter } from './routes/schedules.routes.js';
 import { pettyCashRouter } from './routes/pettyCash.routes.js';
 import { suggestionsRouter } from './routes/suggestions.routes.js';
 import { remindersRouter } from './routes/reminders.routes.js';
+import { historyRouter } from './routes/history.routes.js';
 import { startNotificationWorkers } from './services/notifications.service.js';
 import { invalidateDeviceInventoryCache } from './services/deviceInventory.service.js';
 import { authMiddleware, getUserSession, invalidateSessionCache, isSuperadmin, normalizeSiteCode, requireEditor, requireModuleEditor } from './services/siteContext.service.js';
@@ -150,6 +151,7 @@ app.use('/api', procedimientosRouter);
 app.use('/api', classroomsRouter);
 app.use('/api', toolsRouter);
 app.use('/api', operationsRouter);
+app.use('/api', historyRouter);
 // Una ruta de API que no existe responde 404 en JSON. Antes caía en el
 // fallback de la SPA y devolvía el index.html con 200: el front recibía HTML
 // donde esperaba JSON y el error quedaba escondido.

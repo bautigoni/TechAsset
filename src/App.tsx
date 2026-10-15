@@ -31,6 +31,7 @@ import type { AssistantContext } from './services/assistantApi';
 // instantáneo. La clave del lazyView es la ViewKey para poder prefetchear por nav.
 const DevicesPage = lazyView('devices', () => import('./components/devices/DevicesPage'), 'DevicesPage');
 const LoansPage = lazyView('loans', () => import('./components/loans/LoansPage'), 'LoansPage');
+const HistoryPage = lazyView('history', () => import('./components/history/HistoryPage'), 'HistoryPage');
 const InventoryPage = lazyView('inventory', () => import('./components/inventory/InventoryPage'), 'InventoryPage');
 const AnalyticsPage = lazyView('analytics', () => import('./components/analytics/AnalyticsPage'), 'AnalyticsPage');
 const AgendaPage = lazyView('agenda', () => import('./components/agenda/AgendaPage'), 'AgendaPage');
@@ -518,6 +519,7 @@ export function App() {
         {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
         {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} />}
+        {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
         {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
         {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
         {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
@@ -605,7 +607,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'adminusers', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'adminusers', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 
