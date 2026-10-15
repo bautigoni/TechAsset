@@ -8,6 +8,7 @@ import { ScanMessage } from './ScanMessage';
 import { getSiteSettings } from '../../services/authApi';
 import { getActiveLoanAccessories, getLoanSuggestions, type LoanBatchResponse, type LoanSuggestion } from '../../services/loansApi';
 import { confirmDialog } from '../layout/Feedback';
+import { getLoanState } from '../../utils/deviceState';
 
 type ScanItem = {
   id: string;
@@ -595,15 +596,7 @@ function barcodeDetectorClass(): BarcodeDetectorConstructor | undefined {
 }
 
 function getLoanUiState(device?: Device): LoanUiState {
-  if (!device) return 'unknown';
-  const state = normalizeState(device.estado);
-  if (!state || state === 'disponible' || state === 'devuelto') return 'available';
-  if (state.includes('prest') || state.includes('retir')) return 'loaned';
-  return 'blocked';
-}
-
-function normalizeState(value?: string) {
-  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+  return device ? getLoanState(device.estado) : 'unknown';
 }
 
 function normalizeStringOptions(value: unknown, fallback: string[]) {

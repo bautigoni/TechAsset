@@ -12,6 +12,7 @@ const CONDICIONES = [
 ];
 import { RelatedReminders } from '../reminders/RelatedReminders';
 import { getActiveSiteCode } from '../../services/activeSite';
+import { formatDate as formatCachedDate, SHORT_DATE_TIME } from '../../utils/formatters';
 
 export function DeviceProfile({
   device,
@@ -276,5 +277,5 @@ function shortDate(value?: string) {
 function formatDate(value?: string) {
   if (!value) return '—';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? shortDate(value) : date.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+  return Number.isNaN(date.getTime()) ? shortDate(value) : formatCachedDate(date, SHORT_DATE_TIME);
 }

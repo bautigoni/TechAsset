@@ -13,6 +13,7 @@ import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { confirmDialog } from '../layout/Feedback';
+import { formatDate, DATE_ONLY } from '../../utils/formatters';
 
 const STATUSES: SuggestionStatus[] = ['Proposed', 'Under Review', 'Planned', 'In Progress', 'Implemented', 'Rejected'];
 const STATUS_LABEL: Record<SuggestionStatus, string> = {
@@ -213,7 +214,7 @@ export function SuggestionsPage() {
             <h3>{item.title}</h3>
             <p>{item.description}</p>
             <div className="suggestion-author">
-              {item.authorName || item.authorEmail || 'Usuario'} · {new Date(item.createdAt).toLocaleDateString('es-AR')}
+              {item.authorName || item.authorEmail || 'Usuario'} · {formatDate(item.createdAt, DATE_ONLY)}
             </div>
             {canManage && (
               <label className="suggestion-workflow">
@@ -301,7 +302,7 @@ export function SuggestionsPage() {
               {comments.map(item => (
                 <article key={item.id}>
                   <strong>{item.authorName || item.authorEmail || 'Usuario'}</strong>
-                  <span>{new Date(item.createdAt).toLocaleString('es-AR')}</span>
+                  <span>{formatDate(item.createdAt)}</span>
                   <p>{item.body}</p>
                 </article>
               ))}

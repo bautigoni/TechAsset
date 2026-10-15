@@ -14,6 +14,7 @@ import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
 import { SkeletonPanel } from '../layout/Skeleton';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
+import { formatDate, SHORT_DATE_TIME } from '../../utils/formatters';
 
 type Detail = Awaited<ReturnType<typeof getTicketDetail>>;
 export function TicketDetailModal({
@@ -250,5 +251,5 @@ export function TicketDetailModal({
 }
 function format(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+  return Number.isNaN(date.getTime()) ? value : formatDate(date, SHORT_DATE_TIME);
 }

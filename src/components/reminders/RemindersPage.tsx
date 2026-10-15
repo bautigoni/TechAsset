@@ -3,6 +3,7 @@ import type { Reminder } from '../../types';
 import { completeReminder, createReminder, deleteReminder, getReminders, postponeReminder } from '../../services/remindersApi';
 import { Button } from '../layout/Button';
 import { confirmDialog, errorMessage, promptDialog, toast } from '../layout/Feedback';
+import { formatDate } from '../../utils/formatters';
 
 const RELATED_TYPES: Array<[string, string]> = [
   ['device', 'Dispositivo'], ['classroom', 'Aula'], ['ticket', 'Ticket'], ['loan', 'Préstamo'],
@@ -122,7 +123,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
               )}
             </div>
             <div className="reminder-card-side">
-              <strong>{new Date(item.remindAt).toLocaleString('es-AR')}</strong>
+              <strong>{formatDate(item.remindAt)}</strong>
               {item.status === 'completed' ? (
                 <span>Completado</span>
               ) : (

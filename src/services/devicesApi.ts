@@ -1,6 +1,7 @@
 import type { Device, Movement } from '../types';
 import { apiGet, apiSend, siteHeaders } from './apiClient';
 import { getActiveSiteCode } from './activeSite';
+import { downloadBlob } from '../utils/download';
 
 type DevicesResponse = { ok: true; items: Device[]; loadedAt: string; source: string; diagnostics?: Record<string, unknown> };
 type DevicesDiagnosticsResponse = { ok: true; diagnostics: Record<string, unknown> };
@@ -56,15 +57,7 @@ export async function downloadDevicesCsv(path: string, filename: string) {
     }
     throw new Error(message);
   }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, await response.blob());
 }
 
 export function addDevice(payload: Partial<Device> & { operator: string }) {

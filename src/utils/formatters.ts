@@ -30,6 +30,7 @@ export function dateFormatter(options: Intl.DateTimeFormatOptions = {}, locale =
 export const DATE_TIME: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
 export const DATE_ONLY: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric' };
 export const TIME_HM: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+export const SHORT_DATE_TIME: Intl.DateTimeFormatOptions = { dateStyle: 'short', timeStyle: 'short' };
 
 /**
  * Formatea una fecha (string ISO, número o Date) con un formateador cacheado.

@@ -17,6 +17,7 @@ import { errorMessage, toast } from '../layout/Feedback';
 import { AddDeviceModal } from './AddDeviceModal';
 import { downloadDevicesCsv, importDevicesFromCsv } from '../../services/devicesApi';
 import { promptDialog } from '../layout/Feedback';
+import { getDeviceStateKey } from '../../utils/deviceState';
 
 type DeviceFilter = string;
 type DeviceSort = 'default' | 'operational';
@@ -31,10 +32,7 @@ const FILTER_LABELS: Record<string, string> = {
 
 function matchesFilter(device: Device, filter: DeviceFilter) {
   if (filter === 'all') return true;
-  if (filter === 'available') return device.estado !== 'Prestado' && device.estado !== 'No encontrada' && device.estado !== 'Fuera de servicio' && device.estado !== 'Perdida';
-  if (filter === 'loaned') return device.estado === 'Prestado';
-  if (filter === 'missing') return device.estado === 'No encontrada' || device.estado === 'Perdida';
-  if (filter === 'out') return device.estado === 'Fuera de servicio';
+  if (filter === 'available' || filter === 'loaned' || filter === 'missing' || filter === 'out') return getDeviceStateKey(device) === filter;
   return classifyDeviceType(device) === filter;
 }
 

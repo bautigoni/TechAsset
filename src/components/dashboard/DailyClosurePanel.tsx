@@ -3,6 +3,7 @@ import { createDailyClosure, fetchDailyClosurePreview, fetchDailyClosures } from
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { SkeletonBlock } from '../layout/Skeleton';
+import { formatDate } from '../../utils/formatters';
 
 export function DailyClosurePanel({ operator, consultationMode }: { operator: string; consultationMode: boolean }) {
   const [open, setOpen] = useState(false);
@@ -56,7 +57,7 @@ function renderClosureText(resumen: Record<string, unknown>, observaciones: stri
   const aulas = Array.isArray(resumen.aulasConProblemas) ? resumen.aulasConProblemas : [];
   const notes = Array.isArray(resumen.notasImportantes) ? resumen.notasImportantes : [];
   return [
-    `Cierre TIC - ${new Date().toLocaleString()}`,
+    `Cierre TIC - ${formatDate(new Date())}`,
     `Operador: ${operator}`,
     '',
     `Préstamos activos: ${resumen.prestamosActivos ?? 0}`,

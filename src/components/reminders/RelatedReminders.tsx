@@ -3,6 +3,7 @@ import type { Reminder } from '../../types';
 import { completeReminder, createReminder, getReminders } from '../../services/remindersApi';
 import { Button } from '../layout/Button';
 import { promptDialog, toast, errorMessage } from '../layout/Feedback';
+import { formatDate } from '../../utils/formatters';
 
 export function RelatedReminders({
   type,
@@ -52,7 +53,7 @@ export function RelatedReminders({
               <span>{item.status === 'completed' ? '✓' : '○'}</span>
               <div>
                 <strong>{item.title}</strong>
-                <small>{new Date(item.remindAt).toLocaleString('es-AR')}</small>
+                <small>{formatDate(item.remindAt)}</small>
               </div>
               {item.status === 'pending' && !consultationMode && (
                 <button

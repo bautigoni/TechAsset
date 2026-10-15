@@ -356,8 +356,12 @@ function isLoanedState(value) {
   return state.includes('prest') || state.includes('retir');
 }
 
+// Misma regla que getLoanState en src/utils/deviceState.ts: si cambia una, cambiar la otra.
 function isAvailableState(value) {
   const state = normalizeState(value);
+  if (state.includes('prest') || state.includes('retir')) return false;
+  // "No disponible" contiene "disponible": antes se podía prestar.
+  if (state.includes('no disponible')) return false;
   return !state || state.includes('disponible') || state.includes('devuelto') || state.includes('sin revisar');
 }
 

@@ -5,7 +5,7 @@ import { Button } from '../layout/Button';
 import { SkeletonPanel } from '../layout/Skeleton';
 import { RelatedReminders } from '../reminders/RelatedReminders';
 import { useCloseChoreography } from '../../hooks/useMountTransition';
-import { DATE_TIME, formatDate } from '../../utils/formatters';
+import { DATE_TIME, formatDate, DATE_ONLY } from '../../utils/formatters';
 
 // Igual que en Modal.tsx: tiene que coincidir con --modal-close-dur.
 const MODAL_CLOSE_MS = 150;
@@ -218,14 +218,14 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
             <div><span>Abiertos</span><strong>{incidentSummary.open}</strong></div>
             <div><span>Cerrados</span><strong>{incidentSummary.closed}</strong></div>
             <div><span>Total</span><strong>{incidentSummary.total}</strong></div>
-            <div><span>Último incidente</span><strong>{incidentSummary.lastIncidentAt ? new Date(incidentSummary.lastIncidentAt).toLocaleDateString('es-AR') : '—'}</strong></div>
+            <div><span>Último incidente</span><strong>{formatDate(incidentSummary.lastIncidentAt, DATE_ONLY, '—')}</strong></div>
           </div>
           {incidentSummary.commonCategories.length > 0 && <div className="classroom-incident-categories"><strong>Problemas frecuentes</strong>{incidentSummary.commonCategories.map(item => <span key={item.label}>{item.label} · {item.value}</span>)}</div>}
           <div className="classroom-incident-timeline">
             {incidents.slice(0, 8).map(item => (
               <article key={item.id}>
                 <span className={`badge ${item.estado === 'Hecho' ? 'available' : 'loaned'}`}>{item.estado}</span>
-                <div><strong>{item.numero ? `#${item.numero} · ` : ''}{item.titulo || 'Incidente sin título'}</strong><span>{[item.categoria, item.prioridad, item.createdAt ? new Date(item.createdAt).toLocaleString('es-AR') : ''].filter(Boolean).join(' · ')}</span></div>
+                <div><strong>{item.numero ? `#${item.numero} · ` : ''}{item.titulo || 'Incidente sin título'}</strong><span>{[item.categoria, item.prioridad, formatDate(item.createdAt)].filter(Boolean).join(' · ')}</span></div>
               </article>
             ))}
             {!incidents.length && <div className="empty-state">Esta aula todavía no tiene incidentes vinculados.</div>}

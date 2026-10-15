@@ -8,6 +8,7 @@ import { useMountTransition } from '../../hooks/useMountTransition';
 import { formatDdMm } from '../../utils/taskDate';
 import { createTaskComment, createTaskItem, deleteTaskItem, getTaskComments, updateTaskItem } from '../../services/tasksApi';
 import { toast } from '../layout/Feedback';
+import { formatDate } from '../../utils/formatters';
 
 export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
@@ -159,7 +160,7 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
           </form>
         </Modal>
       )}
-      {commentsOpen && <Modal title={`Comentarios · ${task.titulo}`} onClose={() => setCommentsOpen(false)}><div className="task-comments"><div className="task-comment-list">{comments.map(item => <article key={item.id}><header><strong>{item.authorName || item.authorEmail}</strong><time>{new Date(item.createdAt).toLocaleString('es-AR')}</time></header><p>{item.body}</p></article>)}{!comments.length && <div className="empty-state">Todavía no hay comentarios.</div>}</div>{!consultationMode && <form onSubmit={async event => { event.preventDefault(); if (!commentText.trim()) return; const response = await createTaskComment(task.id, commentText); setComments(value => [...value, response.item]); setCommentText(''); await onRefresh?.(); }}><textarea className="input" rows={3} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Escribí un comentario" /><Button variant="primary" type="submit">Comentar</Button></form>}</div></Modal>}
+      {commentsOpen && <Modal title={`Comentarios · ${task.titulo}`} onClose={() => setCommentsOpen(false)}><div className="task-comments"><div className="task-comment-list">{comments.map(item => <article key={item.id}><header><strong>{item.authorName || item.authorEmail}</strong><time>{formatDate(item.createdAt)}</time></header><p>{item.body}</p></article>)}{!comments.length && <div className="empty-state">Todavía no hay comentarios.</div>}</div>{!consultationMode && <form onSubmit={async event => { event.preventDefault(); if (!commentText.trim()) return; const response = await createTaskComment(task.id, commentText); setComments(value => [...value, response.item]); setCommentText(''); await onRefresh?.(); }}><textarea className="input" rows={3} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Escribí un comentario" /><Button variant="primary" type="submit">Comentar</Button></form>}</div></Modal>}
     </article>
   );
 }

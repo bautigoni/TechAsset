@@ -8,6 +8,7 @@ import { PhotoPassPanel } from './PhotoPassPanel';
 import { DeviceChipsPanel } from './DeviceChipsPanel';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
 import { clickableProps } from '../../utils/a11y';
+import { getLoanState } from '../../utils/deviceState';
 
 function countBy(devices: Device[], getter: (device: Device) => string) {
   return Object.entries(devices.reduce<Record<string, number>>((acc, device) => {
@@ -26,8 +27,8 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
   const [previousDate, setPreviousDate] = useState('');
   const [previousError, setPreviousError] = useState('');
   const [previousLoading, setPreviousLoading] = useState(false);
-  const loaned = devices.filter(device => normalizeLoanState(device.estado) === 'loaned');
-  const available = devices.filter(device => normalizeLoanState(device.estado) === 'available');
+  const loaned = devices.filter(device => getLoanState(device.estado) === 'loaned');
+  const available = devices.filter(device => getLoanState(device.estado) === 'available');
   const byType = countBy(devices, device => classifyDeviceType(device));
   const byLocation = countBy(loaned, device => device.ubicacion || 'Sin ubicación');
   const recentLoaned = [...loaned]
@@ -177,9 +178,3 @@ function formatShortDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : formatDate(date, { day: '2-digit', month: 'short' });
 }
 
-function normalizeLoanState(value?: string) {
-  const state = String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (state.includes('prest') || state.includes('retir')) return 'loaned';
-  if (!state || state.includes('disponible') || state.includes('devuelto')) return 'available';
-  return 'blocked';
-}

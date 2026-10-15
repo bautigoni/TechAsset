@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getParque, type ParqueResponse } from '../../services/analyticsApi';
-import { csvCell } from '../../utils/formatters';
 import { Button } from '../layout/Button';
 import { ChartCard } from './ChartCard';
+import { downloadCsv } from '../../utils/download';
 
 // Snapshot del parque: no se filtra por período porque es estado presente
 // (condición actual y vida útil restante), no eventos dentro de un rango.
@@ -42,13 +42,7 @@ export function ParqueSection() {
       item.etiqueta, item.alias, item.assetClass, item.condition || 'Sin revisar',
       item.fechaAlta, item.fechaRenovacion, item.mesesRestantes ?? '', item.estimada ? 'sí' : 'no'
     ]);
-    const blob = new Blob([[headers, ...rows].map(row => row.map(csvCell).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `a-renovar-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadCsv(`a-renovar-${new Date().toISOString().slice(0, 10)}.csv`, [headers, ...rows]);
   };
 
   if (error) return <div className="tool-error">{error}</div>;

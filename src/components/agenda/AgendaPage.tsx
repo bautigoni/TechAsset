@@ -9,6 +9,7 @@ import { type AgendaKpiFilter, AgendaKpis } from './AgendaKpis';
 import { AgendaCard } from './AgendaCard';
 import { AgendaModal } from './AgendaModal';
 import { formatDate } from '../../utils/formatters';
+import { downloadText } from '../../utils/download';
 
 const DAYS = ['Hoy', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie'];
 const DAY_MAP: Record<string, string> = { Lun: 'Lunes', Mar: 'Martes', Mie: 'Miércoles', Jue: 'Jueves', Vie: 'Viernes' };
@@ -65,15 +66,6 @@ function agendaCsv(items: AgendaItem[]) {
   const headers = ['dia', 'turno', 'desde', 'hasta', 'curso', 'actividad', 'tipo', 'cantidad', 'ubicacion', 'estado', 'nota'];
   const rows = items.map(item => [item.dia, item.turno, item.desde, item.hasta, item.curso, item.actividad, item.tipoDispositivo, item.cantidad, item.ubicacion, item.estado, item.nota || '']);
   return [headers, ...rows].map(row => row.map(value => `"${String(value ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
-}
-
-function downloadText(filename: string, text: string, type = 'text/plain') {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 function itemDate(item: AgendaItem) {
@@ -191,7 +183,8 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
     if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
     else downloadText('agenda-resumen.txt', text);
   };
-  const exportCsv = () => downloadText('agenda-tic.csv', agendaCsv(filtered.length ? filtered : items), 'text/csv;charset=utf-8');
+  // Con BOM para que Excel lea bien los acentos.
+  const exportCsv = () => downloadText('agenda-tic.csv', `﻿${agendaCsv(filtered.length ? filtered : items)}`, 'text/csv;charset=utf-8');
 
   const openSync = async () => {
     setSyncOpen(true);

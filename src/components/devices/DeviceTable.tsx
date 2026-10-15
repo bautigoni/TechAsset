@@ -5,6 +5,7 @@ import { Button } from '../layout/Button';
 import { getOperationalAlias } from '../../utils/classifyDevice';
 import { formatLoanDateTime, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
 import { confirmDialog } from '../layout/Feedback';
+import { getLoanState } from '../../utils/deviceState';
 
 type ActionMode = 'full' | 'dashboard';
 
@@ -12,18 +13,6 @@ function badgeTone(state: string) {
   if (state === 'Prestado') return 'loaned';
   if (state === 'No encontrada' || state === 'Perdida') return 'lost';
   if (state === 'Fuera de servicio') return 'out-service';
-  return 'available';
-}
-
-function normalizeState(value?: string): 'available' | 'loaned' | 'unavailable' {
-  const v = String(value || '').trim().toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '');
-  if (v === 'prestado' || v === 'prestada') return 'loaned';
-  if (v === 'fuera de servicio' || v === 'fuera servicio'
-      || v === 'no encontrada' || v === 'no encontrado'
-      || v === 'perdida' || v === 'perdido'
-      || v === 'en reparacion' || v === 'mantenimiento'
-      || v === 'baja' || v === 'no disponible') return 'unavailable';
   return 'available';
 }
 
@@ -121,8 +110,8 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
               <td data-label="Acciones" className="device-actions-cell" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
                 <div className="table-actions device-actions">
-                  {onLoan && normalizeState(device.estado) === 'available' && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
-                  {onReturn && normalizeState(device.estado) === 'loaned' && <Button className="mini-action-btn" variant="success" disabled={returningTag === device.etiqueta} onClick={() => handleReturn(device)}>{returningTag === device.etiqueta ? 'Devolviendo...' : 'Devolver'}</Button>}
+                  {onLoan && getLoanState(device.estado) === 'available' && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
+                  {onReturn && getLoanState(device.estado) === 'loaned' && <Button className="mini-action-btn" variant="success" disabled={returningTag === device.etiqueta} onClick={() => handleReturn(device)}>{returningTag === device.etiqueta ? 'Devolviendo...' : 'Devolver'}</Button>}
                   {actionMode !== 'dashboard' && onProfile && <Button className="mini-action-btn" onClick={() => onProfile(device)}>Ficha</Button>}
                   {onEdit && <Button className="mini-action-btn" onClick={() => onEdit(device)}>Editar</Button>}
                   {onDelete && actionMode !== 'dashboard' && <Button className="mini-action-btn device-delete-btn" disabled={deletingTag === device.etiqueta} onClick={async () => {

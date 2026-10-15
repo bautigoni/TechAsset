@@ -3,7 +3,6 @@ import type { Device, InventoryItem } from '../../types';
 import { CONDITION_VALUES } from '../../types';
 import { createInventoryItem, deleteInventoryItem, getInventoryItems, importInventoryCsv, updateInventoryItem, uploadInventoryImage } from '../../services/inventoryApi';
 import { updateDeviceMetadata } from '../../services/devicesApi';
-import { csvCell } from '../../utils/formatters';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { SelectField } from '../layout/SelectField';
@@ -15,6 +14,7 @@ import { InventoryTree } from './InventoryTree';
 import { InventoryDetail } from './InventoryDetail';
 import { confirmDialog } from '../layout/Feedback';
 import { clickableProps } from '../../utils/a11y';
+import { downloadCsv } from '../../utils/download';
 
 type Segment = 'todo' | 'equipo' | 'recurso';
 // Los KPI no son decorativos: cada uno es el filtro de lo que está contando.
@@ -256,16 +256,15 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
       entry.revisadoAt ? entry.revisadoAt.slice(0, 10) : '',
       entry.cantidad ?? '', entry.unidad, entry.vidaPct ?? '', entry.renovacion
     ]);
-    downloadCsv(`inventario-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    downloadCsv(`inventario-${new Date().toISOString().slice(0, 10)}.csv`, [headers, ...rows]);
   };
 
   const exportExample = () => {
-    downloadCsv('plantilla-inventario-tic.csv',
+    downloadCsv('plantilla-inventario-tic.csv', [
       ['Nombre', 'Cantidad', 'Categoría', 'Subcategoría', 'Unidad', 'Condición', 'Stock mínimo', 'Observaciones', 'Imagen URL'],
-      [
-        ['LEDs', 100, 'Componentes', 'Diodos', 'unidades', 'Bueno', 10, 'Stock general', ''],
-        ['Sensores de distancia', 34, 'Sensores', 'Ultrasonido', 'unidades', 'Regular', 5, 'HC-SR04', '']
-      ]);
+      ['LEDs', 100, 'Componentes', 'Diodos', 'unidades', 'Bueno', 10, 'Stock general', ''],
+      ['Sensores de distancia', 34, 'Sensores', 'Ultrasonido', 'unidades', 'Regular', 5, 'HC-SR04', '']
+    ]);
   };
 
   const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -569,15 +568,6 @@ const KPI_LABELS: Record<Exclude<KpiFilter, ''>, string> = {
   aRevisar: 'Mostrando lo que no se revisa hace más de 3 meses'
 };
 
-function downloadCsv(fileName: string, headers: string[], rows: unknown[][]) {
-  const blob = new Blob([[headers, ...rows].map(row => row.map(csvCell).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
 
 function readFileAsText(file: File) {
   return new Promise<string>((resolve, reject) => {
