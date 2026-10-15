@@ -5183,3 +5183,8 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
 .self-center{align-self:center!important}.items-end{align-items:end!important}.cursor-pointer{cursor:pointer!important}.block{display:block!important}
 .row-wrap{display:flex!important;gap:8px;align-items:center;flex-wrap:wrap}
 .border-ok{border-color:var(--green)!important}
+
+/* Canvas con los tokens del tema: el fondo fijo #07111f quedaba oscuro en el
+   tema claro con el texto ya oscuro encima ("El canvas esta vacio" ilegible). */
+.infinite-canvas{background-color:var(--panel-2);background-image:radial-gradient(circle,color-mix(in srgb,var(--blue) 28%,transparent) 1px,transparent 1px)}
+.canvas-node>a{color:var(--blue)}
