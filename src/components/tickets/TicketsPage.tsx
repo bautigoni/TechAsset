@@ -14,6 +14,7 @@ import { SkeletonPanel } from '../layout/Skeleton';
 import { useCardResize } from '../../hooks/useCardResize';
 import { LayoutTemplate, TicketPlus } from 'lucide-react';
 import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
+import { clickableProps } from '../../utils/a11y';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
 const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
@@ -99,7 +100,7 @@ function DescriptionBox({ desc }: { desc: string }) {
   return (
     <p
       className={`ticket-card-description${needsTrunc && !expanded ? ' is-trunc' : ''}`}
-      onClick={() => needsTrunc && setExpanded(prev => !prev)}
+      {...(needsTrunc ? { ...clickableProps(() => setExpanded(prev => !prev)), 'aria-expanded': expanded, title: expanded ? 'Mostrar menos' : 'Mostrar todo' } : {})}
     >{show}</p>
   );
 }

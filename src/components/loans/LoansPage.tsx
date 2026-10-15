@@ -7,6 +7,7 @@ import { LoanForm } from './LoanForm';
 import { PhotoPassPanel } from './PhotoPassPanel';
 import { DeviceChipsPanel } from './DeviceChipsPanel';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
+import { clickableProps } from '../../utils/a11y';
 
 function countBy(devices: Device[], getter: (device: Device) => string) {
   return Object.entries(devices.reduce<Record<string, number>>((acc, device) => {
@@ -132,7 +133,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
                   </thead>
                   <tbody>
                     {previousLoans.map(item => (
-                      <tr key={item.id} className="device-row-clickable" onClick={()=>{const device=devices.find(value=>value.etiqueta===item.etiqueta);if(device)onProfile?.(device);}}>
+                      <tr key={item.id} className="device-row-clickable" {...clickableProps(() => { const device = devices.find(value => value.etiqueta === item.etiqueta); if (device) onProfile?.(device); }, `Abrir ficha de ${item.etiqueta}`)}>
                         <td>{formatTimeOnly(item.timestamp) || '-'}</td>
                         <td>
                           <strong>{item.etiqueta}</strong>
@@ -154,7 +155,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <div className="card-head"><h3>Actualmente prestados</h3><span className="muted">{loaned.length}</span></div>
             <div className="loaned-now-list">
               {recentLoaned.map(device => (
-                <div className={`loaned-now-item loan-age-${loanAgeTone(device.loanedAt)} device-row-clickable`} key={device.id} onClick={()=>onProfile?.(device)}>
+                <div className={`loaned-now-item loan-age-${loanAgeTone(device.loanedAt)} device-row-clickable`} key={device.id} {...clickableProps(() => onProfile?.(device), `Abrir ficha de ${device.etiqueta}`)}>
                   <strong>{device.etiqueta} · {getOperationalAlias(device)}</strong>
                   <span>{device.prestadoA || 'Sin persona'} · {[device.ubicacion, device.curso].filter(Boolean).join(' · ') || 'Sin ubicación'}</span>
                   <span className="loaned-now-time">{formatLoanDateTime(device.loanedAt) || 'Sin fecha'} · {loanAgeLabel(device.loanedAt) || 'sin antiguedad'}</span>

@@ -120,7 +120,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
           <button type="button" className={filtro === 'admins' ? 'is-active' : ''} onClick={() => setFiltro('admins')}>Admins</button>
           <button type="button" className={filtro === 'pendientes' ? 'is-active' : ''} onClick={() => setFiltro('pendientes')}>Pendientes</button>
         </div>
-        <input className="input" type="search" placeholder="Buscar por mail, nombre o rol" value={search} onChange={event => setSearch(event.target.value)} />
+        <input className="input" type="search" placeholder="Buscar por mail, nombre o rol" aria-label="Buscar usuarios" value={search} onChange={event => setSearch(event.target.value)} />
       </div>
 
       {search.trim() && coincidenciasGlobales.length > 0 && (

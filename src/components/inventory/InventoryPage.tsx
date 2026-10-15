@@ -14,6 +14,7 @@ import { conditionClass, deviceToEntry, groupEntries, isReviewFresh, itemToEntry
 import { InventoryTree } from './InventoryTree';
 import { InventoryDetail } from './InventoryDetail';
 import { confirmDialog } from '../layout/Feedback';
+import { clickableProps } from '../../utils/a11y';
 
 type Segment = 'todo' | 'equipo' | 'recurso';
 // Los KPI no son decorativos: cada uno es el filtro de lo que está contando.
@@ -371,7 +372,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
           <button type="button" className={segment === 'equipo' ? 'is-active' : ''} onClick={() => toggleSegment('equipo')}>Equipos</button>
           <button type="button" className={segment === 'todo' ? 'is-active' : ''} onClick={() => toggleSegment('todo')}>Todo</button>
         </div>
-        <input className="input" type="search" placeholder="Buscar por nombre, categoría o etiqueta" value={search} onChange={event => setSearch(event.target.value)} />
+        <input className="input" type="search" placeholder="Buscar por nombre, categoría o etiqueta" aria-label="Buscar en el inventario" value={search} onChange={event => setSearch(event.target.value)} />
         <SelectField
           className="inv-toolbar-select"
           value={condicionFilter}
@@ -454,7 +455,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
                     </thead>
                     <tbody>
                       {listed.map(entry => (
-                        <tr key={entry.key} className={detailKey === entry.key ? 'is-selected' : ''} onClick={() => setDetailKey(entry.key)}>
+                        <tr key={entry.key} className={detailKey === entry.key ? 'is-selected' : ''} aria-selected={detailKey === entry.key} {...clickableProps(() => setDetailKey(entry.key), `Ver ${entry.nombre}`)}>
                           <td><span className="inv-table-thumb">{entry.imagenUrl ? <img src={entry.imagenUrl} alt="" loading="lazy" /> : <i />}</span></td>
                           <td><strong>{entry.nombre}</strong>{entry.detalle && <small>{entry.detalle}</small>}</td>
                           <td>{[entry.categoria, entry.subcategoria].filter(Boolean).join(' › ')}</td>

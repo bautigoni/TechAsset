@@ -290,7 +290,7 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
                         className="input"
                         inputMode="numeric"
                         pattern="[0-2][0-9]:[0-5][0-9]"
-                        placeholder="10:00"
+                        placeholder="10:00" aria-label="Hora de inicio del recreo"
                         value={slot.startTime}
                         disabled={!canConfigure || consultationMode}
                         onChange={event => updateSlot(groupIndex, slotIndex, { startTime: event.target.value })}
@@ -300,7 +300,7 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
                         className="input"
                         inputMode="numeric"
                         pattern="[0-2][0-9]:[0-5][0-9]"
-                        placeholder="10:15"
+                        placeholder="10:15" aria-label="Hora de fin del recreo"
                         value={slot.endTime}
                         disabled={!canConfigure || consultationMode}
                         onChange={event => updateSlot(groupIndex, slotIndex, { endTime: event.target.value })}

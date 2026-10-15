@@ -270,7 +270,7 @@ function CanvasNode({
         <input
           value={item.title}
           disabled={consultationMode}
-          placeholder="Sin título"
+          placeholder="Sin título" aria-label="Título del elemento"
           onChange={event => onPatch({ title: event.target.value })}
         />
         <button disabled={consultationMode} onClick={onDelete}>

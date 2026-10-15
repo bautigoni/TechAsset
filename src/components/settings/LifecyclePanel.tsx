@@ -57,6 +57,7 @@ export function LifecyclePanel({ consultationMode }: { consultationMode: boolean
                 <td>{row.assetClass}</td>
                 <td>
                   <input
+                    aria-label={`Vida útil de ${row.assetClass} en meses`}
                     className="input"
                     type="number"
                     min="0"

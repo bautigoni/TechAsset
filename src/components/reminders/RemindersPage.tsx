@@ -4,6 +4,11 @@ import { completeReminder, createReminder, deleteReminder, getReminders, postpon
 import { Button } from '../layout/Button';
 import { confirmDialog, errorMessage, promptDialog, toast } from '../layout/Feedback';
 
+const RELATED_TYPES: Array<[string, string]> = [
+  ['device', 'Dispositivo'], ['classroom', 'Aula'], ['ticket', 'Ticket'], ['loan', 'Préstamo'],
+  ['task', 'Tarea'], ['purchase', 'Compra'], ['suggestion', 'Sugerencia'], ['group', 'Grupo de equipos']
+];
+
 const initial = {
   title: '',
   description: '',
@@ -27,11 +32,22 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
   useEffect(() => {
     refresh().catch(() => setMessage('No se pudieron cargar los recordatorios.'));
   }, []);
+  const [saving, setSaving] = useState(false);
   const save = async () => {
-    await createReminder({ ...draft, remindAt: new Date(draft.remindAt).toISOString() });
-    setDraft(initial);
-    setShowForm(false);
-    await refresh();
+    const date = new Date(draft.remindAt);
+    if (Number.isNaN(date.getTime())) return toast({ message: 'La fecha no es válida.', tone: 'error' });
+    setSaving(true);
+    try {
+      await createReminder({ ...draft, remindAt: date.toISOString() });
+      setDraft(initial);
+      setShowForm(false);
+      toast({ message: 'Recordatorio guardado.', tone: 'ok' });
+      await refresh();
+    } catch (reason) {
+      toast({ message: errorMessage(reason, 'No se pudo guardar el recordatorio.'), tone: 'error' });
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <section className="view active reminders-page">
@@ -45,64 +61,51 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
         </Button>
       </div>
       {showForm && (
-        <section className="card reminder-form">
-          <input className="input" placeholder="Título" value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} />
-          <textarea
-            className="input"
-            placeholder="Descripción"
-            value={draft.description}
-            onChange={e => setDraft({ ...draft, description: e.target.value })}
-          />
-          <input
-            className="input"
-            inputMode="numeric"
-            placeholder="AAAA-MM-DD HH:mm"
-            value={draft.remindAt}
-            onChange={e => setDraft({ ...draft, remindAt: e.target.value })}
-          />
-          <select className="input" value={draft.priority} onChange={e => setDraft({ ...draft, priority: e.target.value })}>
-            {['Baja', 'Media', 'Alta', 'Urgente'].map(value => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-          <input
-            className="input"
-            type="email"
-            placeholder="Responsable (email, opcional)"
-            value={draft.ownerEmail}
-            onChange={e => setDraft({ ...draft, ownerEmail: e.target.value })}
-          />
-          <select className="input" value={draft.relatedType} onChange={e => setDraft({ ...draft, relatedType: e.target.value })}>
-            <option value="">Sin relación</option>
-            {['device', 'classroom', 'ticket', 'loan', 'task', 'purchase', 'suggestion', 'group'].map(value => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
+        <form className="card reminder-form" onSubmit={event => { event.preventDefault(); void save(); }}>
+          <label>Qué hay que recordar
+            <input className="input" required autoFocus value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} />
+          </label>
+          <label>Detalle (opcional)
+            <textarea className="input" value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} />
+          </label>
+          <div className="grid-2">
+            {/* Selector nativo: antes era texto libre "AAAA-MM-DD HH:mm", que en
+                Safari/iPhone terminaba en Invalid Date. */}
+            <label>Fecha y hora
+              <input className="input" type="datetime-local" required value={draft.remindAt} onChange={e => setDraft({ ...draft, remindAt: e.target.value })} />
+            </label>
+            <label>Prioridad
+              <select className="input" value={draft.priority} onChange={e => setDraft({ ...draft, priority: e.target.value })}>
+                {['Baja', 'Media', 'Alta', 'Urgente'].map(value => <option key={value}>{value}</option>)}
+              </select>
+            </label>
+          </div>
+          <label>Responsable (mail, opcional)
+            <input className="input" type="email" value={draft.ownerEmail} onChange={e => setDraft({ ...draft, ownerEmail: e.target.value })} />
+          </label>
+          <label>Relacionado con
+            <select className="input" value={draft.relatedType} onChange={e => setDraft({ ...draft, relatedType: e.target.value })}>
+              <option value="">Nada en particular</option>
+              {RELATED_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
           {draft.relatedType && (
-            <>
-              <input
-                className="input"
-                placeholder="ID relacionado"
-                value={draft.relatedId}
-                onChange={e => setDraft({ ...draft, relatedId: e.target.value })}
-              />
-              <input
-                className="input"
-                placeholder="Nombre relacionado"
-                value={draft.relatedLabel}
-                onChange={e => setDraft({ ...draft, relatedLabel: e.target.value })}
-              />
-            </>
+            <div className="grid-2">
+              <label>Identificador
+                <input className="input" placeholder="Ej. D1436, aula 2B, ticket 1520" value={draft.relatedId} onChange={e => setDraft({ ...draft, relatedId: e.target.value })} />
+              </label>
+              <label>Nombre para mostrar
+                <input className="input" value={draft.relatedLabel} onChange={e => setDraft({ ...draft, relatedLabel: e.target.value })} />
+              </label>
+            </div>
           )}
           <div className="actions">
-            <Button onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button variant="primary" disabled={!draft.title || !draft.remindAt} onClick={save}>
-              Guardar
+            <Button type="button" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button variant="primary" type="submit" disabled={!draft.title.trim() || !draft.remindAt || saving}>
+              {saving ? 'Guardando…' : 'Guardar'}
             </Button>
           </div>
-        </section>
+        </form>
       )}
       {message && <div className="tool-info">{message}</div>}
       <div className="reminders-list">

@@ -183,7 +183,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
             <input
               className="input compact-search"
               type="search"
-              placeholder="Filtrar etiqueta o alias"
+              placeholder="Filtrar etiqueta o alias" aria-label="Filtrar dispositivos por etiqueta o alias"
               value={aliasQuery}
               onChange={event => setAliasQuery(event.target.value)}
               title="Buscar D1433, Touch 31, touch31, Plani 5..."
