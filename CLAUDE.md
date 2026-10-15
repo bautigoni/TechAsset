@@ -86,7 +86,9 @@ Todo dato operativo (dispositivos, préstamos, tareas, agenda, aulas, inventario
 
 ## Próxima agenda
 
-`GET /api/agenda/upcoming` calcula correctamente: actividad en curso (Entregado/Pendiente y horario actual entre `desde`/`hasta`), si no la próxima del día, si no la próxima de la semana. Cancelado/Realizado nunca aparecen como próxima.
+Se calcula en el front (`NowPanel.tsx` del dashboard y `AgendaPage.tsx`, no hay endpoint): actividad en curso (Entregado/Pendiente y horario actual entre `desde`/`hasta`), si no la próxima del día, si no la próxima de la semana. Cancelado/Realizado nunca aparecen como próxima.
+
+Ojo con el orden de rutas en Express: un `/:id` declarado antes tapa a las rutas literales del mismo prefijo (pasaba con `/agenda/history` y `/agenda/export.csv`). Restringir el parámetro (`/:id(\d+)`) o declararlo al final. Las rutas `/api/*` inexistentes responden 404 JSON (no el `index.html`).
 
 ## Loans (préstamos)
 
@@ -95,7 +97,7 @@ Todo dato operativo (dispositivos, préstamos, tareas, agenda, aulas, inventario
 
 ## Cierre del día
 
-`/api/daily-closures` (GET/POST + `/preview/today`) genera un resumen automático: préstamos activos, tareas pendientes/en proceso/hechas hoy, agenda del día y sus incidencias, aulas con problema, notas importantes. El operador agrega observaciones desde `DailyClosureModal` y se persiste en `daily_closures`.
+`/api/daily-closures` (GET/POST + `/preview`) genera un resumen automático: préstamos activos, tareas pendientes/en proceso/hechas hoy, agenda del día y sus incidencias, aulas con problema, notas importantes. El operador agrega observaciones desde `DailyClosureModal` y se persiste en `daily_closures`.
 
 ## Accesos rápidos
 

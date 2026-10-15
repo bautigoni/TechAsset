@@ -62,7 +62,8 @@ app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
 // tiene sesión con acceso a esa sede (comprobantes de caja chica, fotos de
 // inventario, PDFs de tickets...). Los logos de sede quedan públicos porque
 // van en mails y antes del login.
-const serveUploads = express.static(path.join(config.rootDir, 'data', 'uploads'), { maxAge: '7d', immutable: true });
+// fallthrough: false = un adjunto que no existe da 404, no el index.html de la SPA.
+const serveUploads = express.static(path.join(config.rootDir, 'data', 'uploads'), { maxAge: '7d', immutable: true, fallthrough: false });
 app.use('/uploads', (req, res, next) => {
   const [category, siteSegment, ...rest] = req.path.split('/').filter(Boolean);
   if (category === 'site-logos') return serveUploads(req, res, next);
@@ -149,6 +150,10 @@ app.use('/api', procedimientosRouter);
 app.use('/api', classroomsRouter);
 app.use('/api', toolsRouter);
 app.use('/api', operationsRouter);
+// Una ruta de API que no existe responde 404 en JSON. Antes caía en el
+// fallback de la SPA y devolvía el index.html con 200: el front recibía HTML
+// donde esperaba JSON y el error quedaba escondido.
+app.use('/api', (req, res) => res.status(404).json({ ok: false, error: `No existe ${req.method} /api${req.path}.` }));
 
 const distDir = path.join(config.rootDir, 'dist');
 // Los assets de Vite llevan hash en el nombre: se pueden cachear para siempre y

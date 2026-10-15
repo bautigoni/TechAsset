@@ -169,7 +169,8 @@ tasksRouter.get('/tasks/history', (req, res) => {
 
 tasksRouter.get('/tasks/analytics', (_req, res) => {
   const siteCode = requireSite(_req);
-  const rows = getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? AND COALESCE(visibility,'team')<>'private'").all(siteCode).map(rowToTask);
+  const ctx = buildTaskContext(siteCode);
+  const rows = getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? AND COALESCE(visibility,'team')<>'private'").all(siteCode).map(row => rowToTask(row, ctx));
   const names = getSiteAssistantNames(siteCode);
   const fallback = Array.from(new Set(rows.flatMap(task => task.responsables?.length ? task.responsables : String(task.responsable || '').split(',').map(item => item.trim())).filter(Boolean)));
   const assistants = (names.length ? names : fallback).map(name => {

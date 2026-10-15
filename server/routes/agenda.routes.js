@@ -20,7 +20,9 @@ agendaRouter.get('/agenda/today', (_req, res) => {
   res.json({ ok: true, items: rows.map(rowToAgenda), loadedAt: nowIso() });
 });
 
-agendaRouter.get('/agenda/:id', (req, res) => {
+// Solo ids numéricos: sin la restricción, esta ruta se tragaba /agenda/history y
+// /agenda/export.csv (declaradas más abajo) y respondía "Actividad no encontrada".
+agendaRouter.get('/agenda/:id(\\d+)', (req, res) => {
   const row = getDb().prepare('SELECT * FROM agenda WHERE id=? AND eliminada=0 AND site_code=?').get(req.params.id, requireSite(req));
   if (!row) return res.status(404).json({ ok: false, error: 'Actividad no encontrada.' });
   res.json({ ok: true, item: rowToAgenda(row) });

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDb, nowIso, rowToAgenda, rowToTask } from '../db.js';
+import { buildTaskContext, getDb, nowIso, rowToAgenda, rowToTask } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
 
 export const operationsRouter = Router();
@@ -124,7 +124,9 @@ operationsRouter.patch('/settings/shifts', (req, res) => {
 function buildDailySummary(siteCode) {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
-  const tasks = db.prepare('SELECT * FROM tasks WHERE eliminada=0 AND site_code=?').all(siteCode).map(rowToTask);
+  // rowToTask con su contexto: .map(rowToTask) le pasaba el índice como ctx.
+  const taskCtx = buildTaskContext(siteCode);
+  const tasks = db.prepare('SELECT * FROM tasks WHERE eliminada=0 AND site_code=?').all(siteCode).map(row => rowToTask(row, taskCtx));
   const agenda = db.prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=?').all(siteCode).map(rowToAgenda);
   const notes = db.prepare("SELECT * FROM internal_notes WHERE site_code=? AND COALESCE(visible,1)=1 AND importante=1 AND created_at LIKE ? ORDER BY id DESC").all(siteCode, `${today}%`).map(rowToNote);
   const classrooms = db.prepare("SELECT room_key, nombre, piso, estado_general FROM classrooms WHERE site_code=? AND estado_general IN ('Con observaciones','Problema') ORDER BY piso, nombre").all(siteCode);

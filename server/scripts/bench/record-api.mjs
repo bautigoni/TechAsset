@@ -22,7 +22,7 @@ const ENDPOINTS = [
   '/api/auth/session', '/api/site-settings', '/api/devices', '/api/movements', '/api/agenda',
   '/api/tasks?space=team', '/api/tasks?space=my', '/api/tasks?space=all', '/api/task-columns', '/api/notifications',
   '/api/user/prefs', '/api/release-notes/latest', '/api/internal-notes?filter=all', '/api/internal-notes?filter=important',
-  '/api/daily-closures', '/api/daily-closures/preview/today', '/api/loans/previous-day', '/api/photo-passes',
+  '/api/daily-closures', '/api/daily-closures/preview', '/api/loans/previous-day', '/api/photo-passes',
   '/api/photo-passes/options', '/api/quick-links', '/api/recess-schedules', '/api/teacher-schedules', '/api/settings/shifts',
   '/api/sites', '/api/analytics', '/api/analytics/parque', '/api/classrooms', '/api/classrooms/summary',
   '/api/classroom-categories', '/api/device-categories', '/api/device-groups', '/api/devices/review-queue',

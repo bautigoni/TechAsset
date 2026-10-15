@@ -36,7 +36,7 @@ const ENDPOINTS = [
   '/api/user/prefs',
   '/api/release-notes/latest',
   '/api/internal-notes?filter=all',
-  '/api/daily-closures/preview/today',
+  '/api/daily-closures/preview',
   '/api/loans/previous-day',
   '/api/photo-passes'
 ];
