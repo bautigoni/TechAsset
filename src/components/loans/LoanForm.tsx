@@ -3,6 +3,7 @@ import type { Device } from '../../types';
 import { parseScannedCode, resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { getOperationalAlias, operationalTypeLabel } from '../../utils/classifyDevice';
 import { Button } from '../layout/Button';
+import { SelectField } from '../layout/SelectField';
 import { ScannerPanel } from './ScannerPanel';
 import { ScanMessage } from './ScanMessage';
 import { getSiteSettings } from '../../services/authApi';
@@ -486,16 +487,16 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
             </ul>
           )}
         </label>
-        <label>Rol<select className="input" value={role} onChange={event => setRole(event.target.value)}><option>Seleccionar rol</option>{roleOptions.map(item => <option key={item}>{item}</option>)}</select></label>
+        <label>Rol<SelectField ariaLabel="Rol" value={role} placeholder="Seleccionar rol" onChange={setRole} options={roleOptions.map(value => ({ value, label: value }))} /></label>
       </div>
       <div className="grid-2">
-        <label>Ubicación<select className="input" value={location} onChange={event => setLocation(event.target.value)}><option>Seleccionar ubicación</option>{locationOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
-        <label>Motivo<select className="input" value={reason} onChange={event => setReason(event.target.value)}><option>Sin motivo</option>{motiveOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
+        <label>Ubicación<SelectField ariaLabel="Ubicación" value={location} placeholder="Seleccionar ubicación" onChange={setLocation} options={locationOptions.map(item => ({ value: item.label, label: item.label }))} /></label>
+        <label>Motivo<SelectField ariaLabel="Motivo" value={reason} onChange={setReason} options={[{ value: '', label: 'Sin motivo' }, ...motiveOptions.map(item => ({ value: item.label, label: item.label }))]} /></label>
       </div>
       {(requiresSchoolCourse || selectedLocation?.requiresDetail || selectedReason?.requiresDetail) && (
         <div className="grid-2">
-          {requiresSchoolCourse && <label>Nivel<select className="input" value={schoolLevel} onChange={event => setSchoolLevel(event.target.value)}><option>Seleccionar nivel</option>{SCHOOL_LEVEL_OPTIONS.map(item => <option key={item}>{item}</option>)}</select></label>}
-          {requiresSchoolCourse && <label>Grado / Año / Curso<select className="input" value={course} onChange={event => setCourse(event.target.value)}><option>Seleccionar curso</option>{gradeOptions.map(item => <option key={item}>{item}</option>)}</select></label>}
+          {requiresSchoolCourse && <label>Nivel<SelectField ariaLabel="Nivel" value={schoolLevel} placeholder="Seleccionar nivel" onChange={setSchoolLevel} options={SCHOOL_LEVEL_OPTIONS.map(value => ({ value, label: value }))} /></label>}
+          {requiresSchoolCourse && <label>Grado / Año / Curso<SelectField ariaLabel="Grado, año o curso" value={course} placeholder="Seleccionar curso" onChange={setCourse} options={gradeOptions.map(value => ({ value, label: value }))} /></label>}
           {selectedLocation?.requiresDetail && <label>Especificar ubicación<input className="input" value={locationDetail} onChange={event => setLocationDetail(event.target.value)} /></label>}
           {selectedReason?.requiresDetail && <label>Especificar motivo<input className="input" value={reasonDetail} onChange={event => setReasonDetail(event.target.value)} /></label>}
         </div>

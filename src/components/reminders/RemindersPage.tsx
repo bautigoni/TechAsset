@@ -4,6 +4,7 @@ import { completeReminder, createReminder, deleteReminder, getReminders, postpon
 import { Button } from '../layout/Button';
 import { confirmDialog, errorMessage, promptDialog, toast } from '../layout/Feedback';
 import { formatDate } from '../../utils/formatters';
+import { SelectField } from '../layout/SelectField';
 
 const RELATED_TYPES: Array<[string, string]> = [
   ['device', 'Dispositivo'], ['classroom', 'Aula'], ['ticket', 'Ticket'], ['loan', 'Préstamo'],
@@ -76,19 +77,14 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
               <input className="input" type="datetime-local" required value={draft.remindAt} onChange={e => setDraft({ ...draft, remindAt: e.target.value })} />
             </label>
             <label>Prioridad
-              <select className="input" value={draft.priority} onChange={e => setDraft({ ...draft, priority: e.target.value })}>
-                {['Baja', 'Media', 'Alta', 'Urgente'].map(value => <option key={value}>{value}</option>)}
-              </select>
+              <SelectField ariaLabel="Prioridad" value={draft.priority} onChange={priority => setDraft({ ...draft, priority })} options={['Baja', 'Media', 'Alta', 'Urgente'].map(value => ({ value, label: value }))} />
             </label>
           </div>
           <label>Responsable (mail, opcional)
             <input className="input" type="email" value={draft.ownerEmail} onChange={e => setDraft({ ...draft, ownerEmail: e.target.value })} />
           </label>
           <label>Relacionado con
-            <select className="input" value={draft.relatedType} onChange={e => setDraft({ ...draft, relatedType: e.target.value })}>
-              <option value="">Nada en particular</option>
-              {RELATED_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
+            <SelectField ariaLabel="Relacionado con" value={draft.relatedType} onChange={relatedType => setDraft({ ...draft, relatedType })} options={[{ value: '', label: 'Nada en particular' }, ...RELATED_TYPES.map(([value, label]) => ({ value, label }))]} />
           </label>
           {draft.relatedType && (
             <div className="grid-2">

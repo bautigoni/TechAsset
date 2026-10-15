@@ -16,6 +16,7 @@ import { LayoutTemplate, TicketPlus } from 'lucide-react';
 import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
 import { clickableProps } from '../../utils/a11y';
 import { SelectionBar, useSelection } from '../layout/Selection';
+import { SelectField } from '../layout/SelectField';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
 const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
@@ -392,9 +393,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
             <div className="ticket-card-actions">
               <Button onClick={() => setDetailId(ticket.id)}>Ver detalle</Button>
               <Button disabled={consultationMode} onClick={() => openEdit(ticket)}>Editar</Button>
-              <select className="input" value={ticket.estado} disabled={consultationMode} onChange={e => changeEstado(ticket, e.target.value as TicketState)}>
-                {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
+              <SelectField ariaLabel={`Estado del ticket ${ticket.numero}`} value={ticket.estado} disabled={consultationMode} onChange={value => changeEstado(ticket, value as TicketState)} options={ESTADOS.map(value => ({ value, label: value }))} />
               <Button disabled={consultationMode} onClick={() => remove(ticket)} className="btn-ghost-danger">Borrar</Button>
             </div>
           </section>
@@ -425,7 +424,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               </button>
             ))}
           </div>
-          {!editingId && templates.length > 0 && <label>Usar plantilla<select className="input" value={draft.templateId || ''} onChange={e => { const template = templates.find(item => item.id === Number(e.target.value)); setDraft(current => template ? { ...current, templateId: template.id, titulo: template.title, descripcion: template.description, prioridad: template.priority, categoria: template.category, responsables: template.suggestedAssignee ? [template.suggestedAssignee] : [], checklist: template.checklist, tags: template.tags } : { ...current, templateId: undefined }); }}><option value="">Sin plantilla</option>{templates.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
+          {!editingId && templates.length > 0 && <label>Usar plantilla<SelectField ariaLabel="Usar plantilla" value={String(draft.templateId || '')} onChange={value => { const template = templates.find(item => item.id === Number(value)); setDraft(current => template ? { ...current, templateId: template.id, titulo: template.title, descripcion: template.description, prioridad: template.priority, categoria: template.category, responsables: template.suggestedAssignee ? [template.suggestedAssignee] : [], checklist: template.checklist, tags: template.tags } : { ...current, templateId: undefined }); }} options={[{ value: '', label: 'Sin plantilla' }, ...templates.map(item => ({ value: String(item.id), label: item.title }))]} /></label>}
           <div className="grid-2">
             <label>{draft.origen === 'handing' ? 'Referencia de ticket (Handing)' : 'Número de ticket (InVgate)'}
               <input
@@ -439,19 +438,14 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               <span className="muted" style={{ fontSize: 12 }}>{draft.origen === 'handing' ? 'No usa #id: podés dejarlo vacío o escribir una referencia interna.' : <>Solo el número, sin <code>#</code> - ej. <code>2103</code></>}</span>
             </label>
             <label>Estado
-              <select className="input" value={draft.estado || 'No hecho'} onChange={e => setDraft(d => ({ ...d, estado: e.target.value as TicketState }))}>
-                {ESTADOS.map(e => <option key={e}>{e}</option>)}
-              </select>
+              <SelectField ariaLabel="Estado" value={draft.estado || 'No hecho'} onChange={value => setDraft(d => ({ ...d, estado: value as TicketState }))} options={ESTADOS.map(value => ({ value, label: value }))} />
             </label>
           </div>
-          <div className="grid-2"><label>Prioridad<select className="input" value={draft.prioridad || 'Media'} onChange={e => setDraft(d => ({ ...d, prioridad: e.target.value }))}><option>Baja</option><option>Media</option><option>Alta</option><option>Urgente</option></select></label><label>Responsables (separados por coma)<input className="input" value={(draft.responsables || []).join(', ')} onChange={e => setDraft(d => ({ ...d, responsables: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))} /></label></div>
+          <div className="grid-2"><label>Prioridad<SelectField ariaLabel="Prioridad" value={draft.prioridad || 'Media'} onChange={value => setDraft(d => ({ ...d, prioridad: value }))} options={['Baja', 'Media', 'Alta', 'Urgente'].map(value => ({ value, label: value }))} /></label><label>Responsables (separados por coma)<input className="input" value={(draft.responsables || []).join(', ')} onChange={e => setDraft(d => ({ ...d, responsables: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))} /></label></div>
           <div className="grid-2">
             <label>Escuela<input className="input" value={draft.school || ''} onChange={e => setDraft(d => ({ ...d, school: e.target.value }))} placeholder="Sede o escuela" /></label>
             <label>Aula (opcional)
-              <select className="input" value={draft.classroomKey || ''} onChange={e => { const selectedRoom = classrooms.find(room => room.roomKey === e.target.value); setDraft(d => ({ ...d, classroomKey: selectedRoom?.roomKey || '', classroom: selectedRoom?.nombre || '' })); }}>
-                <option value="">Sin aula vinculada</option>
-                {classrooms.map(room => <option key={room.roomKey} value={room.roomKey}>{room.nombre}{room.piso ? ` · ${room.piso}` : ''}</option>)}
-              </select>
+              <SelectField ariaLabel="Aula" value={draft.classroomKey || ''} onChange={value => { const selectedRoom = classrooms.find(room => room.roomKey === value); setDraft(d => ({ ...d, classroomKey: selectedRoom?.roomKey || '', classroom: selectedRoom?.nombre || '' })); }} options={[{ value: '', label: 'Sin aula vinculada' }, ...classrooms.map(room => ({ value: room.roomKey, label: room.nombre, hint: room.piso || undefined }))]} />
               {!draft.classroomKey && draft.classroom && <span className="muted">Dato anterior: {draft.classroom}</span>}
             </label>
           </div>

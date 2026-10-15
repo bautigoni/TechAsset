@@ -8,6 +8,7 @@ import { Button } from '../layout/Button';
 import { DateField } from '../layout/DateField';
 import { SkeletonLine } from '../layout/Skeleton';
 import { errorMessage } from '../layout/Feedback';
+import { SelectField } from '../layout/SelectField';
 
 type Kind = 'loans' | 'all';
 const PAGE = 50;
@@ -129,11 +130,7 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
           <label>Hasta<DateField value={to} onChange={setTo} ariaLabel="Hasta" /></label>
           {kind === 'loans' && (
             <label>Tipo
-              <select className="input" value={tipo} onChange={event => setTipo(event.target.value)}>
-                <option value="">Préstamos y devoluciones</option>
-                <option value="prestamo">Solo préstamos</option>
-                <option value="devolucion">Solo devoluciones</option>
-              </select>
+              <SelectField ariaLabel="Tipo de movimiento" value={tipo} onChange={setTipo} options={[{ value: '', label: 'Préstamos y devoluciones' }, { value: 'prestamo', label: 'Solo préstamos' }, { value: 'devolucion', label: 'Solo devoluciones' }]} />
             </label>
           )}
           <div className="history-filter-actions">

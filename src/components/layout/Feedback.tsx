@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
+import { SelectField } from './SelectField';
 
 /**
  * Confirmaciones, preguntas y avisos de la app, en reemplazo de window.confirm,
@@ -162,9 +163,7 @@ function PromptView({ request }: { request: PromptRequest }) {
         <label>{request.label}
           {request.options
             ? (
-              <select className="input" autoFocus value={value} onChange={event => setValue(event.target.value)}>
-                {request.options.map(option => <option key={option} value={option}>{option}</option>)}
-              </select>
+              <SelectField ariaLabel={request.label} value={value} onChange={setValue} options={request.options.map(option => ({ value: option, label: option }))} />
             )
             : <input className="input" autoFocus type={request.inputType} value={value} placeholder={request.placeholder} required={request.required} onChange={event => setValue(event.target.value)} />}
         </label>
