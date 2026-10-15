@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createInvite, getInvites, getSiteSettings, resendInvite, revokeInvite, type Invite } from '../../services/authApi';
 import { Button } from '../layout/Button';
 import { MailStatusChip } from './MailStatusChip';
+import { DATE_ONLY, formatDate } from '../../utils/formatters';
 
 const DEFAULT_TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'];
 
@@ -122,7 +123,7 @@ export function InvitesPanel({ consultationMode }: { consultationMode: boolean }
                 <td>{inv.turno}</td>
                 <td>{inv.status}</td>
                 <td>{inv.email || '-'}</td>
-                <td className="muted">{inv.emailSentAt ? `Enviado ${new Date(inv.emailSentAt).toLocaleDateString('es-AR')}` : inv.emailError ? <span className="is-error">{inv.emailError}</span> : inv.email ? 'Sin registro' : '—'}</td>
+                <td className="muted">{inv.emailSentAt ? `Enviado ${formatDate(inv.emailSentAt, DATE_ONLY)}` : inv.emailError ? <span className="is-error">{inv.emailError}</span> : inv.email ? 'Sin registro' : '—'}</td>
                 <td>{inv.status === 'Activa' && !consultationMode && (
                   <div className="table-actions">
                     {inv.email && <Button className="mini-action-btn" disabled={busy} onClick={() => void resend(inv.id)}>Reenviar</Button>}

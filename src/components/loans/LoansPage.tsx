@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Device, Movement, PreviousDayLoan } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
-import { formatLoanDateTime, formatTimeOnly, loanAgeDays, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
+import { formatLoanDateTime, formatTimeOnly, loanAgeDays, loanAgeLabel, loanAgeTone, formatDate } from '../../utils/formatters';
 import { getPreviousDayLoans } from '../../services/loansApi';
 import { LoanForm } from './LoanForm';
 import { PhotoPassPanel } from './PhotoPassPanel';
@@ -173,7 +173,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
 function formatShortDate(value: string) {
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(year, (month || 1) - 1, day || 1);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+  return Number.isNaN(date.getTime()) ? value : formatDate(date, { day: '2-digit', month: 'short' });
 }
 
 function normalizeLoanState(value?: string) {

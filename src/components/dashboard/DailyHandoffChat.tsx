@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { InternalNote } from '../../types';
 import { createInternalNote, fetchInternalNotes, updateInternalNote } from '../../services/operationsApi';
+import { TIME_HM, formatDate } from '../../utils/formatters';
 
 // Mini chat de traspaso del día. Reemplaza a la pestaña "Traspaso TIC": acá se
 // escriben las notas del turno y arranca limpio cada día. Las notas viejas no
@@ -53,7 +54,7 @@ export function DailyHandoffChat({ operator, consultationMode }: { operator: str
             <p>{item.texto}</p>
             <footer>
               <span>{item.operador || 'Sin operador'}</span>
-              <time>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : ''}</time>
+              <time>{formatDate(item.createdAt, TIME_HM)}</time>
               {!consultationMode && (
                 <button type="button" onClick={async () => { await updateInternalNote(item.id, { visible: false, operator }); await refresh(); }}>Borrar</button>
               )}

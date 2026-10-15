@@ -4,6 +4,7 @@ import { getDevices } from '../services/devicesApi';
 import { classifyDeviceType, withOperationalAliases } from '../utils/classifyDevice';
 import { getDeviceStateKey } from '../utils/deviceState';
 import { matchesSmartSearch } from '../utils/normalizeSearch';
+import { dateFormatter } from '../utils/formatters';
 
 export function useDevices(search: string, siteCode = '') {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -112,7 +113,7 @@ export function useDevices(search: string, siteCode = '') {
 function formatImportDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return dateFormatter({ day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
 function getDashboardFilter(device: Device) {

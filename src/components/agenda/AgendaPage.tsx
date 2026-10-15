@@ -8,6 +8,7 @@ import { Modal } from '../layout/Modal';
 import { type AgendaKpiFilter, AgendaKpis } from './AgendaKpis';
 import { AgendaCard } from './AgendaCard';
 import { AgendaModal } from './AgendaModal';
+import { formatDate } from '../../utils/formatters';
 
 const DAYS = ['Hoy', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie'];
 const DAY_MAP: Record<string, string> = { Lun: 'Lunes', Mar: 'Martes', Mie: 'Miércoles', Jue: 'Jueves', Vie: 'Viernes' };
@@ -314,7 +315,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         <div className="agenda-month-layout">
           <section className="agenda-month-card">
             <div className="agenda-month-head">
-              <h3>{new Date().toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</h3>
+              <h3>{formatDate(new Date(), { month: 'long', year: 'numeric' })}</h3>
               <Button onClick={() => setSelectedDate(todayIso())}>Hoy</Button>
             </div>
             <div className="agenda-month-grid">
@@ -338,7 +339,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
           <section className="agenda-selected-day">
             <div className="card-head">
               <div>
-                <h3>{new Date(`${selectedDate}T12:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                <h3>{formatDate(`${selectedDate}T12:00`, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                 <span className="muted">{selectedDateItems.length} actividades</span>
               </div>
             </div>

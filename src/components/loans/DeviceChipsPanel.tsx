@@ -4,6 +4,7 @@ import { getDeviceNumber, getOperationalAlias, getOperationalGroup, getOperation
 import { getDeviceStateKey } from '../../utils/deviceState';
 import { Button } from '../layout/Button';
 import { CollapsiblePanel, SelectModeToggle, SelectionBar, batchResultMessage, useChipSelection } from './ChipPanelKit';
+import { TIME_HM, formatDate } from '../../utils/formatters';
 
 type LoanActionResult = { synced?: boolean; message?: string } | void;
 
@@ -189,7 +190,7 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturn, onSeedCo
                       {device.curso && <em>{device.curso}</em>}
                       {device.ubicacion && <i>{device.ubicacion}</i>}
                     </span>
-                    <time>{device.loanedAt ? new Date(device.loanedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : ''}</time>
+                    <time>{formatDate(device.loanedAt, TIME_HM)}</time>
                   </li>
                 ))}
               </ul>

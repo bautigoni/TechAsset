@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { InternalNote } from '../../types';
 import { createInternalNote, fetchInternalNotes, updateInternalNote } from '../../services/operationsApi';
 import { Button } from '../layout/Button';
+import { formatDate } from '../../utils/formatters';
 
 export function InternalNotesPanel({ operator, consultationMode }: { operator: string; consultationMode: boolean }) {
   const [items, setItems] = useState<InternalNote[]>([]);
@@ -56,8 +57,8 @@ export function InternalNotesPanel({ operator, consultationMode }: { operator: s
           <article key={item.id} className={`internal-note ${item.importante ? 'important' : ''}`}>
             <p>{item.texto}</p>
             <div className="muted">
-              {item.operador || 'Sin operador'} · {item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
-              {!item.visible && item.deletedAt ? ` · borrada por ${item.deletedBy || '-'} ${new Date(item.deletedAt).toLocaleString()}` : ''}
+              {item.operador || 'Sin operador'} · {formatDate(item.createdAt)}
+              {!item.visible && item.deletedAt ? ` · borrada por ${item.deletedBy || '-'} ${formatDate(item.deletedAt)}` : ''}
             </div>
             {!consultationMode && item.visible !== false && <button type="button" onClick={async () => { await updateInternalNote(item.id, { visible: false, operator }); refresh(); }}>Borrar</button>}
           </article>

@@ -7,6 +7,7 @@ import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { PersonSuggestInput } from './PersonSuggestInput';
 import { CollapsiblePanel, SelectModeToggle, SelectionBar, batchResultMessage, useChipSelection } from './ChipPanelKit';
+import { TIME_HM, formatDate } from '../../utils/formatters';
 
 /**
  * Cartelitos de autorización de fotos, dentro de Préstamos.
@@ -177,7 +178,7 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
                   {pass.curso && <em>{pass.curso}</em>}
                   {pass.docente && <i>con {pass.docente}</i>}
                 </span>
-                <time>{pass.loanedAt ? new Date(pass.loanedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : ''}</time>
+                <time>{formatDate(pass.loanedAt, TIME_HM)}</time>
               </li>
             ))}
           </ul>

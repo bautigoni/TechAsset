@@ -5,6 +5,7 @@ import { Button } from '../layout/Button';
 import { SkeletonPanel } from '../layout/Skeleton';
 import { RelatedReminders } from '../reminders/RelatedReminders';
 import { useCloseChoreography } from '../../hooks/useMountTransition';
+import { DATE_TIME, formatDate } from '../../utils/formatters';
 
 // Igual que en Modal.tsx: tiene que coincidir con --modal-close-dur.
 const MODAL_CLOSE_MS = 150;
@@ -291,7 +292,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
         </label>
 
         <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-          Última actualización: {classroom?.ultimaActualizacion ? new Date(classroom.ultimaActualizacion).toLocaleString() : '—'}
+          Última actualización: {formatDate(classroom?.ultimaActualizacion, DATE_TIME, '—')}
           {classroom?.operadorUltimoCambio ? ` · ${classroom.operadorUltimoCambio}` : ''}
         </div>
 
@@ -308,7 +309,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
             <ul>
               {history.slice(0, 20).map(h => (
                 <li key={h.id}>
-                  <span className="muted">{new Date(h.timestamp).toLocaleString()}</span>
+                  <span className="muted">{formatDate(h.timestamp)}</span>
                   {' · '}
                   <strong>{h.campo}</strong>: {h.valorAnterior || '—'} → {h.valorNuevo || '—'}
                   {h.operador ? ` (${h.operador})` : ''}

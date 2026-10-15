@@ -6,6 +6,7 @@ import {
 import { Button } from '../layout/Button';
 import { MailStatusChip } from './MailStatusChip';
 import { SkeletonPanel } from '../layout/Skeleton';
+import { formatDate } from '../../utils/formatters';
 
 /**
  * Panel de usuarios de todos los tenants, solo para superadmin.
@@ -18,7 +19,7 @@ import { SkeletonPanel } from '../layout/Skeleton';
 function fecha(value: string) {
   if (!value) return '—';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return Number.isNaN(date.getTime()) ? value : formatDate(date, { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 function statusClass(status: string) {
