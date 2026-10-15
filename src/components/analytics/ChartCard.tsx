@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react';
+import { SelectField } from '../layout/SelectField';
 
 export type ChartType = 'bar' | 'vertical' | 'pie' | 'donut' | 'line' | 'threeD';
 
@@ -140,18 +141,11 @@ export function ChartCard({ title, rows, type = 'bar', size = 'md' }: { title: s
         <div className="chart-controls">
           <label className="chart-type-control">
             <span>Top</span>
-            <select className="input" value={topLimit} onChange={event => setTopLimit(Number(event.target.value))}>
-              <option value={10}>Top 10</option>
-              <option value={15}>Top 15</option>
-              <option value={25}>Top 25</option>
-              <option value={50}>Top 50</option>
-            </select>
+            <SelectField ariaLabel="Cuántos mostrar" value={String(topLimit)} onChange={value => setTopLimit(Number(value))} options={[10, 15, 25, 50].map(count => ({ value: String(count), label: `Top ${count}` }))} />
           </label>
           <label className="chart-type-control">
             <span>Tipo</span>
-            <select className="input" value={chartType} onChange={event => setChartType(event.target.value as ChartType)}>
-              {CHART_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+            <SelectField ariaLabel="Tipo de gráfico" value={chartType} onChange={value => setChartType(value as ChartType)} options={CHART_OPTIONS.map(option => ({ value: option.value, label: option.label }))} />
           </label>
         </div>
       </div>

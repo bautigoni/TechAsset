@@ -14,6 +14,7 @@ import { Modal } from '../layout/Modal';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { confirmDialog } from '../layout/Feedback';
 import { formatDate, DATE_ONLY } from '../../utils/formatters';
+import { SelectField } from '../layout/SelectField';
 
 const STATUSES: SuggestionStatus[] = ['Proposed', 'Under Review', 'Planned', 'In Progress', 'Implemented', 'Rejected'];
 const STATUS_LABEL: Record<SuggestionStatus, string> = {
@@ -175,30 +176,15 @@ export function SuggestionsPage() {
       <section className="card suggestion-filters">
         <label>
           Estado
-          <select className="input" value={status} onChange={e => setStatus(e.target.value)}>
-            <option value="">Todos</option>
-            {STATUSES.map(item => (
-              <option value={item} key={item}>
-                {STATUS_LABEL[item]}
-              </option>
-            ))}
-          </select>
+          <SelectField ariaLabel="Estado" value={status} onChange={setStatus} options={[{ value: '', label: 'Todos' }, ...STATUSES.map(item => ({ value: item, label: STATUS_LABEL[item] }))]} />
         </label>
         <label>
           Categoría
-          <select className="input" value={category} onChange={e => setCategory(e.target.value)}>
-            <option value="">Todas</option>
-            {categories.map(item => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
+          <SelectField ariaLabel="Categoría" value={category} onChange={setCategory} options={[{ value: '', label: 'Todas' }, ...categories.map(item => ({ value: item, label: item }))]} />
         </label>
         <label>
           Orden
-          <select className="input" value={sort} onChange={e => setSort(e.target.value)}>
-            <option value="newest">Más nuevas</option>
-            <option value="most_voted">Más votadas</option>
-          </select>
+          <SelectField value={String(sort)} onChange={value => setSort(value)} options={[{ value: "newest", label: "Más nuevas" }, { value: "most_voted", label: "Más votadas" }]} />
         </label>
       </section>
       {error && <div className="tool-error">{error}</div>}
@@ -219,20 +205,15 @@ export function SuggestionsPage() {
             {canManage && (
               <label className="suggestion-workflow">
                 Estado
-                <select
-                  className="input"
+                <SelectField
+                  ariaLabel={`Estado de ${item.title}`}
                   value={item.status}
-                  onChange={async e => {
-                    await updateSuggestion(item.id, { status: e.target.value as SuggestionStatus });
+                  onChange={async status => {
+                    await updateSuggestion(item.id, { status: status as SuggestionStatus });
                     await load();
                   }}
-                >
-                  {STATUSES.map(value => (
-                    <option value={value} key={value}>
-                      {STATUS_LABEL[value]}
-                    </option>
-                  ))}
-                </select>
+                  options={STATUSES.map(value => ({ value, label: STATUS_LABEL[value] }))}
+                />
               </label>
             )}
             <div className="suggestion-actions">

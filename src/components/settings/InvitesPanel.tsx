@@ -4,6 +4,7 @@ import { Button } from '../layout/Button';
 import { MailStatusChip } from './MailStatusChip';
 import { DATE_ONLY, formatDate } from '../../utils/formatters';
 import { toast, errorMessage, copyToClipboard } from '../layout/Feedback';
+import { SelectField } from '../layout/SelectField';
 
 const DEFAULT_TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'];
 
@@ -87,14 +88,10 @@ export function InvitesPanel({ consultationMode }: { consultationMode: boolean }
       <p className="muted" style={{ marginTop: 0 }}>Generá un código de un solo uso para que alguien se registre con un rol y turno definidos.</p>
       <div className="grid-2">
         <label>Rol
-          <select className="input" value={role} disabled={consultationMode} onChange={e => setRole(e.target.value)}>
-            {roles.map(r => <option key={r}>{r}</option>)}
-          </select>
+          <SelectField value={String(role)} disabled={consultationMode} onChange={value => setRole(value)} options={[...roles.map(r => ({ value: String(r), label: String(r) }))]} />
         </label>
         <label>Turno
-          <select className="input" value={turno} disabled={consultationMode} onChange={e => setTurno(e.target.value)}>
-            {turnos.map(t => <option key={t}>{t}</option>)}
-          </select>
+          <SelectField value={String(turno)} disabled={consultationMode} onChange={value => setTurno(value)} options={[...turnos.map(t => ({ value: String(t), label: String(t) }))]} />
         </label>
       </div>
       <div className="grid-2">

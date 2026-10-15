@@ -15,6 +15,7 @@ import { Button } from '../layout/Button';
 import { SkeletonPanel } from '../layout/Skeleton';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { formatDate, SHORT_DATE_TIME } from '../../utils/formatters';
+import { SelectField } from '../layout/SelectField';
 
 type Detail = Awaited<ReturnType<typeof getTicketDetail>>;
 export function TicketDetailModal({
@@ -161,20 +162,16 @@ export function TicketDetailModal({
             </div>
             {!consultationMode && (
               <div className="ticket-relation-form">
-                <select className="input" value={relatedId} onChange={e => setRelatedId(e.target.value)}>
-                  <option value="">Elegí un ticket…</option>
-                  {tickets
+                <SelectField
+                  ariaLabel="Ticket a vincular"
+                  value={relatedId}
+                  onChange={setRelatedId}
+                  placeholder="Elegí un ticket…"
+                  options={tickets
                     .filter(item => item.id !== ticketId && !data.related.some(rel => rel.ticket.id === item.id))
-                    .map(item => (
-                      <option key={item.id} value={item.id}>
-                        #{item.numero || item.id} · {item.titulo}
-                      </option>
-                    ))}
-                </select>
-                <select className="input" value={relationType} onChange={e => setRelationType(e.target.value as 'related' | 'parent')}>
-                  <option value="related">Relacionado</option>
-                  <option value="parent">Es su ticket padre</option>
-                </select>
+                    .map(item => ({ value: String(item.id), label: `#${item.numero || item.id} · ${item.titulo}` }))}
+                />
+                <SelectField value={String(relationType)} onChange={value => setRelationType(value as 'related' | 'parent')} options={[{ value: "related", label: "Relacionado" }, { value: "parent", label: "Es su ticket padre" }]} />
                 <Button
                   onClick={async () => {
                     if (!relatedId) return;

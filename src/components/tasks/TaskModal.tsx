@@ -6,6 +6,7 @@ import { ddMmToIso, formatDdMm, isValidDdMm } from '../../utils/taskDate';
 import { getSiteAssistants } from '../../services/authApi';
 import { uploadTaskAttachment } from '../../services/tasksApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
+import { SelectField } from '../layout/SelectField';
 
 const TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'] as const;
 
@@ -84,8 +85,8 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
         </div>
 
         <div className="grid-2">
-          <label>Prioridad<select className="input" value={task.prioridad} onChange={e => update('prioridad', e.target.value)}><option>Baja</option><option>Media</option><option>Urgente</option></select></label>
-          <label>Turno<select className="input" value={task.turno || 'Sin turno'} onChange={e => update('turno', e.target.value)}>{TURNOS.map(item => <option key={item}>{item}</option>)}</select></label>
+          <label>Prioridad<SelectField value={String(task.prioridad)} onChange={value => update('prioridad', value)} options={[{ value: "Baja", label: "Baja" }, { value: "Media", label: "Media" }, { value: "Urgente", label: "Urgente" }]} /></label>
+          <label>Turno<SelectField value={String(task.turno || 'Sin turno')} onChange={value => update('turno', value)} options={[...TURNOS.map(item => ({ value: String(item), label: String(item) }))]} /></label>
         </div>
         <label>Tipo<input className="input" value={task.tipo || ''} onChange={e => update('tipo', e.target.value)} placeholder="Soporte, Aula, Agenda..." /></label>
         <label>Vencimiento (DD/MM)

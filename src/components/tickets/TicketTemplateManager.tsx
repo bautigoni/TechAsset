@@ -3,6 +3,7 @@ import type { TicketTemplate } from '../../types';
 import { createTicketTemplate, deleteTicketTemplate, updateTicketTemplate } from '../../services/ticketsApi';
 import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
+import { SelectField } from '../layout/SelectField';
 
 const EMPTY: Partial<TicketTemplate> = {
   title: '',
@@ -116,16 +117,7 @@ export function TicketTemplateManager({
             <div className="grid-2">
               <label>
                 Prioridad
-                <select
-                  className="input"
-                  value={draft.priority || 'Media'}
-                  onChange={e => setDraft(value => ({ ...value!, priority: e.target.value }))}
-                >
-                  <option>Baja</option>
-                  <option>Media</option>
-                  <option>Alta</option>
-                  <option>Urgente</option>
-                </select>
+                <SelectField value={String(draft.priority || 'Media')} onChange={priority => setDraft(current => ({ ...current!, priority }))} options={[{ value: "Baja", label: "Baja" }, { value: "Media", label: "Media" }, { value: "Alta", label: "Alta" }, { value: "Urgente", label: "Urgente" }]} />
               </label>
               <label>
                 Responsable sugerido

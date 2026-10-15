@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../layout/Button';
 import { fetchMailSettings, updateMailSettings, type MailSettingsState } from '../../services/toolsApi';
+import { SelectField } from '../layout/SelectField';
 
 const EMPTY: MailSettingsState = {
   smtpServer: '',
@@ -95,10 +96,7 @@ export function MailSettings() {
       <div className="grid-2">
         <label>Microsoft login URL<input className="input" value={draft.microsoftLoginUrl} onChange={e => update('microsoftLoginUrl', e.target.value)} placeholder="https://login.microsoftonline.com/" /></label>
         <label>Modo de envío
-          <select className="input" value={draft.modoPrueba ? 'prueba' : 'real'} onChange={e => update('modoPrueba', e.target.value === 'prueba')}>
-            <option value="prueba">Modo prueba (no envía)</option>
-            <option value="real">Modo real (envía)</option>
-          </select>
+          <SelectField value={String(draft.modoPrueba ? 'prueba' : 'real')} onChange={value => update('modoPrueba', value === 'prueba')} options={[{ value: "prueba", label: "Modo prueba (no envía)" }, { value: "real", label: "Modo real (envía)" }]} />
         </label>
       </div>
 

@@ -11,6 +11,7 @@ import { RolesPanel } from './RolesPanel';
 import { InvitesPanel } from './InvitesPanel';
 import { NotificationsPanel } from './NotificationsPanel';
 import { toast, errorMessage } from '../layout/Feedback';
+import { SelectField } from '../layout/SelectField';
 
 export function SettingsPage({ operator, consultationMode, setConsultationMode, siteRole, roleReadOnly, sync, user, sites, onSitesChanged, onModulesChanged }: {
   operator: Operator;
@@ -43,10 +44,7 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
               <input className="input" value={operator} readOnly />
             </label>
             <label>Modo consulta / vista jefe
-              <select className="input" value={consultationMode ? 'si' : 'no'} disabled={roleReadOnly} onChange={event => setConsultationMode(event.target.value === 'si')}>
-                <option value="no">Desactivado</option>
-                <option value="si">Activado</option>
-              </select>
+              <SelectField value={String(consultationMode ? 'si' : 'no')} disabled={roleReadOnly} onChange={value => setConsultationMode(value === 'si')} options={[{ value: "no", label: "Desactivado" }, { value: "si", label: "Activado" }]} />
               {roleReadOnly
                 ? <small className="muted">Tu rol ({siteRole || 'Consulta'}) es de solo lectura: el modo consulta está siempre activo.</small>
                 : <small className="muted">Activalo para previsualizar la app en modo solo lectura.</small>}

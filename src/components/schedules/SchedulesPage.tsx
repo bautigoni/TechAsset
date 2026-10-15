@@ -11,6 +11,7 @@ import {
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { confirmDialog } from '../layout/Feedback';
+import { SelectField } from '../layout/SelectField';
 
 const DAY_NAMES = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const LEVEL_OPTIONS: Array<{ value: SchoolLevel; label: string; short: string }> = [
@@ -386,17 +387,12 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
             </div>
             <label>
               Día
-              <select
-                className="input"
-                value={editing.dayOfWeek || 1}
-                onChange={event => setEditing(value => ({ ...value!, dayOfWeek: Number(event.target.value) }))}
-              >
-                {DAY_NAMES.slice(1).map((name, index) => (
-                  <option value={index + 1} key={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              <SelectField
+                ariaLabel="Día"
+                value={String(editing.dayOfWeek || 1)}
+                onChange={day => setEditing(current => ({ ...current!, dayOfWeek: Number(day) }))}
+                options={DAY_NAMES.slice(1).map((name, index) => ({ value: String(index + 1), label: name }))}
+              />
             </label>
             <div className="grid-2">
               <label>
