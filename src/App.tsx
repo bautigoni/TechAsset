@@ -43,6 +43,9 @@ const ClassroomStatusPage = lazyView('classrooms', () => import('./components/cl
 const ToolsPage = lazyView('tools', () => import('./components/tools/ToolsPage'), 'ToolsPage');
 const QuickAccessPage = lazyView('quickaccess', () => import('./components/tools/QuickAccessPage'), 'QuickAccessPage');
 const TicketsPage = lazyView('tickets', () => import('./components/tickets/TicketsPage'), 'TicketsPage');
+const KnowledgePage = lazyView('knowledge', () => import('./components/knowledge/KnowledgePage'), 'KnowledgePage');
+const CanvasPage = lazyView('canvas', () => import('./components/canvas/CanvasPage'), 'CanvasPage');
+const RemindersPage = lazyView('reminders', () => import('./components/reminders/RemindersPage'), 'RemindersPage');
 const TenantsDashboard = lazyView('tenants', () => import('./components/settings/TenantsDashboard'), 'TenantsDashboard');
 const UsersByTenantPage = lazyView('adminusers', () => import('./components/settings/UsersByTenantPage'), 'UsersByTenantPage');
 const SettingsPage = lazyView('settings', () => import('./components/settings/SettingsPage'), 'SettingsPage');
@@ -537,7 +540,11 @@ export function App() {
         {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
         {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
         {view === 'tools' && <ToolsPage operator={operator} />}
-        {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}        {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}
+        {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
@@ -615,7 +622,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'adminusers', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'adminusers', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 

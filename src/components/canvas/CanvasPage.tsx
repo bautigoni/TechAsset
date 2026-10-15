@@ -177,7 +177,7 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
           <Button disabled={consultationMode} onClick={() => addItem('link')}>
             Enlace
           </Button>
-          <label className={`btn ${consultationMode ? 'disabled' : ''}`}>
+          <label className={`btn btn-secondary canvas-file-btn ${consultationMode ? 'disabled' : ''}`}>
             Archivo
             <input
               type="file"

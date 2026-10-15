@@ -32,6 +32,8 @@ import { schedulesRouter } from './routes/schedules.routes.js';
 import { pettyCashRouter } from './routes/pettyCash.routes.js';
 import { suggestionsRouter } from './routes/suggestions.routes.js';
 import { remindersRouter } from './routes/reminders.routes.js';
+import { knowledgeRouter } from './routes/knowledge.routes.js';
+import { canvasRouter } from './routes/canvas.routes.js';
 import { historyRouter } from './routes/history.routes.js';
 import { startNotificationWorkers } from './services/notifications.service.js';
 import { invalidateDeviceInventoryCache } from './services/deviceInventory.service.js';
@@ -123,6 +125,10 @@ app.use('/api', analyticsRouter);
 // lectura al módulo; el router aplica propiedad y permisos de gestión por acción.
 app.use('/api', suggestionsRouter);
 app.use('/api', remindersRouter);
+// Base de conocimiento y canvas: estaban programados pero sin montar. Chequean
+// canViewModule/canEditModule adentro; en el front son módulos que cada sede prende.
+app.use('/api', knowledgeRouter);
+app.use('/api', canvasRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.
 // (sitesRouter ya valida manager/superadmin por endpoint.)
 app.use('/api', requireEditor);

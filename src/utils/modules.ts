@@ -4,7 +4,7 @@ import type { ViewKey } from '../types';
 export type ModuleKey =
   | 'devices' | 'loans' | 'inventory' | 'analytics'
   | 'agenda' | 'schedules' | 'tasks' | 'pettycash' | 'classrooms' | 'tickets' | 'suggestions'
-  | 'tools' | 'quickaccess';
+  | 'tools' | 'quickaccess' | 'knowledge' | 'canvas' | 'reminders';
 
 export type ModuleCategory = 'Operación' | 'Análisis' | 'Planificación' | 'Aulas y soporte' | 'Comunicaciones';
 
@@ -24,7 +24,10 @@ export const TOGGLEABLE_MODULES: ToggleableModule[] = [
   { key: 'suggestions', label: 'Sugerencias', description: 'Ideas, votos y seguimiento transparente de mejoras.', category: 'Comunicaciones', icon: '💡' },
   { key: 'classrooms', label: 'Estado aulas', description: 'Revisión de proyectores y equipos por aula.', category: 'Aulas y soporte', icon: '🏫' },
   { key: 'tickets', label: 'Tickets', description: 'Tickets de InVgate cargados desde la app.', category: 'Aulas y soporte', icon: '🎫' },
-  { key: 'tools', label: 'Herramientas auxiliares', description: 'Utilidades varias del equipo TIC.', category: 'Aulas y soporte', icon: '🛠️' },  { key: 'quickaccess', label: 'Accesos rápidos', description: 'Links institucionales a un toque.', category: 'Comunicaciones', icon: '⚡' },
+  { key: 'tools', label: 'Herramientas auxiliares', description: 'Utilidades varias del equipo TIC.', category: 'Aulas y soporte', icon: '🛠️' },
+  { key: 'knowledge', label: 'Base de conocimiento', description: 'Artículos y procedimientos internos; el asistente los usa primero.', category: 'Aulas y soporte', icon: '📚' },
+  { key: 'reminders', label: 'Recordatorios', description: 'Avisos con fecha para equipos, aulas y tareas.', category: 'Planificación', icon: '⏰' },
+  { key: 'canvas', label: 'Canvas', description: 'Pizarra libre para notas, checklists, links e imágenes.', category: 'Planificación', icon: '🧩' },  { key: 'quickaccess', label: 'Accesos rápidos', description: 'Links institucionales a un toque.', category: 'Comunicaciones', icon: '⚡' },
 ];
 
 export const TOGGLEABLE_KEYS = new Set<string>(TOGGLEABLE_MODULES.map(m => m.key));
