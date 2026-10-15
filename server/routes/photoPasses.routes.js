@@ -36,7 +36,12 @@ function rowToPass(row) {
 // operador nunca ve una lista vacía ni tiene que configurar nada.
 const DEFAULT_RANGE = 30;
 
+// Sembrar los cartelitos es una vez por sede: no hace falta contarlos en cada GET.
+const passesSeeded = new Set();
+
 function ensureDefaultPasses(siteCode) {
+  if (passesSeeded.has(siteCode)) return;
+  passesSeeded.add(siteCode);
   const total = getDb().prepare('SELECT COUNT(*) AS total FROM photo_passes WHERE site_code=?').get(siteCode).total;
   if (total > 0) return;
   const ts = nowIso();

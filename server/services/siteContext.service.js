@@ -27,22 +27,61 @@ export function createSession(userId) {
 
 export function clearSession(token) {
   if (token) getDb().prepare('DELETE FROM user_sessions WHERE token=?').run(token);
+  sessionCache.delete(token);
+}
+
+// Caché de sesiones en memoria. En producción cada query es un viaje sincrónico
+// a Supabase que frena TODO el proceso (pg-sync), y resolver la sesión costaba 4
+// por request (sesión, last_seen, rol, sedes): más de la mitad de las queries de
+// la app. Ahora se resuelve una vez cada SESSION_CACHE_MS y last_seen_at se
+// escribe como mucho cada LAST_SEEN_WRITE_MS. Cualquier escritura sobre
+// usuarios/sedes/accesos limpia la caché entera (invalidateSessionCache).
+const SESSION_CACHE_MS = 30 * 1000;
+const LAST_SEEN_WRITE_MS = 5 * 60 * 1000;
+const sessionCache = new Map();
+
+export function invalidateSessionCache() {
+  sessionCache.clear();
 }
 
 export function getUserSession(req) {
   const token = readSessionToken(req);
   if (!token) return null;
+  const now = Date.now();
+  const cached = sessionCache.get(token);
+  if (cached && now - cached.loadedAt < SESSION_CACHE_MS && now < cached.expiresAt) {
+    if (now - cached.lastSeenWritten > LAST_SEEN_WRITE_MS) {
+      getDb().prepare('UPDATE user_sessions SET last_seen_at=? WHERE token=?').run(nowIso(), token);
+      cached.lastSeenWritten = now;
+    }
+    return cached.session;
+  }
   const row = getDb().prepare(`
-    SELECT s.token, s.expires_at, u.*
+    SELECT s.token, s.expires_at, s.last_seen_at, u.*
     FROM user_sessions s JOIN users u ON u.id=s.user_id
     WHERE s.token=? AND u.activo=1
   `).get(token);
-  if (!row) return null;
-  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
+  if (!row) {
+    sessionCache.delete(token);
+    return null;
+  }
+  const expiresAt = row.expires_at ? new Date(row.expires_at).getTime() : Infinity;
+  if (expiresAt < now) {
     clearSession(token);
     return null;
   }
-  getDb().prepare('UPDATE user_sessions SET last_seen_at=? WHERE token=?').run(nowIso(), token);
+  let lastSeenWritten = new Date(row.last_seen_at || 0).getTime() || 0;
+  if (now - lastSeenWritten > LAST_SEEN_WRITE_MS) {
+    getDb().prepare('UPDATE user_sessions SET last_seen_at=? WHERE token=?').run(nowIso(), token);
+    lastSeenWritten = now;
+  }
+  const session = buildSession(token, row);
+  if (sessionCache.size > 2000) sessionCache.clear();
+  sessionCache.set(token, { session, loadedAt: now, expiresAt, lastSeenWritten });
+  return session;
+}
+
+function buildSession(token, row) {
   return {
     token,
     user: {

@@ -353,7 +353,13 @@ function normalizeTaskPayload(raw, siteCode) {
   };
 }
 
+// Las columnas por defecto se crean una vez por sede; no hace falta contarlas en
+// cada GET /tasks (era una query más por poll). Se re-chequea cada 10 minutos.
+const taskColumnsCheckedAt = new Map();
+
 function ensureTaskColumns(siteCode, operator = '') {
+  if (Date.now() - (taskColumnsCheckedAt.get(siteCode) || 0) < 10 * 60 * 1000) return;
+  taskColumnsCheckedAt.set(siteCode, Date.now());
   const count = Number(getDb().prepare('SELECT COUNT(*) AS total FROM task_columns WHERE site_code=? AND active=1').get(siteCode).total || 0);
   if (count) return;
   const ts = nowIso();

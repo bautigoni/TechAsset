@@ -33,7 +33,8 @@ import { pettyCashRouter } from './routes/pettyCash.routes.js';
 import { suggestionsRouter } from './routes/suggestions.routes.js';
 import { remindersRouter } from './routes/reminders.routes.js';
 import { startNotificationWorkers } from './services/notifications.service.js';
-import { authMiddleware, getUserSession, isSuperadmin, normalizeSiteCode, requireEditor, requireModuleEditor } from './services/siteContext.service.js';
+import { invalidateDeviceInventoryCache } from './services/deviceInventory.service.js';
+import { authMiddleware, getUserSession, invalidateSessionCache, isSuperadmin, normalizeSiteCode, requireEditor, requireModuleEditor } from './services/siteContext.service.js';
 
 getDb();
 startNotificationWorkers();
@@ -83,6 +84,13 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+// Escrituras que cambian quién accede a qué (usuarios, roles, sedes, login):
+// al terminar se limpia la caché de sesiones para que rijan al instante.
+const ACCESS_WRITE_PATHS = /^\/(auth|allowed-users|sites|admin|invites|user|site-settings)\b/;
+app.use('/api', (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && ACCESS_WRITE_PATHS.test(req.path)) res.on('finish', invalidateSessionCache);
+  next();
+});
 app.use('/api', healthRouter);
 app.use('/api', authRouter);
 app.use('/api', googleAuthRouter);
@@ -116,6 +124,15 @@ app.use('/api', remindersRouter);
 // A partir de acá, bloquear escrituras a usuarios de solo consulta.
 // (sitesRouter ya valida manager/superadmin por endpoint.)
 app.use('/api', requireEditor);
+// Cualquier escritura de equipos/préstamos invalida el inventario cacheado de
+// la sede, aunque la ruta no lo haga explícitamente (metadata, vida útil...).
+const INVENTORY_WRITE_PATHS = /^\/(devices|device-groups|lifecycle|loans|prestamos|devoluciones)\b/;
+app.use('/api', (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && INVENTORY_WRITE_PATHS.test(req.path)) {
+    res.on('finish', () => invalidateDeviceInventoryCache('write', req.siteCode));
+  }
+  next();
+});
 app.use('/api', requireModuleEditor);
 app.use('/api', devicesRouter);
 app.use('/api', loansRouter);
