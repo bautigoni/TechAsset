@@ -19,10 +19,16 @@ agendaRouter.get('/agenda', (_req, res) => {
   const siteCode = requireSite(_req);
   const all = _req.query.all === '1';
   const since = new Date(Date.now() - AGENDA_RECENT_DAYS * 86400000).toISOString().slice(0, 10);
+  const countHidden = `SELECT COUNT(*) FROM agenda WHERE eliminada=0 AND site_code=? AND ${FINISHED} AND ${LAST_TOUCH} < ?`;
+  // El conteo de ocultas viaja en la misma query (es un endpoint que se pollea:
+  // cada query extra es un viaje más a la base en producción).
   const rows = all
     ? getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY dia, turno, desde').all(siteCode)
-    : getDb().prepare(`SELECT * FROM agenda WHERE eliminada=0 AND site_code=? AND (NOT ${FINISHED} OR ${LAST_TOUCH} >= ?) ORDER BY dia, turno, desde`).all(siteCode, since);
-  const olderHidden = all ? 0 : Number(getDb().prepare(`SELECT COUNT(*) AS total FROM agenda WHERE eliminada=0 AND site_code=? AND ${FINISHED} AND ${LAST_TOUCH} < ?`).get(siteCode, since)?.total || 0);
+    : getDb().prepare(`SELECT agenda.*, (${countHidden}) AS older_hidden FROM agenda WHERE eliminada=0 AND site_code=? AND (NOT ${FINISHED} OR ${LAST_TOUCH} >= ?) ORDER BY dia, turno, desde`).all(siteCode, since, siteCode, since);
+  const olderHidden = all ? 0 : rows.length
+    ? Number(rows[0].older_hidden || 0)
+    // Sin filas visibles el conteo no viajó: se pide aparte (caso raro).
+    : Number(getDb().prepare(`${countHidden.replace('COUNT(*)', 'COUNT(*) AS total')}`).get(siteCode, since)?.total || 0);
   // El hash va sobre los items: `loadedAt` cambia siempre y rompería el 304.
   const items = rows.map(rowToAgenda);
   sendWithEtag(_req, res, { ok: true, items, olderHidden, loadedAt: nowIso() }, { items, olderHidden });

@@ -6,7 +6,8 @@
 // Postgres): crea ahí una sesión de prueba para un usuario existente, levanta el
 // server real en un proceso aparte con latency-preload.mjs, y mide:
 //   - por endpoint: queries a la base, tiempo (mediana) y tamaño de respuesta;
-//   - "arranque": los pedidos que hace la app al abrir, en paralelo como el
+//   - "arranque": los pedidos que hace la app al abrir (el resumen del cierre del día
+//     no entra: se pide recién al abrir ese panel), en paralelo como el
 //     navegador (6 a la vez), hasta que llega el último.
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -36,7 +37,6 @@ const ENDPOINTS = [
   '/api/user/prefs',
   '/api/release-notes/latest',
   '/api/internal-notes?filter=all',
-  '/api/daily-closures/preview',
   '/api/loans/previous-day',
   '/api/photo-passes'
 ];
@@ -139,7 +139,7 @@ try {
   }
   const total = rows.reduce((acc, row) => ({ queries: acc.queries + row.queries, kb: acc.kb + row.kb }), { queries: 0, kb: 0 });
   console.log('TOTAL'.padEnd(36), '  ', String(total.queries).padStart(8), ''.padStart(9), total.kb.toFixed(1).padStart(8));
-  console.log(`\nArranque (13 pedidos, 6 en paralelo): ${median(bursts.map(b => b.ms)).toFixed(0)} ms (mediana), ${bursts[0].queries} queries`);
+  console.log(`\nArranque (${ENDPOINTS.length} pedidos, 6 en paralelo): ${median(bursts.map(b => b.ms)).toFixed(0)} ms (mediana), ${bursts[0].queries} queries`);
 
   // Correctitud de las cachés: prestar y devolver (en la copia) tiene que verse
   // al instante en /api/devices, sin esperar ningún TTL.
