@@ -219,10 +219,18 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, siteSettings, user?.id, activeSite]);
 
+  // Agenda y tareas también se refrescan solas (cada 2 vueltas, ~30 s): antes
+  // solo equipos y movimientos, y un tablero compartido quedaba viejo hasta recargar.
+  const refreshTick = useRef(0);
   useAutoRefresh(() => {
     if (document.hidden) return;
     void refresh();
     void refreshMovements();
+    refreshTick.current += 1;
+    if (refreshTick.current % 2 === 0) {
+      void agenda.refresh().catch(() => undefined);
+      void tasks.refresh().catch(() => undefined);
+    }
   }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 15));
 
   useEffect(() => {
