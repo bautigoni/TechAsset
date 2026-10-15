@@ -420,9 +420,47 @@ devicesRouter.delete('/devices/:etiqueta', (req, res, next) => {
   }
 });
 
+// Papelera: equipos borrados desde la app (ocultos, con historial intacto).
 devicesRouter.get('/devices/deleted', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM hidden_devices WHERE site_code=? ORDER BY deleted_at DESC').all(requireSite(_req));
-  res.json({ ok: true, items: rows });
+  const siteCode = requireSite(_req);
+  const rows = getDb().prepare(`
+    SELECT h.etiqueta, h.deleted_at, h.deleted_by, h.reason, l.payload
+    FROM hidden_devices h LEFT JOIN local_devices l ON l.etiqueta=h.etiqueta AND l.site_code=h.site_code
+    WHERE h.site_code=? ORDER BY h.deleted_at DESC
+  `).all(siteCode);
+  const items = rows.map(row => {
+    let payload = {};
+    try { payload = row.payload ? JSON.parse(row.payload) : {}; } catch { payload = {}; }
+    return {
+      etiqueta: row.etiqueta,
+      deletedAt: row.deleted_at || '',
+      deletedBy: row.deleted_by || '',
+      reason: row.reason || '',
+      alias: payload.aliasOperativo || '',
+      categoria: payload.categoria || payload.filtro || payload.dispositivo || '',
+      modelo: [payload.marca, payload.modelo].filter(Boolean).join(' · ')
+    };
+  });
+  res.json({ ok: true, items });
+});
+
+// Restaurar desde la papelera: vuelve tal cual estaba (mismo estado, mismo
+// historial). Antes la única forma era reimportar el CSV.
+devicesRouter.post('/devices/:etiqueta/restore', (req, res, next) => {
+  try {
+    const etiqueta = normalizeTag(req.params.etiqueta || '');
+    const siteCode = requireSite(req);
+    if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
+    const hidden = getDb().prepare('SELECT 1 FROM hidden_devices WHERE site_code=? AND etiqueta=?').get(siteCode, etiqueta);
+    if (!hidden) return res.status(404).json({ ok: false, error: `${etiqueta} no está en la papelera.` });
+    getDb().prepare('DELETE FROM hidden_devices WHERE site_code=? AND etiqueta=?').run(siteCode, etiqueta);
+    getDb().prepare("UPDATE local_devices SET eliminado=0, deleted_at='', deleted_by='', updated_at=? WHERE etiqueta=? AND site_code=?").run(nowIso(), etiqueta, siteCode);
+    invalidateDeviceInventoryCache('device-restored', siteCode);
+    addLocalMovement({ tipo: 'dispositivo restaurado', descripcion: `${etiqueta} restaurado desde la papelera`, operador: req.body?.operator || '', origen: 'Local', etiqueta, siteCode });
+    res.json({ ok: true, etiqueta });
+  } catch (error) {
+    next(error);
+  }
 });
 
 devicesRouter.get('/movements', (_req, res) => {

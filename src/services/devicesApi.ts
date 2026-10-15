@@ -157,3 +157,12 @@ export function updateDeviceStatus(payload: { etiqueta: string; estado: string; 
 export function deleteDevice(etiqueta: string, operator: string) {
   return apiSend<{ ok: true; etiqueta: string }>(`/api/devices/${encodeURIComponent(etiqueta)}`, 'DELETE', { operator });
 }
+
+export type DeletedDevice = { etiqueta: string; deletedAt: string; deletedBy: string; reason: string; alias: string; categoria: string; modelo: string };
+
+/** Papelera: equipos borrados desde la app. */
+export const getDeletedDevices = () => apiGet<{ ok: true; items: DeletedDevice[] }>('/api/devices/deleted');
+
+export function restoreDevice(etiqueta: string) {
+  return apiSend<{ ok: true; etiqueta: string }>(`/api/devices/${encodeURIComponent(etiqueta)}/restore`, 'POST', {});
+}

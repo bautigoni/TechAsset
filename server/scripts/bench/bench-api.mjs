@@ -157,6 +157,20 @@ try {
     if (!ok) process.exitCode = 1;
   }
 
+  // Papelera: borrar oculta, aparece en /devices/deleted, restaurar lo devuelve.
+  if (libre) {
+    const tag = libre.etiqueta;
+    const call = (method, url, body) => fetch(`http://127.0.0.1:${PORT}${url}`, { method, headers: { ...headers, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }).then(r => r.json());
+    await call('DELETE', `/api/devices/${tag}`, {});
+    const hiddenNow = !(await estadoDe(tag));
+    const inTrash = (await call('GET', '/api/devices/deleted')).items.some(item => item.etiqueta === tag);
+    const restored = await call('POST', `/api/devices/${tag}/restore`, {});
+    const back = Boolean(await estadoDe(tag));
+    const ok = hiddenNow && inTrash && restored.ok && back;
+    console.log(`Verificación papelera: borrar ${tag} -> oculto ${hiddenNow}, en papelera ${inTrash}, restaurado ${back} => ${ok ? 'OK' : 'FALLA'}`);
+    if (!ok) process.exitCode = 1;
+  }
+
   // Lotes: prestar y devolver varios equipos en un request.
   const libres = devices.filter(item => /disponible|devuelto|^$/i.test(String(item.estado || '').trim())).slice(0, 3).map(item => item.etiqueta);
   if (libres.length === 3) {

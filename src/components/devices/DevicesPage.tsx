@@ -11,6 +11,9 @@ const ORDENES = [
 import { StatCard } from '../layout/StatCard';
 import { DeviceTable } from './DeviceTable';
 import { DeviceGroupsManager } from './DeviceGroupsManager';
+import { DeviceTrashModal } from './DeviceTrashModal';
+import { restoreDevice } from '../../services/devicesApi';
+import { errorMessage, toast } from '../layout/Feedback';
 import { AddDeviceModal } from './AddDeviceModal';
 import { downloadDevicesCsv, importDevicesFromCsv } from '../../services/devicesApi';
 import { promptDialog } from '../layout/Feedback';
@@ -47,6 +50,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
   onImported?: () => Promise<void> | void;
 }) {
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Device | null>(null);
   const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all');
@@ -72,7 +76,22 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
     setMessage(null);
     try {
       await onDelete(device);
-      setMessage({ tone: 'info', text: 'Dispositivo borrado' });
+      // Borrar es ocultar: se puede deshacer al toque o restaurar después desde la papelera.
+      toast({
+        message: `${device.etiqueta} se movió a la papelera.`,
+        action: {
+          label: 'Deshacer',
+          onClick: async () => {
+            try {
+              await restoreDevice(device.etiqueta);
+              await onImported?.();
+              toast({ message: `${device.etiqueta} restaurado.`, tone: 'ok' });
+            } catch (reason) {
+              toast({ message: errorMessage(reason, 'No se pudo restaurar.'), tone: 'error' });
+            }
+          }
+        }
+      });
     } catch (error) {
       setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo borrar el dispositivo.' });
     }
@@ -183,6 +202,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
             <Button onClick={() => exportCsv('/api/loans/export/active.csv', 'techasset_prestamos_activos.csv')}>Exportar préstamos</Button>
             <Button onClick={exportQrPdf}>Exportar PDF QR</Button>
             <Button onClick={() => setGroupsOpen(true)}>Grupos</Button>
+            <Button onClick={() => setTrashOpen(true)}>Papelera</Button>
             {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Añadir dispositivo</Button>}
           </div>
         </div>
@@ -193,6 +213,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
           <div className="empty-state">No hay dispositivos para este filtro o búsqueda.</div>
         )}
       </section>
+      {trashOpen && <DeviceTrashModal consultationMode={consultationMode} onRestored={() => onImported?.()} onClose={() => setTrashOpen(false)} />}
       {groupsOpen && <DeviceGroupsManager devices={devices} consultationMode={consultationMode} onOpenDevice={device => { setGroupsOpen(false); onProfile(device); }} onClose={() => setGroupsOpen(false)} />}
       {adding && <AddDeviceModal onClose={() => setAdding(false)} onSave={onAdd} />}
       {editing && <AddDeviceModal title={`Editar ${editing.etiqueta}`} initialDevice={editing} onClose={() => setEditing(null)} onSave={onAdd} />}
