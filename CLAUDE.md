@@ -18,7 +18,7 @@ npm run release:broadcast:dry -- --version=vX.Y.Z ...  # simula sin enviar
 
 `npm run build` debe pasar antes de cerrar cualquier cambio. No hay tests configurados.
 
-Engine fijado: **Node 22** (`engines.node: ">=22 <23"`). El Dockerfile usa `node:22-bookworm-slim` (no Alpine — `better-sqlite3` necesita glibc).
+Node: producción (VM) corre **Node 20**; `engines.node` acepta 20 a 26. `better-sqlite3` está fijado en **12.9.0** exacto: es la última versión con binario precompilado para Node 20 en Linux (la VM tiene 1 GB de RAM y compilarlo ahí es arriesgado) y para Node 24 en Windows. No subirlo sin chequear los binarios de la release. Con npm 11, si `better-sqlite3` no carga localmente, correr `npx prebuild-install` dentro de `node_modules/better-sqlite3` (npm ya no ejecuta los scripts de instalación por defecto). El Dockerfile usa `node:22-bookworm-slim` (no Alpine — `better-sqlite3` necesita glibc).
 
 ## Arquitectura — Postgres con adaptador SQLite-like
 
