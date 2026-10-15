@@ -36,7 +36,7 @@ const DEFAULT_GRADE_OPTIONS = [
 const SCHOOL_LEVEL_OPTIONS = ['EP', 'ES'];
 const DEFAULT_ACCESSORIES = ['Cargador', 'Mouse', 'Bolso', 'Cable HDMI', 'Adaptador', 'Lápiz óptico', 'Auriculares'];
 
-export function LoanForm({ devices, onLend, onReturn, consultationMode, initialCode = '' }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; consultationMode: boolean; initialCode?: string }) {
+export function LoanForm({ devices, onLend, onReturn, consultationMode, initialCode = '', batchSeed }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; consultationMode: boolean; initialCode?: string; batchSeed?: { etiquetas: string[]; nonce: number } }) {
   const [code, setCode] = useState('');
   const [person, setPerson] = useState('');
   const [role, setRole] = useState('');
@@ -63,6 +63,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const codeInputRef = useRef<HTMLInputElement | null>(null);
+  const personInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanFrameRef = useRef<number | null>(null);
@@ -86,6 +87,36 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     setCode(initialCode);
     window.setTimeout(() => codeInputRef.current?.focus(), 0);
   }, [initialCode]);
+
+  // Lote elegido en la grilla de equipos: entra a la lista del escaneo continuo,
+  // así persona/rol/ubicación se cargan una sola vez para todos.
+  useEffect(() => {
+    if (!batchSeed?.etiquetas.length) return;
+    const found = batchSeed.etiquetas
+      .map(etiqueta => devices.find(device => device.etiqueta === etiqueta))
+      .filter((device): device is Device => Boolean(device));
+    setContinuousScan(true);
+    setScanItems(items => {
+      const known = new Set(items.map(item => item.id));
+      const nuevos = found.filter(device => !known.has(device.id)).map(device => {
+        const disponible = getLoanUiState(device) === 'available';
+        return {
+          id: device.id,
+          etiqueta: device.etiqueta,
+          alias: getOperationalAlias(device),
+          tipo: operationalTypeLabel(device),
+          estado: String(device.estado || ''),
+          disponible,
+          motivo: disponible ? '' : `No disponible (${device.estado || 'sin estado'})`
+        };
+      });
+      return [...items, ...nuevos];
+    });
+    setScanMessage({ tone: 'info', text: `${found.length} ${found.length === 1 ? 'equipo agregado' : 'equipos agregados'} desde la grilla. Completá persona y confirmá.` });
+    window.setTimeout(() => personInputRef.current?.focus(), 0);
+    // Solo reacciona a un lote nuevo; `devices` se lee en el momento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchSeed?.nonce]);
 
   useEffect(() => {
     getSiteSettings().then(r => setSettings(r.settings || {})).catch(() => {});
@@ -429,6 +460,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       <div className="grid-2">
         <label className="loan-person-field">Persona
           <input
+            ref={personInputRef}
             className="input"
             value={person}
             onChange={event => { setPerson(event.target.value); setShowSuggest(true); }}

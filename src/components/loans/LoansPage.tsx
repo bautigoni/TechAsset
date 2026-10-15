@@ -20,6 +20,7 @@ type LoanActionResult = { synced?: boolean; message?: string } | void;
 
 export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, onProfile, initialCode = '' }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onProfile?: (device:Device)=>void; initialCode?: string }) {
   const [returnSeed, setReturnSeed] = useState(initialCode);
+  const [batchSeed, setBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
   const [previousLoans, setPreviousLoans] = useState<PreviousDayLoan[]>([]);
   const [previousDate, setPreviousDate] = useState('');
   const [previousError, setPreviousError] = useState('');
@@ -38,6 +39,12 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
   const seedLoanCode = useCallback((etiqueta: string) => {
     setReturnSeed('');
     window.setTimeout(() => setReturnSeed(etiqueta), 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Lote marcado en la grilla: va a la lista del escaneo continuo del formulario.
+  const seedLoanBatch = useCallback((etiquetas: string[]) => {
+    setBatchSeed(current => ({ etiquetas, nonce: (current?.nonce || 0) + 1 }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
@@ -75,10 +82,10 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <h3>Préstamo / devolución</h3>
             <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
           </div>
-          <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={returnSeed || initialCode} />
+          <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} initialCode={returnSeed || initialCode} batchSeed={batchSeed} />
           {/* Equipos y cartelitos van abajo del formulario, donde sobraba lugar,
               en vez de apretar la columna lateral. */}
-          <DeviceChipsPanel devices={devices} consultationMode={consultationMode} onReturn={onReturn} onSeedCode={seedLoanCode} />
+          <DeviceChipsPanel devices={devices} consultationMode={consultationMode} onReturn={onReturn} onSeedCode={seedLoanCode} onBatchLend={seedLoanBatch} />
           <PhotoPassPanel consultationMode={consultationMode} />
         </section>
         <div className="loans-side-stack">
