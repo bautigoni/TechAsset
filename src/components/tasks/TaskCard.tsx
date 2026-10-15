@@ -10,7 +10,7 @@ import { createTaskComment, createTaskItem, deleteTaskItem, getTaskComments, upd
 import { toast } from '../layout/Feedback';
 import { formatDate } from '../../utils/formatters';
 
-export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void }) {
+export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart, selected, onToggleSelect }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void; selected?: boolean; onToggleSelect?: () => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [itemText, setItemText] = useState('');
   const [comment, setComment] = useState(task.comentario || '');
@@ -40,7 +40,7 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
   }, [menuOpen]);
   return (
     <article
-      className={`task-card task-state-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}
+      className={`task-card task-state-${task.estado.toLowerCase().replace(/\s+/g, '-')} ${selected ? 'is-selected' : ''}`}
       data-task-id={task.id}
       draggable={!consultationMode}
       onPointerDown={event => {
@@ -56,7 +56,12 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
       onDragEnd={event => event.currentTarget.classList.remove('dragging')}
       style={{ viewTransitionName: `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }}
     >
-      <strong>{task.titulo}</strong>
+      {onToggleSelect ? (
+        <div className="task-card-title-row">
+          <input type="checkbox" className="task-select" aria-label={`Seleccionar tarea ${task.titulo}`} checked={Boolean(selected)} onChange={onToggleSelect} />
+          <strong>{task.titulo}</strong>
+        </div>
+      ) : <strong>{task.titulo}</strong>}
       <div className="muted">{task.responsables?.join(', ') || task.responsable} - {task.prioridad}{task.turno ? ` · ${task.turno}` : ''}{task.fechaVencimiento ? ` · Vence ${formatDdMm(task.fechaVencimiento)}` : ''}</div>
       <div className={`task-state-pill task-state-pill-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}>{task.done ? `✓ ${task.estado}` : task.estado}</div>
       {task.visibility === 'private' && <span className="task-private-pill">Privada</span>}

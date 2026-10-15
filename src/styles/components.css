@@ -5167,3 +5167,7 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
 /* Seleccion de tickets */
 .ticket-card .ticket-select{width:17px;height:17px;margin:0 2px 0 0;accent-color:var(--blue);cursor:pointer;flex:0 0 auto}
 .ticket-card.is-selected{border-color:var(--blue);box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 30%,transparent)}
+/* Seleccion de tareas */
+.task-card-title-row{display:flex;align-items:flex-start;gap:8px}
+.task-card .task-select{width:16px;height:16px;margin:2px 0 0;flex:0 0 auto;accent-color:var(--blue);cursor:pointer}
+.task-card.is-selected{border-color:var(--blue);box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 30%,transparent)}

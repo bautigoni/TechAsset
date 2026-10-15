@@ -12,12 +12,46 @@ import { AnimatedNumber } from '../layout/AnimatedNumber';
 import { GooeyMenu } from '../layout/GooeyMenu';
 import { Columns3, Lock, Users } from 'lucide-react';
 import { Modal } from '../layout/Modal';
+import { SelectionBar, useSelection } from '../layout/Selection';
+import { deleteTask } from '../../services/tasksApi';
+import { confirmDialog, toast } from '../layout/Feedback';
 
 const PRIORITIES = ['Urgente', 'Media', 'Baja'];
 
 export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, number>; operator: string; consultationMode: boolean; onSave: (task: Partial<TaskItem>) => Promise<unknown>; onMove: (id: string, state: TaskState, columnId?: number | null) => Promise<unknown> | void; onDelete: (id: string) => void; onRefresh?: () => Promise<unknown> | void }) {
   const { tasks, operator, consultationMode, onSave, onMove, onDelete, onRefresh } = props;
   const [space, setSpace] = useState<'my' | 'team'>('team');
+  // Selección múltiple: mover o borrar varias tareas de una.
+  const selection = useSelection();
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const selectedTasks = tasks.filter(task => selection.selected.has(task.id));
+  // Se mueve a una COLUMNA (cada sede tiene las suyas): con solo el estado, la
+  // tarea conservaba su columna vieja y el server la dejaba donde estaba.
+  const bulkMove = async (column: TaskColumn) => {
+    setBulkBusy(true);
+    try {
+      for (const task of selectedTasks) if (task.columnId !== column.id) await onMove(task.id, column.name, column.id);
+      toast({ message: `${selectedTasks.length} tareas en "${column.name}".`, tone: 'ok' });
+    } catch (reason) {
+      toast({ message: reason instanceof Error ? reason.message : 'No se pudieron mover todas.', tone: 'error' });
+    } finally {
+      setBulkBusy(false);
+      selection.clear();
+    }
+  };
+  const bulkDelete = async () => {
+    if (!(await confirmDialog({ title: `Borrar ${selectedTasks.length} tareas`, message: selectedTasks.map(task => task.titulo).join(' · '), confirmLabel: 'Borrar', danger: true }))) return;
+    setBulkBusy(true);
+    const failed: string[] = [];
+    for (const task of selectedTasks) {
+      try { await deleteTask(task.id, operator); } catch { failed.push(task.titulo); }
+    }
+    setBulkBusy(false);
+    selection.clear();
+    await onRefresh?.();
+    if (failed.length) toast({ message: `No se pudieron borrar: ${failed.join(', ')}`, tone: 'error' });
+  };
+  const taskSelection = consultationMode ? undefined : { selected: selection.selected, onToggle: selection.toggle };
   const [tab, setTab] = useState<'board' | 'priority'>('board');
   const tabPill = useTabPill<HTMLDivElement>(tab);
   const spacePill = useTabPill<HTMLDivElement>(space);
@@ -94,7 +128,7 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
         bastante. Sin esto el bloque salta de una altura a la otra y el resto de
         la página pega un tirón; ahora se estira. */}
     <div className="t-resize" ref={resizeRef}>
-    {tab === 'board' && columnsLoading ? <TaskBoardSkeleton /> : tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} animKey={`${space}:${tab}`} onSave={onSave} onMove={onMove} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle"><AnimatedNumber value={byPriority[priority].length} /></span></header><div className="task-schedule-list t-stagger" key={`${space}:${tab}`}>{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
+    {tab === 'board' && columnsLoading ? <TaskBoardSkeleton /> : tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} animKey={`${space}:${tab}`} onSave={onSave} onMove={onMove} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} selection={taskSelection} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle"><AnimatedNumber value={byPriority[priority].length} /></span></header><div className="task-schedule-list t-stagger" key={`${space}:${tab}`}>{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} selected={selection.selected.has(task.id)} onToggleSelect={taskSelection ? () => selection.toggle(task.id) : undefined} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
 
     {space === 'team' && <TaskAnalytics tasks={visibleTasks} />}
     </div>
@@ -122,5 +156,13 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
       </Modal>
     )}
 
-  </section>;
+  {!consultationMode && (
+      <SelectionBar count={selectedTasks.length} onClear={selection.clear} floating>
+        {columns.map(column => (
+          <Button key={column.id} disabled={bulkBusy} variant={column.isDone ? 'success' : 'secondary'} onClick={() => void bulkMove(column)}>{column.name}</Button>
+        ))}
+        <Button variant="danger" disabled={bulkBusy} onClick={() => void bulkDelete()}>Borrar</Button>
+      </SelectionBar>
+    )}
+    </section>;
 }

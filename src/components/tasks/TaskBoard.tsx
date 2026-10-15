@@ -30,8 +30,9 @@ export function TaskBoardSkeleton() {
   );
 }
 
-export function TaskBoard({ tasks, columns, operator, consultationMode, animKey = '', onSave, onMove, onDelete, onEdit, onRefresh, onRenameColumn, onDeleteColumn, onReorderColumns }: {
+export function TaskBoard({ tasks, columns, operator, consultationMode, animKey = '', onSave, onMove, onDelete, onEdit, onRefresh, onRenameColumn, onDeleteColumn, onReorderColumns, selection }: {
   tasks: TaskItem[];
+  selection?: { selected: Set<string>; onToggle: (id: string) => void };
   columns: TaskColumn[];
   animKey?: string;
   operator: string;
@@ -106,7 +107,7 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, animKey 
               checklist, formulario y acciones: con 40 tareas eran miles de
               nodos y la vista tardaba en abrir. El contador de arriba sigue
               contando el grupo COMPLETO, no lo que se ve. */}
-          <div className="infinite-column-stack t-stagger" key={animKey}>{group.slice(0, shownIn(column.id)).map(task => <TaskCard key={task.id} task={task} operator={operator} consultationMode={consultationMode} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => onEdit(task)} onRefresh={onRefresh} />)}{!group.length && <div className="column-empty">Soltá una tarea acá</div>}{group.length > shownIn(column.id) && (
+          <div className="infinite-column-stack t-stagger" key={animKey}>{group.slice(0, shownIn(column.id)).map(task => <TaskCard key={task.id} task={task} operator={operator} consultationMode={consultationMode} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => onEdit(task)} onRefresh={onRefresh} selected={selection?.selected.has(task.id)} onToggleSelect={selection ? () => selection.onToggle(task.id) : undefined} />)}{!group.length && <div className="column-empty">Soltá una tarea acá</div>}{group.length > shownIn(column.id) && (
             <button type="button" className="column-show-more" onClick={() => showMore(column.id)}>
               Ver {Math.min(PAGE_SIZE, group.length - shownIn(column.id))} más <span className="muted">({group.length - shownIn(column.id)} restantes)</span>
             </button>
