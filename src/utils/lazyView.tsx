@@ -1,4 +1,4 @@
-import { lazy, type ComponentType } from 'react';
+import { createElement, lazy, useState, type ComponentProps, type ComponentType } from 'react';
 
 /**
  * Carga diferida de vistas + prefetch en idle.
@@ -44,9 +44,28 @@ export function lazyView<K extends string, M extends { [P in K]: ComponentType<a
   load: () => Promise<M>,
   exportName: K
 ) {
-  const guarded = (): Promise<M> => load().then(module => { clearChunkErrorFlag(); return module; }, onChunkError);
+  type Props = ComponentProps<M[K]>;
+  let loaded: M[K] | null = null;
+  const guarded = (): Promise<M> => load().then(module => {
+    loaded = module[exportName];
+    clearChunkErrorFlag();
+    return module;
+  }, onChunkError);
   loaders.set(name, guarded);
-  return lazy(async () => ({ default: (await guarded())[exportName] }));
+  const Lazy = lazy(async () => ({ default: (await guarded())[exportName] }));
+
+  // React.lazy suspende SIEMPRE en el primer render, aunque el chunk ya esté
+  // precargado (su promesa propia todavía no resolvió), y React demora hasta
+  // 300 ms en reemplazar el skeleton por el contenido (throttle de Suspense).
+  // Medido: abrir una pantalla por primera vez tardaba ~450 ms contra ~100 ms
+  // la segunda. Si el módulo ya está en memoria se renderiza directo. El tipo se
+  // fija al montar para que no cambie a mitad de uso (eso remontaría la vista).
+  function View(props: Props) {
+    const [Component] = useState(() => loaded);
+    return Component ? createElement(Component, props) : createElement(Lazy, props);
+  }
+  View.displayName = `LazyView(${name})`;
+  return View;
 }
 
 /** Dispara la descarga del chunk de una vista sin renderizarla (hover, foco, etc.). */
