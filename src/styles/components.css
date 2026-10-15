@@ -5164,3 +5164,6 @@ input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-ou
 @keyframes chip-bar-float-in{from{transform:translate(-50%,8px);opacity:0}}
 @media (max-width:980px){.chip-selection-bar.is-floating{bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
 @media (prefers-reduced-motion:reduce){.chip-selection-bar.is-floating{animation:none}}
+/* Seleccion de tickets */
+.ticket-card .ticket-select{width:17px;height:17px;margin:0 2px 0 0;accent-color:var(--blue);cursor:pointer;flex:0 0 auto}
+.ticket-card.is-selected{border-color:var(--blue);box-shadow:0 0 0 2px color-mix(in srgb,var(--blue) 30%,transparent)}

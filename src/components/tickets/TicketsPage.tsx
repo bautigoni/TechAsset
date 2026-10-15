@@ -15,6 +15,7 @@ import { useCardResize } from '../../hooks/useCardResize';
 import { LayoutTemplate, TicketPlus } from 'lucide-react';
 import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
 import { clickableProps } from '../../utils/a11y';
+import { SelectionBar, useSelection } from '../layout/Selection';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
 const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
@@ -247,7 +248,43 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
 
   const changeEstado = async (ticket: Ticket, estado: TicketState) => {
     setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, estado } : t));
-    try { await updateTicket(ticket.id, { estado }); } catch { load(); }
+    try {
+      await updateTicket(ticket.id, { estado });
+    } catch (reason) {
+      // Antes el error se tragaba y el estado volvía solo, sin explicación.
+      toast({ message: errorMessage(reason, 'No se pudo cambiar el estado.'), tone: 'error' });
+      load();
+    }
+  };
+
+  // Selección múltiple: cambiar el estado de varios o borrarlos de una.
+  const selection = useSelection();
+  const selectedTickets = tickets.filter(ticket => selection.selected.has(String(ticket.id)));
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkEstado = async (estado: TicketState) => {
+    const list = selectedTickets.filter(ticket => ticket.estado !== estado);
+    setBulkBusy(true);
+    setTickets(prev => prev.map(t => selection.selected.has(String(t.id)) ? { ...t, estado } : t));
+    const failed: string[] = [];
+    for (const ticket of list) {
+      try { await updateTicket(ticket.id, { estado }); } catch { failed.push(`#${ticket.numero}`); }
+    }
+    setBulkBusy(false);
+    selection.clear();
+    if (failed.length) { toast({ message: `No se pudieron actualizar: ${failed.join(', ')}`, tone: 'error' }); load(); }
+    else toast({ message: `${list.length} tickets ahora están "${estado}".`, tone: 'ok' });
+  };
+  const bulkRemove = async () => {
+    if (!(await confirmDialog({ title: `Borrar ${selectedTickets.length} tickets`, message: selectedTickets.map(ticket => `#${ticket.numero}`).join(', '), confirmLabel: 'Borrar', danger: true }))) return;
+    setBulkBusy(true);
+    const failed: string[] = [];
+    for (const ticket of selectedTickets) {
+      try { await deleteTicket(ticket.id); } catch { failed.push(`#${ticket.numero}`); }
+    }
+    setBulkBusy(false);
+    selection.clear();
+    if (failed.length) toast({ message: `No se pudieron borrar: ${failed.join(', ')}`, tone: 'error' });
+    load();
   };
 
   const remove = async (ticket: Ticket) => {
@@ -326,9 +363,18 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           cambia de alto. Con el resize se estira en vez de saltar. */}
       <div className="ticket-grid t-resize" style={{ marginTop: 12 }} ref={gridResizeRef}>
         {visible.map(ticket => (
-          <section className="ticket-card" key={ticket.id}>
+          <section className={`ticket-card ${selection.selected.has(String(ticket.id)) ? 'is-selected' : ''}`} key={ticket.id}>
             {/* A5: header limpio con #numero azul + badge estado */}
             <div className="ticket-card-head">
+              {!consultationMode && (
+                <input
+                  type="checkbox"
+                  className="ticket-select"
+                  aria-label={`Seleccionar ticket ${normalizeNumero(ticket.numero)}`}
+                  checked={selection.selected.has(String(ticket.id))}
+                  onChange={() => selection.toggle(String(ticket.id))}
+                />
+              )}
               <a href={ticketLink(ticket)} target="_blank" rel="noreferrer" className="ticket-number-link">{ticket.origen === 'handing' ? 'Handing' : `#${normalizeNumero(ticket.numero)}`} ↗</a>
               <span className={ESTADO_BADGE[ticket.estado]}>{ticket.estado}</span>
             </div>
@@ -354,6 +400,15 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           </section>
         ))}
       </div>
+
+      {!consultationMode && (
+        <SelectionBar count={selectedTickets.length} onClear={selection.clear} floating>
+          {ESTADOS.map(estado => (
+            <Button key={estado} disabled={bulkBusy} variant={estado === 'Hecho' ? 'success' : 'secondary'} onClick={() => void bulkEstado(estado)}>{estado}</Button>
+          ))}
+          <Button variant="danger" disabled={bulkBusy} onClick={() => void bulkRemove()}>Borrar</Button>
+        </SelectionBar>
+      )}
 
       {modalOpen && (
         <Modal title={editingId ? 'Editar ticket' : 'Cargar ticket'} onClose={() => setModalOpen(false)}>
