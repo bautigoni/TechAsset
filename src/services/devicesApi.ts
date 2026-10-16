@@ -1,5 +1,7 @@
 import type { Device, Movement } from '../types';
 import { apiGet, apiSend, siteHeaders } from './apiClient';
+import { getActiveSiteCode } from './activeSite';
+import { downloadBlob } from '../utils/download';
 
 type DevicesResponse = { ok: true; items: Device[]; loadedAt: string; source: string; diagnostics?: Record<string, unknown> };
 type DevicesDiagnosticsResponse = { ok: true; diagnostics: Record<string, unknown> };
@@ -11,7 +13,7 @@ type DevicesImportResponse = {
 const devicesRequests = new Map<string, Promise<DevicesResponse>>();
 
 function activeSiteKey() {
-  return localStorage.getItem('techasset_active_site') || 'NFPT';
+  return getActiveSiteCode();
 }
 
 export function getDevices(options: { force?: boolean; wait?: boolean } = {}) {
@@ -55,15 +57,7 @@ export async function downloadDevicesCsv(path: string, filename: string) {
     }
     throw new Error(message);
   }
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, await response.blob());
 }
 
 export function addDevice(payload: Partial<Device> & { operator: string }) {
@@ -155,4 +149,13 @@ export function updateDeviceStatus(payload: { etiqueta: string; estado: string; 
 
 export function deleteDevice(etiqueta: string, operator: string) {
   return apiSend<{ ok: true; etiqueta: string }>(`/api/devices/${encodeURIComponent(etiqueta)}`, 'DELETE', { operator });
+}
+
+export type DeletedDevice = { etiqueta: string; deletedAt: string; deletedBy: string; reason: string; alias: string; categoria: string; modelo: string };
+
+/** Papelera: equipos borrados desde la app. */
+export const getDeletedDevices = () => apiGet<{ ok: true; items: DeletedDevice[] }>('/api/devices/deleted');
+
+export function restoreDevice(etiqueta: string) {
+  return apiSend<{ ok: true; etiqueta: string }>(`/api/devices/${encodeURIComponent(etiqueta)}/restore`, 'POST', {});
 }

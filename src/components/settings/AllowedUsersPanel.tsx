@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { SiteInfo } from '../../types';
 import { type AllowedUserItem, getAllowedUsers, getSites, getSiteSettings, saveAllowedUser, updateAllowedUserStatus } from '../../services/authApi';
 import { Button } from '../layout/Button';
+import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
+import { SelectField } from '../layout/SelectField';
 
 // Fallback: si el tenant no tiene roles.config, se usan estos.
 const ADMIN_ROLES = ['Superadmin', 'Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
@@ -34,7 +36,7 @@ export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { 
     setDraft(current => current.email ? current : emptyUser(s.items[0]?.siteCode || 'NFPT'));
   };
 
-  useEffect(() => { load().catch(() => {}); }, []);
+  useEffect(() => { load().catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar la lista de usuarios.'), tone: 'error' })); }, []);
 
   useEffect(() => {
     getSiteSettings().then(response => {
@@ -77,7 +79,7 @@ export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { 
 
   const runAction = async (user: AllowedUserItem, action: 'approve' | 'reject' | 'deactivate' | 'delete') => {
     if (!user.id) return;
-    if (action === 'delete' && !window.confirm(`¿Borrar ${user.email}?`)) return;
+    if (action === 'delete' && !(await confirmDialog({ title: 'Borrar usuario', message: `¿Borrar ${user.email}? Pierde el acceso; su historial queda.`, confirmLabel: 'Borrar', danger: true }))) return;
     await updateAllowedUserStatus(user.id, action);
     const labels = { approve: 'Usuario aprobado.', reject: 'Usuario rechazado.', deactivate: 'Usuario desactivado.', delete: 'Usuario borrado.' };
     setMessage(labels[action]);
@@ -122,13 +124,11 @@ export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { 
           <label>Nombre<input className="input" value={draft.nombre} onChange={e => setDraft(s => ({ ...s, nombre: e.target.value }))} /></label>
         </div>
         <div className="grid-2">
-          <label>Rol<select className="input" value={draft.defaultRole} onChange={e => setDraft(s => ({ ...s, defaultRole: e.target.value }))}>{roles.map(role => <option key={role}>{role}</option>)}</select></label>
-          <label>Turno<select className="input" value={draft.turno || 'Sin turno'} onChange={e => setDraft(s => ({ ...s, turno: e.target.value }))}>{TURNS.map(turn => <option key={turn}>{turn}</option>)}</select></label>
+          <label>Rol<SelectField value={String(draft.defaultRole)} onChange={value => setDraft(s => ({ ...s, defaultRole: value }))} options={[...roles.map(role => ({ value: String(role), label: String(role) }))]} /></label>
+          <label>Turno<SelectField value={String(draft.turno || 'Sin turno')} onChange={value => setDraft(s => ({ ...s, turno: value }))} options={[...TURNS.map(turn => ({ value: String(turn), label: String(turn) }))]} /></label>
         </div>
         <label>Estado
-          <select className="input" value={draft.status || 'Activo'} onChange={e => setDraft(s => ({ ...s, status: e.target.value as AllowedUserItem['status'], activo: e.target.value === 'Activo' }))}>
-            {STATUSES.map(status => <option key={status}>{status}</option>)}
-          </select>
+          <SelectField value={String(draft.status || 'Activo')} onChange={value => setDraft(s => ({ ...s, status: value as AllowedUserItem['status'], activo: value === 'Activo' }))} options={[...STATUSES.map(status => ({ value: String(status), label: String(status) }))]} />
         </label>
         <div className="site-check-grid">
           {sites.map(site => (
@@ -139,9 +139,7 @@ export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { 
           ))}
         </div>
         <label>Sede default
-          <select className="input" value={draft.defaultSiteCode || ''} onChange={e => setDraft(s => ({ ...s, defaultSiteCode: e.target.value }))}>
-            {(draft.sites || []).map(site => <option key={site.siteCode}>{site.siteCode}</option>)}
-          </select>
+          <SelectField ariaLabel="Sede default" value={draft.defaultSiteCode || ''} onChange={defaultSiteCode => setDraft(s => ({ ...s, defaultSiteCode }))} options={(draft.sites || []).map(site => ({ value: site.siteCode, label: site.siteCode }))} />
         </label>
         <div className="actions"><Button variant="primary" onClick={save}>Guardar usuario</Button></div>
         {message && <div className={message.includes('guardado') || message.includes('Usuario') ? 'tool-info' : 'tool-error'}>{message}</div>}

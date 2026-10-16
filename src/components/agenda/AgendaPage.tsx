@@ -8,6 +8,8 @@ import { Modal } from '../layout/Modal';
 import { type AgendaKpiFilter, AgendaKpis } from './AgendaKpis';
 import { AgendaCard } from './AgendaCard';
 import { AgendaModal } from './AgendaModal';
+import { formatDate } from '../../utils/formatters';
+import { downloadText } from '../../utils/download';
 
 const DAYS = ['Hoy', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie'];
 const DAY_MAP: Record<string, string> = { Lun: 'Lunes', Mar: 'Martes', Mie: 'Miércoles', Jue: 'Jueves', Vie: 'Viernes' };
@@ -66,15 +68,6 @@ function agendaCsv(items: AgendaItem[]) {
   return [headers, ...rows].map(row => row.map(value => `"${String(value ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
 }
 
-function downloadText(filename: string, text: string, type = 'text/plain') {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 function itemDate(item: AgendaItem) {
   if (item.fecha) return item.fecha;
   const wanted = WEEK_DAYS.find(day => comparableDay(day) === comparableDay(item.dia));
@@ -104,7 +97,9 @@ function monthMatrix(date = new Date()) {
   });
 }
 
-export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, onRefresh }: { items: AgendaItem[]; kpis?: Record<string, number>; consultationMode: boolean; onSave: (item: Partial<AgendaItem>) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onTask: (item: AgendaItem) => void; onRefresh?: () => Promise<unknown> | void }) {
+export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, onRefresh, olderHidden = 0, onLoadOlder }: {
+  olderHidden?: number;
+  onLoadOlder?: () => Promise<unknown>; items: AgendaItem[]; kpis?: Record<string, number>; consultationMode: boolean; onSave: (item: Partial<AgendaItem>) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onTask: (item: AgendaItem) => void; onRefresh?: () => Promise<unknown> | void }) {
   const [day, setDay] = useState('Hoy');
   const [tab, setTab] = useState<AgendaTab>('today');
   const [turno, setTurno] = useState<TurnoFilter>('completo');
@@ -190,7 +185,8 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
     if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
     else downloadText('agenda-resumen.txt', text);
   };
-  const exportCsv = () => downloadText('agenda-tic.csv', agendaCsv(filtered.length ? filtered : items), 'text/csv;charset=utf-8');
+  // Con BOM para que Excel lea bien los acentos.
+  const exportCsv = () => downloadText('agenda-tic.csv', `﻿${agendaCsv(filtered.length ? filtered : items)}`, 'text/csv;charset=utf-8');
 
   const openSync = async () => {
     setSyncOpen(true);
@@ -314,7 +310,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         <div className="agenda-month-layout">
           <section className="agenda-month-card">
             <div className="agenda-month-head">
-              <h3>{new Date().toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</h3>
+              <h3>{formatDate(new Date(), { month: 'long', year: 'numeric' })}</h3>
               <Button onClick={() => setSelectedDate(todayIso())}>Hoy</Button>
             </div>
             <div className="agenda-month-grid">
@@ -338,7 +334,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
           <section className="agenda-selected-day">
             <div className="card-head">
               <div>
-                <h3>{new Date(`${selectedDate}T12:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+                <h3>{formatDate(`${selectedDate}T12:00`, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
                 <span className="muted">{selectedDateItems.length} actividades</span>
               </div>
             </div>
@@ -357,6 +353,12 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         <div className="agenda-cards">
           {historyItems.map(item => <AgendaCard key={item.id} item={item} consultationMode={consultationMode} onUpdate={(current, patch) => onSave({ ...current, ...patch })} onDelete={id => onDelete(id)} onTask={onTask} />)}
           {!historyItems.length && <div className="empty-state">Aún no hay actividades realizadas o canceladas.</div>}
+          {olderHidden > 0 && onLoadOlder && (
+            <div className="agenda-older">
+              <span className="muted">Hay {olderHidden} actividades terminadas de hace más de 4 meses.</span>
+              <Button onClick={() => void onLoadOlder()}>Ver anteriores</Button>
+            </div>
+          )}
         </div>
       )}
 

@@ -3,6 +3,7 @@ import type { ClassroomCategory, ClassroomItemState } from '../../types';
 import { createClassroomCategory, deleteClassroomCategory, reorderClassroomCategories, updateClassroomCategory } from '../../services/classroomsApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
+import { confirmDialog } from '../layout/Feedback';
 
 const DEFAULT_OPTIONS: ClassroomItemState[] = ['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar'];
 
@@ -64,7 +65,7 @@ export function ClassroomCategoryManager({ categories, onClose, onChanged }: { c
                     <div className="cat-actions">
                       <button type="button" onClick={() => setEditing(category.id)}>Editar</button>
                       <button type="button" className="is-danger" onClick={async () => {
-                        if (!window.confirm(`¿Eliminar la categoría "${category.label}"?`)) return;
+                        if (!(await confirmDialog({ title: 'Eliminar categoría', message: `¿Eliminar la categoría "${category.label}"? Las aulas dejan de mostrarla.`, confirmLabel: 'Eliminar', danger: true }))) return;
                         await deleteClassroomCategory(category.id);
                         await onChanged();
                       }}>Eliminar</button>

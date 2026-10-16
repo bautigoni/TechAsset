@@ -10,6 +10,7 @@ import {
   orderedToggleableModules,
   type ModuleKey
 } from '../../utils/modules';
+import { toast as notify, errorMessage } from '../layout/Feedback';
 
 export function ModulesPanel({ consultationMode, onChanged }: { consultationMode: boolean; onChanged?: () => void }) {
   const [enabled, setEnabled] = useState<Set<string>>(new Set(TOGGLEABLE_MODULES.map(m => m.key)));
@@ -23,7 +24,7 @@ export function ModulesPanel({ consultationMode, onChanged }: { consultationMode
         setEnabled(enabledModuleSet(response.settings));
         setOrder(moduleOrder(response.settings));
       })
-      .catch(() => {});
+      .catch(reason => notify({ message: errorMessage(reason, 'No se pudo cargar la configuración de módulos.'), tone: 'error' }));
   }, []);
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export function ModulesPanel({ consultationMode, onChanged }: { consultationMode
   return (
     <section className="card">
       <div className="card-head"><h3>Modulos de la sede</h3></div>
-      <p className="muted" style={{ marginTop: 0 }}>Prende, apaga y ordena las secciones para esta sede. El menu respeta este orden para sus usuarios.</p>
+      <p className="muted mt-0">Prende, apaga y ordena las secciones para esta sede. El menu respeta este orden para sus usuarios.</p>
 
       <div className="module-group">
         <h4 className="module-group-title">Orden del menu</h4>
@@ -113,7 +114,7 @@ export function ModulesPanel({ consultationMode, onChanged }: { consultationMode
         </div>
       </div>
 
-      <div className="actions" style={{ marginTop: 14 }}>
+      <div className="actions mt-14">
         <button className="btn btn-primary" type="button" disabled={saving || consultationMode} onClick={save}>
           {saving ? 'Guardando...' : 'Guardar modulos'}
         </button>

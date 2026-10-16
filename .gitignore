@@ -48,3 +48,6 @@ TechAssetfv/
 TechAssetvf/
 *.mp4
 data/procedimientos/*.mp4
+
+# Banco de pruebas de rendimiento (datos reales locales)
+perf/.out/

@@ -4,6 +4,8 @@ import { Badge } from '../layout/Badge';
 import { Button } from '../layout/Button';
 import { getOperationalAlias } from '../../utils/classifyDevice';
 import { formatLoanDateTime, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
+import { confirmDialog } from '../layout/Feedback';
+import { getLoanState } from '../../utils/deviceState';
 
 type ActionMode = 'full' | 'dashboard';
 
@@ -11,18 +13,6 @@ function badgeTone(state: string) {
   if (state === 'Prestado') return 'loaned';
   if (state === 'No encontrada' || state === 'Perdida') return 'lost';
   if (state === 'Fuera de servicio') return 'out-service';
-  return 'available';
-}
-
-function normalizeState(value?: string): 'available' | 'loaned' | 'unavailable' {
-  const v = String(value || '').trim().toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '');
-  if (v === 'prestado' || v === 'prestada') return 'loaned';
-  if (v === 'fuera de servicio' || v === 'fuera servicio'
-      || v === 'no encontrada' || v === 'no encontrado'
-      || v === 'perdida' || v === 'perdido'
-      || v === 'en reparacion' || v === 'mantenimiento'
-      || v === 'baja' || v === 'no disponible') return 'unavailable';
   return 'available';
 }
 
@@ -37,8 +27,12 @@ function deviceModel(device: Device) {
   return parts.length ? parts.join(' · ') : '';
 }
 
-export function DeviceTable({ devices, compact = false, actionMode = 'full', onLoan, onReturn, onProfile, onEdit, onDelete }: {
+export type TableSelection = { selected: Set<string>; onToggle: (etiqueta: string) => void; onToggleMany: (etiquetas: string[]) => void };
+
+export function DeviceTable({ devices, compact = false, actionMode = 'full', onLoan, onReturn, onProfile, onEdit, onDelete, selection }: {
   devices: Device[];
+  /** Con selección aparece una columna de casillas (acciones en lote). */
+  selection?: TableSelection;
   compact?: boolean;
   actionMode?: ActionMode;
   onLoan?: (device: Device) => Promise<unknown> | void;
@@ -51,8 +45,18 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
   // Se renderizaban las 81 filas siempre (1948 nodos, 6300px de scroll). Ahora
   // entran de a 30 y se van sumando: mismo contenido, un tercio del DOM.
   const PAGE = 30;
-  const [limit, setLimit] = useState(PAGE);
-  useEffect(() => { setLimit(PAGE); }, [devices.length]);
+  // El primer pintado lleva solo las filas que entran en pantalla; el resto de
+  // la tanda se completa apenas el navegador queda libre. Mismo contenido, pero
+  // la tabla era ~60% del DOM del dashboard y frenaba el primer pintado.
+  const FIRST_PAINT = 12;
+  const [limit, setLimit] = useState(FIRST_PAINT);
+  useEffect(() => {
+    setLimit(FIRST_PAINT);
+    const idle = window.requestIdleCallback
+      ? window.requestIdleCallback(() => setLimit(value => Math.max(value, PAGE)), { timeout: 400 })
+      : window.setTimeout(() => setLimit(value => Math.max(value, PAGE)), 50);
+    return () => { if (window.cancelIdleCallback) window.cancelIdleCallback(idle); else window.clearTimeout(idle); };
+  }, [devices.length]);
   const shown = devices.slice(0, limit);
   const [returningTag, setReturningTag] = useState('');
 
@@ -71,6 +75,16 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
       <table className="compact-table device-table">
         <thead>
           <tr>
+            {selection && (
+              <th className="device-select-cell">
+                <input
+                  type="checkbox"
+                  aria-label="Seleccionar todos los equipos visibles"
+                  checked={shown.length > 0 && shown.every(device => selection.selected.has(device.etiqueta))}
+                  onChange={() => selection.onToggleMany(shown.map(device => device.etiqueta))}
+                />
+              </th>
+            )}
             <th>Etiqueta</th>
             <th>Dispositivo</th>
             <th>SN</th>
@@ -86,6 +100,16 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
         <tbody>
           {shown.map(device => (
             <tr key={device.id} data-device-tag={device.etiqueta} className={onProfile ? 'device-row-clickable' : ''} role={onProfile ? 'button' : undefined} tabIndex={onProfile ? 0 : undefined} onClick={() => onProfile?.(device)} onKeyDown={event => { if (onProfile && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onProfile(device); } }}>
+              {selection && (
+                <td data-label="Seleccionar" className="device-select-cell" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Seleccionar ${device.etiqueta}`}
+                    checked={selection.selected.has(device.etiqueta)}
+                    onChange={() => selection.onToggle(device.etiqueta)}
+                  />
+                </td>
+              )}
               <td data-label="Etiqueta">
                 <strong>{device.etiqueta}</strong>
                 <div className="cell-sub operational-alias">{getOperationalAlias(device)}</div>
@@ -110,12 +134,12 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
               <td data-label="Estado"><Badge tone={badgeTone(device.estado)}>{device.estado === 'Perdida' ? 'No encontrada' : device.estado}</Badge></td>
               <td data-label="Acciones" className="device-actions-cell" onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
                 <div className="table-actions device-actions">
-                  {onLoan && normalizeState(device.estado) === 'available' && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
-                  {onReturn && normalizeState(device.estado) === 'loaned' && <Button className="mini-action-btn" variant="success" disabled={returningTag === device.etiqueta} onClick={() => handleReturn(device)}>{returningTag === device.etiqueta ? 'Devolviendo...' : 'Devolver'}</Button>}
+                  {onLoan && getLoanState(device.estado) === 'available' && <Button className="mini-action-btn" variant="primary" onClick={() => onLoan(device)}>Prestar</Button>}
+                  {onReturn && getLoanState(device.estado) === 'loaned' && <Button className="mini-action-btn" variant="success" disabled={returningTag === device.etiqueta} onClick={() => handleReturn(device)}>{returningTag === device.etiqueta ? 'Devolviendo...' : 'Devolver'}</Button>}
                   {actionMode !== 'dashboard' && onProfile && <Button className="mini-action-btn" onClick={() => onProfile(device)}>Ficha</Button>}
                   {onEdit && <Button className="mini-action-btn" onClick={() => onEdit(device)}>Editar</Button>}
                   {onDelete && actionMode !== 'dashboard' && <Button className="mini-action-btn device-delete-btn" disabled={deletingTag === device.etiqueta} onClick={async () => {
-                    if (!window.confirm(`¿Borrar ${device.etiqueta}? Se ocultará de la app sin borrar el historial.`)) return;
+                    if (!(await confirmDialog({ title: `Borrar ${device.etiqueta}`, message: 'Se oculta de la app sin borrar su historial. Se puede restaurar desde la papelera.', confirmLabel: 'Borrar', danger: true }))) return;
                     setDeletingTag(device.etiqueta);
                     try {
                       await onDelete(device);

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22 <23"
+    "node": ">=20 <27"
   },
   "scripts": {
     "dev": "concurrently -k \"npm run server\" \"vite --host 0.0.0.0\"",
@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
-    "better-sqlite3": "^11.9.1",
+    "better-sqlite3": "12.9.0",
     "compression": "^1.8.1",
     "concurrently": "^9.1.2",
     "cookie-parser": "^1.4.7",
@@ -42,6 +42,7 @@
   "devDependencies": {
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "puppeteer-core": "^25.14.0",
     "transitions-pro": "^0.1.1",
     "transitions-refine": "^0.3.34",
     "typescript": "^5.7.3",

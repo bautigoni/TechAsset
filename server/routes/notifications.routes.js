@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb, nowIso } from '../db.js';
 import { config } from '../config.js';
 import { broadcastRelease, normalizeNotificationPrefs } from '../services/notifications.service.js';
+import { sendWithEtag } from '../services/etag.service.js';
 
 export const notificationsRouter = Router();
 
@@ -32,13 +33,16 @@ notificationsRouter.get('/notifications', (req, res) => {
   const email = userEmail(req);
   if (!email) return res.json({ ok: true, items: [], unread: 0 });
   const onlyUnread = req.query.unread === '1';
+  // El contador de no leídas viaja en la misma query (la campana pollea cada
+  // 30 s): sin filas, el usuario no tiene notificaciones y el contador es 0.
   const rows = getDb().prepare(`
-    SELECT * FROM notifications
-    WHERE lower(user_email)=? ${onlyUnread ? 'AND read=0' : ''}
-    ORDER BY created_at DESC LIMIT 30
-  `).all(email);
-  const unread = getDb().prepare('SELECT COUNT(*) AS n FROM notifications WHERE lower(user_email)=? AND read=0').get(email).n;
-  res.json({ ok: true, items: rows.map(rowToNotification), unread });
+    SELECT n.*, (SELECT COUNT(*) FROM notifications WHERE lower(user_email)=? AND read=0) AS unread_total
+    FROM notifications n
+    WHERE lower(n.user_email)=? ${onlyUnread ? 'AND n.read=0' : ''}
+    ORDER BY n.created_at DESC LIMIT 30
+  `).all(email, email);
+  const unread = Number(rows[0]?.unread_total || 0);
+  sendWithEtag(req, res, { ok: true, items: rows.map(rowToNotification), unread });
 });
 
 notificationsRouter.patch('/notifications/:id/read', (req, res) => {

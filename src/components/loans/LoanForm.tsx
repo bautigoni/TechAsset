@@ -3,10 +3,13 @@ import type { Device } from '../../types';
 import { parseScannedCode, resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { getOperationalAlias, operationalTypeLabel } from '../../utils/classifyDevice';
 import { Button } from '../layout/Button';
+import { SelectField } from '../layout/SelectField';
 import { ScannerPanel } from './ScannerPanel';
 import { ScanMessage } from './ScanMessage';
 import { getSiteSettings } from '../../services/authApi';
-import { getActiveLoanAccessories, getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
+import { getActiveLoanAccessories, getLoanSuggestions, type LoanBatchResponse, type LoanSuggestion } from '../../services/loansApi';
+import { confirmDialog } from '../layout/Feedback';
+import { getLoanState } from '../../utils/deviceState';
 
 type ScanItem = {
   id: string;
@@ -36,7 +39,7 @@ const DEFAULT_GRADE_OPTIONS = [
 const SCHOOL_LEVEL_OPTIONS = ['EP', 'ES'];
 const DEFAULT_ACCESSORIES = ['Cargador', 'Mouse', 'Bolso', 'Cable HDMI', 'Adaptador', 'Lápiz óptico', 'Auriculares'];
 
-export function LoanForm({ devices, onLend, onReturn, consultationMode, initialCode = '' }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; consultationMode: boolean; initialCode?: string }) {
+export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationMode, initialCode = '', batchSeed }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; consultationMode: boolean; initialCode?: string; batchSeed?: { etiquetas: string[]; nonce: number } }) {
   const [code, setCode] = useState('');
   const [person, setPerson] = useState('');
   const [role, setRole] = useState('');
@@ -63,6 +66,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const codeInputRef = useRef<HTMLInputElement | null>(null);
+  const personInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanFrameRef = useRef<number | null>(null);
@@ -86,6 +90,36 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     setCode(initialCode);
     window.setTimeout(() => codeInputRef.current?.focus(), 0);
   }, [initialCode]);
+
+  // Lote elegido en la grilla de equipos: entra a la lista del escaneo continuo,
+  // así persona/rol/ubicación se cargan una sola vez para todos.
+  useEffect(() => {
+    if (!batchSeed?.etiquetas.length) return;
+    const found = batchSeed.etiquetas
+      .map(etiqueta => devices.find(device => device.etiqueta === etiqueta))
+      .filter((device): device is Device => Boolean(device));
+    setContinuousScan(true);
+    setScanItems(items => {
+      const known = new Set(items.map(item => item.id));
+      const nuevos = found.filter(device => !known.has(device.id)).map(device => {
+        const disponible = getLoanUiState(device) === 'available';
+        return {
+          id: device.id,
+          etiqueta: device.etiqueta,
+          alias: getOperationalAlias(device),
+          tipo: operationalTypeLabel(device),
+          estado: String(device.estado || ''),
+          disponible,
+          motivo: disponible ? '' : `No disponible (${device.estado || 'sin estado'})`
+        };
+      });
+      return [...items, ...nuevos];
+    });
+    setScanMessage({ tone: 'info', text: `${found.length} ${found.length === 1 ? 'equipo agregado' : 'equipos agregados'} desde la grilla. Completá persona y confirmá.` });
+    window.setTimeout(() => personInputRef.current?.focus(), 0);
+    // Solo reacciona a un lote nuevo; `devices` se lee en el momento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchSeed?.nonce]);
 
   useEffect(() => {
     getSiteSettings().then(r => setSettings(r.settings || {})).catch(() => {});
@@ -255,11 +289,11 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
     setScanMessage(null);
   };
 
-  const cancelContinuousScan = () => {
-    setContinuousScan(false);
-    if (scanItems.length && !window.confirm('¿Querés conservar la lista de escaneados?')) {
+  const cancelContinuousScan = async () => {
+    if (scanItems.length && !(await confirmDialog({ title: 'Salir del escaneo continuo', message: `Hay ${scanItems.length} equipos en la lista. ¿Los conservás para la próxima vez?`, confirmLabel: 'Conservar lista', cancelLabel: 'Vaciar lista' }))) {
       setScanItems([]);
     }
+    setContinuousScan(false);
     setScanMessage(null);
   };
 
@@ -343,20 +377,22 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
 
   const handleConfirmMultipleLoan = async () => {
     if (consultationMode || !validScanItems.length) return;
-    if (!person.trim() || !location.trim() || location === 'Seleccionar ubicación' || (selectedLocation?.requiresDetail && !locationDetail.trim()) || (requiresSchoolCourse && (!schoolLevel.trim() || !course.trim())) || (selectedReason?.requiresDetail && !reasonDetail.trim())) {
-      setScanMessage({ tone: 'error', text: 'Completá persona y ubicación antes de confirmar.' });
+    // Mismas validaciones que el préstamo suelto (antes el lote no pedía rol y el
+    // server lo rechazaba entero).
+    const validation = validateLoanFields();
+    if (validation) {
+      setScanMessage({ tone: 'error', text: validation });
       return;
     }
     setBusy(true);
     try {
-      const errors: string[] = [];
-      for (const item of validScanItems) {
-        try {
-          const result = await onLend({ etiqueta: item.etiqueta, person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment, accessories: loanAccessories });
-          if (result?.synced === false) errors.push(`${item.etiqueta}: ${result.message || 'no se pudo registrar'}`);
-        } catch (error) {
-          errors.push(`${item.etiqueta}: ${error instanceof Error ? error.message : 'error'}`);
-        }
+      // Un solo request para todo el lote.
+      let errors: string[] = [];
+      try {
+        const response = await onLendBatch({ etiquetas: validScanItems.map(item => item.etiqueta), person, role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment, accessories: loanAccessories });
+        errors = response.results.filter(item => !item.ok).map(item => `${item.etiqueta}: ${item.error || 'no se pudo registrar'}`);
+      } catch (error) {
+        errors = validScanItems.map(item => `${item.etiqueta}: ${error instanceof Error ? error.message : 'error'}`);
       }
       const okCount = validScanItems.length - errors.length;
       setScanMessage({
@@ -429,6 +465,7 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
       <div className="grid-2">
         <label className="loan-person-field">Persona
           <input
+            ref={personInputRef}
             className="input"
             value={person}
             onChange={event => { setPerson(event.target.value); setShowSuggest(true); }}
@@ -450,16 +487,16 @@ export function LoanForm({ devices, onLend, onReturn, consultationMode, initialC
             </ul>
           )}
         </label>
-        <label>Rol<select className="input" value={role} onChange={event => setRole(event.target.value)}><option>Seleccionar rol</option>{roleOptions.map(item => <option key={item}>{item}</option>)}</select></label>
+        <label>Rol<SelectField ariaLabel="Rol" value={role} placeholder="Seleccionar rol" onChange={setRole} options={roleOptions.map(value => ({ value, label: value }))} /></label>
       </div>
       <div className="grid-2">
-        <label>Ubicación<select className="input" value={location} onChange={event => setLocation(event.target.value)}><option>Seleccionar ubicación</option>{locationOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
-        <label>Motivo<select className="input" value={reason} onChange={event => setReason(event.target.value)}><option>Sin motivo</option>{motiveOptions.map(item => <option key={item.label}>{item.label}</option>)}</select></label>
+        <label>Ubicación<SelectField ariaLabel="Ubicación" value={location} placeholder="Seleccionar ubicación" onChange={setLocation} options={locationOptions.map(item => ({ value: item.label, label: item.label }))} /></label>
+        <label>Motivo<SelectField ariaLabel="Motivo" value={reason} onChange={setReason} options={[{ value: '', label: 'Sin motivo' }, ...motiveOptions.map(item => ({ value: item.label, label: item.label }))]} /></label>
       </div>
       {(requiresSchoolCourse || selectedLocation?.requiresDetail || selectedReason?.requiresDetail) && (
         <div className="grid-2">
-          {requiresSchoolCourse && <label>Nivel<select className="input" value={schoolLevel} onChange={event => setSchoolLevel(event.target.value)}><option>Seleccionar nivel</option>{SCHOOL_LEVEL_OPTIONS.map(item => <option key={item}>{item}</option>)}</select></label>}
-          {requiresSchoolCourse && <label>Grado / Año / Curso<select className="input" value={course} onChange={event => setCourse(event.target.value)}><option>Seleccionar curso</option>{gradeOptions.map(item => <option key={item}>{item}</option>)}</select></label>}
+          {requiresSchoolCourse && <label>Nivel<SelectField ariaLabel="Nivel" value={schoolLevel} placeholder="Seleccionar nivel" onChange={setSchoolLevel} options={SCHOOL_LEVEL_OPTIONS.map(value => ({ value, label: value }))} /></label>}
+          {requiresSchoolCourse && <label>Grado / Año / Curso<SelectField ariaLabel="Grado, año o curso" value={course} placeholder="Seleccionar curso" onChange={setCourse} options={gradeOptions.map(value => ({ value, label: value }))} /></label>}
           {selectedLocation?.requiresDetail && <label>Especificar ubicación<input className="input" value={locationDetail} onChange={event => setLocationDetail(event.target.value)} /></label>}
           {selectedReason?.requiresDetail && <label>Especificar motivo<input className="input" value={reasonDetail} onChange={event => setReasonDetail(event.target.value)} /></label>}
         </div>
@@ -560,15 +597,7 @@ function barcodeDetectorClass(): BarcodeDetectorConstructor | undefined {
 }
 
 function getLoanUiState(device?: Device): LoanUiState {
-  if (!device) return 'unknown';
-  const state = normalizeState(device.estado);
-  if (!state || state === 'disponible' || state === 'devuelto') return 'available';
-  if (state.includes('prest') || state.includes('retir')) return 'loaned';
-  return 'blocked';
-}
-
-function normalizeState(value?: string) {
-  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+  return device ? getLoanState(device.estado) : 'unknown';
 }
 
 function normalizeStringOptions(value: unknown, fallback: string[]) {

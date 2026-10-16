@@ -1,19 +1,43 @@
 import type { Device } from '../types';
 
+/**
+ * Estado de un equipo, en un solo lugar. Antes había cinco copias (tabla,
+ * formulario de préstamo, página de préstamos, filtros, dashboard) y no
+ * coincidían: "En reparación" era disponible en una y no disponible en otra.
+ */
+
+export type LoanState = 'available' | 'loaned' | 'blocked';
 export type DeviceStateKey = 'available' | 'loaned' | 'missing' | 'out';
 
-export function getDeviceStateKey(device: Pick<Device, 'estado'> & { prestadoA?: string }): DeviceStateKey {
-  const state = normalizeState(`${device.estado || ''} ${device.prestadoA || ''}`);
-  if (state.includes('fuera') || state.includes('servicio') || state.includes('mantenimiento') || state.includes('baja')) return 'out';
-  if (state.includes('perd') || state.includes('lost') || state.includes('no encontrada') || state.includes('no encontrado')) return 'missing';
+export function normalizeState(value?: string) {
+  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+}
+
+/**
+ * Si se puede prestar, devolver o ninguna de las dos. Es la MISMA regla que
+ * aplica el server (isAvailableState / isLoanedState en loans.routes.js): si
+ * cambia una, cambiar la otra.
+ */
+export function getLoanState(estado?: string): LoanState {
+  const state = normalizeState(estado);
   if (state.includes('prest') || state.includes('retir')) return 'loaned';
-  return 'available';
+  if (!state || state.includes('devuelto') || state.includes('sin revisar')) return 'available';
+  if (state.includes('disponible') && !state.includes('no disponible')) return 'available';
+  return 'blocked';
 }
 
-export function isDeviceState(device: Pick<Device, 'estado'> & { prestadoA?: string }, key: DeviceStateKey) {
+/** Las cuatro categorías de los contadores y filtros (dashboard, dispositivos). */
+export function getDeviceStateKey(device: Pick<Device, 'estado'>): DeviceStateKey {
+  const state = normalizeState(device.estado);
+  if (state.includes('perd') || state.includes('lost') || state.includes('no encontrad')) return 'missing';
+  const loan = getLoanState(device.estado);
+  if (loan === 'loaned') return 'loaned';
+  if (loan === 'available') return 'available';
+  // Fuera de servicio, en reparación, mantenimiento, baja, no disponible y
+  // cualquier otro estado que no se puede prestar.
+  return 'out';
+}
+
+export function isDeviceState(device: Pick<Device, 'estado'>, key: DeviceStateKey) {
   return getDeviceStateKey(device) === key;
-}
-
-function normalizeState(value: string) {
-  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
 }

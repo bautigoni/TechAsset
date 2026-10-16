@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getLatestRelease } from '../../services/notificationsApi';
 import { useMountTransition } from '../../hooks/useMountTransition';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 
 const SEEN_KEY = 'techasset_last_seen_release';
 
@@ -8,6 +9,7 @@ const SEEN_KEY = 'techasset_last_seen_release';
 export function ReleaseNotesModal() {
   const [release, setRelease] = useState<{ version: string; title: string; bodyMd: string } | null>(null);
   const anim = useMountTransition(!!release, 150); // --modal-close-dur
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const lastReleaseRef = useRef(release);
 
   const loadLatest = (force = false) => {
@@ -36,18 +38,23 @@ export function ReleaseNotesModal() {
   // va: cuando arranca el cierre, `release` ya es null.
   if (release) lastReleaseRef.current = release;
   const shown = release || lastReleaseRef.current;
+
+  const closeRelease = useCallback(() => {
+    if (shown) localStorage.setItem(SEEN_KEY, shown.version);
+    setRelease(null);
+  }, [shown]);
+  // Foco, Tab y Escape como el resto de los diálogos (antes Escape no cerraba).
+  useDialogFocus(cardRef, closeRelease, Boolean(release) && anim.mounted);
+
   if (!anim.mounted || !shown) return null;
 
-  const close = () => {
-    localStorage.setItem(SEEN_KEY, shown.version);
-    setRelease(null);
-  };
+  const close = closeRelease;
 
   const blocks = parseRelease(shown.bodyMd);
 
   return (
-    <div className={`release-modal-overlay t-fade ${anim.stateClass}`.trim()} role="dialog" aria-modal="true" onClick={close}>
-      <div className="release-modal t-pop" onClick={e => e.stopPropagation()}>
+    <div className={`release-modal-overlay t-fade ${anim.stateClass}`.trim()} role="dialog" aria-modal="true" aria-label={`Novedades: ${shown.title}`} onClick={close}>
+      <div className="release-modal t-pop" ref={cardRef} tabIndex={-1} onClick={e => e.stopPropagation()}>
         <span className="release-modal-tag">Novedades · {shown.version.startsWith('v') ? shown.version : `v${shown.version}`}</span>
         <h2 className="release-modal-title">{shown.title}</h2>
         <div className="release-modal-content">{blocks.map((block,index)=>block.type==='heading'?<h3 key={index}>{block.text}</h3>:block.type==='item'?<div className="release-modal-item" key={index}><span>✓</span><p>{block.text}</p></div>:<p key={index}>{block.text}</p>)}</div>

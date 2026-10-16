@@ -532,6 +532,14 @@ export function initDb(database = getDb()) {
       created_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_invites_site ON invites(site_code);
+    CREATE TABLE IF NOT EXISTS password_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token_hash TEXT UNIQUE NOT NULL,
+      allowed_user_id INTEGER NOT NULL,
+      expires_at TEXT,
+      used_at TEXT DEFAULT '',
+      created_at TEXT
+    );
     CREATE TABLE IF NOT EXISTS notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       site_code TEXT DEFAULT 'NFPT',

@@ -11,8 +11,16 @@ const ORDENES = [
 import { StatCard } from '../layout/StatCard';
 import { DeviceTable } from './DeviceTable';
 import { DeviceGroupsManager } from './DeviceGroupsManager';
+import { DeviceTrashModal } from './DeviceTrashModal';
+import { restoreDevice } from '../../services/devicesApi';
+import { errorMessage, toast } from '../layout/Feedback';
 import { AddDeviceModal } from './AddDeviceModal';
 import { downloadDevicesCsv, importDevicesFromCsv } from '../../services/devicesApi';
+import { promptDialog } from '../layout/Feedback';
+import { getDeviceStateKey } from '../../utils/deviceState';
+import { useSelection } from '../layout/Selection';
+import { DeviceBulkBar } from './DeviceBulkBar';
+import type { LoanBatchResponse } from '../../services/loansApi';
 
 type DeviceFilter = string;
 type DeviceSort = 'default' | 'operational';
@@ -27,14 +35,11 @@ const FILTER_LABELS: Record<string, string> = {
 
 function matchesFilter(device: Device, filter: DeviceFilter) {
   if (filter === 'all') return true;
-  if (filter === 'available') return device.estado !== 'Prestado' && device.estado !== 'No encontrada' && device.estado !== 'Fuera de servicio' && device.estado !== 'Perdida';
-  if (filter === 'loaned') return device.estado === 'Prestado';
-  if (filter === 'missing') return device.estado === 'No encontrada' || device.estado === 'Perdida';
-  if (filter === 'out') return device.estado === 'Fuera de servicio';
+  if (filter === 'available' || filter === 'loaned' || filter === 'missing' || filter === 'out') return getDeviceStateKey(device) === filter;
   return classifyDeviceType(device) === filter;
 }
 
-export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan, onReturn, onProfile, onDelete, onImported }: {
+export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan, onReturn, onProfile, onDelete, onImported, onLoanBatch, onReturnBatch }: {
   devices: Device[];
   consultationMode: boolean;
   operator: string;
@@ -44,8 +49,14 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
   onProfile: (device: Device) => void;
   onDelete?: (device: Device) => Promise<void> | void;
   onImported?: () => Promise<void> | void;
+  onLoanBatch?: (etiquetas: string[]) => void;
+  onReturnBatch?: (etiquetas: string[]) => Promise<LoanBatchResponse>;
 }) {
+  // Selección para acciones en lote (barra flotante abajo).
+  const selection = useSelection();
+  const selectedDevices = useMemo(() => devices.filter(device => selection.selected.has(device.etiqueta)), [devices, selection.selected]);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Device | null>(null);
   const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all');
@@ -71,7 +82,22 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
     setMessage(null);
     try {
       await onDelete(device);
-      setMessage({ tone: 'info', text: 'Dispositivo borrado' });
+      // Borrar es ocultar: se puede deshacer al toque o restaurar después desde la papelera.
+      toast({
+        message: `${device.etiqueta} se movió a la papelera.`,
+        action: {
+          label: 'Deshacer',
+          onClick: async () => {
+            try {
+              await restoreDevice(device.etiqueta);
+              await onImported?.();
+              toast({ message: `${device.etiqueta} restaurado.`, tone: 'ok' });
+            } catch (reason) {
+              toast({ message: errorMessage(reason, 'No se pudo restaurar.'), tone: 'error' });
+            }
+          }
+        }
+      });
     } catch (error) {
       setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo borrar el dispositivo.' });
     }
@@ -82,7 +108,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
       setMessage({ tone: 'error', text: 'Modo consulta activo.' });
       return;
     }
-    const csvUrl = window.prompt('Pegá la URL CSV publicada de esta sede. Si dejás vacío, se usa la URL configurada en la sede.');
+    const csvUrl = await promptDialog({ title: 'Importar dispositivos', message: 'Pegá la URL CSV publicada de esta sede. Si la dejás vacía se usa la URL configurada en la sede.', label: 'URL del CSV', inputType: 'url', placeholder: 'https://docs.google.com/...', confirmLabel: 'Importar', required: false });
     if (csvUrl === null) return;
     setMessage({ tone: 'info', text: 'Importando dispositivos a la base local...' });
     try {
@@ -163,7 +189,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
             <input
               className="input compact-search"
               type="search"
-              placeholder="Filtrar etiqueta o alias"
+              placeholder="Filtrar etiqueta o alias" aria-label="Filtrar dispositivos por etiqueta o alias"
               value={aliasQuery}
               onChange={event => setAliasQuery(event.target.value)}
               title="Buscar D1433, Touch 31, touch31, Plani 5..."
@@ -182,16 +208,28 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
             <Button onClick={() => exportCsv('/api/loans/export/active.csv', 'techasset_prestamos_activos.csv')}>Exportar préstamos</Button>
             <Button onClick={exportQrPdf}>Exportar PDF QR</Button>
             <Button onClick={() => setGroupsOpen(true)}>Grupos</Button>
+            <Button onClick={() => setTrashOpen(true)}>Papelera</Button>
             {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Añadir dispositivo</Button>}
           </div>
         </div>
         {message && <div className={message.tone === 'error' ? 'tool-error' : 'tool-info'}>{message.text}</div>}
         {visibleDevices.length ? (
-          <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={onProfile} onEdit={consultationMode ? undefined : setEditing} onDelete={consultationMode ? undefined : handleDelete} />
+          <DeviceTable devices={visibleDevices} onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={onProfile} onEdit={consultationMode ? undefined : setEditing} onDelete={consultationMode ? undefined : handleDelete} selection={consultationMode ? undefined : { selected: selection.selected, onToggle: selection.toggle, onToggleMany: selection.toggleMany }} />
         ) : (
           <div className="empty-state">No hay dispositivos para este filtro o búsqueda.</div>
         )}
       </section>
+      {!consultationMode && (
+        <DeviceBulkBar
+          selectedDevices={selectedDevices}
+          operator={operator}
+          onClear={selection.clear}
+          onLoanBatch={onLoanBatch}
+          onReturnBatch={onReturnBatch}
+          onChanged={() => onImported?.()}
+        />
+      )}
+      {trashOpen && <DeviceTrashModal consultationMode={consultationMode} onRestored={() => onImported?.()} onClose={() => setTrashOpen(false)} />}
       {groupsOpen && <DeviceGroupsManager devices={devices} consultationMode={consultationMode} onOpenDevice={device => { setGroupsOpen(false); onProfile(device); }} onClose={() => setGroupsOpen(false)} />}
       {adding && <AddDeviceModal onClose={() => setAdding(false)} onSave={onAdd} />}
       {editing && <AddDeviceModal title={`Editar ${editing.etiqueta}`} initialDevice={editing} onClose={() => setEditing(null)} onSave={onAdd} />}

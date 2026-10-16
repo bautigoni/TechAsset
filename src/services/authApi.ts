@@ -18,6 +18,10 @@ export const login = (payload: { email: string; password?: string; nombre?: stri
 export const getRegisterOptions = () =>
   apiGet<{ ok: true; requiresCode: boolean }>('/api/auth/register-options');
 
+export const requestPasswordLink = (email: string) =>
+  apiSend<{ ok: true; message: string }>('/api/auth/password/request', 'POST', { email });
+export const confirmPasswordLink = (token: string, password: string) =>
+  apiSend<{ ok: true; email: string; message: string }>('/api/auth/password/confirm', 'POST', { token, password });
 export const register = (payload: { email: string; nombre: string; code: string; password: string }) =>
   apiSend<AuthSession & { activated?: boolean }>('/api/auth/register', 'POST', payload);
 

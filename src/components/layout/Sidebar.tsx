@@ -1,12 +1,15 @@
 import type { ComponentType } from 'react';
 import {
   BarChart3,
+  BellRing,
+  BookOpen,
   Boxes,
   Building2,
   CalendarDays,
   Clock3,
   ClipboardCheck,
   Gauge,
+  History,
   Link2,
   Lightbulb,
   MonitorSmartphone,
@@ -14,6 +17,7 @@ import {
   PanelLeftOpen,
   Repeat2,
   School,
+  Shapes,
   Settings,
   Ticket,
   Users,
@@ -29,7 +33,9 @@ import { TenantLogo } from './TenantLogo';
 
 type NavIcon = ComponentType<{ size?: number; strokeWidth?: number }>;
 
-export type NavItem = { key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: boolean };
+// requiresAny: vistas que no son un módulo propio y se ven si el rol puede ver
+// alguno de estos módulos (Historial = Préstamos o Dispositivos).
+export type NavItem = { key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: boolean; requiresAny?: ModuleKey[] };
 
 const NAV: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', Icon: Gauge },
@@ -37,14 +43,18 @@ const NAV: NavItem[] = [
   { key: 'adminusers', label: 'Usuarios', Icon: Users, superadminOnly: true },
   { key: 'devices', label: 'Dispositivos', Icon: MonitorSmartphone },
   { key: 'loans', label: 'Préstamos', Icon: Repeat2 },
+  { key: 'history', label: 'Historial', Icon: History, requiresAny: ['loans', 'devices'] },
   { key: 'inventory', label: 'Inventario TIC', Icon: Boxes },
   { key: 'analytics', label: 'Analítica', Icon: BarChart3 },
   { key: 'agenda', label: 'Agenda TIC', Icon: CalendarDays },
   { key: 'schedules', label: 'Horarios', Icon: Clock3 },
   { key: 'tasks', label: 'Tareas TIC', Icon: ClipboardCheck },
+  { key: 'reminders', label: 'Recordatorios', Icon: BellRing },
+  { key: 'canvas', label: 'Canvas', Icon: Shapes },
   { key: 'pettycash', label: 'Caja chica', Icon: WalletCards },
   { key: 'classrooms', label: 'Estado aulas', Icon: School },
   { key: 'tickets', label: 'Tickets', Icon: Ticket },
+  { key: 'knowledge', label: 'Base de conocimiento', Icon: BookOpen },
   { key: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
   { key: 'tools', label: 'Herramientas auxiliares', Icon: Wrench },
   { key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
@@ -59,7 +69,8 @@ export function visibleNavItems(settings: Record<string, unknown> | null | undef
   return NAV.filter(item =>
     (!item.superadminOnly || isSuperadmin) &&
     isViewEnabled(item.key, settings) &&
-    (!access || canViewModule(access, item.key, TOGGLEABLE_KEYS))
+    (!access || canViewModule(access, item.key, TOGGLEABLE_KEYS)) &&
+    (!item.requiresAny || item.requiresAny.some(key => isViewEnabled(key, settings) && (!access || canViewModule(access, key, TOGGLEABLE_KEYS))))
   ).sort((a, b) => navSort(a.key, b.key, settings));
 }
 

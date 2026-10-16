@@ -18,40 +18,131 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
     }
     const validation = validateLoanPayload(req.body);
     if (validation) return res.status(400).json({ ok: false, error: validation });
-    const fechaPrestado = nowIso();
-    const loanSessionId = crypto.randomUUID();
-    const accessories = normalizeAccessories(req.body.accessories);
-    setLocalState(etiqueta, {
-      estado: 'Prestado',
-      prestadoA: req.body.person || '',
-      rol: req.body.role || '',
-      ubicacion: req.body.location || '',
-      ubicacionDetalle: req.body.locationDetail || '',
-      curso: formatCourse(req.body),
-      motivo: req.body.reason || '',
-      motivoDetalle: req.body.reasonDetail || '',
-      comentarios: req.body.comment || '',
-      loanedAt: fechaPrestado,
-      returnedAt: '',
-      siteCode
-    });
+    registerLend(siteCode, device, etiqueta, req.body);
     invalidateDeviceInventoryCache('loan-lend', siteCode);
-    const label = deviceDisplayLabel(device, etiqueta);
-    addLocalMovement({ tipo: 'préstamo', descripcion: `${label} prestada a ${req.body.person || ''}`, operador: req.body.operator, origen: 'Local', etiqueta, siteCode });
-    addLoanEvent({
-      siteCode, tipo: 'prestamo', etiqueta,
-      alias: device.aliasOperativo || '', filtro: device.filtro || device.categoria || '',
-      persona: req.body.person || '', rol: req.body.role || '',
-      ubicacion: req.body.location || '', ubicacionDetalle: req.body.locationDetail || '',
-      curso: formatCourse(req.body), motivo: req.body.reason || '', motivoDetalle: req.body.reasonDetail || '',
-      comentarios: req.body.comment || '', operador: req.body.operator || '', timestamp: fechaPrestado
-      , loanSessionId, accessories
-    });
     res.json({ ok: true, synced: true, syncing: false, message: 'Préstamo registrado en base local.' });
   } catch (error) {
     next(error);
   }
 });
+
+// Préstamo y devolución en lote (selección múltiple de Préstamos). Antes el
+// front mandaba un request por equipo y después de cada uno recargaba el
+// inventario entero; acá el inventario se arma una vez y se invalida una vez.
+// Cada equipo se resuelve por separado: uno que falla no frena al resto.
+loansRouter.post('/loans/lend-batch', async (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const etiquetas = batchTags(req.body?.etiquetas);
+    if (!etiquetas.length) return res.status(400).json({ ok: false, error: 'No llegó ningún equipo.' });
+    const validation = validateLoanPayload(req.body);
+    if (validation) return res.status(400).json({ ok: false, error: validation });
+    const byTag = inventoryByTag(siteCode);
+    const results = etiquetas.map(etiqueta => {
+      const device = byTag.get(etiqueta);
+      if (!device) return { etiqueta, ok: false, error: `No existe el dispositivo ${etiqueta}.` };
+      if (!isAvailableState(device.estado)) return { etiqueta, ok: false, error: `${deviceDisplayLabel(device, etiqueta)} está ${device.estado || 'no disponible'}.` };
+      registerLend(siteCode, device, etiqueta, req.body);
+      return { etiqueta, ok: true };
+    });
+    invalidateDeviceInventoryCache('loan-lend-batch', siteCode);
+    res.json({ ok: true, results, done: results.filter(item => item.ok).length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+loansRouter.post('/loans/return-batch', async (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const etiquetas = batchTags(req.body?.etiquetas);
+    if (!etiquetas.length) return res.status(400).json({ ok: false, error: 'No llegó ningún equipo.' });
+    const byTag = inventoryByTag(siteCode);
+    const results = etiquetas.map(etiqueta => {
+      const device = byTag.get(etiqueta);
+      if (!device) return { etiqueta, ok: false, error: `No existe el dispositivo ${etiqueta}.` };
+      // Igual que la devolución suelta: si ya estaba devuelto no es un error.
+      if (!isLoanedState(device.estado)) return { etiqueta, ok: true, idempotent: true };
+      registerReturn(siteCode, device, etiqueta, req.body);
+      return { etiqueta, ok: true };
+    });
+    invalidateDeviceInventoryCache('loan-return-batch', siteCode);
+    res.json({ ok: true, results, done: results.filter(item => item.ok).length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function batchTags(value) {
+  const list = Array.isArray(value) ? value : [];
+  return [...new Set(list.map(normalizeEtiqueta).filter(Boolean))].slice(0, 300);
+}
+
+function inventoryByTag(siteCode) {
+  return new Map(buildLocalInventory(siteCode).map(item => [normalizeEtiqueta(item.etiqueta), item]));
+}
+
+function registerLend(siteCode, device, etiqueta, body) {
+  const fechaPrestado = nowIso();
+  const loanSessionId = crypto.randomUUID();
+  const accessories = normalizeAccessories(body.accessories);
+  setLocalState(etiqueta, {
+    estado: 'Prestado',
+    prestadoA: body.person || '',
+    rol: body.role || '',
+    ubicacion: body.location || '',
+    ubicacionDetalle: body.locationDetail || '',
+    curso: formatCourse(body),
+    motivo: body.reason || '',
+    motivoDetalle: body.reasonDetail || '',
+    comentarios: body.comment || '',
+    loanedAt: fechaPrestado,
+    returnedAt: '',
+    siteCode
+  });
+  const label = deviceDisplayLabel(device, etiqueta);
+  addLocalMovement({ tipo: 'préstamo', descripcion: `${label} prestada a ${body.person || ''}`, operador: body.operator, origen: 'Local', etiqueta, siteCode });
+  addLoanEvent({
+    siteCode, tipo: 'prestamo', etiqueta,
+    alias: device.aliasOperativo || '', filtro: device.filtro || device.categoria || '',
+    persona: body.person || '', rol: body.role || '',
+    ubicacion: body.location || '', ubicacionDetalle: body.locationDetail || '',
+    curso: formatCourse(body), motivo: body.reason || '', motivoDetalle: body.reasonDetail || '',
+    comentarios: body.comment || '', operador: body.operator || '', timestamp: fechaPrestado
+    , loanSessionId, accessories
+  });
+}
+
+function registerReturn(siteCode, device, etiqueta, body) {
+  const fechaDevuelto = nowIso();
+  const activeLoan = findActiveLoanEvent(siteCode, etiqueta);
+  const returnedAccessories = normalizeAccessories(body.returnedAccessories ?? body.accessories);
+  const expectedAccessories = parseAccessories(activeLoan?.accessories_json);
+  setLocalState(etiqueta, {
+    estado: 'Disponible',
+    prestadoA: '',
+    rol: '',
+    ubicacion: '',
+    ubicacionDetalle: '',
+    curso: '',
+    motivo: '',
+    motivoDetalle: '',
+    comentarios: '',
+    loanedAt: '',
+    returnedAt: fechaDevuelto,
+    siteCode
+  });
+  addLocalMovement({ tipo: 'devolución', descripcion: `${deviceDisplayLabel(device, etiqueta)} devuelta`, operador: body.operator, origen: 'Local', etiqueta, siteCode });
+  // device se capturó antes de limpiar local_states, así que conserva los datos del préstamo.
+  addLoanEvent({
+    siteCode, tipo: 'devolucion', etiqueta,
+    alias: device.aliasOperativo || '', filtro: device.filtro || device.categoria || '',
+    persona: device.prestadoA || '', rol: device.rol || '',
+    ubicacion: device.ubicacion || '', motivo: device.motivo || '',
+    comentarios: body.comment || '', operador: body.operator || '', timestamp: fechaDevuelto
+    , loanSessionId: activeLoan?.loan_session_id || '', accessories: returnedAccessories, expectedAccessories
+  });
+}
 
 loansRouter.post('/loans/return', async (req, res, next) => {
   try {
@@ -69,35 +160,8 @@ loansRouter.post('/loans/return', async (req, res, next) => {
         message: `${deviceDisplayLabel(device, etiqueta)} ya estaba ${isAvailableState(device.estado) ? 'disponible' : device.estado || 'no disponible'}. No se registró otra devolución.`
       });
     }
-    const fechaDevuelto = nowIso();
-    const activeLoan = findActiveLoanEvent(siteCode, etiqueta);
-    const returnedAccessories = normalizeAccessories(req.body.returnedAccessories ?? req.body.accessories);
-    const expectedAccessories = parseAccessories(activeLoan?.accessories_json);
-    setLocalState(etiqueta, {
-      estado: 'Disponible',
-      prestadoA: '',
-      rol: '',
-      ubicacion: '',
-      ubicacionDetalle: '',
-      curso: '',
-      motivo: '',
-      motivoDetalle: '',
-      comentarios: '',
-      loanedAt: '',
-      returnedAt: fechaDevuelto,
-      siteCode
-    });
+    registerReturn(siteCode, device, etiqueta, req.body);
     invalidateDeviceInventoryCache('loan-return', siteCode);
-    addLocalMovement({ tipo: 'devolución', descripcion: `${deviceDisplayLabel(device, etiqueta)} devuelta`, operador: req.body.operator, origen: 'Local', etiqueta, siteCode });
-    // device se capturó antes de limpiar local_states, así que conserva los datos del préstamo.
-    addLoanEvent({
-      siteCode, tipo: 'devolucion', etiqueta,
-      alias: device.aliasOperativo || '', filtro: device.filtro || device.categoria || '',
-      persona: device.prestadoA || '', rol: device.rol || '',
-      ubicacion: device.ubicacion || '', motivo: device.motivo || '',
-      comentarios: req.body.comment || '', operador: req.body.operator || '', timestamp: fechaDevuelto
-      , loanSessionId: activeLoan?.loan_session_id || '', accessories: returnedAccessories, expectedAccessories
-    });
     res.json({ ok: true, synced: true, syncing: false, message: 'Devolución registrada en base local.' });
   } catch (error) {
     next(error);
@@ -292,8 +356,12 @@ function isLoanedState(value) {
   return state.includes('prest') || state.includes('retir');
 }
 
+// Misma regla que getLoanState en src/utils/deviceState.ts: si cambia una, cambiar la otra.
 function isAvailableState(value) {
   const state = normalizeState(value);
+  if (state.includes('prest') || state.includes('retir')) return false;
+  // "No disponible" contiene "disponible": antes se podía prestar.
+  if (state.includes('no disponible')) return false;
   return !state || state.includes('disponible') || state.includes('devuelto') || state.includes('sin revisar');
 }
 

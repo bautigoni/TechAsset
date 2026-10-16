@@ -1,6 +1,6 @@
 ﻿import { Router } from 'express';
 import { addLocalMovement, getDb, nowIso, setAppSetting, setLocalState } from '../db.js';
-import { buildLocalInventory, getDeviceInventoryDiagnostics, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
+import { buildLocalInventory, getDeviceInventoryDiagnostics, getInventoryVersion, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
 import { parseDevicesCsv, toCsvExportUrl } from '../services/googleSheets.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 import { sendWithEtag } from '../services/etag.service.js';
@@ -9,11 +9,20 @@ import { CONDITIONS, computeLifecycle, decorateDevicesWithLifecycle, deriveAsset
 
 export const devicesRouter = Router();
 
+const decoratedCache = new Map();
+
 devicesRouter.get('/devices', async (_req, res, next) => {
   try {
     const siteCode = requireSite(_req);
     const { items, source, loadedAt, diagnostics } = await getMergedDevices({ siteCode });
-    const decorated = decorateDevicesWithLifecycle(items, siteCode);
+    // La vida útil suma 3 queries (metadata, overrides, clases); se recalcula
+    // solo cuando cambia la versión del inventario (cualquier escritura la cambia).
+    const version = getInventoryVersion(siteCode);
+    let decorated = decoratedCache.get(siteCode)?.version === version ? decoratedCache.get(siteCode).items : null;
+    if (!decorated) {
+      decorated = decorateDevicesWithLifecycle(items, siteCode);
+      decoratedCache.set(siteCode, { version, items: decorated });
+    }
     // Se hashea solo items+source: loadedAt y los tiempos cambian en cada
     // request y arruinarían el 304.
     sendWithEtag(_req, res, { ok: true, items: decorated, loadedAt: loadedAt || new Date().toISOString(), source, diagnostics }, { items: decorated, source });
@@ -411,25 +420,65 @@ devicesRouter.delete('/devices/:etiqueta', (req, res, next) => {
   }
 });
 
+// Papelera: equipos borrados desde la app (ocultos, con historial intacto).
 devicesRouter.get('/devices/deleted', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM hidden_devices WHERE site_code=? ORDER BY deleted_at DESC').all(requireSite(_req));
-  res.json({ ok: true, items: rows });
+  const siteCode = requireSite(_req);
+  const rows = getDb().prepare(`
+    SELECT h.etiqueta, h.deleted_at, h.deleted_by, h.reason, l.payload
+    FROM hidden_devices h LEFT JOIN local_devices l ON l.etiqueta=h.etiqueta AND l.site_code=h.site_code
+    WHERE h.site_code=? ORDER BY h.deleted_at DESC
+  `).all(siteCode);
+  const items = rows.map(row => {
+    let payload = {};
+    try { payload = row.payload ? JSON.parse(row.payload) : {}; } catch { payload = {}; }
+    return {
+      etiqueta: row.etiqueta,
+      deletedAt: row.deleted_at || '',
+      deletedBy: row.deleted_by || '',
+      reason: row.reason || '',
+      alias: payload.aliasOperativo || '',
+      categoria: payload.categoria || payload.filtro || payload.dispositivo || '',
+      modelo: [payload.marca, payload.modelo].filter(Boolean).join(' · ')
+    };
+  });
+  res.json({ ok: true, items });
+});
+
+// Restaurar desde la papelera: vuelve tal cual estaba (mismo estado, mismo
+// historial). Antes la única forma era reimportar el CSV.
+devicesRouter.post('/devices/:etiqueta/restore', (req, res, next) => {
+  try {
+    const etiqueta = normalizeTag(req.params.etiqueta || '');
+    const siteCode = requireSite(req);
+    if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
+    const hidden = getDb().prepare('SELECT 1 FROM hidden_devices WHERE site_code=? AND etiqueta=?').get(siteCode, etiqueta);
+    if (!hidden) return res.status(404).json({ ok: false, error: `${etiqueta} no está en la papelera.` });
+    getDb().prepare('DELETE FROM hidden_devices WHERE site_code=? AND etiqueta=?').run(siteCode, etiqueta);
+    getDb().prepare("UPDATE local_devices SET eliminado=0, deleted_at='', deleted_by='', updated_at=? WHERE etiqueta=? AND site_code=?").run(nowIso(), etiqueta, siteCode);
+    invalidateDeviceInventoryCache('device-restored', siteCode);
+    addLocalMovement({ tipo: 'dispositivo restaurado', descripcion: `${etiqueta} restaurado desde la papelera`, operador: req.body?.operator || '', origen: 'Local', etiqueta, siteCode });
+    res.json({ ok: true, etiqueta });
+  } catch (error) {
+    next(error);
+  }
 });
 
 devicesRouter.get('/movements', (_req, res) => {
   const siteCode = requireSite(_req);
-  const local = getDb().prepare('SELECT timestamp, tipo, descripcion, operador, origen, etiqueta FROM local_movements WHERE site_code=? ORDER BY id DESC LIMIT 100').all(siteCode);
-  const agenda = getDb().prepare(`
-    SELECT h.timestamp, h.accion AS tipo, COALESCE(a.curso || ' - ' || a.actividad, h.accion) AS descripcion, h.operador, 'Agenda TIC' AS origen, '' AS etiqueta
-    FROM agenda_history h LEFT JOIN agenda a ON a.id=h.agenda_id AND a.site_code=h.site_code
-    WHERE h.site_code=?
-    ORDER BY h.id DESC LIMIT 100
-  `).all(siteCode);
-  const tasks = getDb().prepare(`
-    SELECT timestamp, accion AS tipo, titulo AS descripcion, operador, 'Tareas TIC' AS origen, '' AS etiqueta
-    FROM task_history WHERE site_code=? ORDER BY id DESC LIMIT 100
-  `).all(siteCode);
-  const merged = [...local, ...agenda, ...tasks].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))).slice(0, 100);
+  // Una sola query (UNION ALL) en vez de tres: en producción cada una es un
+  // viaje a Supabase y este endpoint entra en cada auto-refresh.
+  const rows = getDb().prepare(`
+    SELECT * FROM (SELECT timestamp, tipo, descripcion, operador, origen, etiqueta
+      FROM local_movements WHERE site_code=? ORDER BY id DESC LIMIT 100) m
+    UNION ALL
+    SELECT * FROM (SELECT h.timestamp, h.accion AS tipo, COALESCE(a.curso || ' - ' || a.actividad, h.accion) AS descripcion, h.operador, 'Agenda TIC' AS origen, '' AS etiqueta
+      FROM agenda_history h LEFT JOIN agenda a ON a.id=h.agenda_id AND a.site_code=h.site_code
+      WHERE h.site_code=? ORDER BY h.id DESC LIMIT 100) ag
+    UNION ALL
+    SELECT * FROM (SELECT timestamp, accion AS tipo, titulo AS descripcion, operador, 'Tareas TIC' AS origen, '' AS etiqueta
+      FROM task_history WHERE site_code=? ORDER BY id DESC LIMIT 100) t
+  `).all(siteCode, siteCode, siteCode);
+  const merged = rows.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))).slice(0, 100);
   sendWithEtag(_req, res, { ok: true, items: merged });
 });
 

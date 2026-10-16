@@ -5,6 +5,8 @@ import { Button } from '../layout/Button';
 import { SkeletonPanel } from '../layout/Skeleton';
 import { RelatedReminders } from '../reminders/RelatedReminders';
 import { useCloseChoreography } from '../../hooks/useMountTransition';
+import { DATE_TIME, formatDate, DATE_ONLY } from '../../utils/formatters';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 
 // Igual que en Modal.tsx: tiene que coincidir con --modal-close-dur.
 const MODAL_CLOSE_MS = 150;
@@ -118,25 +120,19 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   }, [runClose]);
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        requestClose();
-      }
-    };
     document.body.classList.add('modal-open');
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.body.classList.remove('modal-open');
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [requestClose]);
+    return () => document.body.classList.remove('modal-open');
+  }, []);
+  // Foco, Tab y Escape como en el Modal genérico.
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const closeFromKeyboard = useCallback(() => requestClose(), [requestClose]);
+  useDialogFocus(wrapRef, closeFromKeyboard);
 
   const wrapClass = `modal t-modal classroom-modal-wrap ${stateClass}`.trim();
 
   if (!draft) {
     return (
-      <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true">
+      <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true" aria-label={`Aula ${nombre}`} ref={wrapRef} tabIndex={-1}>
         <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
           <SkeletonPanel rows={4} />
         </div>
@@ -195,7 +191,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   const onCancel = () => { requestClose(); };
 
   return (
-    <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true">
+    <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true" aria-label={`Aula ${nombre}`} ref={wrapRef} tabIndex={-1}>
       <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
         <div className="card-head" style={{ marginBottom: 8 }}>
           <div>
@@ -217,14 +213,14 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
             <div><span>Abiertos</span><strong>{incidentSummary.open}</strong></div>
             <div><span>Cerrados</span><strong>{incidentSummary.closed}</strong></div>
             <div><span>Total</span><strong>{incidentSummary.total}</strong></div>
-            <div><span>Último incidente</span><strong>{incidentSummary.lastIncidentAt ? new Date(incidentSummary.lastIncidentAt).toLocaleDateString('es-AR') : '—'}</strong></div>
+            <div><span>Último incidente</span><strong>{formatDate(incidentSummary.lastIncidentAt, DATE_ONLY, '—')}</strong></div>
           </div>
           {incidentSummary.commonCategories.length > 0 && <div className="classroom-incident-categories"><strong>Problemas frecuentes</strong>{incidentSummary.commonCategories.map(item => <span key={item.label}>{item.label} · {item.value}</span>)}</div>}
           <div className="classroom-incident-timeline">
             {incidents.slice(0, 8).map(item => (
               <article key={item.id}>
                 <span className={`badge ${item.estado === 'Hecho' ? 'available' : 'loaned'}`}>{item.estado}</span>
-                <div><strong>{item.numero ? `#${item.numero} · ` : ''}{item.titulo || 'Incidente sin título'}</strong><span>{[item.categoria, item.prioridad, item.createdAt ? new Date(item.createdAt).toLocaleString('es-AR') : ''].filter(Boolean).join(' · ')}</span></div>
+                <div><strong>{item.numero ? `#${item.numero} · ` : ''}{item.titulo || 'Incidente sin título'}</strong><span>{[item.categoria, item.prioridad, formatDate(item.createdAt)].filter(Boolean).join(' · ')}</span></div>
               </article>
             ))}
             {!incidents.length && <div className="empty-state">Esta aula todavía no tiene incidentes vinculados.</div>}
@@ -291,7 +287,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
         </label>
 
         <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-          Última actualización: {classroom?.ultimaActualizacion ? new Date(classroom.ultimaActualizacion).toLocaleString() : '—'}
+          Última actualización: {formatDate(classroom?.ultimaActualizacion, DATE_TIME, '—')}
           {classroom?.operadorUltimoCambio ? ` · ${classroom.operadorUltimoCambio}` : ''}
         </div>
 
@@ -308,7 +304,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
             <ul>
               {history.slice(0, 20).map(h => (
                 <li key={h.id}>
-                  <span className="muted">{new Date(h.timestamp).toLocaleString()}</span>
+                  <span className="muted">{formatDate(h.timestamp)}</span>
                   {' · '}
                   <strong>{h.campo}</strong>: {h.valorAnterior || '—'} → {h.valorNuevo || '—'}
                   {h.operador ? ` (${h.operador})` : ''}

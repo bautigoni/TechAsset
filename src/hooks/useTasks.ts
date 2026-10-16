@@ -3,6 +3,7 @@ import type { TaskItem, TaskState } from '../types';
 import { createTask, deleteTask, getTasks, updateTask } from '../services/tasksApi';
 import { fetchShiftSettings } from '../services/operationsApi';
 import { isOverdue } from '../utils/dates';
+import { confirmDialog } from '../components/layout/Feedback';
 
 export function useTasks(operator: string) {
   const [items, setItems] = useState<TaskItem[]>([]);
@@ -11,10 +12,17 @@ export function useTasks(operator: string) {
   // Misma guarda que en agenda: el hook pide al montar y App vuelve a pedir al
   // cambiar de sede, y salían dos GET /api/tasks (el más pesado de todos).
   const inFlight = useRef<Promise<void> | null>(null);
+  const lastKey = useRef('');
   const refresh = useCallback(async () => {
     if (inFlight.current) return inFlight.current;
+    // Se pollea (App, cada 30 s): si no cambió nada no hay re-render.
     const promise = getTasks()
-      .then(data => { setItems(data.items); })
+      .then(data => {
+        const key = JSON.stringify(data.items);
+        if (key === lastKey.current) return;
+        lastKey.current = key;
+        setItems(data.items);
+      })
       .finally(() => { inFlight.current = null; });
     inFlight.current = promise;
     return promise;
@@ -84,6 +92,8 @@ export function useTasks(operator: string) {
   };
 
   const remove = async (id: string) => {
+    const task = items.find(entry => entry.id === id);
+    if (!(await confirmDialog({ title: 'Borrar tarea', message: task?.titulo || undefined, confirmLabel: 'Borrar', danger: true }))) return;
     await deleteTask(id, operator);
     await refresh();
   };

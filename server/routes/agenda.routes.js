@@ -8,11 +8,30 @@ export const agendaRouter = Router();
 const VALID_STATES = new Set(['Pendiente', 'Entregado', 'Realizado', 'Cancelado', 'Faltaron equipos']);
 const CAPACITY = { touch: 25, tic: 99, plani: 99, dell: 99 };
 
+// Por defecto no viajan las actividades TERMINADAS (realizadas o canceladas)
+// con más de AGENDA_RECENT_DAYS: la agenda se pollea y, sin tope, crecía año a
+// año. Las pendientes viajan siempre. ?all=1 trae todo (historial completo).
+const AGENDA_RECENT_DAYS = 120;
+const FINISHED = "estado IN ('Realizado','Cancelado')";
+const LAST_TOUCH = "COALESCE(NULLIF(ultima_modificacion,''), NULLIF(fecha,''), created_at, '')";
+
 agendaRouter.get('/agenda', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY dia, turno, desde').all(requireSite(_req));
+  const siteCode = requireSite(_req);
+  const all = _req.query.all === '1';
+  const since = new Date(Date.now() - AGENDA_RECENT_DAYS * 86400000).toISOString().slice(0, 10);
+  const countHidden = `SELECT COUNT(*) FROM agenda WHERE eliminada=0 AND site_code=? AND ${FINISHED} AND ${LAST_TOUCH} < ?`;
+  // El conteo de ocultas viaja en la misma query (es un endpoint que se pollea:
+  // cada query extra es un viaje más a la base en producción).
+  const rows = all
+    ? getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY dia, turno, desde').all(siteCode)
+    : getDb().prepare(`SELECT agenda.*, (${countHidden}) AS older_hidden FROM agenda WHERE eliminada=0 AND site_code=? AND (NOT ${FINISHED} OR ${LAST_TOUCH} >= ?) ORDER BY dia, turno, desde`).all(siteCode, since, siteCode, since);
+  const olderHidden = all ? 0 : rows.length
+    ? Number(rows[0].older_hidden || 0)
+    // Sin filas visibles el conteo no viajó: se pide aparte (caso raro).
+    : Number(getDb().prepare(`${countHidden.replace('COUNT(*)', 'COUNT(*) AS total')}`).get(siteCode, since)?.total || 0);
   // El hash va sobre los items: `loadedAt` cambia siempre y rompería el 304.
   const items = rows.map(rowToAgenda);
-  sendWithEtag(_req, res, { ok: true, items, loadedAt: nowIso() }, { items });
+  sendWithEtag(_req, res, { ok: true, items, olderHidden, loadedAt: nowIso() }, { items, olderHidden });
 });
 
 agendaRouter.get('/agenda/today', (_req, res) => {
@@ -20,7 +39,9 @@ agendaRouter.get('/agenda/today', (_req, res) => {
   res.json({ ok: true, items: rows.map(rowToAgenda), loadedAt: nowIso() });
 });
 
-agendaRouter.get('/agenda/:id', (req, res) => {
+// Solo ids numéricos: sin la restricción, esta ruta se tragaba /agenda/history y
+// /agenda/export.csv (declaradas más abajo) y respondía "Actividad no encontrada".
+agendaRouter.get('/agenda/:id(\\d+)', (req, res) => {
   const row = getDb().prepare('SELECT * FROM agenda WHERE id=? AND eliminada=0 AND site_code=?').get(req.params.id, requireSite(req));
   if (!row) return res.status(404).json({ ok: false, error: 'Actividad no encontrada.' });
   res.json({ ok: true, item: rowToAgenda(row) });

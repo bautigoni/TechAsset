@@ -40,3 +40,14 @@ export function lendDevice(payload: Record<string, unknown>) {
 export function returnDevice(payload: Record<string, unknown>) {
   return apiSend<LoanSyncResponse>('/api/loans/return', 'POST', payload);
 }
+
+export type LoanBatchResponse = { ok: true; done: number; results: Array<{ etiqueta: string; ok: boolean; error?: string; idempotent?: boolean }> };
+
+/** Varios equipos en un solo request (selección múltiple / escaneo continuo). */
+export function lendDevicesBatch(payload: Record<string, unknown> & { etiquetas: string[] }) {
+  return apiSend<LoanBatchResponse>('/api/loans/lend-batch', 'POST', payload);
+}
+
+export function returnDevicesBatch(etiquetas: string[], payload: Record<string, unknown> = {}) {
+  return apiSend<LoanBatchResponse>('/api/loans/return-batch', 'POST', { ...payload, etiquetas });
+}

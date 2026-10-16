@@ -45,7 +45,10 @@ function useCardBasis(count: number) {
       const columns = balancedColumns(count, Math.min(fits, CARD_MAX_COLS));
       setBasis(Math.floor((width - CARD_GAP * (columns - 1)) / columns));
     };
-    measure();
+    // Sin medir en el momento: leer clientWidth acá forzaba un layout sincrónico
+    // de toda la página en medio del render (lo más caro del arranque en el
+    // perfil). El ResizeObserver avisa apenas después del layout y antes de
+    // pintar, con el layout ya hecho: mismo resultado, sin reflow extra.
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
@@ -132,7 +135,7 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, operator,
           <input
             className="input compact-search"
             type="search"
-            placeholder="Filtrar etiqueta o alias"
+            placeholder="Filtrar etiqueta o alias" aria-label="Filtrar dispositivos por etiqueta o alias"
             value={aliasQuery}
             onChange={event => setAliasQuery(event.target.value)}
             title="Buscar D1433, Touch 31, touch31, Plani 5..."

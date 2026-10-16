@@ -7,8 +7,10 @@ import { AnimatedNumber } from '../layout/AnimatedNumber';
 import { useMountTransition } from '../../hooks/useMountTransition';
 import { formatDdMm } from '../../utils/taskDate';
 import { createTaskComment, createTaskItem, deleteTaskItem, getTaskComments, updateTaskItem } from '../../services/tasksApi';
+import { toast } from '../layout/Feedback';
+import { formatDate } from '../../utils/formatters';
 
-export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void }) {
+export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart, selected, onToggleSelect }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void; selected?: boolean; onToggleSelect?: () => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [itemText, setItemText] = useState('');
   const [comment, setComment] = useState(task.comentario || '');
@@ -38,7 +40,7 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
   }, [menuOpen]);
   return (
     <article
-      className={`task-card task-state-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}
+      className={`task-card task-state-${task.estado.toLowerCase().replace(/\s+/g, '-')} ${selected ? 'is-selected' : ''}`}
       data-task-id={task.id}
       draggable={!consultationMode}
       onPointerDown={event => {
@@ -54,7 +56,12 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
       onDragEnd={event => event.currentTarget.classList.remove('dragging')}
       style={{ viewTransitionName: `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }}
     >
-      <strong>{task.titulo}</strong>
+      {onToggleSelect ? (
+        <div className="task-card-title-row">
+          <input type="checkbox" className="task-select" aria-label={`Seleccionar tarea ${task.titulo}`} checked={Boolean(selected)} onChange={onToggleSelect} />
+          <strong>{task.titulo}</strong>
+        </div>
+      ) : <strong>{task.titulo}</strong>}
       <div className="muted">{task.responsables?.join(', ') || task.responsable} - {task.prioridad}{task.turno ? ` · ${task.turno}` : ''}{task.fechaVencimiento ? ` · Vence ${formatDdMm(task.fechaVencimiento)}` : ''}</div>
       <div className={`task-state-pill task-state-pill-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}>{task.done ? `✓ ${task.estado}` : task.estado}</div>
       {task.visibility === 'private' && <span className="task-private-pill">Privada</span>}
@@ -86,7 +93,14 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
                 }}
               />
               <span>{item.texto}</span>
-              <button type="button" disabled={consultationMode} onClick={async event => { event.preventDefault(); await deleteTaskItem(task.id, item.id, operator); await onRefresh?.(); }}>×</button>
+              <button type="button" disabled={consultationMode} aria-label={`Quitar subtarea ${item.texto}`} onClick={async event => {
+                event.preventDefault();
+                await deleteTaskItem(task.id, item.id, operator);
+                await onRefresh?.();
+                // Una subtarea se borra seguido y de a muchas: en vez de preguntar
+                // cada vez, se puede deshacer (la vuelve a crear con el mismo texto).
+                toast({ message: `Subtarea quitada: ${item.texto}`, action: { label: 'Deshacer', onClick: async () => { await createTaskItem(task.id, { texto: item.texto, operator }); await onRefresh?.(); } } });
+              }}>×</button>
             </label>
           ))}
         </div>
@@ -151,7 +165,7 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
           </form>
         </Modal>
       )}
-      {commentsOpen && <Modal title={`Comentarios · ${task.titulo}`} onClose={() => setCommentsOpen(false)}><div className="task-comments"><div className="task-comment-list">{comments.map(item => <article key={item.id}><header><strong>{item.authorName || item.authorEmail}</strong><time>{new Date(item.createdAt).toLocaleString('es-AR')}</time></header><p>{item.body}</p></article>)}{!comments.length && <div className="empty-state">Todavía no hay comentarios.</div>}</div>{!consultationMode && <form onSubmit={async event => { event.preventDefault(); if (!commentText.trim()) return; const response = await createTaskComment(task.id, commentText); setComments(value => [...value, response.item]); setCommentText(''); await onRefresh?.(); }}><textarea className="input" rows={3} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Escribí un comentario" /><Button variant="primary" type="submit">Comentar</Button></form>}</div></Modal>}
+      {commentsOpen && <Modal title={`Comentarios · ${task.titulo}`} onClose={() => setCommentsOpen(false)}><div className="task-comments"><div className="task-comment-list">{comments.map(item => <article key={item.id}><header><strong>{item.authorName || item.authorEmail}</strong><time>{formatDate(item.createdAt)}</time></header><p>{item.body}</p></article>)}{!comments.length && <div className="empty-state">Todavía no hay comentarios.</div>}</div>{!consultationMode && <form onSubmit={async event => { event.preventDefault(); if (!commentText.trim()) return; const response = await createTaskComment(task.id, commentText); setComments(value => [...value, response.item]); setCommentText(''); await onRefresh?.(); }}><textarea className="input" rows={3} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Escribí un comentario" /><Button variant="primary" type="submit">Comentar</Button></form>}</div></Modal>}
     </article>
   );
 }

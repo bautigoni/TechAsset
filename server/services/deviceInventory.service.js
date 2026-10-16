@@ -34,8 +34,30 @@ function setDiagnostics(siteCode, next) {
   return next;
 }
 
+// Caché del inventario por sede. Armarlo cuesta 4 queries (ocultos, equipos,
+// estados, última importación) y la app lo pide en cada auto-refresh de cada
+// pestaña abierta; en producción cada query frena el proceso entero (pg-sync).
+// Toda escritura de equipos/préstamos lo invalida (rutas + hook en index.js);
+// el TTL solo cubre cambios hechos por fuera de la app (SQL directo en Supabase).
+const INVENTORY_CACHE_MS = 60 * 1000;
+const inventoryCache = new Map();
+let inventoryVersion = 0;
+
+/** Cambia cada vez que se invalida el inventario: sirve de clave para cachés derivadas. */
+export function getInventoryVersion(siteCode) {
+  return `${normalizeSite(siteCode)}:${inventoryVersion}:${inventoryCache.get(normalizeSite(siteCode))?.at || 0}`;
+}
+
 export async function getMergedDevices({ siteCode = config.defaultSiteCode || 'NFPT' } = {}) {
   const normalizedSite = normalizeSite(siteCode);
+  const hit = inventoryCache.get(normalizedSite);
+  if (hit && Date.now() - hit.at < INVENTORY_CACHE_MS) return { ...hit.result, items: hit.result.items.slice() };
+  const result = await buildMergedDevices(normalizedSite);
+  if (result.items.length) inventoryCache.set(normalizedSite, { at: Date.now(), result });
+  return { ...result, items: result.items.slice() };
+}
+
+async function buildMergedDevices(normalizedSite) {
   const started = Date.now();
   try {
     const items = buildLocalInventory(normalizedSite);
@@ -71,6 +93,8 @@ export async function getMergedDevices({ siteCode = config.defaultSiteCode || 'N
 
 export function invalidateDeviceInventoryCache(reason = 'manual', siteCode = config.defaultSiteCode || 'NFPT') {
   const normalizedSite = normalizeSite(siteCode);
+  inventoryCache.delete(normalizedSite);
+  inventoryVersion += 1;
   setDiagnostics(normalizedSite, { ...getDiagnostics(normalizedSite), source: `${dbLabel()} invalidada: ${reason}`, cacheAgeSeconds: null });
 }
 

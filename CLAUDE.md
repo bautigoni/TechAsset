@@ -18,7 +18,7 @@ npm run release:broadcast:dry -- --version=vX.Y.Z ...  # simula sin enviar
 
 `npm run build` debe pasar antes de cerrar cualquier cambio. No hay tests configurados.
 
-Engine fijado: **Node 22** (`engines.node: ">=22 <23"`). El Dockerfile usa `node:22-bookworm-slim` (no Alpine — `better-sqlite3` necesita glibc).
+Node: producción (VM) corre **Node 20**; `engines.node` acepta 20 a 26. `better-sqlite3` está fijado en **12.9.0** exacto: es la última versión con binario precompilado para Node 20 en Linux (la VM tiene 1 GB de RAM y compilarlo ahí es arriesgado) y para Node 24 en Windows. No subirlo sin chequear los binarios de la release. Con npm 11, si `better-sqlite3` no carga localmente, correr `npx prebuild-install` dentro de `node_modules/better-sqlite3` (npm ya no ejecuta los scripts de instalación por defecto). El Dockerfile usa `node:22-bookworm-slim` (no Alpine — `better-sqlite3` necesita glibc).
 
 ## Arquitectura — Postgres con adaptador SQLite-like
 
@@ -44,10 +44,13 @@ Todo dato operativo (dispositivos, préstamos, tareas, agenda, aulas, inventario
 
 ## Auth y mails
 
-- Login por mail autorizado (sin password); registro queda en estado `Pendiente`.
+- Login por mail autorizado + contraseña (o Google). El alta es por código de invitación.
 - `server/routes/auth.routes.js`:
-  - `POST /api/auth/register` → crea `allowed_users` con `Pendiente`, dispara `notifyRegistration` (no bloqueante).
-  - `POST /api/auth/login` → rechaza pendientes/rechazados/inactivos con mensajes específicos.
+  - `POST /api/auth/register` → canjea la invitación, crea `allowed_users`, dispara `notifyRegistration` (no bloqueante).
+  - `POST /api/auth/login` → mismo mensaje para mail inexistente y contraseña errónea (no revela qué mails tienen cuenta); el estado Pendiente/Rechazado se informa recién con la contraseña correcta. Límite de intentos fallidos en memoria (8 por IP+mail, 100 por IP, ventana 15 min).
+  - Cuentas sin contraseña (allowlist viejo) **no** se reclaman con la primera contraseña tipeada: se les manda un link de un solo uso (`password_tokens`, hash SHA-256, vence en 1 h). `POST /api/auth/password/request` ("olvidé mi contraseña", respuesta idéntica exista o no la cuenta) y `POST /api/auth/password/confirm`. El link abre `/login?password=<token>`.
+- Seguridad de la API (`server/index.js`): `/uploads/<categoría>/<SEDE>/...` exige sesión con acceso a esa sede (solo `site-logos` es público); CORS solo para orígenes propios; `trust proxy` loopback (Caddy local); el `operator`/`operador` de cualquier escritura se pisa con el usuario de la sesión; `requireModuleEditor` (en `siteContext.service.js`) exige `canEditModule` por prefijo de ruta para los routers viejos. `PATCH /settings/mail` es solo superadmin; enviar credenciales 365, solo admin de sede.
+- Frontend: la sede activa es **por pestaña** (`src/services/activeSite.ts`, memoria + sessionStorage); un 401 fuera de `/api/auth` dispara `techasset:session-expired` y la app vuelve al login.
 - `server/routes/sites.routes.js` `POST /api/allowed-users/:id/:action` (`approve|reject|deactivate|delete`) dispara `notifyAllowedUserAction`.
 - Mail bot: `server/services/mail.service.js` (`sendMail`) + plantillas card-style en `server/services/mailTemplates.js` (`buildRegistrationUserMail`, `buildRegistrationAdminMail`, `buildUserApprovedMail`, `buildUserRejectedMail`, `buildUserDeactivatedMail`).
 - Variables `.env` que controlan envíos:
@@ -58,8 +61,7 @@ Todo dato operativo (dispositivos, préstamos, tareas, agenda, aulas, inventario
 
 ## Dispositivos / inventario
 
-- `server/services/deviceInventory.service.js` mergea: padrón estático del CSV (`data/cache_sheet.csv`) + estado vivo de SQLite (`local_states` / `local_devices`). Tiene caché en memoria con TTL (`SHEET_CACHE_TTL_MS`, default 5 s) y stale-while-revalidate.
-- Bug histórico a no repetir: si el fetch externo fallaba, la caché en memoria quedaba congelada. Ahora el fallback a `buildFromLocalCsvCache` actualiza `inventoryCache`. No volver a romper ese fix.
+- `server/services/deviceInventory.service.js` arma el inventario desde la base (`local_devices` + `local_states`, sin los `hidden_devices`). Caché en memoria por sede (60 s) que se invalida en cada escritura de equipos/préstamos (las rutas llaman `invalidateDeviceInventoryCache` y además hay un hook global en `server/index.js`); `getInventoryVersion` sirve de clave para cachés derivadas (la vida útil de `GET /api/devices`). Si agregás una escritura que cambia equipos por fuera de esas rutas, invalidá.
 - Merge de estado (`mergeStateOverrides`): cuando la planilla dice `Prestado | No encontrada | Fuera de servicio` y `local_states` dice `Disponible | Devuelto | vacío`, **gana la planilla** salvo que el local tenga `updated_at` con menos de 90 segundos (ventana para tolerar sync en curso). Esto evita que filas viejas de `local_states` pisen ediciones manuales en la hoja.
 - Importación CSV: Borrar dispositivo = ocultar (`activo=0`, `deleted_at`). Reimportar el mismo `site_code+etiqueta` lo reactiva (`activo=1`, `deleted_at=NULL`). No hay blacklist permanente.
 - Alias operativo: `Filtro + Numero Operativo` (ej. `Touch 34`). Función central `getOperationalAlias` en `src/utils/classifyDevice.ts`. Se autonumeran los `PLANI` que no tengan número (estable por etiqueta) en `withOperationalAliases` desde `useDevices`.
@@ -84,16 +86,35 @@ Todo dato operativo (dispositivos, préstamos, tareas, agenda, aulas, inventario
 
 ## Próxima agenda
 
-`GET /api/agenda/upcoming` calcula correctamente: actividad en curso (Entregado/Pendiente y horario actual entre `desde`/`hasta`), si no la próxima del día, si no la próxima de la semana. Cancelado/Realizado nunca aparecen como próxima.
+Se calcula en el front (`NowPanel.tsx` del dashboard y `AgendaPage.tsx`, no hay endpoint): actividad en curso (Entregado/Pendiente y horario actual entre `desde`/`hasta`), si no la próxima del día, si no la próxima de la semana. Cancelado/Realizado nunca aparecen como próxima.
+
+Ojo con el orden de rutas en Express: un `/:id` declarado antes tapa a las rutas literales del mismo prefijo (pasaba con `/agenda/history` y `/agenda/export.csv`). Restringir el parámetro (`/:id(\d+)`) o declararlo al final. Las rutas `/api/*` inexistentes responden 404 JSON (no el `index.html`).
 
 ## Loans (préstamos)
 
 - `LoanForm.tsx` soporta escaneo continuo: toggle abre tabla de equipos escaneados, agrega por scanner USB (Enter) o manual, marca duplicados / no disponibles, y un único form de persona/rol/ubicación/motivo aplica al lote.
 - `POST /api/loans/lend` y `/return` actualizan SQLite y registran en `local_movements`. **No** hacen llamadas externas a Apps Script. Si alguien introduce esa dependencia de nuevo, romper la review.
 
+- Lotes: `POST /api/loans/lend-batch` y `/return-batch` (un request, inventario armado una vez, cada equipo se resuelve por separado). Los usan la selección múltiple de Préstamos/Dispositivos y el escaneo continuo.
+- El estado de un equipo se decide en UN lugar: `getLoanState` / `getDeviceStateKey` en `src/utils/deviceState.ts`, con la misma regla que `isAvailableState`/`isLoanedState` del server. Si cambia una, cambiar la otra.
+
+## Historial y papelera
+
+- `GET /api/history?kind=loans|all&q&from&to&tipo&before&limit` (`server/routes/history.routes.js`): filtros en SQL y paginado por cursor (`timestamp|id`). Pantalla `HistoryPage` (visible si el rol ve Préstamos o Dispositivos).
+- Papelera de dispositivos: `GET /api/devices/deleted` + `POST /api/devices/:etiqueta/restore`. Borrar = ocultar; al borrar sale un toast con "Deshacer".
+- `GET /api/agenda` omite por defecto las terminadas de más de 120 días (`?all=1` trae todo; la respuesta trae `olderHidden`).
+
+## UI compartida
+
+- `src/components/layout/Feedback.tsx`: `confirmDialog`, `promptDialog` (texto o `options`), `toast` (con acción "Deshacer"), `copyToClipboard`, `errorMessage`. **No usar `window.confirm/prompt/alert`** ni tragarse errores con `.catch(() => {})` en acciones del usuario.
+- `src/components/layout/Selection.tsx`: `useSelection` + `SelectionBar` (`floating` la monta en el body). Selección múltiple en Préstamos, Dispositivos, Tickets y Tareas.
+- `useDialogFocus`: foco, Tab y Escape de cualquier diálogo (lo usan `Modal`, el de aula y el de novedades).
+- `utils/a11y` `clickableProps` para filas/tarjetas clickeables; `utils/download` para descargas/CSV (con BOM); `SelectField` en vez de `<select>` nativo (no queda ninguno).
+- Módulos que cada sede prende en Configuración: además de los de siempre, `knowledge`, `reminders` y `canvas` (arrancan apagados en sedes existentes).
+
 ## Cierre del día
 
-`/api/daily-closures` (GET/POST + `/preview/today`) genera un resumen automático: préstamos activos, tareas pendientes/en proceso/hechas hoy, agenda del día y sus incidencias, aulas con problema, notas importantes. El operador agrega observaciones desde `DailyClosureModal` y se persiste en `daily_closures`.
+`/api/daily-closures` (GET/POST + `/preview`) genera un resumen automático: préstamos activos, tareas pendientes/en proceso/hechas hoy, agenda del día y sus incidencias, aulas con problema, notas importantes. El operador agrega observaciones desde `DailyClosureModal` y se persiste en `daily_closures`.
 
 ## Accesos rápidos
 
@@ -148,6 +169,15 @@ Botón opcional en la pantalla de login al lado del tradicional por mail. Si las
 - Cualquier feature operativa nueva debe respetar `consultationMode` (vista jefe = bloquea ediciones).
 - En español rioplatense (`vos`, `acordate`). Encoding UTF-8 — vigilar mojibake `Ã©`/`prÃ³xima` en CSVs y mails.
 - Logs: `[devices/perf]` está silenciado salvo que `DEBUG_DEVICE_PERF=1`. No volver a llenar la consola por default.
+
+## Rendimiento
+
+- **En producción cada query es un viaje SINCRÓNICO a Supabase** (`pg-sync` bloquea el proceso con `Atomics.wait`): un request cuesta queries × latencia y frena a todos los demás. Cada query que se saca de un endpoint que se pollea vale. Antes de sumar queries a algo que corre en cada request (auth, middlewares, `/api/devices`, `/api/movements`, notificaciones), medí.
+- Cachés del server: sesión en memoria 30 s (`getUserSession`, `last_seen_at` cada 5 min, se limpia ante escrituras de usuarios/sedes/accesos), inventario por sede (ver arriba).
+- Caché del front: `apiGet` responde 15 s con lo último visto y revalida en segundo plano (`X-Revalidate: 1`); `apiSend` la vacía. Lo polleado/crítico está excluido (`NO_CACHE` en `apiClient.ts`). Toda escritura tiene que pasar por `apiSend` (o llamar `clearApiCache`).
+- Fechas: usar `formatDate` / `dateFormatter` de `utils/formatters` (formateador cacheado), nunca `toLocaleString` en listas.
+- Layout: no alternar lecturas de layout (`getBoundingClientRect`, `offsetWidth`) con escrituras en un loop; medir con `ResizeObserver`.
+- Bancos de prueba: `server/scripts/bench/bench-api.mjs` (queries y latencia de la API) y `perf/` (arranque, pantallas y scroll del front en Edge headless con CPU 4×; `perf/compare.mjs` compara builds intercalados). Ver `perf/README.md`.
 - **Nunca puede haber scroll horizontal**, en ninguna vista, ancho o breakpoint — salvo que el usuario lo pida explícitamente para un contenedor puntual. El `<body>` jamás scrollea en X. Contenido ancho (tablas, planos SVG, bloques de código) scrollea *dentro* de su propio contenedor con `overflow-x: auto`, nunca empujando la página. Antes de cerrar un cambio de UI, verificar en mobile (360px) y desktop.
 
 ## Animaciones y transiciones

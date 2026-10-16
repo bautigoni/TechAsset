@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AuthUser, Device, Movement, SiteInfo, TaskState, ViewKey } from './types';
 import { Sidebar, visibleNavItems } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
@@ -15,9 +15,11 @@ import { useTasks } from './hooks/useTasks';
 import { useScrollReveal } from './hooks/useScrollReveal';
 import { useAutoRefresh } from './hooks/useAutoRefresh';
 import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
-import { lendDevice, returnDevice } from './services/loansApi';
+import { lendDevice, lendDevicesBatch, returnDevice, returnDevicesBatch, type LoanBatchResponse } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
+import { setActiveSiteCode } from './services/activeSite';
+import { clearApiCache, SESSION_EXPIRED_EVENT } from './services/apiClient';
 import { activeSiteRole, canViewModule, isSuperadmin, roleAccess } from './utils/permissions';
 import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
 import { parseScannedCode, resolveDeviceMatches } from './utils/normalizeSearch';
@@ -29,6 +31,7 @@ import type { AssistantContext } from './services/assistantApi';
 // instantáneo. La clave del lazyView es la ViewKey para poder prefetchear por nav.
 const DevicesPage = lazyView('devices', () => import('./components/devices/DevicesPage'), 'DevicesPage');
 const LoansPage = lazyView('loans', () => import('./components/loans/LoansPage'), 'LoansPage');
+const HistoryPage = lazyView('history', () => import('./components/history/HistoryPage'), 'HistoryPage');
 const InventoryPage = lazyView('inventory', () => import('./components/inventory/InventoryPage'), 'InventoryPage');
 const AnalyticsPage = lazyView('analytics', () => import('./components/analytics/AnalyticsPage'), 'AnalyticsPage');
 const AgendaPage = lazyView('agenda', () => import('./components/agenda/AgendaPage'), 'AgendaPage');
@@ -40,6 +43,9 @@ const ClassroomStatusPage = lazyView('classrooms', () => import('./components/cl
 const ToolsPage = lazyView('tools', () => import('./components/tools/ToolsPage'), 'ToolsPage');
 const QuickAccessPage = lazyView('quickaccess', () => import('./components/tools/QuickAccessPage'), 'QuickAccessPage');
 const TicketsPage = lazyView('tickets', () => import('./components/tickets/TicketsPage'), 'TicketsPage');
+const KnowledgePage = lazyView('knowledge', () => import('./components/knowledge/KnowledgePage'), 'KnowledgePage');
+const CanvasPage = lazyView('canvas', () => import('./components/canvas/CanvasPage'), 'CanvasPage');
+const RemindersPage = lazyView('reminders', () => import('./components/reminders/RemindersPage'), 'RemindersPage');
 const TenantsDashboard = lazyView('tenants', () => import('./components/settings/TenantsDashboard'), 'TenantsDashboard');
 const UsersByTenantPage = lazyView('adminusers', () => import('./components/settings/UsersByTenantPage'), 'UsersByTenantPage');
 const SettingsPage = lazyView('settings', () => import('./components/settings/SettingsPage'), 'SettingsPage');
@@ -64,6 +70,8 @@ export function App() {
   const [profile, setProfile] = useState<Device | null>(null);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [loanSeed, setLoanSeed] = useState('');
+  // Lote elegido en Dispositivos para prestar: llega a la lista del formulario.
+  const [loanBatchSeed, setLoanBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -103,7 +111,6 @@ export function App() {
       const site = allowed || fallback;
       if (fromUrl && !allowed) setView('dashboard');
       setActiveSite(site.siteCode);
-      localStorage.setItem('techasset_active_site', site.siteCode);
     };
 
     // Arranque optimista: si quedó la última sesión guardada, se pinta la app
@@ -176,13 +183,18 @@ export function App() {
     if (window.location.pathname !== next) window.history.replaceState(null, '', next);
   }, [activeSite, view, user]);
 
+  // La sede de los requests se fija en layout effect: corre antes que los
+  // useEffect de los hijos, así ninguna vista pide datos con la sede anterior.
+  useLayoutEffect(() => {
+    if (activeSite) setActiveSiteCode(activeSite);
+  }, [activeSite]);
+
   // La recarga completa de datos, en cambio, solo al cambiar de sede o de usuario.
   // Antes se disparaba en cada cambio de vista: un /api/devices?refresh=1 (que
   // fuerza el merge completo del inventario) + agenda + tareas + movimientos cada
   // vez que tocabas el menú. El auto-refresh ya mantiene todo fresco.
   useEffect(() => {
     if (!user || !activeSite) return;
-    localStorage.setItem('techasset_active_site', activeSite);
     void refresh({ force: true });
     void agenda.refresh();
     void tasks.refresh();
@@ -212,10 +224,18 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, siteSettings, user?.id, activeSite]);
 
+  // Agenda y tareas también se refrescan solas (cada 2 vueltas, ~30 s): antes
+  // solo equipos y movimientos, y un tablero compartido quedaba viejo hasta recargar.
+  const refreshTick = useRef(0);
   useAutoRefresh(() => {
     if (document.hidden) return;
     void refresh();
     void refreshMovements();
+    refreshTick.current += 1;
+    if (refreshTick.current % 2 === 0) {
+      void agenda.refresh().catch(() => undefined);
+      void tasks.refresh().catch(() => undefined);
+    }
   }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 15));
 
   useEffect(() => {
@@ -352,6 +372,27 @@ export function App() {
     }
   };
 
+  // Lotes: un request y un solo refresco al final, en vez de uno por equipo.
+  const onLendBatch = async (payload: Record<string, unknown> & { etiquetas: string[] }): Promise<LoanBatchResponse> => {
+    try {
+      const result = await lendDevicesBatch({ ...payload, operator });
+      await refresh({ force: true, wait: true });
+      return result;
+    } finally {
+      void refreshMovements(true);
+    }
+  };
+
+  const onReturnBatch = async (etiquetas: string[]): Promise<LoanBatchResponse> => {
+    try {
+      const result = await returnDevicesBatch(etiquetas, { operator });
+      await refresh({ force: true, wait: true });
+      return result;
+    } finally {
+      void refreshMovements(true);
+    }
+  };
+
   // Devolver desde una tabla (dashboard o dispositivos) resuelve en el acto en
   // vez de mandarte a Préstamos a repetir el equipo que ya elegiste.
   const returnFromTable = async (device: Device) => {
@@ -376,9 +417,25 @@ export function App() {
     }
   };
 
+  // Sesión vencida (cualquier 401 de la API): limpiar y mandar al login con aviso.
+  useEffect(() => {
+    const onExpired = () => {
+      if (!user) return;
+      clearSessionCache();
+      setUser(null);
+      setSites([]);
+      setActiveSite('');
+      setAuthMode('login');
+      window.history.replaceState(null, '', '/login?error=session_expired');
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [user]);
+
   const handleLogout = async () => {
     await logoutSession().catch(() => undefined);
     clearSessionCache();
+    clearApiCache();
     setUser(null);
     setSites([]);
     setActiveSite('');
@@ -400,6 +457,19 @@ export function App() {
     const next = typeof deviceOrCode === 'string' ? deviceOrCode : deviceOrCode.etiqueta;
     setLoanSeed('');
     window.setTimeout(() => setLoanSeed(next), 0);
+    setView('loans');
+  };
+
+  // Lo que se mandó a Préstamos se usa una vez: al salir de la vista se olvida,
+  // si no, volver a Préstamos más tarde volvía a cargar el mismo equipo o lote.
+  useEffect(() => {
+    if (view === 'loans') return;
+    setLoanSeed('');
+    setLoanBatchSeed(undefined);
+  }, [view]);
+
+  const openLoanBatch = (etiquetas: string[]) => {
+    setLoanBatchSeed(current => ({ etiquetas, nonce: (current?.nonce || 0) + 1 }));
     setView('loans');
   };
 
@@ -454,7 +524,6 @@ export function App() {
       setSites(session.sites);
       const site = session.sites.find(item => item.isDefault) || session.sites[0];
       setActiveSite(site.siteCode);
-      localStorage.setItem('techasset_active_site', site.siteCode);
       // Recién logueado: dejar la sesión recordada para que el próximo ingreso
       // pinte de una en vez de esperar la verificación.
       writeSessionCache(session.user, session.sites);
@@ -474,18 +543,23 @@ export function App() {
         <div key={view} className="view-enter">
         <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
         {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
-        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onImported={() => refresh({ force: true, wait: true })} />}
-        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onProfile={setProfile} initialCode={loanSeed} />}
+        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} />}
+        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} />}
+        {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
         {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
         {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
-        {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
+        {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} olderHidden={agenda.olderHidden} onLoadOlder={agenda.loadOlder} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
         {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState, columnId?: number | null) => tasks.move(id, state, columnId)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
         {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
         {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
         {view === 'tools' && <ToolsPage operator={operator} />}
-        {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}        {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'quickaccess' && <QuickAccessPage operator={operator} consultationMode={effectiveConsultation} />}
+        {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
@@ -563,7 +637,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'pettycash', 'classrooms', 'tickets', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'adminusers', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'adminusers', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 

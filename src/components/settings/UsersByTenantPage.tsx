@@ -6,6 +6,8 @@ import {
 import { Button } from '../layout/Button';
 import { MailStatusChip } from './MailStatusChip';
 import { SkeletonPanel } from '../layout/Skeleton';
+import { formatDate } from '../../utils/formatters';
+import { confirmDialog } from '../layout/Feedback';
 
 /**
  * Panel de usuarios de todos los tenants, solo para superadmin.
@@ -18,7 +20,7 @@ import { SkeletonPanel } from '../layout/Skeleton';
 function fecha(value: string) {
   if (!value) return '—';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return Number.isNaN(date.getTime()) ? value : formatDate(date, { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 function statusClass(status: string) {
@@ -51,7 +53,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
   useEffect(() => { void refresh(); }, []);
 
   const accion = async (user: TenantUser, action: AllowedUserAction, texto: string) => {
-    if (action === 'delete' && !window.confirm(`¿Dar de baja a ${user.email}? Se oculta sin borrar el historial.`)) return;
+    if (action === 'delete' && !(await confirmDialog({ title: 'Dar de baja', message: `¿Dar de baja a ${user.email}? Se oculta sin borrar el historial.`, confirmLabel: 'Dar de baja', danger: true }))) return;
     setBusy(user.id);
     setError('');
     setMessage('');
@@ -118,11 +120,11 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
           <button type="button" className={filtro === 'admins' ? 'is-active' : ''} onClick={() => setFiltro('admins')}>Admins</button>
           <button type="button" className={filtro === 'pendientes' ? 'is-active' : ''} onClick={() => setFiltro('pendientes')}>Pendientes</button>
         </div>
-        <input className="input" type="search" placeholder="Buscar por mail, nombre o rol" value={search} onChange={event => setSearch(event.target.value)} />
+        <input className="input" type="search" placeholder="Buscar por mail, nombre o rol" aria-label="Buscar usuarios" value={search} onChange={event => setSearch(event.target.value)} />
       </div>
 
       {search.trim() && coincidenciasGlobales.length > 0 && (
-        <p className="muted" style={{ fontSize: 12 }}>
+        <p className="muted text-12">
           {coincidenciasGlobales.length} coincidencia{coincidenciasGlobales.length === 1 ? '' : 's'} en total:{' '}
           {[...new Set(coincidenciasGlobales.map(item => item.tenant))].join(', ')}
         </p>
@@ -156,7 +158,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
             <>
               <div className="card-head">
                 <div>
-                  <h4 style={{ margin: 0 }}>{tenantAbierto.nombre}</h4>
+                  <h4 className="m-0">{tenantAbierto.nombre}</h4>
                   <span className="muted">{usuariosVisibles.length} de {tenantAbierto.total} usuarios</span>
                 </div>
               </div>
@@ -224,7 +226,7 @@ export function UsersByTenantPage({ consultationMode }: { consultationMode: bool
           {data && data.sinSede.length > 0 && (
             <div className="users-invites">
               <h5>Sin sede asignada</h5>
-              <p className="muted" style={{ fontSize: 12, margin: '0 0 8px' }}>
+              <p className="muted text-12 m-0 mb-8">
                 Estos usuarios existen pero no tienen acceso a ningún tenant.
               </p>
               <div className="table-wrap">

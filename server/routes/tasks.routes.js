@@ -169,7 +169,8 @@ tasksRouter.get('/tasks/history', (req, res) => {
 
 tasksRouter.get('/tasks/analytics', (_req, res) => {
   const siteCode = requireSite(_req);
-  const rows = getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? AND COALESCE(visibility,'team')<>'private'").all(siteCode).map(rowToTask);
+  const ctx = buildTaskContext(siteCode);
+  const rows = getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? AND COALESCE(visibility,'team')<>'private'").all(siteCode).map(row => rowToTask(row, ctx));
   const names = getSiteAssistantNames(siteCode);
   const fallback = Array.from(new Set(rows.flatMap(task => task.responsables?.length ? task.responsables : String(task.responsable || '').split(',').map(item => item.trim())).filter(Boolean)));
   const assistants = (names.length ? names : fallback).map(name => {
@@ -353,7 +354,13 @@ function normalizeTaskPayload(raw, siteCode) {
   };
 }
 
+// Las columnas por defecto se crean una vez por sede; no hace falta contarlas en
+// cada GET /tasks (era una query más por poll). Se re-chequea cada 10 minutos.
+const taskColumnsCheckedAt = new Map();
+
 function ensureTaskColumns(siteCode, operator = '') {
+  if (Date.now() - (taskColumnsCheckedAt.get(siteCode) || 0) < 10 * 60 * 1000) return;
+  taskColumnsCheckedAt.set(siteCode, Date.now());
   const count = Number(getDb().prepare('SELECT COUNT(*) AS total FROM task_columns WHERE site_code=? AND active=1').get(siteCode).total || 0);
   if (count) return;
   const ts = nowIso();

@@ -6,6 +6,7 @@ import { ddMmToIso, formatDdMm, isValidDdMm } from '../../utils/taskDate';
 import { getSiteAssistants } from '../../services/authApi';
 import { uploadTaskAttachment } from '../../services/tasksApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
+import { SelectField } from '../layout/SelectField';
 
 const TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'] as const;
 
@@ -80,12 +81,12 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
               </button>
             ))}
           </div>
-          <span className="muted" style={{ fontSize: 12 }}>Asignado a: <strong>{resumen}</strong></span>
+          <span className="muted text-12">Asignado a: <strong>{resumen}</strong></span>
         </div>
 
         <div className="grid-2">
-          <label>Prioridad<select className="input" value={task.prioridad} onChange={e => update('prioridad', e.target.value)}><option>Baja</option><option>Media</option><option>Urgente</option></select></label>
-          <label>Turno<select className="input" value={task.turno || 'Sin turno'} onChange={e => update('turno', e.target.value)}>{TURNOS.map(item => <option key={item}>{item}</option>)}</select></label>
+          <label>Prioridad<SelectField value={String(task.prioridad)} onChange={value => update('prioridad', value)} options={[{ value: "Baja", label: "Baja" }, { value: "Media", label: "Media" }, { value: "Urgente", label: "Urgente" }]} /></label>
+          <label>Turno<SelectField value={String(task.turno || 'Sin turno')} onChange={value => update('turno', value)} options={[...TURNOS.map(item => ({ value: String(item), label: String(item) }))]} /></label>
         </div>
         <label>Tipo<input className="input" value={task.tipo || ''} onChange={e => update('tipo', e.target.value)} placeholder="Soporte, Aula, Agenda..." /></label>
         <label>Vencimiento (DD/MM)
@@ -102,7 +103,7 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
               setDateInput(formatted);
             }}
           />
-          {!isValidDdMm(dateInput) && <span className="muted" style={{ color: '#ff9b9b' }}>Formato inválido. Usá DD/MM.</span>}
+          {!isValidDdMm(dateInput) && <span className="muted text-danger">Formato inválido. Usá DD/MM.</span>}
         </label>
         <label>Comentario<textarea className="input" rows={3} value={task.comentario || ''} onChange={e => update('comentario', e.target.value)} /></label>
         <div className="task-attachment-editor">

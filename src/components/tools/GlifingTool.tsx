@@ -53,7 +53,7 @@ export function GlifingTool() {
       <div className="card-head"><h3>Creador de tarjetas</h3></div>
       <p className="muted">Subí un CSV con los datos. Se valida el formato y se genera un HTML A4 listo para imprimir (aprox. 8 tarjetas por hoja).</p>
 
-      <label style={{ display: 'block', marginTop: 8 }}>Tipo de tarjeta</label>
+      <label className="block mt-8">Tipo de tarjeta</label>
       <div className="tool-type-selector">
         <button type="button" className={kind === 'glifing' ? 'active' : ''} onClick={() => setKind('glifing')}>Glifing</button>
         <button type="button" className={kind === 'santillana' ? 'active' : ''} onClick={() => setKind('santillana')}>Santillana</button>
@@ -66,7 +66,7 @@ export function GlifingTool() {
 
       <div className="actions wrap-actions">
         <Button onClick={onDownloadTemplate}>Descargar plantilla CSV ({kind})</Button>
-        <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+        <label className="btn btn-secondary cursor-pointer">
           {filename ? `Cambiar archivo (${filename})` : 'Subir CSV'}
           <input type="file" accept=".csv,text/csv" hidden onChange={e => onFile(e.target.files?.[0] || null)} />
         </label>
@@ -77,7 +77,7 @@ export function GlifingTool() {
       {info && <div className="tool-info">{info}</div>}
 
       {preview.length > 0 && (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <div className="table-wrap mt-12">
           <table>
             <thead><tr>{REQUIRED.map(c => <th key={c}>{c}</th>)}</tr></thead>
             <tbody>
@@ -86,7 +86,7 @@ export function GlifingTool() {
               ))}
             </tbody>
           </table>
-          {total > preview.length && <p className="muted" style={{ padding: 8 }}>Mostrando {preview.length} de {total} filas.</p>}
+          {total > preview.length && <p className="muted p-8">Mostrando {preview.length} de {total} filas.</p>}
         </div>
       )}
     </section>

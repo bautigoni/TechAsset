@@ -13,6 +13,10 @@ import { GooeyMenu } from '../layout/GooeyMenu';
 import { SkeletonPanel } from '../layout/Skeleton';
 import { useCardResize } from '../../hooks/useCardResize';
 import { LayoutTemplate, TicketPlus } from 'lucide-react';
+import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
+import { clickableProps } from '../../utils/a11y';
+import { SelectionBar, useSelection } from '../layout/Selection';
+import { SelectField } from '../layout/SelectField';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
 const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
@@ -65,7 +69,7 @@ function FilePreview({ url, compact = false }: { url: string; compact?: boolean 
               <object data={`${url}#toolbar=0&navpanes=0`} type="application/pdf" className="ticket-file-embed">
                 <a href={url} target="_blank" rel="noreferrer">Abrir PDF en pestaña nueva ↗</a>
               </object>
-              <div className="actions" style={{ marginTop: 8 }}>
+              <div className="actions mt-8">
                 <a className="btn btn-secondary" href={url} target="_blank" rel="noreferrer">Abrir en pestaña ↗</a>
               </div>
             </Modal>
@@ -98,7 +102,7 @@ function DescriptionBox({ desc }: { desc: string }) {
   return (
     <p
       className={`ticket-card-description${needsTrunc && !expanded ? ' is-trunc' : ''}`}
-      onClick={() => needsTrunc && setExpanded(prev => !prev)}
+      {...(needsTrunc ? { ...clickableProps(() => setExpanded(prev => !prev)), 'aria-expanded': expanded, title: expanded ? 'Mostrar menos' : 'Mostrar todo' } : {})}
     >{show}</p>
   );
 }
@@ -245,18 +249,58 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
 
   const changeEstado = async (ticket: Ticket, estado: TicketState) => {
     setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, estado } : t));
-    try { await updateTicket(ticket.id, { estado }); } catch { load(); }
+    try {
+      await updateTicket(ticket.id, { estado });
+    } catch (reason) {
+      // Antes el error se tragaba y el estado volvía solo, sin explicación.
+      toast({ message: errorMessage(reason, 'No se pudo cambiar el estado.'), tone: 'error' });
+      load();
+    }
+  };
+
+  // Selección múltiple: cambiar el estado de varios o borrarlos de una.
+  const selection = useSelection();
+  const selectedTickets = tickets.filter(ticket => selection.selected.has(String(ticket.id)));
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkEstado = async (estado: TicketState) => {
+    const list = selectedTickets.filter(ticket => ticket.estado !== estado);
+    setBulkBusy(true);
+    setTickets(prev => prev.map(t => selection.selected.has(String(t.id)) ? { ...t, estado } : t));
+    const failed: string[] = [];
+    for (const ticket of list) {
+      try { await updateTicket(ticket.id, { estado }); } catch { failed.push(`#${ticket.numero}`); }
+    }
+    setBulkBusy(false);
+    selection.clear();
+    if (failed.length) { toast({ message: `No se pudieron actualizar: ${failed.join(', ')}`, tone: 'error' }); load(); }
+    else toast({ message: `${list.length} tickets ahora están "${estado}".`, tone: 'ok' });
+  };
+  const bulkRemove = async () => {
+    if (!(await confirmDialog({ title: `Borrar ${selectedTickets.length} tickets`, message: selectedTickets.map(ticket => `#${ticket.numero}`).join(', '), confirmLabel: 'Borrar', danger: true }))) return;
+    setBulkBusy(true);
+    const failed: string[] = [];
+    for (const ticket of selectedTickets) {
+      try { await deleteTicket(ticket.id); } catch { failed.push(`#${ticket.numero}`); }
+    }
+    setBulkBusy(false);
+    selection.clear();
+    if (failed.length) toast({ message: `No se pudieron borrar: ${failed.join(', ')}`, tone: 'error' });
+    load();
   };
 
   const remove = async (ticket: Ticket) => {
-    if (!window.confirm(`¿Borrar el ticket #${ticket.numero}?`)) return;
-    await deleteTicket(ticket.id).catch(() => {});
+    if (!(await confirmDialog({ title: `Borrar ticket #${ticket.numero}`, message: ticket.titulo || undefined, confirmLabel: 'Borrar', danger: true }))) return;
+    try {
+      await deleteTicket(ticket.id);
+    } catch (reason) {
+      toast({ message: errorMessage(reason, 'No se pudo borrar el ticket.'), tone: 'error' });
+    }
     load();
   };
 
   return (
     <section className="view active">
-      <div className="card-head" style={{ marginBottom: 12 }}>
+      <div className="card-head mb-12">
         <h3>Tickets</h3>
         {/* El "+" del gooey reemplaza a "Cargar ticket": las dos acciones de
             creación viven adentro del mismo botón. */}
@@ -308,21 +352,30 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           ))}
         </div>
       </div>
-      <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
+      <div className="muted text-13 mt-6">
         {visible.length} {visible.length === 1 ? 'resultado' : 'resultados'}
       </div>
 
-      {error && !modalOpen && <div className="tool-error" style={{ marginTop: 12 }}>{error}</div>}
-      {loading && <div style={{ marginTop: 12 }}><SkeletonPanel rows={3} head={false} rowHeight={96} /></div>}
-      {!loading && visible.length === 0 && <div className="tool-info" style={{ marginTop: 12 }}>No hay tickets en este filtro.</div>}
+      {error && !modalOpen && <div className="tool-error mt-12">{error}</div>}
+      {loading && <div className="mt-12"><SkeletonPanel rows={3} head={false} rowHeight={96} /></div>}
+      {!loading && visible.length === 0 && <div className="tool-info mt-12">No hay tickets en este filtro.</div>}
 
       {/* Cambiar de filtro cambia cuántas tarjetas entran, así que la grilla
           cambia de alto. Con el resize se estira en vez de saltar. */}
-      <div className="ticket-grid t-resize" style={{ marginTop: 12 }} ref={gridResizeRef}>
+      <div className="ticket-grid t-resize mt-12" ref={gridResizeRef}>
         {visible.map(ticket => (
-          <section className="ticket-card" key={ticket.id}>
+          <section className={`ticket-card ${selection.selected.has(String(ticket.id)) ? 'is-selected' : ''}`} key={ticket.id}>
             {/* A5: header limpio con #numero azul + badge estado */}
             <div className="ticket-card-head">
+              {!consultationMode && (
+                <input
+                  type="checkbox"
+                  className="ticket-select"
+                  aria-label={`Seleccionar ticket ${normalizeNumero(ticket.numero)}`}
+                  checked={selection.selected.has(String(ticket.id))}
+                  onChange={() => selection.toggle(String(ticket.id))}
+                />
+              )}
               <a href={ticketLink(ticket)} target="_blank" rel="noreferrer" className="ticket-number-link">{ticket.origen === 'handing' ? 'Handing' : `#${normalizeNumero(ticket.numero)}`} ↗</a>
               <span className={ESTADO_BADGE[ticket.estado]}>{ticket.estado}</span>
             </div>
@@ -340,14 +393,21 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
             <div className="ticket-card-actions">
               <Button onClick={() => setDetailId(ticket.id)}>Ver detalle</Button>
               <Button disabled={consultationMode} onClick={() => openEdit(ticket)}>Editar</Button>
-              <select className="input" value={ticket.estado} disabled={consultationMode} onChange={e => changeEstado(ticket, e.target.value as TicketState)}>
-                {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
+              <SelectField ariaLabel={`Estado del ticket ${ticket.numero}`} value={ticket.estado} disabled={consultationMode} onChange={value => changeEstado(ticket, value as TicketState)} options={ESTADOS.map(value => ({ value, label: value }))} />
               <Button disabled={consultationMode} onClick={() => remove(ticket)} className="btn-ghost-danger">Borrar</Button>
             </div>
           </section>
         ))}
       </div>
+
+      {!consultationMode && (
+        <SelectionBar count={selectedTickets.length} onClear={selection.clear} floating>
+          {ESTADOS.map(estado => (
+            <Button key={estado} disabled={bulkBusy} variant={estado === 'Hecho' ? 'success' : 'secondary'} onClick={() => void bulkEstado(estado)}>{estado}</Button>
+          ))}
+          <Button variant="danger" disabled={bulkBusy} onClick={() => void bulkRemove()}>Borrar</Button>
+        </SelectionBar>
+      )}
 
       {modalOpen && (
         <Modal title={editingId ? 'Editar ticket' : 'Cargar ticket'} onClose={() => setModalOpen(false)}>
@@ -364,7 +424,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               </button>
             ))}
           </div>
-          {!editingId && templates.length > 0 && <label>Usar plantilla<select className="input" value={draft.templateId || ''} onChange={e => { const template = templates.find(item => item.id === Number(e.target.value)); setDraft(current => template ? { ...current, templateId: template.id, titulo: template.title, descripcion: template.description, prioridad: template.priority, categoria: template.category, responsables: template.suggestedAssignee ? [template.suggestedAssignee] : [], checklist: template.checklist, tags: template.tags } : { ...current, templateId: undefined }); }}><option value="">Sin plantilla</option>{templates.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
+          {!editingId && templates.length > 0 && <label>Usar plantilla<SelectField ariaLabel="Usar plantilla" value={String(draft.templateId || '')} onChange={value => { const template = templates.find(item => item.id === Number(value)); setDraft(current => template ? { ...current, templateId: template.id, titulo: template.title, descripcion: template.description, prioridad: template.priority, categoria: template.category, responsables: template.suggestedAssignee ? [template.suggestedAssignee] : [], checklist: template.checklist, tags: template.tags } : { ...current, templateId: undefined }); }} options={[{ value: '', label: 'Sin plantilla' }, ...templates.map(item => ({ value: String(item.id), label: item.title }))]} /></label>}
           <div className="grid-2">
             <label>{draft.origen === 'handing' ? 'Referencia de ticket (Handing)' : 'Número de ticket (InVgate)'}
               <input
@@ -375,22 +435,17 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
                 inputMode={draft.origen === 'handing' ? 'text' : 'numeric'}
                 autoFocus
               />
-              <span className="muted" style={{ fontSize: 12 }}>{draft.origen === 'handing' ? 'No usa #id: podés dejarlo vacío o escribir una referencia interna.' : <>Solo el número, sin <code>#</code> - ej. <code>2103</code></>}</span>
+              <span className="muted text-12">{draft.origen === 'handing' ? 'No usa #id: podés dejarlo vacío o escribir una referencia interna.' : <>Solo el número, sin <code>#</code> - ej. <code>2103</code></>}</span>
             </label>
             <label>Estado
-              <select className="input" value={draft.estado || 'No hecho'} onChange={e => setDraft(d => ({ ...d, estado: e.target.value as TicketState }))}>
-                {ESTADOS.map(e => <option key={e}>{e}</option>)}
-              </select>
+              <SelectField ariaLabel="Estado" value={draft.estado || 'No hecho'} onChange={value => setDraft(d => ({ ...d, estado: value as TicketState }))} options={ESTADOS.map(value => ({ value, label: value }))} />
             </label>
           </div>
-          <div className="grid-2"><label>Prioridad<select className="input" value={draft.prioridad || 'Media'} onChange={e => setDraft(d => ({ ...d, prioridad: e.target.value }))}><option>Baja</option><option>Media</option><option>Alta</option><option>Urgente</option></select></label><label>Responsables (separados por coma)<input className="input" value={(draft.responsables || []).join(', ')} onChange={e => setDraft(d => ({ ...d, responsables: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))} /></label></div>
+          <div className="grid-2"><label>Prioridad<SelectField ariaLabel="Prioridad" value={draft.prioridad || 'Media'} onChange={value => setDraft(d => ({ ...d, prioridad: value }))} options={['Baja', 'Media', 'Alta', 'Urgente'].map(value => ({ value, label: value }))} /></label><label>Responsables (separados por coma)<input className="input" value={(draft.responsables || []).join(', ')} onChange={e => setDraft(d => ({ ...d, responsables: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))} /></label></div>
           <div className="grid-2">
             <label>Escuela<input className="input" value={draft.school || ''} onChange={e => setDraft(d => ({ ...d, school: e.target.value }))} placeholder="Sede o escuela" /></label>
             <label>Aula (opcional)
-              <select className="input" value={draft.classroomKey || ''} onChange={e => { const selectedRoom = classrooms.find(room => room.roomKey === e.target.value); setDraft(d => ({ ...d, classroomKey: selectedRoom?.roomKey || '', classroom: selectedRoom?.nombre || '' })); }}>
-                <option value="">Sin aula vinculada</option>
-                {classrooms.map(room => <option key={room.roomKey} value={room.roomKey}>{room.nombre}{room.piso ? ` · ${room.piso}` : ''}</option>)}
-              </select>
+              <SelectField ariaLabel="Aula" value={draft.classroomKey || ''} onChange={value => { const selectedRoom = classrooms.find(room => room.roomKey === value); setDraft(d => ({ ...d, classroomKey: selectedRoom?.roomKey || '', classroom: selectedRoom?.nombre || '' })); }} options={[{ value: '', label: 'Sin aula vinculada' }, ...classrooms.map(room => ({ value: room.roomKey, label: room.nombre, hint: room.piso || undefined }))]} />
               {!draft.classroomKey && draft.classroom && <span className="muted">Dato anterior: {draft.classroom}</span>}
             </label>
           </div>
@@ -424,12 +479,12 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
             />
           </label>
           {normalizeReference(draft.numero, draft.origen || 'tik') && (
-            <a href={(draft.origen || 'tik') === 'handing' ? handingLink(draft.numero || '') : invgateLink(draft.numero || '')} target="_blank" rel="noreferrer" className="muted" style={{ fontSize: 13 }}>
+            <a href={(draft.origen || 'tik') === 'handing' ? handingLink(draft.numero || '') : invgateLink(draft.numero || '')} target="_blank" rel="noreferrer" className="muted text-13">
               Abrir en {(draft.origen || 'tik') === 'handing' ? 'Handing' : 'InVgate'} ↗
             </a>
           )}
           <label>Ticket exportado (PDF o foto)
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="row-wrap">
               <label className="btn btn-secondary">
                 {uploading ? 'Subiendo…' : (draft.imagenUrl ? 'Reemplazar archivo' : 'Subir PDF / foto')}
                 <input type="file" accept="application/pdf,image/png,image/jpeg,image/jpg,image/webp" className="sr-only" onChange={e => handleFile(e.target.files?.[0])} disabled={uploading} />
@@ -439,7 +494,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           </label>
           {draft.imagenUrl && <FilePreview url={draft.imagenUrl} />}
           {error && <div className="tool-error">{error}</div>}
-          <div className="actions" style={{ marginTop: 8 }}>
+          <div className="actions mt-8">
             <Button variant="primary" disabled={busy || uploading} onClick={save}>{busy ? 'Guardando…' : 'Guardar ticket'}</Button>
             <Button onClick={() => setModalOpen(false)}>Cancelar</Button>
           </div>

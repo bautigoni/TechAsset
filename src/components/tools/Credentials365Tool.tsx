@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../layout/Button';
 import { downloadC365Template, fetchToolsConfig, previewC365, sendC365, uploadC365Csv } from '../../services/toolsApi';
+import { confirmDialog } from '../layout/Feedback';
 
 const REQUIRED = ['Nombre para mostrar', 'Nombre de usuario', 'mail', 'Contraseña', 'Sede', 'Licencias'];
 const displayColumn = (value: string) => value;
@@ -79,7 +80,7 @@ export function Credentials365Tool() {
   const onSend = async () => {
     if (!csv) { setError('Subí un CSV primero'); return; }
     if (!modoPrueba) {
-      const ok = window.confirm(`Vas a enviar credenciales reales a ${validos} destinatario(s). ${invalidos} se descartan por invalidos. Confirmas el envio?`);
+      const ok = await confirmDialog({ title: 'Enviar credenciales reales', message: `Vas a mandar credenciales reales por mail a ${validos} destinatario(s). ${invalidos} se descartan por inválidos.`, confirmLabel: `Enviar a ${validos}`, danger: true });
       if (!ok) return;
     }
     reset();
@@ -104,7 +105,7 @@ export function Credentials365Tool() {
 
       <div className="tool-warning">
         <strong>Atención:</strong> revisá los destinatarios antes de enviar. {modoPrueba ? 'Modo prueba activado: no se envían correos reales.' : (mailOk ? `Modo prueba desactivado: el envío es real${resendOk ? ' por Resend' : ''}.` : 'Proveedor de mail sin configurar: configurá Resend antes de enviar.')}
-        <span className="badge subtle" style={{ marginLeft: 8 }}>{providerLabel}</span>
+        <span className="badge subtle ml-8">{providerLabel}</span>
       </div>
 
       <div className="tool-format">
@@ -114,7 +115,7 @@ export function Credentials365Tool() {
 
       <div className="actions wrap-actions">
         <Button onClick={downloadC365Template}>Descargar plantilla CSV</Button>
-        <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+        <label className="btn btn-secondary cursor-pointer">
           {filename ? `Cambiar archivo (${filename})` : 'Subir CSV'}
           <input type="file" accept=".csv,text/csv" hidden onChange={e => onFile(e.target.files?.[0] || null)} />
         </label>
@@ -142,7 +143,7 @@ export function Credentials365Tool() {
       )}
 
       {preview.length > 0 && (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
+        <div className="table-wrap mt-12">
           <table>
             <thead><tr>{REQUIRED.map(c => <th key={c}>{displayColumn(c)}</th>)}</tr></thead>
             <tbody>
@@ -155,8 +156,8 @@ export function Credentials365Tool() {
       )}
 
       {invalidPreview.length > 0 && (
-        <div className="table-wrap" style={{ marginTop: 12 }}>
-          <h4 className="muted" style={{ padding: '8px 12px 0' }}>Filas invalidas</h4>
+        <div className="table-wrap mt-12">
+          <h4 className="muted pad-8-12-0">Filas invalidas</h4>
           <table>
             <thead><tr><th>Nombre</th><th>Usuario</th><th>Mail</th><th>Motivo</th></tr></thead>
             <tbody>
