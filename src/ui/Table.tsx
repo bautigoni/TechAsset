@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { Collapse, useHeldKeys } from './Collapse';
 import { Checkbox } from './Toggle';
 import { SkeletonRows } from './Data';
 import { IconChevronDown, IconChevronUp } from './icons';
@@ -86,6 +87,8 @@ const INTERACTIVE = 'button, a, input, textarea, select, [role="checkbox"], [rol
 export function Table<T>({ rows, columns, rowKey, caption, sort: sortProp, defaultSort = null, onSortChange, manualSort, onRowClick, selection, rowAttrs, rowClassName, highlightedKey, expandedKey, renderExpanded, empty, loading, loadingRows = 4, cardBelow = 'md', className }: TableProps<T>) {
   const [innerSort, setInnerSort] = useState<SortState>(defaultSort);
   const sort = sortProp !== undefined ? sortProp : innerSort;
+  // La ficha que se cierra sigue dibujada hasta terminar de plegarse hacia su fila.
+  const held = useHeldKeys(renderExpanded ? expandedKey : null);
 
   const sorted = useMemo(() => {
     if (manualSort || !sort) return rows;
@@ -160,7 +163,8 @@ export function Table<T>({ rows, columns, rowKey, caption, sort: sortProp, defau
             const key = keys[index];
             const isSelected = selection?.selected.has(key) || false;
             const clickable = Boolean(onRowClick);
-            const expanded = expandedKey === key && renderExpanded;
+            const expanded = Boolean(renderExpanded) && expandedKey === key;
+            const drawDetail = Boolean(renderExpanded) && held.drawn(key);
             return (
               <Fragment key={key}>
                 <div
@@ -201,9 +205,13 @@ export function Table<T>({ rows, columns, rowKey, caption, sort: sortProp, defau
                     </div>
                   ))}
                 </div>
-                {expanded && (
+                {drawDetail && (
                   <div role="row" className="ui-tr ui-tr--full ui-tr--detail">
-                    <div role="cell" className="ui-td ui-enter">{renderExpanded!(row)}</div>
+                    <div role="cell" className="ui-td">
+                      <Collapse open={expanded} appear unmountOnClose className="ui-tr-detail-body" onSettled={open => { if (!open) held.release(key); }}>
+                        {renderExpanded!(row)}
+                      </Collapse>
+                    </div>
                   </div>
                 )}
               </Fragment>

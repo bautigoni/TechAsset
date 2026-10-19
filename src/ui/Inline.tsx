@@ -173,9 +173,23 @@ export type SelectionHeaderProps = {
   /** "equipo"/"equipos" en vez de seleccionado/s. */
   noun?: [string, string];
   className?: string;
+  /**
+   * El encabezado normal y la barra ocupan el MISMO lugar (uno encima del
+   * otro): el bloque mide lo que el más alto, así marcar el primero o limpiar
+   * no corre la lista que está debajo del cursor.
+   */
+  stable?: boolean;
 };
 
-export function SelectionHeader({ count, onClear, actions, confirm, children, noun, className }: SelectionHeaderProps) {
+export function SelectionHeader({ count, onClear, actions, confirm, children, noun, className, stable }: SelectionHeaderProps) {
+  if (stable) {
+    return (
+      <div className="ui-selswap">
+        <div className="ui-selswap-base" inert={count > 0} aria-hidden={count > 0 || undefined}>{children}</div>
+        {count > 0 && <SelectionHeader count={count} onClear={onClear} actions={actions} confirm={confirm} noun={noun} className={className} />}
+      </div>
+    );
+  }
   if (!count) return <>{children}</>;
   const word = noun ? (count === 1 ? noun[0] : noun[1]) : count === 1 ? 'seleccionado' : 'seleccionados';
   return (

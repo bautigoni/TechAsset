@@ -60,7 +60,9 @@ export function scrollParentOf(el: Element | null): HTMLElement {
   let node = el?.parentElement || null;
   while (node && !isDocScroller(node)) {
     const overflow = getComputedStyle(node).overflowY;
-    if (overflow === 'auto' || overflow === 'scroll' || overflow === 'overlay') return node;
+    // Un `overflow-x: auto` (tabla que scrollea de costado) hace que overflow-y
+    // compute `auto` aunque no scrollee en Y: solo cuenta si de verdad scrollea.
+    if ((overflow === 'auto' || overflow === 'scroll' || overflow === 'overlay') && node.scrollHeight > node.clientHeight + 1) return node;
     node = node.parentElement;
   }
   return (document.scrollingElement || document.documentElement) as HTMLElement;
@@ -219,6 +221,30 @@ export function revealInView(target: HTMLElement | null, keepVisible?: HTMLEleme
   }
   if (Math.abs(by) < 1) return;
   sc.scrollBy({ top: by, behavior: reducedMotion() ? 'auto' : 'smooth' });
+}
+
+/**
+ * Una sola ficha abierta en una lista (debajo de su fila): la que se cierra
+ * tiene que seguir dibujada hasta terminar de plegarse. Uso:
+ *
+ *   const held = useHeldKeys(openKey);
+ *   {held.drawn(key) && <Collapse open={openKey === key} appear unmountOnClose onSettled={o => { if (!o) held.release(key); }}>…</Collapse>}
+ */
+export function useHeldKeys(openKey: string | null | undefined) {
+  const current = openKey || null;
+  const [closing, setClosing] = useState<string[]>([]);
+  const [last, setLast] = useState<string | null>(current);
+  if (current !== last) {
+    // Ajuste durante el render (patrón de React para estado derivado de props).
+    setClosing(list => {
+      let next = last && !list.includes(last) ? [...list, last] : list;
+      if (current && next.includes(current)) next = next.filter(item => item !== current);
+      return next;
+    });
+    setLast(current);
+  }
+  const release = useCallback((key: string) => setClosing(list => (list.includes(key) ? list.filter(item => item !== key) : list)), []);
+  return { drawn: (key: string) => key === current || closing.includes(key), release };
 }
 
 /** Duración de la transición de alto del colapso (ms), leída del CSS. */
