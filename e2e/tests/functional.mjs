@@ -1,0 +1,576 @@
+// Pruebas funcionales (a–h). Cada una deja su resultado OK/FALLA con detalle.
+// Todas corren contra la copia de la base: prestar, borrar o mover tareas acá
+// no toca ningún dato real.
+import { loanState, SITE } from '../lib/env.mjs';
+import {
+  assert, clickButton, clickWithModifier, findButton, gotoView, openContext, pathname,
+  readOptions, selectOption, sleep, text, typeInto, until
+} from '../lib/browser.mjs';
+
+const CODE_INPUT = 'form.stack input.input[autocomplete="off"]';
+const DEVICE_STACK = '.device-pass-stack:not(.pass-stack)';
+const PASS_STACK = '.pass-stack';
+const escapeRx = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const exact = value => new RegExp(`^${escapeRx(value)}$`);
+
+// Mapa de la barra lateral (Sidebar.tsx): etiqueta → vista.
+export const NAV_LABELS = {
+  Dashboard: 'dashboard', Tenants: 'tenants', Usuarios: 'adminusers', Dispositivos: 'devices', 'Préstamos': 'loans',
+  Historial: 'history', 'Inventario TIC': 'inventory', 'Analítica': 'analytics', 'Agenda TIC': 'agenda', Horarios: 'schedules',
+  'Tareas TIC': 'tasks', Recordatorios: 'reminders', Canvas: 'canvas', 'Caja chica': 'pettycash', 'Estado aulas': 'classrooms',
+  Tickets: 'tickets', 'Base de conocimiento': 'knowledge', Sugerencias: 'suggestions', 'Herramientas auxiliares': 'tools',
+  'Accesos rápidos': 'quickaccess', 'Configuración': 'settings'
+};
+
+// ── Préstamos ────────────────────────────────────────────────────────────────
+
+async function openLoans(page, base) {
+  await gotoView(page, base, 'loans');
+  // La grilla de equipos solo se dibuja cuando llegó el inventario.
+  await page.waitForSelector('.chip-stack-head', { timeout: 20000 });
+  await page.waitForSelector(CODE_INPUT);
+}
+
+/** Completa persona, rol, ubicación (y nivel/curso/detalles si la ubicación los pide). */
+async function fillLoanPerson(page) {
+  const person = await page.waitForSelector('.loan-person-field input');
+  await typeInto(page, person, 'E2E Prueba');
+  await page.keyboard.press('Tab');
+  const roles = await readOptions(page, 'Rol');
+  await selectOption(page, 'Rol', exact(roles.includes('DOE') ? 'DOE' : roles[0]));
+  const locations = await readOptions(page, 'Ubicación');
+  await selectOption(page, 'Ubicación', exact(locations.includes('DOE') ? 'DOE' : locations[0]));
+  if (await page.$('button.field-select-trigger[aria-label="Nivel"]')) {
+    await selectOption(page, 'Nivel', /^EP$/);
+    const courses = await readOptions(page, 'Grado, año o curso');
+    await selectOption(page, 'Grado, año o curso', exact(courses[0]));
+  }
+  const details = await page.$$('form.stack label');
+  for (const label of details) {
+    const labelText = await label.evaluate(node => node.textContent || '');
+    if (!/^Especificar/.test(labelText.trim())) continue;
+    const input = await label.$('input');
+    if (input) await typeInto(page, input, 'E2E');
+  }
+}
+
+async function codeValue(page) {
+  return page.$eval(CODE_INPUT, input => input.value).catch(() => '');
+}
+
+async function openAllDevicePanels(page) {
+  await page.$$eval(`${DEVICE_STACK} .chip-panel-toggle[aria-expanded="false"]`, buttons => buttons.forEach(button => button.click()));
+  await until(() => page.$$eval(`${DEVICE_STACK} .chip-panel-toggle[aria-expanded="false"]`, list => list.length === 0), { message: 'los grupos de equipos abiertos' });
+  await page.waitForSelector(`${DEVICE_STACK} .pass-chip`);
+  await sleep(250);
+}
+
+async function deviceChip(page, tag) {
+  const handle = await page.evaluateHandle((stack, etiqueta) => [...document.querySelectorAll(`${stack} .pass-chip`)]
+    .find(chip => (chip.getAttribute('title') || '').includes(` · ${etiqueta} —`)) || null, DEVICE_STACK, tag);
+  const element = handle.asElement();
+  assert(element, `No encontré el chip de ${tag} en la grilla.`);
+  return element;
+}
+
+async function chipState(handle) {
+  return handle.evaluate(chip => ({
+    selected: chip.classList.contains('is-selected'),
+    disabled: chip.disabled,
+    busy: chip.classList.contains('is-busy')
+  }));
+}
+
+async function selectModeOn(page, stack) {
+  return page.$eval(`${stack} .chip-select-toggle`, button => button.getAttribute('aria-pressed') === 'true').catch(() => false);
+}
+
+async function exitSelectMode(page, stack) {
+  if (await selectModeOn(page, stack)) {
+    await page.$eval(`${stack} .chip-select-toggle`, button => button.click());
+    await until(async () => !(await selectModeOn(page, stack)), { message: 'que se apague el modo selección' });
+  }
+}
+
+async function barText(page, stack) {
+  return text(page, `${stack} .chip-selection-bar`);
+}
+
+async function passChip(page, numero) {
+  const handle = await page.evaluateHandle((stack, n) => [...document.querySelectorAll(`${stack} .pass-chip`)]
+    .find(chip => (chip.textContent || '').trim() === String(n)) || null, PASS_STACK, numero);
+  const element = handle.asElement();
+  assert(element, `No encontré el cartelito ${numero}.`);
+  return element;
+}
+
+async function cancelContinuous(page) {
+  const cancel = await findButton(page, /^Cancelar escaneo continuo$/);
+  if (!cancel) return;
+  await cancel.click();
+  // Si había lista, pregunta si conservarla.
+  const empty = await until(() => findButton(page, /^Vaciar lista$/, { scope: '.modal' }), { timeout: 1500 }).catch(() => null);
+  if (empty) await empty.click();
+  await until(() => page.$eval('button.toggle-row-button[role="switch"]', b => b.getAttribute('aria-checked') === 'false'), { message: 'el escaneo continuo apagado' });
+}
+
+async function scanMessage(page) {
+  return text(page, '.continuous-scan-panel .t-msg-enter');
+}
+
+export async function functionalTests({ browser, base, api, apiConsulta, admin, consulta, releaseVersion, blockedTag, test, track = () => {} }) {
+  const devicesNow = await api.devices();
+  const available = devicesNow.filter(device => loanState(device.estado) === 'available' && device.etiqueta !== blockedTag).map(device => device.etiqueta);
+  const loaned = devicesNow.filter(device => loanState(device.estado) === 'loaned').map(device => device.etiqueta);
+  // Equipos libres repartidos por prueba, para que una no le cambie el estado a otra.
+  const [tagA, tagB, tagC, tagD, tagE, tagF, tagG] = available;
+  if (!loaned.length && available.length > 8) {
+    // Hace falta al menos uno prestado para las pruebas de devolver.
+    await api.post('/api/loans/lend', { etiqueta: available[8], person: 'E2E Prestado', role: 'DOE', location: 'DOE' });
+    loaned.push(available[8]);
+  }
+  const [loanedTag1, loanedTag2] = loaned;
+
+  // Cartelitos: GET los siembra (1 a 30) y uno queda entregado para probar "Devolver".
+  const passes = (await api.get('/api/photo-passes')).data.items || [];
+  let lentPass = passes.find(pass => /prest|entreg/i.test(pass.estado || ''))?.numero;
+  if (!lentPass && passes.length) {
+    const candidate = passes.find(pass => /disponible/i.test(pass.estado || '')) || passes[0];
+    await api.post(`/api/photo-passes/${candidate.numero}/lend`, { persona: 'E2E Alumno', curso: '5F', docente: 'E2E Docente' });
+    lentPass = candidate.numero;
+  }
+
+  const admin1 = await openContext(browser, { base, token: admin.token, releaseVersion });
+  const page = admin1.page;
+  track(page);
+
+  try {
+    // a) Préstamos ────────────────────────────────────────────────────────────
+    await test('a', 'Préstamos', 'Prestar uno por formulario', async () => {
+      assert(tagA, 'No hay equipos disponibles en la copia.');
+      await openLoans(page, base);
+      await typeInto(page, CODE_INPUT, tagA);
+      await until(() => findButton(page, /^Prestar$/, { scope: 'form.stack' }), { message: 'el botón Prestar' });
+      await fillLoanPerson(page);
+      await clickButton(page, /^Prestar$/, { scope: 'form.stack' });
+      const device = await until(async () => { const d = await api.device(tagA); return loanState(d?.estado) === 'loaned' && d; }, { message: `${tagA} prestado en la base` });
+      return `${tagA} → ${device.estado} a ${device.prestadoA}`;
+    });
+
+    await test('a', 'Préstamos', 'Devolver uno por formulario', async () => {
+      await openLoans(page, base);
+      await typeInto(page, CODE_INPUT, tagA);
+      await clickButton(page, /^Devolver$/, { scope: 'form.stack' });
+      const device = await until(async () => { const d = await api.device(tagA); return loanState(d?.estado) === 'available' && d; }, { message: `${tagA} devuelto en la base` });
+      return `${tagA} → ${device.estado}`;
+    });
+
+    await test('a', 'Préstamos', 'Escaneo continuo con Enter: duplicado, no disponible y lote', async () => {
+      assert(tagB && tagC && loanedTag1, 'Faltan equipos libres o prestados en la copia.');
+      await openLoans(page, base);
+      await page.$eval('button.toggle-row-button[role="switch"]', button => button.click());
+      await page.waitForSelector('.continuous-scan-panel');
+      const messages = [];
+      for (const tag of [tagB, tagC, tagB, loanedTag1]) {
+        await typeInto(page, CODE_INPUT, tag);
+        await page.keyboard.press('Enter');
+        await sleep(150);
+        messages.push(await scanMessage(page));
+      }
+      assert(/Agregado: /.test(messages[0]), `Primer escaneo: "${messages[0]}"`);
+      assert(/ya estaba en la lista/.test(messages[2]), `Duplicado no avisado: "${messages[2]}"`);
+      assert(/Agregado con error/.test(messages[3]), `No disponible no marcado: "${messages[3]}"`);
+      const rows = await page.$$eval('.continuous-scan-table tbody tr:not(:has(.empty-state))', list => list.length);
+      const errorRows = await page.$$eval('.continuous-scan-table tbody tr.row-error', list => list.length);
+      assert(rows === 3 && errorRows === 1, `Lista: ${rows} filas, ${errorRows} con error (esperaba 3 y 1).`);
+      assert(await findButton(page, /^Confirmar préstamo múltiple \(2\)$/), 'El botón no dice "Confirmar préstamo múltiple (2)".');
+      assert(await codeValue(page) === '', 'Enter no limpió el campo de código.');
+      await fillLoanPerson(page);
+      await clickButton(page, /^Confirmar préstamo múltiple \(2\)$/);
+      await until(async () => {
+        const [b, c] = await Promise.all([api.device(tagB), api.device(tagC)]);
+        return loanState(b?.estado) === 'loaned' && loanState(c?.estado) === 'loaned';
+      }, { message: `${tagB} y ${tagC} prestados en la base` });
+      const result = await until(async () => { const m = await scanMessage(page); return /Se prestaron/.test(m) && m; }, { message: 'el mensaje del lote' });
+      await cancelContinuous(page);
+      return `${messages.join(' | ')} → ${result}`;
+    });
+
+    for (const [modifier, label] of [['Control', 'Ctrl+Click'], ['Meta', 'Meta+Click (Cmd)'], ['Shift', 'Shift+Click']]) {
+      await test('a', 'Préstamos', `${label} en chip de equipo marca sin prestar`, async () => {
+        assert(tagD, 'No hay equipo libre para el chip.');
+        await openLoans(page, base);
+        await openAllDevicePanels(page);
+        await exitSelectMode(page, DEVICE_STACK);
+        const before = await codeValue(page);
+        await clickWithModifier(page, await deviceChip(page, tagD), modifier);
+        await sleep(200);
+        const state = await chipState(await deviceChip(page, tagD));
+        assert(await selectModeOn(page, DEVICE_STACK), 'No se prendió el modo selección.');
+        assert(state.selected, 'El chip no quedó marcado.');
+        const bar = await barText(page, DEVICE_STACK);
+        assert(/Prestar 1/.test(bar), `Barra: "${bar}"`);
+        assert(await codeValue(page) === before, 'Cargó la etiqueta en el formulario (no tenía que actuar).');
+        assert(loanState((await api.device(tagD))?.estado) === 'available', `${tagD} cambió de estado.`);
+        return `barra: "${bar}"`;
+      });
+    }
+
+    await test('a', 'Préstamos', 'Chips: barra con Prestar N y Devolver N, sin tocar la base', async () => {
+      const prestado = (await api.devices()).find(device => loanState(device.estado) === 'loaned')?.etiqueta;
+      assert(tagD && tagE && prestado, 'Faltan equipos libres o prestados.');
+      await openLoans(page, base);
+      await openAllDevicePanels(page);
+      await exitSelectMode(page, DEVICE_STACK);
+      await clickWithModifier(page, await deviceChip(page, tagD), 'Control');
+      await clickWithModifier(page, await deviceChip(page, tagE), 'Control');
+      await clickWithModifier(page, await deviceChip(page, prestado), 'Control');
+      await sleep(200);
+      const bar = await barText(page, DEVICE_STACK);
+      assert(/3 seleccionados/.test(bar) && /Prestar 2/.test(bar) && /Devolver 1/.test(bar), `Barra: "${bar}"`);
+      assert(loanState((await api.device(prestado))?.estado) === 'loaned', `${prestado} se devolvió solo con marcarlo.`);
+      // Prestar N manda el lote a la lista del escaneo continuo.
+      await clickButton(page, /^Prestar 2$/, { scope: DEVICE_STACK });
+      await until(() => page.$eval('button.toggle-row-button[role="switch"]', b => b.getAttribute('aria-checked') === 'true'), { message: 'escaneo continuo prendido por el lote' });
+      const tags = await page.$$eval('.continuous-scan-table tbody tr td:first-child', cells => cells.map(cell => cell.textContent.trim()));
+      assert(tags.includes(tagD) && tags.includes(tagE), `La lista del continuo tiene ${tags.join(', ')}.`);
+      const focused = await page.evaluate(() => document.activeElement?.closest('.loan-person-field') !== null);
+      await cancelContinuous(page);
+      return `"${bar}" → continuo con ${tags.join(', ')}${focused ? ' (foco en Persona)' : ' (sin foco en Persona)'}`;
+    });
+
+    await test('a', 'Préstamos', 'Chip bloqueado no responde (ni click ni Ctrl+Click)', async () => {
+      assert(blockedTag, 'No se pudo preparar un equipo bloqueado en la copia.');
+      await openLoans(page, base);
+      await openAllDevicePanels(page);
+      await exitSelectMode(page, DEVICE_STACK);
+      const chip = await deviceChip(page, blockedTag);
+      const state = await chipState(chip);
+      assert(state.disabled, 'El chip bloqueado no está deshabilitado.');
+      await clickWithModifier(page, chip, 'Control');
+      await clickWithModifier(page, chip, null);
+      await sleep(200);
+      assert(!(await selectModeOn(page, DEVICE_STACK)), 'Ctrl+Click sobre el bloqueado prendió el modo selección.');
+      assert(!(await chipState(await deviceChip(page, blockedTag))).selected, 'El chip bloqueado quedó marcado.');
+      assert(await codeValue(page) === '', 'El click cargó la etiqueta bloqueada en el formulario.');
+      return `${blockedTag} (Fuera de servicio) deshabilitado`;
+    });
+
+    await test('a', 'Préstamos', 'Click simple en chip prestado lo devuelve', async () => {
+      const prestado = loanState((await api.device(tagB))?.estado) === 'loaned' ? tagB
+        : (await api.devices()).find(device => loanState(device.estado) === 'loaned')?.etiqueta;
+      assert(prestado, 'No hay equipos prestados.');
+      await openLoans(page, base);
+      await openAllDevicePanels(page);
+      await exitSelectMode(page, DEVICE_STACK);
+      await (await deviceChip(page, prestado)).click();
+      await until(async () => loanState((await api.device(prestado))?.estado) === 'available', { message: `${prestado} devuelto en la base` });
+      return `${prestado} devuelto`;
+    });
+
+    await test('a', 'Préstamos', 'Cartelitos: Ctrl/Meta/Shift+Click marcan sin entregar ni devolver', async () => {
+      assert(lentPass, 'No hay cartelitos en la copia.');
+      await openLoans(page, base);
+      const toggle = await page.waitForSelector(`${PASS_STACK} .chip-panel-toggle`);
+      if (await toggle.evaluate(button => button.getAttribute('aria-expanded') === 'false')) await toggle.click();
+      await page.waitForSelector(`${PASS_STACK} .pass-chip:not(.pass-chip-skel)`);
+      await sleep(250);
+      const states = async () => Object.fromEntries(((await api.get('/api/photo-passes')).data.items || []).map(pass => [pass.numero, pass.estado]));
+      const before = await states();
+      const free = Object.entries(before).find(([numero, estado]) => /disponible/i.test(estado) && Number(numero) !== Number(lentPass))?.[0];
+      assert(free, 'No hay cartelitos libres.');
+      const details = [];
+      for (const modifier of ['Control', 'Meta', 'Shift']) {
+        await exitSelectMode(page, PASS_STACK);
+        await clickWithModifier(page, await passChip(page, free), modifier);
+        await sleep(150);
+        assert(await selectModeOn(page, PASS_STACK), `${modifier}: no se prendió el modo selección.`);
+        assert(!(await page.$('.modal')), `${modifier}: abrió el modal de entrega.`);
+        const bar = await barText(page, PASS_STACK);
+        assert(/Entregar 1/.test(bar), `${modifier}: barra "${bar}"`);
+        details.push(`${modifier} ok`);
+      }
+      await clickWithModifier(page, await passChip(page, lentPass), 'Control');
+      await sleep(150);
+      const bar = await barText(page, PASS_STACK);
+      assert(/Entregar 1/.test(bar) && /Devolver 1/.test(bar), `Barra con los dos: "${bar}"`);
+      const after = await states();
+      assert(JSON.stringify(before) === JSON.stringify(after), 'Marcar cartelitos cambió su estado en la base.');
+      await exitSelectMode(page, PASS_STACK);
+      return `${details.join(', ')}; barra "${bar}"`;
+    });
+
+    // b) Escáner global ───────────────────────────────────────────────────────
+    await test('b', 'Escáner global', 'Tipear rápido fuera de inputs lleva a Préstamos con la etiqueta', async () => {
+      const tag = tagF || tagA;
+      await gotoView(page, base, 'dashboard');
+      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      await page.evaluate(() => { (document.activeElement instanceof HTMLElement) && document.activeElement.blur(); });
+      await page.keyboard.type(tag, { delay: 15 });
+      await page.keyboard.press('Enter');
+      await until(async () => (await pathname(page)).endsWith(`/sede/${SITE.toLowerCase()}/loans`), { message: 'la URL de Préstamos' });
+      const value = await until(async () => { const v = await codeValue(page); return v && v; }, { message: 'la etiqueta en el formulario' });
+      assert(value.toUpperCase() === tag.toUpperCase(), `El formulario tiene "${value}" (esperaba ${tag}).`);
+      return `${tag} → /loans con "${value}"`;
+    });
+
+    await test('b', 'Escáner global', 'Tipear dentro de un campo o de un diálogo no navega', async () => {
+      await gotoView(page, base, 'devices');
+      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      const search = await page.waitForSelector('input.compact-search');
+      await search.click();
+      await page.keyboard.type('D1436', { delay: 15 });
+      await page.keyboard.press('Enter');
+      await sleep(500);
+      assert((await pathname(page)).endsWith('/devices'), `Tipear en el buscador navegó a ${await pathname(page)}.`);
+      await clickButton(page, /^Papelera$/);
+      await page.waitForSelector('.modal .modal-close');
+      await page.$eval('.modal .modal-close', button => button.focus());
+      await page.keyboard.type('1436', { delay: 15 });
+      await sleep(500);
+      assert((await pathname(page)).endsWith('/devices'), `Tipear con foco en un diálogo navegó a ${await pathname(page)}.`);
+      assert(await page.$('.modal'), 'El diálogo se cerró solo.');
+      await page.keyboard.press('Escape');
+      return 'buscador y diálogo: sin navegar';
+    });
+
+    // c) Búsqueda flexible ────────────────────────────────────────────────────
+    await test('c', 'Dispositivos', 'Búsqueda flexible (touch 34, touch34, 34touch, D1436, 1436, plani 5, planificación 5)', async () => {
+      await gotoView(page, base, 'devices');
+      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      const showAll = async () => {
+        const more = await findButton(page, /^Ver todos$/, { scope: '.device-table-more' });
+        if (more) { await more.click(); await sleep(150); }
+      };
+      await showAll();
+      const rows = await page.$$eval('tr[data-device-tag]', list => list.map(row => ({ tag: row.getAttribute('data-device-tag'), alias: (row.querySelector('.operational-alias')?.textContent || '').trim() })));
+      const pick = (rx, preferred) => {
+        const matches = rows.map(row => ({ ...row, m: row.alias.match(rx) })).filter(row => row.m);
+        return matches.find(row => Number(row.m[1]) === preferred) || matches[0];
+      };
+      const touch = pick(/^touch\s*(\d+)$/i, 34);
+      const plani = pick(/^plani\s*(\d+)$/i, 5);
+      const labelRow = rows.find(row => row.tag === 'D1436') || rows.find(row => /^D\d+$/.test(row.tag));
+      const queries = [];
+      if (touch) queries.push([`touch ${touch.m[1]}`, touch.tag], [`touch${touch.m[1]}`, touch.tag], [`${touch.m[1]}touch`, touch.tag]);
+      if (labelRow) queries.push([labelRow.tag, labelRow.tag], [labelRow.tag.replace(/^D0*/i, ''), labelRow.tag]);
+      if (plani) queries.push([`plani ${plani.m[1]}`, plani.tag], [`planificación ${plani.m[1]}`, plani.tag]);
+      const missing = [];
+      const results = [];
+      for (const [query, expected] of queries) {
+        await typeInto(page, 'input.compact-search', query);
+        await sleep(250);
+        await showAll();
+        const visible = await page.$$eval('tr[data-device-tag]', list => list.map(row => row.getAttribute('data-device-tag')));
+        results.push(`"${query}"→${visible.length}`);
+        if (!visible.includes(expected)) missing.push(`"${query}" no encontró ${expected}`);
+      }
+      await typeInto(page, 'input.compact-search', '');
+      assert(queries.length, 'No hay equipos con alias Touch/Plani ni etiquetas en la copia.');
+      assert(!missing.length, missing.join('; '));
+      const skipped = [!touch && 'sin Touch', !plani && 'sin Plani'].filter(Boolean);
+      return `${results.join(', ')}${skipped.length ? ` (${skipped.join(', ')} en la copia)` : ''}`;
+    });
+
+    // d) Borrar → Deshacer → papelera → restaurar ─────────────────────────────
+    await test('d', 'Dispositivos', 'Borrar → Deshacer; borrar → papelera → restaurar', async () => {
+      const tag = tagG;
+      assert(tag, 'No hay equipo libre para borrar.');
+      const deleteRow = async () => {
+        await typeInto(page, 'input.compact-search', tag);
+        const row = await page.waitForSelector(`tr[data-device-tag="${tag}"]`, { timeout: 15000 });
+        await (await row.$('.device-delete-btn')).click();
+        await clickButton(page, /^Borrar$/, { scope: '.modal' });
+        await until(async () => !(await api.device(tag)), { message: `${tag} oculto en la base` });
+      };
+      await gotoView(page, base, 'devices');
+      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      await deleteRow();
+      const toastText = await until(() => text(page, '.app-toast'), { message: 'el aviso con Deshacer' });
+      assert(toastText.includes(tag), `Aviso: "${toastText}"`);
+      await page.$eval('.app-toast-action', button => button.click());
+      await until(async () => Boolean(await api.device(tag)), { message: `${tag} restaurado por Deshacer` });
+      await deleteRow();
+      await clickButton(page, /^Papelera$/);
+      const item = await until(() => page.evaluateHandle(etiqueta => [...document.querySelectorAll('.device-trash-list li')].find(li => li.textContent.includes(etiqueta)) || null, tag).then(h => h.asElement()), { message: `${tag} en la papelera` });
+      await (await item.$('button')).click();
+      await until(async () => Boolean(await api.device(tag)), { message: `${tag} restaurado desde la papelera` });
+      await until(async () => !(await page.evaluate(etiqueta => [...document.querySelectorAll('.device-trash-list li')].some(li => li.textContent.includes(etiqueta)), tag)), { message: 'que salga de la lista de la papelera' });
+      await page.keyboard.press('Escape');
+      return `${tag}: Deshacer y Restaurar OK`;
+    });
+
+    // e) Tareas y tickets ─────────────────────────────────────────────────────
+    await test('e', 'Tareas', 'Mover una tarea de columna (drag & drop)', async () => {
+      await gotoView(page, base, 'tasks');
+      await page.waitForSelector('.infinite-task-column', { timeout: 20000 });
+      let card = await page.$('.infinite-task-column .task-card[data-task-id]');
+      if (!card) {
+        await api.post('/api/tasks', { titulo: 'Tarea E2E', responsable: 'Bauti', prioridad: 'Media', estado: 'Pendiente' });
+        await gotoView(page, base, 'tasks');
+        card = await page.waitForSelector('.infinite-task-column .task-card[data-task-id]', { timeout: 15000 });
+      }
+      const move = await page.evaluate(() => {
+        const cardEl = document.querySelector('.infinite-task-column .task-card[data-task-id]');
+        const columns = [...document.querySelectorAll('.infinite-task-column')];
+        const from = columns.findIndex(column => column.contains(cardEl));
+        const to = from === 0 ? 1 : 0;
+        const target = columns[to];
+        const dataTransfer = new DataTransfer();
+        const fire = (el, type) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer }));
+        fire(cardEl, 'dragstart');
+        fire(target, 'dragenter');
+        fire(target, 'dragover');
+        fire(target, 'drop');
+        fire(cardEl, 'dragend');
+        return { id: cardEl.getAttribute('data-task-id'), from: columns[from].querySelector('.infinite-column-head strong')?.textContent, to: target.querySelector('.infinite-column-head strong')?.textContent };
+      });
+      const task = await until(async () => {
+        const items = (await api.get('/api/tasks?space=all')).data.items || [];
+        const found = items.find(item => item.id === move.id);
+        return found && found.estado === move.to && found;
+      }, { message: `la tarea en "${move.to}" en la base` });
+      return `"${task.titulo}": ${move.from} → ${move.to}`;
+    });
+
+    await test('e', 'Tickets', 'Cambiar el estado de un ticket', async () => {
+      let tickets = (await api.get('/api/tickets')).data.items || [];
+      let created = false;
+      if (!tickets.length) {
+        const response = await api.post('/api/tickets', { numero: '99001', titulo: 'Ticket E2E', descripcion: 'Creado por e2e/run.mjs en la copia', origen: 'tik', estado: 'No hecho', prioridad: 'Media' });
+        assert(response.data.ok, `No se pudo crear el ticket: ${JSON.stringify(response.data)}`);
+        tickets = (await api.get('/api/tickets')).data.items || [];
+        created = true;
+      }
+      const ticket = tickets.find(item => item.estado !== 'En proceso') || tickets[0];
+      const target = ticket.estado === 'En proceso' ? 'Hecho' : 'En proceso';
+      await gotoView(page, base, 'tickets');
+      await selectOption(page, `Estado del ticket ${ticket.numero}`, exact(target));
+      await until(async () => ((await api.get('/api/tickets')).data.items || []).find(item => item.id === ticket.id)?.estado === target, { message: `ticket en "${target}" en la base` });
+      return `#${ticket.numero}: ${ticket.estado} → ${target}${created ? ' (creado en la copia)' : ''}`;
+    });
+
+    // f) Agenda ───────────────────────────────────────────────────────────────
+    await test('f', 'Agenda', 'Alta con conflicto de capacidad muestra el aviso', async () => {
+      // Algo ya reservado en ese horario: con eso, 25 Touch más supera el máximo.
+      await api.post('/api/agenda', { dia: 'Lunes', turno: 'Mañana', desde: '09:05', hasta: '09:55', curso: 'E2E base', actividad: 'E2E', tipoDispositivo: 'Touch', cantidad: 5, estado: 'Pendiente' });
+      await gotoView(page, base, 'agenda');
+      await page.waitForSelector('button.t-goo-main', { timeout: 20000 });
+      await page.$eval('button.t-goo-main', button => button.click());
+      await page.waitForSelector('button.t-goo-item[aria-label="Nueva actividad"]');
+      await sleep(200);
+      await page.$eval('button.t-goo-item[aria-label="Nueva actividad"]', button => button.click());
+      await page.waitForSelector('.modal form');
+      const field = async label => (await page.evaluateHandle(name => [...document.querySelectorAll('.modal label')].find(node => node.textContent.trim().startsWith(name))?.querySelector('input') || null, label)).asElement();
+      await typeInto(page, await field('Curso'), 'E2E conflicto');
+      await typeInto(page, await field('Cantidad'), '25');
+      await clickButton(page, /^Guardar$/, { scope: '.modal' });
+      const error = await until(() => text(page, '.modal .form-error'), { message: 'el aviso de conflicto' });
+      assert(/conflicto/i.test(error), `Aviso: "${error}"`);
+      const created = ((await api.get('/api/agenda?all=1')).data.items || []).some(item => item.curso === 'E2E conflicto');
+      assert(!created, 'La actividad en conflicto se guardó igual.');
+      await page.keyboard.press('Escape');
+      return error;
+    });
+  } finally {
+    await admin1.context.close();
+  }
+
+  // g) Modo consulta ──────────────────────────────────────────────────────────
+  const WRITE = /^(\+\s*)?(Prestar|Devolver|Borrar|Eliminar|Editar|Guardar|Añadir|Agregar(?! a lista)|Importar|Confirmar|Generar|Enviar|Restaurar|Nueva|Nuevo|Crear|Entregar|Revisar devolución|Seleccionar varios|Varios)\b/i;
+  const writeControls = page => page.evaluate((source, flags) => {
+    const rx = new RegExp(source, flags);
+    const main = document.querySelector('main') || document.body;
+    const out = [];
+    for (const button of main.querySelectorAll('button')) {
+      const label = (button.textContent || button.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+      if (!rx.test(label) || button.disabled) continue;
+      const rect = button.getBoundingClientRect();
+      if (!rect.width || !rect.height) continue;
+      out.push(label);
+    }
+    const chips = [...main.querySelectorAll('.pass-chip')].filter(chip => !chip.disabled).length;
+    const checkboxes = [...main.querySelectorAll('input[type="checkbox"]')].filter(box => !box.disabled).length;
+    return { buttons: out, chips, checkboxes };
+  }, WRITE.source, WRITE.flags);
+
+  const reader = await openContext(browser, { base, token: consulta.token, releaseVersion });
+  track(reader.page);
+  try {
+    for (const [view, ready, label] of [['dashboard', 'tr[data-device-tag]', 'Inicio'], ['loans', '.chip-stack-head', 'Préstamos'], ['devices', 'tr[data-device-tag]', 'Dispositivos']]) {
+      await test('g', 'Modo consulta', `${label}: ninguna acción de escritura habilitada`, async () => {
+        await gotoView(reader.page, base, view);
+        await reader.page.waitForSelector(ready, { timeout: 20000 });
+        if (view === 'loans') {
+          await openAllDevicePanels(reader.page);
+          const passToggle = await reader.page.$(`${PASS_STACK} .chip-panel-toggle[aria-expanded="false"]`);
+          if (passToggle) { await passToggle.click(); await reader.page.waitForSelector(`${PASS_STACK} .pass-chip:not(.pass-chip-skel)`).catch(() => {}); }
+          // Un equipo libre identificado: el botón Prestar tiene que estar deshabilitado.
+          const free = (await apiConsulta.devices()).find(device => loanState(device.estado) === 'available')?.etiqueta;
+          if (free) { await typeInto(reader.page, CODE_INPUT, free); await sleep(300); }
+        }
+        await sleep(300);
+        const found = await writeControls(reader.page);
+        const banner = await reader.page.$('.consulta-banner');
+        const problems = [
+          found.buttons.length && `botones habilitados: ${found.buttons.join(', ')}`,
+          found.chips && `${found.chips} chips habilitados`,
+          found.checkboxes && `${found.checkboxes} casillas de selección habilitadas`
+        ].filter(Boolean);
+        assert(!problems.length, problems.join('; '));
+        return `sin escrituras habilitadas${banner ? ' · cartel "Modo consulta" visible' : ''}`;
+      });
+    }
+    await test('g', 'Modo consulta', 'El server rechaza escrituras del rol consulta', async () => {
+      const free = (await apiConsulta.devices()).find(device => loanState(device.estado) === 'available')?.etiqueta;
+      const response = await apiConsulta.post('/api/loans/lend', { etiqueta: free, person: 'E2E', role: 'DOE', location: 'DOE' });
+      assert(response.status === 403, `POST /api/loans/lend respondió ${response.status}.`);
+      return '403 en /api/loans/lend';
+    });
+  } finally {
+    await reader.context.close();
+  }
+
+  // h) Navegación ─────────────────────────────────────────────────────────────
+  const nav = await openContext(browser, { base, token: admin.token, releaseVersion });
+  track(nav.page);
+  try {
+    const views = await (async () => {
+      await gotoView(nav.page, base, 'dashboard');
+      await nav.page.waitForSelector('.sidebar .nav-btn, .sidebar-rail .nav-item', { timeout: 20000 });
+      const labels = await nav.page.$$eval('.sidebar .nav-btn, .sidebar-rail .nav-item', buttons => buttons.map(button => button.getAttribute('aria-label')));
+      return labels.map(label => [NAV_LABELS[label], label]).filter(([key]) => key);
+    })();
+    await test('h', 'Navegación', `/sede/${SITE}/<vista> abre la vista correcta (${views.length} vistas)`, async () => {
+      const wrong = [];
+      for (const [view, label] of views) {
+        await gotoView(nav.page, base, view);
+        try {
+          await until(async () => {
+            const active = await nav.page.$eval('.sidebar .nav-btn.active, .sidebar-rail .nav-item.active', button => button.getAttribute('aria-label')).catch(() => '');
+            return active === label && (await pathname(nav.page)) === `/sede/${SITE.toLowerCase()}/${view}`;
+          }, { timeout: 6000 });
+        } catch {
+          const active = await nav.page.$eval('.sidebar .nav-btn.active, .sidebar-rail .nav-item.active', button => button.getAttribute('aria-label')).catch(() => '(ninguna)');
+          wrong.push(`${view}: activa "${active}", URL ${await pathname(nav.page)}`);
+        }
+      }
+      assert(!wrong.length, wrong.join('; '));
+      return views.map(([view]) => view).join(', ');
+    });
+
+    await test('h', 'Navegación', 'Una respuesta 401 vuelve al login', async () => {
+      await gotoView(nav.page, base, 'dashboard');
+      await nav.page.waitForSelector('.sidebar .nav-btn[aria-label="Historial"], .sidebar-rail .nav-item[aria-label="Historial"]', { timeout: 20000 });
+      // Sesión inválida a partir de ahora (como si la hubieran cerrado en otro lado).
+      const bogus = { name: 'techasset_session', value: 'sesion-invalida-e2e', domain: '127.0.0.1', path: '/', httpOnly: true, sameSite: 'Lax' };
+      if (typeof nav.context.setCookie === 'function') await nav.context.setCookie(bogus);
+      else await nav.page.setCookie(bogus);
+      await nav.page.$eval('.sidebar .nav-btn[aria-label="Historial"], .sidebar-rail .nav-item[aria-label="Historial"]', button => button.click());
+      const where = await until(async () => { const p = await pathname(nav.page); return p.startsWith('/login') && p; }, { timeout: 10000, message: 'la pantalla de login' });
+      return where;
+    });
+  } finally {
+    await nav.context.close();
+  }
+}
