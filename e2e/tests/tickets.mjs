@@ -56,11 +56,17 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       await page.setViewport({ width: 390, height: 844 });
       await gotoView(page, base, `tickets/${seed[0].id}`);
       await page.waitForSelector('.tkx-detail');
-      const narrow = await page.evaluate(() => ({ list: getComputedStyle(document.querySelector('.tkx-list')).display, back: Boolean([...document.querySelectorAll('.tkx-pane button')].find(b => /Volver a la lista/.test(b.textContent))) }));
-      assert(narrow.list === 'none' && narrow.back, `En angosto: lista ${narrow.list}, volver ${narrow.back}`);
-      await visibleClick(page, '.tkx-pane button', /Volver a la lista/);
-      await until(async () => (await pathname(page)).endsWith('/tickets'), { message: 'Volver lleva a la lista' });
-      await page.setViewport({ width: 1366, height: 900 });
+      // El modo angosto se decide al medir el ancho: se espera a que se aplique.
+      const readNarrow = () => page.evaluate(() => ({ list: getComputedStyle(document.querySelector('.tkx-list')).display, back: Boolean([...document.querySelectorAll('.tkx-pane button')].find(b => /Volver a la lista/.test(b.textContent))) }));
+      try {
+        const narrow = await until(async () => { const value = await readNarrow(); return value.list === 'none' && value.back && value; }, { timeout: 5000, message: 'la vista angosta' }).catch(async () => readNarrow());
+        assert(narrow.list === 'none' && narrow.back, `En angosto: lista ${narrow.list}, volver ${narrow.back}`);
+        await visibleClick(page, '.tkx-pane button', /Volver a la lista/);
+        await until(async () => (await pathname(page)).endsWith('/tickets'), { message: 'Volver lleva a la lista' });
+      } finally {
+        // Aunque falle, las pruebas siguientes no quedan en 390 px.
+        await page.setViewport({ width: 1366, height: 900 });
+      }
       return `#${seed[0].numero}: ficha en /tickets/${seed[0].id}, Atrás y Volver OK`;
     });
 

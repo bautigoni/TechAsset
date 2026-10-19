@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Bot, CornerDownLeft, ExternalLink, Search, X } from 'lucide-react';
 import type { Device, QuickLink, ViewKey } from '../../types';
 import { matchesSmartSearch, resolveDeviceMatches } from '../../utils/normalizeSearch';
@@ -65,7 +65,9 @@ export function CommandPalette({ open, devices, navItems, links, consultationMod
   const hasLoans = navItems.some(item => item.key === 'loans');
 
   // Cada vez que se abre (también si se reabre mientras se cerraba): vacía y con el foco en el campo.
-  useEffect(() => {
+  // En layout effect: si se reabre mientras se cierra, lo que se tipea enseguida no cae sobre la
+  // búsqueda anterior (con useEffect el foco y el vaciado podían llegar después de las teclas).
+  useLayoutEffect(() => {
     if (!open) return;
     setQuery('');
     inputRef.current?.focus({ preventScroll: true });

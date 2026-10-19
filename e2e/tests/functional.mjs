@@ -852,7 +852,9 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       await nav.page.waitForSelector(NAV_ITEM, { timeout: 20000 });
       const openPalette = async () => {
         await nav.page.keyboard.down('Control'); await nav.page.keyboard.press('KeyK'); await nav.page.keyboard.up('Control');
-        await nav.page.waitForSelector('.shell-palette .shell-pal-input');
+        // La paleta queda montada (cerrada) después de la primera vez: se espera a que
+        // esté abierta y con el foco en su campo, si no lo tipeado cae en otro lado.
+        await until(() => nav.page.evaluate(() => Boolean(document.activeElement?.matches('.shell-palette .shell-pal-input'))), { message: 'la paleta abierta con el foco' });
       };
       await openPalette();
       await nav.page.keyboard.type(`prestar ${free}`, { delay: 10 });
