@@ -432,10 +432,22 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
         assert(!(await page.$('#mov-lista')), 'La lista no se plegó.');
         assert(drift <= 2, `El encabezado se movió ${drift.toFixed(1)} px al plegar (antes ${before}, después ${closed}).`);
         await page.click('[data-dash="movimientos"] .dash-disclose');
+        // Mientras se despliega el encabezado no se mueve; al terminar, si la
+        // lista no entra, se la trae a la vista (Collapse de src/ui) sin sacar
+        // el encabezado de la pantalla.
+        const openSamples = [];
+        for (let i = 0; i < 5; i += 1) { await sleep(40); openSamples.push(await topOf(head)); }
         await sleep(450);
-        const reopened = await topOf(head);
+        const reopenDrift = Math.max(...openSamples.map(value => Math.abs(value - before)));
         assert(await page.$('#mov-lista'), 'La lista no se desplegó.');
-        assert(Math.abs(reopened - before) <= 2, `El encabezado se movió ${Math.abs(reopened - before).toFixed(1)} px al desplegar.`);
+        assert(reopenDrift <= 2, `El encabezado se movió ${reopenDrift.toFixed(1)} px mientras se desplegaba.`);
+        const headInView = await page.evaluate(sel => {
+          const box = document.querySelector('.shell-scroll').getBoundingClientRect();
+          const rect = document.querySelector(sel).getBoundingClientRect();
+          return rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1;
+        }, head);
+        assert(headInView, 'Al desplegar, el encabezado quedó fuera de la pantalla.');
+        const reopened = before + reopenDrift;
 
         // Fichas: abrir la 1, después la 4 (se cierra la 1 arriba): la 4 queda quieta.
         await page.evaluate(() => { const box = document.querySelector('.shell-scroll'); const list = document.querySelector('[data-dash="afuera"]'); box.scrollTop += list.getBoundingClientRect().top - 80; });
@@ -452,10 +464,18 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
         await sleep(150);
         const row4Before = await topOf(row4);
         await page.click(`${row4} .dash-row-hit`);
+        // Mientras se cierra la de arriba y se abre la tocada (250 ms), la fila no se
+        // mueve; después, si su ficha no entra, se la trae a la vista sin sacarla.
         const rowSamples = [];
-        for (let i = 0; i < 8; i += 1) { await sleep(40); rowSamples.push(await topOf(row4)); }
+        for (let i = 0; i < 5; i += 1) { await sleep(40); rowSamples.push(await topOf(row4)); }
         await sleep(300);
-        const rowDrift = Math.max(...[...rowSamples, await topOf(row4)].map(value => Math.abs(value - row4Before)));
+        const rowDrift = Math.max(...rowSamples.map(value => Math.abs(value - row4Before)));
+        const rowInView = await page.evaluate(sel => {
+          const box = document.querySelector('.shell-scroll').getBoundingClientRect();
+          const rect = document.querySelector(sel).getBoundingClientRect();
+          return rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1;
+        }, row4);
+        assert(rowInView, 'La fila tocada quedó fuera de la pantalla al abrir su ficha.');
         const open = await page.evaluate(() => [...document.querySelectorAll('[data-dash="afuera"] .dash-ficha')].length);
         assert(open === 1, `Quedaron ${open} fichas abiertas.`);
         assert(rowDrift <= 2, `La fila tocada se movió ${rowDrift.toFixed(1)} px mientras se cerraba la de arriba.`);

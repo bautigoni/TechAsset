@@ -33,6 +33,7 @@ import { settingsTests } from './tests/settings.mjs';
 import { shellTests } from './tests/shell.mjs';
 import { inicioTests } from './tests/inicio.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
+import { operacionTests } from './tests/operacion.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 import { uxTests } from './tests/ux.mjs';
 
@@ -132,6 +133,8 @@ try {
   await settingsTests(ctx);
   await shellTests(ctx);
   await analyticsTests(ctx);
+  console.log('\nOperación: plegables, huecos, truncados y acciones (op)');
+  await operacionTests(ctx);
   timings.functional = Date.now() - t;
 
   if (!flag('no-baseline')) {

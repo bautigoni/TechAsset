@@ -75,6 +75,9 @@ export async function findButton(page, pattern, { scope = 'body', includeDisable
         const text = (button.textContent || '').replace(/\s+/g, ' ').trim();
         if (!rx.test(text)) continue;
         if (!withDisabled && button.disabled) continue;
+        // Dentro de un plegable que se está abriendo o cerrando (o cerrado) no se
+        // puede tocar todavía: se espera a que termine (como haría una persona).
+        if (button.closest('.ui-collapse:not([data-state="open"])')) continue;
         const rect = button.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) continue;
         return button;
@@ -174,6 +177,8 @@ export async function readOptions(page, ariaLabel) {
 /** Reemplaza el contenido de un input tipeando de verdad (eventos de teclado reales). */
 export async function typeInto(page, selectorOrHandle, text, { delay = 0 } = {}) {
   const input = typeof selectorOrHandle === 'string' ? await page.waitForSelector(selectorOrHandle) : selectorOrHandle;
+  // Si el campo está en un plegable que todavía se abre, se espera a que termine.
+  await until(() => input.evaluate(element => !element.closest('.ui-collapse:not([data-state="open"])')), { timeout: 2000, message: 'que el campo termine de desplegarse' }).catch(() => {});
   await input.click();
   await page.keyboard.down('Control');
   await page.keyboard.press('KeyA');
