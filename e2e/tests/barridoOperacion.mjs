@@ -497,12 +497,16 @@ export async function barridoOperacionTests({ browser, base, api, admin, release
         await ctx.page.waitForSelector('.ag-page', { timeout: 20000 });
         await clickSel(ctx.page, 'button[aria-label^="Notificaciones"]');
         await ctx.page.waitForSelector('.shell-notif-title', { timeout: 8000 });
+        // La franja se despliega con alto suave: se toca cuando terminó (si no, el click cae en otro lado).
+        await ctx.page.waitForFunction(() => { const el = document.querySelector('.shell-notif-title'); return el && !el.closest('.ui-collapse:not([data-state="open"])'); }, { timeout: 8000 });
         await ctx.page.click('.shell-notif-title');
         await until(async () => (await pathname(ctx.page)).endsWith(`/tickets/${ticket.id}`), { message: `la URL /tickets/${ticket.id}` });
         await until(() => ctx.page.evaluate(title => (document.querySelector('.tkx-pane')?.textContent || '').includes(title), ticket.titulo || ''), { message: 'el detalle del ticket en el panel' });
         // Ya en Tickets: otra notificación al mismo ticket no rompe (relee la ruta).
         await clickSel(ctx.page, 'button[aria-label^="Notificaciones"]');
         await ctx.page.waitForSelector('.shell-notif-title', { timeout: 8000 });
+        // La franja se despliega con alto suave: se toca cuando terminó (si no, el click cae en otro lado).
+        await ctx.page.waitForFunction(() => { const el = document.querySelector('.shell-notif-title'); return el && !el.closest('.ui-collapse:not([data-state="open"])'); }, { timeout: 8000 });
         await ctx.page.click('.shell-notif-title');
         await sleep(400);
         assert((await pathname(ctx.page)).endsWith(`/tickets/${ticket.id}`), 'perdió el ticket al reabrir la notificación');
