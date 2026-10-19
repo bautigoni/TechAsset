@@ -149,10 +149,8 @@
 .cfg-h2 { margin-top: var(--g-s-1); font-size: var(--g-fs-lg); line-height: 1.75rem; font-weight: var(--g-fw-semibold); }
 .cfg-pd { margin-top: var(--g-s-1); color: var(--g-text-2); font-size: var(--g-fs-sm); line-height: 1.25rem; }
 .cfg-leave { margin: 0; }
-/* El aviso de cambios sin guardar es el primer hijo del panel: cerrado, cancela el `gap` de abajo (no deja un hueco arriba). */
-.cfg-leave-c { margin-bottom: calc(var(--g-s-4) * -1); }
-.cfg-leave-c:is([data-state="open"], [data-state="opening"]) { margin-bottom: 0; }
-@media (prefers-reduced-motion: no-preference) { .cfg-leave-c { transition: grid-template-rows var(--ui-collapse-dur) var(--g-ease), margin-bottom var(--ui-collapse-dur) var(--g-ease); } }
+/* El aviso de cambios sin guardar es el primer hijo del panel (flex con gap): cerrado no deja un hueco (mecanismo único del colapso). */
+.cfg-leave-c { --ui-collapse-gap: var(--g-s-4); }
 
 /* Lista de secciones (angosto) */
 .cfg-list-g { display: flex; flex-direction: column; gap: var(--g-s-2); min-width: 0; }
