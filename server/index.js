@@ -7,6 +7,7 @@ import { config } from './config.js';
 import { getDb } from './db.js';
 import { devicesRouter } from './routes/devices.routes.js';
 import { loansRouter } from './routes/loans.routes.js';
+import { loansUndoRouter } from './routes/loansUndo.routes.js';
 import { agendaRouter } from './routes/agenda.routes.js';
 import { tasksRouter } from './routes/tasks.routes.js';
 import { analyticsRouter } from './routes/analytics.routes.js';
@@ -144,6 +145,7 @@ app.use('/api', (req, res, next) => {
 app.use('/api', requireModuleEditor);
 app.use('/api', devicesRouter);
 app.use('/api', loansRouter);
+app.use('/api', loansUndoRouter);
 app.use('/api', inventoryRouter);
 app.use('/api', photoPassesRouter);
 app.use('/api', ticketsRouter);

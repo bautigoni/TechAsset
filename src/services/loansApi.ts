@@ -51,3 +51,11 @@ export function lendDevicesBatch(payload: Record<string, unknown> & { etiquetas:
 export function returnDevicesBatch(etiquetas: string[], payload: Record<string, unknown> = {}) {
   return apiSend<LoanBatchResponse>('/api/loans/return-batch', 'POST', { ...payload, etiquetas });
 }
+
+/**
+ * Deshacer inmediato (línea de estado "Deshacer"): 'return' vuelve a prestar
+ * con los datos del préstamo original; 'lend' deja libre lo recién prestado.
+ */
+export function undoLoans(etiquetas: string[], action: 'return' | 'lend') {
+  return apiSend<LoanBatchResponse>('/api/loans/undo', 'POST', { etiquetas, action });
+}

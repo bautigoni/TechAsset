@@ -18,7 +18,7 @@ if (!url || /supabase|pooler|amazonaws/i.test(url)) {
   process.exit(2);
 }
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const PORT = 8061;
+const PORT = Number(process.env.PG_SMOKE_PORT || 8061);
 const base = `http://127.0.0.1:${PORT}`;
 const results = [];
 let serverLog = '';
@@ -84,6 +84,14 @@ try {
   check('prestar en lote', lendBatch.json?.done === 2, lendBatch.text.slice(0, 200));
   const returnBatch = await call('POST', '/api/loans/return-batch', { etiquetas: ['D9001', 'D9002', 'D9003'] });
   check('devolver en lote', returnBatch.json?.done === 3, returnBatch.text.slice(0, 200));
+  // Deshacer (línea de estado de Préstamos): devolución → vuelve prestado a la misma persona; préstamo → libre.
+  const undoReturn = await call('POST', '/api/loans/undo', { etiqueta: 'D9001', action: 'return' });
+  const afterUndo = (await call('GET', '/api/devices')).json.items.find(item => item.etiqueta === 'D9001');
+  check('deshacer devolución (re-presta con los mismos datos)', undoReturn.json?.done === 1 && /prest/i.test(afterUndo?.estado || '') && afterUndo?.prestadoA === 'Ana', undoReturn.text.slice(0, 200));
+  const undoLend = await call('POST', '/api/loans/undo', { etiquetas: ['D9001'], action: 'lend' });
+  check('deshacer préstamo (queda libre)', undoLend.json?.done === 1 && !/prest/i.test(await estado('D9001') || ''), undoLend.text.slice(0, 200));
+  const undoAgain = await call('POST', '/api/loans/undo', { etiqueta: 'D9001', action: 'lend' });
+  check('deshacer dos veces no hace nada', undoAgain.json?.done === 0, undoAgain.text.slice(0, 200));
   check('fuera de servicio no se presta', (await (async () => {
     await call('POST', '/api/devices/status', { etiqueta: 'D9004', estado: 'Fuera de servicio' });
     return (await call('POST', '/api/loans/lend', { etiqueta: 'D9004', person: 'X', role: 'Alumno', location: 'DOE' })).status;
