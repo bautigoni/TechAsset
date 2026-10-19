@@ -7,6 +7,7 @@ import type { TaskColumn, TaskItem, TaskState } from '../../types';
 import { TaskCard } from './TaskCard';
 import { useDragScroll } from '../../hooks/useDragScroll';
 import { AnimatedNumber } from '../layout/AnimatedNumber';
+import { toastError } from '../layout/Feedback';
 
 /**
  * Fantasma del tablero mientras cargan las columnas.
@@ -70,7 +71,11 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, animKey 
       const from = ids.indexOf(sourceId);
       const to = ids.indexOf(column.id);
       ids.splice(to, 0, ids.splice(from, 1)[0]);
-      await onReorderColumns(ids);
+      try {
+        await onReorderColumns(ids);
+      } catch (reason) {
+        toastError(reason, 'No se pudo reordenar las columnas.');
+      }
       return;
     }
     const taskId = raw.replace(/^task:/, '');
@@ -98,7 +103,7 @@ export function TaskBoard({ tasks, columns, operator, consultationMode, animKey 
         const group = tasks.filter(task => task.columnId === column.id || (!task.columnId && task.estado === column.name));
         return <section className={`infinite-task-column ${dragOver === column.id ? 'drag-over' : ''}`} key={column.id} onDragOver={event => { event.preventDefault(); setDragOver(column.id); }} onDragLeave={() => setDragOver(value => value === column.id ? null : value)} onDrop={event => void drop(event, column)}>
           <header className="infinite-column-head" draggable={!consultationMode && editingColumn !== column.id} onDragStart={event => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', `column:${column.id}`); }} style={{ '--column-color': column.color } as React.CSSProperties}>
-            {editingColumn === column.id ? <form onSubmit={event => { event.preventDefault(); void onRenameColumn(column, columnName).then(() => setEditingColumn(null)); }}><input autoFocus className="input" value={columnName} onChange={event => setColumnName(event.target.value)} /><button type="submit">✓</button></form> : <><div><span className="column-grip" aria-hidden="true">⠿</span><strong>{column.name}</strong><span className="badge subtle"><AnimatedNumber value={group.length} /></span></div><div className="column-actions"><button disabled={consultationMode} title="Renombrar" onClick={() => { setEditingColumn(column.id); setColumnName(column.name); }}>✎</button><button disabled={consultationMode || columns.length === 1} title="Eliminar" onClick={() => void onDeleteColumn(column)}>×</button></div></>}
+            {editingColumn === column.id ? <form onSubmit={event => { event.preventDefault(); void onRenameColumn(column, columnName).then(() => setEditingColumn(null), reason => toastError(reason, 'No se pudo renombrar la columna.')); }}><input autoFocus className="input" value={columnName} onChange={event => setColumnName(event.target.value)} /><button type="submit">✓</button></form> : <><div><span className="column-grip" aria-hidden="true">⠿</span><strong>{column.name}</strong><span className="badge subtle"><AnimatedNumber value={group.length} /></span></div><div className="column-actions"><button disabled={consultationMode} title="Renombrar" onClick={() => { setEditingColumn(column.id); setColumnName(column.name); }}>✎</button><button disabled={consultationMode || columns.length === 1} title="Eliminar" onClick={() => void onDeleteColumn(column).catch(reason => toastError(reason, 'No se pudo eliminar la columna.'))}>×</button></div></>}
           </header>
           {/* `key={animKey}` remonta la pila al cambiar de espacio o de solapa:
               si React reusara las tarjetas que están en los dos conjuntos, esas

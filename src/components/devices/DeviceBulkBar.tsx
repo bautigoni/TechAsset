@@ -93,9 +93,19 @@ export function DeviceBulkBar({ selectedDevices, operator, onClear, onLoanBatch,
       action: {
         label: 'Deshacer',
         onClick: async () => {
-          for (const etiqueta of removed) await restoreDevice(etiqueta).catch(() => undefined);
+          // Antes los errores se tragaban y avisaba "restaurados" igual.
+          const failed: string[] = [];
+          for (const etiqueta of removed) {
+            try {
+              await restoreDevice(etiqueta);
+            } catch (reason) {
+              failed.push(`${etiqueta}: ${errorMessage(reason, 'no se pudo restaurar')}`);
+            }
+          }
           await onChanged();
-          toast({ message: `${removed.length} equipos restaurados.`, tone: 'ok' });
+          toast(failed.length
+            ? { message: `Se restauraron ${removed.length - failed.length} de ${removed.length}. ${failed.join('; ')}`, tone: 'error' }
+            : { message: `${removed.length} equipos restaurados.`, tone: 'ok' });
         }
       }
     });

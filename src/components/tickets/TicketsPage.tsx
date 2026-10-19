@@ -17,6 +17,7 @@ import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
 import { clickableProps } from '../../utils/a11y';
 import { SelectionBar, useSelection } from '../layout/Selection';
 import { SelectField } from '../layout/SelectField';
+import { ListTextInput } from '../layout/ListTextInput';
 
 const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
 const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
@@ -441,7 +442,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               <SelectField ariaLabel="Estado" value={draft.estado || 'No hecho'} onChange={value => setDraft(d => ({ ...d, estado: value as TicketState }))} options={ESTADOS.map(value => ({ value, label: value }))} />
             </label>
           </div>
-          <div className="grid-2"><label>Prioridad<SelectField ariaLabel="Prioridad" value={draft.prioridad || 'Media'} onChange={value => setDraft(d => ({ ...d, prioridad: value }))} options={['Baja', 'Media', 'Alta', 'Urgente'].map(value => ({ value, label: value }))} /></label><label>Responsables (separados por coma)<input className="input" value={(draft.responsables || []).join(', ')} onChange={e => setDraft(d => ({ ...d, responsables: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))} /></label></div>
+          <div className="grid-2"><label>Prioridad<SelectField ariaLabel="Prioridad" value={draft.prioridad || 'Media'} onChange={value => setDraft(d => ({ ...d, prioridad: value }))} options={['Baja', 'Media', 'Alta', 'Urgente'].map(value => ({ value, label: value }))} /></label><label>Responsables (separados por coma)<ListTextInput value={draft.responsables} onChange={responsables => setDraft(d => ({ ...d, responsables }))} /></label></div>
           <div className="grid-2">
             <label>Escuela<input className="input" value={draft.school || ''} onChange={e => setDraft(d => ({ ...d, school: e.target.value }))} placeholder="Sede o escuela" /></label>
             <label>Aula (opcional)
@@ -449,8 +450,8 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               {!draft.classroomKey && draft.classroom && <span className="muted">Dato anterior: {draft.classroom}</span>}
             </label>
           </div>
-          <label>Tags (separados por coma)<input className="input" value={(draft.tags || []).join(', ')} onChange={e => setDraft(d => ({ ...d, tags: e.target.value.split(',').map(x => x.trim()).filter(Boolean) }))} /></label>
-          {!editingId && <label>Checklist inicial (un paso por línea)<textarea className="input" rows={3} value={(draft.checklist || []).join('\n')} onChange={e => setDraft(d => ({ ...d, checklist: e.target.value.split('\n').map(x => x.trim()).filter(Boolean) }))} /></label>}
+          <label>Tags (separados por coma)<ListTextInput value={draft.tags} onChange={tags => setDraft(d => ({ ...d, tags }))} /></label>
+          {!editingId && <label>Checklist inicial (un paso por línea)<ListTextInput separator="line" rows={3} value={draft.checklist} onChange={checklist => setDraft(d => ({ ...d, checklist }))} /></label>}
           <div className="grid-2">
             <label>Titulo
               <input

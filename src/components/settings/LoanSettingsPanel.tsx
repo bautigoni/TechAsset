@@ -60,13 +60,20 @@ export function LoanSettingsPanel() {
   }, []);
 
   const save = async () => {
-    await updateSiteSettings({
-      'loan.roles': roles,
-      'loan.locations': locations,
-      'loan.motives': motives,
-      'loan.gradeOptions': grades,
-      'devices.categories': categories
-    });
+    // Una opción que quedó con el nombre vacío mientras se editaba no se guarda.
+    const cleanOptions = (items: ToggleOption[]) => items.map(item => ({ ...item, label: item.label.trim() })).filter(item => item.label);
+    try {
+      await updateSiteSettings({
+        'loan.roles': roles,
+        'loan.locations': cleanOptions(locations),
+        'loan.motives': cleanOptions(motives),
+        'loan.gradeOptions': grades,
+        'devices.categories': categories
+      });
+    } catch (reason) {
+      toast({ message: errorMessage(reason, 'No se pudieron guardar las opciones de préstamo.'), tone: 'error' });
+      return;
+    }
     setMessage('Configuración de préstamos guardada.');
   };
 
@@ -119,7 +126,9 @@ function OptionEditor({ title, items, value, onValue, onAdd, onChange, showCours
       </div>
       <div className="option-list">
         {items.map((item, index) => (
-          <div className="option-row" key={item.label}>
+          // Key por posición: con key={item.label} cada tecla cambiaba la key,
+          // remontaba la fila y el input perdía el foco.
+          <div className="option-row" key={index}>
             <input className="input" value={item.label} onChange={event => update(index, { label: event.target.value })} />
             <label><input type="checkbox" checked={Boolean(item.requiresDetail)} onChange={event => update(index, { requiresDetail: event.target.checked })} /> Detalle</label>
             {showCourse && <label><input type="checkbox" checked={Boolean(item.requiresCourse)} onChange={event => update(index, { requiresCourse: event.target.checked })} /> Curso</label>}

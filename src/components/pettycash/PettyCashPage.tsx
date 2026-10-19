@@ -6,8 +6,9 @@ import { createPettyCashExpense, createPurchaseRequest, getPettyCash, resolvePur
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { SkeletonView } from '../layout/Skeleton';
+import { dayKeyAr, todayKeyAr } from '../../utils/formatters';
 
-const EMPTY_EXPENSE = { expenseDate: displayDate(new Date().toISOString().slice(0, 10)), description: '', supplier: '', amount: 0, category: 'General', receiptUrl: '' };
+const EMPTY_EXPENSE = { expenseDate: '', description: '', supplier: '', amount: 0, category: 'General', receiptUrl: '' };
 const EMPTY_REQUEST = { description: '', category: 'General', estimatedAmount: 0, supplier: '', justification: '', receiptUrl: '' };
 
 export function PettyCashPage({ consultationMode }: { consultationMode: boolean }) {
@@ -20,6 +21,9 @@ export function PettyCashPage({ consultationMode }: { consultationMode: boolean 
   const [message, setMessage] = useState('');
   const [modalError, setModalError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Error de la carga inicial. Antes se guardaba en `message`, que nunca se
+  // veía porque sin datos se dibuja el esqueleto: quedaba cargando para siempre.
+  const [loadError, setLoadError] = useState('');
 
   const refresh = useCallback(async () => {
     const response = await getPettyCash();
@@ -27,20 +31,35 @@ export function PettyCashPage({ consultationMode }: { consultationMode: boolean 
     setConfig({ ...response.config, requestsEnabled: true });
   }, []);
 
-  useEffect(() => {
-    refresh().catch(error => setMessage(errorMessage(error, 'No se pudo cargar caja chica.')));
+  const loadInitial = useCallback(() => {
+    setLoadError('');
+    refresh().catch(error => setLoadError(errorMessage(error, 'No se pudo cargar caja chica.')));
   }, [refresh]);
+
+  useEffect(() => {
+    loadInitial();
+  }, [loadInitial]);
 
   const uploadReceipt = async (file: File) => {
     const base64 = await readFile(file);
     return (await uploadPettyCashReceipt({ mimeType: file.type, base64 })).url;
   };
 
+  if (!data && loadError) {
+    return (
+      <section className="view active petty-cash-page">
+        <div className="tool-error previous-loans-error">
+          <span>{loadError}</span>
+          <button type="button" onClick={loadInitial}>Reintentar</button>
+        </div>
+      </section>
+    );
+  }
   if (!data) return <section className="view active petty-cash-page"><SkeletonView /></section>;
 
   const openExpense = () => {
     setModalError('');
-    setExpense({ ...EMPTY_EXPENSE });
+    setExpense({ ...EMPTY_EXPENSE, expenseDate: displayDate(todayKeyAr()) });
   };
   const openRequest = () => {
     setModalError('');
@@ -333,7 +352,8 @@ function isoDate(value: string) {
 }
 
 function formatDate(value: string) {
-  const date = String(value || '').slice(0, 10);
+  // Día en hora argentina: createdAt viene en UTC.
+  const date = dayKeyAr(value || '') || String(value || '').slice(0, 10);
   return date ? date.split('-').reverse().join('/') : '—';
 }
 

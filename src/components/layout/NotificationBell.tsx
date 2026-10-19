@@ -16,7 +16,8 @@ function linkToView(link: string): ViewKey | null {
   const clean = String(link || '').split('?')[0].replace(/\/+$/, '');
   const match = clean.match(/\/sede\/[^/]+\/([^/]+)$/);
   const view = match?.[1] || clean.replace(/^\//, '');
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'settings'];
+  // Misma lista blanca que App (sin la vista 'assistant', que no existía).
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'tenants', 'adminusers', 'settings'];
   return allowed.includes(view as ViewKey) ? view as ViewKey : null;
 }
 
@@ -46,6 +47,23 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
 
+  // El popover crece desde la campana y el toast sube desde abajo. El hook los
+  // sostiene montados durante la salida: sin eso React los desmontaba en el
+  // mismo frame y la animación de cierre no llegaba a verse nunca.
+  // Todos los hooks van ANTES del `return null`: llamarlos después de un return
+  // condicional rompe las reglas de hooks si `enabled` cambia en caliente.
+  const popover = useMountTransition(open, 120);   // --dropdown-close-dur
+  const toastAnim = useMountTransition(!!toast, 250); // --toast-close
+
+  // Durante el cierre `toast` ya es null, así que se retiene el último para
+  // tener qué dibujar mientras baja.
+  const lastToastRef = useRef(toast);
+  if (toast) lastToastRef.current = toast;
+  const toastShown = toast || lastToastRef.current;
+
+  const lastBadgeRef = useRef('0');
+  if (unread > 0) lastBadgeRef.current = unread > 9 ? '9+' : String(unread);
+
   if (!enabled) return null;
 
   const handleItem = (n: AppNotification) => {
@@ -72,21 +90,6 @@ export function NotificationBell({ enabled, onNavigate }: { enabled: boolean; on
     handleItem(toast);
     dismissToast();
   };
-
-  // El popover crece desde la campana y el toast sube desde abajo. El hook los
-  // sostiene montados durante la salida: sin eso React los desmontaba en el
-  // mismo frame y la animación de cierre no llegaba a verse nunca.
-  const popover = useMountTransition(open, 120);   // --dropdown-close-dur
-  const toastAnim = useMountTransition(!!toast, 250); // --toast-close
-
-  // Durante el cierre `toast` ya es null, así que se retiene el último para
-  // tener qué dibujar mientras baja.
-  const lastToastRef = useRef(toast);
-  if (toast) lastToastRef.current = toast;
-  const toastShown = toast || lastToastRef.current;
-
-  const lastBadgeRef = useRef('0');
-  if (unread > 0) lastBadgeRef.current = unread > 9 ? '9+' : String(unread);
 
   return (
     <div className="notif-wrap" ref={wrapRef}>

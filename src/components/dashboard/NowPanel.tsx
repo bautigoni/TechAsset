@@ -3,12 +3,11 @@ import type { AgendaItem, TaskItem } from '../../types';
 import { minutesFromTime } from '../../utils/dates';
 import { getRecessSchedules } from '../../services/schedulesApi';
 import { DailyHandoffChat } from './DailyHandoffChat';
+import { nowMinutesAr, todayKeyAr, todayWeekdayAr } from '../../utils/formatters';
 
+// Hoy, día de la semana y hora en hora argentina (no UTC ni la zona del navegador).
 function todayIso() {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${now.getFullYear()}-${month}-${day}`;
+  return todayKeyAr();
 }
 
 function normalize(value?: string) {
@@ -16,7 +15,7 @@ function normalize(value?: string) {
 }
 
 function todayName() {
-  return ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][new Date().getDay()];
+  return ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][todayWeekdayAr()];
 }
 
 function isAgendaToday(item: AgendaItem) {
@@ -61,7 +60,7 @@ export function NowPanel({ agenda, tasks, operator, consultationMode = false, on
   };
   const [activeRecess, setActiveRecess] = useState<Array<{ groupName: string; label: string; startTime: string; endTime: string }>>([]);
   useEffect(() => { getRecessSchedules().then(response => setActiveRecess(response.active || [])).catch(() => setActiveRecess([])); }, []);
-  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const nowMinutes = nowMinutesAr();
   const validAgenda = agenda.filter(item => isOpenAgenda(item) && item.estado !== 'Faltaron equipos');
   const agendaToday = validAgenda.filter(item => isAgendaToday(item));
   const pendingTodayCount = agenda.filter(item => isAgendaToday(item) && isPendingAgenda(item)).length;
@@ -130,7 +129,7 @@ export function NowPanel({ agenda, tasks, operator, consultationMode = false, on
 
 function weekdayRank(day?: string) {
   const order = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-  const today = new Date().getDay();
+  const today = todayWeekdayAr();
   const idx = order.indexOf(normalize(day));
   return idx < 0 ? 99 : (idx - today + 7) % 7;
 }

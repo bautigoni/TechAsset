@@ -32,7 +32,19 @@ html {
 html,
 body {
   width: 100%;
-  overscroll-behavior-x: none;
+  /* Mobile = pantalla fija (PLAN §5.1): sin rebote ni arrastre que muestre
+     algo por fuera de la app, en los dos ejes. */
+  overscroll-behavior: none;
+}
+
+/* `clip` en vez de `hidden` en el root: en iPhone `hidden` no impide arrastrar
+   la página de costado. En el root `clip` se propaga al viewport igual que
+   `hidden`, así que no cambia nada más. En body se deja `hidden` a propósito:
+   pasarlo a `clip` haría que la topbar y la sidebar (position: sticky) empiecen
+   a quedar fijas al scrollear, y eso es un cambio visual (etapa 0 = sin cambios
+   visuales). */
+html {
+  overflow-x: clip;
 }
 
 #root {

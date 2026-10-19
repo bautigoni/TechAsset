@@ -48,7 +48,6 @@ export function AdvancedSettings() {
         <div className="actions">
           <Button onClick={loadDiagnostics} disabled={loadingDiagnostics}>Diagnóstico local</Button>
           <Button onClick={loadSettings}>Configuración de sede</Button>
-          <Button>Backup SQLite</Button>
         </div>
         {diagnosticsError && <div className="tool-error">{diagnosticsError}</div>}
         {siteSettingsText && (

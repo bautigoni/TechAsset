@@ -106,6 +106,11 @@ export function errorMessage(reason: unknown, fallback = 'No se pudo completar l
   return reason instanceof Error && reason.message ? reason.message : fallback;
 }
 
+/** Toast de error para una acción del usuario que falló (en vez de tragarse el error). */
+export function toastError(reason: unknown, fallback?: string) {
+  return toast({ message: errorMessage(reason, fallback), tone: 'error' });
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);

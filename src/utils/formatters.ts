@@ -70,11 +70,56 @@ export function formatTimeOnly(value?: string): string {
 }
 
 const LOAN_TZ = 'America/Argentina/Buenos_Aires';
+export const APP_TIME_ZONE = LOAN_TZ;
 const DAY_KEY_FORMAT: Intl.DateTimeFormatOptions = { timeZone: LOAN_TZ, year: 'numeric', month: '2-digit', day: '2-digit' };
+const HOUR_MINUTE_AR: Intl.DateTimeFormatOptions = { timeZone: LOAN_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
 
 // Día calendario (YYYY-MM-DD) en horario de Argentina.
 function localDayKey(date: Date): string {
   return dateFormatter(DAY_KEY_FORMAT, 'en-CA').format(date);
+}
+
+/**
+ * Día calendario (YYYY-MM-DD) en hora argentina de una fecha/instante.
+ * El server guarda los timestamps en UTC (`toISOString`): después de las 21 h
+ * de Argentina la fecha UTC ya es la del día siguiente, así que nunca hay que
+ * comparar `createdAt.slice(0, 10)` contra "hoy". Devuelve '' si no es válida.
+ */
+export function dayKeyAr(value: string | number | Date = new Date()): string {
+  // Una fecha pura (sin hora) ya es un día calendario: no se convierte de zona.
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return value.trim();
+  if (value === '' || value === null || value === undefined) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return localDayKey(date);
+}
+
+/** "Hoy" (YYYY-MM-DD) en hora argentina, sin importar la zona del navegador. */
+export function todayKeyAr(): string {
+  return localDayKey(new Date());
+}
+
+/** Día de la semana (0 = domingo … 6 = sábado) de un YYYY-MM-DD, sin zona horaria. */
+export function weekdayOfKey(key: string): number {
+  return new Date(`${key}T00:00:00Z`).getUTCDay();
+}
+
+/** Día de la semana de hoy (0 = domingo) en hora argentina. */
+export function todayWeekdayAr(): number {
+  return weekdayOfKey(todayKeyAr());
+}
+
+/** Suma días a un YYYY-MM-DD (aritmética de calendario pura, sin zona horaria). */
+export function addDaysToKey(key: string, days: number): string {
+  const date = new Date(`${key}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Minutos desde la medianoche, ahora, en hora argentina. */
+export function nowMinutesAr(): number {
+  const [hour, minute] = dateFormatter(HOUR_MINUTE_AR, 'en-GB').format(new Date()).split(':').map(Number);
+  return (hour % 24) * 60 + (minute || 0);
 }
 
 // "Hoy" se calcula una vez por minuto, no una vez por fila.
@@ -113,7 +158,7 @@ export function loanAgeTone(value?: string): 'fresh' | 'warning' | 'danger' {
 
 export function todayNameEs(date = new Date()): string {
   const map = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  return map[date.getDay()];
+  return map[weekdayOfKey(dayKeyAr(date) || todayKeyAr())];
 }
 
 export function csvCell(value: unknown): string {

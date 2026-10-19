@@ -114,7 +114,12 @@ export function QuickAccess({ operator, consultationMode }: { operator: string; 
                     {!consultationMode && <button className="btn btn-secondary" type="button" onClick={() => setEditing(link)}>Editar</button>}
                     {!consultationMode && <button className="btn btn-secondary" type="button" onClick={async () => {
                       if (!(await confirmDialog({ title: 'Borrar acceso', message: `¿Borrar "${link.titulo}"?`, confirmLabel: 'Borrar', danger: true }))) return;
-                      await deleteQuickLink(link.id, operator);
+                      try {
+                        await deleteQuickLink(link.id, operator);
+                      } catch (reason) {
+                        toast({ message: errorMessage(reason, 'No se pudo borrar el acceso.'), tone: 'error' });
+                        return;
+                      }
                       await reload();
                     }}>Borrar</button>}
                   </div>

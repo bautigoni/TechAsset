@@ -34,9 +34,14 @@ export function DailyClosurePanel({ operator, consultationMode }: { operator: st
             <div className="actions">
               <Button disabled={!text} onClick={() => navigator.clipboard?.writeText(text).then(() => setInfo('Copiado al portapapeles.'))}>Copiar</Button>
               <Button variant="primary" disabled={consultationMode || !resumen} onClick={async () => {
-                await createDailyClosure({ operator, observaciones, resumen: resumen || {} });
+                try {
+                  await createDailyClosure({ operator, observaciones, resumen: resumen || {} });
+                } catch (reason) {
+                  toast({ message: errorMessage(reason, 'No se pudo guardar el cierre.'), tone: 'error' });
+                  return;
+                }
                 setInfo('Cierre guardado.');
-                await load();
+                await load().catch(reason => toast({ message: errorMessage(reason, 'No se pudo recargar el resumen del día.'), tone: 'error' }));
               }}>Generar cierre</Button>
             </div>
             {info && <div className="tool-info">{info}</div>}

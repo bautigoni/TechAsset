@@ -3,6 +3,7 @@ import { getParque, type ParqueResponse } from '../../services/analyticsApi';
 import { Button } from '../layout/Button';
 import { ChartCard } from './ChartCard';
 import { downloadCsv } from '../../utils/download';
+import { todayKeyAr } from '../../utils/formatters';
 
 // Snapshot del parque: no se filtra por período porque es estado presente
 // (condición actual y vida útil restante), no eventos dentro de un rango.
@@ -42,7 +43,7 @@ export function ParqueSection() {
       item.etiqueta, item.alias, item.assetClass, item.condition || 'Sin revisar',
       item.fechaAlta, item.fechaRenovacion, item.mesesRestantes ?? '', item.estimada ? 'sí' : 'no'
     ]);
-    downloadCsv(`a-renovar-${new Date().toISOString().slice(0, 10)}.csv`, [headers, ...rows]);
+    downloadCsv(`a-renovar-${todayKeyAr()}.csv`, [headers, ...rows]);
   };
 
   if (error) return <div className="tool-error">{error}</div>;

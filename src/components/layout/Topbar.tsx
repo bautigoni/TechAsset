@@ -150,7 +150,7 @@ export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = '
           </div>
           <div className="topbar-right">
             {siteSwitcher}
-            <QuickAccessPopover onOpenFull={() => onNavigate?.('quickaccess')} />
+            <QuickAccessPopover key={activeSite} onOpenFull={() => onNavigate?.('quickaccess')} />
             <NotificationBell enabled={!!user} onNavigate={onNavigate} />
             <div className="account-menu-wrap">
               <button className="topbar-icon-btn account-trigger" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
@@ -176,7 +176,7 @@ export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = '
       </div>
       <div className="topbar-actions">
         {siteSwitcher || <span className="operator-chip" title={activeSiteInfo?.nombre || user?.email || 'Sede'}>{activeSite}</span>}
-        <QuickAccessPopover onOpenFull={() => onNavigate?.('quickaccess')} />
+        <QuickAccessPopover key={activeSite} onOpenFull={() => onNavigate?.('quickaccess')} />
         <NotificationBell enabled={!!user} onNavigate={onNavigate} />
         <div className="account-menu-wrap">
           <button className="account-chip" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>

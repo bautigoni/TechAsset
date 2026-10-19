@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import type { InternalNote } from '../../types';
 import { createInternalNote, fetchInternalNotes, updateInternalNote } from '../../services/operationsApi';
-import { TIME_HM, formatDate } from '../../utils/formatters';
+import { TIME_HM, dayKeyAr, formatDate, todayKeyAr } from '../../utils/formatters';
+import { toastError } from '../layout/Feedback';
 
 // Mini chat de traspaso del día. Reemplaza a la pestaña "Traspaso TIC": acá se
 // escriben las notas del turno y arranca limpio cada día. Las notas viejas no
 // se borran (siguen en internal_notes), simplemente no se muestran.
-function todayIso() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+//
+// "Hoy" es en hora argentina: el server manda `localDate` (YYYY-MM-DD ya en
+// hora argentina); si no viene, se convierte `createdAt` (UTC) a la fecha de
+// Argentina. Comparar `createdAt` directo contra la fecha local hacía que las
+// notas de después de las 21 h desaparecieran del chat.
+function noteDay(item: InternalNote) {
+  return item.localDate || dayKeyAr(item.createdAt || '');
 }
 
 export function DailyHandoffChat({ operator, consultationMode }: { operator: string; consultationMode: boolean }) {
@@ -20,12 +25,12 @@ export function DailyHandoffChat({ operator, consultationMode }: { operator: str
   const refresh = () => fetchInternalNotes('active')
     .then(response => {
       if (!response.ok) return;
-      const today = todayIso();
-      setItems(response.items.filter(item => String(item.createdAt || '').startsWith(today)));
-    })
-    .catch(() => undefined);
+      const today = todayKeyAr();
+      setItems(response.items.filter(item => noteDay(item) === today));
+    });
 
-  useEffect(() => { void refresh(); }, []);
+  // La carga inicial no es una acción del usuario: si falla, el chat queda vacío.
+  useEffect(() => { refresh().catch(() => undefined); }, []);
   useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [items.length]);
 
   const send = async (event: React.FormEvent) => {
@@ -36,9 +41,20 @@ export function DailyHandoffChat({ operator, consultationMode }: { operator: str
     try {
       await createInternalNote({ texto: value, importante: false, operator });
       setText('');
-      await refresh();
+      await refresh().catch(() => undefined);
+    } catch (reason) {
+      toastError(reason, 'No se pudo enviar la nota.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const remove = async (id: number) => {
+    try {
+      await updateInternalNote(id, { visible: false, operator });
+      await refresh().catch(() => undefined);
+    } catch (reason) {
+      toastError(reason, 'No se pudo borrar la nota.');
     }
   };
 
@@ -56,7 +72,7 @@ export function DailyHandoffChat({ operator, consultationMode }: { operator: str
               <span>{item.operador || 'Sin operador'}</span>
               <time>{formatDate(item.createdAt, TIME_HM)}</time>
               {!consultationMode && (
-                <button type="button" onClick={async () => { await updateInternalNote(item.id, { visible: false, operator }); await refresh(); }}>Borrar</button>
+                <button type="button" onClick={() => void remove(item.id)}>Borrar</button>
               )}
             </footer>
           </article>

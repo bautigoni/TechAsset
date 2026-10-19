@@ -142,7 +142,7 @@ export function Dashboard({ devices, counts, agenda, tasks, movements, operator,
           />
         </div>
         {visibleDevices.length ? (
-          <DeviceTable devices={visibleDevices} compact={deviceFilter === 'all'} actionMode="dashboard" onLoan={onLoan} onReturn={onReturn} onProfile={onProfile} onEdit={onEdit} />
+          <DeviceTable devices={visibleDevices} compact={deviceFilter === 'all'} actionMode="dashboard" onLoan={consultationMode ? undefined : onLoan} onReturn={consultationMode ? undefined : onReturn} onProfile={onProfile} onEdit={consultationMode ? undefined : onEdit} />
         ) : (
           <div className="empty-state">No hay equipos para este filtro.</div>
         )}

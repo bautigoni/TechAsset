@@ -8,7 +8,7 @@ import { Modal } from '../layout/Modal';
 import { type AgendaKpiFilter, AgendaKpis } from './AgendaKpis';
 import { AgendaCard } from './AgendaCard';
 import { AgendaModal } from './AgendaModal';
-import { formatDate } from '../../utils/formatters';
+import { APP_TIME_ZONE, addDaysToKey, formatDate, todayKeyAr, todayWeekdayAr, weekdayOfKey } from '../../utils/formatters';
 import { downloadText } from '../../utils/download';
 
 const DAYS = ['Hoy', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie'];
@@ -23,13 +23,15 @@ function comparableDay(value: string) {
   return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^mi.*rcoles$/, 'miercoles');
 }
 
+// "Hoy" en hora argentina: con toISOString (UTC), después de las 21 h la agenda
+// pasaba al día siguiente.
 function todayName() {
-  const index = new Date().getDay();
+  const index = todayWeekdayAr();
   return ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][index] || '';
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return todayKeyAr();
 }
 
 function matchesTurno(item: AgendaItem, turno: TurnoFilter) {
@@ -73,26 +75,26 @@ function itemDate(item: AgendaItem) {
   const wanted = WEEK_DAYS.find(day => comparableDay(day) === comparableDay(item.dia));
   if (!wanted) return '';
   const wantedIndex = WEEK_DAYS.indexOf(wanted) + 1;
-  const base = new Date();
-  const current = base.getDay() || 7;
-  base.setDate(base.getDate() + wantedIndex - current);
-  return base.toISOString().slice(0, 10);
+  const today = todayIso();
+  const current = weekdayOfKey(today) || 7;
+  return addDaysToKey(today, wantedIndex - current);
 }
 
-function monthMatrix(date = new Date()) {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const first = new Date(year, month, 1);
-  const startOffset = (first.getDay() + 6) % 7;
-  const start = new Date(year, month, 1 - startOffset);
+// Grilla del mes de hoy (hora argentina). Las fechas se arman en UTC puro para
+// que la clave YYYY-MM-DD no dependa de la zona del navegador.
+function monthMatrix(todayKey = todayIso()) {
+  const [year, monthNumber] = todayKey.split('-').map(Number);
+  const month = monthNumber - 1;
+  const first = new Date(Date.UTC(year, month, 1));
+  const startOffset = (first.getUTCDay() + 6) % 7;
   return Array.from({ length: 42 }, (_, index) => {
-    const day = new Date(start);
-    day.setDate(start.getDate() + index);
+    const day = new Date(Date.UTC(year, month, 1 - startOffset + index));
+    const iso = day.toISOString().slice(0, 10);
     return {
-      date: day,
-      iso: day.toISOString().slice(0, 10),
-      inMonth: day.getMonth() === month,
-      isToday: day.toISOString().slice(0, 10) === todayIso()
+      iso,
+      dayNumber: day.getUTCDate(),
+      inMonth: day.getUTCMonth() === month,
+      isToday: iso === todayKey
     };
   });
 }
@@ -310,7 +312,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         <div className="agenda-month-layout">
           <section className="agenda-month-card">
             <div className="agenda-month-head">
-              <h3>{formatDate(new Date(), { month: 'long', year: 'numeric' })}</h3>
+              <h3>{formatDate(new Date(), { month: 'long', year: 'numeric', timeZone: APP_TIME_ZONE })}</h3>
               <Button onClick={() => setSelectedDate(todayIso())}>Hoy</Button>
             </div>
             <div className="agenda-month-grid">
@@ -324,7 +326,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
                     className={`agenda-month-day ${dayInfo.inMonth ? '' : 'muted-day'} ${dayInfo.isToday ? 'today' : ''} ${selectedDate === dayInfo.iso ? 'selected' : ''}`}
                     onClick={() => setSelectedDate(dayInfo.iso)}
                   >
-                    <strong>{dayInfo.date.getDate()}</strong>
+                    <strong>{dayInfo.dayNumber}</strong>
                     {dayItems.length > 0 && <span>{dayItems.length}</span>}
                   </button>
                 );

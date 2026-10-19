@@ -84,12 +84,18 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   const [configuringEquipment, setConfiguringEquipment] = useState(false);
   const [health, setHealth] = useState<ClassroomHealthReport | null>(null);
   const [healthBusy, setHealthBusy] = useState(false);
+  // Si falla la carga de la ficha se muestra el error con Reintentar (antes
+  // quedaba el esqueleto para siempre). `loadAttempt` vuelve a disparar la carga.
+  const [loadError, setLoadError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!loadAttempt) window.scrollTo({ top: 0, behavior: 'smooth' });
     let cancelled = false;
+    setLoadError('');
     fetchClassroom(roomKey, nombre, piso).then(r => {
-      if (cancelled || !r.ok) return;
+      if (cancelled) return;
+      if (!r.ok) { setLoadError('No se pudo cargar el aula.'); return; }
       const item = {
         ...r.item,
         proyector: migrateLegacyState(r.item.proyector),
@@ -99,11 +105,11 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
         equipment: getEquipment(r.item, categories).map(entry => ({ ...entry, state: migrateLegacyState(entry.state) }))
       };
       setClassroom(item); setDraft(item);
-    });
-    fetchClassroomHistory(roomKey).then(r => { if (!cancelled && r.ok) setHistory(r.items); });
+    }).catch(reason => { if (!cancelled) setLoadError(reason instanceof Error && reason.message ? reason.message : 'No se pudo cargar el aula.'); });
+    fetchClassroomHistory(roomKey).then(r => { if (!cancelled && r.ok) setHistory(r.items); }).catch(() => undefined);
     fetchClassroomIncidents(roomKey).then(r => { if (!cancelled && r.ok) { setIncidents(r.items || []); setIncidentSummary(r.summary); } }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [roomKey, nombre, piso, categories]);
+  }, [roomKey, nombre, piso, categories, loadAttempt]);
 
   useEffect(()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context',{detail:{type:'classroom',id:roomKey,label:nombre,data:{piso}}}));return()=>{window.dispatchEvent(new CustomEvent('techasset:assistant-context-clear',{detail:{type:'classroom',id:roomKey}}));};},[roomKey,nombre,piso]);
 
@@ -134,7 +140,12 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
     return (
       <div className={wrapClass} onClick={() => requestClose()} role="dialog" aria-modal="true" aria-label={`Aula ${nombre}`} ref={wrapRef} tabIndex={-1}>
         <div className="modal-card classroom-modal" onClick={e => e.stopPropagation()}>
-          <SkeletonPanel rows={4} />
+          {loadError ? (
+            <div className="tool-error previous-loans-error">
+              <span>{loadError}</span>
+              <button type="button" onClick={() => setLoadAttempt(value => value + 1)}>Reintentar</button>
+            </div>
+          ) : <SkeletonPanel rows={4} />}
         </div>
       </div>
     );

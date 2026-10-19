@@ -14,7 +14,7 @@ import { Columns3, Lock, Users } from 'lucide-react';
 import { Modal } from '../layout/Modal';
 import { SelectionBar, useSelection } from '../layout/Selection';
 import { deleteTask } from '../../services/tasksApi';
-import { confirmDialog, toast } from '../layout/Feedback';
+import { confirmDialog, toast, toastError } from '../layout/Feedback';
 
 const PRIORITIES = ['Urgente', 'Media', 'Baja'];
 
@@ -142,7 +142,13 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
           event.preventDefault();
           const name = columnDraft.trim();
           if (!name) return;
-          await createColumn(name);
+          try {
+            await createColumn(name);
+          } catch (reason) {
+            // Ej. 409 si ya existe una columna con ese nombre: el modal queda abierto.
+            toastError(reason, 'No se pudo crear la columna.');
+            return;
+          }
           setColumnDraft(null);
         }}>
           <label>Nombre

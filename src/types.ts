@@ -1,4 +1,4 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'history' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'reminders' | 'suggestions' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'adminusers' | 'settings';
+export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'history' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'reminders' | 'suggestions' | 'tools' | 'quickaccess' | 'tenants' | 'adminusers' | 'settings';
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
@@ -245,6 +245,8 @@ export interface InternalNote {
   deletedBy?: string;
   createdAt: string;
   updatedAt: string;
+  /** Día (YYYY-MM-DD) de createdAt en hora argentina; lo agrega el server. */
+  localDate?: string;
 }
 
 export interface InventoryItem {

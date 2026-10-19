@@ -65,25 +65,35 @@ export function AllowedUsersPanel({ canAssignSuperadmin = false, onChanged }: { 
       return;
     }
     const status = draft.status || (draft.activo === false ? 'Inactivo' : 'Activo');
-    await saveAllowedUser({
-      ...draft,
-      status,
-      activo: status === 'Activo',
-      sites: (draft.sites || []).map(site => ({ ...site, siteRole: draft.defaultRole, turno: draft.turno || 'Sin turno', isDefault: site.siteCode === draft.defaultSiteCode }))
-    });
+    try {
+      await saveAllowedUser({
+        ...draft,
+        status,
+        activo: status === 'Activo',
+        sites: (draft.sites || []).map(site => ({ ...site, siteRole: draft.defaultRole, turno: draft.turno || 'Sin turno', isDefault: site.siteCode === draft.defaultSiteCode }))
+      });
+    } catch (reason) {
+      toast({ message: errorMessage(reason, 'No se pudo guardar el usuario.'), tone: 'error' });
+      return;
+    }
     setMessage('Usuario guardado.');
     setDraft(emptyUser(sites[0]?.siteCode || 'NFPT'));
-    await load();
+    await load().catch(reason => toast({ message: errorMessage(reason, 'No se pudo recargar la lista de usuarios.'), tone: 'error' }));
     onChanged?.();
   };
 
   const runAction = async (user: AllowedUserItem, action: 'approve' | 'reject' | 'deactivate' | 'delete') => {
     if (!user.id) return;
     if (action === 'delete' && !(await confirmDialog({ title: 'Borrar usuario', message: `¿Borrar ${user.email}? Pierde el acceso; su historial queda.`, confirmLabel: 'Borrar', danger: true }))) return;
-    await updateAllowedUserStatus(user.id, action);
+    try {
+      await updateAllowedUserStatus(user.id, action);
+    } catch (reason) {
+      toast({ message: errorMessage(reason, 'No se pudo completar la acción sobre el usuario.'), tone: 'error' });
+      return;
+    }
     const labels = { approve: 'Usuario aprobado.', reject: 'Usuario rechazado.', deactivate: 'Usuario desactivado.', delete: 'Usuario borrado.' };
     setMessage(labels[action]);
-    await load();
+    await load().catch(reason => toast({ message: errorMessage(reason, 'No se pudo recargar la lista de usuarios.'), tone: 'error' }));
     onChanged?.();
   };
 

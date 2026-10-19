@@ -6,6 +6,7 @@ import { Button } from '../layout/Button';
 import { SkeletonLine } from '../layout/Skeleton';
 import { ChartCard, type ChartSize, type ChartType } from './ChartCard';
 import { ParqueSection } from './ParqueSection';
+import { addDaysToKey, todayKeyAr } from '../../utils/formatters';
 
 type RangePreset = 'week' | 'month' | 'quarter' | 'year' | 'all';
 
@@ -17,20 +18,19 @@ const PRESETS: Array<{ key: RangePreset; label: string; days: number }> = [
   { key: 'all', label: 'Todo', days: 3650 },
 ];
 
-function toIsoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+// Fechas del período en hora argentina (con toISOString, después de las 21 h
+// "hoy" ya era mañana).
 
 export function AnalyticsPage({ devices }: { devices: Device[]; onRefresh?: () => Promise<unknown> | void }) {
   const [preset, setPreset] = useState<RangePreset>('year');
-  const today = useMemo(() => toIsoDate(new Date()), []);
+  const today = useMemo(() => todayKeyAr(), []);
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const range = useMemo(() => {
     const days = PRESETS.find(p => p.key === preset)?.days ?? 365;
-    return { from: toIsoDate(new Date(Date.now() - days * 86400000)), to: today };
+    return { from: addDaysToKey(today, -days), to: today };
   }, [preset, today]);
 
   const load = useCallback(async () => {

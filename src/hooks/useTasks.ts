@@ -4,6 +4,7 @@ import { createTask, deleteTask, getTasks, updateTask } from '../services/tasksA
 import { fetchShiftSettings } from '../services/operationsApi';
 import { isOverdue } from '../utils/dates';
 import { confirmDialog } from '../components/layout/Feedback';
+import { getActiveSiteCode } from '../services/activeSite';
 
 export function useTasks(operator: string) {
   const [items, setItems] = useState<TaskItem[]>([]);
@@ -11,26 +12,40 @@ export function useTasks(operator: string) {
 
   // Misma guarda que en agenda: el hook pide al montar y App vuelve a pedir al
   // cambiar de sede, y salían dos GET /api/tasks (el más pesado de todos).
-  const inFlight = useRef<Promise<void> | null>(null);
+  // La guarda es por sede (como en agenda): un poll en vuelo de la sede anterior
+  // no se reutiliza y su respuesta se descarta si ya cambió la sede.
+  const inFlight = useRef<{ site: string; promise: Promise<void> } | null>(null);
   const lastKey = useRef('');
+  // Turnos de la sede: antes se pedían solo al montar y el KPI "mías" seguía con
+  // los turnos de la sede inicial después de cambiar de sede.
+  const shiftsSite = useRef('');
+  const loadShifts = useCallback((site: string) => {
+    if (shiftsSite.current === site) return;
+    shiftsSite.current = site;
+    fetchShiftSettings()
+      .then(r => { if (r.ok && getActiveSiteCode() === site) setShifts(r.settings); })
+      .catch(() => { if (shiftsSite.current === site) shiftsSite.current = ''; });
+  }, []);
   const refresh = useCallback(async () => {
-    if (inFlight.current) return inFlight.current;
+    const site = getActiveSiteCode();
+    loadShifts(site);
+    if (inFlight.current && inFlight.current.site === site) return inFlight.current.promise;
     // Se pollea (App, cada 30 s): si no cambió nada no hay re-render.
-    const promise = getTasks()
+    const promise: Promise<void> = getTasks()
       .then(data => {
-        const key = JSON.stringify(data.items);
+        if (getActiveSiteCode() !== site) return;
+        const key = `${site}|${JSON.stringify(data.items)}`;
         if (key === lastKey.current) return;
         lastKey.current = key;
         setItems(data.items);
       })
-      .finally(() => { inFlight.current = null; });
-    inFlight.current = promise;
+      .finally(() => { if (inFlight.current?.promise === promise) inFlight.current = null; });
+    inFlight.current = { site, promise };
     return promise;
-  }, []);
+  }, [loadShifts]);
 
   useEffect(() => {
     refresh().catch(() => setItems([]));
-    fetchShiftSettings().then(r => r.ok && setShifts(r.settings)).catch(() => {});
   }, [refresh]);
 
   const kpis = useMemo<Record<string, number>>(() => ({

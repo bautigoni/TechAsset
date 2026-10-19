@@ -67,6 +67,8 @@ export function RolesPanel({ consultationMode, onChanged }: { consultationMode: 
       await updateSiteSettings({ 'roles.config': toConfig(roles) });
       setSaved(true);
       onChanged?.();
+    } catch (reason) {
+      toast({ message: errorMessage(reason, 'No se pudieron guardar los roles.'), tone: 'error' });
     } finally {
       setSaving(false);
     }

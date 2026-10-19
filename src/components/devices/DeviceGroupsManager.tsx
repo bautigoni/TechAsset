@@ -5,7 +5,7 @@ import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
 import { getOperationalAlias } from '../../utils/classifyDevice';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
-import { confirmDialog } from '../layout/Feedback';
+import { confirmDialog, toastError } from '../layout/Feedback';
 
 export function DeviceGroupsManager({
   devices,
@@ -49,9 +49,15 @@ export function DeviceGroupsManager({
   };
   const save = async () => {
     if (!name.trim()) return;
-    if (selected) await updateDeviceGroup(selected.id, { name, description, deviceTags: tags });
-    else await createDeviceGroup({ name, description, deviceTags: tags });
-    await refresh();
+    try {
+      if (selected) await updateDeviceGroup(selected.id, { name, description, deviceTags: tags });
+      else await createDeviceGroup({ name, description, deviceTags: tags });
+    } catch (reason) {
+      // Ej. 409 "Ya existe un grupo con ese nombre.": antes no se avisaba nada.
+      toastError(reason, 'No se pudo guardar el grupo.');
+      return;
+    }
+    await refresh().catch(reason => toastError(reason, 'No se pudieron recargar los grupos.'));
     edit(null);
     setMessage('Grupo guardado.');
   };
@@ -111,8 +117,13 @@ export function DeviceGroupsManager({
               <Button
                 onClick={async () => {
                   if (await confirmDialog({ title: 'Eliminar grupo', message: `¿Eliminar el grupo ${selected.name}? Los equipos no se borran.`, confirmLabel: 'Eliminar', danger: true })) {
-                    await deleteDeviceGroup(selected.id);
-                    await refresh();
+                    try {
+                      await deleteDeviceGroup(selected.id);
+                    } catch (reason) {
+                      toastError(reason, 'No se pudo eliminar el grupo.');
+                      return;
+                    }
+                    await refresh().catch(reason => toastError(reason, 'No se pudieron recargar los grupos.'));
                     edit(null);
                   }
                 }}

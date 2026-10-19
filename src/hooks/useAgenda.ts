@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AgendaItem } from '../types';
 import { createAgenda, deleteAgenda, getAgenda, updateAgenda } from '../services/agendaApi';
 import { confirmDialog } from '../components/layout/Feedback';
+import { getActiveSiteCode } from '../services/activeSite';
 
 export function useAgenda(operator: string) {
   const [items, setItems] = useState<AgendaItem[]>([]);
@@ -12,21 +13,27 @@ export function useAgenda(operator: string) {
 
   // El hook refresca al montar y App vuelve a pedir al cambiar de sede: sin esta
   // guarda salían dos GET /api/agenda idénticos en cada arranque.
-  const inFlight = useRef<Promise<void> | null>(null);
+  // La guarda es por sede: si al cambiar de sede había un poll en vuelo de la
+  // sede anterior, devolver esa promesa dejaba la agenda de la otra sede hasta
+  // el próximo poll (~30 s). Y una respuesta que llega con otra sede activa se
+  // descarta.
+  const inFlight = useRef<{ site: string; promise: Promise<void> } | null>(null);
   const lastKey = useRef('');
   const refresh = useCallback(async () => {
-    if (inFlight.current) return inFlight.current;
+    const site = getActiveSiteCode();
+    if (inFlight.current && inFlight.current.site === site) return inFlight.current.promise;
     // Se pollea (App, cada 30 s): si no cambió nada no hay re-render.
-    const promise = getAgenda(includeAll.current)
+    const promise: Promise<void> = getAgenda(includeAll.current)
       .then(data => {
+        if (getActiveSiteCode() !== site) return;
         setOlderHidden(data.olderHidden || 0);
-        const key = JSON.stringify(data.items);
+        const key = `${site}|${JSON.stringify(data.items)}`;
         if (key === lastKey.current) return;
         lastKey.current = key;
         setItems(data.items);
       })
-      .finally(() => { inFlight.current = null; });
-    inFlight.current = promise;
+      .finally(() => { if (inFlight.current?.promise === promise) inFlight.current = null; });
+    inFlight.current = { site, promise };
     return promise;
   }, []);
 

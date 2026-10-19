@@ -4,6 +4,7 @@ import { createTicketTemplate, deleteTicketTemplate, updateTicketTemplate } from
 import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
 import { SelectField } from '../layout/SelectField';
+import { ListTextInput } from '../layout/ListTextInput';
 
 const EMPTY: Partial<TicketTemplate> = {
   title: '',
@@ -130,35 +131,18 @@ export function TicketTemplateManager({
             </div>
             <label>
               Checklist (un paso por línea)
-              <textarea
-                className="input"
+              <ListTextInput
+                separator="line"
                 rows={4}
-                value={(draft.checklist || []).join('\n')}
-                onChange={e =>
-                  setDraft(value => ({
-                    ...value!,
-                    checklist: e.target.value
-                      .split('\n')
-                      .map(x => x.trim())
-                      .filter(Boolean)
-                  }))
-                }
+                value={draft.checklist}
+                onChange={checklist => setDraft(value => ({ ...value!, checklist }))}
               />
             </label>
             <label>
               Tags (separados por coma)
-              <input
-                className="input"
-                value={(draft.tags || []).join(', ')}
-                onChange={e =>
-                  setDraft(value => ({
-                    ...value!,
-                    tags: e.target.value
-                      .split(',')
-                      .map(x => x.trim())
-                      .filter(Boolean)
-                  }))
-                }
+              <ListTextInput
+                value={draft.tags}
+                onChange={tags => setDraft(value => ({ ...value!, tags }))}
               />
             </label>
             <div className="actions">

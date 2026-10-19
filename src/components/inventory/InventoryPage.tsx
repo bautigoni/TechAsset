@@ -10,6 +10,7 @@ import { ConditionReviewModal } from './ConditionReviewModal';
 import { InventoryCard } from './InventoryCard';
 import { InventoryCategoryGrid } from './InventoryCategoryGrid';
 import { conditionClass, deviceToEntry, groupEntries, isReviewFresh, itemToEntry, reviewLabel, type Entry } from './inventoryEntries';
+import { dayKeyAr, todayKeyAr } from '../../utils/formatters';
 import { InventoryTree } from './InventoryTree';
 import { InventoryDetail } from './InventoryDetail';
 import { confirmDialog } from '../layout/Feedback';
@@ -253,10 +254,10 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     const rows = filtered.map(entry => [
       entry.kind === 'equipo' ? 'Equipo' : 'Recurso',
       entry.nombre, entry.categoria, entry.subcategoria, entry.condicion || 'Sin revisar',
-      entry.revisadoAt ? entry.revisadoAt.slice(0, 10) : '',
+      entry.revisadoAt ? (dayKeyAr(entry.revisadoAt) || entry.revisadoAt.slice(0, 10)) : '',
       entry.cantidad ?? '', entry.unidad, entry.vidaPct ?? '', entry.renovacion
     ]);
-    downloadCsv(`inventario-${new Date().toISOString().slice(0, 10)}.csv`, [headers, ...rows]);
+    downloadCsv(`inventario-${todayKeyAr()}.csv`, [headers, ...rows]);
   };
 
   const exportExample = () => {

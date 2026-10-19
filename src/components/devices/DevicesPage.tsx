@@ -54,7 +54,6 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
 }) {
   // Selección para acciones en lote (barra flotante abajo).
   const selection = useSelection();
-  const selectedDevices = useMemo(() => devices.filter(device => selection.selected.has(device.etiqueta)), [devices, selection.selected]);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -71,6 +70,10 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
     if (sort !== 'operational' && !aliasQuery.trim()) return base;
     return sortByOperationalAlias(base);
   }, [aliasQuery, devices, deviceFilter, sort]);
+  // Las acciones en lote actúan SOLO sobre lo que se ve: antes se calculaba sobre
+  // todos los equipos y, si marcabas, cambiabas el filtro y apretabas "Borrar",
+  // también se borraban los marcados que ya no se veían.
+  const selectedDevices = useMemo(() => visibleDevices.filter(device => selection.selected.has(device.etiqueta)), [visibleDevices, selection.selected]);
   const count = (filter: DeviceFilter) => devices.filter(device => matchesFilter(device, filter)).length;
   const categories = useMemo(() => Array.from(new Set(devices.map(classifyDeviceType).filter(Boolean))).sort(), [devices]);
   const handleDelete = async (device: Device) => {
@@ -132,26 +135,52 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
     }
   };
 
-  const exportQrPdf = () => {
-    const rows = visibleDevices.map(device => {
-      const payload = ['TA', device.etiqueta, device.sn || '', device.mac || ''].join('|');
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=132x132&data=${encodeURIComponent(payload)}`;
-      return `
-        <article class="qr-card">
-          <img src="${qrUrl}" alt="QR ${escapeHtml(device.etiqueta)}" />
-          <strong>${escapeHtml(device.etiqueta)}</strong>
-          <span>${escapeHtml(device.aliasOperativo || device.categoria || '')}</span>
-        </article>
-      `;
-    }).join('') || '<p>No hay dispositivos visibles para exportar.</p>';
+  // Los QR se generan en el navegador (antes se pedían a api.qrserver.com, y
+  // con eso se mandaban etiqueta, SN y MAC de cada equipo a un tercero; además
+  // sin internet no salía ningún QR). La librería se baja recién al exportar.
+  const exportQrPdf = async () => {
+    // La ventana se abre antes de cualquier await: si no, el bloqueador de
+    // ventanas emergentes la frena por no venir "directo" del clic.
     const popup = window.open('', '_blank', 'width=980,height=720');
     if (!popup) {
       setMessage({ tone: 'error', text: 'El navegador bloqueó la ventana de exportación.' });
       return;
     }
-    popup.document.write(`<!doctype html>
-      <html><head><meta charset="utf-8" /><title>QR TechAsset</title>
-      <style>
+    const qrcode = await import('qrcode-generator')
+      .then(module => module.default)
+      .catch((reason: unknown) => {
+        popup.close();
+        setMessage({ tone: 'error', text: errorMessage(reason, 'No se pudieron generar los códigos QR.') });
+        return null;
+      });
+    if (!qrcode) return;
+    const qrImage = (payload: string) => {
+      // Bytes UTF-8 como "cadena binaria": el modo Byte de la librería toma cada
+      // carácter como un byte, así los acentos no se rompen.
+      const binary = Array.from(new TextEncoder().encode(payload), byte => String.fromCharCode(byte)).join('');
+      const qr = qrcode(0, 'M');
+      qr.addData(binary, 'Byte');
+      qr.make();
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true }))}`;
+    };
+    const rows = visibleDevices.map(device => {
+      const payload = ['TA', device.etiqueta, device.sn || '', device.mac || ''].join('|');
+      return `
+        <article class="qr-card">
+          <img src="${qrImage(payload)}" alt="QR ${escapeHtml(device.etiqueta)}" />
+          <strong>${escapeHtml(device.etiqueta)}</strong>
+          <span>${escapeHtml(device.aliasOperativo || device.categoria || '')}</span>
+        </article>
+      `;
+    }).join('') || '<p>No hay dispositivos visibles para exportar.</p>';
+    // Sin document.write: se arma el documento de la ventana nueva con el DOM.
+    const doc = popup.document;
+    doc.documentElement.lang = 'es';
+    doc.title = 'QR TechAsset';
+    const charset = doc.createElement('meta');
+    charset.setAttribute('charset', 'utf-8');
+    const style = doc.createElement('style');
+    style.textContent = `
         body{font-family:Arial,sans-serif;margin:24px;color:#0f172a}
         h1{font-size:20px;margin:0 0 18px}
         .qr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -160,8 +189,9 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
         .qr-card strong{font-size:18px}
         .qr-card span{font-size:12px;color:#475569}
         @media print{body{margin:10mm}.qr-grid{grid-template-columns:repeat(3,1fr)}}
-      </style></head><body><h1>TechAsset · códigos QR</h1><section class="qr-grid">${rows}</section></body></html>`);
-    popup.document.close();
+    `;
+    doc.head.append(charset, style);
+    doc.body.innerHTML = `<h1>TechAsset · códigos QR</h1><section class="qr-grid">${rows}</section>`;
     popup.focus();
     window.setTimeout(() => popup.print(), 600);
   };
@@ -206,7 +236,7 @@ export function DevicesPage({ devices, consultationMode, operator, onAdd, onLoan
             <Button onClick={() => exportCsv('/api/devices/export/summary.csv', 'techasset_resumen.csv')}>Exportar resumen</Button>
             <Button onClick={() => exportCsv('/api/movements/export.csv', 'techasset_movimientos.csv')}>Exportar movimientos</Button>
             <Button onClick={() => exportCsv('/api/loans/export/active.csv', 'techasset_prestamos_activos.csv')}>Exportar préstamos</Button>
-            <Button onClick={exportQrPdf}>Exportar PDF QR</Button>
+            <Button onClick={() => void exportQrPdf()}>Exportar PDF QR</Button>
             <Button onClick={() => setGroupsOpen(true)}>Grupos</Button>
             <Button onClick={() => setTrashOpen(true)}>Papelera</Button>
             {!consultationMode && <Button variant="primary" onClick={() => setAdding(true)}>+ Añadir dispositivo</Button>}

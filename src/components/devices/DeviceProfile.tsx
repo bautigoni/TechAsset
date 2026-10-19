@@ -12,7 +12,7 @@ const CONDICIONES = [
 ];
 import { RelatedReminders } from '../reminders/RelatedReminders';
 import { getActiveSiteCode } from '../../services/activeSite';
-import { formatDate as formatCachedDate, SHORT_DATE_TIME } from '../../utils/formatters';
+import { dayKeyAr, formatDate as formatCachedDate, SHORT_DATE_TIME } from '../../utils/formatters';
 
 export function DeviceProfile({
   device,
@@ -271,8 +271,9 @@ function Stat({ label, value }: { label: string; value: string | number }) {
     </div>
   );
 }
+// Día en hora argentina (un timestamp UTC de después de las 21 h es del día anterior).
 function shortDate(value?: string) {
-  return value ? String(value).slice(0, 10).split('-').reverse().join('/') : '—';
+  return value ? (dayKeyAr(value) || String(value).slice(0, 10)).split('-').reverse().join('/') : '—';
 }
 function formatDate(value?: string) {
   if (!value) return '—';

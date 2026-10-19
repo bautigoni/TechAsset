@@ -7,6 +7,7 @@ import { getSiteAssistants } from '../../services/authApi';
 import { uploadTaskAttachment } from '../../services/tasksApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { SelectField } from '../layout/SelectField';
+import { toastError } from '../layout/Feedback';
 
 const TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'] as const;
 
@@ -55,7 +56,12 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
     const iso = ddMmToIso(dateInput);
     const responsables = selected.length ? selected : ['Sin asignar'];
     const assigneeEmails = assistants.filter(item => responsables.includes(item.name)).map(item => item.email || '').filter(Boolean);
-    await onSave({ ...task, responsables, assigneeEmails, responsable: responsables.join(','), fechaVencimiento: iso });
+    try {
+      await onSave({ ...task, responsables, assigneeEmails, responsable: responsables.join(','), fechaVencimiento: iso });
+    } catch (reason) {
+      toastError(reason, 'No se pudo guardar la tarea.');
+      return;
+    }
     onClose();
   };
 
@@ -119,6 +125,8 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
               const base64 = await readFileAsDataUrl(file);
               const response = await uploadTaskAttachment({ name: file.name, mimeType: file.type || mimeFromName(file.name), base64 });
               setTask(current => ({ ...current, attachments: [...(current.attachments || []), response.attachment] }));
+            } catch (reason) {
+              toastError(reason, 'No se pudo subir el archivo.');
             } finally {
               setUploading(false);
               event.target.value = '';

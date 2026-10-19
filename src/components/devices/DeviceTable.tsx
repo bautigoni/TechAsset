@@ -4,7 +4,7 @@ import { Badge } from '../layout/Badge';
 import { Button } from '../layout/Button';
 import { getOperationalAlias } from '../../utils/classifyDevice';
 import { formatLoanDateTime, loanAgeLabel, loanAgeTone } from '../../utils/formatters';
-import { confirmDialog } from '../layout/Feedback';
+import { confirmDialog, toastError } from '../layout/Feedback';
 import { getLoanState } from '../../utils/deviceState';
 
 type ActionMode = 'full' | 'dashboard';
@@ -65,6 +65,9 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
     setReturningTag(device.etiqueta);
     try {
       await onReturn(device);
+    } catch (reason) {
+      // Antes fallaba en silencio (try/finally sin catch).
+      toastError(reason, `No se pudo devolver ${device.etiqueta}.`);
     } finally {
       setReturningTag('');
     }
@@ -80,8 +83,8 @@ export function DeviceTable({ devices, compact = false, actionMode = 'full', onL
                 <input
                   type="checkbox"
                   aria-label="Seleccionar todos los equipos visibles"
-                  checked={shown.length > 0 && shown.every(device => selection.selected.has(device.etiqueta))}
-                  onChange={() => selection.onToggleMany(shown.map(device => device.etiqueta))}
+                  checked={devices.length > 0 && devices.every(device => selection.selected.has(device.etiqueta))}
+                  onChange={() => selection.onToggleMany(devices.map(device => device.etiqueta))}
                 />
               </th>
             )}

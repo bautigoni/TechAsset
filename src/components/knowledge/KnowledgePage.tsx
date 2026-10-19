@@ -11,6 +11,8 @@ import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { confirmDialog } from '../layout/Feedback';
+import { ListTextInput } from '../layout/ListTextInput';
+import { dayKeyAr } from '../../utils/formatters';
 
 const EMPTY: Partial<KnowledgeArticle> = { title: '', content: '', category: 'General', tags: [], attachments: [] };
 export function KnowledgePage({ consultationMode }: { consultationMode: boolean }) {
@@ -169,18 +171,9 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
             </div>
             <label>
               Tags (separados por coma)
-              <input
-                className="input"
-                value={(draft.tags || []).join(', ')}
-                onChange={e =>
-                  setDraft(value => ({
-                    ...value!,
-                    tags: e.target.value
-                      .split(',')
-                      .map(x => x.trim())
-                      .filter(Boolean)
-                  }))
-                }
+              <ListTextInput
+                value={draft.tags}
+                onChange={tags => setDraft(value => ({ ...value!, tags }))}
               />
             </label>
             <div className="rich-editor">
@@ -268,6 +261,7 @@ function mime(name: string) {
     )[ext || ''] || 'application/octet-stream'
   );
 }
+// Día en hora argentina (un timestamp UTC de después de las 21 h es del día anterior).
 function date(value: string) {
-  return value ? String(value).slice(0, 10).split('-').reverse().join('/') : '—';
+  return value ? (dayKeyAr(value) || String(value).slice(0, 10)).split('-').reverse().join('/') : '—';
 }

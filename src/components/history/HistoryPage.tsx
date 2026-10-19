@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Device } from '../../types';
 import { getLoanHistory, getMovementHistory, type HistoryFilters, type LoanHistoryItem, type MovementHistoryItem } from '../../services/historyApi';
 import { useTabPill } from '../../hooks/useTabPill';
-import { DATE_TIME, formatDate } from '../../utils/formatters';
+import { DATE_TIME, formatDate, todayKeyAr } from '../../utils/formatters';
 import { downloadCsv } from '../../utils/download';
 import { Button } from '../layout/Button';
 import { DateField } from '../layout/DateField';
@@ -90,7 +90,7 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
   };
 
   const exportCsv = () => {
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = todayKeyAr();
     if (kind === 'loans') {
       downloadCsv(`historial_prestamos_${stamp}.csv`, [
         ['Fecha', 'Tipo', 'Etiqueta', 'Alias', 'Persona', 'Rol', 'Curso', 'Ubicación', 'Motivo', 'Accesorios', 'Comentarios', 'Operador'],

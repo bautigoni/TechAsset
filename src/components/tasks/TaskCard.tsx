@@ -7,7 +7,7 @@ import { AnimatedNumber } from '../layout/AnimatedNumber';
 import { useMountTransition } from '../../hooks/useMountTransition';
 import { formatDdMm } from '../../utils/taskDate';
 import { createTaskComment, createTaskItem, deleteTaskItem, getTaskComments, updateTaskItem } from '../../services/tasksApi';
-import { toast } from '../layout/Feedback';
+import { toast, toastError } from '../layout/Feedback';
 import { formatDate } from '../../utils/formatters';
 
 export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart, selected, onToggleSelect }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void; selected?: boolean; onToggleSelect?: () => void }) {
@@ -88,18 +88,27 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
                 checked={item.completada}
                 disabled={consultationMode}
                 onChange={async event => {
-                  await updateTaskItem(task.id, item.id, { completada: event.target.checked, operator });
-                  await onRefresh?.();
+                  try {
+                    await updateTaskItem(task.id, item.id, { completada: event.target.checked, operator });
+                    await onRefresh?.();
+                  } catch (reason) {
+                    toastError(reason, 'No se pudo actualizar la subtarea.');
+                  }
                 }}
               />
               <span>{item.texto}</span>
               <button type="button" disabled={consultationMode} aria-label={`Quitar subtarea ${item.texto}`} onClick={async event => {
                 event.preventDefault();
-                await deleteTaskItem(task.id, item.id, operator);
-                await onRefresh?.();
+                try {
+                  await deleteTaskItem(task.id, item.id, operator);
+                  await onRefresh?.();
+                } catch (reason) {
+                  toastError(reason, 'No se pudo quitar la subtarea.');
+                  return;
+                }
                 // Una subtarea se borra seguido y de a muchas: en vez de preguntar
                 // cada vez, se puede deshacer (la vuelve a crear con el mismo texto).
-                toast({ message: `Subtarea quitada: ${item.texto}`, action: { label: 'Deshacer', onClick: async () => { await createTaskItem(task.id, { texto: item.texto, operator }); await onRefresh?.(); } } });
+                toast({ message: `Subtarea quitada: ${item.texto}`, action: { label: 'Deshacer', onClick: async () => { try { await createTaskItem(task.id, { texto: item.texto, operator }); await onRefresh?.(); } catch (reason) { toastError(reason, 'No se pudo restaurar la subtarea.'); } } } });
               }}>×</button>
             </label>
           ))}
@@ -112,9 +121,13 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
           <form className="task-add-item t-msg-enter" onSubmit={async event => {
             event.preventDefault();
             if (!itemText.trim()) return;
-            await createTaskItem(task.id, { texto: itemText, operator });
-            setItemText('');
-            await onRefresh?.();
+            try {
+              await createTaskItem(task.id, { texto: itemText, operator });
+              setItemText('');
+              await onRefresh?.();
+            } catch (reason) {
+              toastError(reason, 'No se pudo agregar la subtarea.');
+            }
           }}>
             <input autoFocus className="input" value={itemText} onChange={event => setItemText(event.target.value)} placeholder="¿Qué falta hacer?" onBlur={() => { if (!itemText.trim()) setAdding(false); }} />
             <Button type="submit">Agregar</Button>
@@ -143,7 +156,7 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
           <div className={`task-menu t-dropdown ${menu.stateClass}`.trim()} data-origin="top-right" role="menu">
             <button type="button" role="menuitem" disabled={consultationMode} onClick={event => { event.stopPropagation(); setMenuOpen(false); onEdit?.(); }}><Pencil size={14} /> Editar</button>
             <button type="button" role="menuitem" disabled={consultationMode} onClick={event => { event.stopPropagation(); setMenuOpen(false); setNoteOpen(true); }}><StickyNote size={14} /> Nota</button>
-            <button type="button" role="menuitem" onClick={async event => { event.stopPropagation(); setMenuOpen(false); const response = await getTaskComments(task.id); setComments(response.items); setCommentsOpen(true); }}>
+            <button type="button" role="menuitem" onClick={async event => { event.stopPropagation(); setMenuOpen(false); try { const response = await getTaskComments(task.id); setComments(response.items); setCommentsOpen(true); } catch (reason) { toastError(reason, 'No se pudieron cargar los comentarios.'); } }}>
               <MessageSquare size={14} /> Comentarios{task.commentsCount ? <span className="task-menu-count"><AnimatedNumber value={task.commentsCount} /></span> : null}
             </button>
             <button type="button" role="menuitem" className="is-danger" disabled={consultationMode} onClick={event => { event.stopPropagation(); setMenuOpen(false); onDelete(); }}><Trash2 size={14} /> Borrar</button>
@@ -154,7 +167,12 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
         <Modal title={`Nota - ${task.titulo}`} onClose={() => setNoteOpen(false)}>
           <form className="stack" onSubmit={async event => {
             event.preventDefault();
-            await onPatch?.({ comentario: comment });
+            try {
+              await onPatch?.({ comentario: comment });
+            } catch (reason) {
+              toastError(reason, 'No se pudo guardar la nota.');
+              return;
+            }
             setNoteOpen(false);
           }}>
             <label>Nota<textarea className="input" rows={5} value={comment} onChange={event => setComment(event.target.value)} /></label>
@@ -165,7 +183,7 @@ export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, 
           </form>
         </Modal>
       )}
-      {commentsOpen && <Modal title={`Comentarios · ${task.titulo}`} onClose={() => setCommentsOpen(false)}><div className="task-comments"><div className="task-comment-list">{comments.map(item => <article key={item.id}><header><strong>{item.authorName || item.authorEmail}</strong><time>{formatDate(item.createdAt)}</time></header><p>{item.body}</p></article>)}{!comments.length && <div className="empty-state">Todavía no hay comentarios.</div>}</div>{!consultationMode && <form onSubmit={async event => { event.preventDefault(); if (!commentText.trim()) return; const response = await createTaskComment(task.id, commentText); setComments(value => [...value, response.item]); setCommentText(''); await onRefresh?.(); }}><textarea className="input" rows={3} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Escribí un comentario" /><Button variant="primary" type="submit">Comentar</Button></form>}</div></Modal>}
+      {commentsOpen && <Modal title={`Comentarios · ${task.titulo}`} onClose={() => setCommentsOpen(false)}><div className="task-comments"><div className="task-comment-list">{comments.map(item => <article key={item.id}><header><strong>{item.authorName || item.authorEmail}</strong><time>{formatDate(item.createdAt)}</time></header><p>{item.body}</p></article>)}{!comments.length && <div className="empty-state">Todavía no hay comentarios.</div>}</div>{!consultationMode && <form onSubmit={async event => { event.preventDefault(); if (!commentText.trim()) return; try { const response = await createTaskComment(task.id, commentText); setComments(value => [...value, response.item]); setCommentText(''); await onRefresh?.(); } catch (reason) { toastError(reason, 'No se pudo enviar el comentario.'); } }}><textarea className="input" rows={3} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Escribí un comentario" /><Button variant="primary" type="submit">Comentar</Button></form>}</div></Modal>}
     </article>
   );
 }
