@@ -87,26 +87,3 @@ export async function streamAssistantMessage(
   if (result) return result;
   throw new Error(failure || 'Se cortó la respuesta del asistente.');
 }
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('No pude leer el audio grabado.'));
-    reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
-    reader.readAsDataURL(blob);
-  });
-}
-
-/**
- * @deprecated El server ya no transcribe (responde 410). Usar el hook
- * `useSpeechDictation` (reconocimiento de voz del navegador). Se mantiene solo
- * hasta que el panel nuevo deje de llamarla.
- */
-export async function transcribeAssistantAudio(blob: Blob): Promise<string> {
-  const audio = await blobToBase64(blob);
-  const response = await apiSend<{ ok: true; text: string }>('/api/asistente/transcribir', 'POST', {
-    audio,
-    mimeType: blob.type || 'audio/webm'
-  });
-  return response.text;
-}

@@ -1,17 +1,43 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { ArrowLeft, Mic, Plus, Send, Square, Volume2, X } from 'lucide-react';
-import { sendAssistantMessage, transcribeAssistantAudio, type AssistantContext, type AssistantResponse } from '../../services/assistantApi';
+import {
+  streamAssistantMessage, undoAssistantAction,
+  type AssistantAction, type AssistantContext, type AssistantResponse
+} from '../../services/assistantApi';
+import { ApiError } from '../../services/apiClient';
+import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { Spinner } from '../../ui/icons';
+import { InlineConfirm, StatusLine } from '../../ui/Inline';
 import { TruncatedText } from '../../ui/Truncated';
 import './assistant.css';
 
 export const ASSISTANT_LOGO = '/assistant-logo.png';
 
+type PendingConfirmation = NonNullable<AssistantResponse['pendingConfirmation']>;
+
 interface ChatMessage {
+  id: number;
   role: 'user' | 'assistant';
   content: string;
-  response?: AssistantResponse;
+  /** Respuesta en curso (texto parcial del stream). */
+  streaming?: boolean;
+  /** Herramienta corriendo ahora ("Buscando…", "Prestando…"). */
+  tool?: string | null;
+  actions?: AssistantAction[];
+  confirmation?: PendingConfirmation;
+  /** La confirmación ya se contestó (o se canceló): no se vuelve a mostrar. */
+  confirmationSettled?: boolean;
+  /** Falló el pedido: se muestra en línea con Reintentar. */
+  error?: string;
+  /** Destino sugerido que en la vista propia no se abre solo (enlace debajo). */
+  link?: { route?: string; device?: string };
 }
+
+/** Estado del Deshacer de cada acción, por id de acción. */
+type UndoState =
+  | { status: 'busy' }
+  | { status: 'done'; message: string }
+  | { status: 'error'; message: string; retryable: boolean };
 
 const STAFF_SUGGESTIONS = [
   'Prestale el Touch 34 a Mili en DOE, ¿me confirmás los datos?',
@@ -32,28 +58,35 @@ const VIEWER_SUGGESTIONS = [
   '¿Hay algún equipo prestado hace más de 30 días?'
 ];
 
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/`(.+?)`/g, '$1')
-    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-    .replace(/#{1,6}\s+/g, '')
-    .replace(/>\s+/g, '')
-    .replace(/[-*+]\s+/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
+/** Lo que se ve mientras corre cada herramienta del server (tools.js). */
+const TOOL_LABELS: Record<string, string> = {
+  base_conocimiento: 'Buscando en la base de conocimiento…',
+  buscar_dispositivos: 'Buscando equipos…',
+  detalle_dispositivo: 'Buscando el equipo…',
+  buscar_persona: 'Buscando a la persona…',
+  prestamos_activos: 'Revisando los préstamos…',
+  historial_prestamos: 'Revisando el historial…',
+  tareas_tic: 'Revisando las tareas…',
+  agenda_tic: 'Revisando la agenda…',
+  resumen_sitio: 'Armando el resumen…',
+  procedimiento: 'Buscando el procedimiento…',
+  abrir_seccion: 'Buscando la sección…',
+  registrar_prestamo: 'Prestando…',
+  registrar_devolucion: 'Devolviendo…',
+  crear_tarea: 'Creando la tarea…',
+  crear_evento_agenda: 'Agendando…',
+  crear_recordatorio: 'Creando el recordatorio…'
+};
 
-function preferredRecorderMimeType(): string | undefined {
-  if (typeof MediaRecorder === 'undefined') return undefined;
-  return [
-    'audio/webm;codecs=opus',
-    'audio/mp4',
-    'audio/webm',
-    'audio/ogg;codecs=opus'
-  ].find(type => MediaRecorder.isTypeSupported(type));
-}
+/** Nombre de la sección para el enlace "Abrir …" (las que sugiere el server). */
+const ROUTE_LABELS: Record<string, string> = {
+  dashboard: 'Inicio', devices: 'Dispositivos', loans: 'Préstamos', analytics: 'Analítica', tasks: 'Tareas TIC',
+  agenda: 'Agenda TIC', reminders: 'Recordatorios', classrooms: 'Estado aulas', tickets: 'Tickets',
+  knowledge: 'Base de conocimiento', inventory: 'Inventario TIC', schedules: 'Horarios', history: 'Historial'
+};
+
+const CONFIRM_TEXT = 'sí, confirmo';
+const FAILED_REPLY = 'No pude procesar el pedido.';
 
 function spanishVoice(): SpeechSynthesisVoice | undefined {
   const voices = window.speechSynthesis?.getVoices?.() || [];
@@ -62,19 +95,48 @@ function spanishVoice(): SpeechSynthesisVoice | undefined {
 }
 
 /**
+ * Texto en vivo sin marcas: la respuesta final (`done.reply`) ya viene limpia
+ * del server, pero los deltas llegan crudos y un "**" se vería un instante.
+ */
+function livePlainText(text: string): string {
+  return text
+    .replace(/\*\*|__/g, '')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*•]\s+/gm, '');
+}
+
+function mergeActions(current: AssistantAction[] = [], incoming: AssistantAction[] = []): AssistantAction[] {
+  const seen = new Set(current.map(action => action.id));
+  return [...current, ...incoming.filter(action => !seen.has(action.id))];
+}
+
+function joinText(base: string, extra: string): string {
+  return [base.trim(), extra.trim()].filter(Boolean).join(' ');
+}
+
+let nextMessageId = 1;
+
+/**
  * Asistente de IA como COLUMNA a la derecha que empuja el contenido (desktop)
  * o como vista propia (mobile y anchos chicos). Nunca flota encima: se abre
  * con el botón "Asistente" de la barra superior o desde Ctrl K. Se queda
  * montado aunque se cierre, así la conversación sobrevive a cambios de vista
  * (se pierde con F5 o al salir, como antes).
+ *
+ * La respuesta llega en vivo (SSE): el texto aparece mientras se genera, una
+ * línea dice qué herramienta corre, y cada acción queda como línea de estado
+ * con Deshacer. El dictado es del navegador (useSpeechDictation): sin Web
+ * Speech API (Firefox) el micrófono no aparece.
  */
-export function AssistantPanel({ open, onClose, mode, backLabel, onNavigate, onOpenDevice, canEdit, context, question }: {
+export function AssistantPanel({ open, onClose, mode, backLabel, currentView, onNavigate, onOpenDevice, canEdit, context, question }: {
   open: boolean;
   onClose: () => void;
   /** 'column' = al costado; 'view' = ocupa el lugar del contenido. */
   mode: 'column' | 'view';
   /** "Volver a Préstamos" en la vista propia. */
   backLabel: string;
+  /** Vista abierta detrás: no se ofrece "Abrir" hacia la misma. */
+  currentView?: string;
   onNavigate: (view: string) => void;
   onOpenDevice?: (deviceTag: string) => boolean;
   canEdit?: boolean;
@@ -85,16 +147,35 @@ export function AssistantPanel({ open, onClose, mode, backLabel, onNavigate, onO
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing'>('idle');
   const [speakingMessage, setSpeakingMessage] = useState<number | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const recordingTimeoutRef = useRef<number | null>(null);
-  const cancelRecordingRef = useRef(false);
+  const [undoStates, setUndoStates] = useState<Record<number, UndoState>>({});
   const inputRef = useRef<HTMLInputElement | null>(null);
   const feedRef = useRef<HTMLDivElement | null>(null);
+  const stickToBottom = useRef(true);
   const lastQuestion = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const sendingRef = useRef(false);
+  const undoingRef = useRef(new Set<number>());
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const currentViewRef = useRef(currentView);
+  currentViewRef.current = currentView;
+  // Dictado: lo que había escrito antes de hablar + lo que se reconoce.
+  const dictationBase = useRef('');
+  const discardDictation = useRef(false);
+
+  const dictation = useSpeechDictation({
+    onFinal: text => {
+      if (discardDictation.current) { discardDictation.current = false; return; }
+      setInput(joinText(dictationBase.current, text));
+      // Se revisa antes de enviar: el asistente puede prestar o devolver.
+      window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
+    }
+  });
+  const listening = dictation.listening;
+  const shownInput = listening ? joinText(dictationBase.current, dictation.transcript) : input;
 
   const hasStarted = messages.length > 0;
   const suggestions = canEdit ? STAFF_SUGGESTIONS : VIEWER_SUGGESTIONS;
@@ -104,56 +185,143 @@ export function AssistantPanel({ open, onClose, mode, backLabel, onNavigate, onO
     if (open) inputRef.current?.focus({ preventScroll: true });
   }, [open]);
 
-  // Siempre al último mensaje (scroll interno del historial, no de la página).
+  // Pegado al último mensaje mientras el usuario no haya subido a leer
+  // (scroll interno del historial, no de la página).
   useEffect(() => {
     const feed = feedRef.current;
-    if (feed) feed.scrollTop = feed.scrollHeight;
-  }, [messages, loading]);
+    if (feed && stickToBottom.current) feed.scrollTop = feed.scrollHeight;
+  }, [messages, loading, undoStates]);
+
+  // Teclado en el celular: al achicarse la ventana visible, el último mensaje sigue a la vista.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!open || !vv) return;
+    const onResize = () => {
+      const feed = feedRef.current;
+      if (feed && stickToBottom.current) feed.scrollTop = feed.scrollHeight;
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, [open]);
+
+  const onFeedScroll = () => {
+    const feed = feedRef.current;
+    if (feed) stickToBottom.current = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 48;
+  };
+
+  const stopDictation = useCallback((discard: boolean) => {
+    if (!dictation.listening) return;
+    discardDictation.current = discard;
+    dictation.stop();
+  }, [dictation]);
 
   useEffect(() => () => {
-    if (recordingTimeoutRef.current) window.clearTimeout(recordingTimeoutRef.current);
-    cancelRecordingRef.current = true;
-    if (recorderRef.current?.state === 'recording') {
-      recorderRef.current.onstop = null;
-      recorderRef.current.stop();
-    }
-    streamRef.current?.getTracks().forEach(track => track.stop());
+    abortRef.current?.abort();
     window.speechSynthesis?.cancel();
   }, []);
 
-  // Cerrar cancela una grabación en curso (sin enviarla) y corta la voz.
+  // Cerrar corta el dictado (lo dicho queda en el campo) y la voz.
   useEffect(() => {
     if (open) return;
-    if (recorderRef.current?.state === 'recording') {
-      cancelRecordingRef.current = true;
-      recorderRef.current.stop();
-    }
+    stopDictation(false);
     window.speechSynthesis?.cancel();
     setSpeakingMessage(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const send = async (text: string) => {
+  const patchMessage = (id: number, patch: (message: ChatMessage) => Partial<ChatMessage>) => {
+    setMessages(prev => prev.map(message => (message.id === id ? { ...message, ...patch(message) } : message)));
+  };
+
+  const send = async (text: string, { history }: { history?: ChatMessage[] } = {}) => {
     const clean = text.trim();
-    if (!clean || loading) return;
-    setInput('');
+    // Un doble Enter (o doble toque) no manda dos veces: el estado tarda un render.
+    if (!clean || loading || sendingRef.current) return;
+    sendingRef.current = true;
+    stopDictation(true);
+    // Se vacía solo si el campo tenía lo que se manda: una sugerencia o Ctrl K no pisan lo escrito.
+    setInput(prev => (prev.trim() === clean ? '' : prev));
     setLoading(true);
-    const newMessages = [...messages, { role: 'user' as const, content: clean }];
-    setMessages(newMessages);
+    stickToBottom.current = true;
+    const base = history ?? messagesRef.current;
+    // Una confirmación pendiente se da por contestada con cualquier mensaje nuevo.
+    const previous = base.map(message => (message.confirmation && !message.confirmationSettled ? { ...message, confirmationSettled: true } : message));
+    const userMessage: ChatMessage = { id: nextMessageId++, role: 'user', content: clean };
+    const replyId = nextMessageId++;
+    const conversation = [...previous, userMessage];
+    setMessages([...conversation, { id: replyId, role: 'assistant', content: '', streaming: true, tool: null }]);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let streamedActions = 0;
+    const toolsSeen: string[] = [];
     try {
-      const response = await sendAssistantMessage(
-        newMessages.slice(-12).map(m => ({ role: m.role, content: m.content })), context
+      const response = await streamAssistantMessage(
+        conversation
+          .filter(message => message.content && !message.error)
+          .slice(-12)
+          .map(message => ({ role: message.role, content: message.content })),
+        context,
+        {
+          signal: controller.signal,
+          onDelta: delta => patchMessage(replyId, message => ({ content: message.content + delta, tool: null })),
+          onTool: name => {
+            toolsSeen.push(name);
+            patchMessage(replyId, () => ({ tool: TOOL_LABELS[name] || 'Buscando…' }));
+          },
+          onAction: action => {
+            streamedActions += 1;
+            patchMessage(replyId, message => ({ actions: mergeActions(message.actions, [action]) }));
+          }
+        }
       );
-      setMessages(prev => [...prev, { role: 'assistant', content: stripMarkdown(response.reply), response }]);
-      if (response.suggestedDevice && onOpenDevice?.(response.suggestedDevice)) {
+      if (controller.signal.aborted) return;
+      const actions = response.actions || [];
+      const acted = actions.length > 0 || streamedActions > 0;
+      // En la vista propia (mobile) ir a otra sección cierra el asistente: salvo
+      // que haya pedido abrir una sección, la respuesta se queda a la vista y
+      // el destino sugerido va como enlace debajo.
+      const stay = modeRef.current === 'view' && !toolsSeen.includes('abrir_seccion');
+      const linkRoute = response.suggestedRoute && response.suggestedRoute !== currentViewRef.current ? response.suggestedRoute : undefined;
+      const linkDevice = acted ? undefined : response.suggestedDevice || undefined;
+      const link = stay && (linkRoute || linkDevice) ? { route: linkRoute, device: linkDevice } : undefined;
+      patchMessage(replyId, message => ({
+        content: response.reply,
+        streaming: false,
+        tool: null,
+        actions: mergeActions(message.actions, actions),
+        confirmation: response.pendingConfirmation,
+        link
+      }));
+      if (stay) return;
+      // Si hizo algo, el panel queda abierto para que se vea el Deshacer.
+      if (!acted && response.suggestedDevice && onOpenDevice?.(response.suggestedDevice)) {
         onClose();
       } else if (response.suggestedRoute) {
         onNavigate(response.suggestedRoute);
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'No pude procesar el pedido. ¿Querés intentar de nuevo?' }]);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      const reason = error instanceof TypeError
+        ? 'No hay conexión con el servidor. Probá de nuevo.'
+        : error instanceof Error && error.message ? error.message : FAILED_REPLY;
+      patchMessage(replyId, message => ({ streaming: false, tool: null, error: reason, content: message.actions?.length ? message.content : '' }));
+      // Lo escrito no se pierde: vuelve al campo (si no se empezó otro pedido).
+      setInput(prev => (prev.trim() ? prev : clean));
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+      sendingRef.current = false;
       setLoading(false);
     }
+  };
+
+  // Reintentar: saca el pedido fallido y su respuesta, y lo vuelve a mandar.
+  const retry = (failedId: number) => {
+    const list = messagesRef.current;
+    const index = list.findIndex(message => message.id === failedId);
+    const userMessage = index > 0 ? list[index - 1] : null;
+    if (!userMessage || userMessage.role !== 'user') return;
+    void send(userMessage.content, { history: list.slice(0, index - 1) });
   };
 
   // Pregunta enviada desde Ctrl K.
@@ -164,80 +332,27 @@ export function AssistantPanel({ open, onClose, mode, backLabel, onNavigate, onO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question]);
 
-  const stopRecording = () => {
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-  };
-
-  const startRecording = async () => {
-    if (loading || voiceState === 'transcribing') return;
-    if (voiceState === 'recording') {
-      stopRecording();
-      return;
-    }
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Este navegador no permite grabar audio. Podés escribirme el pedido.' }]);
-      return;
-    }
-
+  const undo = async (action: AssistantAction) => {
+    // Nunca dos veces: ni doble click ni un click mientras corre.
+    if (!action.undo || undoingRef.current.has(action.id)) return;
+    undoingRef.current.add(action.id);
+    setUndoStates(prev => ({ ...prev, [action.id]: { status: 'busy' } }));
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      const mimeType = preferredRecorderMimeType();
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      streamRef.current = stream;
-      recorderRef.current = recorder;
-      chunksRef.current = [];
-      cancelRecordingRef.current = false;
-      recorder.ondataavailable = event => {
-        if (event.data.size) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = async () => {
-        if (recordingTimeoutRef.current) window.clearTimeout(recordingTimeoutRef.current);
-        stream.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType || 'audio/webm' });
-        chunksRef.current = [];
-        if (cancelRecordingRef.current) {
-          cancelRecordingRef.current = false;
-          setVoiceState('idle');
-          return;
-        }
-        if (!blob.size) {
-          setVoiceState('idle');
-          return;
-        }
-        setVoiceState('transcribing');
-        try {
-          const transcript = await transcribeAssistantAudio(blob);
-          setVoiceState('idle');
-          await send(transcript);
-        } catch (error) {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: error instanceof Error ? error.message : 'No pude procesar el audio. Probá de nuevo.'
-          }]);
-          setVoiceState('idle');
-        }
-      };
-      recorder.start(250);
-      setVoiceState('recording');
-      // Corte automático a los 60 s.
-      recordingTimeoutRef.current = window.setTimeout(stopRecording, 60000);
-    } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'No pude acceder al micrófono. Revisá el permiso del navegador y probá de nuevo.'
-      }]);
-      setVoiceState('idle');
-      streamRef.current?.getTracks().forEach(track => track.stop());
+      const result = await undoAssistantAction(action.undo.actionId);
+      setUndoStates(prev => ({ ...prev, [action.id]: { status: 'done', message: result.mensaje || `Deshecho: ${action.label}` } }));
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const message = error instanceof Error && error.message ? error.message : 'No pude deshacerlo.';
+      // 403 (sin permiso), 404 (no existe o es de otra sede), 409 (ya cambió o se deshizo): reintentar no sirve.
+      const retryable = ![403, 404, 409, 410].includes(status);
+      setUndoStates(prev => ({ ...prev, [action.id]: { status: 'error', message, retryable } }));
+      if (retryable) undoingRef.current.delete(action.id);
     }
   };
 
-  const toggleSpeech = (index: number, text: string) => {
-    if (!window.speechSynthesis) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Este navegador no puede reproducir respuestas por voz.' }]);
-      return;
-    }
-    if (speakingMessage === index) {
+  const toggleSpeech = (id: number, text: string) => {
+    if (!window.speechSynthesis) return;
+    if (speakingMessage === id) {
       window.speechSynthesis.cancel();
       setSpeakingMessage(null);
       return;
@@ -250,28 +365,49 @@ export function AssistantPanel({ open, onClose, mode, backLabel, onNavigate, onO
     if (voice) utterance.voice = voice;
     utterance.onend = () => setSpeakingMessage(null);
     utterance.onerror = () => setSpeakingMessage(null);
-    setSpeakingMessage(index);
+    setSpeakingMessage(id);
     window.speechSynthesis.speak(utterance);
   };
 
+  const toggleDictation = () => {
+    if (listening) { stopDictation(false); return; }
+    if (loading) return;
+    dictationBase.current = input;
+    dictation.start();
+  };
+
   const newConversation = () => {
-    if (recorderRef.current?.state === 'recording') {
-      cancelRecordingRef.current = true;
-      recorderRef.current.stop();
-    }
+    abortRef.current?.abort();
+    abortRef.current = null;
+    stopDictation(true);
+    dictation.reset();
     window.speechSynthesis?.cancel();
     setSpeakingMessage(null);
     setMessages([]);
+    setUndoStates({});
+    undoingRef.current.clear();
+    sendingRef.current = false;
+    setLoading(false);
     setInput('');
     inputRef.current?.focus({ preventScroll: true });
   };
+
+  const openLinkedDevice = (tag?: string) => {
+    if (tag && onOpenDevice?.(tag)) onClose();
+  };
+
+  const settleConfirmation =(id: number) => patchMessage(id, () => ({ confirmationSettled: true }));
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
     event.preventDefault();
     event.stopPropagation();
+    if (listening) { stopDictation(true); return; }
     onClose();
   };
+
+  const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  const lastId = messages[messages.length - 1]?.id;
 
   return (
     <aside
@@ -305,7 +441,7 @@ export function AssistantPanel({ open, onClose, mode, backLabel, onNavigate, onO
           )
           : <button type="button" className="asst-text-btn" onClick={onClose}>{backLabel}</button>}
       </header>
-      <div className="asst-feed" ref={feedRef} aria-live="polite">
+      <div className="asst-feed" ref={feedRef} onScroll={onFeedScroll} aria-live="polite" aria-busy={loading}>
         {!hasStarted && (
           <div className="asst-welcome">
             <p>Preguntá sobre equipos, préstamos, agenda o tareas. Responde con lo que hay en la base{canEdit ? ' y puede registrar préstamos, devoluciones y tareas' : ''}.</p>
@@ -316,48 +452,131 @@ export function AssistantPanel({ open, onClose, mode, backLabel, onNavigate, onO
             </ul>
           </div>
         )}
-        {messages.map((msg, i) => (
-          <div key={i} className={`asst-msg asst-msg--${msg.role}`}>
-            <p>{msg.content}</p>
-            {msg.role === 'assistant' && (
-              <button
-                type="button"
-                className={`asst-listen${speakingMessage === i ? ' is-speaking' : ''}`}
-                onClick={() => toggleSpeech(i, msg.content)}
-                aria-label={speakingMessage === i ? 'Detener audio' : 'Escuchar respuesta'}
-              >
-                {speakingMessage === i ? <Square size={12} strokeWidth={1.8} aria-hidden="true" /> : <Volume2 size={13} strokeWidth={1.6} aria-hidden="true" />}
-                <span>{speakingMessage === i ? 'Detener' : 'Escuchar'}</span>
-              </button>
-            )}
-          </div>
-        ))}
-        {loading && (
-          <div className="asst-msg asst-msg--assistant asst-typing" aria-label="El asistente está escribiendo">
-            <span /><span /><span />
-          </div>
-        )}
+        {messages.map(msg => {
+          if (msg.role === 'user') {
+            return <div key={msg.id} className="asst-msg asst-msg--user"><p>{msg.content}</p></div>;
+          }
+          const waiting = msg.streaming && !msg.content && !msg.tool;
+          const showConfirm = msg.confirmation && !msg.confirmationSettled && !msg.streaming && msg.id === lastId && !loading;
+          return (
+            <div key={msg.id} className="asst-turn" data-state={msg.streaming ? 'streaming' : msg.error ? 'error' : 'done'}>
+              {waiting && (
+                <div className="asst-msg asst-msg--assistant asst-typing" aria-label="El asistente está escribiendo">
+                  <span /><span /><span />
+                </div>
+              )}
+              {(msg.content || (msg.streaming && msg.tool)) && (
+                <div className="asst-msg asst-msg--assistant">
+                  {msg.content && <p>{msg.streaming ? livePlainText(msg.content) : msg.content}</p>}
+                  {msg.streaming && msg.tool && (
+                    <p className="asst-tool" role="status"><Spinner size={12} /> <span>{msg.tool}</span></p>
+                  )}
+                  {!msg.streaming && msg.content && (canSpeak || msg.link) && (
+                    <div className="asst-msg-tools">
+                      {canSpeak && (
+                        <button
+                          type="button"
+                          className={`asst-listen${speakingMessage === msg.id ? ' is-speaking' : ''}`}
+                          onClick={() => toggleSpeech(msg.id, msg.content)}
+                          aria-label={speakingMessage === msg.id ? 'Detener audio' : 'Escuchar respuesta'}
+                        >
+                          {speakingMessage === msg.id ? <Square size={12} strokeWidth={1.8} aria-hidden="true" /> : <Volume2 size={13} strokeWidth={1.6} aria-hidden="true" />}
+                          <span>{speakingMessage === msg.id ? 'Detener' : 'Escuchar'}</span>
+                        </button>
+                      )}
+                      {msg.link?.device && (
+                        <button type="button" className="asst-listen" onClick={() => openLinkedDevice(msg.link?.device)}>
+                          <span>Ver ficha de {msg.link.device}</span>
+                        </button>
+                      )}
+                      {msg.link?.route && (
+                        <button type="button" className="asst-listen" onClick={() => onNavigate(msg.link?.route || '')}>
+                          <span>Abrir {ROUTE_LABELS[msg.link.route] || 'la sección'}</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {msg.actions?.map(action => {
+                const state = undoStates[action.id];
+                if (state?.status === 'done') {
+                  return <StatusLine key={action.id} className="asst-action" tone="info" message={state.message} autoHideMs={0} />;
+                }
+                if (state?.status === 'error') {
+                  return (
+                    <StatusLine
+                      key={action.id}
+                      className="asst-action"
+                      tone="bad"
+                      message={`${action.label}. No se pudo deshacer: ${state.message}`}
+                      retry={state.retryable ? { onRetry: () => undo(action), label: 'Reintentar' } : undefined}
+                    />
+                  );
+                }
+                return (
+                  <StatusLine
+                    key={action.id}
+                    className="asst-action"
+                    tone="ok"
+                    message={action.label}
+                    autoHideMs={0}
+                    action={action.undo
+                      ? { label: state?.status === 'busy' ? 'Deshaciendo…' : 'Deshacer', onClick: () => { if (state?.status !== 'busy') void undo(action); } }
+                      : undefined}
+                  />
+                );
+              })}
+              {showConfirm && msg.confirmation && (
+                <InlineConfirm
+                  className="asst-confirm"
+                  message={`Son ${msg.confirmation.cantidad} equipos. ¿Confirmás?`}
+                  detail={msg.confirmation.equipos.length ? msg.confirmation.equipos.join(', ') : undefined}
+                  confirmLabel="Sí, confirmo"
+                  cancelLabel="No"
+                  onConfirm={() => { settleConfirmation(msg.id); void send(CONFIRM_TEXT); }}
+                  onCancel={() => { settleConfirmation(msg.id); inputRef.current?.focus({ preventScroll: true }); }}
+                />
+              )}
+              {msg.error && (
+                <StatusLine
+                  className="asst-action"
+                  tone="bad"
+                  message={msg.error}
+                  retry={msg.id === lastId && !loading ? { onRetry: () => retry(msg.id) } : undefined}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
+      {dictation.error && (
+        <StatusLine className="asst-dictation-error" tone="warn" message={dictation.error} onDismiss={dictation.reset} />
+      )}
       <form className="asst-form" onSubmit={e => { e.preventDefault(); void send(input); }}>
         <input
           ref={inputRef}
           className="asst-input"
-          value={input}
+          value={shownInput}
           onChange={e => setInput(e.target.value)}
-          placeholder={voiceState === 'recording' ? 'Te escucho…' : voiceState === 'transcribing' ? 'Transcribiendo audio…' : 'Escribí tu pedido…'}
+          readOnly={listening}
+          placeholder={listening ? 'Te escucho…' : 'Escribí tu pedido…'}
           aria-label="Pedido para el asistente"
-          disabled={loading || voiceState !== 'idle'}
+          disabled={loading}
         />
-        <button
-          type="button"
-          className={`shell-icon-btn asst-mic${voiceState === 'recording' ? ' is-recording' : ''}`}
-          onClick={startRecording}
-          disabled={loading || voiceState === 'transcribing'}
-          aria-label={voiceState === 'recording' ? 'Detener y enviar audio' : voiceState === 'transcribing' ? 'Transcribiendo audio' : 'Hablar con el asistente'}
-        >
-          {voiceState === 'transcribing' ? <Spinner size={16} /> : voiceState === 'recording' ? <Square size={14} strokeWidth={1.8} aria-hidden="true" /> : <Mic size={16} strokeWidth={1.6} aria-hidden="true" />}
-        </button>
-        <button type="submit" className="asst-send" disabled={loading || voiceState !== 'idle' || !input.trim()} aria-label="Enviar">
+        {dictation.supported && (
+          <button
+            type="button"
+            className={`shell-icon-btn asst-mic${listening ? ' is-recording' : ''}`}
+            onClick={toggleDictation}
+            disabled={loading && !listening}
+            aria-pressed={listening}
+            aria-label={listening ? 'Dejar de dictar' : 'Dictar el pedido'}
+          >
+            {listening ? <Square size={14} strokeWidth={1.8} aria-hidden="true" /> : <Mic size={16} strokeWidth={1.6} aria-hidden="true" />}
+          </button>
+        )}
+        <button type="submit" className="asst-send" disabled={loading || listening || !input.trim()} aria-label="Enviar">
           <Send size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </form>

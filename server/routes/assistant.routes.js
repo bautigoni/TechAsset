@@ -132,15 +132,6 @@ assistantRouter.post('/asistente/deshacer', async (req, res, next) => {
   }
 });
 
-// El dictado ahora es del navegador (src/hooks/useSpeechDictation.ts, Web
-// Speech API). Se deja la ruta respondiendo 410 hasta que el panel nuevo use el hook.
-assistantRouter.post('/asistente/transcribir', (_req, res) => {
-  res.status(410).json({
-    ok: false,
-    error: 'El dictado por audio del servidor se dio de baja: ahora se usa el reconocimiento de voz del navegador. Actualizá la app (Ctrl+F5) o escribí el pedido.'
-  });
-});
-
 assistantRouter.get('/asistente/status', (req, res) => {
   res.json(assistantStatus(req.siteCode));
 });

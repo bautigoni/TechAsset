@@ -7,6 +7,7 @@
 //   npm run e2e -- --build            # buildea sí o sí
 //   npm run e2e -- --headful          # con el navegador a la vista
 //   npm run e2e -- --keep             # no borra la copia de la base (para inspeccionarla)
+//   npm run e2e -- --ai               # el server de prueba usa la IA del .env (gasta tokens; prueba k4)
 //
 // Corre contra el server real (`node server/index.js`) y una COPIA descartable de
 // data/techasset.db: nunca la base real ni Postgres, nunca sale un mail ni una
@@ -21,6 +22,7 @@ import {
 import { functionalTests } from './tests/functional.mjs';
 import { inventoryTests } from './tests/inventory.mjs';
 import { tasksTests } from './tests/tasks.mjs';
+import { assistantTests } from './tests/assistant.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 
 const args = process.argv.slice(2);
@@ -78,7 +80,7 @@ try {
   t = Date.now();
   env = await prepareDatabase();
   const port = await freePort();
-  server = await startServer({ dbCopy: env.dbCopy, tmpDir: env.tmpDir, port });
+  server = await startServer({ dbCopy: env.dbCopy, tmpDir: env.tmpDir, port, ai: flag('ai') });
   timings.server = Date.now() - t;
   log(`Server de prueba en ${server.base} · copia ${env.dbCopy}`);
   log(`Superadmin: ${env.admin.email} · consulta: ${env.consulta.email}${env.consulta.created ? ' (creado en la copia)' : ''} · bloqueado: ${env.blockedTag || '-'}`);
@@ -106,6 +108,8 @@ try {
   await functionalTests(ctx);
   await inventoryTests(ctx);
   await tasksTests(ctx);
+  console.log('\nAsistente (k)');
+  await assistantTests(ctx);
   timings.functional = Date.now() - t;
 
   if (!flag('no-baseline')) {

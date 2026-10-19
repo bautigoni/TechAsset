@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { isViewKey, type AuthUser, type Device, type SiteInfo, type ViewKey } from '../../types';
 import type { AssistantContext } from '../../services/assistantApi';
 import type { AppNotification } from '../../services/notificationsApi';
@@ -133,6 +133,9 @@ export function AppShell(props: AppShellProps) {
   const [question, setQuestion] = useState<{ text: string; nonce: number } | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const savedScroll = useRef<{ top: number; view: string } | null>(null);
+  const viewRef = useRef<string>(view);
+  viewRef.current = view;
   const keyboardOpen = useKeyboardOpen(isMobile);
   const { items: notifications, unread, toast, dismissToast, markRead, markAllRead } = useNotifications(true);
   const { links } = useQuickLinks(activeSite);
@@ -175,6 +178,11 @@ export function AppShell(props: AppShellProps) {
   }, []);
 
   const openAssistant = useCallback(() => {
+    // En la vista propia el contenido se esconde (display:none pierde el
+    // scroll): se guarda la posición para volver a ella al cerrar.
+    if (window.innerWidth < ASST_COLUMN_MIN && !savedScroll.current) {
+      savedScroll.current = { top: scrollRef.current?.scrollTop ?? 0, view: viewRef.current };
+    }
     setAssistantMounted(true);
     setAssistantOpen(true);
     setStrip(null);
@@ -198,6 +206,24 @@ export function AppShell(props: AppShellProps) {
     setMoreOpen(false);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [view, activeSite]);
+  // Al cerrar la vista propia: misma posición (si no cambió la vista) y el
+  // foco vuelve al botón Asistente si estaba adentro del panel.
+  useLayoutEffect(() => {
+    if (assistantView || !savedScroll.current) return;
+    const saved = savedScroll.current;
+    savedScroll.current = null;
+    if (saved.view === view && scrollRef.current) scrollRef.current.scrollTop = saved.top;
+  }, [assistantView, view]);
+  const wasAssistantOpen = useRef(false);
+  useEffect(() => {
+    if (wasAssistantOpen.current && !assistantOpen) {
+      const active = document.activeElement;
+      if (!active || active === document.body || active.closest('.asst')) {
+        document.querySelector<HTMLElement>('.shell-assistant-btn')?.focus({ preventScroll: true });
+      }
+    }
+    wasAssistantOpen.current = assistantOpen;
+  }, [assistantOpen]);
   // En la vista propia (mobile), ir a otra sección cierra el asistente.
   const lastView = useRef(view);
   useEffect(() => {
@@ -383,6 +409,7 @@ export function AppShell(props: AppShellProps) {
               onClose={closeAssistant}
               mode={assistantMode}
               backLabel={`Volver a ${current?.label || 'la vista'}`}
+              currentView={view}
               onNavigate={next => { if (isViewKey(next)) onNavigate(next); }}
               onOpenDevice={onAssistantOpenDevice}
               canEdit={assistantCanEdit}

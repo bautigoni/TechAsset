@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Dictado con el reconocimiento de voz del navegador (Web Speech API).
- * Reemplaza a /api/asistente/transcribir: no pasa por el server ni usa keys.
+ * El server no transcribe audio: no pasa por el server ni usa keys.
  * En Chrome/Edge el audio lo procesa el proveedor del navegador; en Firefox no
  * existe la API y `supported` queda en false (el botón de micrófono se oculta).
  *

@@ -161,7 +161,7 @@ export async function prepareDatabase() {
 }
 
 /** Levanta el server real contra la copia. Todo lo que habla con afuera queda vacío. */
-export async function startServer({ dbCopy, tmpDir, port }) {
+export async function startServer({ dbCopy, tmpDir, port, ai = false }) {
   const env = {
     ...process.env,
     PORT: String(port),
@@ -174,7 +174,8 @@ export async function startServer({ dbCopy, tmpDir, port }) {
     RESEND_API_KEY: '', RESEND_FROM: '',
     GOOGLE_SHEET_CSV_URL: '',
     GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '', GOOGLE_REDIRECT_URI: '',
-    OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', AI_PROVIDER: 'local',
+    // Sin IA salvo --ai: con --ai el server toma AI_PROVIDER/ANTHROPIC_API_KEY de su .env.
+    ...(ai ? { OPENAI_API_KEY: '' } : { OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', AI_PROVIDER: 'local' }),
     VAPID_PUBLIC_KEY: '', VAPID_PRIVATE_KEY: '',
     SUPERADMIN_EMAILS: '',
     LOCALTUNNEL_SUBDOMAIN: '',

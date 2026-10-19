@@ -9,6 +9,7 @@ npm run e2e -- --only=prestamos    # filtra por grupo o nombre (sin tildes ni ma
 npm run e2e -- --no-build          # usa dist/ como esté, aunque sea más viejo que src/
 npm run e2e -- --build             # buildea sí o sí
 npm run e2e -- --headful --keep    # navegador a la vista y conserva la copia de la base
+npm run e2e -- --only=asistente --ai  # el server de prueba usa la IA del .env (gasta tokens)
 npm run check:ui                   # guardia de controles nativos (scripts/check-ui.mjs)
 ```
 
@@ -36,6 +37,7 @@ Cada prueba verifica el efecto en la base (vía API), no solo lo que se ve.
 | f | Alta de agenda con conflicto de capacidad: aparece el aviso y no se guarda |
 | g | Modo consulta en Inicio, Préstamos y Dispositivos: ningún botón de escritura habilitado, chips y casillas deshabilitados; el server responde 403 |
 | h | `/sede/NFPT/<vista>` abre la vista correcta para cada ítem del menú; un 401 vuelve al login |
+| k | Asistente: sin `SpeechRecognition` el micrófono no aparece y con él el dictado deja el resultado intermedio y el final en el campo; un pedido de solo lectura ("¿cuántos equipos hay prestados?") llega por el stream con respuesta (modo local en el banco; IA real con `--ai`); stream simulado en la página: texto en vivo sin markdown + línea "Prestando…", `done.reply` al final, acciones con Deshacer (ok y 409 en línea) y confirmación del lote que envía "sí, confirmo". Con `--ai`, además un préstamo real por el asistente y su Deshacer, verificado por API |
 | i | **Línea base de layout** por vista a 360/768/1024/1280/1366/1440: scroll horizontal de la página, barra de la página, barras visibles en contenedores, botones con el texto partido, hermanos que se pisan (> 2 px) |
 | j | **Línea base mobile** (iPhone 13): pinza con dos dedos (`Input.dispatchTouchEvent`), swipe horizontal, doble toque y foco en un campo dejan escala 1 y `scrollX` 0; campos con texto ≥ 16 px. Incluye un control: la misma pinza tiene que hacer zoom en una página que no lo bloquea |
 
