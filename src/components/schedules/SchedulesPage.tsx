@@ -230,7 +230,7 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
           <h2 id="hr-title" className="hr-title">Horarios docentes y recreos</h2>
           <p className="hr-head-sub">Quién da clase ahora, el horario de cada docente o curso y las franjas de recreo por grupo. Lo de “ahora” se actualiza cada minuto.</p>
         </div>
-        <Button variant="primary" icon={<icons.IconPlus size={16} />} aria-expanded={adding} disabled={consultationMode} onClick={toggleAdd}>Agregar horario</Button>
+        <Button variant="primary" icon={<icons.IconPlus size={16} />} aria-expanded={adding} aria-controls="hr-add" disabled={consultationMode} onClick={toggleAdd}>Agregar horario</Button>
       </header>
 
       {loadError && <ErrorState message={loadError} retrying={retrying} onRetry={async () => { setRetrying(true); await load(); setRetrying(false); }} />}
@@ -257,7 +257,7 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
 
           <StatusSlot status={status} />
 
-          <Collapse open={adding} unmountOnClose>
+          <Collapse open={adding} id="hr-add" unmountOnClose>
             <section className="hr-card">
               {addInitial && <p className="hr-restored hr-restored--form" role="status"><span className="hr-restored-text">Recuperamos el horario que estabas cargando.</span></p>}
               <ScheduleForm title="Nuevo horario" initial={addInitial || { ...EMPTY, schoolLevel: level }} onSubmit={create} onCancel={closeAdd} onDraftChange={keepAddDraft} />

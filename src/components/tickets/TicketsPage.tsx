@@ -23,6 +23,53 @@ import {
   systemLabel, ticketAge, ticketHaystack, ticketNumber, ticketRoutePath, type LinkBases, type TicketRoute
 } from './ticketUtils';
 
+/**
+ * Panel sin ticket elegido: en vez de una línea suelta en una tarjeta vacía,
+ * un resumen corto de la bandeja (por estado y los que esperan hace más), con
+ * la pista de cómo se abre el detalle. Cada uno de los que esperan abre su ticket.
+ */
+function TicketsIdle({ tickets, onOpen }: { tickets: Ticket[]; onOpen: (id: number) => void }) {
+  const counts = ESTADOS.map(estado => [estado, tickets.filter(ticket => ticket.estado === estado).length] as const);
+  const waiting = tickets
+    .filter(ticket => ticket.estado !== 'Hecho' && ticket.createdAt)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .slice(0, 4);
+  return (
+    <div className="tkx-idle">
+      <EmptyState compact icon={<TicketIcon size={18} strokeWidth={1.6} />} title="Elegí un ticket de la lista" description="El detalle se abre acá, al lado de la lista. Ctrl o Shift + click marca varios." />
+      {tickets.length > 0 && (
+        <dl className="tkx-idle-stats" aria-label="Tickets por estado">
+          {counts.map(([estado, count]) => (
+            <div key={estado} className="tkx-idle-stat">
+              <dt className="tkx-small tkx-muted">{estado}</dt>
+              <dd className="tkx-mono">{count}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {waiting.length > 0 && (
+        <div className="tkx-idle-wait">
+          <span className="tkx-small tkx-muted">Esperan hace más</span>
+          <ul className="tkx-idle-list">
+            {waiting.map(ticket => {
+              const age = ticketAge(ticket);
+              return (
+                <li key={ticket.id}>
+                  <button type="button" className="tkx-idle-row" onClick={() => onOpen(ticket.id)}>
+                    <span className="tkx-mono tkx-muted tkx-nowrap">{ticketNumber(ticket)}</span>
+                    <TruncatedText className="tkx-idle-title">{ticket.titulo || 'Ticket sin título'}</TruncatedText>
+                    {age.label && <StatusText tone={age.tone} className="tkx-small tkx-nowrap">{age.label}</StatusText>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const PAGE = 30;
 const NARROW = 880;
 type Pending = { run: () => void } | null;
@@ -351,7 +398,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
 
   const renderPane = () => {
     if (route.kind === 'list') {
-      return <EmptyState compact icon={<TicketIcon size={18} strokeWidth={1.6} />} title="Elegí un ticket de la lista" description="El detalle se abre acá, al lado de la lista. Ctrl o Shift + click marca varios." />;
+      return <TicketsIdle tickets={tickets} onOpen={id => openPane({ kind: 'detail', id })} />;
     }
     if (route.kind === 'templates') {
       return (

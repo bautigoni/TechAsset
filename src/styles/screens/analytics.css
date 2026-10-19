@@ -120,6 +120,10 @@
 .an-sec-tag { color: var(--g-text-3); font-size: var(--g-fs-xs); white-space: nowrap; }
 
 .an-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--g-s-4); min-width: 0; }
+/* FlowGrid: mide los altos naturales (sin estirar) y, si la fila queda despareja, la apila. */
+.an-grid.is-measuring { align-items: start; }
+.an-grid.is-measuring .an-stack > .an-card { flex: none; }
+.an-grid.is-stacked > .an-cell > .an-card, .an-grid.is-stacked > .an-stack { grid-column: span 12; }
 .an-card {
   grid-column: span var(--an-span, 12);
   display: flex;
@@ -579,7 +583,9 @@
   .an-card, .an-stack { grid-column: span var(--an-span-mid, 12); }
   .an-stack > .an-card { grid-column: auto; }
   .an-heatcard { grid-template-columns: minmax(0, 1fr); }
-  .an-heat-aside { border-top: 1px solid var(--g-line); border-left: 0; }
+  /* Apilado: el divisor entre el mapa y las franjas no suma dos rellenos enteros (no queda una franja vacía). */
+  .an-heat-main { padding-bottom: var(--g-s-4); }
+  .an-heat-aside { padding-top: var(--g-s-4); border-top: 1px solid var(--g-line); border-left: 0; }
   .an-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); column-gap: var(--g-s-4); }
 }
 

@@ -378,13 +378,14 @@ export function DevicesPage(props: DevicesPageProps) {
       cell: device => (
         <span className="dv-cell2">
           <TruncatedText>{deviceKind(device)}</TruncatedText>
-          {deviceModel(device) && <TruncatedText className="dv-muted">{deviceModel(device)}</TruncatedText>}
+          {/* Hasta 2 renglones: con el ancho de columna fijo, cortar con elipsis dejaba espacio sin usar. */}
+          {deviceModel(device) && <TruncatedText lines={2} className="dv-muted dv-break">{deviceModel(device)}</TruncatedText>}
         </span>
       )
     },
     {
       key: 'sn', header: 'SN / MAC', width: 'minmax(0, 1fr)', sortValue: device => device.sn || device.mac,
-      cell: device => (cellValue(device.sn || device.mac) ? <TruncatedText className="ui-mono">{cellValue(device.sn || device.mac)}</TruncatedText> : <span className="dv-muted">—</span>)
+      cell: device => (cellValue(device.sn || device.mac) ? <TruncatedText lines={2} className="ui-mono dv-break">{cellValue(device.sn || device.mac)}</TruncatedText> : <span className="dv-muted">—</span>)
     },
     {
       key: 'prestado', header: 'Prestado a', width: 'minmax(0, 1.4fr)', sortValue: device => device.prestadoA,
@@ -394,7 +395,7 @@ export function DevicesPage(props: DevicesPageProps) {
             <TruncatedText>{cellValue(device.prestadoA) || 'Sin persona'}</TruncatedText>
             {device.loanedAt && <StatusText mono tone={ageTone(loanAgeDays(device.loanedAt))} className="dv-nowrap">{ageText(device.loanedAt)}</StatusText>}
           </span>
-          {(loanWhere(device) || device.loanedAt) && <TruncatedText className="dv-muted">{[loanWhere(device), shortWhen(device.loanedAt)].filter(Boolean).join(' · ')}</TruncatedText>}
+          {(loanWhere(device) || device.loanedAt) && <TruncatedText lines={2} className="dv-muted">{[loanWhere(device), shortWhen(device.loanedAt)].filter(Boolean).join(' · ')}</TruncatedText>}
         </span>
       ) : <span className="dv-muted">—</span>)
     },
@@ -405,7 +406,7 @@ export function DevicesPage(props: DevicesPageProps) {
     {
       key: 'estado', header: 'Estado', card: 'meta', width: 'minmax(0, .95fr)', sortValue: stateLabel,
       // Mismo color que StatusText, pero con tooltip si el estado no entra.
-      cell: device => <TruncatedText className={`ui-stext ui-stext--${stateTone(device)} dv-state`}>{stateLabel(device)}</TruncatedText>
+      cell: device => <TruncatedText lines={2} className={`ui-stext ui-stext--${stateTone(device)} dv-state`}>{stateLabel(device)}</TruncatedText>
     },
     {
       key: 'acciones', header: <span className="dv-sr">Acciones</span>, cardLabel: 'Acciones', width: consultationMode ? '2rem' : '11rem', align: 'end', className: 'dv-c-act',

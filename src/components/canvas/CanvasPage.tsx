@@ -506,7 +506,7 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
               {def.short ? <><span className="cv-lbl-long">{def.label}</span><span className="cv-lbl-short">{def.short}</span></> : def.label}
             </Button>
           ))}
-          <Button ref={fileBtnRef} size="sm" icon={<Upload size={14} />} disabled={readOnly || loadState !== 'ok'} aria-expanded={fileOpen} onClick={() => setFileOpen(value => !value)}>
+          <Button ref={fileBtnRef} size="sm" icon={<Upload size={14} />} disabled={readOnly || loadState !== 'ok'} aria-expanded={fileOpen} aria-controls="cv-file" onClick={() => setFileOpen(value => !value)}>
             Archivo
           </Button>
         </div>
@@ -530,7 +530,7 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
         <p className="cv-readonly"><icons.IconLock size={14} /> Modo consulta: podés moverte y hacer zoom, no editar.</p>
       )}
 
-      <Collapse open={fileOpen && !readOnly} returnFocus={fileBtnRef} gap="var(--g-s-3)">
+      <Collapse open={fileOpen && !readOnly} id="cv-file" returnFocus={fileBtnRef} gap="var(--g-s-3)">
         <div className="cv-upload" data-scanner-ignore="">
           <FileDrop
             multiple

@@ -308,6 +308,8 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
       const main = body.querySelector<HTMLElement>('.ag-main');
       const side = body.querySelector<HTMLElement>('.ag-side');
       const cap = body.querySelector<HTMLElement>('.ag-cap-card');
+      // Se mide siempre en dos columnas; "is-stacked" se decide al final (antes de pintar).
+      body.classList.remove('is-stacked');
       if (!main || !side || !cap) return;
       // Una sola columna (angosto o Semana a todo el ancho): va al costado, que ya cae abajo.
       if (Math.abs(side.offsetTop - main.offsetTop) > 4) { if (capInMainRef.current) setCapInMain(false); return; }
@@ -318,7 +320,14 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
       const sideH = side.offsetHeight - (inMain ? 0 : capH);
       const atSide = Math.abs(mainH - (sideH + capH));
       const below = Math.abs(mainH + capH - sideH);
-      const next = inMain ? below <= atSide + 24 : below < atSide - 24;
+      let next = inMain ? below <= atSide + 24 : below < atSide - 24;
+      // Con pocas actividades la lista queda más corta que la columna del costado
+      // (Próximas + Touch por franja) y dejaría un hueco debajo: la lista pasa a
+      // todo el ancho y las dos tarjetas del costado bajan, lado a lado.
+      const sideTaller = (next ? sideH : sideH + capH) - (next ? mainH + capH : mainH);
+      const stacked = sideTaller > 48;
+      if (stacked) next = false;
+      body.classList.toggle('is-stacked', stacked);
       if (next !== inMain) setCapInMain(next);
     };
     decide();
@@ -383,17 +392,17 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         </div>
         <div className="ag-head-actions">
           <Button variant="ghost" className="ag-refresh" icon={<RefreshCw size={16} />} loading={refreshing} aria-label="Actualizar la agenda" onClick={refresh}>Actualizar</Button>
-          <Button variant="secondary" icon={<Rss size={16} />} aria-expanded={syncOpen} onClick={() => setSyncOpen(value => !value)}>Sincronizar</Button>
+          <Button variant="secondary" icon={<Rss size={16} />} aria-expanded={syncOpen} aria-controls="ag-sync-panel" onClick={() => setSyncOpen(value => !value)}>Sincronizar</Button>
           {!consultationMode && (
-            <Button variant="primary" icon={<icons.IconPlus size={16} />} aria-expanded={creating} onClick={() => setCreating(value => !value)}>Nueva actividad</Button>
+            <Button variant="primary" icon={<icons.IconPlus size={16} />} aria-expanded={creating} aria-controls="ag-new" onClick={() => setCreating(value => !value)}>Nueva actividad</Button>
           )}
         </div>
       </header>
 
-      <Collapse open={syncOpen}>
+      <Collapse open={syncOpen} id="ag-sync-panel">
         <AgendaSync onClose={() => setSyncOpen(false)} />
       </Collapse>
-      <Collapse open={creating && !consultationMode} unmountOnClose>
+      <Collapse open={creating && !consultationMode} id="ag-new" unmountOnClose>
         <section className="ag-card">
           <AgendaForm items={items} clock={clock} frequent={frequent} onSubmit={create} onCancel={() => setCreating(false)} />
         </section>

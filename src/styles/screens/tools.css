@@ -97,6 +97,22 @@
   line-height: 1.25rem;
 }
 .tl-step-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--g-s-3); }
+/* Esquema de la hoja A4 (2 × 4 con borde punteado): crece hasta el alto del paso de al lado. */
+.tl-sheet {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: var(--g-s-1);
+  width: min(100%, 11rem);
+  min-height: 7.5rem;
+  max-height: 16rem;
+  padding: var(--g-s-2);
+  border: 1px solid var(--g-line);
+  border-radius: var(--g-radius-sm);
+  background: var(--g-bg);
+}
+.tl-sheet-card { border: 1px dashed var(--g-line-strong); border-radius: 2px; }
 .tl-step-title { color: var(--g-text); font-size: var(--g-fs-base); font-weight: var(--g-fw-semibold); line-height: 1.25rem; }
 
 .tl-mode {

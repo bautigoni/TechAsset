@@ -225,7 +225,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
         />
         <span className="cls-grow" aria-hidden="true" />
         {canManage && (
-          <Button ref={catsButtonRef} variant="secondary" aria-expanded={catsOpen} onClick={() => setCatsOpen(open => !open)}>
+          <Button ref={catsButtonRef} variant="secondary" aria-expanded={catsOpen} aria-controls="cls-cats" onClick={() => setCatsOpen(open => !open)}>
             Categorías de equipamiento
           </Button>
         )}
@@ -234,7 +234,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
       {guardFor(['floor', 'site'])}
 
       {canManage && (
-        <Collapse open={catsOpen}>
+        <Collapse open={catsOpen} id="cls-cats">
           <ClassroomCategories
             categories={categories}
             consultationMode={consultationMode}
@@ -361,6 +361,11 @@ function useBalancedColumns(layoutRef: RefObject<HTMLDivElement | null>, count: 
     let frame = 0;
     const measure = () => {
       frame = 0;
+      // Se mide con la lista en su alto natural (sin el estirado de .is-idle).
+      layout.classList.add('is-measuring');
+      try { measureNow(); } finally { layout.classList.remove('is-measuring'); }
+    };
+    const measureNow = () => {
       // Una sola columna de página (angosto): la grilla de la lista ya se reparte sola.
       if (Math.abs(list.offsetLeft - plan.offsetLeft) < 4) { setCols(1); return; }
       const ul = list.querySelector<HTMLElement>('.cls-list');
@@ -381,6 +386,29 @@ function useBalancedColumns(layoutRef: RefObject<HTMLDivElement | null>, count: 
       const one = right(count, oneRow);
       const two = right(Math.ceil(count / 2), twoRow);
       setCols(one > planH + 24 && Math.abs(planH - two) < Math.abs(planH - one) ? 2 : 1);
+      // Planta alta con pocas aulas: la columna de la derecha queda mucho más corta
+      // que el plano y dejaba un hueco debajo. Sin ficha abierta, el plano se ajusta
+      // a ese alto (con un piso para que se lea; el zoom sigue disponible). Se
+      // calcula con el alto que tendría el plano a su tamaño normal (no con el ya
+      // ajustado), así no oscila; con una ficha abierta se conserva el ajuste (el
+      // plano no cambia de tamaño al tocar un aula).
+      if (layout.classList.contains('is-idle')) {
+        const view = plan.querySelector<HTMLElement>('.cls-plan-view');
+        const ratio = view ? parseFloat(getComputedStyle(view).getPropertyValue('--cls-ratio')) || 0 : 0;
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        if (view && ratio > 0 && inner) {
+          const maxH = Math.min(46 * rem, window.innerHeight - 16 * rem);
+          const viewNatural = Math.min(inner.clientWidth, maxH * ratio) / ratio;
+          const chromeH = plan.offsetHeight - view.offsetHeight;
+          const rightH = one;
+          const fit = rightH - chromeH;
+          const short = chromeH + viewNatural > rightH + 48;
+          if (short && fit < maxH) layout.style.setProperty('--cls-plan-fit', `${Math.max(20 * rem, fit)}px`);
+          else layout.style.removeProperty('--cls-plan-fit');
+          // La lista (más corta que el plano) llega hasta su pie con filas más altas.
+          layout.classList.toggle('is-fill', short);
+        }
+      }
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
     const observer = new ResizeObserver(schedule);

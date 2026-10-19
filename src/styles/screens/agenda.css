@@ -121,6 +121,10 @@
 .ag-main.is-wide { flex-basis: 100%; }
 .ag-main.is-wide ~ .ag-side { flex-flow: row wrap; align-items: flex-start; }
 .ag-main.is-wide ~ .ag-side > .ag-card { flex: 1 1 20rem; }
+/* Pocas actividades (la lista quedaría más corta que el costado): la lista a todo el ancho y el costado abajo. */
+.ag-body.is-stacked > .ag-main { flex-basis: 100%; }
+.ag-body.is-stacked > .ag-side { flex-flow: row wrap; align-items: flex-start; }
+.ag-body.is-stacked > .ag-side > .ag-card { flex: 1 1 20rem; }
 .ag-side { display: flex; flex: 1 1 18.75rem; flex-direction: column; gap: var(--g-s-4); min-width: 0; max-width: 100%; }
 
 /* ── Cards ──────────────────────────────────────────────────────────────── */

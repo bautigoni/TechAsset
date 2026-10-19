@@ -11,7 +11,7 @@ import { Input } from '../../ui/Field';
 import { Switch } from '../../ui/Toggle';
 import { EmptyState, StatusText, ageTone, type StatusTextTone } from '../../ui/Data';
 import { ScanLine } from 'lucide-react';
-import { useStatusLine } from '../../ui/Status';
+import { useStatusLine } from '../../ui/StatusSlot';
 import { Collapse } from '../../ui/Collapse';
 import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
 import { TruncatedText } from '../../ui/Truncated';
@@ -417,6 +417,9 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
 
   /* ── Cámara / QR ─────────────────────────────────────────────────────── */
 
+  // El panel de la cámara (el video o el aviso de por qué no abrió): el botón lo abre y lo cierra.
+  const cameraPanel = !continuous && (cameraOpen || Boolean(cameraError));
+
   const openCamera = async () => {
     setCameraError('');
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -510,8 +513,8 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
           <Switch className="lo-cont-switch" checked={continuous} onCheckedChange={toggleContinuous} label="Escaneo continuo" />
           <Button size="sm" variant="ghost" icon={<IconSearch size={14} />} onClick={() => { codeInputRef.current?.focus(); codeInputRef.current?.select(); }}>Foco lector</Button>
           {!continuous && (
-            <Button size="sm" variant="ghost" aria-expanded={cameraOpen} onClick={() => (cameraOpen ? stopCamera() : void openCamera())}>
-              {cameraOpen ? 'Cerrar cámara' : 'Cámara'}
+            <Button size="sm" variant="ghost" aria-expanded={cameraPanel} aria-controls="lo-camera" onClick={() => { if (cameraPanel) { stopCamera(); setCameraError(''); } else void openCamera(); }}>
+              {cameraPanel ? 'Cerrar cámara' : 'Cámara'}
             </Button>
           )}
         </div>
@@ -536,7 +539,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
           </div>
         </Collapse>
 
-        <Collapse open={!continuous && (cameraOpen || Boolean(cameraError))} unmountOnClose outerClassName="lo-fold-sm">
+        <Collapse open={cameraPanel} id="lo-camera" unmountOnClose outerClassName="lo-fold-sm">
           <div className="lo-camera">
             {cameraOpen && <video ref={videoRef} className="lo-camera-video" playsInline muted autoPlay aria-label="Vista de la cámara trasera" />}
             <div className="lo-camera-text">

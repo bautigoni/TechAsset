@@ -248,11 +248,11 @@ export function SuggestionsPage() {
               <Eyebrow>Buzón de ideas</Eyebrow>
               <h2 id="sgx-title" className="sgx-title">Sugerencias <span className="sgx-count">{items.length} de {stats.total}</span></h2>
             </div>
-            <Button ref={newBtnRef} variant="primary" icon={<Plus size={16} />} aria-expanded={newOpen} onClick={() => setNewOpen(open => !open)}>Nueva sugerencia</Button>
+            <Button ref={newBtnRef} variant="primary" icon={<Plus size={16} />} aria-expanded={newOpen} aria-controls="sgx-new" onClick={() => setNewOpen(open => !open)}>Nueva sugerencia</Button>
           </div>
           <StatusSlot status={pageStatus} />
 
-          <Collapse open={newOpen} unmountOnClose>
+          <Collapse open={newOpen} id="sgx-new" unmountOnClose>
             <SuggestionForm
               heading="Nueva sugerencia"
               categories={categories}
@@ -420,21 +420,21 @@ function SuggestionRow({ item, canManage, categories, busy, open, statusOpen, ed
               <StatusText tone={STATUS_TONE[item.status]} strong className="sgx-small">{STATUS_LABEL[item.status] || item.status}</StatusText>
             </div>
             <TruncatedText className="sgx-meta">{`${item.category} · ${author} · ${formatDate(item.createdAt, DAY, '')}`}</TruncatedText>
-            <p className={cx('sgx-desc', descLong && !descOpen && 'is-clamped')}>{item.description}</p>
+            <p id={`sgx-desc-${item.id}`} className={cx('sgx-desc', descLong && !descOpen && 'is-clamped')}>{item.description}</p>
             {descLong && (
-              <button type="button" className="sgx-more" aria-expanded={descOpen} onClick={() => setDescOpen(value => !value)}>{descOpen ? 'Mostrar menos' : 'Mostrar todo'}</button>
+              <button type="button" className="sgx-more" aria-expanded={descOpen} aria-controls={`sgx-desc-${item.id}`} onClick={() => setDescOpen(value => !value)}>{descOpen ? 'Mostrar menos' : 'Mostrar todo'}</button>
             )}
             <div className="sgx-actions">
-              <Button size="sm" variant="ghost" aria-expanded={open} onClick={onToggleOpen}>
+              <Button size="sm" variant="ghost" aria-expanded={open} aria-controls={`sgx-comments-${item.id}`} onClick={onToggleOpen}>
                 {open ? 'Ocultar comentarios' : 'Comentarios'} <span className="sgx-count">{item.commentCount}</span>
               </Button>
               {canManage && (
-                <Button ref={statusRef} size="sm" variant="ghost" iconEnd={statusOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />} aria-expanded={statusOpen} onClick={onToggleStatus}>Estado</Button>
+                <Button ref={statusRef} size="sm" variant="ghost" iconEnd={statusOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />} aria-expanded={statusOpen} aria-controls={`sgx-status-${item.id}`} onClick={onToggleStatus}>Estado</Button>
               )}
               {item.canEdit && <Button ref={editRef} size="sm" variant="ghost" onClick={onEdit}>Editar</Button>}
-              {item.canDelete && <Button ref={deleteRef} size="sm" variant="ghost" aria-expanded={asking} onClick={onAskDelete}>Eliminar</Button>}
+              {item.canDelete && <Button ref={deleteRef} size="sm" variant="ghost" aria-expanded={asking} aria-controls={`sgx-del-${item.id}`} onClick={onAskDelete}>Eliminar</Button>}
             </div>
-            <Collapse open={statusOpen && canManage} unmountOnClose>
+            <Collapse open={statusOpen && canManage} id={`sgx-status-${item.id}`} unmountOnClose>
               <div className="sgx-status-pick">
                 <div className="sgx-chips" role="radiogroup" aria-label="Estado de la sugerencia">
                   {STATUSES.map(option => (
@@ -454,7 +454,7 @@ function SuggestionRow({ item, canManage, categories, busy, open, statusOpen, ed
                 <span className="sgx-small sgx-muted">Al cambiarlo se avisa al autor, a quienes votaron y a quienes comentaron.</span>
               </div>
             </Collapse>
-            <Collapse open={asking} unmountOnClose>
+            <Collapse open={asking} id={`sgx-del-${item.id}`} unmountOnClose>
               <InlineConfirm
                 danger
                 busy={busy}
@@ -465,7 +465,7 @@ function SuggestionRow({ item, canManage, categories, busy, open, statusOpen, ed
                 onCancel={() => { onCancelDelete(); deleteRef.current?.focus(); }}
               />
             </Collapse>
-            <Collapse open={open} unmountOnClose>
+            <Collapse open={open} id={`sgx-comments-${item.id}`} unmountOnClose>
               <Comments suggestionId={item.id} onCommented={onCommented} />
             </Collapse>
           </>

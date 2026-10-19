@@ -1,6 +1,6 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
-import { Segmented, Skeleton, Button, cx, keepInPlace as holdInPlace } from '../../ui';
+import { Segmented, Skeleton, Button, cx, keepInPlace as holdInPlace, recentTrigger } from '../../ui';
 import { appScroller } from '../../utils/scroll';
 import { IconChevronDown, IconChevronUp } from '../../ui/icons';
 
@@ -151,10 +151,10 @@ export function ChartSkeleton({ kind, height }: { kind: SkeletonKind; height: nu
       </div>
     );
   }
-  // line / dots: una franja con la forma general y el eje.
+  // line / dots: el área del gráfico entera (sin una franja vacía arriba) y el eje.
   return (
     <div className={cx('an-skel', `an-skel--${kind}`)} style={style} aria-hidden="true">
-      <Skeleton width="100%" height="62%" radius="sm" />
+      <Skeleton width="100%" height="calc(100% - 0.75rem - var(--g-s-2))" radius="sm" />
       <Skeleton width="100%" height="0.75rem" index={2} />
     </div>
   );
@@ -279,17 +279,64 @@ export function FlowRows({ rows, has, render }: { rows: FlowItem[][]; has: (key:
         // a fila entera (nada de una tarjeta sola al lado de un hueco).
         const midKeeps = shares.every(share => share <= 6) && !items.some(([, , wide]) => wide);
         return (
-          <div className="an-grid" key={index}>
+          <FlowGrid key={index}>
             {items.map(([keys], i) => {
               const style = { ['--an-span' as string]: shares[i], ['--an-span-mid' as string]: midKeeps ? shares[i] : 12 };
               if (keys.length === 1) return <div className="an-cell" key={keys[0]} style={style}>{render(keys[0], shares[i])}</div>;
               return <div className="an-stack" key={keys.join('+')} style={style}>{keys.map(key => <Fragment key={key}>{render(key, 12)}</Fragment>)}</div>;
             })}
-          </div>
+          </FlowGrid>
         );
       })}
     </>
   );
+}
+
+/**
+ * Una fila de tarjetas lado a lado. Si sus altos naturales (sin estirarse)
+ * difieren más de 48 px, la tarjeta corta quedaría con una franja vacía al
+ * lado de la alta: en ese caso la fila se apila (cada tarjeta a fila entera),
+ * así nada queda estirado ni con huecos. Se decide midiendo antes de pintar
+ * (ResizeObserver: al cambiar el ancho o al llegar los datos), sin un frame
+ * con la forma equivocada.
+ */
+function FlowGrid({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const grid = ref.current;
+    if (!grid) return;
+    const decide = () => {
+      const items = [...grid.children].map(child => (child.classList.contains('an-cell') ? child.firstElementChild : child)).filter((el): el is HTMLElement => el instanceof HTMLElement);
+      grid.classList.remove('is-stacked');
+      grid.classList.add('is-measuring');
+      const rows = new Map<number, number[]>();
+      for (const item of items) {
+        const rect = item.getBoundingClientRect();
+        const top = Math.round(rect.top);
+        rows.set(top, [...(rows.get(top) || []), rect.height]);
+      }
+      grid.classList.remove('is-measuring');
+      const uneven = [...rows.values()].some(heights => heights.length > 1 && Math.max(...heights) - Math.min(...heights) > 48);
+      grid.classList.toggle('is-stacked', uneven);
+    };
+    decide();
+    if (typeof ResizeObserver === 'undefined') return;
+    // Ancho de la fila y alto del contenido de cada tarjeta (los datos llegan después).
+    // Si el cambio de alto lo provocó el usuario dentro de la fila (Gráfico/Tabla,
+    // un "Ver más"), la fila queda como está: nada se reacomoda bajo el cursor.
+    let width = grid.clientWidth;
+    const observer = new ResizeObserver(() => {
+      const touched = recentTrigger(1500);
+      const resized = Math.abs(grid.clientWidth - width) >= 1;
+      width = grid.clientWidth;
+      if (!resized && touched && grid.contains(touched)) return;
+      decide();
+    });
+    observer.observe(grid);
+    for (const child of grid.querySelectorAll('.an-card')) for (const part of child.children) observer.observe(part);
+    return () => observer.disconnect();
+  });
+  return <div ref={ref} className="an-grid">{children}</div>;
 }
 
 /* ── KPIs: dicen si siguen el período o son foto actual ── */

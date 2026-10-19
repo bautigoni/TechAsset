@@ -248,6 +248,7 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
                           : <MovementRow item={item as MovementHistoryItem} device={device} open={openRow === key} onToggle={toggle} rowKey={key} />}
                         {heldRows.drawn(key) && device && (
                           <MiniDevice
+                            id={miniId(key)}
                             open={openRow === key}
                             onSettled={open => { if (!open) heldRows.release(key); }}
                             device={device}
@@ -300,7 +301,7 @@ function DeviceLink({ etiqueta, alias, device, open, onToggle, rowKey }: { etiqu
     );
   }
   return (
-    <button type="button" className="hs-eq hs-eq-btn" data-hs-key={rowKey} aria-expanded={open} aria-label={`${open ? 'Cerrar' : 'Ver'} el resumen de ${shownAlias || etiqueta}`} onClick={onToggle}>
+    <button type="button" className="hs-eq hs-eq-btn" data-hs-key={rowKey} aria-expanded={open} aria-controls={miniId(rowKey)} aria-label={`${open ? 'Cerrar' : 'Ver'} el resumen de ${shownAlias || etiqueta}`} onClick={onToggle}>
       {shownAlias && <span className="hs-ell hs-eq-alias">{shownAlias}</span>}
       <span className="ui-mono hs-muted">{etiqueta}</span>
     </button>
@@ -342,7 +343,7 @@ function MovementRow({ item, device, open, onToggle, rowKey }: { item: MovementH
           <span className="hs-mv-line">
             <span className="hs-strong hs-nowrap">{item.tipo}</span>
             {item.etiqueta && (device
-              ? <button type="button" className="hs-tag-btn ui-mono" data-hs-key={rowKey} aria-expanded={open} aria-label={`${open ? 'Cerrar' : 'Ver'} el resumen de ${item.etiqueta}`} onClick={onToggle}>{item.etiqueta}</button>
+              ? <button type="button" className="hs-tag-btn ui-mono" data-hs-key={rowKey} aria-expanded={open} aria-controls={miniId(rowKey)} aria-label={`${open ? 'Cerrar' : 'Ver'} el resumen de ${item.etiqueta}`} onClick={onToggle}>{item.etiqueta}</button>
               : <span className="ui-mono hs-muted">{item.etiqueta}</span>)}
           </span>
           {item.descripcion && <span className="hs-wrap hs-muted">{item.descripcion}</span>}
@@ -354,7 +355,10 @@ function MovementRow({ item, device, open, onToggle, rowKey }: { item: MovementH
 }
 
 /** Resumen del equipo en línea, debajo del movimiento (antes abría el modal de la ficha). */
-function MiniDevice({ open, onSettled, device, onClose, onOpen, onOnly }: { open: boolean; onSettled: (open: boolean) => void; device: Device; onClose: () => void; onOpen?: () => void; onOnly: () => void }) {
+/** id del resumen en línea de una fila (lo que controla el botón del equipo). */
+const miniId = (rowKey: string) => `hs-mini-${rowKey.replace(/[^a-z0-9_-]/gi, '_')}`;
+
+function MiniDevice({ id, open, onSettled, device, onClose, onOpen, onOnly }: { id: string; open: boolean; onSettled: (open: boolean) => void; device: Device; onClose: () => void; onOpen?: () => void; onOnly: () => void }) {
   const [summary, setSummary] = useState<{ loans: number; lastLoan: string } | null>(null);
   useEffect(() => {
     let alive = true;
@@ -363,7 +367,7 @@ function MiniDevice({ open, onSettled, device, onClose, onOpen, onOnly }: { open
   }, [device.etiqueta]);
   return (
     <div role="row" className="hs-mini-row">
-      <Collapse open={open} appear unmountOnClose className="hs-mini" onSettled={onSettled}>
+      <Collapse open={open} id={id} appear unmountOnClose className="hs-mini" onSettled={onSettled}>
       <div role="cell" className="hs-mini-inner" aria-label={`Resumen de ${device.etiqueta}`} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose(); } }}>
         <div className="hs-mini-id">
           <span className="hs-mini-name"><span className="hs-strong hs-ell">{aliasOf(device)}</span><span className="ui-mono hs-muted">{device.etiqueta}</span></span>

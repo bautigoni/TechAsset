@@ -267,7 +267,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
       </div>
       {elsewhere.length > 0 && <p className="cfg-hint cfg-pad-x">También hay coincidencias en {elsewhere.join(', ')}.</p>}
 
-      <Collapse open={editing === 'new'} unmountOnClose data-scanner-ignore="">
+      <Collapse open={editing === 'new'} id="cfg-user-new" unmountOnClose data-scanner-ignore="">
         <UserForm
           key="new"
           title="Nuevo usuario"
@@ -331,13 +331,13 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                         {user.status !== 'Activo' && <Button size="sm" variant="secondary" loading={rowBusy} disabled={disabled} onClick={() => void run(user, 'approve')}>{user.status === 'Pendiente' ? 'Aprobar' : 'Reactivar'}</Button>}
                         {user.status === 'Pendiente' && <Button size="sm" variant="ghost" disabled={disabled} onClick={() => void run(user, 'reject')}>Rechazar</Button>}
                         {user.status === 'Activo' && <Button size="sm" variant="ghost" loading={rowBusy} disabled={disabled} onClick={() => void run(user, 'deactivate')}>Desactivar</Button>}
-                        <Button size="sm" variant="ghost" aria-expanded={editing === user.id} disabled={readOnly} onClick={() => { setEditing(editing === user.id ? null : user.id); setConfirmDelete(0); }}>{editing === user.id ? 'Cerrar' : 'Editar'}</Button>
-                        <Button size="sm" variant="ghost" className="cfg-danger-text" disabled={disabled} aria-expanded={confirmDelete === user.id} onClick={() => setConfirmDelete(confirmDelete === user.id ? 0 : user.id)}>Borrar</Button>
+                        <Button size="sm" variant="ghost" aria-expanded={editing === user.id} aria-controls={`cfg-user-edit-${user.id}`} disabled={readOnly} onClick={() => { setEditing(editing === user.id ? null : user.id); setConfirmDelete(0); }}>{editing === user.id ? 'Cerrar' : 'Editar'}</Button>
+                        <Button size="sm" variant="ghost" className="cfg-danger-text" disabled={disabled} aria-expanded={confirmDelete === user.id} aria-controls={`cfg-user-del-${user.id}`} onClick={() => setConfirmDelete(confirmDelete === user.id ? 0 : user.id)}>Borrar</Button>
                       </>
                     )}
                   </span>
                 </div>
-                <Collapse open={confirmDelete === user.id} unmountOnClose data-scanner-ignore="">
+                <Collapse open={confirmDelete === user.id} id={`cfg-user-del-${user.id}`} unmountOnClose data-scanner-ignore="">
                   <InlineConfirm
                     danger
                     className="cfg-row-confirm"
@@ -361,7 +361,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                     />
                   )}
                 </Collapse>
-                <Collapse open={editing === user.id} unmountOnClose data-scanner-ignore="">
+                <Collapse open={editing === user.id} id={`cfg-user-edit-${user.id}`} unmountOnClose data-scanner-ignore="">
                   <UserForm
                     key={`edit-${user.id}`}
                     title={`Editar a ${displayName(user)}`}
@@ -413,7 +413,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
 
   return (
     <>
-      {header(<Button variant="primary" icon={<Plus size={15} aria-hidden="true" />} disabled={readOnly} aria-expanded={editing === 'new'} onClick={openNew}>Nuevo usuario</Button>)}
+      {header(<Button variant="primary" icon={<Plus size={15} aria-hidden="true" />} disabled={readOnly} aria-expanded={editing === 'new'} aria-controls="cfg-user-new" onClick={openNew}>Nuevo usuario</Button>)}
       {listCard}
       {tenantInvites && (
         <Card title={`Invitaciones de ${siteFilter}`} meta={<span className="cfg-mono">{tenantInvites.length > 12 ? `12 de ${tenantInvites.length}` : tenantInvites.length}</span>}>

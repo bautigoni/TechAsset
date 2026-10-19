@@ -67,6 +67,7 @@ export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 
   // El id del filtro es global al documento: derivarlo de useId permite tener
   // más de un menú en pantalla sin que se pisen.
   const filterId = `t-goo-filter-${useId().replace(/:/g, '')}`;
+  const itemsId = `${filterId}-items`;
 
   // --goo-blur y --goo-contrast son atributos SVG, no propiedades CSS, así que
   // hay que espejarlos a mano sobre las primitivas en cada toggle.
@@ -177,6 +178,8 @@ export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 
         </g>
       </svg>
 
+      {/* Los satélites son lo que abre el "+" (aria-controls); con display: contents no cambia su lugar. */}
+      <div id={itemsId} className="t-goo-items" role="group" aria-label={ariaLabel}>
       {items.map((item, index) => (
         <button
           key={item.id}
@@ -196,12 +199,14 @@ export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 
           {item.icon}
         </button>
       ))}
+      </div>
 
       {/* El "+" girado 45° ES la X: un solo ícono cubre los dos estados. */}
       <button
         type="button"
         className="t-goo-main"
         aria-expanded={open}
+        aria-controls={itemsId}
         aria-label={open ? 'Cerrar acciones' : ariaLabel}
         onClick={event => { event.stopPropagation(); setMenuOpen(!openRef.current); }}
       >

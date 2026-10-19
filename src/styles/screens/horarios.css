@@ -197,14 +197,26 @@
 .hr-slot + .hr-slot { border-top: 1px dashed var(--g-line); }
 .hr-slot-line { display: flex; align-items: center; gap: var(--g-s-2); min-width: 0; }
 .hr-slot-label { flex: 1 1 auto; }
-.hr-slot-times { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--g-s-2); min-width: 0; }
-.hr-slot-time { flex: 1 1 7.5rem; min-width: 0; }
+/* Inicio – Fin en una fila y el selector de hora abierto DEBAJO, a todo el ancho
+   (con el ancho de la columna, las fichas de hora no entran al lado). Los dos
+   campos quedan quietos al abrir: antes el abierto saltaba a su propia fila. */
+.hr-slot-times {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: var(--g-s-2);
+  min-width: 0;
+}
+.hr-slot-times > .hr-slot-time, .hr-slot-times > .hr-slot-time > .ui-time { display: contents; }
 .hr-slot-time .ui-time-input { max-width: none; }
-/* El selector de hora abierto toma toda la fila (con el ancho de la columna, las fichas de hora no entran). */
-.hr-slot-time:has(.ui-time.is-open) { flex-basis: 100%; }
-.hr-slot-dash { flex: none; align-self: center; color: var(--g-text-3); }
-.hr-slot-time:has(.ui-time.is-open) ~ .hr-slot-dash,
-.hr-slot-times:has(.hr-slot-time .ui-time.is-open) .hr-slot-dash { display: none; }
+.hr-slot-times > .hr-slot-time:nth-child(1) .ui-time-input { grid-area: 1 / 1; }
+.hr-slot-times > .hr-slot-time:nth-child(3) .ui-time-input { grid-area: 1 / 3; }
+.hr-slot-times > .hr-slot-time:nth-child(1) > .ui-help { grid-area: 2 / 1; }
+.hr-slot-times > .hr-slot-time:nth-child(3) > .ui-help { grid-area: 2 / 3; }
+.hr-slot-times > .hr-slot-time:nth-child(1) .ui-collapse { grid-area: 3 / 1 / 4 / -1; }
+.hr-slot-times > .hr-slot-time:nth-child(3) .ui-collapse { grid-area: 4 / 1 / 5 / -1; }
+.hr-slot-times .ui-collapse[data-state="open"], .hr-slot-times .ui-collapse[data-state="opening"] { margin-top: var(--g-s-1); }
+.hr-slot-dash { grid-area: 1 / 2; align-self: center; color: var(--g-text-3); }
 .hr-slot-ro { color: var(--g-text); font-family: var(--g-font-mono); font-size: var(--g-fs-sm); }
 .hr-slot-msg { font-size: var(--g-fs-xs); }
 .hr-slot-msg--bad { color: var(--g-bad); }

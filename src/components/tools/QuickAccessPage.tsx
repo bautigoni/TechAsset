@@ -200,7 +200,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
           />
           {links && <span className="qa-count g-num">{q ? `${visible.length} de ${liveCount}` : `${liveCount} ${liveCount === 1 ? 'acceso' : 'accesos'}`}</span>}
           {editable && (
-            <Button ref={newBtnRef} variant="primary" icon={<Plus size={16} strokeWidth={1.8} />} aria-expanded={newOpen} onClick={() => (newOpen ? closeNew() : openNew())}>
+            <Button ref={newBtnRef} variant="primary" icon={<Plus size={16} strokeWidth={1.8} />} aria-expanded={newOpen} aria-controls="qa-new" onClick={() => (newOpen ? closeNew() : openNew())}>
               Nuevo acceso
             </Button>
           )}
@@ -221,7 +221,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
       {status.element}
 
       {editable && (
-        <Collapse unmountOnClose open={newOpen} gap="var(--g-s-4)" returnFocus={newBtnRef} role="region" aria-label="Nuevo acceso">
+        <Collapse unmountOnClose open={newOpen} id="qa-new" gap="var(--g-s-4)" returnFocus={newBtnRef} role="region" aria-label="Nuevo acceso">
           {creating && (
             <div className="qa-card qa-new">
               <LinkForm key={`${creating.url}|${creating.titulo}`} initial={creating} categories={categories} title="Nuevo acceso" submitLabel="Guardar acceso" onSubmit={create} onCancel={closeNew} draftKey={newKey} />

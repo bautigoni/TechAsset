@@ -126,6 +126,10 @@ export function GlifingTool({ readOnly }: { readOnly: boolean }) {
           <div className="tl-step-b">
             <h2 className="tl-step-title">Generar e imprimir</h2>
             <p className="tl-muted">Hoja A4 con 8 tarjetas (2 × 4), el fondo de la plantilla y borde punteado para recortar.</p>
+            {/* Esquema de la hoja: ocupa el alto que deja el paso 1 al lado (sin una franja vacía al pie). */}
+            <div className="tl-sheet" aria-hidden="true">
+              {Array.from({ length: 8 }, (_, index) => <span key={index} className="tl-sheet-card" />)}
+            </div>
             <div className="tl-actions">
               <Button variant="primary" icon={<Printer size={16} strokeWidth={1.6} />} loading={busy} loadingLabel="Generando…" disabled={!csv || readOnly} onClick={() => void generate()}>
                 Generar tarjetas {KIND_NAME[kind]}

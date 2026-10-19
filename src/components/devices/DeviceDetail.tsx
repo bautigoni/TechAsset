@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Device } from '../../types';
-import { Button, Collapse, DatePicker, ErrorState, Eyebrow, IconButton, InlineConfirm, NumberField, Segmented, Skeleton, SkeletonText, StatusText, ageTone, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, DatePicker, ErrorState, Eyebrow, FlowColumns, IconButton, InlineConfirm, NumberField, Segmented, Skeleton, SkeletonText, StatusText, ageTone, icons, useStatusLine } from '../../ui';
 import { getDeviceOverview, updateDeviceMetadata, type DeviceOverviewResponse } from '../../services/devicesApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { getOperationalAlias } from '../../utils/classifyDevice';
@@ -195,7 +195,7 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
         </div>
       )}
 
-      <div className="dv-detail-grid">
+      <FlowColumns minRem={17} className="dv-detail-grid">
         <section className="dv-sec" aria-label="Estado y cuidado">
           <Eyebrow>Estado y cuidado</Eyebrow>
           <Segmented
@@ -331,7 +331,7 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
         </section>
 
         <DeviceReminders etiqueta={tag} label={getOperationalAlias(device) || tag} consultationMode={consultationMode} />
-      </div>
+      </FlowColumns>
     </section>
   );
 }

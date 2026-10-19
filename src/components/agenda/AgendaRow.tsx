@@ -65,7 +65,7 @@ export function AgendaRow({ item, open, onToggle, actions, showDay }: {
             <StatusText tone={st.tone}>{st.label}</StatusText>
             {ret.text && <StatusText tone={ret.tone} className="ag-ret">{ret.text}</StatusText>}
           </span>
-          <button type="button" className="ag-toggle ui-icon-btn ui-btn--ghost ui-btn--sm" aria-expanded={open} aria-label={`${open ? 'Ocultar' : 'Ver'} detalle: ${label}`} onClick={() => onToggle(item.id)}>
+          <button type="button" className="ag-toggle ui-icon-btn ui-btn--ghost ui-btn--sm" aria-expanded={open} aria-controls={`ag-detail-${item.id}`} aria-label={`${open ? 'Ocultar' : 'Ver'} detalle: ${label}`} onClick={() => onToggle(item.id)}>
             <icons.IconChevronDown size={16} className="ag-chev" />
           </button>
         </div>
@@ -91,7 +91,7 @@ export function AgendaRow({ item, open, onToggle, actions, showDay }: {
         </div>
       </div>
       {/* El detalle se abre y se cierra con el colapso compartido (la fila tocada no se mueve); queda montado para no perder una nota a medio escribir. */}
-      <Collapse open={open}>
+      <Collapse open={open} id={`ag-detail-${item.id}`}>
         <AgendaDetail item={item} actions={actions} />
       </Collapse>
     </div>

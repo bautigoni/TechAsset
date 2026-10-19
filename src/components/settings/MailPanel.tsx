@@ -130,7 +130,7 @@ export function MailPanel({ header, readOnly }: { header: (actions?: ReactNode) 
           {!draft ? <SkeletonRows rows={5} /> : (
             <div className="cfg-grid" data-scanner-ignore="">
               <Input label="Servidor SMTP" className="cfg-mono-input" value={draft.smtpServer} disabled={readOnly} placeholder="smtp.office365.com" autoComplete="off" onValueChange={value => set('smtpServer', value)} />
-              <NumberField label="Puerto" value={draft.smtpPort} min={1} max={65535} disabled={readOnly} hint={draft.smtpPort === 465 ? 'Con 465 la conexión va cifrada desde el inicio.' : 'Con 587 la conexión se cifra después de conectar (STARTTLS).'} onChange={value => set('smtpPort', value ?? 465)} />
+              <NumberField label="Puerto" value={draft.smtpPort} min={1} max={65535} disabled={readOnly} hint={draft.smtpPort === 465 ? 'Cifrada desde el inicio (SSL/TLS).' : 'Se cifra al conectar (STARTTLS).'} onChange={value => set('smtpPort', value ?? 465)} />
               <Input label="Usuario" value={draft.smtpUser} disabled={readOnly} inputMode="email" autoComplete="off" placeholder="cuenta@colegio.edu.ar" onValueChange={value => set('smtpUser', value)} />
               <Input
                 label="Contraseña de aplicación"

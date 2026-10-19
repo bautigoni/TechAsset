@@ -238,17 +238,17 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
           )}
           <div className="pc-sum-acts">
             {manager && (
-              <Button ref={fundBtn} variant="ghost" icon={<Pencil size={15} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={fundOpen} onClick={() => { if (!fundOpen) { setFundDraft(moneyDraft(fund)); setFundError(''); } setFundOpen(open => !open); }}>
+              <Button ref={fundBtn} variant="ghost" icon={<Pencil size={15} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={fundOpen} aria-controls="pc-fund" onClick={() => { if (!fundOpen) { setFundDraft(moneyDraft(fund)); setFundError(''); } setFundOpen(open => !open); }}>
                 Editar fondo
               </Button>
             )}
             {manager && (
-              <Button ref={expenseBtn} variant="secondary" icon={<ReceiptText size={16} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={expenseOpen} onClick={() => setExpenseOpen(open => !open)}>
+              <Button ref={expenseBtn} variant="secondary" icon={<ReceiptText size={16} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={expenseOpen} aria-controls="pc-expense" onClick={() => setExpenseOpen(open => !open)}>
                 Registrar gasto
               </Button>
             )}
             {canRequest && (
-              <Button ref={requestBtn} variant="primary" icon={<ShoppingCart size={16} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={requestOpen} onClick={() => setRequestOpen(open => !open)}>
+              <Button ref={requestBtn} variant="primary" icon={<ShoppingCart size={16} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={requestOpen} aria-controls="pc-request" onClick={() => setRequestOpen(open => !open)}>
                 Solicitar compra
               </Button>
             )}
@@ -256,7 +256,7 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
         </div>
         {disabledWhy && (manager || canRequest) && <span className="pc-why">Botones deshabilitados: {disabledWhy.toLowerCase()}.</span>}
 
-        <Collapse unmountOnClose open={fundOpen && manager} role="region" aria-label="Editar fondo" returnFocus={fundBtn}>
+        <Collapse unmountOnClose open={fundOpen && manager} id="pc-fund" role="region" aria-label="Editar fondo" returnFocus={fundBtn}>
           <form className="pc-fund" onSubmit={saveFund} noValidate data-scanner-ignore="" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); setFundOpen(false); fundBtn.current?.focus({ preventScroll: true }); } }}>
             <MoneyInput
               label="Fondo inicial"
@@ -277,7 +277,7 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
       {status.element}
 
       {manager && (
-        <Collapse unmountOnClose open={expenseOpen && !consultationMode} gap="var(--g-s-4)" returnFocus={expenseBtn} role="region" aria-label="Registrar gasto">
+        <Collapse unmountOnClose open={expenseOpen && !consultationMode} id="pc-expense" gap="var(--g-s-4)" returnFocus={expenseBtn} role="region" aria-label="Registrar gasto">
           <div className="pc-card pc-form-card">
             <ExpenseForm
               draft={expenseDraft}
@@ -292,7 +292,7 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
         </Collapse>
       )}
       {canRequest && (
-        <Collapse unmountOnClose open={requestOpen && !consultationMode} gap="var(--g-s-4)" returnFocus={requestBtn} role="region" aria-label="Solicitar compra">
+        <Collapse unmountOnClose open={requestOpen && !consultationMode} id="pc-request" gap="var(--g-s-4)" returnFocus={requestBtn} role="region" aria-label="Solicitar compra">
           <div className="pc-card pc-form-card">
             <RequestForm
               draft={requestDraft}

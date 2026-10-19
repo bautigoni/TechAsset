@@ -63,8 +63,8 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
 
   return (
     <>
-      {header(<Button variant="primary" icon={<Plus size={15} aria-hidden="true" />} disabled={readOnly} aria-expanded={creating} onClick={() => setCreating(value => !value)}>Crear sede</Button>)}
-      <Collapse open={creating} gap="var(--g-s-4)" unmountOnClose data-scanner-ignore="">
+      {header(<Button variant="primary" icon={<Plus size={15} aria-hidden="true" />} disabled={readOnly} aria-expanded={creating} aria-controls="cfg-site-new" onClick={() => setCreating(value => !value)}>Crear sede</Button>)}
+      <Collapse open={creating} id="cfg-site-new" gap="var(--g-s-4)" unmountOnClose data-scanner-ignore="">
         <Card title="Nueva sede">
           <div className="cfg-pad">
             <SiteForm
@@ -128,11 +128,11 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
                 </span>
                 <span className="cfg-ts-act">
                   {isHere ? <span className="cfg-t3 cfg-nowrap">Estás acá</span> : <Button size="sm" variant="secondary" onClick={() => onSwitchSite(site.siteCode)}>Entrar</Button>}
-                  <Button size="sm" variant="ghost" aria-expanded={editing === site.siteCode} disabled={readOnly} onClick={() => { setEditing(editing === site.siteCode ? '' : site.siteCode); setCodeOpen(''); }}>{editing === site.siteCode ? 'Cerrar' : 'Editar'}</Button>
-                  <Button size="sm" variant="ghost" aria-expanded={codeOpen === site.siteCode} disabled={readOnly} onClick={() => { setCodeOpen(codeOpen === site.siteCode ? '' : site.siteCode); setEditing(''); }}>Código admin</Button>
+                  <Button size="sm" variant="ghost" aria-expanded={editing === site.siteCode} aria-controls={`cfg-site-edit-${site.siteCode}`} disabled={readOnly} onClick={() => { setEditing(editing === site.siteCode ? '' : site.siteCode); setCodeOpen(''); }}>{editing === site.siteCode ? 'Cerrar' : 'Editar'}</Button>
+                  <Button size="sm" variant="ghost" aria-expanded={codeOpen === site.siteCode} aria-controls={`cfg-site-code-${site.siteCode}`} disabled={readOnly} onClick={() => { setCodeOpen(codeOpen === site.siteCode ? '' : site.siteCode); setEditing(''); }}>Código admin</Button>
                 </span>
               </div>
-              <Collapse open={editing === site.siteCode} unmountOnClose data-scanner-ignore="">
+              <Collapse open={editing === site.siteCode} id={`cfg-site-edit-${site.siteCode}`} unmountOnClose data-scanner-ignore="">
                 <div className="cfg-uform">
                   <SiteForm
                     site={site}
@@ -145,7 +145,7 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
                   />
                 </div>
               </Collapse>
-              <Collapse open={codeOpen === site.siteCode} unmountOnClose data-scanner-ignore="">
+              <Collapse open={codeOpen === site.siteCode} id={`cfg-site-code-${site.siteCode}`} unmountOnClose data-scanner-ignore="">
                 <div className="cfg-uform" role="group" aria-label={`Código de administrador para ${site.siteCode}`} data-scanner-ignore="">
                   <div className="cfg-add">
                     <Input

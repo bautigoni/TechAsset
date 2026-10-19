@@ -126,13 +126,20 @@
     grid-template-areas: "plan side" "plan list";
   }
   .cls-plan-card { position: sticky; top: var(--g-s-4); align-self: start; }
-  .cls-layout .cls-plan { --cls-plan-maxh: min(46rem, calc(100dvh - 16rem)); }
+  .cls-layout .cls-plan { --cls-plan-maxh: min(46rem, calc(100dvh - 16rem), var(--cls-plan-fit, 46rem)); }
   /* Sin ficha abierta: el plano ocupa el alto de la columna de al lado (la
      lista se reparte en 1 o 2 columnas para emparejar, ver useBalancedColumns)
      y se centra en lo que sobra, así no queda un hueco suelto debajo. */
   .cls-layout.is-idle .cls-plan-card { position: static; align-self: stretch; }
   .cls-layout.is-idle .cls-plan { flex: 1 1 auto; }
   .cls-layout.is-idle .cls-plan-view { margin-top: auto; margin-bottom: auto; }
+  /* Planta alta con pocas aulas: la lista llega hasta el pie del plano y sus
+     filas crecen parejas (botones más altos), en vez de dejar un hueco debajo.
+     Cuando la lista es la más alta no cambia nada (la fila de la grilla mide lo que ella). */
+  .cls-layout.is-idle.is-fill:not(.is-measuring) .cls-list-card { align-self: stretch; }
+  .cls-layout.is-idle.is-fill:not(.is-measuring) .cls-list { flex: 1 1 auto; align-content: stretch; }
+  .cls-layout.is-idle.is-fill:not(.is-measuring) .cls-list > li { display: flex; min-width: 0; }
+  .cls-layout.is-idle.is-fill:not(.is-measuring) .cls-list > li > .cls-list-item { flex: 1 1 auto; }
 }
 
 .cls-plan-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--g-s-2) var(--g-s-4); min-width: 0; }

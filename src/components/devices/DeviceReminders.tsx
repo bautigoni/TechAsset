@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import type { Reminder } from '../../types';
 import { Button, Collapse, DateTimeField, Eyebrow, Input, StatusText, useStatusLine } from '../../ui';
 import { completeReminder, createReminder, getReminders } from '../../services/remindersApi';
@@ -71,12 +71,13 @@ export function DeviceReminders({ etiqueta, label, consultationMode }: { etiquet
   };
 
   const list = (items || []).slice(0, 5);
+  const formId = useId();
   return (
     <section className="dv-sec" aria-label="Recordatorios">
       <div className="dv-sec-head">
         <Eyebrow>Recordatorios</Eyebrow>
         {!consultationMode && (
-          <Button size="sm" variant="ghost" aria-expanded={open} onClick={() => setOpen(value => !value)}>{open ? 'Cancelar' : '+ Agregar'}</Button>
+          <Button size="sm" variant="ghost" aria-expanded={open} aria-controls={formId} onClick={() => setOpen(value => !value)}>{open ? 'Cancelar' : '+ Agregar'}</Button>
         )}
       </div>
       {list.map(item => (
@@ -91,7 +92,7 @@ export function DeviceReminders({ etiqueta, label, consultationMode }: { etiquet
         </div>
       ))}
       {items && !items.length && !open && <span className="dv-muted">Sin recordatorios para este equipo.</span>}
-      <Collapse open={open} unmountOnClose>
+      <Collapse open={open} id={formId} unmountOnClose>
         <form className="dv-rem-form" data-scanner-ignore="" onSubmit={save} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }}>
           <Input label="Qué hay que hacer" value={title} onValueChange={setTitle} placeholder="Ej. revisar el cargador" autoFocus autoComplete="off" />
           <DateTimeField label="Cuándo" value={when} onChange={setWhen} minHour={7} maxHour={20} />

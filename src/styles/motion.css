@@ -876,7 +876,7 @@
   --goo-icon-dur: 250ms;
   --goo-icon-rotate: 45deg;
   --goo-icon-ease: ease-in-out;
-  --goo-anticip: 5px;
+  --goo-anticip: 2px; /* el "+" tocado no se corre más de 2 px (REGLAS-UX: el disparador queda quieto) */
   --goo-anticip-dur: 700ms;
   --goo-anticip-ease: var(--ease-out);
   /* Sólido a propósito: es el `fill` de un <circle>, no acepta gradiente
@@ -956,6 +956,7 @@
 /* Inertes mientras están apilados debajo del principal: si no, se comen
    sus clicks. */
 .t-goo-item { pointer-events: none; }
+.t-goo-items { display: contents; }
 .t-goo-anchor[data-open="true"] .t-goo-item {
   pointer-events: auto;
   transform: translate(calc(var(--fx, 0px) * var(--goo-spread)), calc(var(--fy, 0px) * var(--goo-spread)));

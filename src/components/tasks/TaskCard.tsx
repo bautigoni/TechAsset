@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { Lock, MessageSquare, Paperclip, Plus, X } from 'lucide-react';
 import type { TaskChecklistItem, TaskItem } from '../../types';
-import { Button, Checkbox, Collapse, StatusText, TruncatedText, cx, useAnchoredToggle } from '../../ui';
+import { Button, Checkbox, Collapse, StatusText, TruncatedText, cx } from '../../ui';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { CARD_ITEMS, dueInfo, joinNames, responsablesOf, taskRouteUrl } from './taskModel';
 
@@ -43,7 +43,6 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
   const lastStatus = useRef<ReactNode>(null);
   if (status) lastStatus.current = status;
   const shownStatus = status || lastStatus.current;
-  const anchored = useAnchoredToggle();
 
   const items = task.items || [];
   const doneItems = items.filter(item => item.completada).length;
@@ -53,7 +52,22 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
   const note = String(task.comentario || '').replace(/\s+/g, ' ').trim();
   const comments = task.commentsCount || 0;
   const files = task.attachments?.length || 0;
-  const shownItems = showAll ? items : items.slice(0, CARD_ITEMS);
+  const renderItem = (item: TaskChecklistItem) => (
+    <div className="tk-sub" key={item.id}>
+      <Checkbox
+        checked={item.completada}
+        disabled={!canEdit || item.id < 0}
+        ariaLabel={`Subtarea: ${item.texto}`}
+        onCheckedChange={next => onToggleItem(task, item, next)}
+      />
+      <TruncatedText className={cx('tk-sub-text', item.completada && 'is-done')} lines={2}>{item.texto}</TruncatedText>
+      {canEdit && (
+        <button type="button" className="tk-sub-x" aria-label={`Quitar la subtarea «${item.texto}»`} disabled={item.id < 0} onClick={() => onRemoveItem(task, item)}>
+          <X size={12} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
 
   const submit = () => {
     const value = text.trim();
@@ -128,24 +142,15 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
             <span>Subtareas</span>
             <span className="tk-mono">{doneItems}/{items.length}</span>
           </div>
-          {shownItems.map(item => (
-            <div className="tk-sub" key={item.id}>
-              <Checkbox
-                checked={item.completada}
-                disabled={!canEdit || item.id < 0}
-                ariaLabel={`Subtarea: ${item.texto}`}
-                onCheckedChange={next => onToggleItem(task, item, next)}
-              />
-              <TruncatedText className={cx('tk-sub-text', item.completada && 'is-done')} lines={2}>{item.texto}</TruncatedText>
-              {canEdit && (
-                <button type="button" className="tk-sub-x" aria-label={`Quitar la subtarea «${item.texto}»`} disabled={item.id < 0} onClick={() => onRemoveItem(task, item)}>
-                  <X size={12} aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          ))}
+          {items.slice(0, CARD_ITEMS).map(item => renderItem(item))}
+          {/* Las que no entran se despliegan con el colapso compartido (alto suave), no de golpe. */}
           {items.length > CARD_ITEMS && (
-            <button type="button" className="tk-link tk-link--sm" aria-expanded={showAll} onClick={event => { const at = event.currentTarget; anchored(() => setShowAll(value => !value), at); }}>
+            <Collapse open={showAll} id={`tk-subs-more-${task.id}`} className="tk-subs-more">
+              {items.slice(CARD_ITEMS).map(item => renderItem(item))}
+            </Collapse>
+          )}
+          {items.length > CARD_ITEMS && (
+            <button type="button" className="tk-link tk-link--sm" aria-expanded={showAll} aria-controls={`tk-subs-more-${task.id}`} onClick={() => setShowAll(value => !value)}>
               {showAll ? 'Ver menos' : `Ver ${items.length - CARD_ITEMS} más`}
             </button>
           )}

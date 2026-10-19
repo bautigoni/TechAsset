@@ -31,14 +31,14 @@ export function AgendaWeek({ columns, openId, onToggle, onOpenDay, actions }: {
             return (
               <div key={item.id} className={cx('ag-wk-item', open && 'is-open')} data-agenda-id={item.id}>
                 <div className="ag-wk-card" onClick={event => { if (rowClickOpens(event)) onToggle(item.id); }}>
-                  <button type="button" className="ag-wk-toggle" aria-expanded={open} aria-label={`${item.curso}, ${item.actividad}, ${item.desde} a ${item.hasta}, ${st.label}. ${open ? 'Ocultar' : 'Ver'} detalle`} onClick={() => onToggle(item.id)}>
+                  <button type="button" className="ag-wk-toggle" aria-expanded={open} aria-controls={`ag-wk-detail-${item.id}`} aria-label={`${item.curso}, ${item.actividad}, ${item.desde} a ${item.hasta}, ${st.label}. ${open ? 'Ocultar' : 'Ver'} detalle`} onClick={() => onToggle(item.id)}>
                     <span className="ag-time g-num">{item.desde}–{item.hasta}</span>
                     <StatusText tone={st.tone}>{st.label}</StatusText>
                   </button>
                   <TruncatedText className={cx('ag-curso', item.estado === 'Cancelado' && 'is-cancelled')}>{item.curso || 'Sin curso'}</TruncatedText>
                   <TruncatedText className="ag-what">{`${item.actividad || 'Actividad'} · ${item.cantidad} ${item.tipoDispositivo}`}</TruncatedText>
                 </div>
-                <Collapse open={open} className="ag-wk-detail">
+                <Collapse open={open} id={`ag-wk-detail-${item.id}`} className="ag-wk-detail">
                     <span className="ag-what">{item.ubicacion || 'Sin ubicación'} · {item.fecha ? 'una vez' : item.turno || 'sin turno'}</span>
                     {ret.text && <StatusText tone={ret.tone}>{ret.text}</StatusText>}
                     <span className="ag-what">{item.nota ? `Nota: ${item.nota}` : 'Sin nota'}</span>

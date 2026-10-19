@@ -174,7 +174,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
         </div>
         <div className="rem-head-actions">
           <Checkbox label="Solo los míos" checked={mineOnly} onCheckedChange={setMineOnly} />
-          <Button ref={newButtonRef} variant="primary" icon={<IconPlus size={16} />} aria-expanded={formOpen} disabled={consultationMode} onClick={() => { ensurePeople(); setFormOpen(open => !open); }}>
+          <Button ref={newButtonRef} variant="primary" icon={<IconPlus size={16} />} aria-expanded={formOpen} aria-controls="rem-new" disabled={consultationMode} onClick={() => { ensurePeople(); setFormOpen(open => !open); }}>
             Nuevo recordatorio
           </Button>
         </div>
@@ -200,7 +200,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
           lista saltaba debajo del formulario que se estaba cerrando). */}
       <div className={cx('rem-layout', (formOpen || formLayout) && 'has-form')}>
         <div className="rem-form-col">
-          <Collapse open={formOpen} unmountOnClose onSettled={setFormLayout}>
+          <Collapse open={formOpen} id="rem-new" unmountOnClose onSettled={setFormLayout}>
             <section className="rem-card rem-form-card" aria-label="Nuevo recordatorio">
               <ReminderForm
                 mode="create"
@@ -362,19 +362,19 @@ function ReminderItem({ item, now, consultationMode, people, me, peopleError, en
         </div>
         {!done && (
           <div className="rem-row-actions">
-            <Button size="sm" variant="ghost" aria-expanded={panel === 'postpone'} disabled={!canAct || busy} onClick={() => openPanel('postpone')}>Posponer</Button>
-            <Button size="sm" variant="ghost" aria-expanded={panel === 'edit'} disabled={!canAct || busy} onClick={() => openPanel('edit')}>Editar</Button>
-            <IconButton size="sm" label={`Borrar recordatorio ${item.title}`} icon={<IconTrash />} disabled={!canAct || busy} aria-expanded={panel === 'delete'} onClick={() => openPanel('delete')} />
+            <Button size="sm" variant="ghost" aria-expanded={panel === 'postpone'} aria-controls={`rem-postpone-${item.id}`} disabled={!canAct || busy} onClick={() => openPanel('postpone')}>Posponer</Button>
+            <Button size="sm" variant="ghost" aria-expanded={panel === 'edit'} aria-controls={`rem-edit-${item.id}`} disabled={!canAct || busy} onClick={() => openPanel('edit')}>Editar</Button>
+            <IconButton size="sm" label={`Borrar recordatorio ${item.title}`} icon={<IconTrash />} disabled={!canAct || busy} aria-expanded={panel === 'delete'} aria-controls={`rem-delete-${item.id}`} onClick={() => openPanel('delete')} />
           </div>
         )}
         {done && canAct && (
           <div className="rem-row-actions">
-            <IconButton size="sm" label={`Borrar recordatorio ${item.title}`} icon={<IconTrash />} disabled={busy} aria-expanded={panel === 'delete'} onClick={() => openPanel('delete')} />
+            <IconButton size="sm" label={`Borrar recordatorio ${item.title}`} icon={<IconTrash />} disabled={busy} aria-expanded={panel === 'delete'} aria-controls={`rem-delete-${item.id}`} onClick={() => openPanel('delete')} />
           </div>
         )}
       </div>
 
-      <Collapse open={panel === 'postpone'} unmountOnClose>
+      <Collapse open={panel === 'postpone'} id={`rem-postpone-${item.id}`} unmountOnClose>
         <div className="rem-inline" data-scanner-ignore="" onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); setPanel('none'); } }}>
           <WhenField label="Posponer a" value={postponeTo} onChange={setPostponeTo} disabled={busy} />
           <div className="rem-actions rem-actions-end">
@@ -384,7 +384,7 @@ function ReminderItem({ item, now, consultationMode, people, me, peopleError, en
         </div>
       </Collapse>
 
-      <Collapse open={panel === 'edit'} unmountOnClose>
+      <Collapse open={panel === 'edit'} id={`rem-edit-${item.id}`} unmountOnClose>
         {editDraft && (
           <div className="rem-inline">
             <ReminderForm
@@ -401,7 +401,7 @@ function ReminderItem({ item, now, consultationMode, people, me, peopleError, en
         )}
       </Collapse>
 
-      <Collapse open={panel === 'delete'} unmountOnClose>
+      <Collapse open={panel === 'delete'} id={`rem-delete-${item.id}`} unmountOnClose>
         <InlineConfirm
           danger
           message={`¿Borrar «${item.title}»?`}

@@ -458,6 +458,7 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
 .tk-subs-head { display: flex; align-items: center; justify-content: space-between; gap: var(--g-s-2); height: var(--g-s-5); color: var(--g-text-3); font-size: var(--g-fs-xs); font-weight: var(--g-fw-medium); }
 .tk-subs-head .tk-mono { color: var(--g-text-2); }
 .tk-sub { display: flex; align-items: center; gap: var(--g-s-2); min-width: 0; min-height: calc(var(--g-s-6) - var(--g-s-1)); }
+.tk-subs-more { display: flex; flex-direction: column; min-width: 0; }
 .tk-sub .ui-check { flex: none; }
 .tk-sub-text { flex: 1 1 auto; color: var(--g-text); font-size: var(--g-fs-sm); line-height: 1.125rem; }
 .tk-sub-text.is-done, .tk-sub-full.is-done { color: var(--g-text-3); }

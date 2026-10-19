@@ -40,6 +40,9 @@ export function validateSetting(key: string, value: unknown): string {
   return '';
 }
 
+/** id del editor en línea de una clave (lo que controla su botón Editar). */
+const advId = (key: string) => `cfg-adv-${key.replace(/[^a-z0-9_-]/gi, '_')}`;
+
 function preview(value: unknown) {
   const text = JSON.stringify(value);
   return text === undefined ? 'null' : text;
@@ -154,10 +157,10 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
       <Card
         title="Configuración de la sede, clave por clave"
         meta={settings ? <span className="cfg-mono">{keys.length} claves</span> : undefined}
-        actions={<Button size="sm" variant="ghost" disabled={readOnly || !settings} aria-expanded={adding} onClick={() => setAdding(value => !value)}>Agregar clave</Button>}
+        actions={<Button size="sm" variant="ghost" disabled={readOnly || !settings} aria-expanded={adding} aria-controls="cfg-adv-new" onClick={() => setAdding(value => !value)}>Agregar clave</Button>}
       >
         <Notice tone="warn"><span><span className="is-warn cfg-strong">Edición cruda.</span> Un valor mal escrito en roles o módulos puede dejar a alguien sin acceso. Usá las otras secciones siempre que puedas.</span></Notice>
-        <Collapse open={adding} unmountOnClose data-scanner-ignore="">
+        <Collapse open={adding} id="cfg-adv-new" unmountOnClose data-scanner-ignore="">
           <div className="cfg-uform" data-scanner-ignore="">
             <Input label="Clave nueva" className="cfg-mono-input" value={newKey} placeholder="ej. quickLinks" autoComplete="off" onValueChange={setNewKey} />
             <Textarea label="Valor (JSON)" className="cfg-json" minRows={3} spellCheck={false} value={newText} placeholder='["valor"]' error={newProblem || undefined} onValueChange={setNewText} />
@@ -184,10 +187,10 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
                 <span className="cfg-mono cfg-wrap cfg-strong">{key}</span>
                 <TruncatedText className="cfg-mono cfg-t3">{preview(settings?.[key])}</TruncatedText>
                 <span className="cfg-cell-end">
-                  <Button size="sm" variant="ghost" aria-expanded={isOpen} onClick={() => toggle(key)}>{isOpen ? 'Cerrar' : changed ? 'Editar · sin guardar' : 'Editar'}</Button>
+                  <Button size="sm" variant="ghost" aria-expanded={isOpen} aria-controls={advId(key)} onClick={() => toggle(key)}>{isOpen ? 'Cerrar' : changed ? 'Editar · sin guardar' : 'Editar'}</Button>
                 </span>
               </div>
-              <Collapse open={isOpen} unmountOnClose data-scanner-ignore="">
+              <Collapse open={isOpen} id={advId(key)} unmountOnClose data-scanner-ignore="">
                 <div className="cfg-uform" data-scanner-ignore="">
                   <Textarea
                     label={`Valor de ${key} (JSON)`}

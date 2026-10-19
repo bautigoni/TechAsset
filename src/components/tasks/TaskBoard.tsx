@@ -388,6 +388,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
               className="tk-lane-edit"
               label={`Editar la columna «${lane.title}»`}
               aria-expanded={isEditing}
+              aria-controls={`tk-col-edit-${column.id}`}
               disabled={!canEdit}
               icon={<Pencil size={14} />}
               onClick={() => openEditor(column)}
@@ -398,7 +399,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
         {/* Edición de la columna: se abre y se cierra con el colapso compartido
             (mientras se pliega muestra lo último que tenía, ya inerte). */}
         {column && boardMode && (
-          <Collapse open={isEditing} unmountOnClose>
+          <Collapse open={isEditing} id={`tk-col-edit-${column.id}`} unmountOnClose>
             {ed && (
           <form
             className="tk-col-edit"
