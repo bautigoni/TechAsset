@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import '../../styles/screens/settings.css';
 import type { AuthUser, Operator, SiteInfo, SyncStatus } from '../../types';
-import { Button, EmptyState, InlineConfirm } from '../../ui';
+import { Button, Collapse, EmptyState, InlineConfirm, releaseScrollReserve } from '../../ui';
 import { IconChevronLeft, IconChevronRight } from '../../ui/icons';
 import { cx } from '../../ui/util';
 import { getInvites, getSiteSettings } from '../../services/authApi';
 import { getManagedUsers } from '../../services/settingsApi';
 import { appScroller } from '../../utils/scroll';
-import { DirtyContext, ScrollReserve, peekDraft } from './settingsKit';
+import { DirtyContext, peekDraft } from './settingsKit';
 import { clearRequestedPanel, panelFromPath, peekRequestedPanel, settingsPath, type SettingsPanelKey } from './settingsRoute';
 import { AccountPanel } from './AccountPanel';
 import { AppearancePanel } from './AppearancePanel';
@@ -133,6 +133,7 @@ export function SettingsPage(props: SettingsPageProps) {
       if (mode === 'push') window.history.pushState({ techasset: true, cfgPanel: Boolean(next) }, '', path);
       else window.history.replaceState({ techasset: true, cfgPanel: Boolean(next) }, '', path);
     }
+    releaseScrollReserve();
     setPanel(next);
     setLeaving(null);
     // Cambiar de sección es cambiar de página: si el encabezado quedó arriba de
@@ -258,16 +259,21 @@ export function SettingsPage(props: SettingsPageProps) {
     }
   };
 
-  const leavingConfirm = leaving && effective && (
-    <InlineConfirm
-      className="cfg-leave"
-      message={`Tenés cambios sin guardar en ${PANELS[effective].title}.`}
-      detail="Si salís, quedan guardados como borrador hasta que vuelvas a esta sección o los descartes."
-      confirmLabel={leaving === 'list' ? 'Salir igual' : `Ir a ${PANELS[leaving].title}`}
-      cancelLabel="Seguir editando"
-      onConfirm={() => goTo(leaving === 'list' ? null : leaving)}
-      onCancel={() => setLeaving(null)}
-    />
+  // Se abre suave arriba del panel (y, si estabas abajo, te lleva hasta él).
+  const leavingConfirm = (
+    <Collapse open={Boolean(leaving && effective)} outerClassName="cfg-leave-c" anchor={false}>
+      {leaving && effective && (
+        <InlineConfirm
+          className="cfg-leave"
+          message={`Tenés cambios sin guardar en ${PANELS[effective].title}.`}
+          detail="Si salís, quedan guardados como borrador hasta que vuelvas a esta sección o los descartes."
+          confirmLabel={leaving === 'list' ? 'Salir igual' : `Ir a ${PANELS[leaving].title}`}
+          cancelLabel="Seguir editando"
+          onConfirm={() => goTo(leaving === 'list' ? null : leaving)}
+          onCancel={() => setLeaving(null)}
+        />
+      )}
+    </Collapse>
   );
 
   const showList = narrow && !effective;
@@ -365,7 +371,6 @@ export function SettingsPage(props: SettingsPageProps) {
               )}
             </div>
           )}
-          <ScrollReserve />
         </div>
       </section>
     </DirtyContext.Provider>

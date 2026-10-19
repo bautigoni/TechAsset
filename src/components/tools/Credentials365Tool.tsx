@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
 import { Download, FileSpreadsheet, Send } from 'lucide-react';
 import { CompactEmpty } from './CompactEmpty';
-import { Button, FileDrop, InlineConfirm, StatusText, Table, icons, type Column } from '../../ui';
+import { Button, Collapse, FileDrop, InlineConfirm, StatusText, Table, icons, type Column } from '../../ui';
 import type { ToolsConfig } from '../../services/toolsApi';
 import { TEMPLATE_URLS, previewC365, sendC365, uploadC365Csv } from './toolsActions';
 import { formatTimeOnly } from '../../utils/formatters';
-import { InlineCollapse } from '../common/InlineCollapse';
 import { canRetryCsv, errorText, readCsv, useExpired } from './useExpiry';
+import { getActiveSiteCode } from '../../services/activeSite';
+import { peekDraft, useKeepDraft } from '../../utils/drafts';
 
 const REQUIRED = ['Nombre para mostrar', 'Nombre de usuario', 'mail', 'Contraseña', 'Sede', 'Licencias'];
 type Row = Record<string, string>;
 type Validation = { total: number; validos: number; invalidos: number; preview: Row[]; invalid: Row[] };
 type SendResult = { stats: { total: number; ok: number; prueba: number; errores: number }; reportUrl: string; expiresAt: string; modoPrueba: boolean };
+
+type CredDraft = { csv: string; uploadTotal: number; validation: Validation | null; result: SendResult | null; sentReal: boolean; file: File | null };
 
 const withIndex = (rows: Record<string, string>[] = []) => rows.map((row, index) => ({ ...row, __i: String(index) }));
 
@@ -30,23 +33,29 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
   onConfig: (next: ToolsConfig) => void;
   onOpenMailSettings?: () => void;
 }) {
-  const [csv, setCsv] = useState('');
-  const [uploadTotal, setUploadTotal] = useState(0);
+  // El CSV, la validación y si ya se envió de verdad sobreviven a salir de Herramientas por el menú y volver.
+  const [draftKey] = useState(() => `${getActiveSiteCode() || 'sede'}:herramientas:credenciales`);
+  const [saved] = useState(() => peekDraft<CredDraft>(draftKey));
+  const [csv, setCsv] = useState(saved?.csv ?? '');
+  const [uploadTotal, setUploadTotal] = useState(saved?.uploadTotal ?? 0);
+  const [file, setFile] = useState<File | null>(saved?.file ?? null);
   const [csvError, setCsvError] = useState('');
-  const [validation, setValidation] = useState<Validation | null>(null);
+  const [validation, setValidation] = useState<Validation | null>(saved?.validation ?? null);
   const [validating, setValidating] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<SendResult | null>(null);
-  const [sentReal, setSentReal] = useState(false);
+  const [result, setResult] = useState<SendResult | null>(saved?.result ?? null);
+  const [sentReal, setSentReal] = useState(saved?.sentReal ?? false);
   const expired = useExpired(result?.expiresAt);
+  useKeepDraft<CredDraft>(draftKey, { csv, uploadTotal, validation, result, sentReal, file }, Boolean(csv));
+  const [restoredFile] = useState(() => (saved?.file ? [{ id: 'restaurado', file: saved.file, status: 'done' as const, progress: 1 }] : undefined));
 
   const modoPrueba = config?.modoPrueba ?? true;
   const providerOk = Boolean(config?.mailConfigurado ?? config?.smtpConfigurado);
 
   const reset = () => {
-    setCsv(''); setUploadTotal(0); setCsvError(''); setValidation(null); setConfirming(false); setError(''); setResult(null); setSentReal(false);
+    setCsv(''); setUploadTotal(0); setFile(null); setCsvError(''); setValidation(null); setConfirming(false); setError(''); setResult(null); setSentReal(false);
   };
 
   const upload = async (file: File) => {
@@ -59,6 +68,7 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
       throw new Error(message);
     }
     setCsv(text);
+    setFile(file);
     setUploadTotal(response.total || 0);
     return response;
   };
@@ -176,6 +186,7 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
               upload={upload}
               canRetry={canRetryCsv}
               onRemove={() => reset()}
+              defaultItems={restoredFile}
             />
             {csv && <span className="tl-muted tl-small"><b className="g-num">{uploadTotal}</b> {uploadTotal === 1 ? 'fila detectada' : 'filas detectadas'}.</span>}
             {csvError && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{csvError}</span></p>}
@@ -215,7 +226,7 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
               </Button>
             </div>
             {blocked && <span className="tl-muted tl-small">{blocked}</span>}
-            <InlineCollapse open={confirming && Boolean(validation)}>
+            <Collapse unmountOnClose open={confirming && Boolean(validation)}>
               {validation && (
                 <InlineConfirm
                   danger
@@ -227,9 +238,9 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
                   onCancel={() => setConfirming(false)}
                 />
               )}
-            </InlineCollapse>
+            </Collapse>
             {error && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}
-            <InlineCollapse open={Boolean(result)} label="Resultado del envío">
+            <Collapse unmountOnClose open={Boolean(result)} role="region" aria-label="Resultado del envío">
               {result && (
                 <div className="tl-result" role="status">
                   <span className="tl-result-line">
@@ -254,7 +265,7 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
                     )}
                 </div>
               )}
-            </InlineCollapse>
+            </Collapse>
           </div>
         </div>
         </div>

@@ -1,8 +1,7 @@
 import { memo, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { CircleCheck, Circle, ExternalLink, GripVertical, MoveDiagonal2 } from 'lucide-react';
 import type { CanvasItem, TaskItem } from '../../types';
-import { Button, Checkbox, IconButton, cx, icons } from '../../ui';
-import { SmoothCollapse } from '../common/SmoothCollapse';
+import { Button, Checkbox, Collapse, IconButton, cx, icons } from '../../ui';
 import { MAX_H, MAX_W, MIN_H, MIN_W, TYPE_LABEL, clamp, fileSize, safeLink, stepsOf, type Step } from './canvasModel';
 
 /** Acciones del lienzo: un objeto estable (no re-renderiza los nodos al panear). */
@@ -310,7 +309,7 @@ function CanvasNodeView({ item, tasks, readOnly, actions }: { item: CanvasItem; 
                 {pickOpen ? 'Listo' : 'Agregar tareas'}
               </Button>
             )}
-            <SmoothCollapse open={pickOpen && !readOnly} reveal={false}>
+            <Collapse open={pickOpen && !readOnly} reveal={false} gap="var(--g-s-2)">
               <div className="cv-pick">
                 <span className="cv-hint-sm">Tareas de equipo sin terminar</span>
                 {visibleOptions.map(task => {
@@ -334,7 +333,7 @@ function CanvasNodeView({ item, tasks, readOnly, actions }: { item: CanvasItem; 
                   </Button>
                 )}
               </div>
-            </SmoothCollapse>
+            </Collapse>
           </div>
         )}
       </div>

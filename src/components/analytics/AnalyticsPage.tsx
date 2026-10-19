@@ -6,7 +6,7 @@ import { IconRetry } from '../../ui/icons';
 import { addDaysToKey, todayKeyAr } from '../../utils/formatters';
 import { appScroller } from '../../utils/scroll';
 import { DemandSection } from './DemandSection';
-import { formatInt, keepInPlace, reducedMotion, registerTail } from './kit';
+import { formatInt, keepInPlace, reducedMotion } from './kit';
 import '../../styles/screens/analytics.css';
 
 // Las secciones de abajo viajan en su propio chunk: abrir Analítica baja,
@@ -201,7 +201,6 @@ export function AnalyticsPage({ onNavigate }: { devices?: Device[]; onRefresh?: 
         <Deferred<TicketsModule> id="an-eq" n="05" label="Equipo TIC" load={importTickets} render={({ TeamSection }) => (failed
           ? <PeriodError label="la actividad del equipo" error={error} onRetry={() => void load(true)} retrying={loading} />
           : <TeamSection summary={summary} loading={loading} onOpenTasks={onNavigate ? () => onNavigate('tasks') : undefined} />)} />
-        <div className="an-tail" ref={registerTail} aria-hidden="true" />
       </div>
     </section>
   );

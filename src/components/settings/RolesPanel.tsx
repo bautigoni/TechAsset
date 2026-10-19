@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
-import { Button, Checkbox, ErrorState, IconButton, InlineConfirm, Input, SkeletonRows } from '../../ui';
+import { Button, Checkbox, Collapse, ErrorState, IconButton, InlineConfirm, Input, SkeletonRows, recentTrigger } from '../../ui';
 import { cx } from '../../ui/util';
 import { getSiteSettings, updateSiteSettings } from '../../services/authApi';
 import { getManagedUsers } from '../../services/settingsApi';
 import { TOGGLEABLE_MODULES } from '../../utils/modules';
-import { Card, CardFoot, CheckField, Collapse, Notice, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
+import { Card, CardFoot, CheckField, Notice, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
 
 const ALL_KEYS = TOGGLEABLE_MODULES.map(mod => mod.key as string);
 
@@ -63,6 +63,8 @@ export function RolesPanel({ header, readOnly, siteCode, onChanged }: { header: 
   const [saved, setSaved] = useState<RoleDraft[] | null>(null);
   const [roles, setRoles] = useState<RoleDraft[] | null>(() => restored);
   const [open, setOpen] = useState<string>('');
+  // Encabezado tocado: queda quieto aunque se cierre otro rol de arriba al abrir este.
+  const touchedHead = useRef<HTMLElement | null>(null);
   const [deleting, setDeleting] = useState('');
   const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -126,6 +128,12 @@ export function RolesPanel({ header, readOnly, siteCode, onChanged }: { header: 
     mutate(current => [...current, { uid, name: 'Nuevo rol', admin: false, view: [...ALL_KEYS], edit: [] }]);
     setOpen(uid);
     focusUid.current = uid;
+  };
+  const toggleRole = (head: HTMLElement | null, next: string) => {
+    // Lo leen los colapsos (el que abre y el que cierra) en el mismo commit; después se olvida.
+    touchedHead.current = head;
+    setOpen(next);
+    requestAnimationFrame(() => { touchedHead.current = null; });
   };
   const removeRole = (uid: string) => {
     mutate(current => current.filter(role => role.uid !== uid));
@@ -199,7 +207,7 @@ export function RolesPanel({ header, readOnly, siteCode, onChanged }: { header: 
           return (
             <div className="cfg-acc" key={role.uid}>
               {/* La fila entera abre y cierra con el mouse; con teclado, el botón de la flecha. */}
-              <div className="cfg-acc-h is-row" onClick={() => setOpen(isOpen ? '' : role.uid)}>
+              <div className="cfg-acc-h is-row" onClick={event => toggleRole(event.currentTarget, isOpen ? '' : role.uid)}>
                 <span className="cfg-acc-t">
                   <span className="cfg-strong cfg-wrap">{role.name.trim() || 'Rol sin nombre'}</span>
                   <span className="cfg-t2 cfg-wrap">{summaryOf(role)}{users ? ` · ${users} usuario${users === 1 ? '' : 's'}` : ''}</span>
@@ -210,10 +218,10 @@ export function RolesPanel({ header, readOnly, siteCode, onChanged }: { header: 
                   aria-expanded={isOpen}
                   aria-controls={bodyId}
                   icon={<ChevronDown size={16} aria-hidden="true" className={cx('cfg-chev', isOpen && 'is-open')} />}
-                  onClick={event => { event.stopPropagation(); setOpen(isOpen ? '' : role.uid); }}
+                  onClick={event => { event.stopPropagation(); toggleRole(event.currentTarget.closest<HTMLElement>('.cfg-acc-h'), isOpen ? '' : role.uid); }}
                 />
               </div>
-              <Collapse open={isOpen} id={bodyId}>
+              <Collapse unmountOnClose data-scanner-ignore="" open={isOpen} id={bodyId} anchor={() => touchedHead.current || recentTrigger()}>
                 <div className="cfg-acc-b" data-scanner-ignore="">
                   <div className="cfg-grid">
                     <Input

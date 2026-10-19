@@ -3,15 +3,16 @@ import { ArrowDownUp, Link2, Plus, Zap } from 'lucide-react';
 import type { QuickLink } from '../../types';
 import { createQuickLink, deleteQuickLink, fetchQuickLinks, updateQuickLink } from '../../services/operationsApi';
 import { fetchToolsConfig } from '../../services/toolsApi';
-import { Button, ErrorState, Eyebrow, InlineConfirm, Input, Kbd, Skeleton, StatusLine, TruncatedText, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, ErrorState, Eyebrow, InlineConfirm, Input, Kbd, Skeleton, StatusLine, TruncatedText, icons, useStatusLine } from '../../ui';
 import { fold } from '../../ui/util';
-import { InlineCollapse } from '../common/InlineCollapse';
 import { CompactEmpty } from './CompactEmpty';
 import { DownloadList } from './Downloads';
 import { LinkForm, LinkTile, type LinkDraft } from './QuickAccess';
 import { QUICK_LINKS_CHANGED, groupLinks } from './quickLinks';
 import { apiSend } from '../../services/apiClient';
 import '../../styles/screens/quickaccess.css';
+import { getActiveSiteCode } from '../../services/activeSite';
+import { peekDraft, useKeepDraft } from '../../utils/drafts';
 
 const notifyQuickLinksChanged = () => window.dispatchEvent(new Event(QUICK_LINKS_CHANGED));
 const restoreQuickLink = (id: number) => apiSend<{ ok: true; item: QuickLink }>(`/api/quick-links/${id}/restore`, 'POST', {});
@@ -34,9 +35,16 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
   const [retrying, setRetrying] = useState(false);
   const [handingUrl, setHandingUrl] = useState('');
   const [query, setQuery] = useState('');
-  const [creating, setCreating] = useState<LinkDraft | null>(null);
-  const [newOpen, setNewOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  // Un alta o una edición a medio tipear sobrevive a salir por el menú: vuelve abierta con lo escrito.
+  const [site] = useState(() => getActiveSiteCode() || 'sede');
+  const uiKey = `${site}:accesos`;
+  const newKey = `${site}:accesos:nuevo`;
+  const editKey = (id: number) => `${site}:accesos:editar:${id}`;
+  const [savedUi] = useState(() => peekDraft<{ creating: LinkDraft | null; editingId: number | null }>(uiKey));
+  const [creating, setCreating] = useState<LinkDraft | null>(() => (savedUi?.creating && peekDraft(newKey) ? savedUi.creating : null));
+  const [newOpen, setNewOpen] = useState(() => Boolean(savedUi?.creating && peekDraft(newKey)));
+  const [editingId, setEditingId] = useState<number | null>(() => (savedUi?.editingId != null && peekDraft(editKey(savedUi.editingId)) ? savedUi.editingId : null));
+  useKeepDraft(uiKey, { creating: newOpen ? creating : null, editingId }, newOpen || editingId !== null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [ghosts, setGhosts] = useState<Record<number, QuickLink>>({});
@@ -213,13 +221,13 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
       {status.element}
 
       {editable && (
-        <InlineCollapse open={newOpen} gap="var(--g-s-4)" returnFocus={newBtnRef} label="Nuevo acceso">
+        <Collapse unmountOnClose open={newOpen} gap="var(--g-s-4)" returnFocus={newBtnRef} role="region" aria-label="Nuevo acceso">
           {creating && (
             <div className="qa-card qa-new">
-              <LinkForm key={`${creating.url}|${creating.titulo}`} initial={creating} categories={categories} title="Nuevo acceso" submitLabel="Guardar acceso" onSubmit={create} onCancel={closeNew} />
+              <LinkForm key={`${creating.url}|${creating.titulo}`} initial={creating} categories={categories} title="Nuevo acceso" submitLabel="Guardar acceso" onSubmit={create} onCancel={closeNew} draftKey={newKey} />
             </div>
           )}
-        </InlineCollapse>
+        </Collapse>
       )}
 
       {links === null && !loadError && (
@@ -285,7 +293,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
                 if (ghost) {
                   return (
                     <li key={link.id} className="qa-cell">
-                      <InlineCollapse open={!ghostClosing[link.id]} onClosed={() => forgetGhost(link.id)} reveal={false}>
+                      <Collapse unmountOnClose open={!ghostClosing[link.id]} onSettled={open => { if (!open) forgetGhost(link.id); }} reveal={false}>
                         <StatusLine
                           tone="info"
                           className="qa-ghost"
@@ -293,7 +301,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
                           undo={{ onUndo: () => undo(ghost), seconds: 8 }}
                           onDismiss={() => dropGhost(link.id)}
                         />
-                      </InlineCollapse>
+                      </Collapse>
                     </li>
                   );
                 }
@@ -312,9 +320,10 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
                       onMove={dir => void move(liveRows, index, dir)}
                       registerMove={(dir, node) => { moveRefs.current.set(`${link.id}:${dir}`, node); }}
                     />
-                    <InlineCollapse open={editingId === link.id} label={`Editar ${link.titulo}`}>
+                    <Collapse unmountOnClose open={editingId === link.id} role="region" aria-label={`Editar ${link.titulo}`}>
                       <div className="qa-inline">
                         <LinkForm
+                          draftKey={editKey(link.id)}
                           initial={{ titulo: link.titulo, url: link.url, descripcion: link.descripcion || '', categoria: link.categoria || '' }}
                           categories={categories}
                           submitLabel="Guardar cambios"
@@ -322,8 +331,8 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
                           onCancel={() => setEditingId(null)}
                         />
                       </div>
-                    </InlineCollapse>
-                    <InlineCollapse open={confirmId === link.id}>
+                    </Collapse>
+                    <Collapse unmountOnClose open={confirmId === link.id}>
                       <div className="qa-inline">
                         <InlineConfirm
                           danger
@@ -335,7 +344,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
                           onCancel={() => setConfirmId(null)}
                         />
                       </div>
-                    </InlineCollapse>
+                    </Collapse>
                   </li>
                 );
               })}

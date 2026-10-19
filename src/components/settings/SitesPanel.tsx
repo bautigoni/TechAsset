@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Plus, Search } from 'lucide-react';
 import type { SiteInfo } from '../../types';
-import { Button, EmptyState, ErrorState, Input, SkeletonRows } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, Input, SkeletonRows } from '../../ui';
 import { cx, fold } from '../../ui/util';
 import { createInvite, getSites } from '../../services/authApi';
 import { TenantLogo } from '../layout/TenantLogo';
-import { Card, CardFoot, Collapse, CopyButton, errorText } from './settingsKit';
+import { Card, CardFoot, CopyButton, errorText } from './settingsKit';
 import { SiteForm } from './SiteForm';
 
 type AdminCode = { email: string; busy: boolean; link: string; mailSent: boolean; error: string };
@@ -64,7 +64,7 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
   return (
     <>
       {header(<Button variant="primary" icon={<Plus size={15} aria-hidden="true" />} disabled={readOnly} aria-expanded={creating} onClick={() => setCreating(value => !value)}>Crear sede</Button>)}
-      <Collapse open={creating}>
+      <Collapse open={creating} gap="var(--g-s-4)" unmountOnClose data-scanner-ignore="">
         <Card title="Nueva sede">
           <div className="cfg-pad">
             <SiteForm
@@ -132,7 +132,7 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
                   <Button size="sm" variant="ghost" aria-expanded={codeOpen === site.siteCode} disabled={readOnly} onClick={() => { setCodeOpen(codeOpen === site.siteCode ? '' : site.siteCode); setEditing(''); }}>Código admin</Button>
                 </span>
               </div>
-              <Collapse open={editing === site.siteCode}>
+              <Collapse open={editing === site.siteCode} unmountOnClose data-scanner-ignore="">
                 <div className="cfg-uform">
                   <SiteForm
                     site={site}
@@ -145,7 +145,7 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
                   />
                 </div>
               </Collapse>
-              <Collapse open={codeOpen === site.siteCode}>
+              <Collapse open={codeOpen === site.siteCode} unmountOnClose data-scanner-ignore="">
                 <div className="cfg-uform" role="group" aria-label={`Código de administrador para ${site.siteCode}`} data-scanner-ignore="">
                   <div className="cfg-add">
                     <Input

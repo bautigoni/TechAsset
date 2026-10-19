@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
-import { Segmented, Skeleton, Button, cx } from '../../ui';
+import { Segmented, Skeleton, Button, cx, keepInPlace as holdInPlace } from '../../ui';
 import { appScroller } from '../../utils/scroll';
 import { IconChevronDown, IconChevronUp } from '../../ui/icons';
 
@@ -84,81 +84,16 @@ export function rovingKeys(event: KeyboardEvent<HTMLElement>, selector = '[data-
 }
 
 /* ── Mantener en su lugar lo que se tocó ──────────────────────────────────
-   Cambiar Gráfico/Tabla, Top N o "Ver todos" cambia el alto de lo que está
-   DEBAJO del control. Si la página se acorta cerca del final, el navegador
-   recortaría el scroll y el control "saltaría": se mide su posición antes y
-   después (en el mismo frame) y se compensa; si falta lugar, crece un
-   espaciador al pie que se libera solo cuando ya no está a la vista. */
-
-let tailNode: HTMLElement | null = null;
-let tailHeight = 0;
-let tailListener: (() => void) | null = null;
-
-export function registerTail(node: HTMLElement | null) {
-  tailNode = node;
-  if (!node) { tailHeight = 0; return; }
-  node.style.height = '0px';
-}
-
-function growTail(px: number) {
-  const scroller = appScroller();
-  if (!tailNode || !scroller || px <= 0) return;
-  tailHeight += px;
-  tailNode.style.height = `${tailHeight}px`;
-  if (tailListener) return;
-  tailListener = () => {
-    if (!tailNode || !tailHeight) return;
-    const rect = tailNode.getBoundingClientRect();
-    const bottom = scroller.getBoundingClientRect().bottom;
-    // Solo se libera cuando el espaciador está entero fuera de la vista: no se ve moverse nada.
-    if (rect.top > bottom + 1) {
-      tailHeight = 0;
-      tailNode.style.height = '0px';
-      scroller.removeEventListener('scroll', tailListener!);
-      tailListener = null;
-    }
-  };
-  scroller.addEventListener('scroll', tailListener, { passive: true });
-}
+   Cambiar Gráfico/Tabla, Top N u ordenar cambia de golpe el alto de lo que
+   está DEBAJO del control (no es un colapso). Se usa el `keepInPlace` de
+   `src/ui` (el mismo del colapso): se mide el control, se aplica el cambio en
+   el mismo frame (flushSync) y se corrige el scroll; si la página se acorta
+   cerca del final, el alto que falta se reserva al pie y se libera al subir. */
 
 export function keepInPlace(anchor: HTMLElement | null, mutate: () => void) {
-  const scroller = appScroller();
-  if (!anchor || !scroller) { mutate(); return; }
-  const before = anchor.getBoundingClientRect().top;
-  const heightBefore = scroller.scrollHeight;
-  // Si lo de abajo se achica, se reserva el alto que se va a ir antes de cambiar,
-  // así el navegador no recorta el scroll.
+  const hold = holdInPlace(anchor, { duration: 0, reserve: 'auto' });
   flushSync(mutate);
-  const shrink = heightBefore - scroller.scrollHeight;
-  let after = anchor.getBoundingClientRect().top;
-  if (Math.abs(after - before) > 0.5 && shrink > 0) {
-    growTail(shrink);
-    after = anchor.getBoundingClientRect().top;
-  }
-  const delta = after - before;
-  if (Math.abs(delta) > 0.5) scroller.scrollTop += delta;
-}
-
-/* ── Colapso suave (alto con grid 0fr ↔ 1fr, se pliega hacia su encabezado) ── */
-
-export function Collapse({ open, children, id }: { open: boolean; children: ReactNode; id?: string }) {
-  const [mounted, setMounted] = useState(open);
-  const [shown, setShown] = useState(open);
-  useEffect(() => {
-    if (open) {
-      setMounted(true);
-      const frame = requestAnimationFrame(() => setShown(true));
-      return () => cancelAnimationFrame(frame);
-    }
-    setShown(false);
-    const timer = window.setTimeout(() => setMounted(false), reducedMotion() ? 0 : 240);
-    return () => window.clearTimeout(timer);
-  }, [open]);
-  return (
-    <div id={id} className="an-collapse" data-open={shown ? 'true' : 'false'} hidden={!mounted && !open}>
-      <div className="an-collapse-inner">{mounted && children}</div>
-    </div>
-  );
+  hold.stop();
 }
 
 /* ── Carga diferida: el gráfico se dibuja recién cuando se acerca a la vista ──

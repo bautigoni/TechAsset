@@ -2,16 +2,17 @@ import { useRef, useState, type FormEvent } from 'react';
 import { Paperclip } from 'lucide-react';
 import type { PurchaseRequest } from '../../types';
 import { resolvePurchaseRequest } from '../../services/pettyCashApi';
-import { Button, Input, NumberField, StatusLine, StatusText, Switch, Textarea, icons, type StatusTextTone } from '../../ui';
-import { InlineCollapse } from '../common/InlineCollapse';
+import { Button, Collapse, Input, NumberField, StatusLine, StatusText, Switch, Textarea, icons, type StatusTextTone } from '../../ui';
 import { MoneyInput, useUnsavedWarning } from './PettyForms';
 import { displayDay, money, moneyDraft, parseMoney } from './money';
+import { peekDraft, useKeepDraft } from '../../utils/drafts';
 
 const STATUS_TONE: Record<PurchaseRequest['status'], StatusTextTone> = { Pendiente: 'warn', Aprobada: 'ok', Rechazada: 'bad' };
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
 const DEFAULT_REJECT = 'Rechazada desde caja chica';
 
 type Mode = 'none' | 'approve' | 'reject';
+type ResolveDraft = { mode: Mode; cost: string; supplier: string; note: string; toInventory: boolean; qty: number | null; rejectNote: string };
 
 /**
  * Una solicitud de compra (fila a todo el ancho). Resolver abre la aprobación
@@ -28,13 +29,20 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
   message?: { tone: 'ok' | 'bad'; text: string } | null;
   onResolved: (id: number, message: string) => Promise<void>;
 }) {
-  const [mode, setMode] = useState<Mode>('none');
-  const [cost, setCost] = useState(() => moneyDraft(item.estimatedAmount));
-  const [supplier, setSupplier] = useState(item.requestedSupplier || '');
-  const [note, setNote] = useState('');
-  const [toInventory, setToInventory] = useState(false);
-  const [qty, setQty] = useState<number | null>(1);
-  const [rejectNote, setRejectNote] = useState(DEFAULT_REJECT);
+  // Aprobación o rechazo a medio cargar: sobrevive a salir por el menú y volver.
+  const draftKey = `caja-chica:solicitud:${item.id}`;
+  const [saved] = useState(() => peekDraft<ResolveDraft>(draftKey));
+  const [mode, setMode] = useState<Mode>(saved?.mode ?? 'none');
+  const [cost, setCost] = useState(() => saved?.cost ?? moneyDraft(item.estimatedAmount));
+  const [supplier, setSupplier] = useState(saved?.supplier ?? (item.requestedSupplier || ''));
+  const [note, setNote] = useState(saved?.note ?? '');
+  const [toInventory, setToInventory] = useState(saved?.toInventory ?? false);
+  const [qty, setQty] = useState<number | null>(saved?.qty ?? 1);
+  const [rejectNote, setRejectNote] = useState(saved?.rejectNote ?? DEFAULT_REJECT);
+  const edited = mode !== 'none' && item.status === 'Pendiente' && (
+    note.trim() !== '' || toInventory || cost !== moneyDraft(item.estimatedAmount) || supplier !== (item.requestedSupplier || '') || rejectNote !== DEFAULT_REJECT
+  );
+  useKeepDraft<ResolveDraft>(draftKey, { mode, cost, supplier, note, toInventory, qty, rejectNote }, edited);
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +54,7 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
   const overBalance = finalCost !== null && !Number.isNaN(finalCost) && finalCost > balance;
   const costError = finalCost === null ? 'Poné el costo final.' : Number.isNaN(finalCost) || finalCost <= 0 ? 'El costo tiene que ser mayor a cero.' : overBalance ? `No alcanza el saldo para aprobarla. Disponible: ${money(balance)}.` : '';
   const supplierError = !supplier.trim() ? 'Poné el proveedor.' : '';
-  useUnsavedWarning(mode !== 'none' && (note.trim() !== '' || (mode === 'reject' && rejectNote !== DEFAULT_REJECT)));
+  useUnsavedWarning(edited);
 
   const toggle = (next: Mode) => { setError(''); setTouched(false); setMode(current => (current === next ? 'none' : next)); };
 
@@ -132,7 +140,7 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
         </div>
       </div>
 
-      <InlineCollapse open={mode === 'approve'} label={`Aprobar solicitud #${item.id}`} returnFocus={resolveRef}>
+      <Collapse unmountOnClose open={mode === 'approve'} role="region" aria-label={`Aprobar solicitud #${item.id}`} returnFocus={resolveRef}>
         <form className="pc-form pc-form--inline" onSubmit={approve} noValidate data-scanner-ignore="" onKeyDown={escape}>
           <div className="pc-form-head">
             <h3 className="pc-form-title">Aprobar solicitud <span className="pc-mono">#{item.id}</span></h3>
@@ -154,9 +162,9 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
             <Button size="sm" variant="primary" type="submit" loading={busy} loadingLabel="Aprobando…" disabled={overBalance}>Aprobar y descontar</Button>
           </div>
         </form>
-      </InlineCollapse>
+      </Collapse>
 
-      <InlineCollapse open={mode === 'reject'} label={`Rechazar solicitud #${item.id}`} returnFocus={rejectRef}>
+      <Collapse unmountOnClose open={mode === 'reject'} role="region" aria-label={`Rechazar solicitud #${item.id}`} returnFocus={rejectRef}>
         <form className="pc-form pc-form--inline pc-reject" onSubmit={reject} noValidate data-scanner-ignore="" onKeyDown={escape}>
           <p className="pc-reject-msg">¿Rechazar la solicitud? Se le avisa a {item.requesterName || 'quien la pidió'} con esta nota.</p>
           <Input label="Nota de rechazo" value={rejectNote} onValueChange={setRejectNote} autoComplete="off" autoFocus />
@@ -166,7 +174,7 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
             <Button size="sm" variant="danger" type="submit" loading={busy} loadingLabel="Rechazando…">Rechazar solicitud</Button>
           </div>
         </form>
-      </InlineCollapse>
+      </Collapse>
 
       {message && (
         <div className="pc-req-status">

@@ -36,7 +36,7 @@ export { useSelection, type Selection } from './selection';
 
 // Abrir y cerrar sin saltos (toda sección, grupo, ficha o panel que se despliega)
 export {
-  Collapse, keepInPlace, useAnchoredToggle, useHeldKeys, revealInView, scrollParentOf, recentTrigger, COLLAPSE_MS,
+  Collapse, keepInPlace, useAnchoredToggle, useHeldKeys, revealInView, scrollParentOf, recentTrigger, releaseScrollReserve, COLLAPSE_MS,
   type CollapseProps, type KeepInPlace, type KeepInPlaceOptions
 } from './Collapse';
 export { useScrollEdges } from './scrollEdges';

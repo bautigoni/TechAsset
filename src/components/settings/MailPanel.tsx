@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, Eye, EyeOff } from 'lucide-react';
-import { Button, ErrorState, IconButton, Input, NumberField, Segmented, SkeletonRows } from '../../ui';
+import { Button, Collapse, ErrorState, IconButton, Input, NumberField, Segmented, SkeletonRows } from '../../ui';
 import { cx } from '../../ui/util';
 import { getMailSettings, saveMailSettings, type MailSettings } from '../../services/settingsApi';
-import { Card, CardBody, CardFoot, Collapse, Notice, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
+import { Card, CardBody, CardFoot, Notice, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
 import { MailStatusLine } from './MailStatusLine';
 
 type Draft = Omit<MailSettings, 'smtpAppPasswordMasked' | 'smtpAppPasswordSet'> & { smtpAppPassword: string };
@@ -121,7 +121,7 @@ export function MailPanel({ header, readOnly }: { header: (actions?: ReactNode) 
           <span className="cfg-strong">Cómo completar esta configuración</span>
           <ChevronDown size={16} aria-hidden="true" className={cx('cfg-chev', help && 'is-open')} />
         </button>
-        <Collapse open={help} id="cfg-smtp-help">
+        <Collapse unmountOnClose data-scanner-ignore="" open={help} id="cfg-smtp-help">
           <ol className="cfg-help-list">
             {HELP.map(item => <li key={item}>{item}</li>)}
           </ol>

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { Button, EmptyState, ErrorState, Input, SkeletonRows, Textarea } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, Input, SkeletonRows, Textarea } from '../../ui';
 import { TruncatedText } from '../../ui/Truncated';
 import { cx } from '../../ui/util';
 import { getSiteSettings, updateSiteSettings } from '../../services/authApi';
 import { getDevicesDiagnostics } from '../../services/devicesApi';
 import { formatDate, SHORT_DATE_TIME } from '../../utils/formatters';
-import { Card, CardBody, CardFoot, Collapse, Notice, errorText, useDirty } from './settingsKit';
+import { Card, CardBody, CardFoot, Notice, errorText, useDirty } from './settingsKit';
 
 type Diag = Record<string, unknown>;
 
@@ -155,7 +155,7 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
         actions={<Button size="sm" variant="ghost" disabled={readOnly || !settings} aria-expanded={adding} onClick={() => setAdding(value => !value)}>Agregar clave</Button>}
       >
         <Notice tone="warn"><span><span className="is-warn cfg-strong">Edición cruda.</span> Un valor mal escrito en roles o módulos puede dejar a alguien sin acceso. Usá las otras secciones siempre que puedas.</span></Notice>
-        <Collapse open={adding}>
+        <Collapse open={adding} unmountOnClose data-scanner-ignore="">
           <div className="cfg-uform" data-scanner-ignore="">
             <Input label="Clave nueva" className="cfg-mono-input" value={newKey} placeholder="ej. quickLinks" autoComplete="off" onValueChange={setNewKey} />
             <Textarea label="Valor (JSON)" className="cfg-json" minRows={3} spellCheck={false} value={newText} placeholder='["valor"]' error={newProblem || undefined} onValueChange={setNewText} />
@@ -185,7 +185,7 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
                   <Button size="sm" variant="ghost" aria-expanded={isOpen} onClick={() => toggle(key)}>{isOpen ? 'Cerrar' : changed ? 'Editar · sin guardar' : 'Editar'}</Button>
                 </span>
               </div>
-              <Collapse open={isOpen}>
+              <Collapse open={isOpen} unmountOnClose data-scanner-ignore="">
                 <div className="cfg-uform" data-scanner-ignore="">
                   <Textarea
                     label={`Valor de ${key} (JSON)`}

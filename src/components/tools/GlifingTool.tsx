@@ -1,17 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Download, ExternalLink, FileSpreadsheet, Printer } from 'lucide-react';
 import { CompactEmpty } from './CompactEmpty';
-import { Button, FileDrop, Segmented, StatusText, Table, icons, type Column, type FileDropItem } from '../../ui';
+import { Button, Collapse, FileDrop, Segmented, StatusText, Table, icons, type Column, type FileDropItem } from '../../ui';
 import { TEMPLATE_URLS, generateGlifing, uploadGlifingCsv } from './toolsActions';
 import { formatTimeOnly } from '../../utils/formatters';
-import { InlineCollapse } from '../common/InlineCollapse';
 import { canRetryCsv, errorText, readCsv, useExpired } from './useExpiry';
+import { getActiveSiteCode } from '../../services/activeSite';
+import { peekDraft, useKeepDraft } from '../../utils/drafts';
 
 const REQUIRED = ['Username', 'Nombre', 'Apellido', 'Grupo', 'Contraseña'];
 type CardKind = 'glifing' | 'santillana';
 const KIND_NAME: Record<CardKind, string> = { glifing: 'Glifing', santillana: 'Santillana' };
 type Row = Record<string, string>;
 type Result = { url: string; kind: CardKind; total: number; expiresAt: string };
+type GlifingDraft = { kind: CardKind; csv: string; preview: Row[]; total: number; result: Result | null; file: File | null };
 
 /**
  * Tarjetas Glifing / Santillana: tipo → CSV (FileDrop, se valida al soltarlo)
@@ -21,19 +23,25 @@ type Result = { url: string; kind: CardKind; total: number; expiresAt: string };
  * resultado se puede volver a abrir o bajar hasta que vence (30 min).
  */
 export function GlifingTool({ readOnly }: { readOnly: boolean }) {
-  const [kind, setKind] = useState<CardKind>('glifing');
-  const [csv, setCsv] = useState('');
-  const [preview, setPreview] = useState<Row[]>([]);
-  const [total, setTotal] = useState(0);
+  // El CSV subido (y lo generado) sobrevive a salir de Herramientas por el menú y volver.
+  const [draftKey] = useState(() => `${getActiveSiteCode() || 'sede'}:herramientas:tarjetas`);
+  const [saved] = useState(() => peekDraft<GlifingDraft>(draftKey));
+  const [kind, setKind] = useState<CardKind>(saved?.kind ?? 'glifing');
+  const [csv, setCsv] = useState(saved?.csv ?? '');
+  const [preview, setPreview] = useState<Row[]>(saved?.preview ?? []);
+  const [total, setTotal] = useState(saved?.total ?? 0);
+  const [file, setFile] = useState<File | null>(saved?.file ?? null);
   const [csvError, setCsvError] = useState('');
   const [genError, setGenError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<Result | null>(null);
+  const [result, setResult] = useState<Result | null>(saved?.result ?? null);
   const [showPass, setShowPass] = useState(false);
   const expired = useExpired(result?.expiresAt);
+  useKeepDraft<GlifingDraft>(draftKey, { kind, csv, preview, total, result, file }, Boolean(csv));
+  const [restoredFile] = useState(() => (saved?.file ? [{ id: 'restaurado', file: saved.file, status: 'done' as const, progress: 1 }] : undefined));
 
   const reset = () => {
-    setCsv(''); setPreview([]); setTotal(0); setCsvError(''); setGenError(''); setResult(null); setShowPass(false);
+    setCsv(''); setPreview([]); setTotal(0); setFile(null); setCsvError(''); setGenError(''); setResult(null); setShowPass(false);
   };
 
   const upload = async (file: File) => {
@@ -50,6 +58,7 @@ export function GlifingTool({ readOnly }: { readOnly: boolean }) {
       throw new Error('El CSV no tiene filas.');
     }
     setCsv(text);
+    setFile(file);
     setTotal(response.total || 0);
     setPreview((response.preview || []).map((row, index) => ({ ...row, __i: String(index) })));
     return response;
@@ -104,6 +113,7 @@ export function GlifingTool({ readOnly }: { readOnly: boolean }) {
               upload={upload}
               canRetry={canRetryCsv}
               onRemove={(_item: FileDropItem) => reset()}
+              defaultItems={restoredFile}
             />
             <a className="tl-link" href={TEMPLATE_URLS[kind]} download>
               <Download size={14} strokeWidth={1.6} aria-hidden="true" />
@@ -123,7 +133,7 @@ export function GlifingTool({ readOnly }: { readOnly: boolean }) {
             </div>
             {disabledReason && !busy && <span className="tl-muted tl-small">{disabledReason}</span>}
             {genError && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{genError}</span></p>}
-            <InlineCollapse open={Boolean(result)} label="Tarjetas generadas">
+            <Collapse unmountOnClose open={Boolean(result)} role="region" aria-label="Tarjetas generadas">
               {result && (
                 <div className="tl-result" role="status">
                   {expired ? (
@@ -149,7 +159,7 @@ export function GlifingTool({ readOnly }: { readOnly: boolean }) {
                   )}
                 </div>
               )}
-            </InlineCollapse>
+            </Collapse>
           </div>
         </div>
         </div>

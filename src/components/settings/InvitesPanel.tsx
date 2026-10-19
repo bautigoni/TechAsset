@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Button, EmptyState, ErrorState, InlineConfirm, Input, NumberField, SkeletonRows, StatusLine } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, InlineConfirm, Input, NumberField, SkeletonRows, StatusLine } from '../../ui';
 import { cx } from '../../ui/util';
 import { createInvite, getInvites, getSiteSettings, resendInvite, revokeInvite, type Invite } from '../../services/authApi';
 import { formatDate, DATE_ONLY } from '../../utils/formatters';
-import { Card, CardBody, CardFoot, ChoiceField, Collapse, CopyButton, errorText } from './settingsKit';
+import { Card, CardBody, CardFoot, ChoiceField, CopyButton, errorText } from './settingsKit';
 import { MailStatusLine } from './MailStatusLine';
 
 const DEFAULT_TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'];
@@ -149,7 +149,7 @@ export function InvitesPanel({ header, readOnly, onChanged }: { header: (actions
         <CardFoot status={error || (readOnly ? 'Modo consulta: no se pueden generar invitaciones.' : '')} tone={error ? 'bad' : 'muted'}>
           <Button variant="primary" loading={busy} loadingLabel="Generando…" disabled={readOnly} onClick={() => void generate()}>Generar invitación</Button>
         </CardFoot>
-        <Collapse open={Boolean(result)}>
+        <Collapse open={Boolean(result)} unmountOnClose data-scanner-ignore="">
           {result && (
             <div className="cfg-result" role="status">
               <span className="cfg-nowrap cfg-strong">Link listo</span>
@@ -204,7 +204,7 @@ export function InvitesPanel({ header, readOnly, onChanged }: { header: (actions
                       )}
                     </span>
                   </div>
-                  <Collapse open={revoking === invite.id}>
+                  <Collapse open={revoking === invite.id} unmountOnClose data-scanner-ignore="">
                     <InlineConfirm
                       danger
                       className="cfg-row-confirm"
@@ -216,7 +216,7 @@ export function InvitesPanel({ header, readOnly, onChanged }: { header: (actions
                       onCancel={() => setRevoking(0)}
                     />
                   </Collapse>
-                  <Collapse open={Boolean(rowNote)}>
+                  <Collapse open={Boolean(rowNote)} unmountOnClose data-scanner-ignore="">
                     {rowNote && <StatusLine key={rowNote.key} className="cfg-row-status" tone={rowNote.tone} message={rowNote.text} onDismiss={() => dropNote(invite.id)} />}
                   </Collapse>
                 </div>

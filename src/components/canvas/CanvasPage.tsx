@@ -7,8 +7,7 @@ import {
 import { getTasks } from '../../services/tasksApi';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
-import { Button, ErrorState, FileDrop, IconButton, Skeleton, cx, icons, useStatusLine } from '../../ui';
-import { SmoothCollapse } from '../common/SmoothCollapse';
+import { Button, Collapse, ErrorState, FileDrop, IconButton, Skeleton, cx, icons, useStatusLine } from '../../ui';
 import { CanvasNode, type NodeActions } from './CanvasNode';
 import {
   HOME, NOTE_COLORS, SAVE_DELAY, TYPE_LABEL, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, clampZoom, errorText, fitView, freeSpot, initialView, readFileAsDataUrl,
@@ -531,7 +530,7 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
         <p className="cv-readonly"><icons.IconLock size={14} /> Modo consulta: podés moverte y hacer zoom, no editar.</p>
       )}
 
-      <SmoothCollapse open={fileOpen && !readOnly} anchorRef={fileBtnRef}>
+      <Collapse open={fileOpen && !readOnly} returnFocus={fileBtnRef} gap="var(--g-s-3)">
         <div className="cv-upload" data-scanner-ignore="">
           <FileDrop
             multiple
@@ -546,7 +545,7 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
             <Button size="sm" variant="ghost" onClick={() => { setFileOpen(false); fileBtnRef.current?.focus({ preventScroll: true }); }}>Listo</Button>
           </div>
         </div>
-      </SmoothCollapse>
+      </Collapse>
 
       {status.element}
 

@@ -2,13 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { Pencil, Plus, ReceiptText, ShoppingCart } from 'lucide-react';
 import type { PettyCashExpense } from '../../types';
 import { discardPettyCashReceipt, getPettyCash, savePettyCashConfig, type PettyCashResponse } from '../../services/pettyCashApi';
-import { Button, ErrorState, Eyebrow, Ring, Skeleton, SkeletonRows, StatusText, Table, TruncatedText, icons, useStatusLine, type Column, type SortState } from '../../ui';
-import { InlineCollapse } from '../common/InlineCollapse';
+import { Button, Collapse, ErrorState, Eyebrow, Ring, Skeleton, SkeletonRows, StatusText, Table, TruncatedText, icons, useStatusLine, type Column, type SortState } from '../../ui';
 import { CompactEmpty } from '../tools/CompactEmpty';
 import { ExpenseForm, MoneyInput, RequestForm, emptyExpense, emptyRequest, useUnsavedWarning, type ExpenseDraft, type RequestDraft } from './PettyForms';
 import { RequestItem } from './RequestItem';
 import { displayDay, money, moneyDraft, parseMoney } from './money';
+import { peekDraft, useKeepDraft } from '../../utils/drafts';
 import '../../styles/screens/pettycash.css';
+
+type PettyDraft = { fundOpen: boolean; fundDraft: string; expenseOpen: boolean; expenseDraft: ExpenseDraft; requestOpen: boolean; requestDraft: RequestDraft };
+const expenseFilled = (draft: ExpenseDraft) => Boolean(draft.description || draft.amount || draft.supplier || draft.receiptUrl);
+const requestFilled = (draft: RequestDraft) => Boolean(draft.description || draft.estimate || draft.supplier || draft.justification || draft.receiptUrl);
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
 const EXPENSES_STEP = 15;
@@ -34,14 +38,17 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
   const [data, setData] = useState<PettyCashResponse | null>(null);
   const [loadError, setLoadError] = useState('');
   const [retrying, setRetrying] = useState(false);
-  const [fundOpen, setFundOpen] = useState(false);
-  const [fundDraft, setFundDraft] = useState('');
+  // Lo que se estaba cargando sobrevive a salir por el menú y volver (borrador en memoria por sede).
+  const draftKey = `${siteCode || 'sede'}:caja-chica`;
+  const [saved] = useState(() => peekDraft<PettyDraft>(draftKey));
+  const [fundOpen, setFundOpen] = useState(saved?.fundOpen ?? false);
+  const [fundDraft, setFundDraft] = useState(saved?.fundDraft ?? '');
   const [fundBusy, setFundBusy] = useState(false);
   const [fundError, setFundError] = useState('');
-  const [expenseOpen, setExpenseOpen] = useState(false);
-  const [expenseDraft, setExpenseDraft] = useState<ExpenseDraft>(emptyExpense);
-  const [requestOpen, setRequestOpen] = useState(false);
-  const [requestDraft, setRequestDraft] = useState<RequestDraft>(emptyRequest);
+  const [expenseOpen, setExpenseOpen] = useState(saved?.expenseOpen ?? false);
+  const [expenseDraft, setExpenseDraft] = useState<ExpenseDraft>(() => saved?.expenseDraft ?? emptyExpense());
+  const [requestOpen, setRequestOpen] = useState(saved?.requestOpen ?? false);
+  const [requestDraft, setRequestDraft] = useState<RequestDraft>(() => saved?.requestDraft ?? emptyRequest());
   const [order, setOrder] = useState<number[]>([]);
   const [itemMsgs, setItemMsgs] = useState<Record<number, { tone: 'ok' | 'bad'; text: string }>>({});
   const [expensesShown, setExpensesShown] = useState(EXPENSES_STEP);
@@ -91,7 +98,18 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
   }, [data, sort]);
 
   const fundAmount = parseMoney(fundDraft);
-  useUnsavedWarning(fundOpen && data !== null && fundAmount !== data.config.initialAmount);
+  const fundDirty = fundOpen && data !== null && fundAmount !== data.config.initialAmount;
+  const expenseDirty = expenseFilled(expenseDraft);
+  const requestDirty = requestFilled(requestDraft);
+  // El aviso del navegador vale aunque el formulario esté plegado (el borrador sigue acá).
+  useUnsavedWarning(fundDirty || expenseDirty || requestDirty);
+  useKeepDraft<PettyDraft>(draftKey, { fundOpen, fundDraft, expenseOpen, expenseDraft, requestOpen, requestDraft }, fundDirty || expenseDirty || requestDirty);
+  const restoredNote = useRef(Boolean(saved));
+  useEffect(() => {
+    if (!restoredNote.current) return;
+    restoredNote.current = false;
+    status.show({ tone: 'info', message: 'Recuperamos lo que estabas cargando antes de salir de la caja chica.' });
+  }, [status]);
 
   if (!data) {
     return (
@@ -238,7 +256,7 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
         </div>
         {disabledWhy && (manager || canRequest) && <span className="pc-why">Botones deshabilitados: {disabledWhy.toLowerCase()}.</span>}
 
-        <InlineCollapse open={fundOpen && manager} label="Editar fondo" returnFocus={fundBtn}>
+        <Collapse unmountOnClose open={fundOpen && manager} role="region" aria-label="Editar fondo" returnFocus={fundBtn}>
           <form className="pc-fund" onSubmit={saveFund} noValidate data-scanner-ignore="" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); setFundOpen(false); fundBtn.current?.focus({ preventScroll: true }); } }}>
             <MoneyInput
               label="Fondo inicial"
@@ -253,13 +271,13 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
               <Button variant="primary" type="submit" loading={fundBusy} loadingLabel="Guardando…">Guardar fondo</Button>
             </div>
           </form>
-        </InlineCollapse>
+        </Collapse>
       </section>
 
       {status.element}
 
       {manager && (
-        <InlineCollapse open={expenseOpen && !consultationMode} gap="var(--g-s-4)" returnFocus={expenseBtn} label="Registrar gasto">
+        <Collapse unmountOnClose open={expenseOpen && !consultationMode} gap="var(--g-s-4)" returnFocus={expenseBtn} role="region" aria-label="Registrar gasto">
           <div className="pc-card pc-form-card">
             <ExpenseForm
               draft={expenseDraft}
@@ -271,10 +289,10 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
               onClose={() => { setExpenseOpen(false); expenseBtn.current?.focus({ preventScroll: true }); }}
             />
           </div>
-        </InlineCollapse>
+        </Collapse>
       )}
       {canRequest && (
-        <InlineCollapse open={requestOpen && !consultationMode} gap="var(--g-s-4)" returnFocus={requestBtn} label="Solicitar compra">
+        <Collapse unmountOnClose open={requestOpen && !consultationMode} gap="var(--g-s-4)" returnFocus={requestBtn} role="region" aria-label="Solicitar compra">
           <div className="pc-card pc-form-card">
             <RequestForm
               draft={requestDraft}
@@ -285,7 +303,7 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
               onClose={() => { setRequestOpen(false); requestBtn.current?.focus({ preventScroll: true }); }}
             />
           </div>
-        </InlineCollapse>
+        </Collapse>
       )}
 
       <section className="pc-card pc-section" aria-labelledby="pc-req-title">

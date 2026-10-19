@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { ParqueRenewalItem, ParqueResponse } from '../../services/analyticsApi';
-import { ErrorState, StatusText, Table, TruncatedText, type Column as TableColumn } from '../../ui';
+import { Collapse, ErrorState, StatusText, Table, TruncatedText, type Column as TableColumn } from '../../ui';
 import { downloadCsv } from '../../utils/download';
 import { todayKeyAr } from '../../utils/formatters';
 import {
-  Collapse, Columns, CsvButton, EmptyCard, FlowRows, KpiStrip, Lazy, Panel, PartsRing, SimpleTable, ThinRing, columnsHeight, formatInt, keepInPlace, pct, useActive,
+  Columns, CsvButton, EmptyCard, FlowRows, KpiStrip, Lazy, Panel, PartsRing, SimpleTable, ThinRing, columnsHeight, formatInt, pct, useActive,
   type Column, type Kpi, type Part, type Tone, type View
 } from './kit';
 import { sum } from './model';
@@ -214,7 +214,6 @@ function RenewEmpty() {
 
 function RenewPanel({ span, items, loading }: { span: number; items: ParqueRenewalItem[]; loading: boolean }) {
   const [all, setAll] = useState(false);
-  const toolsRef = useRef<HTMLDivElement>(null);
   const columns: Array<TableColumn<ParqueRenewalItem>> = [
     { key: 'equipo', header: 'Equipo', width: 'minmax(0, 1.6fr)', card: 'title', cell: item => <span className="an-device"><TruncatedText>{item.alias || item.etiqueta}</TruncatedText>{item.alias && <span className="an-tag">{item.etiqueta}</span>}</span> },
     { key: 'clase', header: 'Clase', width: 'minmax(0, 1fr)', cell: item => item.assetClass },
@@ -233,8 +232,8 @@ function RenewPanel({ span, items, loading }: { span: number; items: ParqueRenew
   const more = items.slice(FIRST_ROWS);
   return (
     <Panel id="an-ar" span={span} eyebrow="A renovar · próximos 12 meses" title={title}
-      tools={<div ref={toolsRef} className="an-tools-row">
-        {more.length > 0 && <button type="button" className="an-link" aria-expanded={all} aria-controls="an-ar-more" onClick={() => keepInPlace(toolsRef.current, () => setAll(value => !value))}>{all ? 'Ver menos' : `Ver los ${formatInt(items.length)}`}</button>}
+      tools={<div className="an-tools-row">
+        {more.length > 0 && <button type="button" className="an-link" aria-expanded={all} aria-controls="an-ar-more" onClick={() => setAll(value => !value)}>{all ? 'Ver menos' : `Ver los ${formatInt(items.length)}`}</button>}
         <CsvButton label="Exportar CSV" onExport={exportCsv} disabled={!items.length} describedBy="an-ar-why" />
       </div>}
       note={<span id="an-ar-why">{items.length ? `El CSV sale con etiqueta, alias, clase, condición, alta, renovación, meses restantes y si la fecha es estimada (hasta 100 filas).` : 'Nada para exportar. Cuando haya equipos, el CSV sale con etiqueta, alias, clase, condición, alta, renovación, meses restantes y si la fecha es estimada (hasta 100 filas).'}</span>}>

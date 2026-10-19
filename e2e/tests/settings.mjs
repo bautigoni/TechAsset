@@ -85,7 +85,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       await openPanel(page, base, 'roles');
       await clickText(page, '.cfg-acc-h button', new RegExp(`Abrir el rol ${target.name}$`));
       const viewEdit = await page.evaluate(() => {
-        const rows = [...document.querySelectorAll('.cfg-collapse.is-open .cfg-perm-r')];
+        const rows = [...document.querySelectorAll('.ui-collapse:is([data-state="open"], [data-state="opening"]) .cfg-perm-r')];
         const row = rows.find(r => r.querySelectorAll('[role=checkbox]')[1]?.getAttribute('aria-checked') === 'false');
         return row ? row.querySelector('.cfg-wrap').textContent : '';
       });

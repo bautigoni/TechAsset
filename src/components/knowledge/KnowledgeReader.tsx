@@ -1,8 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { BotMessageSquare, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import type { KnowledgeArticle } from '../../types';
-import { Button, InlineConfirm, TruncatedText, icons } from '../../ui';
-import { SmoothCollapse } from '../common/SmoothCollapse';
+import { Button, Collapse, InlineConfirm, TruncatedText, icons } from '../../ui';
 import { sanitizeArticleHtml } from './sanitize';
 import { articleDate, categoryOf, fileKind } from './knowledgeModel';
 
@@ -17,7 +16,6 @@ export function KnowledgeReader({ article, consultationMode, onEdit, onDelete, o
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-  const headRef = useRef<HTMLElement | null>(null);
   const deleteRef = useRef<HTMLButtonElement | null>(null);
   const html = useMemo(() => sanitizeArticleHtml(article.content), [article.content]);
   const by = article.updatedBy || article.createdBy;
@@ -36,7 +34,7 @@ export function KnowledgeReader({ article, consultationMode, onEdit, onDelete, o
 
   return (
     <article className="kb-card kb-reader" aria-labelledby="kb-read-title">
-      <header className="kb-reader-head" ref={headRef}>
+      <header className="kb-reader-head">
         <div className="kb-meta">
           <span className="kb-meta-cat">{categoryOf(article)}</span>
           {by && <span className="kb-meta-by">Editado por {by}</span>}
@@ -66,7 +64,7 @@ export function KnowledgeReader({ article, consultationMode, onEdit, onDelete, o
         </p>
       </header>
 
-      <SmoothCollapse open={confirming && !consultationMode} anchorRef={headRef}>
+      <Collapse open={confirming && !consultationMode} returnFocus={deleteRef} gap="var(--g-s-4)">
         <div className="kb-confirm">
           <InlineConfirm
             danger
@@ -79,7 +77,7 @@ export function KnowledgeReader({ article, consultationMode, onEdit, onDelete, o
           />
           {error && <p className="kb-error" role="alert">{error}</p>}
         </div>
-      </SmoothCollapse>
+      </Collapse>
 
       {html ? <div className="kb-art" dangerouslySetInnerHTML={{ __html: html }} /> : <p className="kb-muted">Este artículo no tiene texto.</p>}
 

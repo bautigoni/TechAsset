@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
 import { cx } from './util';
 
 /* ══ Collapse: abrir y cerrar secciones sin saltos (REGLAS-UX, agregado 19/10) ══
@@ -112,6 +112,21 @@ function stopTrimming(scroller: HTMLElement) {
   const onScroll = trimmers.get(scroller);
   if (onScroll) (isDocScroller(scroller) ? window : scroller).removeEventListener('scroll', onScroll);
   state.listening = false;
+}
+
+/**
+ * Suelta ya el alto reservado al pie (si nada lo está usando). Para cuando se
+ * cambia de página o de sección: la reserva de un cierre anterior no puede
+ * quedar como hueco al pie de una página corta.
+ */
+export function releaseScrollReserve(scroller?: HTMLElement | null) {
+  if (typeof document === 'undefined') return;
+  const sc = scroller || (document.querySelector<HTMLElement>('.shell-scroll') ?? (document.scrollingElement as HTMLElement | null));
+  if (!sc) return;
+  const state = scrollers.get(sc);
+  if (!state || state.holds > 0 || state.reserve <= 0) return;
+  setReserve(sc, 0);
+  stopTrimming(sc);
 }
 
 /* ── keepInPlace: que un elemento no se mueva en pantalla mientras algo cambia de alto ── */
@@ -287,9 +302,24 @@ export type CollapseProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   reserve?: 'auto';
   /** Al terminar de abrir o cerrar. */
   onSettled?: (open: boolean) => void;
+  /**
+   * Adónde vuelve el foco si estaba adentro al cerrar (el contenido cerrado
+   * queda inerte). Default: el control que se tocó para abrir/cerrar, si está
+   * fuera del contenido. `false` = no mover el foco.
+   */
+  returnFocus?: RefObject<HTMLElement | null> | false;
+  /**
+   * Espacio que el padre (flex/grid) deja entre hijos, p. ej. 'var(--g-s-4)'.
+   * Cerrado, un margen negativo lo cancela (y se anima con el alto): un
+   * colapso cerrado no deja un hueco de `gap` entre sus hermanos. Es lo mismo
+   * que poner `--ui-collapse-gap` desde el CSS de la pantalla
+   * (`.padre > .ui-collapse { --ui-collapse-gap: … }`): un solo mecanismo.
+   * En un padre grid, si es el primer hijo, el hueco no se cancela.
+   */
+  gap?: string;
 };
 
-export function Collapse({ open, children, className, outerClassName, anchor, reveal = true, lazy = true, unmountOnClose = false, appear = false, reserve, onSettled, ...rest }: CollapseProps) {
+export function Collapse({ open, children, className, outerClassName, anchor, reveal = true, lazy = true, unmountOnClose = false, appear = false, reserve, onSettled, returnFocus, gap, ...rest }: CollapseProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const clipRef = useRef<HTMLDivElement | null>(null);
   const initial = useRef<CollapseState>(open && !appear ? 'open' : 'closed');
@@ -300,6 +330,13 @@ export function Collapse({ open, children, className, outerClassName, anchor, re
   settled.current = onSettled;
   const anchorRef = useRef(anchor);
   anchorRef.current = anchor;
+  const focusRef = useRef(returnFocus);
+  focusRef.current = returnFocus;
+  // Mientras se cierra (y cerrado) se dibuja lo último que se vio abierto: si
+  // el contenido depende de un estado que se limpió al cerrar (`result && …`),
+  // no desaparece de golpe a mitad de la transición.
+  const shown = useRef<ReactNode>(children);
+  if (open) shown.current = children;
 
   useLayoutEffect(() => {
     trackTriggers();
@@ -325,6 +362,15 @@ export function Collapse({ open, children, className, outerClassName, anchor, re
         const trigger = recentTrigger();
         anchorEl = trigger && !wrap.contains(trigger) ? trigger : wrap;
       }
+    }
+    // Si el foco estaba adentro, vuelve al control que se tocó (o al que se indique).
+    // (Si el navegador ya lo soltó por el `inert`, cuenta si lo último tocado estaba adentro.)
+    const active = document.activeElement;
+    const touched = recentTrigger();
+    const focusInside = Boolean(active && (clip.contains(active) || (active === document.body && touched && clip.contains(touched))));
+    if (!open && focusRef.current !== false && focusInside) {
+      const back = focusRef.current?.current || (anchorEl && anchorEl !== wrap && !wrap.contains(anchorEl) ? anchorEl : null);
+      back?.focus({ preventScroll: true });
     }
     const shrink = reserve === 'auto' ? 'auto' : open ? 0 : clip.getBoundingClientRect().height;
     const hold = anchorEl ? keepInPlace(anchorEl, { duration: reduced ? 0 : ms + 60, reserve: shrink, watch: wrap }) : NOOP;
@@ -369,7 +415,12 @@ export function Collapse({ open, children, className, outerClassName, anchor, re
   }, [open]);
 
   return (
-    <div ref={wrapRef} className={cx('ui-collapse', outerClassName)} data-state={initial.current}>
+    <div
+      ref={wrapRef}
+      className={cx('ui-collapse', outerClassName)}
+      data-state={initial.current}
+      style={gap ? ({ '--ui-collapse-gap': gap } as CSSProperties) : undefined}
+    >
       <div
         ref={clipRef}
         className="ui-collapse-clip"
@@ -378,7 +429,7 @@ export function Collapse({ open, children, className, outerClassName, anchor, re
         // Enfocar algo adentro mientras anima puede scrollear la capa que recorta.
         onScroll={event => { if (wrapRef.current?.dataset.state !== 'open') event.currentTarget.scrollTop = 0; }}
       >
-        {mounted && <div className={className} {...rest}>{children}</div>}
+        {mounted && <div className={className} {...rest}>{open ? children : shown.current}</div>}
       </div>
     </div>
   );

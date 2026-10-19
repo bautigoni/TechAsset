@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Plus, RefreshCw, Search } from 'lucide-react';
 import type { SiteInfo } from '../../types';
-import { Button, EmptyState, ErrorState, InlineConfirm, Input, Segmented, SkeletonRows, StatusLine } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, InlineConfirm, Input, Segmented, SkeletonRows, StatusLine } from '../../ui';
 import { cx, fold } from '../../ui/util';
 import { getSiteSettings, getSites, saveAllowedUser, updateAllowedUserStatus, type AllowedUserItem } from '../../services/authApi';
 import { getManagedUsers, undoUserAction, type ManagedUser, type UserStatus } from '../../services/settingsApi';
 import { getUsersByTenant, type TenantInvite } from '../../services/adminUsersApi';
 import { formatDate } from '../../utils/formatters';
-import { Card, CardFoot, CheckField, ChoiceField, Collapse, errorText, useDirty } from './settingsKit';
+import { Card, CardFoot, CheckField, ChoiceField, errorText, useDirty } from './settingsKit';
 
 // Si la sede no tiene roles.config, los de siempre.
 const FALLBACK_ROLES = ['Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
@@ -267,7 +267,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
       </div>
       {elsewhere.length > 0 && <p className="cfg-hint cfg-pad-x">También hay coincidencias en {elsewhere.join(', ')}.</p>}
 
-      <Collapse open={editing === 'new'}>
+      <Collapse open={editing === 'new'} unmountOnClose data-scanner-ignore="">
         <UserForm
           key="new"
           title="Nuevo usuario"
@@ -337,7 +337,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                     )}
                   </span>
                 </div>
-                <Collapse open={confirmDelete === user.id}>
+                <Collapse open={confirmDelete === user.id} unmountOnClose data-scanner-ignore="">
                   <InlineConfirm
                     danger
                     className="cfg-row-confirm"
@@ -349,7 +349,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                     onCancel={() => setConfirmDelete(0)}
                   />
                 </Collapse>
-                <Collapse open={Boolean(note)}>
+                <Collapse open={Boolean(note)} unmountOnClose data-scanner-ignore="">
                   {note && (
                     <StatusLine
                       key={note.key}
@@ -361,7 +361,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                     />
                   )}
                 </Collapse>
-                <Collapse open={editing === user.id}>
+                <Collapse open={editing === user.id} unmountOnClose data-scanner-ignore="">
                   <UserForm
                     key={`edit-${user.id}`}
                     title={`Editar a ${displayName(user)}`}

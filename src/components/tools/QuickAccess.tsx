@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { ClipboardList, ExternalLink, FileSpreadsheet, FileText, Folder, Globe, Mail, Pencil, Presentation, Ticket, Trash2, Video } from 'lucide-react';
 import type { QuickLink } from '../../types';
 import { Button, Combobox, IconButton, Input, TruncatedText, icons } from '../../ui';
+import { peekDraft, useKeepDraft } from '../../utils/drafts';
 
 export { useQuickLinks, groupLinks } from './quickLinks';
 
@@ -48,7 +49,7 @@ export type LinkDraft = { titulo: string; url: string; descripcion: string; cate
  * Los valores no se pierden ante un error del server (quedan en el form) y si
  * hay cambios sin guardar, cerrar la pestaña pide confirmación.
  */
-export function LinkForm({ initial, categories, title, submitLabel, onSubmit, onCancel, autoFocus = true }: {
+export function LinkForm({ initial, categories, title, submitLabel, onSubmit, onCancel, autoFocus = true, draftKey }: {
   initial: LinkDraft;
   categories: string[];
   title?: string;
@@ -56,13 +57,19 @@ export function LinkForm({ initial, categories, title, submitLabel, onSubmit, on
   onSubmit: (draft: LinkDraft) => Promise<void>;
   onCancel: () => void;
   autoFocus?: boolean;
+  /** Si viene, lo tipeado sobrevive a salir de la pantalla por el menú (borrador en memoria). */
+  draftKey?: string;
 }) {
-  const [draft, setDraft] = useState<LinkDraft>(initial);
+  const [draft, setDraft] = useState<LinkDraft>(() => (draftKey && peekDraft<LinkDraft>(draftKey)) || initial);
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState('');
   const firstRef = useRef<HTMLInputElement | null>(null);
   const dirty = draft.titulo !== initial.titulo || draft.url !== initial.url || draft.descripcion !== initial.descripcion || draft.categoria !== initial.categoria;
+  // Cancelar o guardar desmonta el form "limpio" (onCancel/onSubmit lo marcan): solo queda el borrador si se salió sin cerrar.
+  const closed = useRef(false);
+  useKeepDraft(draftKey || '', draft, () => dirty && !closed.current);
+  const cancel = () => { closed.current = true; onCancel(); };
 
   useEffect(() => { if (autoFocus) firstRef.current?.focus({ preventScroll: true }); }, [autoFocus]);
   useEffect(() => {
@@ -74,7 +81,7 @@ export function LinkForm({ initial, categories, title, submitLabel, onSubmit, on
 
   const urlCheck = checkUrl(draft.url);
   const titleError = !draft.titulo.trim() ? 'Poné un nombre.' : '';
-  const set = (patch: Partial<LinkDraft>) => { setDraft(current => ({ ...current, ...patch })); setServerError(''); };
+  const set = (patch: Partial<LinkDraft>) => { closed.current = false; setDraft(current => ({ ...current, ...patch })); setServerError(''); };
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -84,8 +91,10 @@ export function LinkForm({ initial, categories, title, submitLabel, onSubmit, on
     setBusy(true);
     setServerError('');
     try {
+      closed.current = true; // si sale bien, el form se cierra: no queda borrador
       await onSubmit({ titulo: draft.titulo.trim(), url: draft.url.trim(), descripcion: draft.descripcion.trim(), categoria: draft.categoria.trim() || 'Sin categoría' });
     } catch (reason) {
+      closed.current = false;
       setServerError(reason instanceof Error && reason.message ? reason.message : 'No se pudo guardar. Reintentá.');
     } finally {
       setBusy(false);
@@ -100,7 +109,7 @@ export function LinkForm({ initial, categories, title, submitLabel, onSubmit, on
       onSubmit={submit}
       noValidate
       data-scanner-ignore=""
-      onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel(); } }}
+      onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); } }}
     >
       {title && (
         <div className="qa-form-head">
@@ -136,7 +145,7 @@ export function LinkForm({ initial, categories, title, submitLabel, onSubmit, on
       {serverError && <p className="qa-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
       <div className="qa-form-actions">
         {!title && <span className="qa-form-keys">Enter guarda · Esc cancela</span>}
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancelar</Button>
+        <Button variant="ghost" onClick={cancel} disabled={busy}>Cancelar</Button>
         <Button variant="primary" type="submit" loading={busy} loadingLabel="Guardando…">{submitLabel}</Button>
       </div>
     </form>
