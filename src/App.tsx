@@ -233,7 +233,7 @@ export function App() {
     // /sede/x/tasks/<id> y /sede/x/tickets/<id>: el detalle es parte de la vista
     // (lo manejan TasksPage y TicketsPage). En Dispositivos la página del equipo
     // va en `next`, y volver a la lista tiene que sacar la etiqueta de la URL.
-    if (window.location.pathname === next || ((view === tasks || view === tickets) && window.location.pathname.toLowerCase().startsWith(`${next}/`))) return;
+    if (window.location.pathname === next || ((view === 'tasks' || view === 'tickets') && window.location.pathname.toLowerCase().startsWith(`${next}/`))) return;
     if (push) window.history.pushState({ techasset: true }, '', next);
     else window.history.replaceState(null, '', next);
   }, [activeSite, view, user, devicePage]);
