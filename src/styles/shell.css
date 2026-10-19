@@ -782,7 +782,9 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
   cursor: pointer;
 }
 .shell-more-group h2 { margin: 0 0 var(--g-s-2); }
-.shell-more-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 104px), 1fr)); gap: var(--g-s-2); }
+/* 150 px: a 360–390 son dos columnas y entran enteros los nombres largos
+   ("Base de conocimiento", "Accesos rápidos"); con 104 px eran tres y se cortaban. */
+.shell-more-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: var(--g-s-2); }
 .shell-more-item {
   display: flex;
   flex-direction: column;

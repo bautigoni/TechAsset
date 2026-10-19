@@ -31,7 +31,9 @@ const COLLAPSED_KEY = 'techasset_sidebar_collapsed';
 const MOBILE_MAX = 767;     // < 768: sin menú lateral, barra inferior
 const RAIL_MAX = 1099;      // < 1100: rail de 56 px
 const ASST_COLUMN_MIN = 1024; // >= 1024: el asistente es columna; si no, vista propia
-const ASST_WIDE_MIN = 1440; // con el asistente abierto y < 1440, el menú pasa a rail
+// Con el asistente abierto y < 1600 el menú pasa a rail: a 1440 con menú
+// completo + columna quedaban ~850 px de contenido y las tablas se cortaban.
+const ASST_WIDE_MIN = 1600;
 
 function readCollapsed() {
   try { return localStorage.getItem(COLLAPSED_KEY) === '1'; } catch { return false; }

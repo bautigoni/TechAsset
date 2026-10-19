@@ -83,7 +83,8 @@ export function uxProbe(opts = {}) {
       if (display.startsWith('inline') && !display.includes('flex') && !display.includes('grid')) continue;
       const kids = [];
       for (const child of parent.children) {
-        if (ignored(child) || !inFlow(child) || !visible(child)) continue;
+        // Lo ignorado (un lienzo) igual ocupa su lugar como bloque: no se mide por dentro.
+        if (!inFlow(child) || !visible(child)) continue;
         const rect = child.getBoundingClientRect();
         if (rect.height > 2 && rect.width > 2) kids.push({ el: child, rect });
       }

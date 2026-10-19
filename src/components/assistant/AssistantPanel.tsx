@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { ArrowLeft, Mic, Plus, Send, Square, Volume2, X } from 'lucide-react';
 import {
   streamAssistantMessage, undoAssistantAction,
@@ -186,11 +186,22 @@ export function AssistantPanel({ open, onClose, mode, backLabel, currentView, on
   }, [open]);
 
   // Pegado al último mensaje mientras el usuario no haya subido a leer
-  // (scroll interno del historial, no de la página).
-  useEffect(() => {
+  // (scroll interno del historial, no de la página). En layout effect: se
+  // pega antes de pintar, sin un frame con el texto nuevo cortado abajo.
+  useLayoutEffect(() => {
     const feed = feedRef.current;
     if (feed && stickToBottom.current) feed.scrollTop = feed.scrollHeight;
   }, [messages, loading, undoStates]);
+  // Lo que crece sin que cambien los mensajes (el texto que se reacomoda, la
+  // entrada animada de una burbuja, una línea de estado): mismo pegado.
+  const messageCount = messages.length;
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (!feed || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => { if (stickToBottom.current) feed.scrollTop = feed.scrollHeight; });
+    for (const child of Array.from(feed.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [messageCount, loading]);
 
   // Teclado en el celular: al achicarse la ventana visible, el último mensaje sigue a la vista.
   useEffect(() => {
