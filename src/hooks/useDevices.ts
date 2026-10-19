@@ -6,6 +6,28 @@ import { getDeviceStateKey } from '../utils/deviceState';
 import { matchesSmartSearch } from '../utils/normalizeSearch';
 import { dateFormatter } from '../utils/formatters';
 
+/**
+ * Salud del inventario: cuándo contestó bien el último pedido (aunque no haya
+ * traído nada nuevo) y si el último falló. Vive fuera de React a propósito: el
+ * poll corre cada 15 s y casi siempre no cambia nada, así que no puede
+ * re-renderizar la app; lo lee quien muestra "Actualizado hace…" con su propio
+ * reloj (Inicio).
+ */
+export type DevicesHealth = { okAt: number; failedAt: number; error: string };
+let devicesHealth: DevicesHealth = { okAt: 0, failedAt: 0, error: '' };
+const healthListeners = new Set<() => void>();
+function setDevicesHealth(next: DevicesHealth) {
+  const changed = Boolean(next.error) !== Boolean(devicesHealth.error);
+  devicesHealth = next;
+  // Solo se avisa cuando cambia el estado (ok ↔ error), no en cada poll.
+  if (changed) healthListeners.forEach(listener => listener());
+}
+export function getDevicesHealth() { return devicesHealth; }
+export function subscribeDevicesHealth(listener: () => void) {
+  healthListeners.add(listener);
+  return () => { healthListeners.delete(listener); };
+}
+
 export function useDevices(search: string, siteCode = '') {
   const [devices, setDevices] = useState<Device[]>([]);
   const [sync, setSync] = useState<SyncStatus>({ state: 'loading' });
@@ -25,6 +47,7 @@ export function useDevices(search: string, siteCode = '') {
       try {
         const data = await getDevices(options);
         if (requestId !== requestSeq.current) return;
+        setDevicesHealth({ okAt: Date.now(), failedAt: 0, error: '' });
         const nextKey = JSON.stringify(data.items);
         const unchanged = hasDevices.current && nextKey === payloadKey.current;
         // Poll de fondo sin novedades: cortamos antes de tocar estado.
@@ -50,6 +73,7 @@ export function useDevices(search: string, siteCode = '') {
         setSync({ state: syncState, loadedAt: data.loadedAt, message: diagMessage || base });
       } catch (error) {
         if (requestId !== requestSeq.current) return;
+        setDevicesHealth({ ...devicesHealth, failedAt: Date.now(), error: error instanceof Error ? error.message : 'Error' });
         setSync(current => current.state === 'ok' || current.state === 'warning'
           ? { ...current, message: current.message || 'Inventario cargado desde base local.' }
           : { state: 'error', message: error instanceof Error ? error.message : 'Error' });

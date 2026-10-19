@@ -39,8 +39,9 @@ operationsRouter.patch('/internal-notes/:id', (req, res) => {
       req.body.importante == null ? old.importante : (req.body.importante ? 1 : 0),
       req.body.archivada == null ? old.archivada : (req.body.archivada ? 1 : 0),
       req.body.visible == null ? (old.visible == null ? 1 : old.visible) : (req.body.visible ? 1 : 0),
-      req.body.visible === false ? ts : (old.deleted_at || ''),
-      req.body.visible === false ? (req.body.operator || req.body.operador || '') : (old.deleted_by || ''),
+      // Deshacer el borrado (visible:true) limpia la marca de borrado.
+      req.body.visible === false ? ts : req.body.visible === true ? '' : (old.deleted_at || ''),
+      req.body.visible === false ? (req.body.operator || req.body.operador || '') : req.body.visible === true ? '' : (old.deleted_by || ''),
       ts,
       req.params.id,
       siteCode

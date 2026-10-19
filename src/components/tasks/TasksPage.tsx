@@ -15,6 +15,7 @@ import { Modal } from '../layout/Modal';
 import { SelectionBar, useSelection } from '../layout/Selection';
 import { deleteTask } from '../../services/tasksApi';
 import { confirmDialog, toast, toastError } from '../layout/Feedback';
+import { clearOpenTask, peekOpenTask } from '../../utils/openTask';
 
 const PRIORITIES = ['Urgente', 'Media', 'Baja'];
 
@@ -59,6 +60,15 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
   const [columns, setColumns] = useState<TaskColumn[]>([]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaskItem | null>(null);
+  // Inicio → "Tus tareas": abre ESA tarea apenas llega a la lista.
+  useEffect(() => {
+    const id = peekOpenTask();
+    if (!id) return;
+    const task = tasks.find(item => String(item.id) === id);
+    if (!task) return;
+    clearOpenTask();
+    setEditing(task);
+  }, [tasks]);
   const [message, setMessage] = useState('');
   // `null` = cerrado. Un string vacío abre el modal de nueva columna.
   const [columnDraft, setColumnDraft] = useState<string | null>(null);

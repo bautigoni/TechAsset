@@ -28,6 +28,9 @@ async function press(page, pattern, scope) {
 // Dispositivos (etapa 5a): tabla de src/ui (filas div[role=row]) y buscador propio.
 const DEVICE_ROW = '.dv-table [data-device-tag]';
 const DEVICE_SEARCH = '.dv-search input';
+// Inicio (etapa 3): la lista "Afuera ahora" ya dibujada y la barra de acción.
+const DASH_READY = '[data-dash="afuera"] .dash-rows';
+const DASH_BAR = 'input[data-dash-bar]';
 const escapeRx = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const exact = value => new RegExp(`^${escapeRx(value)}$`);
 
@@ -373,10 +376,11 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
     });
 
     // b) Escáner global ───────────────────────────────────────────────────────
+    // Desde una vista que no es el Inicio (en el Inicio lo escaneado cae en su barra, ver k).
     await test('b', 'Escáner global', 'Tipear rápido fuera de inputs lleva a Préstamos con la etiqueta', async () => {
       const tag = tagF || tagA;
-      await gotoView(page, base, 'dashboard');
-      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      await gotoView(page, base, 'devices');
+      await page.waitForSelector(DEVICE_ROW, { timeout: 20000 });
       await page.evaluate(() => { (document.activeElement instanceof HTMLElement) && document.activeElement.blur(); });
       await page.keyboard.type(tag, { delay: 15 });
       await page.keyboard.press('Enter');
@@ -411,7 +415,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
 
     await test('b', 'Escáner global', 'Tipeo humano fuera de campos, Ctrl K y el asistente no navegan', async () => {
       await gotoView(page, base, 'dashboard');
-      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      await page.waitForSelector(DASH_READY, { timeout: 20000 });
       await page.evaluate(() => { (document.activeElement instanceof HTMLElement) && document.activeElement.blur(); });
       // Ritmo de persona (≈140 ms entre teclas): no es un lector.
       await page.keyboard.type('D1436', { delay: 140 });
@@ -437,6 +441,84 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       await page.keyboard.press('Escape');
       await until(async () => Boolean(await page.$('.asst[hidden]')), { message: 'que Esc cierre el asistente' });
       return 'tipeo lento, Ctrl K y asistente: sin navegar; Esc cierra';
+    });
+
+    // k) Inicio (etapa 3) ─────────────────────────────────────────────────────
+    // 9–11 son de las pruebas de Dispositivos (d2): el Inicio usa los siguientes.
+    const [tagK1, tagK2, tagK3] = available.slice(12, 15);
+    const stateOf = async tag => loanState((await api.device(tag))?.estado);
+    const undoInStatus = async scope => {
+      const undo = await until(() => page.$(`${scope} .ui-status-undo`), { message: 'el Deshacer en la línea de estado' });
+      await undo.click();
+    };
+
+    await test('k', 'Inicio', 'El lector en el Inicio cae en la barra; Enter devuelve; Deshacer re-presta con los mismos datos', async () => {
+      assert(tagK1, 'No hay equipos libres de sobra en la copia.');
+      await api.post('/api/loans/lend', { etiqueta: tagK1, person: 'E2E Inicio', role: 'DOE', location: 'DOE' });
+      await gotoView(page, base, 'dashboard');
+      await page.waitForSelector(DASH_READY, { timeout: 20000 });
+      await page.evaluate(() => { (document.activeElement instanceof HTMLElement) && document.activeElement.blur(); });
+      await page.keyboard.type(tagK1, { delay: 15 });
+      await page.keyboard.press('Enter');
+      await sleep(400);
+      assert((await pathname(page)).endsWith('/dashboard'), `El lector navegó a ${await pathname(page)}.`);
+      const value = await page.$eval(DASH_BAR, input => input.value);
+      assert(value.toUpperCase() === tagK1.toUpperCase(), `La barra tiene "${value}" (esperaba ${tagK1}).`);
+      await page.waitForSelector(`[data-device-result="${tagK1}"]`);
+      await page.focus(DASH_BAR);
+      await page.keyboard.press('Enter');
+      await until(async () => (await stateOf(tagK1)) === 'available', { message: `${tagK1} devuelto` });
+      await undoInStatus('.dash-bar-wrap');
+      await until(async () => (await stateOf(tagK1)) === 'loaned', { message: `${tagK1} prestado otra vez por Deshacer` });
+      const device = await api.device(tagK1);
+      assert(/E2E Inicio/.test(device.prestadoA || ''), `Quedó prestado a "${device.prestadoA}".`);
+      return `${tagK1}: lector → barra → Enter devuelve → Deshacer (sigue con ${device.prestadoA})`;
+    });
+
+    await test('k', 'Inicio', 'Prestar en línea desde la barra (persona, rol, ubicación) y Deshacer lo devuelve', async () => {
+      assert(tagK2, 'No hay equipos libres de sobra en la copia.');
+      await gotoView(page, base, 'dashboard');
+      await page.waitForSelector(DASH_READY, { timeout: 20000 });
+      await typeInto(page, DASH_BAR, tagK2);
+      await page.waitForSelector(`[data-device-result="${tagK2}"]`);
+      await page.keyboard.press('Enter');
+      const person = await page.waitForSelector('.dash-lend .dash-lend-person input');
+      await person.type('E2E Barra');
+      const pick = async (label, rx) => {
+        await page.evaluate(name => [...document.querySelectorAll('.dash-lend .ui-field')].find(field => field.querySelector('.ui-label-text')?.textContent?.trim() === name)?.querySelector('.ui-select-trigger')?.click(), label);
+        const option = await until(() => page.evaluateHandle((name, source) => {
+          const field = [...document.querySelectorAll('.dash-lend .ui-field')].find(item => item.querySelector('.ui-label-text')?.textContent?.trim() === name);
+          return [...(field?.querySelectorAll('[role="option"]') || [])].find(opt => new RegExp(source).test(opt.textContent || '')) || null;
+        }, label, rx.source).then(handle => handle.asElement()), { message: `la opción de ${label}` });
+        await option.click();
+      };
+      await pick('Rol', /DOE|Alumno/);
+      await pick('Ubicación', /^DOE|Planificación/);
+      await clickButton(page, /^Confirmar préstamo/, { scope: '.dash-lend' });
+      await until(async () => (await stateOf(tagK2)) === 'loaned', { message: `${tagK2} prestado` });
+      assert(/E2E Barra/.test((await api.device(tagK2)).prestadoA || ''), 'Persona equivocada.');
+      await undoInStatus('.dash-bar-wrap');
+      await until(async () => (await stateOf(tagK2)) === 'available', { message: `${tagK2} devuelto por Deshacer` });
+      return `${tagK2}: prestado en línea y deshecho`;
+    });
+
+    await test('k', 'Inicio', 'Ctrl/Shift+Click marca filas; Devolver N pide confirmación en la barra y devuelve en un request', async () => {
+      assert(tagK3 && tagK2, 'No hay equipos libres de sobra en la copia.');
+      await api.post('/api/loans/lend-batch', { etiquetas: [tagK2, tagK3], person: 'E2E Lote', role: 'DOE', location: 'DOE' });
+      await gotoView(page, base, 'dashboard');
+      await page.waitForSelector(`[data-device-tag="${tagK3}"]`, { timeout: 20000 });
+      const row = tag => page.$(`[data-device-tag="${tag}"] .dash-row-line`);
+      await clickWithModifier(page, await row(tagK2), 'Control');
+      const marked = await page.$eval(`[data-device-tag="${tagK2}"]`, li => li.classList.contains('is-selected'));
+      assert(marked, 'Ctrl+Click no marcó la fila.');
+      assert(await stateOf(tagK2) === 'loaned', 'Ctrl+Click devolvió el equipo.');
+      await clickWithModifier(page, await row(tagK3), 'Shift');
+      const bar = await text(page, '.dash-selhead');
+      assert(/2 seleccionados/.test(bar) && /Devolver 2/.test(bar), `Barra: "${bar}"`);
+      await clickButton(page, /^Devolver 2$/, { scope: '.dash-selhead' });
+      await clickButton(page, /^Confirmar$/, { scope: '.dash-selhead' });
+      await until(async () => (await stateOf(tagK2)) === 'available' && (await stateOf(tagK3)) === 'available', { message: 'los dos devueltos' });
+      return `Ctrl+Click y Shift+Click → "${bar}" → confirmar → ${tagK2}, ${tagK3} devueltos`;
     });
 
     // c) Búsqueda flexible ────────────────────────────────────────────────────
@@ -670,7 +752,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
   const reader = await openContext(browser, { base, token: consulta.token, releaseVersion });
   track(reader.page);
   try {
-    for (const [view, ready, label] of [['dashboard', 'tr[data-device-tag]', 'Inicio'], ['loans', DEVICE_STACK, 'Préstamos'], ['devices', DEVICE_ROW, 'Dispositivos']]) {
+    for (const [view, ready, label] of [['dashboard', DASH_READY, 'Inicio'], ['loans', DEVICE_STACK, 'Préstamos'], ['devices', DEVICE_ROW, 'Dispositivos']]) {
       await test('g', 'Modo consulta', `${label}: ninguna acción de escritura habilitada`, async () => {
         await gotoView(reader.page, base, view);
         await reader.page.waitForSelector(ready, { timeout: 20000 });

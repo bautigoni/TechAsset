@@ -214,6 +214,12 @@ try {
   check('crear sede existente da 409', dupSite.status === 409, dupSite.text.slice(0, 200));
   const note = await call('POST', '/api/internal-notes', { texto: 'nota smoke', importante: false });
   check('notas con localDate', note.status === 200 && /^\d{4}-\d{2}-\d{2}$/.test(note.json?.item?.localDate || ''), note.text.slice(0, 200));
+  // Inicio (etapa 3): ★ importante, borrar y Deshacer del borrado.
+  const noteId = note.json?.item?.id;
+  const starred = await call('PATCH', `/api/internal-notes/${noteId}`, { importante: true });
+  const hiddenNote = await call('PATCH', `/api/internal-notes/${noteId}`, { visible: false });
+  const noteBack = await call('PATCH', `/api/internal-notes/${noteId}`, { visible: true });
+  check('nota: importante, borrar y Deshacer', starred.json?.item?.importante === true && hiddenNote.json?.item?.visible === false && noteBack.json?.item?.visible === true && noteBack.json?.item?.deletedAt === '', noteBack.text.slice(0, 200));
 
   // Asistente: tablas assistant_audit / ai_usage_daily en Postgres.
   const aiStatus = await call('GET', '/api/asistente/status');

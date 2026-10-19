@@ -9,7 +9,6 @@ import { getOperationalAlias } from './utils/classifyDevice';
 import { applyServerAppearance } from './utils/theme';
 import { getUserPrefs } from './services/userPrefsApi';
 import { lazyView, prefetchView, prefetchViewsWhenIdle } from './utils/lazyView';
-import { Dashboard } from './components/dashboard/Dashboard';
 import { useOperator } from './hooks/useOperator';
 import { useDevices } from './hooks/useDevices';
 import { useAgenda } from './hooks/useAgenda';
@@ -30,6 +29,9 @@ import type { AssistantContext } from './services/assistantApi';
 // hace falta para pintar el dashboard. Los chunks del resto se precargan en idle
 // (ver prefetchViewsWhenIdle más abajo), así el cambio de vista sigue siendo
 // instantáneo. La clave del lazyView es la ViewKey para poder prefetchear por nav.
+const Dashboard = lazyView('dashboard', () => import('./components/dashboard/Dashboard'), 'Dashboard');
+// El Inicio es la vista de entrada: su chunk se pide ya, en paralelo con la sesión.
+if (typeof window !== 'undefined' && /^\/(sede\/[^/]+\/?(dashboard)?)?$/i.test(window.location.pathname)) prefetchView('dashboard');
 const DevicesPage = lazyView('devices', () => import('./components/devices/DevicesPage'), 'DevicesPage');
 const LoansPage = lazyView('loans', () => import('./components/loans/LoansPage'), 'LoansPage');
 const HistoryPage = lazyView('history', () => import('./components/history/HistoryPage'), 'HistoryPage');
@@ -75,6 +77,8 @@ export function App() {
   const [loanSeed, setLoanSeed] = useState('');
   // Lote elegido en Dispositivos para prestar: llega a la lista del formulario.
   const [loanBatchSeed, setLoanBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
+  // Lector USB estando en el Inicio: cae en su barra de acción.
+  const [dashScan, setDashScan] = useState<{ code: string; nonce: number } | undefined>();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -335,7 +339,12 @@ export function App() {
   }, [view, search, clearSearch]);
 
   // Escáner USB global: con ritmo de lector, fuera de campos y diálogos.
+  // En el Inicio lo escaneado cae en la barra de acción; en el resto, a Préstamos.
   useGlobalScanner(Boolean(user), code => {
+    if (viewRef.current === 'dashboard') {
+      setDashScan(current => ({ code, nonce: (current?.nonce || 0) + 1 }));
+      return;
+    }
     setLoanSeed('');
     window.setTimeout(() => setLoanSeed(code), 0);
     navigate('loans');
@@ -392,6 +401,12 @@ export function App() {
     } finally {
       void refreshMovements(true);
     }
+  };
+
+  // Después de un Deshacer del Inicio: equipos y movimientos al día.
+  const afterLoanChange = async () => {
+    await refresh({ force: true, wait: true });
+    void refreshMovements(true);
   };
 
   // Devolver desde una tabla (dashboard o dispositivos) resuelve en el acto en
@@ -456,6 +471,7 @@ export function App() {
   // Lo que se mandó a Préstamos se usa una vez: al salir de la vista se olvida,
   // si no, volver a Préstamos más tarde volvía a cargar el mismo equipo o lote.
   useEffect(() => {
+    if (view !== 'dashboard') setDashScan(undefined);
     if (view === 'loans') return;
     setLoanSeed('');
     setLoanBatchSeed(undefined);
@@ -582,7 +598,7 @@ export function App() {
           trabajo la espera se siente como lentitud. */}
       <div key={view} className="view-enter">
       <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
-      {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={navigate} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
+      {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={devices} sync={sync} agenda={agenda.items} tasks={tasks.items} movements={movements} siteSettings={siteSettings} scan={dashScan} canOpen={target => navItems.some(item => item.key === target)} onNavigate={navigate} onOpenLoans={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onLoanChanged={afterLoanChange} onRefresh={() => refresh({ force: true, wait: true })} onAgendaSave={agenda.save} />}
       {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} allDevices={devices} siteCode={activeSite} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} pageTag={devicePage?.tag} pageEdit={devicePage?.edit} onOpenPage={openDevicePage} onNavigate={navigate} />}
       {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onRefresh={() => Promise.all([refresh({ force: true, wait: true }), refreshMovements(true)])} siteCode={activeSite} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} scanRequest={scanRequest} />}
       {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
