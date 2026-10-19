@@ -1,4 +1,5 @@
 import type { Device, InventoryItem } from '../../types';
+import { matchesOperationalAlias } from '../../utils/classifyDevice';
 
 // Los dos mundos siguen viviendo en sus tablas (local_devices e inventory_items);
 // esto solo los normaliza a una forma común para poder mostrarlos juntos.
@@ -15,6 +16,7 @@ export interface Entry {
   /** Fecha ISO de la última revisión de condición. Vacío = nunca se revisó. */
   revisadoAt: string;
   cantidad: number | null;
+  minStock: number | null;
   unidad: string;
   bajoStock: boolean;
   imagenUrl: string;
@@ -30,37 +32,115 @@ export interface Entry {
   item?: InventoryItem;
 }
 
+export const FORM_CATEGORIES = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Filamento 3D', 'Otro'];
+
 // ── Regla única de "revisado" ───────────────────────────────────────────────
 // Un activo está revisado si su última revisión tiene menos de 3 meses. De acá
-// salen los DOS consumos: el KPI "Revisado %" y el cartelito de la tarjeta. Si
-// cada uno usara su propio criterio la pantalla se contradiría sola.
+// salen TODOS los consumos: el KPI "Revisado", el cartel de la tarjeta, la
+// columna Revisión y la portada. Si cada uno usara su propio criterio la
+// pantalla se contradiría sola.
 export const REVIEW_MAX_AGE_DAYS = 92;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function isReviewFresh(entry: Entry, now = Date.now()) {
+export function isReviewFresh(entry: Pick<Entry, 'condicion' | 'revisadoAt'>, now = Date.now()) {
   if (!entry.condicion || !entry.revisadoAt) return false;
   const stamp = Date.parse(entry.revisadoAt);
   if (!Number.isFinite(stamp)) return false;
-  return now - stamp < REVIEW_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  return now - stamp < REVIEW_MAX_AGE_DAYS * DAY_MS;
 }
 
-// Texto para el cartelito y el detalle: "Nunca revisado" / "Revisado hace 5 meses".
-export function reviewLabel(entry: Entry, now = Date.now()) {
-  if (!entry.condicion || !entry.revisadoAt) return 'Nunca revisado';
+function reviewAgeDays(entry: Pick<Entry, 'condicion' | 'revisadoAt'>, now: number) {
+  if (!entry.condicion || !entry.revisadoAt) return null;
   const stamp = Date.parse(entry.revisadoAt);
-  if (!Number.isFinite(stamp)) return 'Nunca revisado';
-  const days = Math.max(0, Math.floor((now - stamp) / (24 * 60 * 60 * 1000)));
+  if (!Number.isFinite(stamp)) return null;
+  return Math.max(0, Math.floor((now - stamp) / DAY_MS));
+}
+
+// Texto largo (detalle, recorrido): "Nunca revisado" / "Revisado hace 5 meses".
+export function reviewLabel(entry: Pick<Entry, 'condicion' | 'revisadoAt'>, now = Date.now()) {
+  const days = reviewAgeDays(entry, now);
+  if (days === null) return 'Nunca revisado';
   if (days < 1) return 'Revisado hoy';
   if (days < 31) return `Revisado hace ${days} ${days === 1 ? 'día' : 'días'}`;
   const meses = Math.floor(days / 30.44);
   return `Revisado hace ${meses} ${meses === 1 ? 'mes' : 'meses'}`;
 }
 
-// Clase CSS del punto de condición. Vive acá porque la usan la tarjeta, la
-// tabla y el detalle.
-export function conditionClass(condicion: string) {
-  const value = String(condicion || '').trim().toLowerCase();
-  if (!value) return 'is-sin-revisar';
-  return `is-${value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`;
+// Texto corto para la columna Revisión: "Hoy", "12 d", "4 meses", "Nunca".
+export function reviewShort(entry: Pick<Entry, 'condicion' | 'revisadoAt'>, now = Date.now()) {
+  const days = reviewAgeDays(entry, now);
+  if (days === null) return 'Nunca';
+  if (days < 1) return 'Hoy';
+  if (days < 31) return `${days} d`;
+  const meses = Math.floor(days / 30.44);
+  return `${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+}
+
+export type Tone = 'normal' | 'muted' | 'warn' | 'bad';
+
+/** Regular en ámbar, Malo en rojo, el resto sin marcar; "Sin revisar" atenuado. */
+export function conditionTone(condicion: string): Tone {
+  if (condicion === 'Regular') return 'warn';
+  if (condicion === 'Malo') return 'bad';
+  return condicion ? 'normal' : 'muted';
+}
+
+export function isProblem(entry: Pick<Entry, 'condicion'>) {
+  return entry.condicion === 'Regular' || entry.condicion === 'Malo';
+}
+
+/** Stock o vida útil en una línea mono y su estado en texto (nunca barritas). */
+export function stockInfo(entry: Entry): { value: string; tone: Tone; note: string; noteTone: Tone } {
+  if (entry.kind === 'equipo') {
+    if (entry.vidaPct === null) return { value: '—', tone: 'muted', note: '', noteTone: 'muted' };
+    if (entry.vencido) return { value: `${entry.vidaPct} %`, tone: 'bad', note: 'Vencida', noteTone: 'bad' };
+    const year = /^\d{4}/.test(entry.renovacion) ? entry.renovacion.slice(0, 4) : '';
+    return { value: `${entry.vidaPct} %`, tone: 'normal', note: year ? `renueva ${year}` : '', noteTone: 'muted' };
+  }
+  const cantidad = entry.cantidad ?? 0;
+  const value = `${cantidad} / mín. ${entry.minStock ?? 3}`;
+  if (cantidad <= 0) return { value, tone: 'bad', note: 'Sin stock', noteTone: 'bad' };
+  if (entry.bajoStock) return { value, tone: 'warn', note: 'Bajo stock', noteTone: 'warn' };
+  return { value, tone: 'normal', note: '', noteTone: 'muted' };
+}
+
+/** Miniatura sin foto: "T34" para Touch 34, iniciales para un recurso. */
+export function thumbText(entry: Entry) {
+  if (entry.kind === 'equipo') {
+    const match = entry.nombre.match(/^(\S)\S*\s+(\d+)/);
+    return match ? `${match[1]}${match[2]}`.toUpperCase() : entry.nombre.replace(/^D/i, '').slice(-4);
+  }
+  const words = entry.nombre.replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean);
+  return `${words[0]?.[0] || ''}${words[1]?.[0] || ''}`.toUpperCase() || '—';
+}
+
+/** "2030-05-10" → "10/05/2030" sin pasar por Date (evita el corrimiento UTC). */
+export function formatDay(value: string) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : value || '—';
+}
+
+// ── Búsqueda ────────────────────────────────────────────────────────────────
+// Equipos: el mismo motor de alias que Dispositivos (touch 34 = touch34 =
+// 34touch, D1436, 1436, plani 5, planificación 5), más modelo, marca, SN y MAC.
+// Recursos: "contiene" sin tildes, mayúsculas ni símbolos.
+export function normalizeQuery(value: unknown) {
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+}
+
+export function entryMatches(entry: Entry, query: string, needle = normalizeQuery(query)) {
+  if (!needle) return true;
+  if (entry.device) {
+    if (matchesOperationalAlias(entry.device, query)) return true;
+    // "34touch" / "planificación 5" contra el alias que se ve ("Touch 34",
+    // "Plani 5"), aunque el tipo del equipo no salga de su filtro.
+    const alias = normalizeQuery(entry.nombre);
+    const plani = needle.replace(/planificacion|plano|plan(?!i)/g, 'plani');
+    const swapped = plani.replace(/^(\d+)([a-z]+)$/, '$2$1');
+    if (alias.includes(plani) || alias.includes(swapped)) return true;
+  }
+  return [entry.nombre, entry.detalle, entry.categoria, entry.subcategoria, entry.condicion, entry.sn, entry.mac]
+    .some(value => value && normalizeQuery(value).includes(needle));
 }
 
 export function deviceToEntry(device: Device): Entry {
@@ -76,6 +156,7 @@ export function deviceToEntry(device: Device): Entry {
     condicion: device.condition || '',
     revisadoAt: device.lastReviewedAt || '',
     cantidad: null,
+    minStock: null,
     unidad: '',
     bajoStock: false,
     imagenUrl: '',
@@ -102,6 +183,7 @@ export function itemToEntry(item: InventoryItem): Entry {
     condicion: item.condicion || '',
     revisadoAt: item.condicionUpdatedAt || '',
     cantidad: Number(item.cantidad || 0),
+    minStock: Number.isFinite(Number(item.minStock)) ? Number(item.minStock) : 3,
     unidad: item.unidad || 'unidades',
     bajoStock: Boolean(item.bajoStock),
     imagenUrl: item.imagenUrl || '',
@@ -115,6 +197,17 @@ export function itemToEntry(item: InventoryItem): Entry {
     unidadesConFalla: Number(item.unidadesConFalla || 0),
     item
   };
+}
+
+const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+export const compareText = (a: string, b: string) => collator.compare(a || '', b || '');
+
+/** Orden del listado: categoría → sin subcategoría primero → subcategoría → nombre (Touch 2 antes que Touch 10). */
+export function compareEntries(a: Entry, b: Entry) {
+  return compareText(a.categoria, b.categoria)
+    || (a.subcategoria ? 1 : 0) - (b.subcategoria ? 1 : 0)
+    || compareText(a.subcategoria, b.subcategoria)
+    || compareText(a.nombre, b.nombre);
 }
 
 export interface Group {
@@ -143,22 +236,19 @@ export function groupEntries(entries: Entry[]): Group[] {
   }
   const now = Date.now();
   return [...byCategoria.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0], 'es'))
+    .sort((a, b) => compareText(a[0], b[0]))
     .map(([categoria, subs]) => {
       const flat = [...subs.values()].flat();
       return {
         categoria,
         total: flat.length,
         subgroups: [...subs.entries()]
-          .sort((a, b) => (a[0] ? 1 : 0) - (b[0] ? 1 : 0) || a[0].localeCompare(b[0], 'es'))
-          .map(([subcategoria, list]) => ({
-            subcategoria,
-            entries: list.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
-          })),
+          .sort((a, b) => (a[0] ? 1 : 0) - (b[0] ? 1 : 0) || compareText(a[0], b[0]))
+          .map(([subcategoria, list]) => ({ subcategoria, entries: list.sort((a, b) => compareText(a.nombre, b.nombre)) })),
         equipos: flat.filter(entry => entry.kind === 'equipo').length,
         recursos: flat.filter(entry => entry.kind === 'recurso').length,
         aRevisar: flat.filter(entry => !isReviewFresh(entry, now)).length,
-        conProblema: flat.filter(entry => entry.condicion === 'Regular' || entry.condicion === 'Malo' || entry.vencido || entry.bajoStock).length,
+        conProblema: flat.filter(entry => isProblem(entry) || entry.vencido || entry.bajoStock).length,
         portada: flat.find(entry => entry.imagenUrl)?.imagenUrl || ''
       };
     });

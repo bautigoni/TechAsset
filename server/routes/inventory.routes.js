@@ -4,8 +4,9 @@ import crypto from 'node:crypto';
 import { Router } from 'express';
 import { config } from '../config.js';
 import { getDb, nowIso } from '../db.js';
-import { requireSite } from '../services/siteContext.service.js';
+import { canEditModule, requireSite } from '../services/siteContext.service.js';
 import { CONDITIONS, recordConditionChange } from '../services/lifecycle.service.js';
+import { invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
 
 export const inventoryRouter = Router();
 
@@ -88,6 +89,85 @@ inventoryRouter.delete('/inventory/items/:id', (req, res) => {
   res.json({ ok: true, deleted: result.changes > 0 });
 });
 
+/* ── Papelera de recursos ──────────────────────────────────────────────────
+   Ocultar es un soft delete (activo=0, deleted_at, deleted_by). Antes no había
+   vuelta atrás desde la UI: el Deshacer y la lista de ocultos usan esto. */
+
+inventoryRouter.get('/inventory/items/hidden', (req, res) => {
+  const siteCode = requireSite(req);
+  const rows = getDb().prepare(`
+    SELECT * FROM inventory_items
+    WHERE site_code=?
+      AND (COALESCE(activo,1)=0 OR (deleted_at IS NOT NULL AND TRIM(deleted_at)<>''))
+    ORDER BY deleted_at DESC, lower(nombre)
+    LIMIT 200
+  `).all(siteCode);
+  res.json({ ok: true, items: rows.map(row => rowToInventoryItem(row)) });
+});
+
+inventoryRouter.post('/inventory/items/:id/restore', (req, res) => {
+  const siteCode = requireSite(req);
+  const ts = nowIso();
+  const result = getDb().prepare(`
+    UPDATE inventory_items
+    SET activo=1, deleted_at='', deleted_by='', updated_at=?
+    WHERE id=? AND site_code=?
+  `).run(ts, req.params.id, siteCode);
+  if (!result.changes) return res.status(404).json({ ok: false, error: 'Recurso no encontrado.' });
+  res.json({ ok: true, item: readInventoryItem(siteCode, req.params.id) });
+});
+
+/* ── Deshacer la última calificación del recorrido de revisión ─────────────
+   Volver a mandar la condición anterior por los PATCH normales no alcanza: la
+   fecha de revisión quedaría en "hoy" y un recurso que estaba vencido pasaría
+   a contar como revisado. Esto restaura exactamente condición, fecha y clase
+   (o categoría) de antes. */
+
+inventoryRouter.post('/inventory/review/undo', (req, res) => {
+  const siteCode = requireSite(req);
+  const kind = String(req.body?.kind || '');
+  const condicionRaw = String(req.body?.condicion ?? '').trim();
+  const condicion = CONDITIONS.includes(condicionRaw) ? condicionRaw : '';
+  const reviewedAt = String(req.body?.reviewedAt ?? '').trim().slice(0, 40);
+  const operador = req.user?.nombre || req.user?.email || '';
+  const ts = nowIso();
+
+  if (kind === 'recurso') {
+    const old = getDb().prepare('SELECT * FROM inventory_items WHERE id=? AND site_code=?').get(req.body?.id, siteCode);
+    if (!old) return res.status(404).json({ ok: false, error: 'Recurso no encontrado.' });
+    const categoria = req.body?.categoria === undefined ? (old.categoria || 'Otro') : (String(req.body.categoria || '').trim() || 'Otro');
+    getDb().prepare('UPDATE inventory_items SET condicion=?, condicion_updated_at=?, categoria=?, updated_at=? WHERE id=? AND site_code=?')
+      .run(condicion, reviewedAt, categoria, ts, old.id, siteCode);
+    if (condicion !== String(old.condicion || '')) {
+      recordConditionChange({ siteCode, etiqueta: old.nombre, condicion, operador, origen: 'Revisión (deshacer)' });
+    }
+    return res.json({ ok: true, item: readInventoryItem(siteCode, old.id) });
+  }
+
+  if (kind === 'equipo') {
+    // La condición de los equipos es del módulo Dispositivos (igual que el
+    // PATCH /devices/:etiqueta/metadata); esta ruta, por estar bajo /inventory,
+    // ya exigió permiso de Inventario.
+    if (!canEditModule(req, 'devices')) return res.status(403).json({ ok: false, error: 'Tu rol no tiene permiso para modificar este módulo.' });
+    const tag = String(req.body?.etiqueta || '').trim().toUpperCase();
+    if (!tag) return res.status(400).json({ ok: false, error: 'Falta la etiqueta.' });
+    const previous = getDb().prepare('SELECT * FROM device_metadata WHERE site_code=? AND upper(device_tag)=upper(?)').get(siteCode, tag);
+    if (!previous) return res.status(404).json({ ok: false, error: 'No hay una revisión para deshacer.' });
+    const assetClass = req.body?.assetClass === undefined ? String(previous.asset_class || '') : String(req.body.assetClass || '').trim();
+    getDb().prepare('UPDATE device_metadata SET condition=?, last_reviewed_at=?, asset_class=?, updated_by=?, updated_at=? WHERE site_code=? AND upper(device_tag)=upper(?)')
+      .run(condicion, reviewedAt, assetClass, operador, ts, siteCode, tag);
+    if (condicion !== String(previous.condition || '')) {
+      recordConditionChange({ siteCode, etiqueta: previous.device_tag, condicion, operador, origen: 'Revisión (deshacer)' });
+    }
+    // Esta ruta no pasa por el hook de /devices: la vida útil decorada se
+    // cachea por versión del inventario y tiene que ver la condición restaurada.
+    invalidateDeviceInventoryCache('review-undo', siteCode);
+    return res.json({ ok: true, condition: condicion, assetClass, lastReviewedAt: reviewedAt });
+  }
+
+  return res.status(400).json({ ok: false, error: 'Tipo de ítem desconocido.' });
+});
+
 /* ── Unidades individuales de un recurso ───────────────────────────────────
    Un recurso puede tener 8 unidades y que solo una esté rota. Antes la única
    forma de anotarlo era duplicar la ficha ("dash" + "dash roto"); acá cada
@@ -111,6 +191,31 @@ inventoryRouter.post('/inventory/items/:id/units', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '', '', ?, ?)
   `).run(siteCode, item.id, payload.numero || nextUnitNumber(siteCode, item.id), payload.descripcion, payload.sn, payload.mac, payload.teamviewerId, payload.condicion, payload.condicion ? ts : '', ts, ts);
   res.json({ ok: true, units: listUnits(siteCode, item.id), item: readInventoryItem(siteCode, item.id) });
+});
+
+// "Crear las N": antes eran N POST en serie desde el navegador (con Supabase,
+// varios segundos sin progreso). Ahora es un request y una transacción, con el
+// mismo tope de 60 que tenía la UI.
+const UNITS_BATCH_LIMIT = 60;
+
+inventoryRouter.post('/inventory/items/:id/units/batch', (req, res) => {
+  const siteCode = requireSite(req);
+  const item = getDb().prepare('SELECT id FROM inventory_items WHERE id=? AND site_code=?').get(req.params.id, siteCode);
+  if (!item) return res.status(404).json({ ok: false, error: 'Recurso no encontrado.' });
+  const requested = Math.floor(Number(req.body?.count));
+  if (!Number.isFinite(requested) || requested < 1) return res.status(400).json({ ok: false, error: 'Indicá cuántas unidades crear.' });
+  const count = Math.min(requested, UNITS_BATCH_LIMIT);
+  const ts = nowIso();
+  const insert = getDb().prepare(`
+    INSERT INTO inventory_units (site_code, item_id, numero, descripcion, sn, mac, teamviewer_id, condicion, condicion_updated_at, activo, deleted_at, deleted_by, created_at, updated_at)
+    VALUES (?, ?, ?, '', '', '', '', '', '', 1, '', '', ?, ?)
+  `);
+  const tx = getDb().transaction(() => {
+    const start = Number(nextUnitNumber(siteCode, item.id));
+    for (let i = 0; i < count; i += 1) insert.run(siteCode, item.id, String(start + i), ts, ts);
+  });
+  tx();
+  res.json({ ok: true, created: count, capped: count < requested, units: listUnits(siteCode, item.id), item: readInventoryItem(siteCode, item.id) });
 });
 
 inventoryRouter.patch('/inventory/units/:unitId', (req, res) => {

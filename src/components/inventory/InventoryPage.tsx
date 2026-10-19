@@ -1,46 +1,61 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import '../../styles/screens/inventory.css';
 import type { Device, InventoryItem } from '../../types';
 import { CONDITION_VALUES } from '../../types';
-import { createInventoryItem, deleteInventoryItem, getInventoryItems, importInventoryCsv, updateInventoryItem, uploadInventoryImage } from '../../services/inventoryApi';
+import { deleteInventoryItem, getInventoryItems, restoreInventoryItem, undoInventoryReview, updateInventoryItem, type ReviewUndoPayload } from '../../services/inventoryApi';
 import { updateDeviceMetadata } from '../../services/devicesApi';
-import { Button } from '../layout/Button';
-import { Modal } from '../layout/Modal';
-import { SelectField } from '../layout/SelectField';
-import { ConditionReviewModal } from './ConditionReviewModal';
-import { InventoryCard } from './InventoryCard';
-import { InventoryCategoryGrid } from './InventoryCategoryGrid';
-import { conditionClass, deviceToEntry, groupEntries, isReviewFresh, itemToEntry, reviewLabel, type Entry } from './inventoryEntries';
+import { Button, EmptyState, ErrorState, Eyebrow, Ring, Segmented, SkeletonRows, Table, useStatusLine, type Column, type SortState } from '../../ui';
+import { TruncatedText } from '../../ui/Truncated';
+import { IconChevronDown, IconLock, IconPlus, IconSearch, IconX } from '../../ui/icons';
 import { dayKeyAr, todayKeyAr } from '../../utils/formatters';
-import { InventoryTree } from './InventoryTree';
-import { InventoryDetail } from './InventoryDetail';
-import { confirmDialog } from '../layout/Feedback';
-import { clickableProps } from '../../utils/a11y';
 import { downloadCsv } from '../../utils/download';
+import { getActiveSiteCode } from '../../services/activeSite';
+import {
+  compareEntries, compareText, conditionTone, deviceToEntry, entryMatches, groupEntries, isProblem, isReviewFresh,
+  itemToEntry, normalizeQuery, reviewShort, stockInfo, thumbText, type Entry
+} from './inventoryEntries';
+import { Chip, ChipGroup, errorText, Tx } from './inventoryParts';
+import { InventoryTree, type TreeSelection } from './InventoryTree';
+import { InventoryCategoryGrid } from './InventoryCategoryGrid';
+import { InventoryCard } from './InventoryCard';
+import { InventoryDetail } from './InventoryDetail';
+import { ConditionReview } from './ConditionReview';
+import { ResourceForm } from './ResourceForm';
+import { HiddenPanel, ImportExportPanel } from './InventoryPanels';
 
 type Segment = 'todo' | 'equipo' | 'recurso';
 // Los KPI no son decorativos: cada uno es el filtro de lo que está contando.
 type KpiFilter = '' | 'malos' | 'vencidos' | 'bajoStock' | 'sinFoto' | 'aRevisar';
+type Panel = '' | 'review' | 'add' | 'io' | 'hidden';
+type DeviceOverride = { condition?: string; lastReviewedAt?: string; assetClass?: string; teamviewerId?: string };
 
-const FORM_CATEGORIES = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Filamento 3D', 'Otro'];
-const CONDITION_FILTER_OPTIONS = [
-  { value: '', label: 'Toda condición' },
-  ...CONDITION_VALUES.map(value => ({ value, label: value })),
-  { value: 'Sin revisar', label: 'Sin revisar' }
-];
-const CONDITION_FORM_OPTIONS = [{ value: '', label: 'Sin revisar' }, ...CONDITION_VALUES.map(value => ({ value, label: value }))];
-
-const EMPTY_FORM: Partial<InventoryItem> = {
-  nombre: '',
-  categoria: 'Otro',
-  subcategoria: '',
-  cantidad: 1,
-  unidad: 'unidades',
-  imagenUrl: '',
-  condicion: '',
-  minStock: 3,
-  observaciones: ''
+const PAGE = 20;
+const KPI_LABELS: Record<Exclude<KpiFilter, ''>, string> = {
+  malos: 'Mostrando solo lo que está Regular o Malo.',
+  vencidos: 'Mostrando solo lo que tiene la vida útil vencida.',
+  bajoStock: 'Mostrando solo los recursos en bajo stock (cantidad igual o menor al mínimo).',
+  sinFoto: 'Mostrando solo los recursos sin foto.',
+  aRevisar: 'Mostrando lo que no se revisa hace más de 3 meses (o nunca).'
 };
 
+const matchesKpi = (entry: Entry, kpi: KpiFilter, now: number) => {
+  switch (kpi) {
+    case 'malos': return isProblem(entry);
+    case 'vencidos': return entry.vencido;
+    case 'bajoStock': return entry.kind === 'recurso' && entry.bajoStock;
+    case 'sinFoto': return entry.kind === 'recurso' && !entry.imagenUrl;
+    case 'aRevisar': return !isReviewFresh(entry, now);
+    default: return true;
+  }
+};
+const matchesCondition = (entry: Entry, condicion: string) => !condicion || (condicion === 'Sin revisar' ? !entry.condicion : entry.condicion === condicion);
+
+/**
+ * Inventario TIC: equipos (local_devices) y recursos (inventory_items) juntos,
+ * con condición, revisión, vida útil y stock. Todo lo que se abre va en línea:
+ * ficha debajo de la fila o tarjeta, formulario de alta arriba, recorrido de
+ * revisión, importar/exportar y ocultos. Nada flota.
+ */
 export function InventoryPage({ devices, consultationMode, onProfile, onRefreshDevices }: {
   devices: Device[];
   consultationMode: boolean;
@@ -48,207 +63,264 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   onRefreshDevices?: () => Promise<unknown> | void;
 }) {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [form, setForm] = useState<Partial<InventoryItem>>(EMPTY_FORM);
-  const [editing, setEditing] = useState<InventoryItem | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [detailKey, setDetailKey] = useState('');
+  const [itemsLoaded, setItemsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [overrides, setOverrides] = useState<Record<string, DeviceOverride>>({});
+  const [panel, setPanel] = useState<Panel>('');
+  const [openKey, setOpenKey] = useState('');
+  const [editingKey, setEditingKey] = useState('');
+  const [openMessage, setOpenMessage] = useState<{ key: string; text: string } | null>(null);
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState<Segment>('recurso');
-  const [condicionFilter, setCondicionFilter] = useState('');
-  const [kpiFilter, setKpiFilter] = useState<KpiFilter>('');
-  const [view, setView] = useState<'grid' | 'table'>('grid');
-  const [selected, setSelected] = useState<{ categoria: string; subcategoria: string } | null>(null);
+  const [condicion, setCondicion] = useState('');
+  const [kpi, setKpi] = useState<KpiFilter>('');
+  const [view, setView] = useState<'table' | 'grid'>('table');
+  const [selected, setSelected] = useState<TreeSelection>(null);
   const [expanded, setExpanded] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [treeOpen, setTreeOpen] = useState(false);
+  const [limit, setLimit] = useState(PAGE);
+  const [sort, setSort] = useState<SortState>(null);
+  const topStatus = useStatusLine();
+  const listStatus = useStatusLine();
+  const siteCode = getActiveSiteCode();
 
-  const refresh = () => getInventoryItems()
-    .then(response => setItems(response.items))
-    .catch(error => setError(error instanceof Error ? error.message : 'No se pudo cargar el inventario.'));
+  const refresh = useCallback(() => getInventoryItems()
+    .then(response => { setItems(response.items); setLoadError(''); })
+    .catch(error => setLoadError(errorText(error, 'No se pudo cargar el inventario.')))
+    .finally(() => setItemsLoaded(true)), []);
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
 
-  const entries = useMemo<Entry[]>(
-    () => [...devices.map(deviceToEntry), ...items.map(itemToEntry)],
-    [devices, items]
-  );
+  // Lo que se guardó desde acá (condición, clase, TeamViewer) se ve en el acto;
+  // cuando el refresco de equipos ya lo trae, el parche sobra y se descarta.
+  useEffect(() => {
+    setOverrides(current => {
+      const keys = Object.keys(current);
+      if (!keys.length) return current;
+      const byTag = new Map(devices.map(device => [device.etiqueta, device]));
+      let changed = false;
+      const next: Record<string, DeviceOverride> = {};
+      for (const tag of keys) {
+        const device = byTag.get(tag);
+        const patch = current[tag];
+        const settled = device
+          && (patch.condition === undefined || (device.condition || '') === patch.condition)
+          && (patch.lastReviewedAt === undefined || (device.lastReviewedAt || '') === patch.lastReviewedAt)
+          && (patch.assetClass === undefined || !patch.assetClass || device.assetClass === patch.assetClass)
+          && (patch.teamviewerId === undefined || (device.teamviewerId || '') === patch.teamviewerId);
+        if (settled) changed = true;
+        else next[tag] = patch;
+      }
+      return changed ? next : current;
+    });
+  }, [devices]);
 
-  const filtered = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return entries
-      .filter(entry => segment === 'todo' || entry.kind === segment)
-      .filter(entry => !condicionFilter || (condicionFilter === 'Sin revisar' ? !entry.condicion : entry.condicion === condicionFilter))
-      .filter(entry => {
-        switch (kpiFilter) {
-          case 'malos': return entry.condicion === 'Regular' || entry.condicion === 'Malo';
-          case 'vencidos': return entry.vencido;
-          case 'bajoStock': return entry.kind === 'recurso' && entry.bajoStock;
-          case 'sinFoto': return entry.kind === 'recurso' && !entry.imagenUrl;
-          case 'aRevisar': return !isReviewFresh(entry);
-          default: return true;
-        }
-      })
-      .filter(entry => !needle || [entry.nombre, entry.detalle, entry.categoria, entry.subcategoria, entry.condicion]
-        .some(value => String(value || '').toLowerCase().includes(needle)));
-  }, [entries, search, segment, condicionFilter, kpiFilter]);
+  const entries = useMemo<Entry[]>(() => [
+    ...devices.map(device => {
+      const patch = overrides[device.etiqueta];
+      if (!patch) return deviceToEntry(device);
+      return deviceToEntry({
+        ...device,
+        ...(patch.condition !== undefined ? { condition: patch.condition } : {}),
+        ...(patch.lastReviewedAt !== undefined ? { lastReviewedAt: patch.lastReviewedAt } : {}),
+        ...(patch.assetClass ? { assetClass: patch.assetClass } : {}),
+        ...(patch.teamviewerId !== undefined ? { teamviewerId: patch.teamviewerId } : {})
+      });
+    }),
+    ...items.map(itemToEntry)
+  ], [devices, items, overrides]);
 
-  const groups = useMemo(() => groupEntries(filtered), [filtered]);
+  const entriesByKey = useMemo(() => new Map(entries.map(entry => [entry.key, entry])), [entries]);
 
-  // La seleccion del arbol define que se lista; sin seleccion, todo lo filtrado.
-  const listed = useMemo(() => {
-    if (!selected) return filtered;
-    return filtered.filter(entry => entry.categoria === selected.categoria
-      && (!selected.subcategoria || entry.subcategoria === selected.subcategoria));
-  }, [filtered, selected]);
-
-  // Cuando algo ya está acotando la vista (una búsqueda, un KPI, una condición)
-  // mostrar la portada de categorías escondería justo lo que se pidió ver.
-  const narrowed = Boolean(search.trim() || kpiFilter || condicionFilter);
-  const showCategories = !selected && !narrowed;
-
-  const subcategoryCards = useMemo(() => {
-    if (!selected) return [];
-    const group = groups.find(item => item.categoria === selected.categoria);
-    return (group?.subgroups || []).filter(sub => sub.subcategoria);
-  }, [groups, selected]);
-
-  // El detalle se resuelve por key contra las entradas vivas: así, después de
-  // guardar una condición o una unidad, el modal muestra el dato nuevo.
-  const detail = useMemo(() => entries.find(entry => entry.key === detailKey) || null, [entries, detailKey]);
-
+  // ── KPI (sobre TODO: son la puerta de entrada al filtro) ──────────────────
   const kpis = useMemo(() => {
-    const now = Date.now();
+    const at = Date.now();
     const equipos = entries.filter(entry => entry.kind === 'equipo');
     const recursos = entries.filter(entry => entry.kind === 'recurso');
-    // Misma regla que el cartelito de la tarjeta: revisado = hace menos de 3
-    // meses. El porcentaje viejo contaba como revisado cualquier cosa que
-    // alguna vez se miró, sin importar hace cuánto.
-    const revisados = entries.filter(entry => isReviewFresh(entry, now)).length;
+    const revisados = entries.filter(entry => isReviewFresh(entry, at)).length;
     return {
+      total: entries.length,
       equipos: equipos.length,
       recursos: recursos.length,
-      malos: entries.filter(entry => entry.condicion === 'Regular' || entry.condicion === 'Malo').length,
+      malos: entries.filter(isProblem).length,
       vencidos: equipos.filter(entry => entry.vencido).length,
       bajoStock: recursos.filter(entry => entry.bajoStock).length,
+      sinStock: recursos.filter(entry => (entry.cantidad ?? 0) <= 0).length,
       sinFoto: recursos.filter(entry => !entry.imagenUrl).length,
-      aRevisar: entries.length - revisados,
+      revisados,
       cobertura: entries.length ? Math.round((revisados / entries.length) * 100) : 0
     };
   }, [entries]);
 
-  // Tocar un KPI deja la vista mostrando exactamente lo que ese número cuenta.
-  const applyKpi = (next: KpiFilter, nextSegment?: Segment) => {
-    const isActive = kpiFilter === next;
-    setKpiFilter(isActive ? '' : next);
-    if (!isActive && nextSegment) setSegment(nextSegment);
-    setDetailKey('');
-  };
+  // ── Filtros ──────────────────────────────────────────────────────────────
+  const base = useMemo(() => {
+    const needle = normalizeQuery(search);
+    const at = Date.now();
+    return entries.filter(entry => (segment === 'todo' || entry.kind === segment)
+      && matchesKpi(entry, kpi, at)
+      && entryMatches(entry, search, needle));
+  }, [entries, segment, kpi, search]);
+  const filtered = useMemo(() => base.filter(entry => matchesCondition(entry, condicion)), [base, condicion]);
+  const groups = useMemo(() => groupEntries(filtered), [filtered]);
 
-  const toggleSegment = (next: Segment) => {
-    setSegment(next);
-    setKpiFilter('');
-  };
+  const narrowed = Boolean(search.trim() || kpi || condicion);
+  const showPortada = !selected && !narrowed;
 
-  const categorias = useMemo(() => {
-    const set = new Set([...FORM_CATEGORIES, ...items.map(item => item.categoria).filter(Boolean)]);
-    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [items]);
+  const listed = useMemo(() => {
+    if (showPortada) return [];
+    const scoped = selected
+      ? filtered.filter(entry => entry.categoria === selected.categoria && (!selected.subcategoria || entry.subcategoria === selected.subcategoria))
+      : filtered;
+    return [...scoped].sort(compareEntries);
+  }, [filtered, selected, showPortada]);
 
-  const subcategorias = useMemo(() => {
-    const set = new Set(items.filter(item => item.categoria === form.categoria).map(item => item.subcategoria).filter(Boolean));
-    return [...set].sort((a, b) => String(a).localeCompare(String(b), 'es'));
-  }, [items, form.categoria]);
+  const sortColumns = useMemo<Record<string, (entry: Entry) => string | number | null>>(() => ({
+    nombre: entry => entry.nombre,
+    categoria: entry => `${entry.categoria} ${entry.subcategoria}`,
+    seguimiento: entry => entry.kind,
+    stock: entry => (entry.kind === 'recurso' ? (entry.cantidad ?? 0) - (entry.minStock ?? 0) : entry.vidaPct),
+    condicion: entry => (entry.condicion ? CONDITION_VALUES.indexOf(entry.condicion as typeof CONDITION_VALUES[number]) : 9),
+    revision: entry => (entry.condicion && entry.revisadoAt ? Date.parse(entry.revisadoAt) || 0 : null)
+  }), []);
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setError('');
-    setModalOpen(true);
-  };
-
-  const openEdit = (item: InventoryItem) => {
-    setEditing(item);
-    setForm({
-      nombre: item.nombre,
-      categoria: item.categoria,
-      subcategoria: item.subcategoria || '',
-      cantidad: item.cantidad,
-      unidad: item.unidad,
-      imagenUrl: item.imagenUrl || '',
-      condicion: item.condicion || '',
-      minStock: item.minStock ?? 3,
-      observaciones: item.observaciones || ''
+  const ordered = useMemo(() => {
+    if (!sort) return listed;
+    const pick = sortColumns[sort.key];
+    if (!pick) return listed;
+    const factor = sort.dir === 'asc' ? 1 : -1;
+    return [...listed].sort((a, b) => {
+      const va = pick(a);
+      const vb = pick(b);
+      if (va === null || va === undefined || va === '') return vb === null || vb === undefined || vb === '' ? 0 : 1;
+      if (vb === null || vb === undefined || vb === '') return -1;
+      const diff = typeof va === 'number' && typeof vb === 'number' ? va - vb : compareText(String(va), String(vb));
+      return diff * factor || compareEntries(a, b);
     });
-    setError('');
-    setModalOpen(true);
+  }, [listed, sort, sortColumns]);
+
+  // La ficha abierta siempre se ve: si quedó más allá del corte, el corte se estira.
+  const openIndex = openKey ? ordered.findIndex(entry => entry.key === openKey) : -1;
+  const visible = ordered.slice(0, Math.max(limit, openIndex + 1));
+  const openEntry = openKey ? entriesByKey.get(openKey) || null : null;
+
+  const selGroup = selected ? groups.find(group => group.categoria === selected.categoria) : undefined;
+  const subChips = selGroup ? selGroup.subgroups.filter(sub => sub.subcategoria) : [];
+
+  // ── Cambios de filtro: vuelven al primer tramo y cierran la ficha ──────────
+  const resetList = () => { setLimit(PAGE); setOpenKey(''); setEditingKey(''); };
+  const pickSegment = (next: Segment) => { resetList(); setSegment(next); setKpi(''); setSelected(null); };
+  const toggleKpi = (next: Exclude<KpiFilter, ''>, segFor: Segment) => {
+    resetList();
+    if (kpi === next) { setKpi(''); return; }
+    setKpi(next);
+    setSegment(segFor);
+    setSelected(null);
+  };
+  const pickCategory = (next: TreeSelection) => {
+    resetList();
+    setSelected(next);
+    if (next) setExpanded(current => (current.includes(next.categoria) ? current : [...current, next.categoria]));
+    setTreeOpen(false);
+  };
+  const clearAll = () => { resetList(); setKpi(''); setCondicion(''); setSearch(''); setSelected(null); };
+
+  const togglePanel = (next: Panel) => setPanel(current => (current === next ? '' : next));
+  const toggleOpen = (key: string) => {
+    setEditingKey('');
+    setOpenMessage(null);
+    setOpenKey(current => (current === key ? '' : key));
   };
 
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!form.nombre?.trim()) return;
-    if (!form.imagenUrl?.trim()) {
-      setError('Subí una foto del recurso: es obligatoria.');
-      return;
+  // ── Escrituras ───────────────────────────────────────────────────────────
+  const patchDevice = (etiqueta: string, patch: DeviceOverride) => setOverrides(current => ({ ...current, [etiqueta]: { ...current[etiqueta], ...patch } }));
+  const replaceItem = (next: InventoryItem) => setItems(current => current.map(item => (item.id === next.id ? next : item)));
+
+  const setEntryCondition = async (entry: Entry, value: string) => {
+    if (entry.device) {
+      // Mismo contrato que antes: la condición del equipo viaja con su clase.
+      const response = await updateDeviceMetadata(entry.device.etiqueta, { condition: value, assetClass: entry.categoria, origen: 'Inventario' });
+      patchDevice(entry.device.etiqueta, { condition: response.condition, lastReviewedAt: response.lastReviewedAt, assetClass: response.assetClass });
+      void onRefreshDevices?.();
+    } else if (entry.item) {
+      // `revisado`: una revisión de verdad refresca la fecha aunque la condición quede igual.
+      const response = await updateInventoryItem(entry.item.id, { condicion: value, revisado: true });
+      replaceItem(response.item);
     }
-    setBusy(true);
-    setError('');
-    setMessage('');
-    try {
-      if (editing) await updateInventoryItem(editing.id, form);
-      else await createInventoryItem(form);
-      setModalOpen(false);
-      setEditing(null);
-      setForm(EMPTY_FORM);
-      setMessage(editing ? 'Recurso actualizado.' : 'Recurso agregado.');
-      await refresh();
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'No se pudo guardar el ítem.');
-    } finally {
-      setBusy(false);
-    }
+  };
+
+  const saveTeamviewer = async (device: Device, value: string) => {
+    // Sin `condition`: cargar el ID no es revisar el equipo, no mueve la fecha.
+    await updateDeviceMetadata(device.etiqueta, { teamviewerId: value, origen: 'Inventario' });
+    patchDevice(device.etiqueta, { teamviewerId: value });
+    void onRefreshDevices?.();
   };
 
   const hideItem = async (item: InventoryItem) => {
-    if (!(await confirmDialog({ title: 'Ocultar ítem', message: `¿Ocultar ${item.nombre} del inventario?`, confirmLabel: 'Ocultar', danger: true }))) return;
-    setError('');
-    try {
-      await deleteInventoryItem(item.id);
-      setMessage('Recurso ocultado.');
-      setDetailKey('');
-      await refresh();
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'No se pudo ocultar el recurso.');
-    }
-  };
-
-  const setEntryCondition = async (entry: Entry, condicion: string) => {
-    setError('');
-    try {
-      if (entry.device) {
-        await updateDeviceMetadata(entry.device.etiqueta, { condition: condicion, assetClass: entry.categoria, origen: 'Inventario' });
-        await onRefreshDevices?.();
-      } else if (entry.item) {
-        // `revisado`: esto es una revisión de verdad, refrescá la fecha aunque
-        // la condición quede igual que antes.
-        await updateInventoryItem(entry.item.id, { condicion, revisado: true });
-        await refresh();
+    await deleteInventoryItem(item.id);
+    setItems(current => current.filter(entry => entry.id !== item.id));
+    setOpenKey('');
+    setEditingKey('');
+    listStatus.show({
+      tone: 'info',
+      message: `${item.nombre} se ocultó del inventario.`,
+      undo: {
+        seconds: 10,
+        onUndo: async () => {
+          try {
+            const response = await restoreInventoryItem(item.id);
+            const restored = response.item || item;
+            setItems(current => (current.some(entry => entry.id === restored.id) ? current : [...current, restored].sort((a, b) => compareText(a.nombre, b.nombre))));
+            setOpenKey(`i:${restored.id}`);
+            setOpenMessage({ key: `i:${restored.id}`, text: 'Se volvió a mostrar.' });
+            listStatus.clear();
+          } catch (reason) {
+            listStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudo volver a mostrar el recurso.'), retry: { onRetry: () => restoreInventoryItem(item.id).then(() => refresh()) } });
+          }
+        }
       }
-      setMessage(`${entry.nombre}: ${condicion || 'sin revisar'}.`);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'No se pudo guardar la condición.');
+    });
+  };
+
+  const onResourceCreated = (item: InventoryItem) => {
+    setItems(current => [...current, item]);
+    setPanel('');
+    // Que el recurso nuevo quede a la vista con su ficha abierta.
+    setSegment(current => (current === 'equipo' ? 'recurso' : current));
+    setKpi('');
+    setCondicion('');
+    setSearch('');
+    setSelected({ categoria: item.categoria || 'Otro', subcategoria: '' });
+    setExpanded(current => (current.includes(item.categoria) ? current : [...current, item.categoria]));
+    setLimit(Number.MAX_SAFE_INTEGER);
+    setOpenKey(`i:${item.id}`);
+    setOpenMessage({ key: `i:${item.id}`, text: `Se agregó ${item.nombre}.` });
+  };
+
+  // Recorrido: cada calificación se ve en la lista sin recargar todo.
+  const rateDevice = async (etiqueta: string, value: string, assetClass: string) => {
+    const response = await updateDeviceMetadata(etiqueta, { condition: value, assetClass, origen: 'Revisión' });
+    patchDevice(etiqueta, { condition: response.condition, lastReviewedAt: response.lastReviewedAt, assetClass: response.assetClass });
+  };
+  const rateItem = async (id: number, value: string, categoria: string) => {
+    const response = await updateInventoryItem(id, { condicion: value, categoria, revisado: true });
+    replaceItem(response.item);
+  };
+  const undoRating = async (payload: ReviewUndoPayload) => {
+    const response = await undoInventoryReview(payload);
+    if (payload.kind === 'equipo') {
+      patchDevice(payload.etiqueta, { condition: response.condition ?? payload.condicion, lastReviewedAt: response.lastReviewedAt ?? payload.reviewedAt, assetClass: response.assetClass || undefined });
+    } else if (response.item) {
+      replaceItem(response.item);
     }
   };
-
-  // Guardar una unidad devuelve el recurso con los contadores nuevos: se
-  // reemplaza en el listado sin tener que releer todo el inventario.
-  const replaceItem = (next: InventoryItem) => {
-    setItems(current => current.map(item => (item.id === next.id ? next : item)));
+  const exitReview = (rated: number) => {
+    setPanel('');
+    if (rated) topStatus.show({ tone: 'ok', message: `Recorrido cerrado: ${rated} ${rated === 1 ? 'ítem calificado' : 'ítems calificados'} en esta pasada.` });
+    void onRefreshDevices?.();
+    void refresh();
   };
 
+  // ── Exportar ─────────────────────────────────────────────────────────────
   const exportCsv = () => {
     const headers = ['Tipo', 'Nombre', 'Categoría', 'Subcategoría', 'Condición', 'Última revisión', 'Cantidad', 'Unidad', 'Vida consumida %', 'Renovación'];
     const rows = filtered.map(entry => [
@@ -257,333 +329,373 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
       entry.revisadoAt ? (dayKeyAr(entry.revisadoAt) || entry.revisadoAt.slice(0, 10)) : '',
       entry.cantidad ?? '', entry.unidad, entry.vidaPct ?? '', entry.renovacion
     ]);
-    downloadCsv(`inventario-${todayKeyAr()}.csv`, [headers, ...rows]);
+    const name = `inventario-${todayKeyAr()}.csv`;
+    downloadCsv(name, [headers, ...rows]);
+    topStatus.show({ tone: 'ok', message: `Se descargó ${name} con ${filtered.length} ${filtered.length === 1 ? 'ítem' : 'ítems'} (lo filtrado, no solo la categoría abierta).` });
   };
-
-  const exportExample = () => {
+  const exportTemplate = () => {
     downloadCsv('plantilla-inventario-tic.csv', [
       ['Nombre', 'Cantidad', 'Categoría', 'Subcategoría', 'Unidad', 'Condición', 'Stock mínimo', 'Observaciones', 'Imagen URL'],
       ['LEDs', 100, 'Componentes', 'Diodos', 'unidades', 'Bueno', 10, 'Stock general', ''],
       ['Sensores de distancia', 34, 'Sensores', 'Ultrasonido', 'unidades', 'Regular', 5, 'HC-SR04', '']
     ]);
+    topStatus.show({ tone: 'ok', message: 'Se descargó plantilla-inventario-tic.csv (2 filas de ejemplo).' });
   };
 
-  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = '';
-    if (!file) return;
-    setBusy(true);
-    setError('');
-    setMessage('');
-    try {
-      const result = await importInventoryCsv(await readFileAsText(file));
-      const preserved = [
-        result.preservedImages ? `${result.preservedImages} fotos` : '',
-        result.preservedConditions ? `${result.preservedConditions} condiciones` : ''
-      ].filter(Boolean).join(' y ');
-      setMessage(`Importación finalizada: ${result.read} leídos, ${result.created} nuevos, ${result.updated} actualizados${preserved ? `, ${preserved} conservadas` : ''}, ${result.skipped} omitidos, ${result.errors.length} errores.`);
-      await refresh();
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'No se pudo importar el inventario.');
-    } finally {
-      setBusy(false);
-    }
-  };
+  // ── Ficha en línea ───────────────────────────────────────────────────────
+  const renderDetail = (entry: Entry) => (
+    <InventoryDetail
+      key={entry.key}
+      entry={entry}
+      items={items}
+      consultationMode={consultationMode}
+      editing={editingKey === entry.key}
+      onStartEdit={() => { if (!consultationMode) setEditingKey(entry.key); }}
+      onCancelEdit={() => setEditingKey('')}
+      onSaved={item => { replaceItem(item); setEditingKey(''); }}
+      onCondition={value => setEntryCondition(entry, value)}
+      onHide={hideItem}
+      onProfile={onProfile}
+      onItemChange={replaceItem}
+      onTeamviewer={saveTeamviewer}
+      onClose={() => { setOpenKey(''); setEditingKey(''); }}
+      initialMessage={openMessage?.key === entry.key ? openMessage.text : undefined}
+    />
+  );
 
-  const handleImageFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = '';
-    if (!file) return;
-    setUploadingImage(true);
-    setError('');
-    try {
-      const response = await uploadInventoryImage({ fileName: file.name, dataUrl: await readFileAsDataUrl(file) });
-      setForm(current => ({ ...current, imagenUrl: response.url }));
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'No se pudo subir la imagen.');
-    } finally {
-      setUploadingImage(false);
+  const columns = useMemo<Column<Entry>[]>(() => [
+    {
+      key: 'foto', header: 'Foto', width: '2.5rem', card: 'meta',
+      cell: entry => (
+        <span className={`ivt-thumb${entry.imagenUrl ? ' has-photo' : ''}`}>
+          {entry.imagenUrl ? <img src={entry.imagenUrl} alt="" loading="lazy" /> : <span className="ivt-mono">{thumbText(entry)}</span>}
+        </span>
+      )
+    },
+    {
+      key: 'nombre', header: 'Nombre', width: 'minmax(0, 2fr)', card: 'title', sortValue: entry => entry.nombre,
+      cell: entry => (
+        <span className="ivt-cell-stack">
+          <TruncatedText className="ivt-strong">{entry.nombre}</TruncatedText>
+          {entry.detalle && <TruncatedText className={`ivt-sub${entry.kind === 'equipo' ? ' ivt-mono' : ''}`}>{entry.detalle}</TruncatedText>}
+        </span>
+      )
+    },
+    {
+      key: 'categoria', header: 'Categoría', width: 'minmax(0, 1.3fr)', sortValue: entry => `${entry.categoria} ${entry.subcategoria}`,
+      cell: entry => <TruncatedText className="ivt-sub2">{[entry.categoria, entry.subcategoria].filter(Boolean).join(' › ')}</TruncatedText>
+    },
+    {
+      key: 'seguimiento', header: 'Seguimiento', width: '6.5rem', card: 'hide', sortValue: entry => entry.kind,
+      cell: entry => <Tx tone="normal">{entry.kind === 'equipo' ? 'Individual' : 'Stock'}</Tx>
+    },
+    {
+      key: 'stock', header: 'Stock / vida', width: '7.5rem', sortValue: sortColumns.stock,
+      cell: entry => {
+        const stock = stockInfo(entry);
+        return (
+          <span className="ivt-cell-stack">
+            <Tx tone={stock.tone} mono>{stock.value}</Tx>
+            {stock.note && <Tx tone={stock.noteTone} className="ivt-small">{stock.note}</Tx>}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'condicion', header: 'Condición', width: '6.5rem', sortValue: sortColumns.condicion,
+      cell: entry => <Tx tone={conditionTone(entry.condicion)}>{entry.condicion || 'Sin revisar'}</Tx>
+    },
+    {
+      key: 'revision', header: 'Revisión', width: '5.5rem', card: 'hide', sortValue: sortColumns.revision,
+      cell: entry => <Tx tone={isReviewFresh(entry) ? 'normal' : entry.condicion ? 'warn' : 'muted'}>{reviewShort(entry)}</Tx>
+    },
+    {
+      key: 'abrir', header: <span className="ivt-sr">Abrir</span>, cardLabel: '', width: '1.25rem', card: 'meta',
+      cell: entry => <IconChevronDown size={16} className={`ivt-chev${openKey === entry.key ? ' is-open' : ''}`} />
     }
-  };
+  ], [openKey, sortColumns]);
+
+  // ── Encabezado ───────────────────────────────────────────────────────────
+  const kpiButton = ({ id, label, value, tone, note, noteTone, pressed, onClick, ring }: {
+    id: string; label: string; value: ReactNode; tone?: 'warn' | 'bad'; note?: string; noteTone?: 'bad' | 'muted'; pressed: boolean; onClick: () => void; ring?: ReactNode;
+  }) => (
+    <button key={id} type="button" className={`ivt-kpi${ring ? ' ivt-kpi--wide' : ''}`} aria-pressed={pressed} onClick={onClick}
+      aria-label={`${label}: ${typeof value === 'string' || typeof value === 'number' ? value : ''}${note ? `, ${note}` : ''}${pressed ? '. Filtro activo' : ''}`}>
+      {ring}
+      <span className="ivt-kpi-text">
+        <TruncatedText className="ivt-kpi-label">{label}</TruncatedText>
+        <span className="ivt-kpi-line">
+          <span className={`ivt-kpi-n ivt-mono${tone ? ` is-${tone}` : ''}`}>{value}</span>
+          {note && <Tx tone={noteTone || 'muted'} className="ivt-small ivt-ell">{note}</Tx>}
+        </span>
+      </span>
+    </button>
+  );
+
+  const revTone = kpis.cobertura <= 0 && kpis.total ? 'bad' : kpis.cobertura <= 20 && kpis.total ? 'warn' : undefined;
+  const emptyAlt = (() => {
+    if (segment === 'todo' && !selected) return 0;
+    const at = Date.now();
+    const needle = normalizeQuery(search);
+    return entries.filter(entry => matchesKpi(entry, kpi, at) && entryMatches(entry, search, needle) && matchesCondition(entry, condicion)).length;
+  })();
+
+  const crumbCount = showPortada
+    ? `${groups.length} ${groups.length === 1 ? 'categoría' : 'categorías'}`
+    : `${listed.length} ${listed.length === 1 ? 'ítem' : 'ítems'}`;
 
   return (
-    <section className="view active inventory-page">
-      <header className="inv-head">
-        <div>
-          <h3>Inventario</h3>
-          <p>Equipos y recursos de la sede, con su condición y vida útil estimada.</p>
+    <section className="view active ivt" aria-label="Inventario TIC">
+      <header className="ivt-head">
+        <div className="ivt-head-text">
+          <Eyebrow>{`Inventario y datos · ${siteCode || 'Sede'}`}</Eyebrow>
+          <h2 className="ivt-title">Equipos y recursos</h2>
+          <p className="ivt-help ivt-head-desc">Revisado = condición cargada hace menos de 92 días. Vale igual para equipos y recursos.</p>
         </div>
-        {/* Los tres controles comparten alto, radio y tipografía: antes se veían
-            como tres piezas de sistemas distintos puestas una al lado de la otra. */}
-        <div className="inv-head-actions">
-          <Button disabled={consultationMode} onClick={() => setReviewOpen(true)}>Revisar condición</Button>
-          <div className="inv-menu">
-            <details>
-              <summary>Importar / exportar</summary>
-              <div>
-                <button type="button" onClick={exportCsv}>Exportar CSV</button>
-                <button type="button" onClick={exportExample}>Descargar plantilla</button>
-                <button type="button" disabled={consultationMode || busy} onClick={() => importInputRef.current?.click()}>Importar CSV</button>
-              </div>
-            </details>
-          </div>
-          <Button variant="primary" disabled={consultationMode} onClick={openCreate}>Agregar recurso</Button>
-          <input ref={importInputRef} type="file" accept=".csv,text/csv" className="sr-only" onChange={handleImportFile} />
+        <div className="ivt-head-actions">
+          <Button disabled={consultationMode} aria-expanded={panel === 'review'} onClick={() => togglePanel('review')}>Revisar condición</Button>
+          <Button aria-expanded={panel === 'io'} aria-controls="ivt-ie" onClick={() => togglePanel('io')}>Importar / exportar</Button>
+          <Button aria-expanded={panel === 'hidden'} aria-controls="ivt-hidden" onClick={() => togglePanel('hidden')}>Ocultos</Button>
+          <Button variant="primary" icon={<IconPlus size={16} />} disabled={consultationMode} aria-expanded={panel === 'add'} onClick={() => togglePanel('add')}>Agregar recurso</Button>
         </div>
       </header>
 
-      <div className="inv-kpis" role="group" aria-label="Resumen del inventario">
-        <button type="button" className={segment === 'equipo' && !kpiFilter ? 'is-active' : ''} onClick={() => toggleSegment('equipo')}>
-          <span>Equipos</span><strong>{kpis.equipos}</strong>
-        </button>
-        <button type="button" className={segment === 'recurso' && !kpiFilter ? 'is-active' : ''} onClick={() => toggleSegment('recurso')}>
-          <span>Recursos</span><strong>{kpis.recursos}</strong>
-        </button>
-        <button type="button" className={`${kpis.malos ? 'is-warn' : ''} ${kpiFilter === 'malos' ? 'is-active' : ''}`.trim()} onClick={() => applyKpi('malos', 'todo')}>
-          <span>Regular o malo</span><strong>{kpis.malos}</strong>
-        </button>
-        <button type="button" className={`${kpis.vencidos ? 'is-bad' : ''} ${kpiFilter === 'vencidos' ? 'is-active' : ''}`.trim()} onClick={() => applyKpi('vencidos', 'equipo')}>
-          <span>Vida útil vencida</span><strong>{kpis.vencidos}</strong>
-        </button>
-        <button type="button" className={`${kpis.bajoStock ? 'is-warn' : ''} ${kpiFilter === 'bajoStock' ? 'is-active' : ''}`.trim()} onClick={() => applyKpi('bajoStock', 'recurso')}>
-          <span>Bajo stock</span><strong>{kpis.bajoStock}</strong>
-        </button>
-        <button type="button" className={`${kpis.sinFoto ? 'is-warn' : ''} ${kpiFilter === 'sinFoto' ? 'is-active' : ''}`.trim()} onClick={() => applyKpi('sinFoto', 'recurso')}>
-          <span>Sin foto</span><strong>{kpis.sinFoto}</strong>
-        </button>
-        <button
-          type="button"
-          className={`inv-kpi-progress ${kpiFilter === 'aRevisar' ? 'is-active' : ''}`.trim()}
-          onClick={() => applyKpi('aRevisar', 'todo')}
-          title="Revisado = última revisión de hace menos de 3 meses"
-        >
-          <span>Revisado</span>
-          <strong>{kpis.cobertura}%</strong>
-          <i><b style={{ width: `${kpis.cobertura}%` }} /></i>
-        </button>
+      {consultationMode && (
+        <div className="ivt-note" role="status">
+          <IconLock size={14} />
+          <span>Modo consulta: podés mirar y exportar. Revisar, importar, agregar y editar quedan deshabilitados.</span>
+        </div>
+      )}
+
+      {panel === 'io' && (
+        <ImportExportPanel count={filtered.length} consultationMode={consultationMode} onExport={exportCsv} onTemplate={exportTemplate} onImported={refresh} />
+      )}
+      {panel === 'hidden' && (
+        <HiddenPanel
+          consultationMode={consultationMode}
+          onRestored={item => setItems(current => (current.some(entry => entry.id === item.id) ? current : [...current, item]))}
+        />
+      )}
+      {topStatus.element}
+      {loadError && <ErrorState message={loadError} onRetry={() => void refresh()} />}
+
+      {panel === 'review' && !consultationMode && (
+        <ConditionReview
+          items={items}
+          entriesByKey={entriesByKey}
+          consultationMode={consultationMode}
+          onRateDevice={rateDevice}
+          onRateItem={rateItem}
+          onUndo={undoRating}
+          onExit={exitReview}
+        />
+      )}
+
+      {panel === 'add' && !consultationMode && (
+        <section className="ivt-panel">
+          <ResourceForm
+            items={items}
+            defaultCategory={selected?.categoria}
+            consultationMode={consultationMode}
+            onSaved={item => onResourceCreated(item)}
+            onCancel={() => setPanel('')}
+          />
+        </section>
+      )}
+
+      <div className="ivt-kpis" role="group" aria-label="Filtros rápidos">
+        {kpiButton({ id: 'equipos', label: 'Equipos', value: kpis.equipos, pressed: segment === 'equipo' && !kpi, onClick: () => pickSegment('equipo') })}
+        {kpiButton({ id: 'recursos', label: 'Recursos', value: kpis.recursos, pressed: segment === 'recurso' && !kpi, onClick: () => pickSegment('recurso') })}
+        {kpiButton({ id: 'malos', label: 'Regular o malo', value: kpis.malos, tone: kpis.malos ? 'warn' : undefined, pressed: kpi === 'malos', onClick: () => toggleKpi('malos', 'todo') })}
+        {kpiButton({ id: 'vencidos', label: 'Vida útil vencida', value: kpis.vencidos, tone: kpis.vencidos ? 'bad' : undefined, pressed: kpi === 'vencidos', onClick: () => toggleKpi('vencidos', 'equipo') })}
+        {kpiButton({ id: 'bajo', label: 'Bajo stock', value: kpis.bajoStock, tone: kpis.bajoStock ? 'warn' : undefined, note: kpis.sinStock ? `${kpis.sinStock} sin stock` : undefined, noteTone: 'bad', pressed: kpi === 'bajoStock', onClick: () => toggleKpi('bajoStock', 'recurso') })}
+        {kpiButton({ id: 'foto', label: 'Sin foto', value: kpis.sinFoto, tone: kpis.sinFoto ? 'warn' : undefined, pressed: kpi === 'sinFoto', onClick: () => toggleKpi('sinFoto', 'recurso') })}
+        {kpiButton({
+          id: 'revisado', label: 'Revisado', value: `${kpis.cobertura} %`, tone: revTone, note: `${kpis.revisados} de ${kpis.total}`,
+          pressed: kpi === 'aRevisar', onClick: () => toggleKpi('aRevisar', 'todo'),
+          ring: <Ring value={kpis.revisados} total={kpis.total} size={32} unit="revisados hace menos de 3 meses" />
+        })}
       </div>
 
-      {message && <div className="tool-info">{message}</div>}
-      {error && <div className="tool-error">{error}</div>}
+      {kpi && (
+        <div className="ivt-note" role="status">
+          <span className="ivt-grow">{KPI_LABELS[kpi]}</span>
+          <Button size="sm" variant="ghost" onClick={() => { resetList(); setKpi(''); }}>Quitar filtro</Button>
+        </div>
+      )}
 
-      <div className="inv-toolbar">
-        <div className="inventory-segmented" role="group" aria-label="Tipo de activo">
-          <button type="button" className={segment === 'recurso' ? 'is-active' : ''} onClick={() => toggleSegment('recurso')}>Recursos</button>
-          <button type="button" className={segment === 'equipo' ? 'is-active' : ''} onClick={() => toggleSegment('equipo')}>Equipos</button>
-          <button type="button" className={segment === 'todo' ? 'is-active' : ''} onClick={() => toggleSegment('todo')}>Todo</button>
-        </div>
-        <input className="input" type="search" placeholder="Buscar por nombre, categoría o etiqueta" aria-label="Buscar en el inventario" value={search} onChange={event => setSearch(event.target.value)} />
-        <SelectField
-          className="inv-toolbar-select"
-          value={condicionFilter}
-          options={CONDITION_FILTER_OPTIONS}
-          onChange={setCondicionFilter}
-          ariaLabel="Filtrar por condición"
+      <div className="ivt-tools">
+        <Segmented<Segment>
+          ariaLabel="Qué mostrar"
+          value={segment}
+          onChange={pickSegment}
+          options={[
+            { value: 'recurso', label: 'Recursos', count: kpis.recursos },
+            { value: 'equipo', label: 'Equipos', count: kpis.equipos },
+            { value: 'todo', label: 'Todo', count: kpis.total }
+          ]}
         />
-        <div className="inventory-segmented inv-view-toggle" role="group" aria-label="Vista">
-          <button type="button" className={view === 'grid' ? 'is-active' : ''} onClick={() => setView('grid')} title="Tarjetas">▦</button>
-          <button type="button" className={view === 'table' ? 'is-active' : ''} onClick={() => setView('table')} title="Tabla">☰</button>
-        </div>
+        <label className="ivt-search">
+          <IconSearch size={16} />
+          <span className="ivt-sr">Buscar en el inventario</span>
+          <input
+            type="text"
+            autoComplete="off"
+            spellCheck={false}
+            value={search}
+            placeholder="Nombre, etiqueta, modelo… (touch 34, D1436, sensor)"
+            onChange={event => { resetList(); setSearch(event.target.value); }}
+            onKeyDown={event => { if (event.key === 'Escape' && search) { event.preventDefault(); resetList(); setSearch(''); } }}
+          />
+          {search && (
+            <button type="button" className="ivt-search-clear" aria-label="Limpiar búsqueda" onClick={() => { resetList(); setSearch(''); }}>
+              <IconX size={14} />
+            </button>
+          )}
+        </label>
+        <span className="ivt-grow" aria-hidden="true" />
+        <Segmented<'table' | 'grid'>
+          ariaLabel="Vista"
+          value={view}
+          onChange={next => { setView(next); setEditingKey(''); }}
+          options={[{ value: 'table', label: 'Tabla' }, { value: 'grid', label: 'Tarjetas' }]}
+        />
       </div>
 
-      <div className="inv-workspace">
-        <InventoryTree
-          groups={groups}
-          selected={selected}
-          onSelect={setSelected}
-          expanded={expanded}
-          onToggle={categoria => setExpanded(current => current.includes(categoria) ? current.filter(item => item !== categoria) : [...current, categoria])}
-        />
+      <div className="ivt-condrow">
+        <span className="ivt-label">Condición</span>
+        <ChipGroup label="Filtrar por condición">
+          {[['', 'Toda'], ...CONDITION_VALUES.map(value => [value, value]), ['Sin revisar', 'Sin revisar']].map(([value, label]) => (
+            <Chip
+              key={value || 'toda'}
+              pressed={condicion === value}
+              tone={value === 'Regular' ? 'warn' : value === 'Malo' ? 'bad' : 'normal'}
+              count={value ? base.filter(entry => matchesCondition(entry, value)).length : base.length}
+              onClick={() => { resetList(); setCondicion(value); }}
+            >
+              {label}
+            </Chip>
+          ))}
+        </ChipGroup>
+      </div>
 
-        <div className="inv-main">
-          <div className="inv-breadcrumb">
-            <button type="button" onClick={() => setSelected(null)}>Categorías</button>
-            {selected && <><i>›</i><button type="button" onClick={() => setSelected({ categoria: selected.categoria, subcategoria: '' })}>{selected.categoria}</button></>}
-            {selected?.subcategoria && <><i>›</i><span>{selected.subcategoria}</span></>}
-            <em>{showCategories
-              ? `${groups.length} ${groups.length === 1 ? 'categoría' : 'categorías'}`
-              : `${listed.length} ${listed.length === 1 ? 'ítem' : 'ítems'}`}</em>
+      <div className="ivt-body">
+        <button type="button" className="ivt-treepick" aria-expanded={treeOpen} aria-controls="ivt-tree" onClick={() => setTreeOpen(value => !value)}>
+          <span className="ivt-label">Categoría</span>
+          <TruncatedText className="ivt-treepick-value">{selected ? [selected.categoria, selected.subcategoria].filter(Boolean).join(' › ') : 'Todo el inventario'}</TruncatedText>
+          <IconChevronDown size={16} className={`ivt-chev${treeOpen ? ' is-open' : ''}`} />
+        </button>
+        <div className={`ivt-treewrap${treeOpen ? ' is-open' : ''}`}>
+          <InventoryTree
+            id="ivt-tree"
+            groups={groups}
+            total={filtered.length}
+            selected={selected}
+            onSelect={pickCategory}
+            expanded={expanded}
+            onToggle={categoria => setExpanded(current => (current.includes(categoria) ? current.filter(item => item !== categoria) : [...current, categoria]))}
+          />
+        </div>
+
+        <section className="ivt-main" aria-label="Listado">
+          <div className="ivt-crumbs">
+            <nav aria-label="Ubicación en el inventario" className="ivt-crumb-nav">
+              <button type="button" className={`ivt-crumb${selected ? ' is-link' : ''}`} aria-current={!selected ? 'page' : undefined} onClick={() => pickCategory(null)}>Categorías</button>
+              {selected && (
+                <>
+                  <span className="ivt-crumb-sep" aria-hidden="true">/</span>
+                  <button type="button" className={`ivt-crumb${selected.subcategoria ? ' is-link' : ''}`} aria-current={!selected.subcategoria ? 'page' : undefined} onClick={() => pickCategory({ categoria: selected.categoria, subcategoria: '' })}>
+                    <TruncatedText>{selected.categoria}</TruncatedText>
+                  </button>
+                </>
+              )}
+              {selected?.subcategoria && (
+                <>
+                  <span className="ivt-crumb-sep" aria-hidden="true">/</span>
+                  <TruncatedText className="ivt-crumb is-current">{selected.subcategoria}</TruncatedText>
+                </>
+              )}
+            </nav>
+            <span className="ivt-count">{crumbCount}</span>
           </div>
 
-          {kpiFilter && (
-            <div className="inv-active-filter">
-              <span>{KPI_LABELS[kpiFilter]}</span>
-              <button type="button" onClick={() => setKpiFilter('')}>Quitar filtro</button>
-            </div>
+          {subChips.length > 0 && selected && (
+            <ChipGroup label="Subcategorías">
+              {subChips.map(sub => (
+                <Chip
+                  key={sub.subcategoria}
+                  pressed={selected.subcategoria === sub.subcategoria}
+                  count={sub.entries.length}
+                  thumb={sub.entries.find(entry => entry.imagenUrl)?.imagenUrl}
+                  onClick={() => pickCategory({ categoria: selected.categoria, subcategoria: selected.subcategoria === sub.subcategoria ? '' : sub.subcategoria })}
+                >
+                  {sub.subcategoria}
+                </Chip>
+              ))}
+            </ChipGroup>
           )}
 
-          {showCategories ? (
-            <InventoryCategoryGrid
-              groups={groups}
-              onOpen={categoria => {
-                setSelected({ categoria, subcategoria: '' });
-                setExpanded(current => (current.includes(categoria) ? current : [...current, categoria]));
-              }}
+          {listStatus.element}
+
+          {!itemsLoaded && !loadError ? <SkeletonRows rows={5} /> : showPortada ? (
+            groups.length
+              ? <InventoryCategoryGrid groups={groups} onOpen={categoria => pickCategory({ categoria, subcategoria: '' })} />
+              : <EmptyState title="Todavía no hay nada en el inventario de esta sede." description={consultationMode ? undefined : 'Agregá un recurso o importá la planilla.'} />
+          ) : !listed.length ? (
+            <EmptyState
+              title="No hay nada para este filtro."
+              action={(
+                <span className="ivt-actions ivt-center">
+                  {emptyAlt > 0 && <Button size="sm" onClick={() => { resetList(); setSegment('todo'); setSelected(null); }}>Ver {emptyAlt} {emptyAlt === 1 ? 'resultado' : 'resultados'} en todo el inventario</Button>}
+                  <Button size="sm" variant="ghost" onClick={clearAll}>Quitar filtros</Button>
+                </span>
+              )}
             />
+          ) : view === 'table' ? (
+            <div className="ivt-tablewrap">
+              <Table<Entry>
+                caption="Inventario"
+                rows={visible}
+                columns={columns}
+                rowKey={entry => entry.key}
+                sort={sort}
+                manualSort
+                onSortChange={next => { setSort(next); setLimit(PAGE); }}
+                onRowClick={entry => toggleOpen(entry.key)}
+                rowAttrs={entry => ({ 'data-device-tag': entry.device?.etiqueta })}
+                expandedKey={openEntry ? openKey : null}
+                renderExpanded={renderDetail}
+                cardBelow="lg"
+                className="ivt-table"
+              />
+              <Pager shown={visible.length} total={ordered.length} onMore={() => setLimit(value => value + PAGE)} onAll={() => setLimit(Number.MAX_SAFE_INTEGER)} />
+            </div>
           ) : (
             <>
-              {/* Fila de subcategorías de la categoría abierta, para saltar entre
-                  ellas sin volver al árbol. */}
-              {subcategoryCards.length > 0 && (
-                <div className="inv-subcards">
-                  {subcategoryCards.map(sub => (
-                    <button
-                      key={sub.subcategoria}
-                      type="button"
-                      className={selected?.subcategoria === sub.subcategoria ? 'is-active' : ''}
-                      onClick={() => setSelected({ categoria: selected!.categoria, subcategoria: selected?.subcategoria === sub.subcategoria ? '' : sub.subcategoria })}
-                    >
-                      <span className="inv-subcard-thumb">{sub.entries.find(item => item.imagenUrl) ? <img src={sub.entries.find(item => item.imagenUrl)!.imagenUrl} alt="" /> : null}</span>
-                      <span className="inv-subcard-text">
-                        <strong>{sub.subcategoria}</strong>
-                        <small>{sub.entries.length} {sub.entries.length === 1 ? 'ítem' : 'ítems'}</small>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {view === 'grid' ? (
-                <div className="inv-grid">
-                  {listed.map(entry => <InventoryCard key={entry.key} entry={entry} onOpen={() => setDetailKey(entry.key)} />)}
-                </div>
-              ) : (
-                <div className="inv-table-wrap">
-                  <table className="inv-table">
-                    <thead>
-                      <tr><th>Foto</th><th>Recurso</th><th>Categoría</th><th>Seguimiento</th><th>Stock / vida</th><th>Condición</th><th>Revisión</th></tr>
-                    </thead>
-                    <tbody>
-                      {listed.map(entry => (
-                        <tr key={entry.key} className={detailKey === entry.key ? 'is-selected' : ''} aria-selected={detailKey === entry.key} {...clickableProps(() => setDetailKey(entry.key), `Ver ${entry.nombre}`)}>
-                          <td><span className="inv-table-thumb">{entry.imagenUrl ? <img src={entry.imagenUrl} alt="" loading="lazy" /> : <i />}</span></td>
-                          <td><strong>{entry.nombre}</strong>{entry.detalle && <small>{entry.detalle}</small>}</td>
-                          <td>{[entry.categoria, entry.subcategoria].filter(Boolean).join(' › ')}</td>
-                          <td><span className="inv-track">{entry.kind === 'equipo' ? 'Individual' : 'Stock'}</span></td>
-                          <td className={entry.bajoStock || entry.vencido ? 'is-warn' : ''}>
-                            {entry.kind === 'recurso' ? `${entry.cantidad} ${entry.unidad}` : entry.vidaPct === null ? '—' : entry.vencido ? 'Vencida' : `${entry.vidaPct}%`}
-                          </td>
-                          <td><span className={`condition-dot ${conditionClass(entry.condicion)}`}>{entry.condicion || 'Sin revisar'}</span></td>
-                          <td className={isReviewFresh(entry) ? '' : 'is-warn'}>{reviewLabel(entry)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {!listed.length && <div className="inventory-empty">No hay nada para este filtro.</div>}
+              <div className="ivt-cards ivt-cards--dense">
+                {visible.map(entry => (
+                  <Fragment key={entry.key}>
+                    <InventoryCard entry={entry} expanded={openKey === entry.key} onOpen={() => toggleOpen(entry.key)} />
+                    {openKey === entry.key && openEntry && <div className="ivt-card-detail ui-enter">{renderDetail(openEntry)}</div>}
+                  </Fragment>
+                ))}
+              </div>
+              <Pager shown={visible.length} total={ordered.length} onMore={() => setLimit(value => value + PAGE)} onAll={() => setLimit(Number.MAX_SAFE_INTEGER)} />
             </>
           )}
-        </div>
+        </section>
       </div>
-
-      {/* El detalle abre como modal: desplegado al final de la página el click
-          no tenía respuesta visible y parecía que no había pasado nada. */}
-      {detail && (
-        <Modal title={detail.nombre} size="wide" onClose={() => setDetailKey('')}>
-          <InventoryDetail
-            entry={detail}
-            consultationMode={consultationMode}
-            onCondition={condicion => void setEntryCondition(detail, condicion)}
-            onEdit={item => { openEdit(item); setDetailKey(''); }}
-            onHide={item => void hideItem(item)}
-            onProfile={device => { onProfile?.(device); setDetailKey(''); }}
-            onItemChange={replaceItem}
-            onDeviceSaved={onRefreshDevices}
-          />
-        </Modal>
-      )}
-
-      {reviewOpen && (
-        <ConditionReviewModal
-          items={items}
-          onClose={() => setReviewOpen(false)}
-          onDone={async () => { await onRefreshDevices?.(); await refresh(); }}
-        />
-      )}
-
-      {modalOpen && (
-        <Modal title={editing ? 'Editar recurso' : 'Agregar recurso'} onClose={() => !busy && setModalOpen(false)}>
-          <form className="inventory-form" onSubmit={save}>
-            <div className="form-field">
-              <span className="field-label">Foto del recurso <em>obligatoria</em></span>
-              <div className={`inv-photo-drop ${form.imagenUrl ? 'has-photo' : ''}`}>
-                {form.imagenUrl
-                  ? <img src={form.imagenUrl} alt="" />
-                  : <span>Sin foto todavía</span>}
-                <label className="btn btn-secondary">
-                  {uploadingImage ? 'Subiendo...' : form.imagenUrl ? 'Cambiar foto' : 'Subir foto'}
-                  <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleImageFile} disabled={uploadingImage || consultationMode} />
-                </label>
-              </div>
-            </div>
-            <label>Nombre<input className="input" required value={form.nombre || ''} onChange={event => setForm(current => ({ ...current, nombre: event.target.value }))} /></label>
-            <div className="grid-2">
-              <label>Categoría
-                <SelectField
-                  value={form.categoria || 'Otro'}
-                  options={categorias.map(item => ({ value: item, label: item }))}
-                  onChange={categoria => setForm(current => ({ ...current, categoria }))}
-                  ariaLabel="Categoría"
-                />
-              </label>
-              <label>Subcategoría
-                <input className="input" list="inv-subcats" placeholder="Opcional" value={form.subcategoria || ''} onChange={event => setForm(current => ({ ...current, subcategoria: event.target.value }))} />
-                <datalist id="inv-subcats">{subcategorias.map(item => <option key={item} value={item} />)}</datalist>
-              </label>
-            </div>
-            <div className="grid-2">
-              <label>Cantidad<input className="input" type="number" min="0" value={form.cantidad ?? 0} onChange={event => setForm(current => ({ ...current, cantidad: Number(event.target.value) }))} /></label>
-              <label>Unidad<input className="input" value={form.unidad || ''} onChange={event => setForm(current => ({ ...current, unidad: event.target.value }))} /></label>
-            </div>
-            <div className="grid-2">
-              <label>Stock mínimo<input className="input" type="number" min="0" value={form.minStock ?? 3} onChange={event => setForm(current => ({ ...current, minStock: Number(event.target.value) }))} /></label>
-              <label>Condición
-                <SelectField
-                  value={form.condicion || ''}
-                  options={CONDITION_FORM_OPTIONS}
-                  onChange={condicion => setForm(current => ({ ...current, condicion }))}
-                  ariaLabel="Condición del recurso"
-                />
-              </label>
-            </div>
-            <label>Observaciones<textarea className="input" rows={3} value={form.observaciones || ''} onChange={event => setForm(current => ({ ...current, observaciones: event.target.value }))} /></label>
-            {error && <div className="tool-error">{error}</div>}
-            <div className="actions modal-actions-sticky">
-              <Button type="button" onClick={() => setModalOpen(false)} disabled={busy}>Cancelar</Button>
-              <Button variant="primary" type="submit" disabled={busy || uploadingImage || consultationMode}>{busy ? 'Guardando...' : editing ? 'Guardar cambios' : 'Agregar recurso'}</Button>
-            </div>
-          </form>
-        </Modal>
-      )}
     </section>
   );
 }
 
-const KPI_LABELS: Record<Exclude<KpiFilter, ''>, string> = {
-  malos: 'Mostrando solo lo que está Regular o Malo',
-  vencidos: 'Mostrando solo lo que tiene la vida útil vencida',
-  bajoStock: 'Mostrando solo los recursos en bajo stock',
-  sinFoto: 'Mostrando solo los recursos sin foto',
-  aRevisar: 'Mostrando lo que no se revisa hace más de 3 meses'
-};
-
-
-function readFileAsText(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
-    reader.readAsText(file);
-  });
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
-    reader.readAsDataURL(file);
-  });
+function Pager({ shown, total, onMore, onAll }: { shown: number; total: number; onMore: () => void; onAll: () => void }) {
+  if (shown >= total) return null;
+  return (
+    <div className="ivt-pager">
+      <span className="ivt-count ivt-grow">Mostrando {shown} de {total}</span>
+      <Button size="sm" onClick={onMore}>Ver {Math.min(PAGE, total - shown)} más</Button>
+      <Button size="sm" variant="ghost" onClick={onAll}>Ver todos</Button>
+    </div>
+  );
 }

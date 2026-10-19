@@ -1,59 +1,73 @@
+import { IconChevronRight } from '../../ui/icons';
+import { TruncatedText } from '../../ui/Truncated';
 import type { Group } from './inventoryEntries';
 
-// Árbol de categorías con sus subcategorías y contadores. Es el índice del
-// inventario: define qué se ve en la lista de la derecha.
-export function InventoryTree({ groups, selected, onSelect, expanded, onToggle }: {
+export type TreeSelection = { categoria: string; subcategoria: string } | null;
+
+// Árbol de categorías: "Todo el inventario", cada categoría con su conteo y,
+// si tiene subcategorías, el caret para expandirlas.
+export function InventoryTree({ groups, total, selected, onSelect, expanded, onToggle, id }: {
   groups: Group[];
-  selected: { categoria: string; subcategoria: string } | null;
-  onSelect: (value: { categoria: string; subcategoria: string } | null) => void;
+  total: number;
+  selected: TreeSelection;
+  onSelect: (next: TreeSelection) => void;
   expanded: string[];
   onToggle: (categoria: string) => void;
+  id?: string;
 }) {
-  const total = groups.reduce((acc, group) => acc + group.total, 0);
-
   return (
-    <nav className="inv-tree" aria-label="Categorías">
-      <div className="inv-tree-head"><span>Categorías</span></div>
-      <button
-        type="button"
-        className={`inv-tree-all ${!selected ? 'is-active' : ''}`}
-        onClick={() => onSelect(null)}
-      >
-        <span>Todo el inventario</span>
-        <em>{total}</em>
-      </button>
+    <nav className="ivt-tree" aria-label="Categorías" id={id}>
+      <div className="ivt-tree-row">
+        <span className="ivt-tree-caret-space" aria-hidden="true" />
+        <button type="button" className="ivt-tree-btn" aria-current={!selected ? 'true' : undefined} onClick={() => onSelect(null)}>
+          <TruncatedText className="ivt-tree-label">Todo el inventario</TruncatedText>
+          <span className="ivt-count">{total}</span>
+        </button>
+      </div>
       {groups.map(group => {
-        const isOpen = expanded.includes(group.categoria);
         const subs = group.subgroups.filter(sub => sub.subcategoria);
-        const catActive = selected?.categoria === group.categoria && !selected.subcategoria;
+        const isOpen = expanded.includes(group.categoria);
         return (
-          <div className="inv-tree-group" key={group.categoria}>
-            <div className={`inv-tree-cat ${catActive ? 'is-active' : ''}`}>
+          <div className="ivt-tree-group" key={group.categoria}>
+            <div className="ivt-tree-row">
               {subs.length > 0 ? (
-                <button type="button" className="inv-tree-caret" onClick={() => onToggle(group.categoria)} aria-expanded={isOpen} aria-label={isOpen ? 'Contraer' : 'Expandir'}>
-                  <i className={isOpen ? 'is-open' : ''} />
+                <button
+                  type="button"
+                  className="ivt-tree-caret"
+                  aria-expanded={isOpen}
+                  aria-label={`${isOpen ? 'Contraer' : 'Expandir'} ${group.categoria}`}
+                  onClick={() => onToggle(group.categoria)}
+                >
+                  <IconChevronRight size={14} className={isOpen ? 'is-open' : undefined} />
                 </button>
-              ) : <span className="inv-tree-caret" />}
-              <button type="button" className="inv-tree-label" onClick={() => onSelect({ categoria: group.categoria, subcategoria: '' })}>
-                <span>{group.categoria}</span>
-                <em>{group.total}</em>
+              ) : <span className="ivt-tree-caret-space" aria-hidden="true" />}
+              <button
+                type="button"
+                className="ivt-tree-btn"
+                aria-current={selected?.categoria === group.categoria && !selected.subcategoria ? 'true' : undefined}
+                onClick={() => onSelect({ categoria: group.categoria, subcategoria: '' })}
+              >
+                <TruncatedText className="ivt-tree-label">{group.categoria}</TruncatedText>
+                <span className="ivt-count">{group.total}</span>
               </button>
             </div>
             {isOpen && subs.map(sub => (
-              <button
-                key={sub.subcategoria}
-                type="button"
-                className={`inv-tree-sub ${selected?.categoria === group.categoria && selected?.subcategoria === sub.subcategoria ? 'is-active' : ''}`}
-                onClick={() => onSelect({ categoria: group.categoria, subcategoria: sub.subcategoria })}
-              >
-                <span>{sub.subcategoria}</span>
-                <em>{sub.entries.length}</em>
-              </button>
+              <div className="ivt-tree-row ivt-tree-sub" key={sub.subcategoria}>
+                <button
+                  type="button"
+                  className="ivt-tree-btn"
+                  aria-current={selected?.categoria === group.categoria && selected.subcategoria === sub.subcategoria ? 'true' : undefined}
+                  onClick={() => onSelect({ categoria: group.categoria, subcategoria: sub.subcategoria })}
+                >
+                  <TruncatedText className="ivt-tree-label">{sub.subcategoria}</TruncatedText>
+                  <span className="ivt-count">{sub.entries.length}</span>
+                </button>
+              </div>
             ))}
           </div>
         );
       })}
-      {!groups.length && <p className="muted" style={{ padding: '8px 10px', fontSize: 12 }}>Sin categorías.</p>}
+      {!groups.length && <p className="ivt-help ivt-tree-empty">Sin categorías para este filtro.</p>}
     </nav>
   );
 }

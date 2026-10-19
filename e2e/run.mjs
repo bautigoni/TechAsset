@@ -19,6 +19,7 @@ import {
   apiClient, ensureBuild, findBrowser, freePort, prepareDatabase, removeTmp, root, startServer, stopServer
 } from './lib/env.mjs';
 import { functionalTests } from './tests/functional.mjs';
+import { inventoryTests } from './tests/inventory.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 
 const args = process.argv.slice(2);
@@ -102,6 +103,7 @@ try {
   console.log('\nFuncionales (a–h)');
   t = Date.now();
   await functionalTests(ctx);
+  await inventoryTests(ctx);
   timings.functional = Date.now() - t;
 
   if (!flag('no-baseline')) {

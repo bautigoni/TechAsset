@@ -1,150 +1,238 @@
-import { useEffect, useState } from 'react';
-import { CONDITION_VALUES } from '../../types';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Device, InventoryItem } from '../../types';
-import { updateDeviceMetadata } from '../../services/devicesApi';
-import { Button } from '../layout/Button';
-import { SelectField } from '../layout/SelectField';
-import { isReviewFresh, reviewLabel, type Entry } from './inventoryEntries';
+import { Button, Eyebrow, InlineConfirm, Input, Kbd, useStatusLine } from '../../ui';
+import { isEditableTarget } from '../../hooks/useGlobalScanner';
+import { formatDay, isReviewFresh, reviewLabel, stockInfo, type Entry } from './inventoryEntries';
+import { ConditionChips, errorText, Tx } from './inventoryParts';
 import { InventoryUnits } from './InventoryUnits';
+import { ResourceForm } from './ResourceForm';
 
-const CONDITION_OPTIONS = [{ value: '', label: 'Sin revisar' }, ...CONDITION_VALUES.map(value => ({ value, label: value }))];
-
-// Cuerpo del modal de detalle. Antes esto se desplegaba abajo de la grilla: con
-// el inventario largo el click no tenía respuesta visible y parecía que no
-// había pasado nada.
-export function InventoryDetail({ entry, consultationMode, onCondition, onEdit, onHide, onProfile, onItemChange, onDeviceSaved }: {
+/**
+ * Ficha de un ítem, EN LÍNEA debajo de su fila o tarjeta (empuja el resto).
+ * Condición con chips (se guarda al tocar), Ver ficha (equipos), Editar y
+ * Ocultar con confirmación en el lugar (recursos), identificación del equipo
+ * con TeamViewer editable, y las unidades del recurso. Escape la cierra.
+ */
+export function InventoryDetail({ entry, items, consultationMode, editing, onStartEdit, onCancelEdit, onSaved, onCondition, onHide, onProfile, onItemChange, onTeamviewer, onClose, initialMessage }: {
   entry: Entry;
+  items: InventoryItem[];
   consultationMode: boolean;
-  onCondition: (condicion: string) => void;
-  onEdit?: (item: InventoryItem) => void;
-  onHide?: (item: InventoryItem) => void;
+  editing: boolean;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaved: (item: InventoryItem) => void;
+  onCondition: (condicion: string) => Promise<void>;
+  onHide: (item: InventoryItem) => Promise<void>;
   onProfile?: (device: Device) => void;
-  onItemChange?: (item: InventoryItem) => void;
-  onDeviceSaved?: () => Promise<unknown> | void;
+  onItemChange: (item: InventoryItem) => void;
+  onTeamviewer: (device: Device, value: string) => Promise<void>;
+  onClose: () => void;
+  /** Aviso con el que abre (p. ej. "Se agregó X." o "Se volvió a mostrar."). */
+  initialMessage?: string;
 }) {
+  const status = useStatusLine();
+  const [hideAsk, setHideAsk] = useState(false);
+  const [hiding, setHiding] = useState(false);
+  const [savingCond, setSavingCond] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const isRes = entry.kind === 'recurso';
+  const stock = stockInfo(entry);
   const fresh = isReviewFresh(entry);
 
+  useEffect(() => {
+    if (initialMessage) status.show({ tone: 'ok', message: initialMessage });
+    // Al abrir, que la ficha quede a la vista sin saltar (solo si no se ve).
+    const node = ref.current;
+    if (node && typeof node.scrollIntoView === 'function') {
+      const rect = node.getBoundingClientRect();
+      if (rect.top > window.innerHeight - 80) node.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entry.key]);
+
+  useEffect(() => { setHideAsk(false); }, [entry.key, editing]);
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || event.defaultPrevented || isEditableTarget(event.target)) return;
+    event.preventDefault();
+    onClose();
+  };
+
+  const setCondition = async (condicion: string) => {
+    if (consultationMode || savingCond) return;
+    setSavingCond(true);
+    status.clear();
+    try {
+      await onCondition(condicion);
+      status.show({ tone: 'ok', message: `${entry.nombre}: ${condicion || 'sin revisar'}.` });
+    } catch (reason) {
+      status.show({ tone: 'bad', message: errorText(reason, 'No se pudo guardar la condición.') });
+    } finally {
+      setSavingCond(false);
+    }
+  };
+
+  const hide = async () => {
+    if (!entry.item) return;
+    setHiding(true);
+    try {
+      await onHide(entry.item);
+    } catch (reason) {
+      setHiding(false);
+      setHideAsk(false);
+      status.show({ tone: 'bad', message: errorText(reason, 'No se pudo ocultar el recurso.') });
+    }
+  };
+
+  if (editing && entry.item) {
+    return (
+      <div className="ivt-detail" ref={ref} role="region" aria-label={`Editar ${entry.nombre}`}>
+        <ResourceForm
+          item={entry.item}
+          items={items}
+          consultationMode={consultationMode}
+          onSaved={item => { onSaved(item); status.show({ tone: 'ok', message: 'Cambios guardados.' }); }}
+          onCancel={onCancelEdit}
+        />
+      </div>
+    );
+  }
+
+  const facts: Array<{ k: string; v: string; tone?: 'normal' | 'warn' | 'bad' | 'strong' | 'muted'; mono?: boolean }> = isRes
+    ? [
+      { k: 'Stock', v: `${stock.value} ${entry.unidad}`, tone: stock.tone === 'normal' ? 'strong' : stock.tone, mono: true },
+      { k: 'Bajo stock', v: (entry.cantidad ?? 0) <= 0 ? 'Sí, sin stock' : entry.bajoStock ? 'Sí' : 'No', tone: (entry.cantidad ?? 0) <= 0 ? 'bad' : entry.bajoStock ? 'warn' : 'strong' },
+      { k: 'Seguimiento', v: 'Por stock', tone: 'strong' },
+      { k: 'Revisión', v: reviewLabel(entry), tone: fresh ? 'strong' : entry.condicion ? 'warn' : 'normal' }
+    ]
+    : [
+      { k: 'Vida útil', v: entry.vidaPct === null ? '—' : entry.vencido ? 'Vencida' : `${entry.vidaPct} % consumida`, tone: entry.vencido ? 'bad' : 'strong' },
+      { k: 'Renovación', v: entry.renovacion ? formatDay(entry.renovacion) : '—', tone: 'strong', mono: true },
+      { k: 'Seguimiento', v: 'Individual', tone: 'strong' },
+      { k: 'Revisión', v: reviewLabel(entry), tone: fresh ? 'strong' : entry.condicion ? 'warn' : 'normal' }
+    ];
+
   return (
-    <div className="inv-detail-body">
-      <div className="inv-detail-top">
-        <div className="inv-detail-media">
-          {entry.imagenUrl
-            ? <img src={entry.imagenUrl} alt="" />
-            : <span>{entry.kind === 'equipo' ? entry.nombre : 'Sin foto'}</span>}
+    <div className="ivt-detail" ref={ref} role="region" aria-label={`Detalle de ${entry.nombre}`} onKeyDown={onKeyDown}>
+      <div className="ivt-detail-top">
+        <div className="ivt-detail-media">
+          <div className={`ivt-photo${entry.imagenUrl ? ' has-photo' : ''}${isRes && !entry.imagenUrl ? ' is-missing' : ''}`}>
+            {entry.imagenUrl
+              ? <img src={entry.imagenUrl} alt="" />
+              : <span className={isRes ? '' : 'ivt-mono ivt-photo-alias'}>{isRes ? 'Sin foto' : entry.nombre}</span>}
+          </div>
+          {isRes && (
+            <Button size="sm" disabled={consultationMode} onClick={onStartEdit}>{entry.imagenUrl ? 'Cambiar foto' : 'Subir foto'}</Button>
+          )}
         </div>
 
-        <div className="inv-detail-main">
-          <div className="inv-detail-title">
-            <span>{[entry.categoria, entry.subcategoria].filter(Boolean).join(' › ')}</span>
-            {entry.detalle && <p className="muted">{entry.detalle}</p>}
-          </div>
+        <div className="ivt-detail-info">
+          <Eyebrow>{`${entry.categoria} · ${entry.subcategoria || 'sin subcategoría'}`}</Eyebrow>
+          <h3 className="ivt-detail-name">{entry.nombre}</h3>
+          <Tx tone="muted" mono={!isRes} className="ivt-detail-sub">{isRes ? (entry.detalle || 'Sin observaciones') : entry.detalle}</Tx>
+          <dl className="ivt-facts">
+            {facts.map(fact => (
+              <div key={fact.k}>
+                <dt>{fact.k}</dt>
+                <dd><Tx tone={fact.tone} mono={fact.mono}>{fact.v}</Tx></dd>
+              </div>
+            ))}
+          </dl>
+        </div>
 
-          <dl>
-            {entry.kind === 'recurso' ? (
+        <div className="ivt-detail-side">
+          <span className="ivt-label">Condición</span>
+          <ConditionChips value={entry.condicion} onChange={condicion => void setCondition(condicion)} disabled={consultationMode || savingCond} />
+          <span className="ivt-help">
+            {consultationMode
+              ? 'Modo consulta: la condición no se puede cambiar.'
+              : isRes
+                ? 'Se guarda al tocarla. En recursos cuenta como revisión aunque elijas la misma.'
+                : 'Se guarda al tocarla y actualiza la fecha de revisión del equipo.'}
+          </span>
+          {status.element}
+          <div className="ivt-actions">
+            {entry.device && onProfile && <Button onClick={() => onProfile(entry.device as Device)}>Ver ficha</Button>}
+            {isRes && (
               <>
-                <div><dt>Stock</dt><dd>{entry.cantidad} {entry.unidad}</dd></div>
-                <div><dt>Bajo stock</dt><dd>{entry.bajoStock ? 'Sí' : 'No'}</dd></div>
-              </>
-            ) : (
-              <>
-                <div><dt>Vida útil</dt><dd>{entry.vidaPct === null ? '—' : entry.vencido ? 'Vencida' : `${entry.vidaPct}% consumida`}</dd></div>
-                <div><dt>Renovación</dt><dd>{entry.renovacion || '—'}</dd></div>
+                <Button disabled={consultationMode} onClick={onStartEdit}>Editar</Button>
+                <Button className="ivt-danger-text" disabled={consultationMode} aria-expanded={hideAsk} onClick={() => setHideAsk(value => !value)}>Ocultar</Button>
               </>
             )}
-            <div><dt>Seguimiento</dt><dd>{entry.kind === 'equipo' ? 'Individual' : 'Por stock'}</dd></div>
-            <div>
-              <dt>Revisión</dt>
-              <dd className={fresh ? '' : 'is-warn'}>{reviewLabel(entry)}</dd>
-            </div>
-          </dl>
-
-          <label className="inv-detail-condition">Condición
-            <SelectField
-              value={entry.condicion}
-              options={CONDITION_OPTIONS}
-              disabled={consultationMode}
-              onChange={onCondition}
-              ariaLabel="Condición"
-            />
-          </label>
-
-          <div className="actions">
-            {entry.device && onProfile && <Button onClick={() => onProfile(entry.device as Device)}>Ver ficha</Button>}
-            {entry.item && onEdit && <Button disabled={consultationMode} onClick={() => onEdit(entry.item as InventoryItem)}>Editar</Button>}
-            {entry.item && onHide && <Button disabled={consultationMode} onClick={() => onHide(entry.item as InventoryItem)}>Ocultar</Button>}
+            <Button variant="ghost" onClick={onClose} iconEnd={<Kbd>Esc</Kbd>}>Cerrar</Button>
           </div>
+          {hideAsk && entry.item && (
+            <InlineConfirm
+              danger
+              message={`¿Ocultar ${entry.nombre} del inventario?`}
+              detail="Deja de aparecer en listas y conteos. Se puede volver a mostrar desde Ocultos."
+              confirmLabel="Ocultar"
+              busy={hiding}
+              onConfirm={() => void hide()}
+              onCancel={() => setHideAsk(false)}
+            />
+          )}
         </div>
       </div>
 
-      {entry.device && <DeviceIdentity device={entry.device} consultationMode={consultationMode} onSaved={onDeviceSaved} />}
-
-      {entry.item && (
-        <InventoryUnits item={entry.item} consultationMode={consultationMode} onItemChange={onItemChange} />
-      )}
+      {entry.device && <DeviceIdentity device={entry.device} entry={entry} consultationMode={consultationMode} onSave={onTeamviewer} />}
+      {entry.item && <InventoryUnits item={entry.item} consultationMode={consultationMode} onItemChange={onItemChange} />}
     </div>
   );
 }
 
-// Identificación física del equipo. Los datos ya estaban cargados (SN seguro,
-// MAC en parte del parque) pero no se veían en ninguna pantalla: sin esto no
-// hay forma de saber cuál de los 50 Chromebook tenés en la mano.
-function DeviceIdentity({ device, consultationMode, onSaved }: { device: Device; consultationMode: boolean; onSaved?: () => Promise<unknown> | void }) {
-  const [teamviewer, setTeamviewer] = useState(device.teamviewerId || '');
-  const [saved, setSaved] = useState(device.teamviewerId || '');
+// Identificación física del equipo: sin esto no hay forma de saber cuál de
+// los 50 Chromebook tenés en la mano. "—" es normal (parte del parque no tiene
+// MAC y Chrome OS no usa TeamViewer).
+function DeviceIdentity({ device, entry, consultationMode, onSave }: {
+  device: Device;
+  entry: Entry;
+  consultationMode: boolean;
+  onSave: (device: Device, value: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState(entry.teamviewerId);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const status = useStatusLine();
 
-  useEffect(() => {
-    setTeamviewer(device.teamviewerId || '');
-    setSaved(device.teamviewerId || '');
-  }, [device.etiqueta, device.teamviewerId]);
+  useEffect(() => { setValue(entry.teamviewerId); }, [device.etiqueta, entry.teamviewerId]);
 
+  const changed = value.trim() !== entry.teamviewerId.trim();
   const save = async () => {
+    if (consultationMode || !changed || busy) return;
     setBusy(true);
-    setError('');
     try {
-      // Sin `condition`: cargar el ID no es haber revisado el equipo, no tiene
-      // que mover la fecha de última revisión.
-      await updateDeviceMetadata(device.etiqueta, { teamviewerId: teamviewer, origen: 'Inventario' });
-      setSaved(teamviewer.trim());
-      await onSaved?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el TeamViewer ID.');
+      await onSave(device, value.trim());
+      status.show({ tone: 'ok', message: 'TeamViewer ID guardado.' });
+    } catch (reason) {
+      status.show({ tone: 'bad', message: errorText(reason, 'No se pudo guardar el TeamViewer ID.') });
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <section className="inv-identity">
-      <header><strong>Identificación</strong></header>
-      <dl>
-        <div><dt>Etiqueta</dt><dd>{device.etiqueta}</dd></div>
-        {/* "—" es una situación normal, no un registro incompleto: parte del
-            parque no tiene MAC cargada y todos los Chrome OS no usan TeamViewer. */}
-        <div><dt>Número de serie</dt><dd>{device.sn || <span className="muted">—</span>}</dd></div>
-        <div><dt>MAC</dt><dd>{device.mac || <span className="muted">—</span>}</dd></div>
-      </dl>
-
-      <label className="inv-identity-tv">TeamViewer ID
-        <span className="inv-identity-tv-row">
-          <input
-            className="input"
-            value={teamviewer}
-            disabled={consultationMode || busy}
+    <section className="ivt-sec" aria-label="Identificación">
+      <Eyebrow>Identificación</Eyebrow>
+      <div className="ivt-idgrid">
+        <div><span className="ivt-help">Etiqueta</span><Tx tone="strong" mono>{device.etiqueta}</Tx></div>
+        <div><span className="ivt-help">Número de serie</span><Tx tone={device.sn ? 'strong' : 'muted'} mono>{device.sn || '—'}</Tx></div>
+        <div><span className="ivt-help">MAC</span><Tx tone={device.mac ? 'strong' : 'muted'} mono>{device.mac || '—'}</Tx></div>
+        <form className="ivt-tv" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void save(); }}>
+          <Input
+            size="sm"
+            label="TeamViewer ID"
+            autoComplete="off"
+            className="ivt-mono-field"
+            value={value}
             placeholder="No aplica en Chrome OS"
-            onChange={event => setTeamviewer(event.target.value)}
+            disabled={consultationMode || busy}
+            onValueChange={setValue}
+            suffix={undefined}
           />
-          <Button
-            type="button"
-            disabled={consultationMode || busy || teamviewer.trim() === saved.trim()}
-            onClick={() => void save()}
-          >
-            {busy ? 'Guardando…' : 'Guardar'}
-          </Button>
-        </span>
-      </label>
-      {error && <div className="tool-error">{error}</div>}
+          <Button type="submit" size="sm" loading={busy} disabled={consultationMode || !changed}>Guardar</Button>
+        </form>
+      </div>
+      {status.element}
     </section>
   );
 }

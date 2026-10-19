@@ -1,23 +1,22 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import type { InventoryItem, InventoryUnit } from '../../types';
-import { CONDITION_VALUES } from '../../types';
-import { createInventoryUnit, deleteInventoryUnit, getInventoryUnits, updateInventoryUnit } from '../../services/inventoryApi';
-import { Button } from '../layout/Button';
-import { SelectField } from '../layout/SelectField';
-import { SkeletonLine, SkeletonPanel } from '../layout/Skeleton';
-import { conditionClass } from './inventoryEntries';
-import { confirmDialog } from '../layout/Feedback';
+import { createInventoryUnit, createInventoryUnitsBatch, deleteInventoryUnit, getInventoryUnits, updateInventoryUnit } from '../../services/inventoryApi';
+import { Button, InlineConfirm, Input, SkeletonRows, useStatusLine } from '../../ui';
+import { conditionTone } from './inventoryEntries';
+import { ConditionChips, errorText, Tx } from './inventoryParts';
 
-const CONDITION_OPTIONS = [{ value: '', label: 'Sin revisar' }, ...CONDITION_VALUES.map(value => ({ value, label: value }))];
-// Tope de seguridad para el alta en lote: nadie va a cargar 500 unidades de una.
-const BULK_LIMIT = 60;
+// Tope del alta en lote ("Crear las N"): el server aplica el mismo.
+export const UNITS_BATCH_LIMIT = 60;
 
 type Draft = Pick<InventoryUnit, 'numero' | 'descripcion' | 'sn' | 'mac' | 'teamviewerId' | 'condicion'>;
-
 const EMPTY_DRAFT: Draft = { numero: '', descripcion: '', sn: '', mac: '', teamviewerId: '', condicion: '' };
+type UnitsResponse = { units: InventoryUnit[]; item?: InventoryItem | null };
 
-// Detalle unidad por unidad de un recurso. Sin esto, la única forma de anotar
-// que uno de los 8 dash no carga era duplicar la ficha entera ("dash roto").
+/**
+ * Detalle unidad por unidad de un recurso (número, condición, descripción,
+ * SN, MAC, TeamViewer) sin duplicar la ficha. El formulario se abre en línea
+ * debajo de la unidad que se edita (o al final, para una nueva).
+ */
 export function InventoryUnits({ item, consultationMode, onItemChange }: {
   item: InventoryItem;
   consultationMode: boolean;
@@ -25,200 +24,185 @@ export function InventoryUnits({ item, consultationMode, onItemChange }: {
 }) {
   const [units, setUnits] = useState<InventoryUnit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [editing, setEditing] = useState<number | 'new' | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [asking, setAsking] = useState(false);
+  const status = useStatusLine();
 
-  useEffect(() => {
+  const load = () => {
     let cancelled = false;
     setLoading(true);
-    setEditing(null);
+    setLoadError('');
     getInventoryUnits(item.id)
       .then(response => { if (!cancelled) setUnits(response.units); })
-      .catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : 'No se pudieron cargar las unidades.'); })
+      .catch(reason => { if (!cancelled) setLoadError(errorText(reason, 'No se pudieron cargar las unidades.')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
+  };
+
+  useEffect(() => {
+    setEditing(null);
+    return load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id]);
 
-  const apply = (response: { units: InventoryUnit[]; item?: InventoryItem | null }) => {
+  const apply = (response: UnitsResponse) => {
     setUnits(response.units);
     if (response.item) onItemChange?.(response.item);
   };
 
-  const run = async (action: () => Promise<{ units: InventoryUnit[]; item?: InventoryItem | null }>) => {
+  const run = async (action: () => Promise<UnitsResponse>, done: string) => {
     setBusy(true);
-    setError('');
+    status.clear();
     try {
       apply(await action());
       setEditing(null);
+      setAsking(false);
       setDraft(EMPTY_DRAFT);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la unidad.');
+      status.show({ tone: 'ok', message: done });
+    } catch (reason) {
+      status.show({ tone: 'bad', message: errorText(reason, 'No se pudo guardar la unidad.') });
     } finally {
       setBusy(false);
     }
   };
+
+  const cantidad = Math.min(Number(item.cantidad || 0), UNITS_BATCH_LIMIT);
 
   // Alta en lote: un recurso que dice "8 unidades" arranca con esas 8 fichas
-  // numeradas, en vez de obligar a crearlas de a una.
-  const seed = async () => {
-    const cantidad = Math.min(Number(item.cantidad || 0), BULK_LIMIT);
-    if (cantidad < 1) return;
-    setBusy(true);
-    setError('');
-    try {
-      let last: { units: InventoryUnit[]; item?: InventoryItem | null } | null = null;
-      for (let i = 0; i < cantidad; i += 1) last = await createInventoryUnit(item.id, {});
-      if (last) apply(last);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron crear las unidades.');
-    } finally {
-      setBusy(false);
-    }
-  };
+  // numeradas. Un solo request (antes eran N en serie).
+  const seed = () => run(
+    () => createInventoryUnitsBatch(item.id, cantidad),
+    `${cantidad} unidades creadas, numeradas del 1 al ${cantidad}.`
+  );
 
   const startEdit = (unit: InventoryUnit) => {
+    setAsking(false);
     setEditing(unit.id);
-    setDraft({
-      numero: unit.numero,
-      descripcion: unit.descripcion,
-      sn: unit.sn,
-      mac: unit.mac,
-      teamviewerId: unit.teamviewerId,
-      condicion: unit.condicion
-    });
+    setDraft({ numero: unit.numero, descripcion: unit.descripcion, sn: unit.sn, mac: unit.mac, teamviewerId: unit.teamviewerId, condicion: unit.condicion });
   };
 
   const conFalla = units.filter(unit => unit.condicion === 'Regular' || unit.condicion === 'Malo').length;
+  const editingUnit = typeof editing === 'number' ? units.find(unit => unit.id === editing) : undefined;
+
+  const form = (
+    <UnitForm
+      draft={draft}
+      busy={busy}
+      isEdit={Boolean(editingUnit)}
+      onChange={setDraft}
+      onSubmit={() => {
+        if (editingUnit) void run(() => updateInventoryUnit(editingUnit.id, draft), `Unidad #${draft.numero || editingUnit.numero} guardada.`);
+        else void run(() => createInventoryUnit(item.id, draft), draft.numero ? `Unidad #${draft.numero} agregada.` : 'Unidad agregada.');
+      }}
+      onCancel={() => { setEditing(null); setAsking(false); setDraft(EMPTY_DRAFT); }}
+      confirm={editingUnit && asking ? (
+        <InlineConfirm
+          danger
+          message={`¿Quitar la unidad #${editingUnit.numero || editingUnit.id}?`}
+          detail="El recurso y sus otras unidades no cambian."
+          confirmLabel="Quitar"
+          busy={busy}
+          onConfirm={() => void run(() => deleteInventoryUnit(editingUnit.id), `Unidad #${editingUnit.numero || editingUnit.id} quitada.`)}
+          onCancel={() => setAsking(false)}
+        />
+      ) : null}
+      onAskDelete={editingUnit ? () => setAsking(true) : undefined}
+    />
+  );
 
   return (
-    <section className="inv-units">
-      <header className="inv-units-head">
-        <div>
-          <strong>Unidades</strong>
-          {loading
-            ? <SkeletonLine width={150} height={11} />
-            : <span>
-                {units.length
-                  ? `${units.length} ${units.length === 1 ? 'unidad cargada' : 'unidades cargadas'}${conFalla ? ` · ${conFalla} con falla` : ''}`
-                  : 'Todavía no se detalló ninguna unidad'}
-              </span>}
-        </div>
+    <section className="ivt-sec" aria-label="Unidades">
+      <div className="ivt-sec-head">
+        <h3>Unidades</h3>
+        <span className="ivt-sec-summary">
+          {loading ? 'Cargando…' : units.length
+            ? <>{units.length} {units.length === 1 ? 'unidad cargada' : 'unidades cargadas'}{conFalla > 0 && <Tx tone="warn"> · {conFalla} con falla</Tx>}</>
+            : 'Todavía no se detalló ninguna unidad'}
+        </span>
         {!consultationMode && !loading && (
-          <div className="inv-units-head-actions">
-            {!units.length && Number(item.cantidad || 0) > 1 && (
-              <Button type="button" disabled={busy} onClick={() => void seed()}>
-                Crear las {Math.min(Number(item.cantidad || 0), BULK_LIMIT)}
-              </Button>
+          <span className="ivt-sec-actions">
+            {!units.length && cantidad > 1 && (
+              <Button size="sm" loading={busy && editing === null} onClick={() => void seed()}>Crear las {cantidad}</Button>
             )}
-            <Button type="button" disabled={busy} onClick={() => { setEditing('new'); setDraft(EMPTY_DRAFT); }}>Agregar unidad</Button>
-          </div>
+            <Button size="sm" disabled={busy} onClick={() => { setAsking(false); setEditing('new'); setDraft(EMPTY_DRAFT); }}>Agregar unidad</Button>
+          </span>
         )}
-      </header>
+      </div>
 
-      {loading && <SkeletonPanel rows={2} head={false} rowHeight={44} />}
+      {loading && <SkeletonRows rows={2} />}
+      {loadError && <div className="ivt-error" role="alert">{loadError} <Button size="sm" variant="ghost" onClick={() => load()}>Reintentar</Button></div>}
 
       {!loading && !units.length && editing !== 'new' && (
-        <p className="muted inv-units-empty">
-          Detallar unidades sirve para anotar cuál de todas falla, su número de serie o su ID de TeamViewer,
-          sin tener que duplicar la ficha del recurso.
+        <p className="ivt-help ivt-para">
+          Detallá cada unidad solo si necesitás seguir su número, una falla puntual, SN, MAC o TeamViewer. El recurso sigue siendo uno solo; “Con falla” cuenta las unidades en Regular o Malo.
         </p>
       )}
 
       {units.length > 0 && (
-        <ul className="inv-units-list">
+        <ul className="ivt-units">
           {units.map(unit => (
-            <li key={unit.id} className={editing === unit.id ? 'is-editing' : ''}>
-              <div className="inv-unit-row">
-                <span className="inv-unit-number">#{unit.numero || '—'}</span>
-                <span className={`condition-dot ${conditionClass(unit.condicion)}`}>{unit.condicion || 'Sin revisar'}</span>
-                <span className="inv-unit-desc">{unit.descripcion || <em>Sin observaciones</em>}</span>
-                <span className="inv-unit-ids">
-                  <i>SN {unit.sn || '—'}</i>
-                  <i>MAC {unit.mac || '—'}</i>
-                  <i>TeamViewer {unit.teamviewerId || '—'}</i>
-                </span>
+            <Fragment key={unit.id}>
+              <li className="ivt-unit">
+                <span className="ivt-unit-num ivt-mono">#{unit.numero || '—'}</span>
+                <Tx tone={conditionTone(unit.condicion)} className="ivt-unit-cond">{unit.condicion || 'Sin revisar'}</Tx>
+                <Tx tone={unit.descripcion ? 'strong' : 'muted'} className="ivt-unit-desc">{unit.descripcion || 'Sin observaciones'}</Tx>
+                <span className="ivt-unit-ids ivt-mono">SN {unit.sn || '—'} · MAC {unit.mac || '—'} · TeamViewer {unit.teamviewerId || '—'}</span>
                 {!consultationMode && (
-                  <button type="button" className="inv-unit-edit" disabled={busy} onClick={() => (editing === unit.id ? setEditing(null) : startEdit(unit))}>
+                  <Button size="sm" variant="ghost" aria-expanded={editing === unit.id} disabled={busy} onClick={() => (editing === unit.id ? setEditing(null) : startEdit(unit))}>
                     {editing === unit.id ? 'Cerrar' : 'Editar'}
-                  </button>
+                  </Button>
                 )}
-              </div>
-
-              {editing === unit.id && (
-                <UnitForm
-                  draft={draft}
-                  busy={busy}
-                  onChange={setDraft}
-                  onSubmit={() => void run(() => updateInventoryUnit(unit.id, draft))}
-                  onCancel={() => setEditing(null)}
-                  onDelete={async () => {
-                    if (!(await confirmDialog({ title: 'Quitar unidad', message: `¿Quitar la unidad #${unit.numero || unit.id}?`, confirmLabel: 'Quitar', danger: true }))) return;
-                    void run(() => deleteInventoryUnit(unit.id));
-                  }}
-                />
-              )}
-            </li>
+              </li>
+              {editing === unit.id && <li className="ivt-unit-formrow">{form}</li>}
+            </Fragment>
           ))}
         </ul>
       )}
 
-      {editing === 'new' && (
-        <UnitForm
-          draft={draft}
-          busy={busy}
-          onChange={setDraft}
-          onSubmit={() => void run(() => createInventoryUnit(item.id, draft))}
-          onCancel={() => { setEditing(null); setDraft(EMPTY_DRAFT); }}
-        />
-      )}
-
-      {error && <div className="tool-error">{error}</div>}
+      {editing === 'new' && form}
+      {status.element}
     </section>
   );
 }
 
-function UnitForm({ draft, busy, onChange, onSubmit, onCancel, onDelete }: {
+function UnitForm({ draft, busy, isEdit, onChange, onSubmit, onCancel, onAskDelete, confirm }: {
   draft: Draft;
   busy: boolean;
+  isEdit: boolean;
   onChange: (draft: Draft) => void;
   onSubmit: () => void;
   onCancel: () => void;
-  onDelete?: () => void;
+  onAskDelete?: () => void;
+  confirm: ReactNode;
 }) {
   const set = (patch: Partial<Draft>) => onChange({ ...draft, ...patch });
-
+  const submit = (event: FormEvent) => { event.preventDefault(); if (!busy) onSubmit(); };
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel(); }
+  };
   return (
-    <form
-      className="inv-unit-form"
-      onSubmit={event => { event.preventDefault(); onSubmit(); }}
-    >
-      <div className="inv-unit-form-grid">
-        <label>Número
-          <input className="input" value={draft.numero} placeholder="Automático" onChange={event => set({ numero: event.target.value })} />
-        </label>
-        <label>Condición
-          <SelectField value={draft.condicion} options={CONDITION_OPTIONS} onChange={condicion => set({ condicion })} ariaLabel="Condición de la unidad" />
-        </label>
-        <label className="inv-unit-form-wide">Descripción
-          <input className="input" value={draft.descripcion} placeholder="Ej: no carga" onChange={event => set({ descripcion: event.target.value })} />
-        </label>
-        <label>Número de serie
-          <input className="input" value={draft.sn} placeholder="Opcional" onChange={event => set({ sn: event.target.value })} />
-        </label>
-        <label>MAC
-          <input className="input" value={draft.mac} placeholder="Opcional" onChange={event => set({ mac: event.target.value })} />
-        </label>
-        <label>TeamViewer ID
-          {/* Opcional a propósito: en Chrome OS no aplica. */}
-          <input className="input" value={draft.teamviewerId} placeholder="No aplica en Chrome OS" onChange={event => set({ teamviewerId: event.target.value })} />
-        </label>
+    <form className="ivt-unit-form" onSubmit={submit} onKeyDown={onKeyDown} data-scanner-ignore="" aria-label={isEdit ? 'Editar unidad' : 'Nueva unidad'} noValidate>
+      <div className="ivt-form-grid">
+        <Input label="Número" inputMode="numeric" autoComplete="off" className="ivt-mono-field" value={draft.numero} placeholder="Automático" onValueChange={numero => set({ numero })} autoFocus />
+        <Input label="Descripción" autoComplete="off" value={draft.descripcion} placeholder="Ej: no carga" onValueChange={descripcion => set({ descripcion })} />
+        <Input label="SN" autoComplete="off" className="ivt-mono-field" value={draft.sn} placeholder="Opcional" onValueChange={sn => set({ sn })} />
+        <Input label="MAC" autoComplete="off" className="ivt-mono-field" value={draft.mac} placeholder="Opcional" onValueChange={mac => set({ mac })} />
+        <Input label="TeamViewer" autoComplete="off" className="ivt-mono-field" value={draft.teamviewerId} placeholder="No aplica en Chrome OS" onValueChange={teamviewerId => set({ teamviewerId })} />
+        <div className="ivt-field ivt-full">
+          <span className="ivt-label">Condición</span>
+          <ConditionChips label="Condición de la unidad" value={draft.condicion} onChange={condicion => set({ condicion })} />
+        </div>
       </div>
-      <div className="actions">
-        {onDelete && <Button type="button" variant="danger" disabled={busy} onClick={onDelete}>Quitar</Button>}
-        <Button type="button" disabled={busy} onClick={onCancel}>Cancelar</Button>
-        <Button type="submit" variant="primary" disabled={busy}>{busy ? 'Guardando…' : 'Guardar unidad'}</Button>
+      {confirm}
+      <div className="ivt-actions">
+        <Button type="submit" size="sm" variant="primary" loading={busy} loadingLabel="Guardando…">Guardar unidad</Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={onCancel}>Cancelar</Button>
+        {isEdit && onAskDelete && !confirm && (
+          <Button size="sm" variant="ghost" className="ivt-danger-text ivt-push" disabled={busy} onClick={onAskDelete}>Quitar unidad</Button>
+        )}
       </div>
     </form>
   );

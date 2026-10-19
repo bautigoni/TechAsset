@@ -161,6 +161,29 @@ try {
     check('asistente: chat real (uso diario + auditoría en Postgres)', chat.status === 200 && chat.json?.reply, chat.text.slice(0, 200));
   }
 
+  // Etapa 5b: Inventario TIC (unidades en lote, ocultos/restaurar, deshacer revisión).
+  const invItem = await call('POST', '/api/inventory/items', { nombre: 'Smoke sensores', categoria: 'Sensores', cantidad: 70, minStock: 3, imagenUrl: '/uploads/inventory/NFPT/smoke.png' });
+  check('alta de recurso', invItem.status === 200 && invItem.json?.item?.id, invItem.text.slice(0, 200));
+  const invId = invItem.json?.item?.id;
+  const batch = await call('POST', `/api/inventory/items/${invId}/units/batch`, { count: 70 });
+  check('crear las N en un request (tope 60)', batch.status === 200 && batch.json.units.length === 60 && batch.json.capped === true && batch.json.item?.unidadesCargadas === 60, batch.text.slice(0, 200));
+  const batch2 = await call('POST', `/api/inventory/items/${invId}/units/batch`, { count: 2 });
+  check('lote siguiente sigue la numeración', batch2.status === 200 && batch2.json.units.some(unit => unit.numero === '62'), batch2.text.slice(0, 200));
+  const reviewed = await call('PATCH', `/api/inventory/items/${invId}`, { condicion: 'Malo', revisado: true });
+  check('calificar recurso', reviewed.json?.item?.condicion === 'Malo' && reviewed.json.item.condicionUpdatedAt, reviewed.text.slice(0, 200));
+  const undoItem = await call('POST', '/api/inventory/review/undo', { kind: 'recurso', id: invId, condicion: '', reviewedAt: '', categoria: 'Sensores' });
+  check('deshacer calificación de recurso', undoItem.json?.item?.condicion === '' && undoItem.json.item.condicionUpdatedAt === '', undoItem.text.slice(0, 200));
+  const meta = await call('PATCH', '/api/devices/D9004/metadata', { condition: 'Bueno', assetClass: 'Chromebook', origen: 'Revisión' });
+  const undoDev = await call('POST', '/api/inventory/review/undo', { kind: 'equipo', etiqueta: 'D9004', condicion: '', reviewedAt: '', assetClass: '' });
+  const d9004 = (await call('GET', '/api/devices')).json.items.find(item => item.etiqueta === 'D9004');
+  check('deshacer calificación de equipo (invalida la caché)', meta.status === 200 && undoDev.json?.ok && !d9004?.condition && !d9004?.lastReviewedAt, `${undoDev.text.slice(0, 120)} ${JSON.stringify({ c: d9004?.condition, r: d9004?.lastReviewedAt })}`);
+  const hide = await call('DELETE', `/api/inventory/items/${invId}`);
+  const hiddenList = await call('GET', '/api/inventory/items/hidden');
+  check('ocultos lista el recurso', hide.json?.deleted && hiddenList.json?.items?.some(item => item.id === invId), hiddenList.text.slice(0, 200));
+  const invRestore = await call('POST', `/api/inventory/items/${invId}/restore`, {});
+  const visibleAgain = (await call('GET', '/api/inventory/items')).json.items.some(item => item.id === invId);
+  check('restaurar recurso oculto', invRestore.json?.item?.id === invId && visibleAgain, invRestore.text.slice(0, 200));
+
   // Errores de SQL en el log del server.
   const sqlErrors = serverLog.split('\n').filter(line => /syntax error|does not exist|operator does not|invalid input|ERROR:/i.test(line));
   check('sin errores de SQL en el log', !sqlErrors.length, sqlErrors.slice(0, 5).join(' | '));
