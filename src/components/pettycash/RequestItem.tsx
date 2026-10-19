@@ -156,11 +156,11 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
               {toInventory && <NumberField className="pc-qty" label="Cantidad" value={qty} onChange={setQty} min={1} max={9999} unit="unidades" error={touched && (!qty || qty < 1) ? 'Mínimo 1.' : undefined} />}
             </div>
           </div>
-          {error && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}
           <div className="pc-form-actions">
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setMode('none'); resolveRef.current?.focus({ preventScroll: true }); }}>Cancelar</Button>
             <Button size="sm" variant="primary" type="submit" loading={busy} loadingLabel="Aprobando…" disabled={overBalance}>Aprobar y descontar</Button>
           </div>
+          {error && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}
         </form>
       </Collapse>
 
@@ -168,11 +168,11 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
         <form className="pc-form pc-form--inline pc-reject" onSubmit={reject} noValidate data-scanner-ignore="" onKeyDown={escape}>
           <p className="pc-reject-msg">¿Rechazar la solicitud? Se le avisa a {item.requesterName || 'quien la pidió'} con esta nota.</p>
           <Input label="Nota de rechazo" value={rejectNote} onValueChange={setRejectNote} autoComplete="off" autoFocus />
-          {error && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}
           <div className="pc-form-actions">
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setMode('none'); rejectRef.current?.focus({ preventScroll: true }); }}>Cancelar</Button>
             <Button size="sm" variant="danger" type="submit" loading={busy} loadingLabel="Rechazando…">Rechazar solicitud</Button>
           </div>
+          {error && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}
         </form>
       </Collapse>
 

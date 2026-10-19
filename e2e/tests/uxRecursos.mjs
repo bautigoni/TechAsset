@@ -77,7 +77,8 @@ export function uxProbe({ rootSelector, cardSelector, maxGap = 48, ignore = '' }
 
   // 2. Franjas vacías dentro de cada tarjeta (sin texto, controles ni gráficos).
   const inner = [];
-  const CONTENT = 'button, a, input, textarea, svg, img, canvas, video, iframe, hr, [role="img"], [role="checkbox"], [role="radio"], [role="switch"], [class*="skel"], [class*="bar"], [class*="ring"], [class*="hc"], code';
+  // (Una línea de lectura en vivo, aria-live, reserva su alto a propósito: no salta al cambiar de 1 a 2 renglones.)
+  const CONTENT = '[aria-live], button, a, input, textarea, svg, img, canvas, video, iframe, hr, [role="img"], [role="checkbox"], [role="radio"], [role="switch"], [class*="skel"], [class*="bar"], [class*="ring"], [class*="hc"], code';
   for (const card of rootEl.querySelectorAll(cardSelector)) {
     if (!visible(card) || ignored(card) || inert(card)) continue;
     const box = card.getBoundingClientRect();

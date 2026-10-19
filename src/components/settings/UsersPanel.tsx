@@ -551,12 +551,12 @@ function UserForm({ title, initial, roleOptions, turns, sites, siteCode, superad
       )}
       {superadmin && isSuperRole && <p className="cfg-hint">El superadmin entra a todas las sedes activas.</p>}
       {!superadmin && <p className="cfg-hint">Se guarda en tu sede, <span className="cfg-mono">{siteCode}</span>. Las otras sedes las asigna un superadmin.</p>}
-      {error && <p className="cfg-error" role="alert">{error}</p>}
       <div className="cfg-uform-f">
         <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={readOnly} onClick={() => void save()}>Guardar usuario</Button>
         <Button variant="ghost" disabled={saving} onClick={onCancel}>Cancelar</Button>
         <span className="cfg-hint">Rige al instante: la próxima acción de este usuario ya usa el rol nuevo.</span>
       </div>
+      {error && <p className="cfg-error" role="alert">{error}</p>}
     </div>
   );
 }

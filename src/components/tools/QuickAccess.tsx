@@ -142,12 +142,12 @@ export function LinkForm({ initial, categories, title, submitLabel, onSubmit, on
         <Input label="Descripción (opcional)" value={draft.descripcion} onValueChange={descripcion => set({ descripcion })} placeholder="Para qué sirve" autoComplete="off" />
         <Combobox label="Categoría" value={draft.categoria} onChange={categoria => set({ categoria })} options={categories} placeholder="Institucionales, Personalizados…" />
       </div>
-      {serverError && <p className="qa-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
       <div className="qa-form-actions">
         {!title && <span className="qa-form-keys">Enter guarda · Esc cancela</span>}
         <Button variant="ghost" onClick={cancel} disabled={busy}>Cancelar</Button>
         <Button variant="primary" type="submit" loading={busy} loadingLabel="Guardando…">{submitLabel}</Button>
       </div>
+      {serverError && <p className="qa-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
     </form>
   );
 }

@@ -141,8 +141,9 @@
 .an-readout { min-height: 2.5rem; margin: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); line-height: 1.25rem; }
 .an-note { margin: 0; color: var(--g-text-3); font-size: var(--g-fs-xs); line-height: 1.125rem; }
 /* Tarjeta estirada al alto de su vecina de fila: el espacio que sobra se reparte arriba y abajo del
-   gráfico (la lectura y la nota van pegadas debajo), en vez de quedar como una franja vacía. */
-.an-card:not(.an-heatcard, .an-empty) > :not(.an-card-head, .an-readout, .an-note, .an-link--end) { margin-block: auto; }
+   contenido (mitad y mitad), en vez de quedar como una sola franja vacía antes de la lectura o al pie. */
+.an-card:not(.an-heatcard, .an-empty) > .an-card-head + :not(.an-readout, .an-note, .an-link--end) { margin-top: auto; }
+.an-card:not(.an-heatcard, .an-empty) > :not(.an-card-head, .an-readout, .an-note, .an-link--end):is(:has(+ .an-readout), :has(+ .an-note), :last-child) { margin-bottom: auto; }
 .an-dim { color: var(--g-text-2); }
 .an-warn { color: var(--g-warn); }
 .an-rank { color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
@@ -583,7 +584,7 @@
 @container an (max-width: 40rem) {
   .an-index { gap: 0; padding: 0; }
   .an-card, .an-stack { grid-column: span 12; }
-  .an-index-links { display: grid; flex: 1 1 auto; grid-template-columns: repeat(5, minmax(0, auto)); justify-content: space-between; }
+  .an-index-links { display: grid; flex: 1 1 auto; grid-template-columns: repeat(5, minmax(0, auto)); justify-content: space-between; padding-inline: var(--g-s-2); }
   /* Cada rótulo con su ancho (no cinco columnas iguales): "Préstamos" entra entero a 360 px. */
   .an-index-link { justify-content: center; min-width: 0; padding: 0 var(--g-s-1); }
   .an-index-link .an-index-n, .an-index-full { display: none; }

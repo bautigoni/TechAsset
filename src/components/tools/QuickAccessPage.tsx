@@ -285,7 +285,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
                 </Button>
               )}
             </div>
-            {sorting && <p className="qa-sort-hint">Usá Subir y Bajar: el orden se guarda al toque y se ve igual en el rayo y en Ctrl K.</p>}
+            <Collapse open={sorting} unmountOnClose><p className="qa-sort-hint">Usá Subir y Bajar: el orden se guarda al toque y se ve igual en el rayo y en Ctrl K.</p></Collapse>
             <ul className="qa-grid">
               {rows.map(link => {
                 const ghost = ghosts[link.id];

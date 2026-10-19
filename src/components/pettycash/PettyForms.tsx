@@ -160,11 +160,11 @@ export function ExpenseForm({ draft, setDraft, balance, categories, onSaved, onC
           <ReceiptField url={draft.receiptUrl} onChange={receiptUrl => set({ receiptUrl })} label="Comprobante" hint="PNG, JPG, WEBP o PDF, hasta 7 MB. Se sube apenas lo elegís." />
         </div>
       </div>
-      {serverError && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
       <div className="pc-form-actions">
         <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancelar</Button>
         <Button variant="primary" type="submit" loading={busy} loadingLabel="Registrando…" disabled={overBalance}>Registrar gasto</Button>
       </div>
+      {serverError && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
     </form>
   );
 }
@@ -237,11 +237,11 @@ export function RequestForm({ draft, setDraft, categories, onSaved, onCancel, on
           <ReceiptField url={draft.receiptUrl} onChange={receiptUrl => set({ receiptUrl })} label="Comprobante o presupuesto" hint="PNG, JPG, WEBP o PDF, hasta 7 MB. Si se aprueba, pasa al gasto." />
         </div>
       </div>
-      {serverError && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
       <div className="pc-form-actions">
         <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancelar</Button>
         <Button variant="primary" type="submit" loading={busy} loadingLabel="Enviando…">Enviar solicitud</Button>
       </div>
+      {serverError && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
     </form>
   );
 }
