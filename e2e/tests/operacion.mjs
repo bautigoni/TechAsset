@@ -741,7 +741,7 @@ export async function operacionTests({ browser, base, api, admin, releaseVersion
       assert(moved.maxDelta <= 2, `La barra se movió ${moved.maxDelta} px al devolver.`);
       stop = await watch(page, bar, '');
       const undo = await countRequests(page, /^\/api\/loans\/undo/, async () => {
-        const button = await page.waitForSelector('.dash-bar-wrap .ui-status-undo', { timeout: 5000 });
+        const button = await page.waitForSelector('.dash-bar-wrap .ui-status-undo:not(.ui-collapse:not([data-state="open"]) *)', { timeout: 5000 });
         await button.click({ clickCount: 2 });
         await sleep(1500);
       });

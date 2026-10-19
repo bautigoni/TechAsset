@@ -99,7 +99,7 @@ export async function devicesTests({ page, base, api, test, free }) {
       await clickButton(page, /^Borrar 2$/, { scope: '.dv-list .ui-selhead' });
       await clickButton(page, /^Borrar 2$/, { scope: '.dv-list .ui-selhead .ui-confirm' });
       await until(async () => !(await api.device(tagA)) && !(await api.device(tagB)), { message: 'los dos en la papelera' });
-      await clickButton(page, /^Deshacer/, { scope: '.dv-list > .ui-status' });
+      await clickButton(page, /^Deshacer/, { scope: '.dv-list > .ui-collapse .ui-status' });
       await until(async () => Boolean(await api.device(tagA)) && Boolean(await api.device(tagB)), { message: 'los dos restaurados por Deshacer' });
     });
     assert(deletes.length === 2 && deletes.some(item => /delete-batch/.test(item)) && deletes.some(item => /restore-batch/.test(item)), `Requests: ${deletes.join(', ')}`);

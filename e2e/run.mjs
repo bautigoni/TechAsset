@@ -9,7 +9,7 @@
 //   npm run e2e -- --keep             # no borra la copia de la base (para inspeccionarla)
 //   npm run e2e -- --ai               # el server de prueba usa la IA del .env (gasta tokens; prueba k4)
 //   npm run e2e -- --no-ux            # sin el barrido de REGLAS-UX (ux) de todas las vistas
-//   npm run e2e -- --ux-strict        # el barrido ux cuenta como funcional (corta con exit 1)
+//   npm run e2e -- --ux-lenient       # el barrido ux solo informa (línea base, no corta); para depurar
 //
 // Corre contra el server real (`node server/index.js`) y una COPIA descartable de
 // data/techasset.db: nunca la base real ni Postgres, nunca sale un mail ni una
@@ -157,7 +157,8 @@ try {
   if (!flag('no-baseline') && !flag('no-ux') && (!only || only.startsWith('ux'))) {
     console.log('\nBarrido de REGLAS-UX (ux) — todas las vistas a 390/1024/1440 en oscuro y claro');
     t = Date.now();
-    ux = await uxTests({ ...ctx, strict: flag('ux-strict') });
+    // Bloqueante por defecto (cada vista quedó en cero): un hallazgo nuevo corta con exit 1.
+    ux = await uxTests({ ...ctx, strict: !flag('ux-lenient') });
     timings.ux = Date.now() - t;
   }
 } catch (error) {

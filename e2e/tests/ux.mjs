@@ -8,8 +8,9 @@
 //   (aria-expanded + aria-controls) abre y cierra sin mover su disparador
 //   (± 2 px) ni scrollear el documento (a 1440 oscuro y 390 claro).
 //
-// Por ahora es LÍNEA BASE (reporta, no cambia el exit code) porque cada frente
-// corrige sus pantallas; `--ux-strict` la vuelve funcional. `--no-ux` la saltea.
+// Es BLOQUEANTE (cuenta como funcional: un hallazgo corta la corrida con exit 1)
+// desde que todas las vistas quedaron en cero; `--ux-lenient` la vuelve línea base
+// (informa sin cortar, para depurar). `--no-ux` la saltea.
 // Capturas en e2e/.out/ux/ y el detalle en e2e/.out/ux/report.json (y en
 // last-run.json → ux).
 import fs from 'node:fs';

@@ -336,6 +336,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       await until(() => findButton(page, /^Devolver\s*↵?$/, { scope: LOAN_FORM }), { message: 'el resultado con Devolver' });
       await page.keyboard.press('Enter');
       await until(async () => loanState((await api.device(prestado.etiqueta))?.estado) === 'available', { message: `${prestado.etiqueta} devuelto con Enter` });
+      await until(async () => await codeValue(page) === '', { timeout: 3000, message: 'que se limpie el código después de devolver' }).catch(() => {});
       assert(await codeValue(page) === '', 'Después de devolver no se limpió el código.');
       await clickButton(page, /Deshacer/, { scope: LOAN_FORM });
       const again = await until(async () => { const d = await api.device(prestado.etiqueta); return loanState(d?.estado) === 'loaned' && d; }, { message: 'el Deshacer' });
@@ -448,7 +449,8 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
     const [tagK1, tagK2, tagK3] = available.slice(12, 15);
     const stateOf = async tag => loanState((await api.device(tag))?.estado);
     const undoInStatus = async scope => {
-      const undo = await until(() => page.$(`${scope} .ui-status-undo`), { message: 'el Deshacer en la línea de estado' });
+      // La línea de estado entra con alto suave (colapso): se toca cuando terminó de abrir.
+      const undo = await until(() => page.$(`${scope} .ui-status-undo:not(.ui-collapse:not([data-state="open"]) *)`), { message: 'el Deshacer en la línea de estado' });
       await undo.click();
     };
 
@@ -488,6 +490,8 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
         await page.evaluate(name => [...document.querySelectorAll('.dash-lend .ui-field')].find(field => field.querySelector('.ui-label-text')?.textContent?.trim() === name)?.querySelector('.ui-select-trigger')?.click(), label);
         const option = await until(() => page.evaluateHandle((name, source) => {
           const field = [...document.querySelectorAll('.dash-lend .ui-field')].find(item => item.querySelector('.ui-label-text')?.textContent?.trim() === name);
+          // La lista se despliega con alto suave: se toca cuando terminó de abrir.
+          if (field?.querySelector('.ui-collapse:not([data-state="open"]) [role="option"]')) return null;
           return [...(field?.querySelectorAll('[role="option"]') || [])].find(opt => new RegExp(source).test(opt.textContent || '')) || null;
         }, label, rx.source).then(handle => handle.asElement()), { message: `la opción de ${label}` });
         await option.click();
@@ -577,9 +581,9 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       await gotoView(page, base, 'devices');
       await page.waitForSelector(DEVICE_ROW, { timeout: 20000 });
       await deleteRow();
-      const statusText = await until(() => text(page, '.dv-list > .ui-status'), { message: 'la línea de estado con Deshacer' });
+      const statusText = await until(() => text(page, '.dv-list > .ui-collapse .ui-status'), { message: 'la línea de estado con Deshacer' });
       assert(statusText.includes(tag), `Aviso: "${statusText}"`);
-      await clickButton(page, /^Deshacer/, { scope: '.dv-list > .ui-status' });
+      await clickButton(page, /^Deshacer/, { scope: '.dv-list > .ui-collapse .ui-status' });
       await until(async () => Boolean(await api.device(tag)), { message: `${tag} restaurado por Deshacer` });
       await deleteRow();
       await typeInto(page, DEVICE_SEARCH, '');

@@ -220,7 +220,9 @@ export function uxProbe(opts = {}) {
         const ns = styleOf(node);
         if (ns.overflowX === 'visible' && ns.overflowY === 'visible') continue;
         const nr = node.getBoundingClientRect();
-        if (cx < nr.left || cx > nr.right || cy < nr.top || cy > nr.bottom) { clipped = true; break; }
+        // Con el centro justo en el borde (un control a medio scrollear), elementFromPoint
+        // cae en lo de al lado (la barra inferior): eso es "scrolleado afuera", no tapado.
+        if (cx <= nr.left + 1 || cx >= nr.right - 1 || cy <= nr.top + 1 || cy >= nr.bottom - 1) { clipped = true; break; }
       }
       if (clipped) continue;
       const hit = document.elementFromPoint(cx, cy);
@@ -435,7 +437,16 @@ export async function checkCollapsibles(page, { scope = '.shell-view', exclude =
           const scroll0 = sc ? sc.scrollTop : 0;
           // Por frame: cuánto se movió en pantalla, cuánto de eso explica el scroll
           // (llevar lo abierto a la vista es válido) y si sigue a la vista.
-          const out = { deltas: [], shifts: [], hidden: 0, docY: [], heights: [Math.round(main.getBoundingClientRect().height)] };
+          // Alto de lo que se abre/cierra (el colapso que envuelve al aria-controls), para no
+          // confundir un colapso suave con un salto cuando el alto de la página tiene un piso
+          // (otra columna más alta) y el primer frame de la curva ya consume todo el cambio visible.
+          const panelHeight = () => {
+            const id = el.getAttribute('aria-controls');
+            const target = id ? document.getElementById(id) : null;
+            const box = target?.closest('.ui-collapse') || target;
+            return box?.isConnected ? Math.round(box.getBoundingClientRect().height) : 0;
+          };
+          const out = { deltas: [], shifts: [], hidden: 0, docY: [], heights: [Math.round(main.getBoundingClientRect().height)], panel: [panelHeight()] };
           window.__uxWatch = out;
           const tick = () => {
             if (out.stop) return;
@@ -450,6 +461,7 @@ export async function checkCollapsibles(page, { scope = '.shell-view', exclude =
             }
             out.docY.push(document.scrollingElement.scrollTop + window.scrollY);
             out.heights.push(Math.round(main.getBoundingClientRect().height));
+            out.panel.push(panelHeight());
             requestAnimationFrame(() => setTimeout(tick));
           };
           requestAnimationFrame(() => setTimeout(tick));
@@ -466,7 +478,12 @@ export async function checkCollapsibles(page, { scope = '.shell-view', exclude =
           const h = out.heights;
           const change = Math.abs(h[h.length - 1] - h[0]);
           const steps = h.slice(1).map((value, i) => Math.abs(value - h[i])).filter(step => step > 0.5);
-          const abrupt = change > 40 && steps.length > 0 && Math.max(...steps) >= change - 2;
+          // …salvo que lo que se abre/cierra haya pasado por valores intermedios (se animó).
+          const p = out.panel.filter(value => value > 0);
+          const lo = Math.min(...p, Infinity);
+          const hi = Math.max(...p, 0);
+          const smoothPanel = p.length > 0 && hi - lo > 40 && new Set(p.filter(value => value > lo + 2 && value < hi - 2)).size >= 2;
+          const abrupt = change > 40 && steps.length > 0 && Math.max(...steps) >= change - 2 && !smoothPanel;
           return {
             abrupt,
             change,

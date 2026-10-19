@@ -7,7 +7,7 @@ npm run e2e                        # todo: funcionales + línea base (i, j) + ba
 npm run e2e -- --no-baseline       # solo funcionales (sin i, j ni ux) · ~4,5 min
 npm run e2e -- --no-ux             # todo menos el barrido ux
 npm run e2e -- --only=ux           # solo el barrido ux (--only="ux recursos", --only="ux equipo"...) · ~4 min
-npm run e2e -- --ux-strict         # el barrido ux corta la corrida (exit 1) si encuentra algo
+npm run e2e -- --ux-lenient        # el barrido ux solo informa (no corta): para depurar una pantalla
 npm run e2e -- --only=prestamos    # filtra por grupo o nombre (sin tildes ni mayúsculas)
 npm run e2e -- --no-build          # usa dist/ como esté, aunque sea más viejo que src/
 npm run e2e -- --build             # buildea sí o sí
@@ -24,7 +24,7 @@ npm run check:ui                   # guardia de controles nativos (scripts/check
 4. **Navegador:** Chrome (si no, Edge; `E2E_BROWSER=<ruta>` lo pisa) con `puppeteer-core`, sin `--hide-scrollbars` para que las barras ocupen lugar como en la vida real. Cada grupo usa un contexto aislado con la cookie de sesión y la sede `NFPT`.
 5. **Salida:** tabla en consola, `e2e/last-run.json` con todo el detalle (incluye las muestras de layout por vista y ancho) y capturas de las pruebas que fallan en `e2e/.out/fallas/`.
 
-**Exit code 1** si falla alguna prueba funcional (a–h). Las de línea base (i, j) se reportan con conteos y no cambian el exit code.
+**Exit code 1** si falla alguna prueba funcional (a–h y las demás) o si el barrido ux (que es bloqueante) encuentra algo. Las de línea base (i, j) se reportan con conteos y no cambian el exit code; con `--ux-lenient` el barrido ux también pasa a informar sin cortar.
 
 ## Qué garantiza
 
@@ -55,7 +55,7 @@ Cada prueba verifica el efecto en la base (vía API), no solo lo que se ve.
 | bxo | **Barrido REGLAS-UX de Agenda, Horarios, Aulas, Recordatorios, Tareas, Tickets y Sugerencias** (`tests/barridoOperacion.mjs`): por pantalla a 360/768/1024/1280/1366/1440/1920, sin scroll horizontal, sin huecos > 48 px dentro de las tarjetas, ningún control tapado (elementFromPoint en su centro) y ningún texto cortado con elipsis que tenía lugar; cada botón con `aria-expanded` visible se abre (el disparador sigue a la vista) y se cierra sin moverse más de 2 px; Tareas sin "Columnas 1–3 de 3" fantasma, lápiz de columna quieto y, en mobile, la barra de selección fija a la vista sin mover ni tapar la tarjeta tocada; Aulas sin hueco debajo del plano en plantas anchas; Recordatorios: el alta en ancho no hace saltar la lista; Horarios: el borrador de recreos sobrevive a ir y volver por el menú (y Descartar vuelve a lo guardado); Agenda: detalle y Sincronizar sin mover el disparador; una notificación con link `/tickets/<id>` abre ese ticket y Atrás vuelve |
 | i | **Línea base de layout** por vista a 360/768/1024/1280/1366/1440: scroll horizontal de la página, barra de la página, barras visibles en contenedores, botones con el texto partido, hermanos que se pisan (> 2 px) |
 | j | **Línea base mobile** (iPhone 13): pinza con dos dedos (`Input.dispatchTouchEvent`), swipe horizontal, doble toque y foco en un campo dejan escala 1 y `scrollX` 0; campos con texto ≥ 16 px. Incluye un control: la misma pinza tiene que hacer zoom en una página que no lo bloquea |
-| ux | **Barrido de REGLAS-UX** (`tests/ux.mjs`, línea base salvo `--ux-strict`): todas las vistas del menú y las páginas de detalle con URL (equipo, tarea, ticket, artículo, cada panel de Configuración) a 390, 1024 y 1440 en oscuro y claro, con la sonda `lib/ux-probe.mjs`: huecos > 48 px entre bloques, tarjetas con franjas vacías, truncados con lugar, texto cortado sin elipsis, controles tapados (recorriendo el scroll), cursor de mano sin control, y cada colapsable (`aria-expanded`) abre y cierra sin mover su disparador (± 2 px), sin scrollear el documento, sin cambiar el alto de golpe y con `aria-controls`. Shell aparte (cabecera, menú, barra inferior). Capturas y `report.json` en `e2e/.out/ux/` |
+| ux | **Barrido de REGLAS-UX** (`tests/ux.mjs`, **bloqueante**; `--ux-lenient` lo deja como línea base): todas las vistas del menú y las páginas de detalle con URL (equipo, tarea, ticket, artículo, cada panel de Configuración) a 390, 1024 y 1440 en oscuro y claro, con la sonda `lib/ux-probe.mjs`: huecos > 48 px entre bloques, tarjetas con franjas vacías, truncados con lugar, texto cortado sin elipsis, controles tapados (recorriendo el scroll), cursor de mano sin control, y cada colapsable (`aria-expanded`) abre y cierra sin mover su disparador (± 2 px), sin scrollear el documento, sin cambiar el alto de golpe y con `aria-controls`. Shell aparte (cabecera, menú, barra inferior). Capturas y `report.json` en `e2e/.out/ux/` |
 | sh | **Shell y colapsos** (funcional): en Préstamos, abrir y cerrar un grupo y "Cartelitos de fotos" con el área scrolleada lo más abajo posible: el encabezado tocado no se mueve más de 2 px en ningún frame, el documento no scrollea y el alto pasa por valores intermedios (se anima). En el Inicio, la franja de Accesos rápidos: el rayo no se mueve al abrir ni al cerrar, scrolleado lo que se mira no salta, los accesos usan más de una columna y ningún título se corta. Menú lateral a 1440×900 y 1366×768: todos los ítems enteros dentro de la lista, ninguno tapado por el pie, sin scroll; a 1024×640, 1024×768 (rail) y 1280×640 puede scrollear pero ningún ítem queda a medias (arriba, con la rueda y al fondo). Línea de estado de la cabecera con alto suave al aparecer y al irse. Mobile: con el teclado abierto la barra inferior se esconde y el campo enfocado queda a la vista |
 
 ## Sonda UX compartida (`lib/ux-probe.mjs`)
@@ -73,7 +73,7 @@ assert(!probe.total && !toggles.problems.length, formatProbe(probe, toggles));
 ```
 
 - `probeView` mide `gaps`, `innerGaps`, `truncated`, `cut`, `covered` (recorre el área que scrollea en `scrollSteps` pasos) y `fakeClickable`. Opciones: `scope`, `maxGap` (48), `ignore` (selectores), `scrollSteps` (6). `uxProbe` es la función que corre en la página, por si se quiere una sola medición.
-- `checkCollapsibles` abre y cierra con el mouse cada botón con `aria-expanded` del `scope` (salvo destructivos: `skip`), con el movimiento prendido, y mide frame a frame. Devuelve `items` y `problems`.
+- `checkCollapsibles` abre y cierra con el mouse cada botón con `aria-expanded` del `scope` (salvo destructivos: `skip`), con el movimiento prendido, y mide frame a frame. Devuelve `items` y `problems`. "De golpe" se mide en el alto de la página y se descarta si lo que controla (`aria-controls` → su colapso) pasó por valores intermedios: cuando otra columna más alta le pone un piso al alto de la página, el primer frame de la curva puede consumir todo el cambio visible sin que haya salto.
 - `data-ux-ignore` en un elemento lo saca de la sonda (solo para lienzos/planos donde el vacío es el contenido).
 
 ## Notas

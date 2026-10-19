@@ -269,11 +269,11 @@ export async function knowledgeCanvasTests({ browser, base, api, apiConsulta, ad
       const node = await page.waitForSelector(`.cv-node[data-node-id="${created.id}"]`);
       await (await node.$('button[aria-label="Quitar paso: uno"]')).click();
       await until(async () => (await canvasItems(api)).find(entry => entry.id === created.id).content.items.length === 1, { timeout: 5000, message: 'paso quitado' });
-      await clickText(page, '.cv-page > .ui-status button', /Deshacer/);
+      await clickText(page, '.cv-page > .ui-collapse .ui-status button', /Deshacer/);
       await until(async () => (await canvasItems(api)).find(entry => entry.id === created.id).content.items.map(step => step.text).join() === 'uno,dos', { timeout: 5000, message: 'paso devuelto en su lugar' });
       await (await node.$('.cv-node-del')).click();
       await until(async () => !(await canvasItems(api)).some(entry => entry.id === created.id), { message: 'nodo borrado' });
-      await clickText(page, '.cv-page > .ui-status button', /Deshacer/);
+      await clickText(page, '.cv-page > .ui-collapse .ui-status button', /Deshacer/);
       await until(async () => (await canvasItems(api)).some(entry => entry.id === created.id), { message: 'nodo restaurado' });
       await page.waitForSelector(`.cv-node[data-node-id="${created.id}"]`);
       return `#${created.id}`;
