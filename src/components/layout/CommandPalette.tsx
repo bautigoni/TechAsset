@@ -164,7 +164,7 @@ export function CommandPalette({ open, devices, navItems, links, consultationMod
 
   return (
     <StripCollapse open={open}>
-    <section className="shell-strip shell-palette" aria-label="Buscar o ir a" data-scanner-ignore="">
+    <section id="shell-strip-palette" className="shell-strip shell-palette" aria-label="Buscar o ir a" data-scanner-ignore="">
       <div className="shell-pal-field">
         <Search size={16} strokeWidth={1.6} aria-hidden="true" />
         <input

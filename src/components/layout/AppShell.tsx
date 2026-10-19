@@ -21,9 +21,10 @@ const NotifStrip = lazyView('shell-notif', loadPanels, 'NotifStrip');
 const AccountStrip = lazyView('shell-account', loadPanels, 'AccountStrip');
 const SitesStrip = lazyView('shell-sites', loadPanels, 'SitesStrip');
 const MoreView = lazyView('shell-more', loadPanels, 'MoreView');
+const ShellStatus = lazyView('shell-status', loadPanels, 'ShellStatus');
 // La barra inferior solo existe bajo 768 px: en desktop no se baja nunca.
 const MobileNav = lazyView('shell-tabbar', loadPanels, 'MobileNav');
-const PANEL_CHUNKS = ['shell-tabbar', 'shell-palette', 'shell-quick', 'shell-notif', 'shell-account', 'shell-sites', 'shell-more'];
+const PANEL_CHUNKS = ['shell-tabbar', 'shell-status', 'shell-palette', 'shell-quick', 'shell-notif', 'shell-account', 'shell-sites', 'shell-more'];
 
 
 const COLLAPSED_KEY = 'techasset_sidebar_collapsed';
@@ -136,6 +137,20 @@ export function AppShell(props: AppShellProps) {
   const viewRef = useRef<string>(view);
   viewRef.current = view;
   const keyboardOpen = useKeyboardOpen(isMobile);
+  // Con el teclado abierto el área de contenido se achica: el campo enfocado
+  // tiene que seguir a la vista (no tapado por el teclado ni por la cabecera).
+  useEffect(() => {
+    if (!keyboardOpen) return;
+    const field = document.activeElement as HTMLElement | null;
+    const scroller = scrollRef.current;
+    if (!field || !scroller || !scroller.contains(field)) return;
+    const raf = requestAnimationFrame(() => {
+      const box = scroller.getBoundingClientRect();
+      const rect = field.getBoundingClientRect();
+      if (rect.top < box.top || rect.bottom > box.bottom) field.scrollIntoView({ block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [keyboardOpen]);
   const { items: notifications, unread, toast, dismissToast, markRead, markAllRead } = useNotifications(true);
   const { links } = useQuickLinks(activeSite);
 
@@ -373,7 +388,8 @@ export function AppShell(props: AppShellProps) {
           </Suspense>
           )}
           </div>
-          <StatusOutlet className="shell-status" />
+          {/* Línea de estado global: entra y sale con alto suave (hasta que llega el chunk, la simple). */}
+          <Suspense fallback={<StatusOutlet className="shell-status" />}><ShellStatus /></Suspense>
         </div>
 
         {/* Lo único que scrollea: el contenido. La barra superior (con sus

@@ -145,10 +145,17 @@ export function keepInPlace(anchor: HTMLElement | null | undefined, { duration =
   const extra = reserve === 'auto' ? sc.clientHeight : reserve;
   if (extra > 0) setReserve(sc, state.reserve + extra);
   const top0 = anchor.getBoundingClientRect().top;
+  // Si algo que no es esta corrección scrollea mientras dura (la rueda del
+  // usuario, un scrollIntoView, el teclado), manda eso: se deja de sostener
+  // el ancla en vez de pelearle el scroll y devolverlo a donde estaba.
+  let expected = sc.scrollTop;
+  let released = false;
   const step = () => {
-    if (!anchor.isConnected) return;
+    if (released || !anchor.isConnected) return;
+    if (Math.abs(sc.scrollTop - expected) > 1) { released = true; return; }
     const delta = anchor.getBoundingClientRect().top - top0;
     if (Math.abs(delta) >= 0.5) sc.scrollTop += delta;
+    expected = sc.scrollTop;
   };
   // Se corrige DESPUÉS del layout y ANTES de pintar (ResizeObserver): con solo
   // rAF la corrección llegaría un frame tarde y el ancla temblaría. Se observa lo

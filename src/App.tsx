@@ -293,7 +293,23 @@ export function App() {
   useEffect(() => {
     if (!user || !activeSite) return;
     setSiteSettings(null);
-    getSiteSettings().then(response => setSiteSettings(response.settings || {})).catch(() => setSiteSettings({}));
+    // Un pedido que falla no se toma de una como "sin módulos": eso sacaba de la
+    // vista abierta (/knowledge, /reminders, /canvas → Inicio) cuando el server
+    // tardaba o cortaba. Se reintenta antes de rendirse, y la respuesta de una
+    // sede anterior (cambio de sede en el medio) no pisa a la actual.
+    let cancelled = false;
+    let timer = 0;
+    const load = (attempt: number) => {
+      getSiteSettings()
+        .then(response => { if (!cancelled) setSiteSettings(response.settings || {}); })
+        .catch(() => {
+          if (cancelled) return;
+          if (attempt < 3) timer = window.setTimeout(() => load(attempt + 1), 400 * 2 ** attempt);
+          else setSiteSettings({});
+        });
+    };
+    load(0);
+    return () => { cancelled = true; window.clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSite, user?.id]);
 

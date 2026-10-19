@@ -8,6 +8,7 @@ import { TruncatedText } from '../../ui/Truncated';
 import { EmptyState } from '../../ui/Data';
 import { Collapse } from '../../ui/Collapse';
 import { useScrollEdges } from '../../ui/scrollEdges';
+import { StatusLine, clearStatus, useStatusOutlet } from '../../ui/Status';
 import { groupLinks } from '../tools/quickLinks';
 import { plainText, timeAgo } from './notifText';
 import { TenantLogo } from './TenantLogo';
@@ -238,4 +239,29 @@ export function SitesStrip({ open, sites, activeSite, onPick, onClose }: { open:
     </Strip>
     </StripCollapse>
   );
+}
+
+/* ── Línea de estado global (pushStatus) ─────────────────────────────── */
+
+/**
+ * La línea de estado de la cabecera entra y sale con alto suave (Collapse),
+ * igual que las franjas: un aviso que llega solo (una notificación nueva, un
+ * filtro aplicado desde Ctrl K) no empuja la página de golpe; scrolleado, lo
+ * que se mira queda quieto. Mientras se pliega se sigue viendo el último aviso.
+ */
+export function ShellStatus() {
+  const item = useStatusOutlet();
+  const [shown, setShown] = useState(item);
+  if (item && item !== shown) setShown(item);
+  const current = item || shown;
+  return (
+    <StripCollapse open={Boolean(item)}>
+      {current && <OutletLine item={current} />}
+    </StripCollapse>
+  );
+}
+
+function OutletLine({ item }: { item: NonNullable<ReturnType<typeof useStatusOutlet>> }) {
+  const { key, ...rest } = item;
+  return <StatusLine key={key} {...rest} className="shell-status" onDismiss={() => clearStatus(key)} />;
 }

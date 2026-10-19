@@ -122,6 +122,7 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
             className="shell-site"
             aria-label={`Cambiar de sede: ${siteInfo?.nombre || activeSite}`}
             aria-expanded={openStrip === 'sites'}
+            aria-controls="shell-strip-sites"
             onClick={event => onToggleStrip('sites', event.currentTarget)}
             onMouseEnter={event => showTip(event.currentTarget, `Sede: ${siteInfo?.nombre || activeSite}`)}
             onMouseLeave={hideTip}
@@ -140,6 +141,7 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
           className="shell-search-btn"
           aria-label="Buscar o ir a una sección (Ctrl K)"
           aria-expanded={openStrip === 'palette'}
+          aria-controls="shell-strip-palette"
           onClick={event => onToggleStrip('palette', event.currentTarget)}
           onMouseEnter={event => showTip(event.currentTarget, 'Buscar o ir a… (Ctrl K)')}
           onMouseLeave={hideTip}
@@ -174,6 +176,7 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
             className="shell-icon-btn shell-user-more"
             aria-label="Opciones de cuenta"
             aria-expanded={openStrip === 'account'}
+            aria-controls="shell-strip-account"
             onClick={event => onToggleStrip('account', event.currentTarget)}
             onMouseEnter={event => showTip(event.currentTarget, displayName)}
             onMouseLeave={hideTip}
@@ -182,7 +185,8 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
           </button>
         </div>
       </div>
-      <Tooltip anchor={tip?.anchor || null} open={Boolean(tip)}>{tip?.label}</Tooltip>
+      {/* Al costado: debajo taparía al ítem siguiente del rail. */}
+      <Tooltip anchor={tip?.anchor || null} open={Boolean(tip)} placement="right">{tip?.label}</Tooltip>
     </aside>
   );
 }

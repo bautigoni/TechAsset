@@ -7,7 +7,18 @@ import './util';
  * texto que está cortado. Sin flecha, con --g-shadow-tooltip, posicionado
  * debajo (o arriba si no entra) sin salirse nunca del viewport.
  */
-export function Tooltip({ anchor, open, children, id }: { anchor: HTMLElement | null; open: boolean; children: ReactNode; id?: string }) {
+export function Tooltip({ anchor, open, children, id, placement = 'below' }: {
+  anchor: HTMLElement | null;
+  open: boolean;
+  children: ReactNode;
+  id?: string;
+  /**
+   * 'below' (default): debajo, o arriba si no entra. 'right': al costado, centrado
+   * en el ancla (listas verticales como el rail: debajo taparía al ítem siguiente);
+   * si no entra a la derecha, vuelve a 'below'.
+   */
+  placement?: 'below' | 'right';
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' });
 
@@ -20,11 +31,16 @@ export function Tooltip({ anchor, open, children, id }: { anchor: HTMLElement | 
     const gap = 6;
     const vw = document.documentElement.clientWidth;
     const vh = document.documentElement.clientHeight;
+    if (placement === 'right' && a.right + gap + t.width <= vw - margin) {
+      const top = Math.min(Math.max(margin, a.top + (a.height - t.height) / 2), Math.max(margin, vh - t.height - margin));
+      setStyle({ transform: `translate(${Math.round(a.right + gap)}px, ${Math.round(top)}px)` });
+      return;
+    }
     const left = Math.min(Math.max(margin, a.left), Math.max(margin, vw - t.width - margin));
     const below = a.bottom + gap;
     const top = below + t.height <= vh - margin ? below : Math.max(margin, a.top - gap - t.height);
     setStyle({ transform: `translate(${Math.round(left)}px, ${Math.round(top)}px)` });
-  }, [open, anchor, children]);
+  }, [open, anchor, children, placement]);
 
   useEffect(() => { if (!open) setStyle({ visibility: 'hidden' }); }, [open]);
 

@@ -59,6 +59,7 @@ export function Topbar({ title, context, consultationMode, user, unread, openStr
           className="shell-icon-btn shell-mobile-only"
           aria-label="Buscar o ir a… (Ctrl K)"
           aria-expanded={openStrip === 'palette'}
+          aria-controls="shell-strip-palette"
           onClick={event => onToggleStrip('palette', event.currentTarget)}
         >
           <Search size={18} strokeWidth={1.6} aria-hidden="true" />
@@ -78,6 +79,7 @@ export function Topbar({ title, context, consultationMode, user, unread, openStr
           className="shell-icon-btn shell-desktop-only"
           aria-label="Ver accesos rápidos"
           aria-expanded={openStrip === 'quick'}
+          aria-controls="shell-strip-quick"
           onClick={event => onToggleStrip('quick', event.currentTarget)}
         >
           <Zap size={18} strokeWidth={1.6} aria-hidden="true" />
@@ -87,6 +89,7 @@ export function Topbar({ title, context, consultationMode, user, unread, openStr
           className="shell-icon-btn shell-bell"
           aria-label={unread ? `Notificaciones, ${unread} sin leer` : 'Notificaciones'}
           aria-expanded={openStrip === 'notif'}
+          aria-controls="shell-strip-notif"
           onClick={event => onToggleStrip('notif', event.currentTarget)}
         >
           <Bell size={18} strokeWidth={1.6} aria-hidden="true" />
@@ -97,6 +100,7 @@ export function Topbar({ title, context, consultationMode, user, unread, openStr
           className="shell-icon-btn shell-account-btn"
           aria-label="Menú de cuenta"
           aria-expanded={openStrip === 'account'}
+          aria-controls="shell-strip-account"
           onClick={event => onToggleStrip('account', event.currentTarget)}
         >
           <span className="shell-avatar" aria-hidden="true">{initialsOf(displayName)}</span>

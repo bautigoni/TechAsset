@@ -137,11 +137,16 @@ export function clearStatus(key?: number) {
   emitOutlet();
 }
 
+const subscribeOutlet = (listener: () => void) => { outletListeners.add(listener); return () => { outletListeners.delete(listener); }; };
+const readOutlet = () => outletState;
+
+/** Lo que muestra hoy el puente global (para envolverlo en otra cosa, p. ej. un Collapse). */
+export function useStatusOutlet() {
+  return useSyncExternalStore(subscribeOutlet, readOutlet).item;
+}
+
 export function StatusOutlet({ className }: { className?: string }) {
-  const state = useSyncExternalStore(
-    listener => { outletListeners.add(listener); return () => { outletListeners.delete(listener); }; },
-    () => outletState
-  );
+  const state = useSyncExternalStore(subscribeOutlet, readOutlet);
   if (!state.item) return null;
   const { key, ...rest } = state.item;
   return <StatusLine key={key} {...rest} className={className} onDismiss={() => clearStatus(key)} />;
