@@ -2,11 +2,11 @@
   "note": "Generado por scripts/check-ui.mjs --update. Lo que hay hoy en src/ fuera de src/ui/; se achica a medida que el rediseño reemplaza controles.",
   "totals": {
     "input-nativo": 24,
-    "title-tooltip": 27,
+    "title-tooltip": 19,
     "checkbox-radio-crudo": 18,
     "details": 7,
     "datalist": 4,
-    "hex-en-css": 79
+    "hex-en-css": 57
   },
   "entries": [
     {
@@ -277,7 +277,7 @@
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
       "text": "--tenant-accent: #3b82f6;",
-      "count": 3
+      "count": 1
     },
     {
       "rule": "hex-en-css",
@@ -295,12 +295,6 @@
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
       "text": ".agenda-card.estado-reprogramado { border-left-color: #a855f7; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-kind-generica{border-left-color:#94a3b8}",
       "count": 1
     },
     {
@@ -337,24 +331,6 @@
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
       "text": ".knowledge-page{display:grid;gap:14px}.knowledge-hero{padding:clamp(18px,2.4vw,30px);display:flex;justify-content:space-between;align-items:center;gap:20px}.kno",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".scanner-reader{width:100%;min-height:320px;border-radius:12px;overflow:hidden;background:#000}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".scanner-video{width:100%;max-height:320px;border-radius:12px;background:#000;object-fit:cover}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".switch-label input:checked + .switch-ui::after{transform:translateX(18px);background:#bfdbfe}",
       "count": 1
     },
     {
@@ -402,31 +378,7 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": "background:#94a3b8;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background:linear-gradient(135deg,#2563eb,#14b8a6);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": "border-left: 4px solid #3b82f6;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "border-left:4px solid #94a3b8;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "border: 1px solid #f59e0b;",
       "count": 1
     },
     {
@@ -445,60 +397,6 @@
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
       "text": "color: #1e40af;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color:#03111f!important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color:#99f6e4;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color:#b9d3ff;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color:#bae6fd!important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color:#e5f0ff;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color:#fff;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "linear-gradient(90deg,#0f172a 0 50%,#f8fafc 50% 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "linear-gradient(90deg,#f8fafc 0 50%,#0f172a 50% 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/global.css",
-      "text": "background: #fff;",
       "count": 1
     },
     {
@@ -570,19 +468,7 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/layout.css",
-      "text": "conic-gradient(#22c55e var(--gauge-value), rgba(148, 163, 184, .18) 0);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
       "text": "fill: #dbeafe;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "linear-gradient(135deg, #07111f 0%, #0f172a 46%, #111827 100%);",
       "count": 1
     },
     {
@@ -767,12 +653,6 @@
     },
     {
       "rule": "title-tooltip",
-      "file": "src/components/assistant/AssistantPanel.tsx",
-      "text": "<button title={voiceState === 'recording' ? 'Detener y enviar' : 'Hablar'}",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
       "file": "src/components/classrooms/ClassroomStatusPage.tsx",
       "text": "<button title={f.enabled ? f.label : 'Próximamente'}",
       "count": 1
@@ -786,7 +666,7 @@
     {
       "rule": "title-tooltip",
       "file": "src/components/devices/DevicesPage.tsx",
-      "text": "<input title=\"Buscar D1433, Touch 31, touch31, Plani 5...\"",
+      "text": "<input title=\"Buscar D1433, Touch 31, touch31, Plani 5...\"\r",
       "count": 1
     },
     {
@@ -821,38 +701,14 @@
     },
     {
       "rule": "title-tooltip",
-      "file": "src/components/layout/Sidebar.tsx",
-      "text": "<button title={collapsed ? 'Expandir menú' : 'Contraer menú'} onClick={onToggleCollapsed}",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/layout/Sidebar.tsx",
-      "text": "<button title={item.label} data-tooltip={item.label} aria-label={item.label}",
-      "count": 2
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/layout/Topbar.tsx",
-      "text": "<button title={user?.email || displayName}",
-      "count": 2
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/layout/Topbar.tsx",
-      "text": "<span title={activeSiteInfo?.nombre || user?.email || 'Sede'}",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
       "file": "src/components/loans/DeviceChipsPanel.tsx",
-      "text": "<button title={bloqueado",
+      "text": "<button title={bloqueado\r",
       "count": 1
     },
     {
       "rule": "title-tooltip",
       "file": "src/components/loans/PhotoPassPanel.tsx",
-      "text": "<button title={bloqueado",
+      "text": "<button title={bloqueado\r",
       "count": 1
     },
     {
@@ -889,12 +745,6 @@
       "rule": "title-tooltip",
       "file": "src/components/tools/QuickAccess.tsx",
       "text": "<button title=\"Archivo no cargado\"",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/tools/QuickAccessPopover.tsx",
-      "text": "<button title=\"Accesos rápidos\"\r",
       "count": 1
     }
   ]

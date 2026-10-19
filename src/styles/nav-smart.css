@@ -1,30 +1,9 @@
 /* ================================================================
-   nav-smart.css — restos del shell viejo que siguen en uso.
-
-   Etapa 1 del rediseño: los perfiles con navegación variante (escalera,
-   centrada, peek: sidebar-rail, topbar-smart, bottom-nav) ya no se pueden
-   elegir (data-theme-profile queda fijo en "classic"), así que su CSS se
-   sacó. El TSX de esas ramas (Sidebar/Topbar/MobileNav) se borra en la
-   etapa 2 junto con el shell. Queda: el botón de ícono de la topbar (lo usa
-   Accesos rápidos), los arreglos del tema claro y el selector de Apariencia.
+   nav-smart.css — compatibilidad del tema claro sobre CSS viejo y el
+   selector de Apariencia. El shell viejo que vivía acá se borró en la
+   etapa 2: el caparazón nuevo está en shell.css.
    ================================================================ */
 
-.topbar-icon-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  color: var(--text);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  padding: 0;
-  transition: background var(--duration-fast, .15s) ease;
-  flex: 0 0 auto;
-}
-
-.topbar-icon-btn:hover { background: var(--g-raised); }
 
 /* ── COMPAT CLARO: overrides del tema claro sobre CSS viejo ─
    Era el bloque del tema B "Smart Campus" (crema). Desde la etapa 1 del
@@ -34,40 +13,12 @@
    Se borra pantalla por pantalla a medida que se migra. ── */
 :root.theme-light .card-head h3,
 :root.theme-light .stat-card strong,
-:root.theme-light .inventory-kpis strong,
-:root.theme-light .classroom-coming-card span,
-:root.theme-light .classroom-placeholder-hero h3,
 :root.theme-light .scan-preview-meta,
 :root.theme-light .task-card.task-state-hecha strong { color: var(--g-text); }
-:root.theme-light .classroom-coming-card strong,
 :root.theme-light .operational-alias { color: var(--g-accent); }
-:root.theme-light .classroom-coming-card,
-:root.theme-light .classroom-placeholder-hero,
 :root.theme-light .continuous-scan-panel {
   background: var(--g-surface);
   border-color: var(--g-line);
-}
-
-/* Sidebar y navegación */
-:root.theme-light .sidebar {
-  background: var(--g-surface);
-  border-right-color: var(--g-line);
-}
-:root.theme-light .brand p { color: var(--g-text-2); }
-:root.theme-light .topbar {
-  background: var(--g-bg) !important;
-  border-bottom-color: var(--g-line) !important;
-}
-
-/* Botón Cerrar sesión: texto de error, sin fondo tintado */
-:root.theme-light .account-menu-action {
-  background: transparent;
-  color: var(--g-bad);
-  border-color: var(--g-line-strong);
-}
-:root.theme-light .sync-refresh-btn {
-  color: var(--g-text);
-  background: var(--g-raised);
 }
 
 /* Tabla de dispositivos */
@@ -88,8 +39,6 @@
 :root.theme-light .toggle-row-button.active .toggle-pill { background: var(--g-accent); }
 :root.theme-light .toggle-row-button.active .toggle-pill span { background: var(--g-on-accent); }
 :root.theme-light .continuous-scan-summary { color: var(--g-text-2); }
-:root.theme-light .continuous-scan-table .row-scanned,
-:root.theme-light .continuous-scan-table .row-duplicate { background: transparent; }
 
 /* Tareas: estados como texto coloreado, sin pastilla tintada */
 :root.theme-light .task-card.task-state-hecha {
@@ -100,12 +49,7 @@
 :root.theme-light .task-state-pill-hecha { background: transparent; color: var(--g-ok); }
 :root.theme-light .task-state-pill-pendiente { background: transparent; color: var(--g-accent); }
 :root.theme-light .task-state-pill-en-proceso { background: transparent; color: var(--g-warn); }
-:root.theme-light .checklist-confirm-btn,
-:root.theme-light .checklist-confirm-btn:hover {
-  border-color: var(--g-line-strong) !important;
-  background: var(--g-surface) !important;
-  color: var(--g-ok) !important;
-}
+
 :root.theme-light .task-done-btn {
   background: var(--g-accent) !important;
   border-color: var(--g-accent) !important;
@@ -123,11 +67,6 @@
   color: var(--g-text);
 }
 :root.theme-light .inventory-segmented { border-color: var(--g-line); }
-:root.theme-light .filter-check {
-  border-color: var(--g-line-strong);
-  background: var(--g-surface);
-  color: transparent !important;
-}
 
 :root.theme-light .stat-card.active,
 :root.theme-light .stat-card.active-filter {
@@ -147,13 +86,11 @@
   box-shadow: none;
   color: var(--g-on-accent);
 }
-:root.theme-light .agenda-tab.active,
-:root.theme-light .tasks-tab.active {
+:root.theme-light .agenda-tab.active {
   color: var(--g-accent);
   border-bottom-color: var(--g-accent);
 }
-:root.theme-light .ticket-chip.is-active,
-:root.theme-light .agenda-action-btn.primary {
+:root.theme-light .ticket-chip.is-active {
   background: var(--g-accent);
   border-color: var(--g-accent);
   color: var(--g-on-accent);
@@ -162,7 +99,6 @@
   background: var(--g-accent);
   border-color: var(--g-accent);
 }
-:root.theme-light .notif-bell:hover,
 :root.theme-light .mini-action-btn:hover { border-color: var(--g-accent); }
 
 /* ── SELECTOR DE TEMA (Configuración › Apariencia) ───────────────

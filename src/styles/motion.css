@@ -307,14 +307,6 @@
     opacity   var(--dropdown-close-dur) var(--dropdown-ease);
 }
 
-/* El drawer mobile del sidebar entra con `transform: translateX`, pero su
-   transición sólo declaraba `width`, así que aparecía de golpe.
-   El `width` se repite porque `transition` es shorthand y sacarlo mataría la
-   animación de colapsar el sidebar, que ya existía y no es nueva de acá. */
-.sidebar {
-  transition: width .2s ease, transform var(--m-in) var(--m-ease);
-}
-
 /* El menú de Inventario es un <details> nativo: no tiene estado en JS del que
    colgarse, así que sólo lleva entrada, por keyframes. Salida no hay — el
    browser cierra el <details> de una y no queda nada montado que animar. */
@@ -600,21 +592,18 @@
    app, sin tocar el markup: así entran los dos sistemas de toggle
    (el de checkbox y el de botón) de una.
    ================================================================ */
-.switch-ui::after,
 .switch-knob {
   transition:
     transform var(--toggle-dur) var(--ease-spring),
     background var(--toggle-track) var(--m-ease);
 }
-.switch,
-.switch-ui {
+.switch {
   transition:
     background var(--toggle-track) var(--m-ease),
     border-color var(--toggle-track) var(--m-ease);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .switch-ui::after,
   .switch-knob { transition-duration: 1ms !important; }
 }
 
@@ -764,68 +753,10 @@
    El texto se duplica en ::before vía content: attr(data-text), así
    que el elemento necesita ese atributo además del contenido.
    ================================================================ */
-.t-shimmer {
-  position: relative;
-  display: inline-block;
-  color: var(--shimmer-base);
-}
-.t-shimmer::before {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent 40%,
-    var(--shimmer-highlight) 50%,
-    transparent 60%,
-    transparent 100%
-  );
-  background-size: var(--shimmer-band) 100%;
-  background-repeat: no-repeat;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  animation: t-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite;
-}
+
 @keyframes t-shimmer {
   0%   { background-position: 100% 0; }
   100% { background-position: 0% 0; }
-}
-
-/* ================================================================
-   7c-bis. ICON SWAP — receta `icon-swap`.
-   Los dos íconos viven apilados en la misma celda de grid y se
-   cruzan con blur, así el botón no cambia de tamaño ni pega un salto
-   cuando el ícono cambia. Va en los botones que abren y cierran algo:
-   el "Más" de la nav mobile y el colapso del sidebar.
-   ================================================================ */
-.t-icon-swap {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-}
-.t-icon-swap .t-icon {
-  grid-area: 1 / 1;
-  display: inline-flex;
-  transition:
-    opacity   var(--icon-swap-dur) var(--icon-swap-ease),
-    filter    var(--icon-swap-dur) var(--icon-swap-ease),
-    transform var(--icon-swap-dur) var(--icon-swap-ease);
-}
-.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
-.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
-  opacity: 1;
-  filter: blur(0);
-  transform: scale(1);
-}
-.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
-.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
-  opacity: 0;
-  filter: blur(var(--icon-swap-blur));
-  transform: scale(var(--icon-swap-start-scale));
 }
 
 /* ================================================================
@@ -834,54 +765,6 @@
    de golpe, entran desde el lado del que vienen. La dirección la da
    data-page, así el movimiento cuenta hacia dónde vas.
    ================================================================ */
-.t-page-slide { position: relative; }
-.t-page-slide .t-page[data-page-id="1"] { --t-page-from-x: calc(var(--page-slide-distance) * -1); }
-.t-page-slide .t-page[data-page-id="2"] { --t-page-from-x: var(--page-slide-distance); }
-.t-page-slide .t-page {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(var(--t-page-from-x, 0px));
-  filter: blur(var(--page-blur));
-  transition:
-    opacity   var(--page-fade-dur)  var(--page-fade-ease),
-    transform var(--page-slide-dur) var(--page-slide-ease),
-    filter    var(--page-slide-dur) var(--page-slide-ease);
-}
-.t-page-slide[data-page="1"] .t-page[data-page-id="1"],
-.t-page-slide[data-page="2"] .t-page[data-page-id="2"] {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-  filter: blur(0);
-}
-
-/* ================================================================
-   7d. BADGE — receta `notification-badge`.
-   El contador de la campana aparecía y desaparecía de golpe: llegaba
-   una notificación y nada la anunciaba. Ahora entra con un pop corto
-   y se va encogiendo con blur.
-   Se monta sobre `.notif-badge`, que ya está posicionado por
-   components.css — la receta sólo aporta el movimiento.
-   ================================================================ */
-.notif-badge.t-badge-dot {
-  transform-origin: center;
-  transform: scale(1);
-  opacity: 1;
-  filter: blur(0);
-  transition:
-    transform var(--badge-pop-dur)  var(--ease-spring),
-    opacity   var(--badge-fade-dur) var(--m-ease),
-    filter    var(--badge-pop-dur)  var(--m-ease);
-}
-.notif-badge.t-badge-dot.is-hidden {
-  transform: scale(0);
-  opacity: 0;
-  filter: blur(var(--badge-blur));
-  transition:
-    transform var(--badge-pop-close-dur)  var(--m-ease),
-    opacity   var(--badge-fade-close-dur) var(--m-ease),
-    filter    var(--badge-pop-close-dur)  var(--m-ease);
-}
 
 /* ================================================================
    7g. BARRAS DE PROGRESO.
@@ -900,16 +783,14 @@
    El costo acá es acotado: son barras de 3 a 10px de alto, hay pocas
    en pantalla y sólo se mueven cuando cambia el dato, no en loop.
    ================================================================ */
-.assistant-bar-fill,
 .inv-kpi-progress i b,
 .parque-bar i {
   transition: width var(--bar-dur) var(--ease-spring);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .assistant-bar-fill,
   .inv-kpi-progress i b,
-  .parque-bar i { transition-duration: 1ms !important; }
+.parque-bar i { transition-duration: 1ms !important; }
 }
 
 /* ================================================================
@@ -1141,8 +1022,6 @@
 }
 :root { caret-color: var(--blue); }
 
-/* Barras de scroll: ocultas en toda la app (global.css). */
-
 /* Anillo de foco propio, sólo para teclado. Sin tocar border-radius: el
    outline ya sigue el radio propio del elemento, y forzarlo acá le cuadraba
    las esquinas a los botones pill al llegar con Tab. */
@@ -1153,10 +1032,7 @@
 
 /* Números tabulares donde se comparan cifras: sin esto las
    columnas bailan al actualizarse. */
-.stat-card .stat-value,
-.t-digit-group,
-table td.num,
-table th.num { font-variant-numeric: tabular-nums; }
+.t-digit-group { font-variant-numeric: tabular-nums; }
 
 /* ================================================================
    11. REDUCED MOTION
@@ -1186,7 +1062,7 @@ table th.num { font-variant-numeric: tabular-nums; }
   .t-text-swap { transition: none !important; }
   .t-stagger > *,
   .t-stagger-x > * { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
-  .t-shimmer::before { animation: none !important; }
+
   /* El gooey conserva el despliegue (sin él los satélites no existen),
      pero sin amague ni stagger: el movimiento se vuelve funcional. */
   .t-goo-blob,

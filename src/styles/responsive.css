@@ -1,54 +1,7 @@
 @media (max-width: 980px) {
-  .app-shell {
-    display: block;
-  }
-
-  .sidebar {
-    width: min(86vw, 340px);
-    max-width: 340px;
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-  }
-
-  .sidebar.open,
-  .sidebar.mobile-open {
-    transform: translateX(0);
-  }
-
-  .sidebar .nav-scrollable {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .sidebar .sidebar-footer {
-    margin-top: 12px;
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-  }
-
-  .page-actions {
-    justify-content: stretch;
-  }
-
-  .page-actions .btn {
-    flex: 1 1 160px;
-  }
-
-  .topbar-actions {
-    flex-wrap: wrap;
-  }
-
-  .topbar-actions .input {
-    min-width: 0;
-    width: 100%;
-  }
 
   .agenda-cards,
-  .task-board,
-  .analytics-grid {
+.task-board {
     grid-template-columns: 1fr !important;
   }
 
@@ -93,8 +46,7 @@
     white-space: normal;
   }
 
-  .task-add-item,
-  .internal-note-form {
+  .task-add-item {
     grid-template-columns: 1fr !important;
   }
 }
@@ -122,18 +74,7 @@
 .task-check-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin:0;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02);color:var(--text)}
 .task-check-item button{border:0;background:transparent;color:var(--muted);cursor:pointer}
 .task-add-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px}
-.internal-notes-card{margin:16px 0}
-.internal-note-filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.small-filter{border:1px solid var(--border);background:var(--panel-2);color:var(--text);border-radius:999px;padding:7px 10px;cursor:pointer}
-.small-filter.active{border-color:var(--blue);background:rgba(59,130,246,.16)}
-.internal-note-form{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;margin-bottom:12px}
-.check-line{display:flex;align-items:center;gap:6px;margin:0;color:var(--muted)}
-.internal-note-list{display:grid;gap:8px}
-.internal-note{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2)}
-.internal-note.important{border-color:rgba(245,158,11,.55)}
-.internal-note p{margin:0 0 6px}
-.internal-note button{margin-top:6px;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:8px;padding:5px 8px;cursor:pointer}
-.dashboard-ops-actions{display:flex;justify-content:flex-end;margin:12px 0}
+
 .closure-preview{white-space:pre-wrap;max-height:48vh;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--panel-2);padding:12px;color:var(--text)}
 .closure-history{display:grid;gap:6px;margin-top:8px}
 .smtp-help-list{margin:10px 0 0;padding-left:20px;color:var(--muted);line-height:1.5}
@@ -171,59 +112,6 @@
   border-color:rgba(248,113,113,.65)!important;
   color:#fff!important;
   background:rgba(185,28,28,.32)!important;
-}
-
-.checklist-confirm-btn{
-  width:100%;
-  margin:8px 0 4px;
-  min-height:40px;
-  border:1px solid rgba(34,197,94,.42)!important;
-  border-radius:10px;
-  background:linear-gradient(180deg,rgba(34,197,94,.24),rgba(21,128,61,.18))!important;
-  color:var(--g-ok)!important;
-  font-weight:700;
-  box-shadow:none;
-}
-
-.checklist-confirm-btn:hover{
-  border-color:rgba(74,222,128,.7)!important;
-  background:linear-gradient(180deg,rgba(34,197,94,.34),rgba(21,128,61,.24))!important;
-}
-
-.checklist-confirm-btn:focus-visible,
-.important-toggle:focus-visible{
-  outline:2px solid rgba(96,165,250,.75);
-  outline-offset:2px;
-}
-
-.important-toggle{
-  min-height:38px;
-  border:1px solid rgba(148,163,184,.24);
-  border-radius:999px;
-  padding:8px 12px;
-  background:var(--g-raised);
-  color:var(--g-text-2);
-  font-weight:700;
-  cursor:pointer;
-  white-space:nowrap;
-  transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease;
-}
-
-.important-toggle:hover{
-  border-color:rgba(245,158,11,.45);
-  color:var(--g-warn);
-  background:rgba(120,53,15,.20);
-}
-
-.important-toggle.active{
-  border-color:rgba(245,158,11,.65);
-  background:rgba(245,158,11,.18);
-  color:var(--g-warn);
-}
-
-.important-toggle:disabled{
-  opacity:.55;
-  cursor:not-allowed;
 }
 
 .toggle-row-button{
@@ -327,16 +215,6 @@
     min-height:84px;
   }
 
-  .internal-note-form{
-    grid-template-columns:1fr!important;
-  }
-
-  .important-toggle,
-  .internal-note-form .btn{
-    width:100%;
-    justify-content:center;
-  }
-
   .toggle-row-button{
     grid-template-columns:auto 1fr;
   }
@@ -357,12 +235,6 @@
    MOBILE RESPONSIVE — capa quirúrgica (no toca desktop)
    ===================================================================== */
 
-/* Scroll lock al abrir menú mobile */
-body.mobile-menu-open {
-  overflow: hidden;
-  touch-action: none;
-}
-
 /* Visual refresh: match the existing KPI card surface. */
 .panel-ahora.card,
 .movements-card.card,
@@ -373,7 +245,6 @@ body.mobile-menu-open {
   box-shadow: var(--surface-shadow), var(--surface-inset);
 }
 
-.ahora-item:hover,
 .movements-card .list-item:hover,
 .floor-btn:hover,
 .classroom-list-item:hover {
@@ -387,130 +258,10 @@ body.mobile-menu-open {
   box-shadow: 0 0 0 1px rgba(59, 130, 246, .2) inset, var(--surface-shadow);
 }
 
-/* ── TOPBAR MOBILE (≤ 980px) ─────────────────────────────────────────
-   Sobreescribe los múltiples overrides de legacy.css con una regla
-   final, limpia y de fila única.
-   ──────────────────────────────────────────────────────────────────── */
+/* ── VISTAS EN MOBILE (≤ 980px): márgenes y zonas seguras ──────────── */
 @media (max-width: 980px) {
-  /* Fuerza layout flex de fila única */
-  .topbar {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 8px 12px !important;
-    min-height: 54px;
-  }
-
-  /* Restaura los wrappers como contenedores reales (legacy los ponía display:contents) */
-  .topbar-title-wrap {
-    display: flex !important;
-    align-items: center;
-    gap: 8px;
-    flex: 0 0 auto;
-    min-width: 0;
-    order: unset !important;
-  }
-
-  .topbar-actions {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    order: unset !important;
-  }
-
-  /* Reset de order heredados de legacy */
-  .mobile-menu-btn   { order: unset !important; }
-  .topbar-logo       { order: unset !important; margin-left: 0 !important; }
-  .sync-mini         { order: unset !important; }
-
-  /* Logo acotado */
-  .topbar-logo {
-    display: block !important;
-    width: 26px !important;
-    height: 26px !important;
-    object-fit: contain;
-  }
-
-  /* Título oculto — ahorra espacio */
-  .topbar-title-text { display: none !important; }
-
-  /* Buscador global oculto en mobile (cada vista tiene su propio filtro) */
-  .topbar-actions .input,
-  #globalSearch {
-    display: none !important;
-  }
-
-  /* Chip de sede acotado */
-  .operator-chip {
-    max-width: 80px;
-    flex: 0 0 auto;
-    font-size: 12px;
-    padding: 5px 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* Sync dot compacto */
-  .sync-mini {
-    flex: 0 0 auto;
-    width: 22px !important;
-    min-width: 22px !important;
-    height: 22px !important;
-    padding: 0 !important;
-    border: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-  .sync-mini-dot {
-    width: 12px !important;
-    height: 12px !important;
-    margin: 0 !important;
-  }
-
-  /* Botones mínimo táctil 40px */
-  .sync-refresh-btn,
-  .theme-icon-btn,
-  .mobile-menu-btn {
-    flex: 0 0 auto;
-    min-width: 38px;
-    min-height: 38px;
-    display: inline-grid !important;
-    place-items: center;
-  }
-
-  /* Cuenta: solo avatar en mobile */
-  .account-chip {
-    flex: 0 0 auto;
-    max-width: 48px;
-    padding-right: 6px;
-  }
-
-  .account-name {
-    display: none;
-  }
-
-  /* Banner consulta: muy compacto */
-  .consulta-banner {
-    font-size: 10px;
-    padding: 3px 7px;
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
 
   /* ── SAFE AREA PADDING ─────────────────────────────────────────── */
-  .main-content {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  }
 
   .view {
     padding-left: 14px !important;
@@ -611,19 +362,6 @@ body.mobile-menu-open {
     min-width: 0;
   }
 
-  /* ── INVENTORY PAGE ────────────────────────────────────────────── */
-  .inventory-toolbar {
-    gap: 8px;
-  }
-
-  .inventory-toolbar .inventory-segmented {
-    width: 100%;
-  }
-
-  .inventory-toolbar .inventory-segmented button {
-    flex: 1;
-  }
-
   /* ── TASKS PAGE ────────────────────────────────────────────────── */
   .task-board {
     gap: 16px;
@@ -639,25 +377,21 @@ body.mobile-menu-open {
   }
 
   /* Tabs con scroll horizontal suave */
-  .tab-row,
   .tabs {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
 
-  .tab-row::-webkit-scrollbar,
   .tabs::-webkit-scrollbar {
     display: none;
   }
 
   /* Espacio adicional para subtarea / form de nota */
-  .task-add-item,
-  .internal-note-form {
+  .task-add-item {
     padding-bottom: 8px;
   }
 
-  /* ── AGENDA PAGE ───────────────────────────────────────────────── */
   /* Selector de días: scroll horizontal, sin wrap */
   .agenda-day-selector {
     display: flex !important;
@@ -705,10 +439,6 @@ body.mobile-menu-open {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* ── LOANS: batch item ─────────────────────────────────────────── */
-  .batch-item {
-    grid-template-columns: 1fr !important;
-  }
 }
 
 /* ── BREAKPOINT 560px ─────────────────────────────────────────────── */
@@ -731,8 +461,9 @@ body.mobile-menu-open {
 
 /* Módulos operativos nuevos: layout fluido sin anchos mínimos que fuercen zoom. */
 @media (max-width: 980px) {
-  .planning-hero, .tasks-hero, .petty-hero { align-items: stretch; flex-direction: column; }
-  .schedule-controls, .petty-config, .canvas-toolbar { grid-template-columns: 1fr; }
+  .planning-hero { align-items: stretch; flex-direction: column; }
+  .schedule-controls,
+.canvas-toolbar { grid-template-columns: 1fr; }
   .canvas-tools, .canvas-zoom, .petty-actions { justify-content: flex-start; }
   .petty-layout { grid-template-columns: 1fr; }
   .petty-balance { min-width: 0; }
@@ -752,16 +483,11 @@ body.mobile-menu-open {
   .task-space-toggle, .tasks-subnav, .planning-tabs { width: 100%; overflow-x: auto; }
   .cat-row { grid-template-columns: auto minmax(0, 1fr); }
   .cat-row .cat-actions { grid-column: 2; }
-  .classroom-category-list article > .btn { grid-column: 2; justify-self: start; }
-  .category-create-form, .receipt-field { grid-template-columns: 1fr; }
+
+  .receipt-field { grid-template-columns: 1fr; }
   .ticket-relation-form, .ticket-detail-section > form, .knowledge-toolbar { grid-template-columns:1fr; }
   .device-overview-section dl { grid-template-columns:1fr; }
   .device-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-}
-
-@media (min-width: 981px) and (max-width: 1360px) {
-  .topbar > .topbar-actions > .input { width: min(18vw, 210px); min-width: 120px; }
-  .topbar .account-name, .topbar .site-switcher-text small { display: none; }
 }
 
 /* ── BREAKPOINT 380px ─────────────────────────────────────────────── */
@@ -845,56 +571,6 @@ body.mobile-menu-open {
       min-width: 0;
       flex-wrap: wrap;
     }
-  }
-}
-
-/* Collapsed sidebar: fixed rail, centered icons, internal vertical scroll. */
-@media (min-width: 981px) {
-  .sidebar.is-collapsed {
-    flex: 0 0 76px;
-    height: 100dvh;
-    min-width: 76px;
-    overflow: hidden;
-    padding: 12px 10px;
-    width: 76px;
-  }
-
-  .sidebar.is-collapsed .brand {
-    flex: 0 0 auto;
-    min-height: 56px;
-    padding-bottom: 10px;
-  }
-
-  .sidebar.is-collapsed .nav-scrollable {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding-right: 0;
-  }
-
-  .sidebar.is-collapsed .sidebar-bottom-nav {
-    flex: 0 0 auto;
-    margin-top: 10px;
-    padding-top: 10px;
-  }
-
-  .sidebar.is-collapsed .nav {
-    align-items: center;
-    gap: 8px;
-  }
-
-  .sidebar.is-collapsed .nav-btn {
-    align-items: center;
-    display: flex;
-    height: 46px;
-    justify-content: center;
-    min-height: 46px;
-    width: 48px;
-  }
-
-  .sidebar.is-collapsed .nav-icon {
-    flex: 0 0 34px;
   }
 }
 
@@ -1121,13 +797,6 @@ body.mobile-menu-open {
   box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .22);
 }
 
-.inventory-placeholder-icon {
-  display: grid;
-  height: 100%;
-  place-items: center;
-  width: 100%;
-}
-
 .agenda-workbar {
   align-items: center;
   border-bottom: 1px solid var(--border);
@@ -1194,75 +863,8 @@ body.mobile-menu-open {
   font-weight: 800;
 }
 
-.analytics-risk-card {
-  align-self: stretch;
-}
-
-.analytics-risk-list {
-  display: grid;
-  gap: 8px;
-}
-
-.risk-row {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  display: grid;
-  gap: 4px;
-  grid-template-columns: minmax(72px, auto) minmax(0, 1fr) auto;
-  padding: 9px 10px;
-}
-
-.risk-row span {
-  color: var(--muted);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-.risk-row em {
-  border-radius: 999px;
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 800;
-  padding: 3px 7px;
-}
-
-.risk-row.is-warning {
-  border-color: rgba(245, 158, 11, .42);
-  background: rgba(245, 158, 11, .1);
-}
-
-.risk-row.is-warning em {
-  background: rgba(245, 158, 11, .2);
-  color: var(--g-warn);
-}
-
-.risk-row.is-danger {
-  border-color: rgba(239, 68, 68, .52);
-  background: rgba(127, 29, 29, .22);
-}
-
-.risk-row.is-danger em {
-  background: rgba(239, 68, 68, .18);
-  color: var(--g-bad);
-}
-
-.analytics-risk-empty {
-  min-height: 150px;
-}
-
 @supports (padding-top: env(safe-area-inset-top)) {
   @media (max-width: 980px) {
-    .topbar {
-      padding-top: calc(10px + env(safe-area-inset-top, 0px)) !important;
-      padding-left: calc(12px + env(safe-area-inset-left, 0px)) !important;
-      padding-right: calc(12px + env(safe-area-inset-right, 0px)) !important;
-      min-height: calc(56px + env(safe-area-inset-top, 0px)) !important;
-      top: 0 !important;
-    }
-
-    .sidebar {
-      padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
-    }
 
     .modal {
       padding-top: calc(12px + env(safe-area-inset-top, 0px)) !important;
