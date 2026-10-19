@@ -10,7 +10,7 @@ import { assert, clickButton, gotoView, openContext, sleep, typeInto, until } fr
 
 const SHEET = '.cls-sheet';
 /** Lo que se abre en línea crece con una transición: se espera a que termine (antes está recortado y no se puede tocar). */
-const settled = selector => `.ta-collapse.is-settled > .ta-collapse-inner > ${selector}`;
+const settled = selector => `.ui-collapse[data-state="open"] > .ui-collapse-clip > * > ${selector}`;
 
 /** Tipea de verdad sin chequear el valor (los campos con máscara lo reescriben). */
 async function typeRaw(page, handle, text) {

@@ -1,10 +1,9 @@
 import { useRef, useState, type FormEvent } from 'react';
 import type { ClassroomCategory, ClassroomItemState } from '../../types';
 import { createClassroomCategory, deleteClassroomCategory, reorderClassroomCategories, updateClassroomCategory } from '../../services/classroomsApi';
-import { Button, Checkbox, EmptyState, Eyebrow, IconButton, InlineConfirm, Input, StatusLine, cx } from '../../ui';
+import { Button, Checkbox, Collapse, EmptyState, Eyebrow, IconButton, InlineConfirm, Input, StatusLine, cx } from '../../ui';
 import { IconChevronDown, IconChevronUp } from '../../ui/icons';
 import { errorMessage } from '../layout/Feedback';
-import { Collapse } from '../common/SoftCollapse';
 import { ITEM_STATES } from './classroomState';
 
 type Notice = { tone: 'ok' | 'bad'; message: string } | null;
@@ -99,16 +98,15 @@ export function ClassroomCategories({ categories, consultationMode, onChanged, o
             const allStates = category.options.length === ITEM_STATES.length;
             return (
               <li key={category.id} className={cx('cls-cats-row', isEditing && 'is-editing')}>
-                {!isEditing ? (
-                  <div className="cls-cats-line">
-                    <IconButton size="sm" label={`Subir ${category.label}`} icon={<IconChevronUp size={14} />} disabled={consultationMode || index === 0 || Boolean(busy)} onClick={() => move(index, -1)} />
-                    <IconButton size="sm" label={`Bajar ${category.label}`} icon={<IconChevronDown size={14} />} disabled={consultationMode || index === categories.length - 1 || Boolean(busy)} onClick={() => move(index, 1)} />
-                    <span className="cls-cats-name">{category.label}</span>
-                    <span className="cls-cats-states">{allStates ? 'Todos los estados' : category.options.join(' · ')}</span>
-                    <Button size="sm" variant="ghost" disabled={consultationMode || Boolean(busy)} onClick={() => startEdit(category)} aria-label={`Editar ${category.label}`}>Editar</Button>
-                    <Button size="sm" variant="ghost" disabled={consultationMode || Boolean(busy)} onClick={() => { setEditing(null); setDeleting(category.id); }} aria-label={`Eliminar ${category.label}`}>Eliminar</Button>
-                  </div>
-                ) : (
+                <div className="cls-cats-line">
+                  <IconButton size="sm" label={`Subir ${category.label}`} icon={<IconChevronUp size={14} />} disabled={consultationMode || index === 0 || Boolean(busy)} onClick={() => move(index, -1)} />
+                  <IconButton size="sm" label={`Bajar ${category.label}`} icon={<IconChevronDown size={14} />} disabled={consultationMode || index === categories.length - 1 || Boolean(busy)} onClick={() => move(index, 1)} />
+                  <span className="cls-cats-name">{category.label}</span>
+                  <span className="cls-cats-states">{allStates ? 'Todos los estados' : category.options.join(' · ')}</span>
+                  <Button size="sm" variant="ghost" aria-expanded={isEditing} disabled={consultationMode || Boolean(busy)} onClick={() => (isEditing ? setEditing(null) : startEdit(category))} aria-label={`${isEditing ? 'Cerrar la edición de' : 'Editar'} ${category.label}`}>{isEditing ? 'Cerrar' : 'Editar'}</Button>
+                  <Button size="sm" variant="ghost" aria-expanded={deleting === category.id} disabled={consultationMode || Boolean(busy)} onClick={() => { setEditing(null); setDeleting(category.id); }} aria-label={`Eliminar ${category.label}`}>Eliminar</Button>
+                </div>
+                <Collapse open={isEditing} unmountOnClose>
                   <form className="cls-cats-edit" onSubmit={event => void saveEdit(event, category)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setEditing(null); } }}>
                     <Input label="Nombre" value={editLabel} autoFocus onValueChange={setEditLabel} error={!editLabel.trim() ? 'Escribí un nombre.' : undefined} />
                     <fieldset className="cls-cats-options">
@@ -130,8 +128,8 @@ export function ClassroomCategories({ categories, consultationMode, onChanged, o
                       <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => setEditing(null)}>Cancelar</Button>
                     </div>
                   </form>
-                )}
-                <Collapse open={deleting === category.id}>
+                </Collapse>
+                <Collapse open={deleting === category.id} unmountOnClose>
                   <InlineConfirm
                     danger
                     message={`¿Eliminar la categoría «${category.label}»?`}

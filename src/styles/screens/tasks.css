@@ -220,8 +220,21 @@
   .tk-tb-search { justify-self: stretch; max-width: none; margin-top: var(--g-s-3); }
 }
 
+/* ── Colapsos (Collapse de src/ui): cerrados no dejan el gap de su contenedor ── */
+.tk-screen > .ui-collapse { --ui-collapse-gap: var(--g-s-4); }
+.tk-detail-main > .ui-collapse { --ui-collapse-gap: var(--g-s-5); }
+.tk-lane > .ui-collapse, .tk-card > .ui-collapse, .tk-col-edit > .ui-collapse, .tk-detail-head > .ui-collapse { --ui-collapse-gap: var(--g-s-2); }
+.tk-detail-block > .ui-collapse { --ui-collapse-gap: var(--g-s-1); }
+
 /* ── Barra de selección (reemplaza a la de herramientas) ────────────── */
+/* Queda fija arriba del área que scrollea mientras hay tarjetas elegidas
+   (en mobile se eligen tarjetas mucho más abajo). Las tarjetas guardan su
+   alto como margen de scroll: con Tab o al llevarlas a la vista no quedan
+   debajo de la barra. */
 .tk-selbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -240,6 +253,7 @@
 .tk-selbar-cols { display: flex; flex-wrap: wrap; gap: calc(var(--g-s-1) * 1.5); min-width: 0; }
 .tk-selbar-end { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-1); }
 .tk-selbar-confirm { flex: 1 1 100%; border: 0; padding: 0; background: transparent; }
+.tk-screen.has-selbar .tk-card, .tk-screen.has-selbar .tk-card * { scroll-margin-top: calc(var(--tk-selbar-h, 0px) + var(--g-s-2)); }
 
 /* ── Nueva columna (en línea) ───────────────────────────────────────── */
 .tk-colform {
@@ -333,6 +347,8 @@
   font-size: var(--g-fs-sm);
   overflow-wrap: anywhere;
 }
+/* En una columna vacía, el hueco toma el lugar y el alto de "Soltá una tarea acá": la columna no cambia de alto. */
+.tk-drop--fill { display: flex; align-items: center; justify-content: center; min-height: calc(var(--g-s-7) * 2 - var(--g-s-2)); text-align: center; }
 html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
 
 /* Edición de columna */
@@ -628,13 +644,15 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
   .tk-tb-segs > :last-child { order: -1; }
   .tk-tb-search { margin-top: var(--g-s-3); }
   .tk-board-head { display: none; }
-  .tk-selbar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; padding: var(--g-s-3); }
+  /* Compacta (va fija arriba): cuenta · Limpiar · Borrar en una fila y las columnas debajo. */
+  .tk-selbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--g-s-2); padding: var(--g-s-2) var(--g-s-3); }
   .tk-selbar > .tk-grow { display: none; }
-  .tk-selbar-main { justify-content: space-between; }
+  .tk-selbar-main { grid-column: 1; grid-row: 1; justify-content: space-between; gap: var(--g-s-2); min-width: 0; }
   .tk-selbar-clear { margin-left: auto; }
-  .tk-selbar-move { flex-direction: column; flex-wrap: nowrap; align-items: stretch; padding-left: 0; border-left: 0; }
+  .tk-selbar-end { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+  .tk-selbar-move { grid-column: 1 / -1; grid-row: 2; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--g-s-1); padding-left: 0; border-left: 0; }
   .tk-selbar-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--g-s-6) * 3.25), 1fr)); align-content: start; }
-  .tk-selbar-end { justify-content: flex-start; }
+  .tk-selbar-confirm { grid-column: 1 / -1; }
   .tk-colform { flex-direction: column; align-items: stretch; }
   .tk-colform-input { max-width: none; }
   .tk-form { padding: var(--g-s-4); gap: calc(var(--g-s-4) + 2px); }

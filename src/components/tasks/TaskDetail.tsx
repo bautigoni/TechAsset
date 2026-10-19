@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Paperclip, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { TaskChecklistItem, TaskColumn, TaskComment, TaskItem } from '../../types';
-import { Button, Checkbox, ErrorState, InlineConfirm, Kbd, SkeletonText, StatusText, Textarea, cx } from '../../ui';
+import { Button, Checkbox, Collapse, ErrorState, InlineConfirm, Kbd, SkeletonText, StatusText, Textarea, cx, useAnchoredToggle } from '../../ui';
 import { createTaskComment, getTaskComments, getTaskHistory, type TaskHistoryEntry } from '../../services/tasksApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { formatDate, SHORT_DATE_TIME } from '../../utils/formatters';
@@ -50,6 +50,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
   const [adding, setAdding] = useState(false);
   const [itemText, setItemText] = useState('');
   const itemRef = useRef<HTMLInputElement | null>(null);
+  const anchored = useAnchoredToggle();
 
   const [comments, setComments] = useState<TaskComment[] | null>(null);
   const [commentsError, setCommentsError] = useState('');
@@ -139,7 +140,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
           </ol>
         ) : <span className="tk-muted">Sin movimientos registrados.</span>}
         {(history?.length || 0) > 6 && (
-          <button type="button" className="tk-link tk-link--sm" onClick={() => setShowAllHistory(value => !value)}>{showAllHistory ? 'Ver menos' : `Ver ${(history?.length || 0) - 6} anteriores`}</button>
+          <button type="button" className="tk-link tk-link--sm" aria-expanded={showAllHistory} onClick={event => { const at = event.currentTarget; anchored(() => setShowAllHistory(value => !value), at); }}>{showAllHistory ? 'Ver menos' : `Ver ${(history?.length || 0) - 6} anteriores`}</button>
         )}
       </div>
   );
@@ -176,9 +177,9 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
           {created && <span className="tk-muted tk-small">{created}</span>}
           <div className="tk-detail-actions">
             <Button icon={<Pencil size={16} />} disabled={!canEdit} onClick={onEdit}>Editar</Button>
-            {!confirmDelete && <Button variant="ghost" className="tk-danger-link" icon={<Trash2 size={16} />} disabled={!canEdit} onClick={() => setConfirmDelete(true)}>Borrar</Button>}
+            <Button variant="ghost" className="tk-danger-link" icon={<Trash2 size={16} />} aria-expanded={confirmDelete} disabled={!canEdit} onClick={() => setConfirmDelete(value => !value)}>Borrar</Button>
           </div>
-          {confirmDelete && (
+          <Collapse open={confirmDelete} unmountOnClose>
             <InlineConfirm
               danger
               message="¿Borrar esta tarea?"
@@ -187,7 +188,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
               onConfirm={() => { setConfirmDelete(false); onDelete(); }}
               onCancel={() => setConfirmDelete(false)}
             />
-          )}
+          </Collapse>
         </header>
 
         {status}
@@ -228,7 +229,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
             </div>
           ))}
           {!items.length && <span className="tk-muted tk-small">Sin subtareas.</span>}
-          {adding && (
+          <Collapse open={adding} unmountOnClose>
             <form className="tk-card-add" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); addItem(); }}>
               <input
                 ref={itemRef}
@@ -242,7 +243,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
               />
               <Button type="submit">Agregar</Button>
             </form>
-          )}
+          </Collapse>
           {canEdit && !done && !adding && <Button size="sm" variant="ghost" className="tk-inline-btn" icon={<Plus size={14} />} onClick={() => setAdding(true)}>Subtarea</Button>}
           {canEdit && done && <span className="tk-muted tk-small">La tarea está hecha: no se suman subtareas.</span>}
         </section>
@@ -252,7 +253,11 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
             <span className="tk-label">Nota</span>
             {!noteEdit && <Button size="sm" variant="ghost" disabled={!canEdit} onClick={() => { setNoteText(task.comentario || ''); setNoteEdit(true); }}>{task.comentario ? 'Editar nota' : 'Agregar nota'}</Button>}
           </div>
-          {noteEdit ? (
+          {/* La nota y su editor se reemplazan con el colapso: uno se pliega mientras el otro se abre. */}
+          <Collapse open={!noteEdit} lazy={false} reveal={false}>
+            <p className={cx('tk-prose tk-prose--sm', !task.comentario && 'tk-muted')}>{task.comentario || 'Sin nota.'}</p>
+          </Collapse>
+          <Collapse open={noteEdit} unmountOnClose>
             <form className="tk-note-form" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void saveNote(); }} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setNoteEdit(false); } }}>
               <Textarea aria-label="Nota de la tarea" minRows={5} value={noteText} autoFocus onValueChange={setNoteText} error={noteError || undefined} />
               <div className="tk-row">
@@ -260,9 +265,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
                 <Button size="sm" variant="ghost" onClick={() => setNoteEdit(false)}>Cancelar</Button>
               </div>
             </form>
-          ) : (
-            <p className={cx('tk-prose tk-prose--sm', !task.comentario && 'tk-muted')}>{task.comentario || 'Sin nota.'}</p>
-          )}
+          </Collapse>
         </section>
 
         <section className="tk-detail-block" aria-label="Comentarios">

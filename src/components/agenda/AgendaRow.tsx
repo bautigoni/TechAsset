@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import type { AgendaItem } from '../../types';
-import { Button, InlineConfirm, StatusText, Textarea, TruncatedText, cx, icons } from '../../ui';
+import { Button, Collapse, InlineConfirm, StatusText, Textarea, TruncatedText, cx, icons } from '../../ui';
 import { AgendaForm } from './AgendaForm';
 import { cap1, displayTurno, isEnCurso, longDate, retiredInfo, shortDateTime, shortLabel, statusOf, type Clock } from './agendaModel';
 
@@ -90,7 +90,10 @@ export function AgendaRow({ item, open, onToggle, actions, showDay }: {
           </Button>
         </div>
       </div>
-      {open && <AgendaDetail item={item} actions={actions} />}
+      {/* El detalle se abre y se cierra con el colapso compartido (la fila tocada no se mueve); queda montado para no perder una nota a medio escribir. */}
+      <Collapse open={open}>
+        <AgendaDetail item={item} actions={actions} />
+      </Collapse>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { SlidersHorizontal } from 'lucide-react';
+import { Lightbulb, SlidersHorizontal } from 'lucide-react';
 import { IconChevronDown as ChevronDown, IconChevronUp as ChevronUp, IconPlus as Plus } from '../../ui/icons';
 import '../../styles/screens/suggestions.css';
 import type { Suggestion, SuggestionComment, SuggestionStats, SuggestionStatus } from '../../types';
@@ -7,11 +7,11 @@ import {
   addSuggestionComment, createSuggestion, deleteSuggestion, getSuggestionComments, getSuggestions, restoreSuggestion, toggleSuggestionVote, updateSuggestion
 } from '../../services/suggestionsApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
-import { Button, EmptyState, ErrorState, Eyebrow, InlineConfirm, Input, Segmented, SkeletonRows, StatusText, Textarea, useStatusLine, type StatusTextTone } from '../../ui';
+import { Button, EmptyState, ErrorState, Eyebrow, InlineConfirm, Input, Segmented, SkeletonRows, StatusText, Textarea, StatusSlot, useStatusLine, type StatusTextTone } from '../../ui';
 import { TruncatedText } from '../../ui/Truncated';
 import { cx, fold } from '../../ui/util';
 import { APP_TIME_ZONE, formatDate } from '../../utils/formatters';
-import { Collapse } from '../common/Collapse';
+import { Collapse } from '../../ui';
 
 // El servidor guarda el estado en inglés; la UI lo traduce siempre.
 const STATUSES: Array<{ value: SuggestionStatus; label: string; tone: StatusTextTone }> = [
@@ -250,9 +250,9 @@ export function SuggestionsPage() {
             </div>
             <Button ref={newBtnRef} variant="primary" icon={<Plus size={16} />} aria-expanded={newOpen} onClick={() => setNewOpen(open => !open)}>Nueva sugerencia</Button>
           </div>
-          {pageStatus.element}
+          <StatusSlot status={pageStatus} />
 
-          <Collapse open={newOpen}>
+          <Collapse open={newOpen} unmountOnClose>
             <SuggestionForm
               heading="Nueva sugerencia"
               categories={categories}
@@ -278,9 +278,12 @@ export function SuggestionsPage() {
               <ErrorState message={loadError} onRetry={() => void load()} retrying={loading} />
             ) : !items.length ? (
               <EmptyState
+                compact
+                className="sgx-empty"
+                icon={<Lightbulb size={18} strokeWidth={1.6} />}
                 title={status || category ? 'No hay sugerencias para estos filtros.' : 'Todavía no hay sugerencias.'}
                 description={status || category ? undefined : 'Contá qué cambiarías o agregarías: el resto puede votarla y comentarla.'}
-                action={status || category ? <Button size="sm" variant="secondary" onClick={clearFilters}>Ver todas</Button> : undefined}
+                action={status || category ? <Button size="sm" variant="secondary" onClick={clearFilters}>Ver todas</Button> : !newOpen ? <Button size="sm" variant="secondary" onClick={() => setNewOpen(true)}>Nueva sugerencia</Button> : undefined}
               />
             ) : (
               <>
@@ -341,7 +344,7 @@ export function SuggestionsPage() {
                 <span className="sgx-ell sgx-muted sgx-grow">{filterSummary}</span>
                 {filtersOpen ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
               </button>
-              <Collapse open={filtersOpen} id="sgx-filters-body">{filters}</Collapse>
+              <Collapse open={filtersOpen} id="sgx-filters-body" unmountOnClose>{filters}</Collapse>
             </>
           ) : filters}
         </aside>
@@ -431,7 +434,7 @@ function SuggestionRow({ item, canManage, categories, busy, open, statusOpen, ed
               {item.canEdit && <Button ref={editRef} size="sm" variant="ghost" onClick={onEdit}>Editar</Button>}
               {item.canDelete && <Button ref={deleteRef} size="sm" variant="ghost" aria-expanded={asking} onClick={onAskDelete}>Eliminar</Button>}
             </div>
-            <Collapse open={statusOpen && canManage}>
+            <Collapse open={statusOpen && canManage} unmountOnClose>
               <div className="sgx-status-pick">
                 <div className="sgx-chips" role="radiogroup" aria-label="Estado de la sugerencia">
                   {STATUSES.map(option => (
@@ -451,7 +454,7 @@ function SuggestionRow({ item, canManage, categories, busy, open, statusOpen, ed
                 <span className="sgx-small sgx-muted">Al cambiarlo se avisa al autor, a quienes votaron y a quienes comentaron.</span>
               </div>
             </Collapse>
-            <Collapse open={asking}>
+            <Collapse open={asking} unmountOnClose>
               <InlineConfirm
                 danger
                 busy={busy}
@@ -462,7 +465,7 @@ function SuggestionRow({ item, canManage, categories, busy, open, statusOpen, ed
                 onCancel={() => { onCancelDelete(); deleteRef.current?.focus(); }}
               />
             </Collapse>
-            <Collapse open={open}>
+            <Collapse open={open} unmountOnClose>
               <Comments suggestionId={item.id} onCommented={onCommented} />
             </Collapse>
           </>
@@ -623,7 +626,7 @@ function SuggestionForm({ heading, initial, categories, submitLabel, compact, on
         onValueChange={description => set({ description })}
       />
       {error && <ErrorState message={error} />}
-      <Collapse open={askDiscard}>
+      <Collapse open={askDiscard} unmountOnClose>
         <InlineConfirm
           danger
           message="Tenés cambios sin guardar."

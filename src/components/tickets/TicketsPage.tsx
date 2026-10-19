@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { ExternalLink, LayoutTemplate } from 'lucide-react';
+import { ExternalLink, LayoutTemplate, Ticket as TicketIcon } from 'lucide-react';
 import { IconChevronLeft as ChevronLeft, IconPlus as Plus } from '../../ui/icons';
 import '../../styles/screens/tickets.css';
 import type { Classroom, Ticket, TicketSource, TicketState, TicketTemplate } from '../../types';
@@ -8,13 +8,13 @@ import { getSiteAssistants, getSiteSettings } from '../../services/authApi';
 import { fetchToolsConfig } from '../../services/toolsApi';
 import { fetchClassrooms } from '../../services/classroomsApi';
 import {
-  Button, Checkbox, EmptyState, ErrorState, InlineConfirm, Input, SelectionHeader, Segmented, SkeletonRows, StatusText, useSelection, useStatusLine
+  Button, Checkbox, EmptyState, ErrorState, InlineConfirm, Input, SelectionHeader, Segmented, SkeletonRows, StatusText, useSelection, StatusSlot, useStatusLine
 } from '../../ui';
 import { TruncatedText } from '../../ui/Truncated';
 import { IconLock, IconSearch, IconX } from '../../ui/icons';
 import { cx, fold } from '../../ui/util';
 import { appScroller } from '../../utils/scroll';
-import { Collapse } from '../common/Collapse';
+import { Collapse } from '../../ui';
 import { TicketDetail } from './TicketDetail';
 import { TicketForm } from './TicketForm';
 import { TicketTemplates } from './TicketTemplates';
@@ -351,7 +351,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
 
   const renderPane = () => {
     if (route.kind === 'list') {
-      return <EmptyState title="Elegí un ticket de la lista" description="El detalle se abre acá, al lado de la lista. Ctrl o Shift + click marca varios." />;
+      return <EmptyState compact icon={<TicketIcon size={18} strokeWidth={1.6} />} title="Elegí un ticket de la lista" description="El detalle se abre acá, al lado de la lista. Ctrl o Shift + click marca varios." />;
     }
     if (route.kind === 'templates') {
       return (
@@ -483,7 +483,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               </div>
             </SelectionHeader>
           </div>
-          {listStatus.element && <div className="tkx-list-status">{listStatus.element}</div>}
+          <StatusSlot status={listStatus} className="tkx-list-status" />
 
           {loading && !tickets.length ? (
             <SkeletonRows rows={6} className="tkx-skel" />
@@ -549,11 +549,11 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           <p className="tkx-list-foot tkx-small tkx-muted">Click en un ticket para ver el detalle. El ícono de la derecha abre el sistema externo.</p>
         </section>
 
-        <section ref={paneRef} className="tkx-pane" aria-label={paneLabel}>
+        <section ref={paneRef} className={`tkx-pane${route.kind === 'list' ? ' is-idle' : ''}`} aria-label={paneLabel}>
           {narrow && paneOpen && (
             <Button size="sm" variant="ghost" className="tkx-back" icon={<ChevronLeft size={16} />} onClick={backToList}>Volver a la lista</Button>
           )}
-          <Collapse open={Boolean(pending)}>
+          <Collapse open={Boolean(pending)} unmountOnClose>
             <InlineConfirm
               danger
               message="Tenés cambios sin guardar."
@@ -564,7 +564,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
               onCancel={() => setPending(null)}
             />
           </Collapse>
-          {paneStatus.element}
+          <StatusSlot status={paneStatus} />
           {renderPane()}
         </section>
       </div>

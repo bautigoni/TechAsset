@@ -1,8 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import './reminderFields.css';
-import { DateTimeField, cx } from '../../ui';
+import { Collapse, DateTimeField, cx } from '../../ui';
 import { dayKeyAr } from '../../utils/formatters';
-import { Collapse } from '../common/SoftCollapse';
 import { isValidLocal, localToIso, longWhen, nextHourLocal, quickWhens, relativeWhen } from './reminderUtils';
 
 /**

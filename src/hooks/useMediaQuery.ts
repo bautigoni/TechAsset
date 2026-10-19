@@ -1,17 +1,22 @@
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
+
+const listOf = (query: string) => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(query) : null);
 
 /**
- * `true` mientras la media query se cumple. Sirve para lo que el CSS no puede
- * cambiar (p. ej. un placeholder más corto en angosto, para que no se corte).
+ * `true` mientras la media query se cumple (p. ej. '(max-width: 767px)'). Sirve
+ * para lo que el CSS no puede cambiar (un placeholder más corto en angosto, un
+ * layout que se arma distinto en mobile). Se lee en el mismo render (sin un
+ * primer pintado con el valor equivocado) y se actualiza al cambiar el ancho.
  */
 export function useMediaQuery(query: string) {
+  const subscribe = useCallback((onChange: () => void) => {
+    const list = listOf(query);
+    list?.addEventListener('change', onChange);
+    return () => list?.removeEventListener('change', onChange);
+  }, [query]);
   return useSyncExternalStore(
-    onChange => {
-      const list = window.matchMedia?.(query);
-      list?.addEventListener('change', onChange);
-      return () => list?.removeEventListener('change', onChange);
-    },
-    () => Boolean(window.matchMedia?.(query).matches),
+    subscribe,
+    () => Boolean(listOf(query)?.matches),
     () => false
   );
 }

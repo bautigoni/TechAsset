@@ -64,8 +64,14 @@
 .ui-collapse-clip { min-height: 0; min-width: 0; overflow: hidden; }
 .ui-collapse[data-state="open"] > .ui-collapse-clip { overflow: visible; }
 .ui-collapse[data-state="closed"] > .ui-collapse-clip { visibility: hidden; }
+/* Dentro de un flex/grid con gap, cerrado deja un gap de más: la pantalla le
+   pasa su gap (`.padre > .ui-collapse { --ui-collapse-gap: … }`) y el colapso
+   cerrado se lo come; al abrir lo recupera con la misma transición. No se
+   hereda a los colapsos de adentro. */
+.ui-collapse { --ui-collapse-gap: 0px; }
+.ui-collapse:is([data-state="closed"], [data-state="closing"]) { margin-top: calc(-1 * var(--ui-collapse-gap)); }
 @media (prefers-reduced-motion: no-preference) {
-  .ui-collapse { transition: grid-template-rows var(--ui-collapse-dur) var(--g-ease); }
+  .ui-collapse { transition: grid-template-rows var(--ui-collapse-dur) var(--g-ease), margin-top var(--ui-collapse-dur) var(--g-ease); }
   .ui-collapse-clip { transition: opacity var(--ui-collapse-dur) var(--g-ease); }
   .ui-collapse:is([data-state="closed"], [data-state="closing"]) > .ui-collapse-clip { opacity: 0; }
 }

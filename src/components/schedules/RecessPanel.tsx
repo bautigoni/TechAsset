@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { Coffee, X } from 'lucide-react';
 import type { RecessGroup, RecessSlot } from '../../types';
 import { saveRecessSchedules } from '../../services/schedulesApi';
-import { Button, IconButton, InlineConfirm, Input, StatusText, TimeField, cx, icons, preloadPickers } from '../../ui';
-import { slotValid, toMin, type SchoolClock } from './scheduleModel';
+import { getActiveSiteCode } from '../../services/activeSite';
+import { Button, Collapse, EmptyState, IconButton, InlineConfirm, Input, StatusText, TimeField, cx, icons, preloadPickers } from '../../ui';
+import { keepScheduleDraft, peekScheduleDraft, slotValid, toMin, type SchoolClock } from './scheduleModel';
 
 type DraftSlot = RecessSlot & { key: string };
 type DraftGroup = Omit<RecessGroup, 'slots'> & { key: string; slots: DraftSlot[] };
@@ -34,7 +35,10 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const saved = useMemo(() => withKeys(groups), [groups]);
-  const [draft, setDraft] = useState<DraftGroup[] | null>(null);
+  const site = getActiveSiteCode();
+  // Borrador que quedó de una visita anterior (se salió por el menú sin guardar).
+  const [draft, setDraft] = useState<DraftGroup[] | null>(() => peekScheduleDraft<DraftGroup[]>('recess', site));
+  const [restored, setRestored] = useState(() => Boolean(peekScheduleDraft('recess', site)));
   const [askDelete, setAskDelete] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
@@ -45,6 +49,9 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
   const bad = view.some(group => group.slots.some(slot => !slotValid(slot)));
 
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  // Con cambios sin guardar, el borrador se guarda (memoria + sessionStorage) para recuperarlo al volver.
+  useEffect(() => { keepScheduleDraft('recess', site, dirty ? draft : null); }, [draft, dirty, site]);
+  useEffect(() => { if (!dirty) setRestored(false); }, [dirty]);
   // Cerrar la pestaña con cambios sin guardar pide confirmación del navegador.
   useEffect(() => {
     if (!dirty) return;
@@ -91,6 +98,15 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
         )}
       </div>
       <p className="hr-note">{canConfigure ? 'Configurá grupos independientes para cada ciclo o nivel. Los cambios se guardan todos juntos.' : 'Solo los administradores de la sede editan los recreos.'}</p>
+      <Collapse open={restored && dirty} unmountOnClose>
+        <div className="hr-restored" role="status">
+          <span className="hr-restored-text">Recuperamos los cambios sin guardar de la última vez.</span>
+          <span className="hr-restored-actions">
+            <Button size="sm" variant="ghost" onClick={() => setRestored(false)}>Seguir editando</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setDraft(null); setAskDelete(''); setMessage(null); setRestored(false); }}>Descartar</Button>
+          </span>
+        </div>
+      </Collapse>
 
       {view.map((group, groupIndex) => (
         <div key={group.key} className="hr-rgroup">
@@ -106,7 +122,7 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
             />
             {editable && <Button size="sm" variant="ghost" onClick={() => setAskDelete(group.key)}>Eliminar</Button>}
           </div>
-          {askDelete === group.key && (
+          <Collapse open={askDelete === group.key} unmountOnClose>
             <InlineConfirm
               danger
               message={`¿Eliminar ${group.name.trim() || 'este grupo'} y sus franjas?`}
@@ -116,7 +132,7 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
               onConfirm={() => { edit(list => list.filter(entry => entry.key !== group.key)); setAskDelete(''); }}
               onCancel={() => setAskDelete('')}
             />
-          )}
+          </Collapse>
           {group.slots.map((slot, slotIndex) => {
             const valid = slotValid(slot);
             const active = valid && clock.day <= 5 && clock.now >= (toMin(slot.startTime) ?? 0) && clock.now < (toMin(slot.endTime) ?? 0);
@@ -148,7 +164,15 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
           )}
         </div>
       ))}
-      {!view.length && <p className="hr-empty">Todavía no hay grupos de recreo configurados.</p>}
+      {!view.length && (
+        <EmptyState
+          compact
+          className="hr-empty"
+          icon={<Coffee size={18} strokeWidth={1.6} />}
+          title="Todavía no hay grupos de recreo."
+          description={editable ? 'Sumá un grupo por ciclo o nivel con «Grupo» y cargale sus franjas.' : 'Los carga un administrador de la sede.'}
+        />
+      )}
 
       {editable && (
         <div className="hr-card-foot">

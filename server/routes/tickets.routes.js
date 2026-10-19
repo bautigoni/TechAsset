@@ -6,6 +6,9 @@ import { config } from '../config.js';
 import { getDb, nowIso } from '../db.js';
 import { canEditModule, canViewModule, requireSite } from '../services/siteContext.service.js';
 import { notifySiteAdmins } from '../services/notifications.service.js';
+
+/** Link de la notificación: abre ESE ticket (/sede/<sede>/tickets/<id>, lo lee TicketsPage). */
+const ticketLink = (siteCode, id) => `/sede/${String(siteCode || '').toLowerCase()}/tickets/${Number(id) || ''}`.replace(/\/$/, '');
 import { queueTicketSummary, refreshTicketSummary } from '../services/aiSummaries.service.js';
 
 export const ticketsRouter = Router();
@@ -133,7 +136,7 @@ ticketsRouter.post('/tickets/bulk', (req, res) => {
     const title = changed.length === 1
       ? `Ticket #${changed[0].numero || changed[0].id}: ${changed[0].to}`
       : targets.length === 1 ? `${changed.length} tickets: ${targets[0]}` : `${changed.length} tickets cambiaron de estado`;
-    try { notifySiteAdmins({ siteCode, kind: 'ticket.updated', title, body: changed.map(item => `#${item.numero || item.id}`).join(', ').slice(0, 160), link: `/sede/${siteCode}/tickets`, exceptEmail: req.user?.email }); } catch { /* noop */ }
+    try { notifySiteAdmins({ siteCode, kind: 'ticket.updated', title, body: changed.map(item => `#${item.numero || item.id}`).join(', ').slice(0, 160), link: changed.length === 1 ? ticketLink(siteCode, changed[0].id) : `/sede/${siteCode}/tickets`, exceptEmail: req.user?.email }); } catch { /* noop */ }
   }
   res.json({ ok: true, changed: changed.map(item => item.id) });
 });
@@ -174,7 +177,7 @@ ticketsRouter.post('/tickets', (req, res) => {
   insertChecklist(siteCode, ticketId, checklist, ts);
   addActivity(siteCode, ticketId, 'Ticket creado', payload.titulo, req);
   queueTicketSummary(ticketId, siteCode);
-  try { notifySiteAdmins({ siteCode, kind: 'ticket.created', title: payload.origen === 'handing' ? 'Nuevo ticket Handing' : `Nuevo ticket #${payload.numero}`, body: payload.titulo || `Cargado por ${operador}`, link: `/sede/${siteCode}/tickets`, exceptEmail: req.user?.email }); } catch { /* noop */ }
+  try { notifySiteAdmins({ siteCode, kind: 'ticket.created', title: payload.origen === 'handing' ? 'Nuevo ticket Handing' : `Nuevo ticket #${payload.numero}`, body: payload.titulo || `Cargado por ${operador}`, link: ticketLink(siteCode, ticketId), exceptEmail: req.user?.email }); } catch { /* noop */ }
   res.json({ ok: true, item: rowToTicket(getDb().prepare('SELECT * FROM tickets WHERE id=? AND site_code=?').get(ticketId, siteCode)) });
 });
 
@@ -204,7 +207,7 @@ ticketsRouter.patch('/tickets/:id', (req, res) => {
   const action = old.estado !== payload.estado ? `Estado: ${old.estado} → ${payload.estado}` : 'Ticket editado';
   addActivity(siteCode, req.params.id, action, payload.nota, req);
   queueTicketSummary(req.params.id, siteCode);
-  if (old.estado !== payload.estado) try { notifySiteAdmins({ siteCode, kind: 'ticket.updated', title: `Ticket #${payload.numero}: ${payload.estado}`, body: payload.titulo, link: `/sede/${siteCode}/tickets`, exceptEmail: req.user?.email }); } catch { /* noop */ }
+  if (old.estado !== payload.estado) try { notifySiteAdmins({ siteCode, kind: 'ticket.updated', title: `Ticket #${payload.numero}: ${payload.estado}`, body: payload.titulo, link: ticketLink(siteCode, req.params.id), exceptEmail: req.user?.email }); } catch { /* noop */ }
   res.json({ ok: true, item: rowToTicket(getDb().prepare('SELECT * FROM tickets WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
@@ -230,7 +233,7 @@ ticketsRouter.post('/tickets/:id/relations', (req, res) => {
   const duplicate = getDb().prepare('SELECT id FROM ticket_relations WHERE site_code=? AND ((ticket_a_id=? AND ticket_b_id=?) OR (ticket_a_id=? AND ticket_b_id=?))').get(siteCode, a, b, b, a);
   if (!duplicate) getDb().prepare('INSERT INTO ticket_relations (site_code,ticket_a_id,ticket_b_id,relation_type,created_by,created_at) VALUES (?,?,?,?,?,?)').run(siteCode, a, b, relationType, actor(req), nowIso());
   addActivity(siteCode, currentId, relationType === 'parent' ? 'Ticket padre vinculado' : 'Ticket relacionado', `#${otherId}`, req);
-  try { notifySiteAdmins({ siteCode, kind: 'ticket.related', title: 'Tickets vinculados', body: `#${currentId} ↔ #${otherId}`, link: `/sede/${siteCode}/tickets`, exceptEmail: req.user?.email }); } catch { /* noop */ }
+  try { notifySiteAdmins({ siteCode, kind: 'ticket.related', title: 'Tickets vinculados', body: `#${currentId} ↔ #${otherId}`, link: ticketLink(siteCode, currentId), exceptEmail: req.user?.email }); } catch { /* noop */ }
   res.json({ ok: true, items: relatedTickets(currentId, siteCode) });
 });
 
@@ -253,7 +256,7 @@ ticketsRouter.post('/tickets/:id/comments', (req, res) => {
   if (!ticket.first_response_at) getDb().prepare('UPDATE tickets SET first_response_at=?,updated_at=? WHERE id=? AND site_code=?').run(ts, ts, req.params.id, siteCode);
   addActivity(siteCode, req.params.id, 'Comentario agregado', body.slice(0, 180), req);
   queueTicketSummary(req.params.id, siteCode);
-  try { notifySiteAdmins({ siteCode, kind: 'ticket.comment', title: `Nuevo comentario en #${ticket.numero || ticket.id}`, body: body.slice(0, 140), link: `/sede/${siteCode}/tickets`, exceptEmail: req.user?.email }); } catch { /* noop */ }
+  try { notifySiteAdmins({ siteCode, kind: 'ticket.comment', title: `Nuevo comentario en #${ticket.numero || ticket.id}`, body: body.slice(0, 140), link: ticketLink(siteCode, ticket.id), exceptEmail: req.user?.email }); } catch { /* noop */ }
   res.json({ ok: true, item: rowToComment(getDb().prepare('SELECT * FROM ticket_comments WHERE id=?').get(info.lastInsertRowid)) });
 });
 

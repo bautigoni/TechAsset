@@ -1,5 +1,5 @@
 import type { AgendaItem } from '../../types';
-import { Button, StatusText, TruncatedText, cx } from '../../ui';
+import { Button, Collapse, StatusText, TruncatedText, cx } from '../../ui';
 import { rowClickOpens, type AgendaActions } from './AgendaRow';
 import { retiredInfo, statusOf } from './agendaModel';
 
@@ -38,8 +38,7 @@ export function AgendaWeek({ columns, openId, onToggle, onOpenDay, actions }: {
                   <TruncatedText className={cx('ag-curso', item.estado === 'Cancelado' && 'is-cancelled')}>{item.curso || 'Sin curso'}</TruncatedText>
                   <TruncatedText className="ag-what">{`${item.actividad || 'Actividad'} · ${item.cantidad} ${item.tipoDispositivo}`}</TruncatedText>
                 </div>
-                {open && (
-                  <div className="ag-wk-detail">
+                <Collapse open={open} className="ag-wk-detail">
                     <span className="ag-what">{item.ubicacion || 'Sin ubicación'} · {item.fecha ? 'una vez' : item.turno || 'sin turno'}</span>
                     {ret.text && <StatusText tone={ret.tone}>{ret.text}</StatusText>}
                     <span className="ag-what">{item.nota ? `Nota: ${item.nota}` : 'Sin nota'}</span>
@@ -50,8 +49,7 @@ export function AgendaWeek({ columns, openId, onToggle, onOpenDay, actions }: {
                       {ret.all ? 'Desmarcar retirada' : 'Marcar retirada'}
                     </Button>
                     <Button size="sm" variant="ghost" block onClick={() => onOpenDay(item, column.day)}>Abrir en el día</Button>
-                  </div>
-                )}
+                </Collapse>
               </div>
             );
           })}

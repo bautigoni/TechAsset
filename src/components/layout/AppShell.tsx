@@ -288,10 +288,17 @@ export function AppShell(props: AppShellProps) {
     }
     const target = linkToView(item.link) || kindToView(item.kind);
     if (target) {
+      // Link a algo puntual (/sede/x/tickets/123, /sede/x/tasks/TK1): se deja
+      // esa URL y la vista la lee (si ya estaba abierta, relee con popstate).
+      const sub = linkSubpath(item.link, target);
+      if (sub && window.location.pathname.toLowerCase() !== sub.toLowerCase()) {
+        window.history.pushState({ techasset: true }, '', sub);
+        if (view === target) window.dispatchEvent(new PopStateEvent('popstate'));
+      }
       onNavigate(target);
       setStrip(null);
     }
-  }, [markRead, onNavigate]);
+  }, [markRead, onNavigate, view]);
 
   // Notificación nueva (nunca en la primera carga): línea de estado bajo la
   // barra, con "Ver", en vez del toast flotante. Se va sola a los 6 s.
@@ -469,9 +476,16 @@ function kindToView(kind: string): ViewKey | null {
 /** `/sede/x/<vista>` o `/<vista>` → vista (misma lista que la URL de App). */
 export function linkToView(link: string): ViewKey | null {
   const clean = String(link || '').split('?')[0].replace(/\/+$/, '');
-  const match = clean.match(/\/sede\/[^/]+\/([^/]+)$/);
+  const match = clean.match(/\/sede\/[^/]+\/([^/]+)(?:\/.*)?$/);
   const candidate = match?.[1] || clean.replace(/^\//, '');
   return isViewKey(candidate) ? candidate : null;
+}
+
+/** `/sede/<sede>/<vista>/<algo>` de un link de notificación (o '' si apunta a la vista sola). */
+function linkSubpath(link: string, view: ViewKey) {
+  const clean = String(link || '').split('?')[0].replace(/\/+$/, '');
+  const match = clean.match(/^\/sede\/([^/]+)\/([^/]+)\/(.+)$/);
+  return match && match[2] === view ? `/sede/${match[1].toLowerCase()}/${match[2]}/${match[3]}` : '';
 }
 
 const DATE_FMT = typeof Intl !== 'undefined' ? new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Argentina/Buenos_Aires' }) : null;

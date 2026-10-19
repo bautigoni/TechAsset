@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { ArrowLeft, Columns3, Eye, Lock, Trash2, Users, X } from 'lucide-react';
 import type { TaskChecklistItem, TaskColumn, TaskItem } from '../../types';
 import type { TasksStore } from '../../hooks/useTasks';
-import { Button, Checkbox, ErrorState, IconButton, InlineConfirm, Input, Kbd, SkeletonText, StatusLine, TruncatedText, cx, useSelection, useStatusLine, type StatusMessage } from '../../ui';
+import { Button, Checkbox, Collapse, ErrorState, IconButton, InlineConfirm, Input, Kbd, SkeletonText, StatusLine, StatusSlot, TruncatedText, cx, recentTrigger, scrollParentOf, useSelection, useStatusLine, type StatusMessage } from '../../ui';
 import { IconSearch } from '../../ui/icons';
 import { GooeyMenu } from '../layout/GooeyMenu';
 import { getSiteAssistants } from '../../services/authApi';
@@ -375,6 +375,45 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const selectedTitles = tasks.filter(task => selection.selected.has(task.id)).map(task => task.titulo).join(' · ');
   const showSelection = canEdit && selectedCount > 0 && !route;
   const loadingColumns = columnsState === 'loading';
+
+  /* ── Barra de selección: reemplaza a la de herramientas y queda fija arriba
+     (sticky) mientras se eligen tarjetas más abajo. El cambio de una barra a
+     la otra tiene otro alto: se mide lo tocado ANTES del cambio (en el render,
+     el DOM todavía es el viejo) y después se corrige el scroll en el mismo
+     frame, así la tarjeta tocada no se mueve. Si queda debajo de la barra
+     fija, se la baja lo justo para que se vea entera. ── */
+  const screenRef = useRef<HTMLElement | null>(null);
+  const selbarRef = useRef<HTMLDivElement | null>(null);
+  const shownSel = useRef(showSelection);
+  const swapAnchor = useRef<{ el: HTMLElement; top: number } | null>(null);
+  if (shownSel.current !== showSelection) {
+    shownSel.current = showSelection;
+    const board = screenRef.current?.querySelector<HTMLElement>('.tk-board-sec') || null;
+    const trigger = recentTrigger();
+    const el = trigger && board?.contains(trigger) ? (trigger.closest<HTMLElement>('.tk-card') || trigger) : board;
+    swapAnchor.current = el ? { el, top: el.getBoundingClientRect().top } : null;
+  }
+  useLayoutEffect(() => {
+    const anchor = swapAnchor.current;
+    swapAnchor.current = null;
+    if (!anchor || !anchor.el.isConnected) return;
+    const scroller = scrollParentOf(anchor.el);
+    const delta = anchor.el.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) >= 0.5) scroller.scrollTop += delta;
+    const bar = selbarRef.current;
+    if (!bar || !anchor.el.classList.contains('tk-card')) return;
+    const covered = bar.getBoundingClientRect().bottom + 8 - anchor.el.getBoundingClientRect().top;
+    if (covered > 0) scroller.scrollTop -= covered;
+  }, [showSelection]);
+  // Alto de la barra fija: margen de scroll de las tarjetas (foco con Tab, "llevar a la vista") para no quedar debajo.
+  useLayoutEffect(() => {
+    const bar = selbarRef.current;
+    const screen = screenRef.current;
+    if (!bar || !screen || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => screen.style.setProperty('--tk-selbar-h', `${Math.ceil(bar.offsetHeight)}px`));
+    observer.observe(bar);
+    return () => { observer.disconnect(); screen.style.removeProperty('--tk-selbar-h'); };
+  }, [showSelection]);
   const cardStatusNode = cardStatus ? { taskId: cardStatus.taskId, element: <StatusLine key={cardStatus.key} {...cardStatus.message} className="tk-status--card" onDismiss={() => setCardStatus(null)} /> } : null;
 
   const hint = tab === 'priority'
@@ -436,7 +475,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   );
 
   const selectionBar = showSelection && (
-    <div className="tk-selbar ui-enter" role="region" aria-label="Selección de tareas">
+    <div ref={selbarRef} className="tk-selbar ui-enter" role="region" aria-label="Selección de tareas">
       {!bulkConfirm ? (
         <>
           <div className="tk-selbar-main">
@@ -476,20 +515,28 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
     </div>
   );
 
-  const columnForm = colForm && canEdit && !route && (
-    <form className="tk-colform ui-enter" aria-label="Nueva columna" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void createColumn(); }} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setColForm(null); } }}>
+  // Alta de columna y de tarea: se abren y se cierran con el colapso
+  // compartido; mientras se pliegan muestran lo último (ya inerte).
+  const lastColForm = useRef(colForm);
+  if (colForm) lastColForm.current = colForm;
+  const shownColForm = colForm || lastColForm.current;
+  const lastCreating = useRef(creating);
+  if (creating) lastCreating.current = creating;
+  const shownCreating = creating || lastCreating.current;
+  const columnForm = shownColForm && (
+    <form className="tk-colform" aria-label="Nueva columna" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void createColumn(); }} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setColForm(null); } }}>
       <span className="tk-eyebrow tk-colform-label">Nueva columna</span>
       <Input
         ref={colInputRef}
         aria-label="Nombre de la columna"
         className="tk-colform-input"
-        value={colForm.name}
+        value={shownColForm.name}
         placeholder="Ej. En revisión"
-        error={colForm.error || undefined}
-        onValueChange={value => setColForm({ ...colForm, name: value, error: '' })}
+        error={shownColForm.error || undefined}
+        onValueChange={value => setColForm({ ...shownColForm, name: value, error: '' })}
       />
       <div className="tk-row">
-        <Button variant="primary" type="submit" loading={colForm.saving}>Crear columna</Button>
+        <Button variant="primary" type="submit" loading={shownColForm.saving}>Crear columna</Button>
         <Button variant="ghost" onClick={() => setColForm(null)}>Cancelar</Button>
       </div>
     </form>
@@ -536,7 +583,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
             canEdit={canEdit}
             moving={store.moving}
             isMobile={isMobile}
-            status={detailStatus.element}
+            status={<StatusSlot status={detailStatus} />}
             onEdit={() => go({ id: routeTask.id, edit: true })}
             onDelete={() => { back(null); void deleteTasks([routeTask.id]); }}
             onMove={column => void moveTasks([routeTask.id], column, false, 'detail')}
@@ -553,21 +600,23 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
     body = (
       <>
         {showSelection ? selectionBar : toolbar}
-        {boardStatus.element}
-        {columnForm}
-        {creating && canEdit && (
-          <TaskForm
-            mode="create"
-            defaultVisibility={creating}
-            operator={operator}
-            people={people}
-            tipos={tipos}
-            firstColumn={columns[0]?.name}
-            isMobile={isMobile}
-            onCancel={() => setCreating(null)}
-            onSubmit={submitCreate}
-          />
-        )}
+        <StatusSlot status={boardStatus} />
+        <Collapse open={Boolean(colForm) && canEdit} unmountOnClose>{columnForm}</Collapse>
+        <Collapse open={Boolean(creating) && canEdit} unmountOnClose>
+          {shownCreating && (
+            <TaskForm
+              mode="create"
+              defaultVisibility={shownCreating}
+              operator={operator}
+              people={people}
+              tipos={tipos}
+              firstColumn={columns[0]?.name}
+              isMobile={isMobile}
+              onCancel={() => setCreating(null)}
+              onSubmit={submitCreate}
+            />
+          )}
+        </Collapse>
         <section className="tk-board-sec" aria-labelledby="tk-board-title">
           <header className="tk-section-head tk-board-head">
             <div className="tk-section-titles">
@@ -613,7 +662,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   }
 
   return (
-    <section className="tk-screen" data-route={route ? (route.edit ? 'edit' : 'detail') : 'list'}>
+    <section ref={screenRef} className={cx('tk-screen', showSelection && 'has-selbar')} data-route={route ? (route.edit ? 'edit' : 'detail') : 'list'}>
       {consultationMode && (
         <p className="tk-consulta"><Eye size={16} aria-hidden="true" />Modo consulta: ves las tareas y sus comentarios, sin editar.</p>
       )}

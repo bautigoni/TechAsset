@@ -2,9 +2,9 @@ import { useRef, useState, type FormEvent } from 'react';
 import { IconPlus as Plus } from '../../ui/icons';
 import type { TicketTemplate } from '../../types';
 import { createTicketTemplate, deleteTicketTemplate, restoreTicketTemplate, updateTicketTemplate } from '../../services/ticketsApi';
-import { Button, EmptyState, ErrorState, Eyebrow, InlineConfirm, Input, Segmented, TagInput, Textarea, useStatusLine } from '../../ui';
+import { Button, EmptyState, ErrorState, Eyebrow, InlineConfirm, Input, Segmented, TagInput, Textarea, StatusSlot, useStatusLine } from '../../ui';
 import { StepList } from './StepList';
-import { Collapse } from '../common/Collapse';
+import { Collapse } from '../../ui';
 import { PRIORIDADES, errorText } from './ticketUtils';
 
 type Draft = { title: string; description: string; priority: string; category: string; suggestedAssignee: string; checklist: string[]; tags: string[] };
@@ -73,10 +73,10 @@ export function TicketTemplates({ templates, loadError, canEdit, onReload, onClo
         </div>
       </div>
       <p className="tkx-para tkx-muted">Guardá incidentes frecuentes con prioridad, categoría, responsable sugerido, tags y checklist. Al cargar un ticket, elegís la plantilla y completa todo.</p>
-      {status.element}
+      <StatusSlot status={status} />
       {loadError && <ErrorState message={loadError} onRetry={() => void onReload()} />}
 
-      <Collapse open={editing === 'new'}>
+      <Collapse open={editing === 'new'} unmountOnClose>
         <TemplateForm
           heading="Nueva plantilla"
           onCancel={() => { setEditing(null); requestAnimationFrame(() => newRef.current?.focus()); }}
@@ -108,7 +108,7 @@ export function TicketTemplates({ templates, loadError, canEdit, onReload, onClo
                 <span className="tkx-small tkx-muted">{template.checklist.length} {template.checklist.length === 1 ? 'paso' : 'pasos'} · {template.checklist.join(' · ')}</span>
               )}
               {template.tags.length > 0 && <span className="tkx-chips">{template.tags.map(tag => <span key={tag} className="tkx-chip">{tag}</span>)}</span>}
-              <Collapse open={asking === template.id}>
+              <Collapse open={asking === template.id} unmountOnClose>
                 <InlineConfirm
                   danger
                   busy={busy}
@@ -119,7 +119,7 @@ export function TicketTemplates({ templates, loadError, canEdit, onReload, onClo
                   onCancel={() => setAsking(null)}
                 />
               </Collapse>
-              <Collapse open={editing === template.id}>
+              <Collapse open={editing === template.id} unmountOnClose>
                 <TemplateForm
                   heading="Editar plantilla"
                   initial={template}

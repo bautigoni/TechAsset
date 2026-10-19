@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import './relatedReminders.css';
 import { completeReminder, createReminder, getReminders, undoReminder } from '../../services/remindersApi';
-import { Button, Checkbox, ErrorState, Input, StatusLine, cx } from '../../ui';
+import { Button, Checkbox, Collapse, ErrorState, Input, StatusSlot, cx, useStatusLine } from '../../ui';
 import { errorMessage } from '../layout/Feedback';
-import { Collapse } from '../common/SoftCollapse';
 import { WhenField } from './WhenField';
 import { formatWhen, isValidLocal, localToIso, quickWhens, relativeWhen, type ReminderRow } from './reminderUtils';
 
@@ -26,7 +25,12 @@ export function RelatedReminders({ type, id, label, consultationMode = false, on
   const [when, setWhen] = useState(() => quickWhens()[0]?.value || '');
   const [busy, setBusy] = useState<number | 'add' | null>(null);
   const [tried, setTried] = useState(false);
-  const [notice, setNotice] = useState<{ tone: 'ok' | 'bad' | 'info'; message: string; undo?: () => Promise<void> } | null>(null);
+  // La línea de estado aparece y se va con el colapso compartido (StatusSlot).
+  const status = useStatusLine();
+  const setNotice = (notice: { tone: 'ok' | 'bad' | 'info'; message: string; undo?: () => Promise<void> } | null) => {
+    if (!notice) { status.clear(); return; }
+    status.show({ tone: notice.tone, message: notice.message, undo: notice.undo ? { onUndo: notice.undo } : undefined });
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -89,14 +93,7 @@ export function RelatedReminders({ type, id, label, consultationMode = false, on
         <span className="relrem-grow" aria-hidden="true" />
         <Button size="sm" variant="ghost" aria-expanded={adding} disabled={consultationMode} onClick={() => setAdding(open => !open)}>Agregar</Button>
       </div>
-      {notice && (
-        <StatusLine
-          tone={notice.tone}
-          message={notice.message}
-          undo={notice.undo ? { onUndo: notice.undo } : undefined}
-          onDismiss={() => setNotice(null)}
-        />
-      )}
+      <StatusSlot status={status} />
       {loadError && <ErrorState message={loadError} onRetry={() => void refresh()} />}
       {shown.length ? (
         <ul className="relrem-list">

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import '../../styles/screens/classrooms.css';
 import type { Classroom, ClassroomCategory, Operator, SiteInfo } from '../../types';
 import { fetchClassroomCategories, fetchClassrooms } from '../../services/classroomsApi';
-import { Button, EmptyState, ErrorState, Eyebrow, InlineConfirm, Ring, Segmented, Skeleton, cx } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, Eyebrow, InlineConfirm, Ring, Segmented, Skeleton, cx } from '../../ui';
+import { School } from 'lucide-react';
 import { errorMessage } from '../layout/Feedback';
-import { Collapse } from '../common/SoftCollapse';
 import { focusQuietly } from '../../utils/reveal';
 import { FLOOR_PLANS, roomsOf, type FloorPlanDef } from './plan/floorPlans.js';
 import { FloorPlan, IconObs, IconProblem, type RoomStatus } from './plan/FloorPlan';
@@ -54,6 +54,8 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
   const dirtyRef = useRef(false);
   const triggerRef = useRef<HTMLElement | null>(null);
   const catsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const lastPending = useRef<Pending | null>(null);
+  const layoutRef = useRef<HTMLDivElement | null>(null);
 
   const refresh = useCallback(async () => {
     if (!floors) return;
@@ -179,19 +181,25 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
 
   const siteOptions = sites.filter(site => FLOOR_PLANS[site.siteCode]);
   const siteName = sites.find(site => site.siteCode === activeSite)?.nombre || activeSite;
-  const guardElement = pending && selected ? (
-    <Collapse open>
-      <InlineConfirm
-        message={`Tenés cambios sin guardar en ${selected.nombre}.`}
-        detail={pending.kind === 'room' ? `Si seguís, se descartan y se abre ${pending.nombre}.` : pending.kind === 'floor' ? 'Si seguís, se descartan y cambia la planta.' : pending.kind === 'site' ? 'Si seguís, se descartan y cambia la sede.' : 'Si seguís, se descartan y se cierra la ficha.'}
-        confirmLabel="Descartar cambios"
-        cancelLabel="Seguir editando"
-        danger
-        onConfirm={confirmPending}
-        onCancel={() => setPending(null)}
-      />
+  // La confirmación de "cambios sin guardar" se abre y se cierra con el colapso
+  // compartido (conserva el último pedido mientras se pliega).
+  const shownPending = pending || lastPending.current;
+  if (pending) lastPending.current = pending;
+  const guardFor = (kinds: Array<Pending['kind']>) => (
+    <Collapse open={Boolean(pending && selected && kinds.includes(pending.kind))} unmountOnClose>
+      {shownPending && kinds.includes(shownPending.kind) && (
+        <InlineConfirm
+          message={`Tenés cambios sin guardar en ${selected?.nombre || 'la ficha'}.`}
+          detail={shownPending.kind === 'room' ? `Si seguís, se descartan y se abre ${shownPending.nombre}.` : shownPending.kind === 'floor' ? 'Si seguís, se descartan y cambia la planta.' : shownPending.kind === 'site' ? 'Si seguís, se descartan y cambia la sede.' : 'Si seguís, se descartan y se cierra la ficha.'}
+          confirmLabel="Descartar cambios"
+          cancelLabel="Seguir editando"
+          danger
+          onConfirm={confirmPending}
+          onCancel={() => setPending(null)}
+        />
+      )}
     </Collapse>
-  ) : null;
+  );
 
   const okRatioTotal = rooms.length;
 
@@ -223,7 +231,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
         )}
       </div>
 
-      {pending && (pending.kind === 'floor' || pending.kind === 'site') ? guardElement : null}
+      {guardFor(['floor', 'site'])}
 
       {canManage && (
         <Collapse open={catsOpen}>
@@ -262,7 +270,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
         )}
       </div>
 
-      <div className="cls-layout">
+      <div className={cx('cls-layout', !selected && 'is-idle')} ref={layoutRef}>
         {/* Plano */}
         <section className="cls-card cls-plan-card" aria-labelledby="cls-plan-title">
           <div className="cls-plan-head">
@@ -277,8 +285,19 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
 
         {/* Ficha en línea */}
         <div className="cls-side">
-          {selected ? (
-            <Collapse open={sheetOpen} onClosed={() => setSelected(null)}>
+          {/* "Elegí un aula" se pliega mientras la ficha se abre (y vuelve al cerrarla): sin saltos de la lista de abajo. */}
+          <Collapse open={!selected} anchor={false} reveal={false} lazy={false}>
+            <aside className="cls-card cls-placeholder" aria-label="Ficha del aula">
+              <EmptyState
+                compact
+                icon={<School size={18} strokeWidth={1.6} />}
+                title="Elegí un aula"
+                description="Tocá un aula en el plano o en la lista: la ficha se abre acá, sin tapar el plano."
+              />
+            </aside>
+          </Collapse>
+          {selected && (
+            <Collapse open={sheetOpen} appear onSettled={open => { if (!open) setSelected(null); }}>
               <ClassroomSheet
                 key={selected.roomKey}
                 roomKey={selected.roomKey}
@@ -292,15 +311,9 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
                 onClose={close}
                 onDirtyChange={onDirtyChange}
                 onNavigate={onNavigate}
-                guard={pending && (pending.kind === 'room' || pending.kind === 'close') ? guardElement : null}
+                guard={guardFor(['room', 'close'])}
               />
             </Collapse>
-          ) : (
-            <aside className="cls-card cls-placeholder" aria-label="Ficha del aula">
-              <Eyebrow>Ficha del aula</Eyebrow>
-              <h2 className="cls-h2">Elegí un aula</h2>
-              <p className="cls-para cls-muted">Tocá un aula en el plano o en la lista. La ficha se abre acá, sin tapar el plano.</p>
-            </aside>
           )}
         </div>
 
@@ -310,7 +323,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
             <h3 className="cls-h3" id="cls-list-title">Aulas de {floor.label}</h3>
             <span className="cls-count">{matches ? rooms.filter(room => matches(room.roomKey)).length : rooms.length}</span>
           </div>
-          <RoomList rooms={rooms} statuses={statuses} matches={matches} selectedKey={sheetOpen ? selected?.roomKey || null : null} onPick={pick} />
+          <RoomList rooms={rooms} statuses={statuses} matches={matches} selectedKey={sheetOpen ? selected?.roomKey || null : null} onPick={pick} layoutRef={layoutRef} />
         </section>
       </div>
     </section>
@@ -328,17 +341,71 @@ function Legend() {
   );
 }
 
-function RoomList({ rooms, statuses, matches, selectedKey, onPick }: {
+/**
+ * Sin huecos (REGLAS-UX): en ancho, el plano va a la izquierda y la ficha (o
+ * "Elegí un aula") con la lista a la derecha. Con una planta muy ancha el
+ * plano queda bajo y una lista de una columna dejaba un hueco grande debajo
+ * del plano. Se elige 1 o 2 columnas para la lista según cuál deja las dos
+ * columnas de la página más parejas. Solo depende del alto del plano y de la
+ * columna de la ficha (no de la lista), así que no oscila.
+ */
+function useBalancedColumns(layoutRef: RefObject<HTMLDivElement | null>, count: number) {
+  const [cols, setCols] = useState<1 | 2>(1);
+  useLayoutEffect(() => {
+    const layout = layoutRef.current;
+    if (!layout || typeof ResizeObserver === 'undefined') return;
+    const plan = layout.querySelector<HTMLElement>('.cls-plan-card');
+    const side = layout.querySelector<HTMLElement>('.cls-side');
+    const list = layout.querySelector<HTMLElement>('.cls-list-card');
+    if (!plan || !side || !list) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      // Una sola columna de página (angosto): la grilla de la lista ya se reparte sola.
+      if (Math.abs(list.offsetLeft - plan.offsetLeft) < 4) { setCols(1); return; }
+      const ul = list.querySelector<HTMLElement>('.cls-list');
+      const firstRow = ul?.querySelector<HTMLElement>('li');
+      if (!ul || !firstRow) { setCols(1); return; }
+      const gap = parseFloat(getComputedStyle(layout).rowGap) || 0;
+      const rowGap = parseFloat(getComputedStyle(ul).rowGap) || 0;
+      // Lo que ocupa la lista sin sus filas (encabezado, padding), medido con la lista en su alto natural.
+      const chrome = list.offsetHeight - ul.offsetHeight;
+      const oneRow = ul.classList.contains('is-2col') ? firstRow.offsetHeight - 16 : firstRow.offsetHeight;
+      const twoRow = oneRow + 16; // en dos columnas el estado baja a su propia línea
+      const right = (rows: number, rowH: number) => side.offsetHeight + gap + chrome + rows * rowH + Math.max(0, rows - 1) * rowGap;
+      // Alto natural del plano (sin el estirado de .is-idle): su encabezado + lo de adentro.
+      const inner = plan.querySelector<HTMLElement>('.cls-plan');
+      const innerGap = inner ? parseFloat(getComputedStyle(inner).rowGap) || 0 : 0;
+      const innerNatural = inner ? Array.from(inner.children).reduce((sum, child) => sum + (child as HTMLElement).offsetHeight, 0) + innerGap * Math.max(0, inner.children.length - 1) : 0;
+      const planH = inner ? plan.offsetHeight - inner.offsetHeight + innerNatural : plan.offsetHeight;
+      const one = right(count, oneRow);
+      const two = right(Math.ceil(count / 2), twoRow);
+      setCols(one > planH + 24 && Math.abs(planH - two) < Math.abs(planH - one) ? 2 : 1);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    const observer = new ResizeObserver(schedule);
+    observer.observe(plan);
+    observer.observe(side);
+    observer.observe(layout);
+    measure();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [layoutRef, count]);
+  return cols;
+}
+
+function RoomList({ rooms, statuses, matches, selectedKey, onPick, layoutRef }: {
   rooms: Array<{ roomKey: string; nombre: string }>;
   statuses: Record<string, RoomStatus>;
   matches: ((roomKey: string) => boolean) | null;
   selectedKey: string | null;
   onPick: (roomKey: string, nombre: string) => void;
+  layoutRef: RefObject<HTMLDivElement | null>;
 }) {
   const visible = matches ? rooms.filter(room => matches(room.roomKey)) : rooms;
+  const cols = useBalancedColumns(layoutRef, visible.length);
   if (!visible.length) return <EmptyState compact title="Ningún aula de esta planta coincide con el filtro." />;
   return (
-    <ul className="cls-list">
+    <ul className={cx('cls-list', cols === 2 && 'is-2col')}>
       {visible.map(room => {
         const status = statuses[room.roomKey];
         const estado = status?.estado || 'Sin revisar';

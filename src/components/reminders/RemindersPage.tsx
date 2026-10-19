@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../../styles/screens/reminders.css';
 import { completeReminder, createReminder, deleteReminder, getReminderPeople, getReminders, postponeReminder, undoReminder, updateReminder } from '../../services/remindersApi';
 import { getActiveSiteCode } from '../../services/activeSite';
-import { Button, Checkbox, EmptyState, ErrorState, Eyebrow, IconButton, InlineConfirm, Segmented, SkeletonRows, cx, useStatusLine } from '../../ui';
+import { BellRing } from 'lucide-react';
+import { Button, Checkbox, Collapse, EmptyState, ErrorState, Eyebrow, IconButton, InlineConfirm, Segmented, SkeletonRows, StatusSlot, cx, useAnchoredToggle, useStatusLine } from '../../ui';
 import { IconPlus } from '../../ui/icons';
 import { errorMessage } from '../layout/Feedback';
 import { dayKeyAr } from '../../utils/formatters';
 import { focusQuietly } from '../../utils/reveal';
-import { Collapse } from '../common/SoftCollapse';
 import { EMPTY_DRAFT, ReminderForm, draftFromReminder, payloadFromDraft, type Person, type ReminderDraft } from './ReminderForm';
 import { WhenField } from './WhenField';
 import { formatWhen, isValidLocal, localToIso, nextHourLocal, priorityTone, relatedTypeLabel, relativeWhen, type ReminderRow } from './reminderUtils';
@@ -40,6 +40,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
   const [mineOnly, setMineOnly] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [formLayout, setFormLayout] = useState(false);
   const [draft, setDraft] = useState<ReminderDraft>(EMPTY_DRAFT);
   const [people, setPeople] = useState<Person[]>([]);
   const [me, setMe] = useState('');
@@ -47,6 +48,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
   const [now, setNow] = useState(() => Date.now());
   const newButtonRef = useRef<HTMLButtonElement | null>(null);
   const status = useStatusLine();
+  const anchored = useAnchoredToggle();
   const site = getActiveSiteCode();
 
   const load = useCallback(async () => {
@@ -193,9 +195,12 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
         ]}
       />
 
-      <div className={cx('rem-layout', formOpen && 'has-form')}>
+      {/* En ancho el alta va en una columna a la derecha: la disposición de dos
+          columnas se mantiene hasta que el alta termina de plegarse (si no, la
+          lista saltaba debajo del formulario que se estaba cerrando). */}
+      <div className={cx('rem-layout', (formOpen || formLayout) && 'has-form')}>
         <div className="rem-form-col">
-          <Collapse open={formOpen}>
+          <Collapse open={formOpen} unmountOnClose onSettled={setFormLayout}>
             <section className="rem-card rem-form-card" aria-label="Nuevo recordatorio">
               <ReminderForm
                 mode="create"
@@ -213,7 +218,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
         </div>
 
         <section className="rem-list-col" aria-label="Lista de recordatorios">
-          {status.element}
+          <StatusSlot status={status} />
           {loadError && <ErrorState message={loadError} retrying={retrying} onRetry={async () => { setRetrying(true); await load(); setRetrying(false); }} />}
           {loading ? (
             <div className="rem-card"><SkeletonRows rows={4} /></div>
@@ -248,6 +253,8 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
           ) : !loadError && (
             <div className="rem-card">
               <EmptyState
+                compact
+                icon={<BellRing size={18} strokeWidth={1.6} />}
                 title={visible.length ? EMPTY_TEXT[filter] : 'Todavía no hay recordatorios.'}
                 description={!visible.length && !consultationMode ? 'Elegí qué y cuándo: te avisamos en la campana, con push y por mail.' : filter !== 'all' && visible.length ? 'Probá con otro filtro o mirá Todos.' : undefined}
                 action={!consultationMode && !formOpen ? <Button size="sm" variant="secondary" icon={<IconPlus size={14} />} onClick={() => { ensurePeople(); setFormOpen(true); }}>Nuevo recordatorio</Button> : undefined}
@@ -255,7 +262,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
             </div>
           )}
           {!loading && filter === 'pend' && !showDone && done.length > 0 && (
-            <Button variant="ghost" className="rem-self-start" onClick={() => setShowDone(true)}>Ver completados <span className="rem-count">{done.length}</span></Button>
+            <Button variant="ghost" className="rem-self-start" onClick={event => { const at = event.currentTarget; anchored(() => setShowDone(true), at); }}>Ver completados <span className="rem-count">{done.length}</span></Button>
           )}
         </section>
       </div>
@@ -367,7 +374,7 @@ function ReminderItem({ item, now, consultationMode, people, me, peopleError, en
         )}
       </div>
 
-      <Collapse open={panel === 'postpone'}>
+      <Collapse open={panel === 'postpone'} unmountOnClose>
         <div className="rem-inline" data-scanner-ignore="" onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); setPanel('none'); } }}>
           <WhenField label="Posponer a" value={postponeTo} onChange={setPostponeTo} disabled={busy} />
           <div className="rem-actions rem-actions-end">
@@ -377,7 +384,7 @@ function ReminderItem({ item, now, consultationMode, people, me, peopleError, en
         </div>
       </Collapse>
 
-      <Collapse open={panel === 'edit'}>
+      <Collapse open={panel === 'edit'} unmountOnClose>
         {editDraft && (
           <div className="rem-inline">
             <ReminderForm
@@ -394,7 +401,7 @@ function ReminderItem({ item, now, consultationMode, people, me, peopleError, en
         )}
       </Collapse>
 
-      <Collapse open={panel === 'delete'}>
+      <Collapse open={panel === 'delete'} unmountOnClose>
         <InlineConfirm
           danger
           message={`¿Borrar «${item.title}»?`}

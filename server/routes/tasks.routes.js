@@ -86,7 +86,7 @@ tasksRouter.post('/tasks', (req, res) => {
       siteCode, kind: 'task.created',
       title: `Nueva tarea: ${payload.titulo}`,
       body: `Cargada por ${payload.operator || 'alguien del equipo'}`,
-      link: `/sede/${siteCode}/tasks`,
+      link: taskLink(siteCode, id),
       exceptEmail: req.user?.email
     });
     }
@@ -440,17 +440,23 @@ function isMine(task, email, name) {
 function rowToColumn(row) { return { id: row.id, name: row.name, color: row.color || '#64748b', position: Number(row.position || 0), isDone: Boolean(row.is_done), createdBy: row.created_by || '' }; }
 function rowToComment(row) { return { id: row.id, taskId: row.task_id, body: row.body, authorEmail: row.author_email || '', authorName: row.author_name || '', createdAt: row.created_at || '', updatedAt: row.updated_at || '' }; }
 
+/** Link de la notificación: abre ESA tarea (/sede/<sede>/tasks/<id>, lo lee TasksPage). */
+function taskLink(siteCode, id) {
+  const base = `/sede/${String(siteCode || '').toLowerCase()}/tasks`;
+  return id ? `${base}/${encodeURIComponent(String(id))}` : base;
+}
+
 function notifyTaskAssignees({ req, siteCode, taskId, payload, kind, title, body }) {
   for (const email of payload.assigneeEmails || []) {
     if (!email || email === String(req.user?.email || '').toLowerCase()) continue;
-    notifyUser({ siteCode, email, kind, title, body, link: `/sede/${siteCode}/tasks`, payload: { taskId } });
+    notifyUser({ siteCode, email, kind, title, body, link: taskLink(siteCode, taskId), payload: { taskId } });
   }
 }
 
 function notifyTaskFollowers({ req, siteCode, task, kind, title, body }) {
   const recipients = new Set([...(task.assigneeEmails || []), task.ownerEmail].map(value => String(value || '').toLowerCase()).filter(Boolean));
   recipients.delete(String(req.user?.email || '').toLowerCase());
-  for (const email of recipients) notifyUser({ siteCode, email, kind, title, body, link: `/sede/${siteCode}/tasks`, payload: { taskId: task.id } });
+  for (const email of recipients) notifyUser({ siteCode, email, kind, title, body, link: taskLink(siteCode, task.id), payload: { taskId: task.id } });
 }
 
 function normalizeResponsables(value) {

@@ -11,7 +11,35 @@ export const LEVELS: Array<{ value: SchoolLevel; label: string; short: string }>
 /** Módulos del colegio (mismos que en la Agenda). */
 export const MODULES: Array<[string, string]> = [['08:15', '09:05'], ['09:05', '09:55'], ['10:10', '11:00'], ['11:00', '11:45'], ['13:30', '14:15'], ['14:35', '15:25'], ['15:25', '16:20']];
 
-export const levelLabel = (level: SchoolLevel) => LEVELS.find(entry => entry.value === level)?.label || LEVELS[0].label;
+/* ── Borradores sin guardar (recreos y alta de horario) ──────────────────
+   Si se sale de Horarios por el menú con cambios sin guardar, quedan en
+   memoria por sede (y en sessionStorage, así sobreviven a recargar la
+   pestaña) y se recuperan al volver, como en Configuración y Conocimiento. */
+const draftMemory = new Map<string, unknown>();
+const draftKey = (key: string, site: string) => `techasset:hr-draft:${site}:${key}`;
+
+export function peekScheduleDraft<T>(key: string, site: string): T | null {
+  const id = draftKey(key, site);
+  if (draftMemory.has(id)) return draftMemory.get(id) as T;
+  try {
+    const raw = sessionStorage.getItem(id);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function keepScheduleDraft(key: string, site: string, value: unknown) {
+  const id = draftKey(key, site);
+  if (value === null || value === undefined) draftMemory.delete(id);
+  else draftMemory.set(id, value);
+  try {
+    if (value === null || value === undefined) sessionStorage.removeItem(id);
+    else sessionStorage.setItem(id, JSON.stringify(value));
+  } catch { /* sin storage: queda en memoria */ }
+}
+
+export const levelLabel =(level: SchoolLevel) => LEVELS.find(entry => entry.value === level)?.label || LEVELS[0].label;
 
 export function fold(value: unknown) {
   return String(value ?? '').toLocaleLowerCase('es').normalize('NFD').replace(/[̀-ͯ]/g, '').trim();

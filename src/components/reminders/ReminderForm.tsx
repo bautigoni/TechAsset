@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import './reminderFields.css';
-import { Button, ErrorState, IconButton, Input, Segmented, Select, Textarea, cx } from '../../ui';
+import { Button, Collapse, ErrorState, IconButton, Input, Segmented, Select, Textarea, cx } from '../../ui';
 import { IconX } from '../../ui/icons';
 import { enableBrowserPush, getNotificationPrefs } from '../../services/notificationsApi';
 import { testReminderPush } from '../../services/remindersApi';
@@ -124,18 +124,16 @@ export function ReminderForm({ mode, draft, onChange, people, peopleError, onSub
       <Segmented<Priority> label="Prioridad" value={draft.priority} onChange={value => set('priority', value)} options={PRIORITIES.map(value => ({ value, label: <span className={value === 'Urgente' ? 'rem-tone-bad' : value === 'Alta' ? 'rem-tone-warn' : undefined}>{value}</span> }))} disabled={disabled} block />
       <div className="rem-field-group">
         <Select label="Para quién" value={draft.owner} onChange={value => set('owner', value)} options={ownerOptions} disabled={disabled} searchable="auto" hint={peopleError || 'Si es para otra persona, le avisamos que se lo asignaste.'} />
-        {draft.owner === '__other' && (
+        <Collapse open={draft.owner === '__other'}>
           <Input label="Mail del responsable" inputMode="email" autoComplete="off" placeholder="nombre@escuela.edu.ar" value={draft.otherMail} onValueChange={value => set('otherMail', value)} error={tried ? mailError : undefined} disabled={disabled} />
-        )}
+        </Collapse>
       </div>
       <div className="rem-field-group">
         <Select label="Relacionado con" value={draft.relatedType} onChange={value => set('relatedType', value)} options={[{ value: '', label: 'Nada en particular' }, ...RELATED_TYPES.map(item => ({ value: item.value, label: item.label }))]} disabled={disabled} />
-        {draft.relatedType && (
-          <div className="rem-grid-2">
-            <Input label="Identificador" placeholder={relatedMeta?.placeholder} value={draft.relatedId} onValueChange={value => set('relatedId', value)} disabled={disabled} className="rem-mono-input" />
-            <Input label="Nombre para mostrar" placeholder="Ej. 6F" value={draft.relatedLabel} onValueChange={value => set('relatedLabel', value)} disabled={disabled} />
-          </div>
-        )}
+        <Collapse open={Boolean(draft.relatedType)} className="rem-grid-2">
+          <Input label="Identificador" placeholder={relatedMeta?.placeholder} value={draft.relatedId} onValueChange={value => set('relatedId', value)} disabled={disabled} className="rem-mono-input" />
+          <Input label="Nombre para mostrar" placeholder="Ej. 6F" value={draft.relatedLabel} onValueChange={value => set('relatedLabel', value)} disabled={disabled} />
+        </Collapse>
       </div>
       {mode === 'create' && <PushBox />}
       {error && <ErrorState message={error} />}

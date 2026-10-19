@@ -2,13 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import type { Classroom, ClassroomCategory, ClassroomHistoryEntry, ClassroomIncident, ClassroomIncidentSummary, ClassroomItemState, Operator } from '../../types';
 import { fetchClassroom, fetchClassroomHealth, fetchClassroomHistory, fetchClassroomIncidents, generateClassroomHealth, updateClassroom, type ClassroomHealthReport } from '../../services/classroomsApi';
 import { createTicket } from '../../services/ticketsApi';
-import { Button, Checkbox, EmptyState, ErrorState, Eyebrow, IconButton, Input, Ring, Segmented, SkeletonText, StatusText, Textarea, cx, useStatusLine } from '../../ui';
+import { Button, Checkbox, Collapse, Disclosure, EmptyState, ErrorState, Eyebrow, IconButton, Input, Ring, Segmented, SkeletonText, StatusSlot, StatusText, Textarea, cx, useStatusLine } from '../../ui';
 import { IconX } from '../../ui/icons';
 import { errorMessage } from '../layout/Feedback';
 import { DATE_ONLY, formatDate } from '../../utils/formatters';
 import { focusQuietly, revealInline } from '../../utils/reveal';
 import { RelatedReminders } from '../reminders/RelatedReminders';
-import { Collapse, Expander } from '../common/SoftCollapse';
 import { DEFAULT_EQUIPMENT_OPTIONS, ITEM_STATES, calcGeneral, describeEquipmentChange, fieldLabel, generalTone, getEquipment, issuesOf, itemTone, normalizeClassroom } from './classroomState';
 import { IconObs, IconProblem } from './plan/FloorPlan';
 
@@ -286,7 +285,7 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
         <Button variant="secondary" aria-expanded={ticketOpen} disabled={consultationMode} onClick={() => setTicketOpen(open => !open)}>Crear ticket</Button>
       </div>
 
-      <Collapse open={ticketOpen}>
+      <Collapse open={ticketOpen} unmountOnClose>
         <TicketForm
           nombre={draft.nombre || nombre}
           roomKey={roomKey}
@@ -300,7 +299,7 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
         />
       </Collapse>
 
-      {status.element && <div className="cls-sheet-status">{status.element}</div>}
+      <StatusSlot status={status} className="cls-sheet-status" />
 
       {/* ── Equipamiento ─────────────────────────────────────────── */}
       <Section
@@ -426,7 +425,7 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
 
       {/* ── Historial ───────────────────────────────────────────── */}
       <div className="cls-sec">
-        <Expander title="Historial de cambios" summary={<span className="cls-count">{history.length}{history.length >= 100 ? '+' : ''}</span>}>
+        <Disclosure variant="plain" title="Historial de cambios" summary={<span className="cls-count">{history.length}{history.length >= 100 ? '+' : ''}</span>}>
           {history.length ? (
             <>
               <ol className="cls-history">
@@ -448,7 +447,7 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
               )}
             </>
           ) : <EmptyState compact title="Sin cambios registrados todavía." />}
-        </Expander>
+        </Disclosure>
       </div>
     </aside>
   );

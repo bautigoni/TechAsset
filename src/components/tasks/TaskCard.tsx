@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { Lock, MessageSquare, Paperclip, Plus, X } from 'lucide-react';
 import type { TaskChecklistItem, TaskItem } from '../../types';
-import { Button, Checkbox, StatusText, TruncatedText, cx } from '../../ui';
+import { Button, Checkbox, Collapse, StatusText, TruncatedText, cx, useAnchoredToggle } from '../../ui';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { CARD_ITEMS, dueInfo, joinNames, responsablesOf, taskRouteUrl } from './taskModel';
 
@@ -39,6 +39,11 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
   const [showAll, setShowAll] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => { if (adding) inputRef.current?.focus({ preventScroll: true }); }, [adding]);
+  // La línea de estado de la tarjeta se va con el colapso: mientras se pliega muestra la última.
+  const lastStatus = useRef<ReactNode>(null);
+  if (status) lastStatus.current = status;
+  const shownStatus = status || lastStatus.current;
+  const anchored = useAnchoredToggle();
 
   const items = task.items || [];
   const doneItems = items.filter(item => item.completada).length;
@@ -113,7 +118,7 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
       {note && (
         <div className="tk-card-note">
           <span className="tk-card-note-label">Nota</span>
-          <TruncatedText className="tk-card-note-text" tooltip={task.comentario}>{note}</TruncatedText>
+          <TruncatedText className="tk-card-note-text" lines={2} tooltip={task.comentario}>{note}</TruncatedText>
         </div>
       )}
 
@@ -140,16 +145,16 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
             </div>
           ))}
           {items.length > CARD_ITEMS && (
-            <button type="button" className="tk-link tk-link--sm" onClick={() => setShowAll(value => !value)}>
+            <button type="button" className="tk-link tk-link--sm" aria-expanded={showAll} onClick={event => { const at = event.currentTarget; anchored(() => setShowAll(value => !value), at); }}>
               {showAll ? 'Ver menos' : `Ver ${items.length - CARD_ITEMS} más`}
             </button>
           )}
         </div>
       )}
 
-      {status && <div className="tk-card-status" data-nodrag="">{status}</div>}
+      <Collapse open={Boolean(status)} className="tk-card-status" data-nodrag="" unmountOnClose>{shownStatus}</Collapse>
 
-      {adding && (
+      <Collapse open={adding} unmountOnClose>
         <form
           className="tk-card-add"
           data-nodrag=""
@@ -169,7 +174,7 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
           />
           <Button size="sm" type="submit">Agregar</Button>
         </form>
-      )}
+      </Collapse>
 
       <div className="tk-card-foot">
         <button type="button" className="tk-foot-btn" aria-label={`${comments} ${comments === 1 ? 'comentario' : 'comentarios'} en «${task.titulo}»`} onClick={event => { event.stopPropagation(); onOpen(task, event); }}>

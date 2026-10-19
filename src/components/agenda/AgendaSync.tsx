@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getAgendaCalendarFeed, rotateAgendaCalendarFeed } from '../../services/agendaApi';
-import { Button, Eyebrow, InlineConfirm, Input, Skeleton, StatusLine, type StatusTone } from '../../ui';
+import { Button, Collapse, Eyebrow, InlineConfirm, Input, Skeleton, StatusLine, type StatusTone } from '../../ui';
 
 const errorText = (err: unknown, fallback: string) => (err instanceof Error && err.message ? err.message : fallback);
 
@@ -18,6 +18,9 @@ export function AgendaSync({ onClose }: { onClose: () => void }) {
   const [rotating, setRotating] = useState(false);
   const [message, setMessage] = useState<{ tone: StatusTone; text: string; key: number } | null>(null);
   const say = (tone: StatusTone, text: string) => setMessage({ tone, text, key: Date.now() });
+  const lastMessage = useRef(message);
+  if (message) lastMessage.current = message;
+  const shownMessage = message || lastMessage.current;
 
   useEffect(() => {
     let alive = true;
@@ -80,7 +83,7 @@ export function AgendaSync({ onClose }: { onClose: () => void }) {
             <Button variant="ghost" disabled={!feedUrl || asking} onClick={() => setAsking(true)}>Regenerar</Button>
           </div>
         </div>
-        {asking && (
+        <Collapse open={asking} unmountOnClose>
           <InlineConfirm
             message="¿Regenerar el enlace?"
             detail="El enlace actual deja de funcionar en todos los calendarios suscriptos."
@@ -90,8 +93,10 @@ export function AgendaSync({ onClose }: { onClose: () => void }) {
             onConfirm={rotate}
             onCancel={() => setAsking(false)}
           />
-        )}
-        {message && <StatusLine key={message.key} tone={message.tone} message={message.text} onDismiss={() => setMessage(null)} />}
+        </Collapse>
+        <Collapse open={Boolean(message)} unmountOnClose>
+          {shownMessage && <StatusLine key={shownMessage.key} tone={shownMessage.tone} message={shownMessage.text} onDismiss={() => setMessage(null)} />}
+        </Collapse>
         <div className="ag-sync-steps">
           {STEPS.map(([title, steps]) => (
             <div key={title}>

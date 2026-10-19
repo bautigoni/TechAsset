@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { Classroom, Ticket, TicketSource, TicketState, TicketTemplate } from '../../types';
 import { createTicket, updateTicket, uploadTicketImage } from '../../services/ticketsApi';
 import {
-  Button, Combobox, Eyebrow, FileDrop, Input, RadioGroup, Segmented, Select, TagInput, Textarea, useStatusLine
+  Button, Combobox, Eyebrow, FileDrop, Input, RadioGroup, Segmented, Select, TagInput, Textarea, StatusSlot, useStatusLine
 } from '../../ui';
 import { IconAlert, IconFile } from '../../ui/icons';
 import { fold } from '../../ui/util';
@@ -242,7 +242,7 @@ export function TicketForm({ initial, templates, classrooms, assistants, tickets
             options={[{ value: '', label: 'Sin plantilla' }, ...templates.map(item => ({ value: String(item.id), label: item.title, hint: [item.category, item.priority].filter(Boolean).join(' · ') }))]}
             searchable="auto"
           />
-          {tplStatus.element}
+          <StatusSlot status={tplStatus} />
         </div>
       )}
 

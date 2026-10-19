@@ -1,9 +1,10 @@
-import { Fragment, useCallback, useMemo, useState } from 'react';
-import { ClipboardList, Download, RefreshCw, Rss } from 'lucide-react';
+import { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { CalendarCheck, ClipboardList, Download, RefreshCw, Rss } from 'lucide-react';
 import type { AgendaItem } from '../../types';
 import { restoreAgenda } from '../../services/agendaApi';
 import { useMinuteTick } from '../../hooks/useMinuteTick';
-import { Button, EmptyState, Eyebrow, IconButton, Ring, Segmented, StatusText, TruncatedText, cx, icons, useStatusLine } from '../../ui';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { Button, Collapse, EmptyState, Eyebrow, IconButton, Ring, Segmented, StatusSlot, StatusText, TruncatedText, cx, icons, useStatusLine } from '../../ui';
 import { addDaysToKey, weekdayOfKey } from '../../utils/formatters';
 import { downloadCsv, downloadText } from '../../utils/download';
 import { AgendaForm } from './AgendaForm';
@@ -75,6 +76,16 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
   const [olderLoading, setOlderLoading] = useState(false);
   const [olderLoaded, setOlderLoaded] = useState(false);
   const status = useStatusLine();
+  const isNarrow = useMediaQuery('(max-width: 767px)');
+  const lastKpiLabel = useRef('');
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  // Sin huecos (REGLAS-UX): "Touch por franja" va en la columna de al lado o
+  // debajo de la lista, donde deje las dos columnas más parejas. Se decide al
+  // cambiar lo que se mira (vista, día, filtros, cantidad de filas) o el ancho,
+  // nunca al abrir el detalle de una fila: no salta mientras se trabaja.
+  const [capInMain, setCapInMain] = useState(false);
+  const capInMainRef = useRef(capInMain);
+  capInMainRef.current = capInMain;
 
   const visible = useMemo(() => items.filter(item => matchesTurno(item, turno)), [items, turno]);
   const itemsOn = useCallback((iso: string) => visible.filter(item => occursOn(item, iso)).sort(byTime), [visible]);
@@ -280,12 +291,66 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
   const listItems = view === 'mes' ? monthList : dayList;
   const listTitle = view === 'mes' ? cap1(longDate(selectedDate)) : day === 'Hoy' ? `Hoy · ${longDate(clock.today)}` : cap1(longDate(dayDate));
   const kpiLabel = KPI_DEFS.find(def => def.key === kpi)?.label || '';
+  if (kpiLabel) lastKpiLabel.current = kpiLabel;
   const filterSummary = `Turno ${turno.toLowerCase()} · ${kpi ? kpiLabel : 'todas las actividades'}`;
   const tools = (
     <div className="ag-card-tools">
       <Button size="sm" variant="ghost" icon={<ClipboardList size={15} />} onClick={copySummary}>Copiar resumen</Button>
       <Button size="sm" variant="ghost" icon={<Download size={15} />} onClick={exportCsv}>Exportar CSV</Button>
     </div>
+  );
+
+  const balanceKey = `${view}|${day}|${selectedDate}|${turno}|${kpi}|${listItems.length}|${historyList.length}|${capSlots.length}|${nextToday.length}|${olderLoaded}`;
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const decide = () => {
+      const main = body.querySelector<HTMLElement>('.ag-main');
+      const side = body.querySelector<HTMLElement>('.ag-side');
+      const cap = body.querySelector<HTMLElement>('.ag-cap-card');
+      if (!main || !side || !cap) return;
+      // Una sola columna (angosto o Semana a todo el ancho): va al costado, que ya cae abajo.
+      if (Math.abs(side.offsetTop - main.offsetTop) > 4) { if (capInMainRef.current) setCapInMain(false); return; }
+      const gap = parseFloat(getComputedStyle(main).rowGap) || 0;
+      const inMain = capInMainRef.current;
+      const capH = cap.offsetHeight + gap;
+      const mainH = main.offsetHeight - (inMain ? capH : 0);
+      const sideH = side.offsetHeight - (inMain ? 0 : capH);
+      const atSide = Math.abs(mainH - (sideH + capH));
+      const below = Math.abs(mainH + capH - sideH);
+      const next = inMain ? below <= atSide + 24 : below < atSide - 24;
+      if (next !== inMain) setCapInMain(next);
+    };
+    decide();
+    let width = body.clientWidth;
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      if (Math.abs(body.clientWidth - width) < 1) return;
+      width = body.clientWidth;
+      decide();
+    });
+    observer?.observe(body);
+    return () => observer?.disconnect();
+  }, [balanceKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const capCard = (
+    <section className="ag-card ag-cap-card" aria-label="Touch por franja">
+      <div className="ag-card-head ag-card-head--stack">
+        <h3 className="ag-h3">Touch por franja · {longDate(capDate)}</h3>
+        <span className="ag-head-sub">Tope 25 sumando las actividades que se superponen</span>
+      </div>
+      {capSlots.map(slot => (
+        <div key={slot.key} className="ag-slot">
+          <Ring value={Math.max(0, slot.libres)} total={slot.max} size={32} unit={`Touch libres de ${slot.key}`} />
+          <span className={cx('ag-cap-num', 'g-num', slot.libres <= 0 ? 'is-bad' : slot.libres / slot.max <= 0.2 && 'is-warn')}>{Math.max(0, slot.libres)}</span>
+          <span className="ag-slot-text">
+            <span className="ag-time g-num">{slot.key}</span>
+            <TruncatedText className="ag-what" lines={2}>{slot.users.map(user => `${user.curso} ${user.cantidad}`).join(' · ')}</TruncatedText>
+          </span>
+        </div>
+      ))}
+      {!capSlots.length && <EmptyState compact className="ag-empty-state" icon={<CalendarCheck size={18} strokeWidth={1.6} />} title="Ese día no hay Touch reservadas." />}
+      <p className="ag-note-small ag-inset">El número es cuántas quedan libres. TIC, Plani y Dell tienen tope 99. Al crear o editar una actividad se avisa antes de guardar si no hay lugar.</p>
+    </section>
   );
 
   const listEmpty = view === 'dia' && day === 'Hoy' && isWeekend && !dayList.length ? (
@@ -295,7 +360,15 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
       action={<Button size="sm" variant="secondary" onClick={() => setDay('Lunes')}>Ver el lunes</Button>}
     />
   ) : (
-    <p className="ag-empty">{view === 'mes' ? 'Sin actividades para este día.' : 'Sin actividades en el filtro actual.'}</p>
+    <EmptyState
+      compact
+      className="ag-empty-state"
+      icon={<CalendarCheck size={18} strokeWidth={1.6} />}
+      title={view === 'mes' ? 'Sin actividades para este día.' : kpi || turno !== 'Completo' ? 'Sin actividades en el filtro actual.' : 'Sin actividades para este día.'}
+      action={kpi || turno !== 'Completo'
+        ? <Button size="sm" variant="secondary" onClick={() => { setKpi(null); setTurno('Completo'); }}>Ver todas</Button>
+        : !consultationMode && !creating ? <Button size="sm" variant="secondary" icon={<icons.IconPlus size={14} />} onClick={() => setCreating(true)}>Nueva actividad</Button> : undefined}
+    />
   );
 
   return (
@@ -317,12 +390,14 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         </div>
       </header>
 
-      {syncOpen && <AgendaSync onClose={() => setSyncOpen(false)} />}
-      {creating && !consultationMode && (
+      <Collapse open={syncOpen}>
+        <AgendaSync onClose={() => setSyncOpen(false)} />
+      </Collapse>
+      <Collapse open={creating && !consultationMode} unmountOnClose>
         <section className="ag-card">
           <AgendaForm items={items} clock={clock} frequent={frequent} onSubmit={create} onCancel={() => setCreating(false)} />
         </section>
-      )}
+      </Collapse>
 
       <div className="ag-controls">
         <Segmented<View> ariaLabel="Vista" value={view} onChange={next => { setView(next); setOpenId(''); }} options={VIEWS} />
@@ -335,12 +410,13 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
       </div>
 
       <div className={cx('ag-filters', filtersOpen && 'is-open')}>
-        <button type="button" className="ag-filt-toggle" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(value => !value)}>
+        <button type="button" className="ag-filt-toggle" aria-expanded={filtersOpen} aria-controls="ag-filters-body" onClick={() => setFiltersOpen(value => !value)}>
           <span className="ag-filt-name">Filtros</span>
           <span className="ag-filt-sum">{filterSummary}</span>
           <icons.IconChevronDown size={16} className="ag-chev" />
         </button>
-        <div className="ag-filters-body">
+        {/* En mobile los filtros se pliegan detrás de su botón (colapso compartido); en ancho están siempre. */}
+        <Collapse open={!isNarrow || filtersOpen} className="ag-filters-body" id="ag-filters-body" reveal={isNarrow}>
           <Segmented<TurnoFilter> ariaLabel="Turno" value={turno} onChange={setTurno} options={TURNOS.map(value => ({ value, label: value }))} />
           <div className="ag-kpis" role="group" aria-label="Contar y filtrar">
             {KPI_DEFS.map(def => {
@@ -360,18 +436,18 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
               );
             })}
           </div>
-        </div>
-        {kpi && (
+        </Collapse>
+        <Collapse open={Boolean(kpi)} unmountOnClose>
           <div className="ag-filtering" role="status">
-            <span>Filtrando por <b>{kpiLabel}</b></span>
+            <span>Filtrando por <b>{kpiLabel || lastKpiLabel.current}</b></span>
             <Button size="sm" variant="ghost" className="ag-link-btn" onClick={() => setKpi(null)}>Limpiar</Button>
           </div>
-        )}
+        </Collapse>
       </div>
 
-      <div className="ag-body">
+      <div className="ag-body" ref={bodyRef}>
         <div className={cx('ag-main', view === 'semana' && 'is-wide')}>
-          {status.element}
+          <StatusSlot status={status} />
 
           {view === 'mes' && (
             <section className="ag-card" aria-label="Mes">
@@ -458,7 +534,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
                   {tools}
                 </div>
                 {historyList.map(item => <AgendaRow key={item.id} item={item} open={openId === item.id} onToggle={toggle} actions={actions} showDay />)}
-                {!historyList.length && <p className="ag-empty">Aún no hay actividades realizadas o canceladas.</p>}
+                {!historyList.length && <EmptyState compact className="ag-empty-state" icon={<CalendarCheck size={18} strokeWidth={1.6} />} title="Aún no hay actividades realizadas o canceladas." />}
                 {(olderHidden > 0 || olderLoaded) && (
                   <div className="ag-card-foot ag-older">
                     <span className="ag-muted">
@@ -473,6 +549,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
               <AgendaLog version={`${items.length}|${items.reduce((last, item) => (item.ultimaModificacion && item.ultimaModificacion > last ? item.ultimaModificacion : last), '')}`} />
             </>
           )}
+          {capInMain && capCard}
         </div>
 
         <aside className="ag-side" aria-label="Hoy y disponibilidad">
@@ -486,7 +563,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
               return (
                 <button key={item.id} type="button" className="ag-next" onClick={() => goToItem(item, 'Hoy')}>
                   <span className="ag-time g-num">{item.desde}–{item.hasta}</span>
-                  <TruncatedText className="ag-next-label">{`${item.curso} · ${item.actividad}`}</TruncatedText>
+                  <TruncatedText className="ag-next-label" lines={2}>{`${item.curso} · ${item.actividad}`}</TruncatedText>
                   <StatusText tone={st.tone}>{st.label}</StatusText>
                 </button>
               );
@@ -494,24 +571,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
             {!nextToday.length && <p className="ag-empty ag-empty--left">No hay actividades pendientes o entregadas para hoy.</p>}
           </section>
 
-          <section className="ag-card" aria-label="Touch por franja">
-            <div className="ag-card-head ag-card-head--stack">
-              <h3 className="ag-h3">Touch por franja · {longDate(capDate)}</h3>
-              <span className="ag-head-sub">Tope 25 sumando las actividades que se superponen</span>
-            </div>
-            {capSlots.map(slot => (
-              <div key={slot.key} className="ag-slot">
-                <Ring value={Math.max(0, slot.libres)} total={slot.max} size={32} unit={`Touch libres de ${slot.key}`} />
-                <span className={cx('ag-cap-num', 'g-num', slot.libres <= 0 ? 'is-bad' : slot.libres / slot.max <= 0.2 && 'is-warn')}>{Math.max(0, slot.libres)}</span>
-                <span className="ag-slot-text">
-                  <span className="ag-time g-num">{slot.key}</span>
-                  <TruncatedText className="ag-what">{slot.users.map(user => `${user.curso} ${user.cantidad}`).join(' · ')}</TruncatedText>
-                </span>
-              </div>
-            ))}
-            {!capSlots.length && <p className="ag-empty ag-empty--left">Ese día no hay Touch reservadas.</p>}
-            <p className="ag-note-small ag-inset">El número es cuántas quedan libres. TIC, Plani y Dell tienen tope 99. Al crear o editar una actividad se avisa antes de guardar si no hay lugar.</p>
-          </section>
+          {!capInMain && capCard}
         </aside>
       </div>
     </section>

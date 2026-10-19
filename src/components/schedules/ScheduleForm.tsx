@@ -1,6 +1,6 @@
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { SchoolLevel, TeacherScheduleEntry } from '../../types';
-import { Button, Input, Segmented, TimeField, cx, preloadPickers } from '../../ui';
+import { Button, Collapse, Input, Segmented, TimeField, cx, preloadPickers } from '../../ui';
 import { DAY_SHORT, LEVELS, MODULES, toMin } from './scheduleModel';
 
 export type ScheduleDraft = Pick<TeacherScheduleEntry, 'teacher' | 'course' | 'subject' | 'room' | 'schoolLevel' | 'dayOfWeek' | 'startTime' | 'endTime'>;
@@ -8,18 +8,25 @@ export type ScheduleDraft = Pick<TeacherScheduleEntry, 'teacher' | 'course' | 's
 const errorText = (err: unknown) => (err instanceof Error && err.message ? err.message : 'No se pudo guardar el horario.');
 
 /** Alta y edición de un horario, en línea (antes era un modal que no mostraba los 400). */
-export function ScheduleForm({ initial, title, compact, onSubmit, onCancel }: {
+export function ScheduleForm({ initial, title, compact, onSubmit, onCancel, onDraftChange }: {
   initial: ScheduleDraft;
   title: string;
   /** Dentro de una tarjeta de grupo (edición). */
   compact?: boolean;
   onSubmit: (draft: ScheduleDraft) => Promise<unknown>;
   onCancel: () => void;
+  /** Cada cambio del borrador (la página lo guarda para recuperarlo si se sale sin guardar). */
+  onDraftChange?: (draft: ScheduleDraft) => void;
 }) {
   const [draft, setDraft] = useState<ScheduleDraft>(initial);
+  const draftChange = useRef(onDraftChange);
+  draftChange.current = onDraftChange;
+  useEffect(() => { draftChange.current?.(draft); }, [draft]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const modId = useId();
+  const lastError = useRef(error);
+  if (error) lastError.current = error;
   const set = (patch: Partial<ScheduleDraft>) => { setDraft(current => ({ ...current, ...patch })); setError(''); };
   useEffect(() => { void preloadPickers(); }, []);
 
@@ -69,7 +76,9 @@ export function ScheduleForm({ initial, title, compact, onSubmit, onCancel }: {
           <TimeField label="Desde" required value={draft.startTime} onChange={startTime => set({ startTime })} className="hr-form-time" />
           <TimeField label="Hasta" required value={draft.endTime} onChange={endTime => set({ endTime })} error={!timeOk && draft.startTime && draft.endTime ? 'Hasta tiene que ser después de Desde.' : undefined} className="hr-form-time" />
         </div>
-        {error && <p className="hr-form-error" role="alert">{error}</p>}
+        <Collapse open={Boolean(error)}>
+          <p className="hr-form-error" role="alert">{error || lastError.current}</p>
+        </Collapse>
         <div className="hr-form-foot">
           <span className="hr-form-note">Al guardar se avisa a los administradores de la sede.</span>
           <Button type="submit" variant="primary" size={compact ? 'sm' : 'md'} loading={saving} loadingLabel="Guardando…" disabled={!timeOk}>{compact ? 'Guardar cambios' : 'Guardar horario'}</Button>

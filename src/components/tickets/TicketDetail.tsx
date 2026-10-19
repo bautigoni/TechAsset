@@ -7,9 +7,9 @@ import {
 } from '../../services/ticketsApi';
 import { ApiError } from '../../services/apiClient';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
-import { Collapse } from '../common/Collapse';
+import { Collapse } from '../../ui';
 import {
-  Button, Checkbox, EmptyState, ErrorState, Eyebrow, IconButton, InlineConfirm, Segmented, Select, SkeletonText, StatusText, Textarea, useStatusLine
+  Button, Checkbox, EmptyState, ErrorState, Eyebrow, IconButton, InlineConfirm, Segmented, Select, SkeletonText, StatusText, Textarea, StatusSlot, useStatusLine
 } from '../../ui';
 import { IconPlus, IconRetry, IconX } from '../../ui/icons';
 import { TruncatedText } from '../../ui/Truncated';
@@ -188,7 +188,7 @@ export function TicketDetail({ id, tickets, classrooms, bases, canEdit, onOpen, 
         </p>
       </header>
 
-      <Collapse open={askDelete}>
+      <Collapse open={askDelete} unmountOnClose>
         <InlineConfirm
           danger
           busy={deleting}
@@ -199,7 +199,7 @@ export function TicketDetail({ id, tickets, classrooms, bases, canEdit, onOpen, 
           onCancel={() => { setAskDelete(false); deleteRef.current?.focus(); }}
         />
       </Collapse>
-      {status.element}
+      <StatusSlot status={status} />
 
       <div className="tkx-dgrid">
         <div className="tkx-dmain">
@@ -236,7 +236,7 @@ export function TicketDetail({ id, tickets, classrooms, bases, canEdit, onOpen, 
                   <a className="ui-btn ui-btn--ghost ui-btn--sm" href={item.imagenUrl} target="_blank" rel="noreferrer"><span className="ui-btn-label">Abrir en pestaña ↗</span></a>
                 </span>
               </div>
-              <Collapse open={fileOpen}>{isPdf(item.imagenUrl)
+              <Collapse open={fileOpen} unmountOnClose>{isPdf(item.imagenUrl)
                 ? (
                   <object data={`${item.imagenUrl}#toolbar=0&navpanes=0`} type="application/pdf" className="tkx-embed" aria-label={`PDF del ticket ${ticketNumber(item)}`}>
                     <a href={item.imagenUrl} target="_blank" rel="noreferrer">Abrir el PDF en una pestaña nueva ↗</a>
@@ -407,7 +407,7 @@ function Checklist({ ticketId, items, canEdit, onItems, reload }: {
           ))}
         </ul>
       )}
-      {status.element}
+      <StatusSlot status={status} />
       {canEdit && (
         <form className="tkx-inline-add" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void add(); }}>
           <div className="ui-control ui-input tkx-grow">
@@ -590,7 +590,7 @@ function Relations({ ticketId, current, related, tickets, canEdit, onOpen, onRel
           ))}
         </ul>
       ) : <p className="tkx-muted tkx-para">Sin tickets vinculados.</p>}
-      {status.element}
+      <StatusSlot status={status} />
       {canEdit && (
         <div className="tkx-relform" data-scanner-ignore="">
           <Select

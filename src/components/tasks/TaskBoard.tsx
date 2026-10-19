@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, GripVertical, Pencil } from 'lucide-react';
 import type { TaskColumn, TaskItem } from '../../types';
-import { Button, Checkbox, IconButton, Skeleton, TruncatedText, cx } from '../../ui';
+import { Button, Checkbox, Collapse, IconButton, Skeleton, TruncatedText, cx } from '../../ui';
 import { TaskCard, type CardHandlers } from './TaskCard';
 import { PAGE_SIZE, plural } from './taskModel';
 
@@ -84,6 +84,9 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
   /* ── Edición de columna (en línea, debajo del encabezado) ── */
   const [editing, setEditing] = useState<{ id: number; name: string; isDone: boolean; error: string; confirmDelete: boolean; saving: boolean } | null>(null);
   const editRef = useRef<HTMLInputElement | null>(null);
+  // Lo último que se editó: el formulario lo sigue mostrando mientras se pliega.
+  const lastEdit = useRef(editing);
+  if (editing) lastEdit.current = editing;
   useEffect(() => { if (editing) editRef.current?.focus({ preventScroll: true }); }, [editing?.id]);
   const openEditor = (column: TaskColumn) => setEditing(current => (current?.id === column.id ? null : { id: column.id, name: column.name, isDone: column.isDone, error: '', confirmDelete: false, saving: false }));
   const saveEditor = async (column: TaskColumn) => {
@@ -125,7 +128,14 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
     const vp = vpRef.current;
     const track = trackRef.current;
     if (!vp || !track) return;
-    const max = Math.max(0, track.scrollWidth - vp.clientWidth);
+    // Ancho de layout de las columnas (offsetLeft/offsetWidth no ven los
+    // transform): con scrollWidth, la entrada animada (translateX) inflaba el
+    // ancho justo al medir y quedaba "Columnas 1–3 de 3" con la última
+    // columna desvanecida aunque entraran todas.
+    const last = track.lastElementChild as HTMLElement | null;
+    const contentW = last ? last.offsetLeft + last.offsetWidth : 0;
+    const raw = contentW - vp.clientWidth;
+    const max = raw > 1 ? raw : 0;
     const off = Math.min(offsetRef.current, max);
     let from = 0;
     let to = 0;
@@ -160,7 +170,8 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
     const track = trackRef.current;
     const lane = track?.querySelector<HTMLElement>(`[data-lane="${reveal.key}"]`);
     if (!vp || !track || !lane) return;
-    const max = Math.max(0, track.scrollWidth - vp.clientWidth);
+    const last = track.lastElementChild as HTMLElement | null;
+    const max = Math.max(0, (last ? last.offsetLeft + last.offsetWidth : 0) - vp.clientWidth);
     const left = lane.offsetLeft;
     const right = left + lane.offsetWidth;
     const off = offsetRef.current;
@@ -339,6 +350,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
     const taskOver = over && Boolean(dragTask) && Boolean(column) && !lane.tasks.some(task => task.id === dragTask!.id);
     const colOver = over && Boolean(dragColumn) && Boolean(column) && dragColumn!.id !== column!.id;
     const isEditing = Boolean(column && editing?.id === column.id);
+    const ed = isEditing ? editing : column && lastEdit.current?.id === column.id ? lastEdit.current : null;
     const columnIndex = column ? columns.findIndex(item => item.id === column.id) : -1;
     const tasksHere = column ? lanes.find(item => item.column?.id === column.id)?.tasks.length ?? 0 : 0;
     const fallback = column ? columns.find(item => item.id !== column.id) : undefined;
@@ -383,9 +395,13 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
           )}
         </header>
 
-        {column && isEditing && editing && (
+        {/* Edición de la columna: se abre y se cierra con el colapso compartido
+            (mientras se pliega muestra lo último que tenía, ya inerte). */}
+        {column && boardMode && (
+          <Collapse open={isEditing} unmountOnClose>
+            {ed && (
           <form
-            className="tk-col-edit ui-enter"
+            className="tk-col-edit"
             data-scanner-ignore=""
             onSubmit={event => { event.preventDefault(); void saveEditor(column); }}
             onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setEditing(null); } }}
@@ -394,16 +410,16 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
               <span className="tk-label">Nombre</span>
               <input
                 ref={editRef}
-                className={cx('tk-input tk-input--sm', editing.error && 'is-error')}
-                value={editing.name}
-                aria-invalid={Boolean(editing.error) || undefined}
-                onChange={event => setEditing({ ...editing, name: event.target.value, error: '' })}
+                className={cx('tk-input tk-input--sm', ed.error && 'is-error')}
+                value={ed.name}
+                aria-invalid={Boolean(ed.error) || undefined}
+                onChange={event => setEditing({ ...ed, name: event.target.value, error: '' })}
               />
             </label>
-            {editing.error && <span className="tk-error" role="alert">{editing.error}</span>}
+            {ed.error && <span className="tk-error" role="alert">{ed.error}</span>}
             <Checkbox
-              checked={editing.isDone}
-              onCheckedChange={next => setEditing({ ...editing, isDone: next })}
+              checked={ed.isDone}
+              onCheckedChange={next => setEditing({ ...ed, isDone: next })}
               label="Columna de cierre"
               description="Sus tareas cuentan como hechas"
             />
@@ -414,7 +430,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
               </div>
             )}
             <div className="tk-col-edit-row">
-              <Button size="sm" variant="primary" type="submit" loading={editing.saving}>Guardar</Button>
+              <Button size="sm" variant="primary" type="submit" loading={ed.saving}>Guardar</Button>
               <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancelar</Button>
               <span className="tk-grow" />
               {!isMobile && (
@@ -424,25 +440,23 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
                 </>
               )}
             </div>
-            {!editing.confirmDelete ? (
-              <Button size="sm" variant="ghost" className="tk-danger-link" disabled={columns.length <= 1} onClick={() => setEditing({ ...editing, confirmDelete: true })}>
-                {columns.length <= 1 ? 'Es la única columna: no se puede eliminar' : 'Eliminar columna'}
-              </Button>
-            ) : (
+            <Button size="sm" variant="ghost" className="tk-danger-link" aria-expanded={ed.confirmDelete} disabled={columns.length <= 1} onClick={() => setEditing({ ...ed, confirmDelete: !ed.confirmDelete })}>
+              {columns.length <= 1 ? 'Es la única columna: no se puede eliminar' : 'Eliminar columna'}
+            </Button>
+            <Collapse open={ed.confirmDelete} unmountOnClose>
               <div className="tk-col-del" role="group" aria-label="Confirmar eliminar columna">
                 <span className="tk-bad">{tasksHere ? `${tasksHere === 1 ? 'Su tarea pasa' : `Sus ${tasksHere} tareas pasan`} a «${fallback?.name || ''}».` : 'No tiene tareas.'}</span>
                 <div className="tk-col-edit-row">
                   <Button size="sm" variant="danger" onClick={() => { setEditing(null); onDeleteColumn(column); }}>Eliminar columna</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditing({ ...editing, confirmDelete: false })}>Cancelar</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditing({ ...ed, confirmDelete: false })}>Cancelar</Button>
                 </div>
               </div>
-            )}
+            </Collapse>
             <span className="tk-hint">Renombrarla cambia el estado de sus tareas.</span>
           </form>
+            )}
+          </Collapse>
         )}
-
-        {taskOver && <div className="tk-drop">Soltá para mover «{dragTask!.titulo}» a «{lane.title}»</div>}
-        {colOver && <div className="tk-drop">Soltá para poner «{dragColumn!.name}» en este lugar</div>}
 
         <div className="tk-lane-cards t-stagger" key={resetKey}>
           {cards.map(task => (
@@ -460,7 +474,15 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
             />
           ))}
         </div>
-        {!total && <div className="tk-lane-empty">{column ? (hasQuery ? 'Sin resultados' : canEdit && boardMode ? 'Soltá una tarea acá' : 'Sin tareas') : 'Sin tareas'}</div>}
+        {/* El hueco donde cae lo arrastrado va DEBAJO de las tarjetas: nada de
+            lo que está bajo el puntero se corre mientras se arrastra. En una
+            columna vacía ocupa el lugar (y el alto) del "Soltá una tarea acá". */}
+        {(taskOver || colOver) && (
+          <div className={cx('tk-drop', !total && 'tk-drop--fill')}>
+            {taskOver ? <>Soltá para mover «{dragTask!.titulo}» a «{lane.title}»</> : <>Soltá para poner «{dragColumn!.name}» en este lugar</>}
+          </div>
+        )}
+        {!total && !taskOver && !colOver && <div className="tk-lane-empty">{column ? (hasQuery ? 'Sin resultados' : canEdit && boardMode ? 'Soltá una tarea acá' : 'Sin tareas') : 'Sin tareas'}</div>}
         {total > limit && (
           <Button size="sm" variant={isMobile ? 'secondary' : 'ghost'} block onClick={() => onShowMore(lane.key)}>
             {`Ver ${Math.min(PAGE_SIZE, total - limit)} más (${total - limit} restantes)`}

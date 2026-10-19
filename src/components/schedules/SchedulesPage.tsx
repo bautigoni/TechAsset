@@ -1,16 +1,33 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { CalendarClock, Pencil, Trash2 } from 'lucide-react';
 import type { RecessGroup, SchoolLevel, TeacherScheduleEntry } from '../../types';
 import {
   createTeacherSchedule, deleteTeacherSchedule, getRecessSchedules, getTeacherSchedules, restoreTeacherSchedule, updateTeacherSchedule
 } from '../../services/schedulesApi';
+import { getActiveSiteCode } from '../../services/activeSite';
 import { useMinuteTick } from '../../hooks/useMinuteTick';
-import { Button, EmptyState, ErrorState, Eyebrow, IconButton, InlineConfirm, Input, Segmented, SkeletonRows, Tabs, TruncatedText, cx, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, Eyebrow, IconButton, InlineConfirm, Input, Segmented, SkeletonRows, StatusSlot, Tabs, TruncatedText, cx, icons, useStatusLine } from '../../ui';
 import { RecessPanel } from './RecessPanel';
 import { ScheduleForm, type ScheduleDraft } from './ScheduleForm';
 import {
-  DAY_NAMES, LEVELS, durationText, fold, isNow, levelLabel, matchesSearch, readSchoolClock, recessNow, scheduleShort, toMin
+  DAY_NAMES, LEVELS, durationText, fold, isNow, keepScheduleDraft, levelLabel, matchesSearch, peekScheduleDraft, readSchoolClock, recessNow, scheduleShort, toMin
 } from './scheduleModel';
+
+/** Columnas que entran en el ancho del contenedor (tarjetas de `minRem` como mínimo). */
+function useColumnCount(ref: RefObject<HTMLElement | null>, minRem: number, gapPx: number) {
+  const [count, setCount] = useState(1);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const measure = () => setCount(Math.max(1, Math.floor((el.clientWidth + gapPx) / (minRem * rem + gapPx))));
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    measure();
+    return () => observer.disconnect();
+  }, [ref, minRem, gapPx]);
+  return count;
+}
 import '../../styles/screens/horarios.css';
 
 type GroupBy = 'teacher' | 'course';
@@ -33,11 +50,20 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
   const [loadError, setLoadError] = useState('');
   const [retrying, setRetrying] = useState(false);
 
+  const site = getActiveSiteCode();
+  // Alta empezada en una visita anterior (se salió por el menú sin guardar).
+  const [addInitial, setAddInitial] = useState<ScheduleDraft | null>(() => peekScheduleDraft<ScheduleDraft>('add', site));
   const [tab, setTab] = useState<Tab>('docentes');
-  const [level, setLevel] = useState<SchoolLevel>('primary_first');
+  const [level, setLevel] = useState<SchoolLevel>(() => addInitial?.schoolLevel || 'primary_first');
   const [search, setSearch] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>('teacher');
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(() => Boolean(addInitial));
+  const groupsRef = useRef<HTMLDivElement | null>(null);
+  const columnCount = useColumnCount(groupsRef, 22, 12);
+  const keepAddDraft = useCallback((draft: ScheduleDraft | null) => {
+    const blank = !draft || (!draft.teacher.trim() && !draft.course.trim() && !draft.subject.trim() && !draft.room.trim());
+    keepScheduleDraft('add', site, blank ? null : draft);
+  }, [site]);
   const [editingId, setEditingId] = useState(0);
   const [deletingId, setDeletingId] = useState(0);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -69,6 +95,34 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, 'es'));
   }, [shown, groupBy]);
+  // Sin huecos (REGLAS-UX): las tarjetas tienen altos muy distintos; en una
+  // grilla común quedaba un hueco grande debajo de las cortas. Se reparten en
+  // columnas parejas (cada tarjeta a la columna más corta, por cantidad de
+  // clases y días) que no dependen del alto en vivo: editar una fila hace
+  // crecer su columna, nunca pasa una tarjeta a otra columna.
+  // Altos reales de cada tarjeta, medidos una vez por conjunto de tarjetas y
+  // cantidad de columnas (textos que bajan a dos líneas). No se vuelven a medir
+  // al editar una fila: nada cambia de columna mientras se trabaja.
+  const [measured, setMeasured] = useState<Record<string, number>>({});
+  const layoutKey = `${columnCount}|${groupBy}|${grouped.map(([name, rows]) => `${name}:${rows.length}`).join(',')}`;
+  useLayoutEffect(() => {
+    const root = groupsRef.current;
+    if (!root) return;
+    const next: Record<string, number> = {};
+    root.querySelectorAll<HTMLElement>('[data-group-name]').forEach(card => { next[card.dataset.groupName || ''] = card.offsetHeight; });
+    setMeasured(current => (Object.keys(next).length === Object.keys(current).length && Object.entries(next).every(([key, value]) => Math.abs((current[key] || 0) - value) < 4) ? current : next));
+  }, [layoutKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const groupColumns = useMemo(() => {
+    const cols = Array.from({ length: columnCount }, () => ({ weight: 0, items: [] as typeof grouped }));
+    for (const entry of grouped) {
+      const rows = entry[1];
+      const weight = measured[entry[0]] || (3 + new Set(rows.map(row => row.dayOfWeek)).size * 0.6 + rows.length) * 48;
+      const target = cols.reduce((best, col) => (col.weight < best.weight - 0.01 ? col : best), cols[0]);
+      target.items.push(entry);
+      target.weight += weight;
+    }
+    return cols.map(col => col.items);
+  }, [grouped, columnCount, measured]);
 
   // "Ahora" se calcula con la hora del colegio y se actualiza cada minuto
   // (antes quedaba congelado a la hora en que se abrió la pantalla).
@@ -89,6 +143,8 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
   const create = async (draft: ScheduleDraft) => {
     await createTeacherSchedule(draft);
     setAdding(false);
+    keepAddDraft(null);
+    setAddInitial(null);
     setLevel(draft.schoolLevel);
     setSearch('');
     await afterWrite();
@@ -134,8 +190,10 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
     }
   };
 
+  const closeAdd = () => { setAdding(false); keepAddDraft(null); setAddInitial(null); };
   const toggleAdd = () => {
-    setAdding(value => !value);
+    if (adding) { closeAdd(); setEditingId(0); setDeletingId(0); return; }
+    setAdding(true);
     setEditingId(0);
     setDeletingId(0);
     setTab('docentes');
@@ -197,13 +255,14 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
             tabs={LEVELS.map(entry => ({ value: entry.value, label: entry.label, count: items.filter(item => item.schoolLevel === entry.value).length }))}
           />
 
-          {status.element}
+          <StatusSlot status={status} />
 
-          {adding && (
+          <Collapse open={adding} unmountOnClose>
             <section className="hr-card">
-              <ScheduleForm title="Nuevo horario" initial={{ ...EMPTY, schoolLevel: level }} onSubmit={create} onCancel={() => setAdding(false)} />
+              {addInitial && <p className="hr-restored hr-restored--form" role="status"><span className="hr-restored-text">Recuperamos el horario que estabas cargando.</span></p>}
+              <ScheduleForm title="Nuevo horario" initial={addInitial || { ...EMPTY, schoolLevel: level }} onSubmit={create} onCancel={closeAdd} onDraftChange={keepAddDraft} />
             </section>
-          )}
+          </Collapse>
 
           <div className="hr-now">
             <div className="hr-now-head">
@@ -248,13 +307,15 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
 
           {!loaded && !loadError && <SkeletonRows rows={5} />}
 
-          <div className="hr-groups">
-            {grouped.map(([name, rows]) => (
-              <article key={name} className="hr-card hr-group" aria-label={`${groupBy === 'teacher' ? 'Docente' : 'Curso'} ${name}`}>
+          <div className="hr-groups" ref={groupsRef} style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}>
+            {groupColumns.map((column, columnIndex) => (
+            <div key={columnIndex} className="hr-groups-col">
+            {column.map(([name, rows]) => (
+              <article key={name} className="hr-card hr-group" data-group-name={name} aria-label={`${groupBy === 'teacher' ? 'Docente' : 'Curso'} ${name}`}>
                 <header className="hr-group-head">
                   <span className="hr-group-title">
                     <Eyebrow>{groupBy === 'teacher' ? 'Docente' : 'Curso'}</Eyebrow>
-                    <TruncatedText className="hr-group-name">{name}</TruncatedText>
+                    <TruncatedText className="hr-group-name" lines={2}>{name}</TruncatedText>
                   </span>
                   <span className="hr-group-count"><span className="g-num">{rows.length}</span> {rows.length === 1 ? 'clase' : 'clases'}</span>
                 </header>
@@ -265,34 +326,29 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
                       const short = scheduleShort(row);
                       const live = isNow(row, clock);
                       const detail = [row.subject, row.room].filter(Boolean).join(' · ');
-                      if (editingId === row.id) {
-                        return (
-                          <div key={row.id} className="hr-row-edit">
-                            <ScheduleForm compact title="Editar horario" initial={draftOf(row)} onSubmit={draft => update(row, draft)} onCancel={() => setEditingId(0)} />
-                          </div>
-                        );
-                      }
-                      if (deletingId === row.id) {
-                        return (
-                          <div key={row.id} className="hr-row-confirm">
-                            <InlineConfirm danger message={`¿Borrar ${short}?`} detail="Se borra este bloque del horario docente." confirmLabel="Borrar" cancelLabel="No" busy={deleteBusy} onConfirm={() => remove(row)} onCancel={() => setDeletingId(0)} />
-                          </div>
-                        );
-                      }
+                      // La fila queda a la vista; editar y borrar se abren debajo con el colapso compartido.
                       return (
-                        <div key={row.id} className={cx('hr-row', live && 'is-live')}>
-                          <time className="hr-row-time g-num"><span>{row.startTime}</span><span className="hr-row-end">{row.endTime}</span></time>
-                          <span className="hr-row-text">
-                            <span className="hr-row-title">
-                              <TruncatedText className="hr-row-main">{groupBy === 'teacher' ? row.course : row.teacher}</TruncatedText>
-                              {live && <span className="hr-row-now">· ahora</span>}
+                        <div key={row.id} className="hr-entry">
+                          <div className={cx('hr-row', live && 'is-live', (editingId === row.id || deletingId === row.id) && 'is-active')}>
+                            <time className="hr-row-time g-num"><span>{row.startTime}</span><span className="hr-row-end">{row.endTime}</span></time>
+                            <span className="hr-row-text">
+                              <span className="hr-row-title">
+                                <TruncatedText className="hr-row-main">{groupBy === 'teacher' ? row.course : row.teacher}</TruncatedText>
+                                {live && <span className="hr-row-now">· ahora</span>}
+                              </span>
+                              <TruncatedText className={cx('hr-row-sub', !detail && 'is-empty')} lines={2}>{detail || 'Sin detalle'}</TruncatedText>
                             </span>
-                            <TruncatedText className={cx('hr-row-sub', !detail && 'is-empty')}>{detail || 'Sin detalle'}</TruncatedText>
-                          </span>
-                          <span className="hr-row-actions">
-                            <IconButton size="sm" label={`Editar ${short}`} icon={<Pencil size={15} />} disabled={consultationMode} onClick={() => { setEditingId(row.id); setDeletingId(0); setAdding(false); }} />
-                            <IconButton size="sm" label={`Borrar ${short}`} icon={<Trash2 size={15} />} disabled={consultationMode} onClick={() => { setDeletingId(row.id); setEditingId(0); }} />
-                          </span>
+                            <span className="hr-row-actions">
+                              <IconButton size="sm" label={`Editar ${short}`} icon={<Pencil size={15} />} aria-expanded={editingId === row.id} disabled={consultationMode} onClick={() => { setEditingId(current => (current === row.id ? 0 : row.id)); setDeletingId(0); }} />
+                              <IconButton size="sm" label={`Borrar ${short}`} icon={<Trash2 size={15} />} aria-expanded={deletingId === row.id} disabled={consultationMode} onClick={() => { setDeletingId(current => (current === row.id ? 0 : row.id)); setEditingId(0); }} />
+                            </span>
+                          </div>
+                          <Collapse open={editingId === row.id} unmountOnClose className="hr-row-edit">
+                            <ScheduleForm compact title="Editar horario" initial={draftOf(row)} onSubmit={draft => update(row, draft)} onCancel={() => setEditingId(0)} />
+                          </Collapse>
+                          <Collapse open={deletingId === row.id} unmountOnClose className="hr-row-confirm">
+                            <InlineConfirm danger message={`¿Borrar ${short}?`} detail="Se borra este bloque del horario docente." confirmLabel="Borrar" cancelLabel="No" busy={deleteBusy} onConfirm={() => remove(row)} onCancel={() => setDeletingId(0)} />
+                          </Collapse>
                         </div>
                       );
                     })}
@@ -300,9 +356,13 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
                 ))}
               </article>
             ))}
+            </div>
+            ))}
           </div>
           {loaded && !grouped.length && (
             <EmptyState
+              compact
+              icon={<CalendarClock size={18} strokeWidth={1.6} />}
               title={needle ? `Ningún horario de ${lvName.toLowerCase()} coincide con “${search.trim()}”.` : `No hay horarios cargados para ${lvName.toLowerCase()}.`}
               action={needle
                 ? <Button size="sm" variant="secondary" onClick={() => setSearch('')}>Limpiar búsqueda</Button>
