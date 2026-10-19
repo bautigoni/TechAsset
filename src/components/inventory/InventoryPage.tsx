@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import '../../styles/screens/inventory.css';
 import type { Device, InventoryItem } from '../../types';
 import { CONDITION_VALUES } from '../../types';
@@ -84,6 +84,9 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   const [sort, setSort] = useState<SortState>(null);
   // En angosto el árbol de categorías se pliega detrás de "Categoría" (en ancho siempre se ve).
   const narrowTree = useMediaQuery('(max-width: 767px)');
+  // Botones del encabezado: al cerrar un panel desde adentro, el foco vuelve a su botón.
+  const panelButtons = useRef<Record<string, HTMLButtonElement | null>>({});
+  const focusPanelButton = (which: string) => window.setTimeout(() => panelButtons.current[which]?.focus({ preventScroll: true }), 0);
   // El placeholder más largo que entra en el ancho real del buscador (nunca cortado).
   const [searchRef, searchPlaceholder] = useFitPlaceholder(['Nombre, etiqueta, modelo… (touch 34, D1436, sensor)', 'Nombre, etiqueta, modelo…', 'Buscar…']);
   const topStatus = useStatusLine();
@@ -323,6 +326,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   };
   const exitReview = (rated: number) => {
     setPanel('');
+    focusPanelButton('review');
     if (rated) topStatus.show({ tone: 'ok', message: `Recorrido cerrado: ${rated} ${rated === 1 ? 'ítem calificado' : 'ítems calificados'} en esta pasada.` });
     void onRefreshDevices?.();
     void refresh();
@@ -461,10 +465,10 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
           <p className="ivt-help ivt-head-desc">Revisado = condición cargada hace menos de 92 días. Vale igual para equipos y recursos.</p>
         </div>
         <div className="ivt-head-actions">
-          <Button disabled={consultationMode} aria-expanded={panel === 'review'} aria-controls="ivt-review" onClick={() => togglePanel('review')}>Revisar condición</Button>
+          <Button ref={el => { panelButtons.current.review = el; }} disabled={consultationMode} aria-expanded={panel === 'review'} aria-controls="ivt-review" onClick={() => togglePanel('review')}>Revisar condición</Button>
           <Button aria-expanded={panel === 'io'} aria-controls="ivt-ie" onClick={() => togglePanel('io')}>Importar / exportar</Button>
           <Button aria-expanded={panel === 'hidden'} aria-controls="ivt-hidden" onClick={() => togglePanel('hidden')}>Ocultos</Button>
-          <Button variant="primary" icon={<IconPlus size={16} />} disabled={consultationMode} aria-expanded={panel === 'add'} aria-controls="ivt-add" onClick={() => togglePanel('add')}>Agregar recurso</Button>
+          <Button ref={el => { panelButtons.current.add = el; }} variant="primary" icon={<IconPlus size={16} />} disabled={consultationMode} aria-expanded={panel === 'add'} aria-controls="ivt-add" onClick={() => togglePanel('add')}>Agregar recurso</Button>
         </div>
       </header>
 
@@ -507,7 +511,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
             defaultCategory={selected?.categoria}
             consultationMode={consultationMode}
             onSaved={item => onResourceCreated(item)}
-            onCancel={() => setPanel('')}
+            onCancel={() => { setPanel(''); focusPanelButton('add'); }}
           />
         </section>
       </Collapse>

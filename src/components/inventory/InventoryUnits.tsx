@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import type { InventoryItem, InventoryUnit } from '../../types';
 import { createInventoryUnit, createInventoryUnitsBatch, deleteInventoryUnit, getInventoryUnits, updateInventoryUnit } from '../../services/inventoryApi';
-import { Button, InlineConfirm, Input, SkeletonRows, useStatusLine } from '../../ui';
+import { Button, Collapse, InlineConfirm, Input, SkeletonRows, useHeldKeys, useStatusLine } from '../../ui';
 import { conditionTone } from './inventoryEntries';
 import { ConditionChips, errorText, Tx } from './inventoryParts';
 
@@ -86,6 +86,8 @@ export function InventoryUnits({ item, consultationMode, onItemChange }: {
 
   const conFalla = units.filter(unit => unit.condicion === 'Regular' || unit.condicion === 'Malo').length;
   const editingUnit = typeof editing === 'number' ? units.find(unit => unit.id === editing) : undefined;
+  // El formulario que se cierra sigue dibujado hasta terminar de plegarse.
+  const held = useHeldKeys(editing === null ? null : String(editing));
 
   const form = (
     <UnitForm
@@ -156,13 +158,19 @@ export function InventoryUnits({ item, consultationMode, onItemChange }: {
                   </Button>
                 )}
               </li>
-              {editing === unit.id && <li className="ivt-unit-formrow">{form}</li>}
+              {held.drawn(String(unit.id)) && (
+                <li className="ivt-unit-formrow">
+                  <Collapse open={editing === unit.id} appear unmountOnClose className="ivt-unit-formbody" onSettled={open => { if (!open) held.release(String(unit.id)); }}>{form}</Collapse>
+                </li>
+              )}
             </Fragment>
           ))}
         </ul>
       )}
 
-      {editing === 'new' && form}
+      {held.drawn('new') && (
+        <Collapse open={editing === 'new'} appear unmountOnClose onSettled={open => { if (!open) held.release('new'); }}>{form}</Collapse>
+      )}
       {status.element}
     </section>
   );
@@ -196,7 +204,6 @@ function UnitForm({ draft, busy, isEdit, onChange, onSubmit, onCancel, onAskDele
           <ConditionChips label="Condición de la unidad" value={draft.condicion} onChange={condicion => set({ condicion })} />
         </div>
       </div>
-      {confirm}
       <div className="ivt-actions">
         <Button type="submit" size="sm" variant="primary" loading={busy} loadingLabel="Guardando…">Guardar unidad</Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={onCancel}>Cancelar</Button>
@@ -204,6 +211,7 @@ function UnitForm({ draft, busy, isEdit, onChange, onSubmit, onCancel, onAskDele
           <Button size="sm" variant="ghost" className="ivt-danger-text ivt-push" disabled={busy} onClick={onAskDelete}>Quitar unidad</Button>
         )}
       </div>
+      <Collapse open={Boolean(confirm)} unmountOnClose>{confirm}</Collapse>
     </form>
   );
 }

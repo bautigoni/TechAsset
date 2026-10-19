@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Star, StickyNote, Trash2 } from 'lucide-react';
 import type { InternalNote } from '../../types';
-import { Button, ErrorState, IconButton, Input, SkeletonText, cx, useStatusLine } from '../../ui';
+import { Button, ErrorState, IconButton, Input, SkeletonText, cx, useAnchoredToggle, useStatusLine } from '../../ui';
 import { DashEmpty } from './DashEmpty';
 import { createInternalNote, fetchInternalNotes, updateInternalNote } from '../../services/operationsApi';
 import { TIME_HM, dayKeyAr, formatDate, todayKeyAr } from '../../utils/formatters';
@@ -28,6 +28,7 @@ export function NotesPanel({ operator, readOnly, onCount }: { operator: string; 
   const [all, setAll] = useState(false);
   const [hidden, setHidden] = useState<Set<number>>(() => new Set());
   const status = useStatusLine();
+  const anchored = useAnchoredToggle();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const refresh = useCallback(async () => {
@@ -122,7 +123,7 @@ export function NotesPanel({ operator, readOnly, onCount }: { operator: string; 
         {items === null && !loadError && <SkeletonText lines={2} />}
         {loadError && <ErrorState message={loadError} onRetry={() => void refresh()} />}
         {extra > 0 && (
-          <Button size="sm" variant="ghost" className="dash-notes-more" onClick={() => setAll(value => !value)}>
+          <Button size="sm" variant="ghost" className="dash-notes-more" onClick={() => anchored(() => setAll(value => !value))}>
             {all ? `Ver solo las últimas ${MAX_VISIBLE}` : `Ver anteriores (${extra})`}
           </Button>
         )}

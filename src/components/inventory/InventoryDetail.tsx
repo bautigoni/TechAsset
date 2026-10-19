@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Device, InventoryItem } from '../../types';
-import { Button, Eyebrow, InlineConfirm, Input, Kbd, useStatusLine } from '../../ui';
+import { Button, Collapse, Eyebrow, InlineConfirm, Input, Kbd, useStatusLine } from '../../ui';
 import { isEditableTarget } from '../../hooks/useGlobalScanner';
 import { formatDay, isReviewFresh, reviewLabel, stockInfo, type Entry } from './inventoryEntries';
 import { ConditionChips, errorText, Tx } from './inventoryParts';
@@ -161,7 +161,7 @@ export function InventoryDetail({ entry, items, consultationMode, editing, onSta
             )}
             <Button variant="ghost" onClick={onClose} iconEnd={<Kbd>Esc</Kbd>}>Cerrar</Button>
           </div>
-          {hideAsk && entry.item && (
+          <Collapse open={Boolean(hideAsk && entry.item)} unmountOnClose>
             <InlineConfirm
               danger
               message={`¿Ocultar ${entry.nombre} del inventario?`}
@@ -171,7 +171,7 @@ export function InventoryDetail({ entry, items, consultationMode, editing, onSta
               onConfirm={() => void hide()}
               onCancel={() => setHideAsk(false)}
             />
-          )}
+          </Collapse>
         </div>
       </div>
 

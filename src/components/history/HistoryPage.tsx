@@ -244,14 +244,18 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
                     return (
                       <Fragment key={key}>
                         {kind === 'loans'
-                          ? <LoanRow item={item as LoanHistoryItem} device={device} open={openRow === key} onToggle={toggle} />
-                          : <MovementRow item={item as MovementHistoryItem} device={device} open={openRow === key} onToggle={toggle} />}
+                          ? <LoanRow item={item as LoanHistoryItem} device={device} open={openRow === key} onToggle={toggle} rowKey={key} />
+                          : <MovementRow item={item as MovementHistoryItem} device={device} open={openRow === key} onToggle={toggle} rowKey={key} />}
                         {heldRows.drawn(key) && device && (
                           <MiniDevice
                             open={openRow === key}
                             onSettled={open => { if (!open) heldRows.release(key); }}
                             device={device}
-                            onClose={() => setOpenRow('')}
+                            onClose={() => {
+                              setOpenRow('');
+                              // El foco vuelve al equipo de la fila (no se pierde en la página).
+                              document.querySelector<HTMLElement>(`[data-hs-key="${CSS.escape(key)}"]`)?.focus({ preventScroll: true });
+                            }}
                             onOpen={onProfile ? () => onProfile(device) : undefined}
                             onOnly={() => { setQ(device.etiqueta); setOpenRow(''); }}
                           />
@@ -285,7 +289,7 @@ function Cell({ label, className, children }: { label: string; className?: strin
   );
 }
 
-function DeviceLink({ etiqueta, alias, device, open, onToggle }: { etiqueta: string; alias: string; device?: Device; open: boolean; onToggle: () => void }) {
+function DeviceLink({ etiqueta, alias, device, open, onToggle, rowKey }: { etiqueta: string; alias: string; device?: Device; open: boolean; onToggle: () => void; rowKey: string }) {
   const shownAlias = device ? getOperationalAlias(device) || alias : alias;
   if (!device) {
     return (
@@ -296,20 +300,20 @@ function DeviceLink({ etiqueta, alias, device, open, onToggle }: { etiqueta: str
     );
   }
   return (
-    <button type="button" className="hs-eq hs-eq-btn" aria-expanded={open} aria-label={`${open ? 'Cerrar' : 'Ver'} el resumen de ${shownAlias || etiqueta}`} onClick={onToggle}>
+    <button type="button" className="hs-eq hs-eq-btn" data-hs-key={rowKey} aria-expanded={open} aria-label={`${open ? 'Cerrar' : 'Ver'} el resumen de ${shownAlias || etiqueta}`} onClick={onToggle}>
       {shownAlias && <span className="hs-ell hs-eq-alias">{shownAlias}</span>}
       <span className="ui-mono hs-muted">{etiqueta}</span>
     </button>
   );
 }
 
-function LoanRow({ item, device, open, onToggle }: { item: LoanHistoryItem; device?: Device; open: boolean; onToggle: () => void }) {
+function LoanRow({ item, device, open, onToggle, rowKey }: { item: LoanHistoryItem; device?: Device; open: boolean; onToggle: () => void; rowKey: string }) {
   const place = [item.curso, item.ubicacion].filter(Boolean).join(' · ');
   return (
     <div role="row" className={`hs-row hs-item${open ? ' is-open' : ''}`}>
       <Cell label="Hora" className="hs-c-time"><span className="ui-mono">{timeOf(item.timestamp)}</span></Cell>
       <Cell label="Tipo" className="hs-c-type"><StatusText tone={item.tipo === 'prestamo' ? 'info' : 'normal'}>{tipoLabel(item.tipo)}</StatusText></Cell>
-      <Cell label="Equipo" className="hs-c-eq"><DeviceLink etiqueta={item.etiqueta} alias={item.alias} device={device} open={open} onToggle={onToggle} /></Cell>
+      <Cell label="Equipo" className="hs-c-eq"><DeviceLink etiqueta={item.etiqueta} alias={item.alias} device={device} open={open} onToggle={onToggle} rowKey={rowKey} /></Cell>
       <Cell label="Persona">
         <span className="hs-stack">
           <span className="hs-ell">{item.persona || '—'}</span>
@@ -328,7 +332,7 @@ function LoanRow({ item, device, open, onToggle }: { item: LoanHistoryItem; devi
   );
 }
 
-function MovementRow({ item, device, open, onToggle }: { item: MovementHistoryItem; device?: Device; open: boolean; onToggle: () => void }) {
+function MovementRow({ item, device, open, onToggle, rowKey }: { item: MovementHistoryItem; device?: Device; open: boolean; onToggle: () => void; rowKey: string }) {
   return (
     <div role="row" className={`hs-row hs-item${open ? ' is-open' : ''}`}>
       <Cell label="Hora" className="hs-c-time"><span className="ui-mono">{timeOf(item.timestamp)}</span></Cell>
@@ -338,7 +342,7 @@ function MovementRow({ item, device, open, onToggle }: { item: MovementHistoryIt
           <span className="hs-mv-line">
             <span className="hs-strong hs-nowrap">{item.tipo}</span>
             {item.etiqueta && (device
-              ? <button type="button" className="hs-tag-btn ui-mono" aria-expanded={open} aria-label={`${open ? 'Cerrar' : 'Ver'} el resumen de ${item.etiqueta}`} onClick={onToggle}>{item.etiqueta}</button>
+              ? <button type="button" className="hs-tag-btn ui-mono" data-hs-key={rowKey} aria-expanded={open} aria-label={`${open ? 'Cerrar' : 'Ver'} el resumen de ${item.etiqueta}`} onClick={onToggle}>{item.etiqueta}</button>
               : <span className="ui-mono hs-muted">{item.etiqueta}</span>)}
           </span>
           {item.descripcion && <span className="hs-wrap hs-muted">{item.descripcion}</span>}

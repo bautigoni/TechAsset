@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { InventoryItem } from '../../types';
 import { getHiddenInventoryItems, importInventoryCsv, restoreInventoryItem } from '../../services/inventoryApi';
-import { Button, EmptyState, ErrorState, FileDrop, Input, SkeletonRows, useStatusLine } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, FileDrop, Input, SkeletonRows, useStatusLine } from '../../ui';
 import { TruncatedText } from '../../ui/Truncated';
 import { IconSearch } from '../../ui/icons';
 import { formatDate, DATE_ONLY } from '../../utils/formatters';
@@ -50,7 +50,7 @@ export function ImportExportPanel({ count, consultationMode, onExport, onTemplat
           Exporta lo filtrado. Importar coincide por nombre: si una fila no trae foto o condición se conservan las cargadas, y una condición en el CSV cuenta como revisión de hoy.
         </span>
       </div>
-      {importing && !consultationMode && (
+      <Collapse open={importing && !consultationMode}>
         <FileDrop
           accept=".csv,text/csv"
           label="Elegir el CSV del inventario"
@@ -58,7 +58,7 @@ export function ImportExportPanel({ count, consultationMode, onExport, onTemplat
           hint="Un CSV con las columnas de la plantilla · también podés pegar con Ctrl V"
           upload={file => runImport(file)}
         />
-      )}
+      </Collapse>
       {status.element}
     </section>
   );
