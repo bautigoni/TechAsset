@@ -802,6 +802,7 @@
   overflow-wrap: anywhere;
 }
 @container (max-width: 680px) { .dash-closure .lo-closure-grid { grid-template-columns: minmax(0, 1fr); } }
+@container (min-width: 681px) { .dash-closure .lo-closure-side .ui-textarea { min-height: 16.5rem; } }
 @container (max-width: 520px) {
   .dash-closure .lo-closure-hrow { grid-template-columns: 6.5rem minmax(0, 1fr); }
   .dash-closure .lo-closure-hobs { grid-column: 1 / -1; }

@@ -569,6 +569,10 @@
 @container (max-width: 680px) {
   .lo-closure-grid { grid-template-columns: minmax(0, 1fr); }
 }
+/* En dos columnas, las observaciones acompañan el alto de la vista previa (sin hueco al costado). */
+@container (min-width: 681px) {
+  .lo-closure-side .ui-textarea { min-height: 16.5rem; }
+}
 @container (max-width: 520px) {
   .lo-closure-hrow { grid-template-columns: 6.5rem minmax(0, 1fr); }
   .lo-closure-hobs { grid-column: 1 / -1; }

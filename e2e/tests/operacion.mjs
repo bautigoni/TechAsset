@@ -679,6 +679,45 @@ export async function operacionTests({ browser, base, api, admin, releaseVersion
     }
   });
 
+  await test('bop', 'Operación', 'Préstamos: doble click en "Prestar" del formulario es UN préstamo; el campo del código no se mueve y el formulario se pliega', async () => {
+    const [tag] = await freeTags(1);
+    assert(tag, 'No hay un equipo libre de sobra en la copia.');
+    const { context, page } = await session();
+    try {
+      await open(page, SCREENS[0]);
+      const input = 'input[data-loan-code]';
+      await page.click(input);
+      await page.type(input, tag);
+      await page.waitForSelector('[data-lend-form] #lo-persona', { timeout: 5000 });
+      await sleep(400);
+      await page.type('[data-lend-form] #lo-persona', 'E2E Barrido');
+      for (const [label, rx] of [['Rol', /^DOE$/], ['Ubicación', /^DOE$/]]) {
+        await page.evaluate((group, source) => {
+          const re = new RegExp(source);
+          const button = [...document.querySelectorAll(`[data-lend-form] [role="group"][aria-label="${group}"] button`)].find(node => re.test((node.textContent || '').trim()));
+          button?.click();
+        }, label, rx.source);
+      }
+      await sleep(200);
+      const stop = await watch(page, input, '');
+      const requests = await countRequests(page, /^\/api\/loans\/lend/, async () => {
+        const button = await page.evaluateHandle(() => [...document.querySelectorAll('[data-lend-form] button')].find(node => /^Prestar/.test((node.textContent || '').trim())));
+        await button.asElement().click({ clickCount: 2 });
+        await sleep(1500);
+      });
+      const moved = await stop();
+      assert(requests.length === 1, `Doble click en Prestar mandó ${requests.length} préstamos (${requests.join(', ')}).`);
+      assert(moved.maxDelta <= 2, `El campo del código se movió ${moved.maxDelta} px al prestar.`);
+      const state = await page.evaluate(() => document.querySelector('[data-lend-form]')?.closest('.ui-collapse')?.getAttribute('data-state') || 'sin formulario');
+      assert(state === 'closed' || state === 'sin formulario', `El formulario quedó ${state} después de prestar.`);
+      const device = await api.device(tag);
+      assert(/prest/i.test(String(device?.estado || '')), `${tag} no quedó prestado (${device?.estado}).`);
+      return `${tag}: 1 request, campo ${moved.maxDelta}px, formulario ${state}`;
+    } finally {
+      await context.close();
+    }
+  });
+
   await test('bop', 'Operación', 'Inicio: doble Enter en la barra devuelve UNA vez y la barra no se mueve; Deshacer no mueve la barra', async () => {
     const [tag] = await freeTags(1);
     assert(tag, 'No hay un equipo libre de sobra en la copia.');
