@@ -161,7 +161,7 @@ export function NotesPanel({ operator, readOnly, onCount }: { operator: string; 
           />
         )}
       </div>
-      {status.element && <div className="dash-status dash-status--in">{status.element}</div>}
+      {status.slot('dash-status dash-status--in')}
       {!readOnly && (
         <form className="dash-notes-form" data-scanner-ignore="" onSubmit={send}>
           <Input

@@ -8,7 +8,7 @@ import { getPreviousDayLoans, undoLoans, type LoanBatchResponse } from '../../se
 import { Button } from '../../ui/Button';
 import { EmptyState, ErrorState, Eyebrow, SkeletonRows, StatusText, ageTone } from '../../ui/Data';
 import { Collapse, useAnchoredToggle } from '../../ui/Collapse';
-import { useStatusLine } from '../../ui/Status';
+import { useStatusLine } from '../../ui/StatusSlot';
 import { TruncatedText } from '../../ui/Truncated';
 import { cx } from '../../ui/util';
 import { LoanForm } from './LoanForm';
@@ -227,7 +227,7 @@ function LoanedNow({ devices, consultationMode, onReview, onReturnBatch, onUndo,
           <p className="lo-help">Los que están afuera hace más tiempo, primero.</p>
         </div>
       </div>
-      {status.element && <div className="lo-card-status">{status.element}</div>}
+      {status.slot('lo-card-status')}
       <div className="lo-loaned-list">
         {list.map(device => {
           const days = loanAgeDays(device.loanedAt);

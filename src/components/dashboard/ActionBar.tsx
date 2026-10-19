@@ -19,7 +19,7 @@ export type ActionBarProps = {
   readOnly: boolean;
   readOnlyReason: string;
   actions: LoanActions;
-  status: { show: (message: StatusMessage) => void; element: ReactNode };
+  status: { show: (message: StatusMessage) => void; element: ReactNode; slot: (className?: string) => ReactNode };
   /** Lo que leyó el lector USB estando en el Inicio. */
   scan?: { code: string; nonce: number };
   /** Abrir el préstamo de estos equipos (Prestar de una fila o "Prestar N" de la selección). */
@@ -345,7 +345,7 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
         {resultBody ?? heldResult.current}
       </Collapse>
 
-      {status.element && <div className="dash-status">{status.element}</div>}
+      {status.slot('dash-status')}
     </section>
   );
 }

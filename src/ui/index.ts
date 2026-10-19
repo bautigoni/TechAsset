@@ -40,7 +40,8 @@ export {
   type CollapseProps, type KeepInPlace, type KeepInPlaceOptions
 } from './Collapse';
 export { useScrollEdges } from './scrollEdges';
-export { StatusSlot } from './StatusSlot';
+export { StatusSlot, type StatusLineApi } from './StatusSlot';
+export { FlowColumns } from './FlowColumns';
 
 // Datos y estados
 export { StatusText, ageTone, Ring, ringTone, Skeleton, SkeletonText, SkeletonRows, EmptyState, ErrorState, Eyebrow, SectionHeader, type StatusTextTone, type RingProps } from './Data';

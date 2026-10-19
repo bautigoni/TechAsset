@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { Collapse } from './Collapse';
 import { FieldShell, useFieldIds, type FieldProps } from './Field';
 import { IconCheck, IconChevronDown, IconSearch } from './icons';
 import { cx, fold, keepInView } from './util';
@@ -243,7 +244,7 @@ export function Select({ id: idProp, value, options, onChange, disabled, placeho
           role="combobox"
           aria-haspopup="listbox"
           aria-expanded={open}
-          aria-controls={open ? listId : undefined}
+          aria-controls={listId}
           aria-activedescendant={withSearch ? undefined : activeId}
           aria-label={ariaLabel}
           aria-invalid={invalid || undefined}
@@ -260,8 +261,8 @@ export function Select({ id: idProp, value, options, onChange, disabled, placeho
           <span className="ui-select-chevron" aria-hidden="true"><IconChevronDown size={16} /></span>
         </button>
         {name && <input type="hidden" name={name} value={value} />}
-        {open && (
-          <div className="ui-select-panel">
+        {/* La lista se despliega en línea con el colapso compartido: alto suave, el campo no se mueve. */}
+        <Collapse open={open} unmountOnClose className="ui-select-panel">
             {withSearch && (
               <div className="ui-select-search">
                 <IconSearch size={14} />
@@ -294,8 +295,7 @@ export function Select({ id: idProp, value, options, onChange, disabled, placeho
               emptyText={emptyText}
               label={typeof label === 'string' ? label : ariaLabel}
             />
-          </div>
-        )}
+        </Collapse>
       </div>
     </FieldShell>
   );

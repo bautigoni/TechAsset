@@ -183,7 +183,7 @@ function AgendaCard({ agenda, nowMinutes, readOnly, canOpen, onSave, onOpen }: {
           actions={canOpen ? <Button size="sm" variant="ghost" onClick={onOpen}>Ver la semana</Button> : undefined}
         />
       )}
-      {status.element && <div className="dash-status dash-status--in">{status.element}</div>}
+      {status.slot('dash-status dash-status--in')}
       {now.later.length > 0 && (
         <ul className="dash-agenda-next" aria-label="Más tarde">
           {now.later.map(item => (

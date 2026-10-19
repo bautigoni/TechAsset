@@ -217,11 +217,21 @@ export function AppShell(props: AppShellProps) {
 
   // Cambiar de vista o de sede cierra lo que estaba abierto en línea y la
   // vista nueva arranca desde arriba.
+  // El alto que un colapso reservó al pie (para no recortar el scroll al cerrar)
+  // no puede quedar como hueco al pie de la vista nueva: se suelta al cambiar de
+  // vista, de sede o de página (Atrás/Adelante). Por evento, para no sumar el
+  // colapso al bundle de arranque.
   useEffect(() => {
     setStrip(null);
     setMoreOpen(false);
     scrollRef.current?.scrollTo({ top: 0 });
+    window.dispatchEvent(new Event('ui:release-scroll-reserve'));
   }, [view, activeSite]);
+  useEffect(() => {
+    const release = () => window.dispatchEvent(new Event('ui:release-scroll-reserve'));
+    window.addEventListener('popstate', release);
+    return () => window.removeEventListener('popstate', release);
+  }, []);
   // Al cerrar la vista propia: misma posición (si no cambió la vista) y el
   // foco vuelve al botón Asistente si estaba adentro del panel.
   useLayoutEffect(() => {

@@ -25,7 +25,7 @@ export type OutListProps = {
   retrying: boolean;
   readOnly: boolean;
   actions: LoanActions;
-  status: { show: (message: StatusMessage) => void; element: ReactNode };
+  status: { show: (message: StatusMessage) => void; element: ReactNode; slot: (className?: string) => ReactNode };
   onFilter: (filter: ListFilter) => void;
   onType: (type: string) => void;
   onQuery: (query: string) => void;
@@ -199,7 +199,7 @@ export function OutList(props: OutListProps) {
       </SelectionHeader>
 
       {error && <ErrorState className="dash-block-error" message="No se pudo actualizar la lista" updatedAt={updatedLabel} onRetry={onRetry} retrying={retrying} />}
-      {status.element && <div className="dash-status dash-status--in">{status.element}</div>}
+      {status.slot('dash-status dash-status--in')}
 
       {hasRows && <div className="dash-cols" aria-hidden="true">
         {!readOnly && (

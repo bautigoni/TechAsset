@@ -5,7 +5,7 @@ import { getDeviceStateKey } from '../../utils/deviceState';
 import { formatLoanDateTime, formatTimeOnly, loanAgeDays } from '../../utils/formatters';
 import type { LoanBatchResponse } from '../../services/loansApi';
 import { Button } from '../../ui/Button';
-import { useStatusLine } from '../../ui/Status';
+import { useStatusLine } from '../../ui/StatusSlot';
 import { TruncatedText } from '../../ui/Truncated';
 import { cx } from '../../ui/util';
 import { keepInPlace } from '../../ui/Collapse';
@@ -231,7 +231,7 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onU
         </div>
       </SelectionSwap>
 
-      {status.element && <div className="lo-card-status">{status.element}</div>}
+      {status.slot('lo-card-status')}
 
       <ChipLegend items={[['free', 'Libre'], ['loaned', 'Prestado'], ['late1', '1 día afuera'], ['late2', '2 días o más'], ['blocked', 'Fuera de servicio o no encontrado'], ['selected', 'Marcado']]} />
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from
 import { Button } from '../Button';
 import { FieldShell, useFieldIds, type FieldProps } from '../Field';
 import { IconClock } from '../icons';
+import { Collapse } from '../Collapse';
 import { cx } from '../util';
 import { DatePicker, type DatePickerProps } from './DatePicker';
 import { formatTime, maskTime, parseTime, toMinutes } from './dates';
@@ -151,16 +152,17 @@ export function TimeField({ id: idProp, value, onChange, minHour = 7, maxHour = 
             className="ui-input-btn"
             aria-label={open ? 'Cerrar selector de hora' : 'Abrir selector de hora'}
             aria-expanded={open}
-            aria-controls={open ? panelId : undefined}
+            aria-controls={panelId}
             disabled={disabled}
             onClick={() => setOpen(current => !current)}
           >
             <IconClock size={16} />
           </button>
         </div>
-        {open && (
-          <div
-            className="ui-picker-panel ui-time-panel ui-enter"
+        <Collapse
+            open={open}
+            unmountOnClose
+            className="ui-picker-panel ui-time-panel"
             id={panelId}
             role="group"
             aria-label={typeof label === 'string' ? label : ariaLabel || 'Elegir hora'}
@@ -172,8 +174,7 @@ export function TimeField({ id: idProp, value, onChange, minHour = 7, maxHour = 
             </div>
             <ChipRow label="Hora" values={hours} selected={time?.h ?? null} onPick={n => setPart('h', n)} format={pad} />
             <ChipRow label="Minutos" values={minutes} selected={time && time.m % minuteStep === 0 ? time.m : null} onPick={n => setPart('m', n)} format={pad} />
-          </div>
-        )}
+        </Collapse>
       </div>
     </FieldShell>
   );

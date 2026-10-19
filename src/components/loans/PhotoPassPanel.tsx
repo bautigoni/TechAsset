@@ -6,7 +6,7 @@ import {
 import { formatTimeOnly } from '../../utils/formatters';
 import { Button, Kbd } from '../../ui/Button';
 import { Input } from '../../ui/Field';
-import { useStatusLine } from '../../ui/Status';
+import { useStatusLine } from '../../ui/StatusSlot';
 import { ErrorState } from '../../ui/Data';
 import { TruncatedText } from '../../ui/Truncated';
 import { Collapse, keepInPlace } from '../../ui/Collapse';
@@ -240,7 +240,7 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
       </SelectionSwap>
       <h2 id="lo-passes-title" className="ui-sr">Cartelitos de fotos</h2>
 
-      {status.element && <div className="lo-card-status">{status.element}</div>}
+      {status.slot('lo-card-status')}
 
       <LazyBody open={open || selectMode} className="lo-passes-body">
         <div id="lo-passes-body">

@@ -157,7 +157,8 @@ export function useInlinePrompt() {
   return { ask, element, pending: Boolean(request) };
 }
 
-export { StatusLine, useStatusLine, StatusOutlet, pushStatus, clearStatus, type StatusLineProps, type StatusMessage, type StatusTone } from './Status';
+export { StatusLine, StatusOutlet, pushStatus, clearStatus, type StatusLineProps, type StatusMessage, type StatusTone } from './Status';
+export { useStatusLine } from './StatusSlot';
 
 /* ══ SelectionHeader: reemplaza el encabezado de la lista mientras hay selección ══ */
 

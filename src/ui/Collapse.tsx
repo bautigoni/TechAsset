@@ -132,6 +132,10 @@ export function releaseScrollReserve(scroller?: HTMLElement | null) {
   stopTrimming(sc);
 }
 
+/** Evento para soltar la reserva sin importar este módulo (el shell, que va en el bundle de arranque). */
+export const RELEASE_SCROLL_RESERVE_EVENT = 'ui:release-scroll-reserve';
+if (typeof window !== 'undefined') window.addEventListener(RELEASE_SCROLL_RESERVE_EVENT, () => releaseScrollReserve());
+
 /* ── keepInPlace: que un elemento no se mueva en pantalla mientras algo cambia de alto ── */
 
 export type KeepInPlaceOptions = {
@@ -265,6 +269,15 @@ export function useHeldKeys(openKey: string | null | undefined) {
   return { drawn: (key: string) => key === current || closing.includes(key), release };
 }
 
+/** El gap del padre que el colapso cerrado cancela (--ui-collapse-gap), en px. */
+function gapPx(el: HTMLElement) {
+  const value = getComputedStyle(el).getPropertyValue('--ui-collapse-gap').trim();
+  const n = parseFloat(value) || 0;
+  if (value.endsWith('rem')) return n * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
+  if (value.endsWith('em')) return n * (parseFloat(getComputedStyle(el).fontSize) || 16);
+  return n;
+}
+
 /** Duración de la transición de alto del colapso (ms), leída del CSS. */
 function transitionMs(el: HTMLElement) {
   const value = getComputedStyle(el).transitionDuration.split(',')[0] || '0s';
@@ -318,8 +331,10 @@ export type CollapseProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
    * que poner `--ui-collapse-gap` desde el CSS de la pantalla
    * (`.padre > .ui-collapse { --ui-collapse-gap: … }`): un solo mecanismo.
    * En un padre grid, si es el primer hijo, el hueco no se cancela.
+   * 'auto' = el gap de filas del padre, leído al montar (para lo que aparece
+   * en cualquier lugar, como las líneas de estado).
    */
-  gap?: string;
+  gap?: string | 'auto';
 };
 
 export function Collapse({ open, children, className, outerClassName, anchor, reveal = true, lazy = true, unmountOnClose = false, appear = false, reserve, onSettled, returnFocus, gap, ...rest }: CollapseProps) {
@@ -340,6 +355,16 @@ export function Collapse({ open, children, className, outerClassName, anchor, re
   // no desaparece de golpe a mitad de la transición.
   const shown = useRef<ReactNode>(children);
   if (open) shown.current = children;
+
+  // gap="auto": el gap de filas del padre (flex en columna o grid), antes del
+  // primer pintado, así lo que aparece no suma un hueco de golpe.
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    if (gap !== 'auto' || !wrap?.parentElement) return;
+    const style = getComputedStyle(wrap.parentElement);
+    const column = style.display.includes('grid') || (style.display.includes('flex') && style.flexDirection.startsWith('column'));
+    wrap.style.setProperty('--ui-collapse-gap', `${column ? parseFloat(style.rowGap) || 0 : 0}px`);
+  }, [gap]);
 
   useLayoutEffect(() => {
     trackTriggers();
@@ -375,7 +400,8 @@ export function Collapse({ open, children, className, outerClassName, anchor, re
       const back = focusRef.current?.current || (anchorEl && anchorEl !== wrap && !wrap.contains(anchorEl) ? anchorEl : null);
       back?.focus({ preventScroll: true });
     }
-    const shrink = reserve === 'auto' ? 'auto' : open ? 0 : clip.getBoundingClientRect().height;
+    // Al cerrar se va el alto del contenido y, si hay, el gap que el colapso cerrado se come.
+    const shrink = reserve === 'auto' ? 'auto' : open ? 0 : clip.getBoundingClientRect().height + gapPx(wrap);
     const hold = anchorEl ? keepInPlace(anchorEl, { duration: reduced ? 0 : ms + 60, reserve: shrink, watch: wrap }) : NOOP;
 
     let timer = 0;
@@ -422,7 +448,7 @@ export function Collapse({ open, children, className, outerClassName, anchor, re
       ref={wrapRef}
       className={cx('ui-collapse', outerClassName)}
       data-state={initial.current}
-      style={gap ? ({ '--ui-collapse-gap': gap } as CSSProperties) : undefined}
+      style={gap && gap !== 'auto' ? ({ '--ui-collapse-gap': gap } as CSSProperties) : undefined}
     >
       <div
         ref={clipRef}

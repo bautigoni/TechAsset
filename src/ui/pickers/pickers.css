@@ -5,6 +5,8 @@
 .ui-time,
 .ui-range { display: flex; flex-direction: column; gap: var(--g-s-1); min-width: 0; }
 .ui-date > .ui-control { max-width: 14rem; }
+/* El panel se despliega con el colapso compartido: cerrado no suma el gap. */
+:is(.ui-date, .ui-time, .ui-range) > .ui-collapse { --ui-collapse-gap: var(--g-s-1); }
 .ui-time-input { max-width: 10rem; }
 
 .ui-picker-panel {

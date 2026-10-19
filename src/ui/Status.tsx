@@ -100,21 +100,8 @@ export function StatusLine({ tone = 'info', message, undo, retry, action, onDism
 
 export type StatusMessage = Omit<StatusLineProps, 'onDismiss' | 'className'>;
 
-/**
- * Una línea de estado por bloque: `status.show({...})` reemplaza a la
- * anterior; `{status.element}` va debajo de donde pasó la acción.
- */
-export function useStatusLine() {
-  const [current, setCurrent] = useState<(StatusMessage & { key: number }) | null>(null);
-  const counter = useRef(0);
-  const clear = useCallback(() => setCurrent(null), []);
-  const show = useCallback((message: StatusMessage) => {
-    counter.current += 1;
-    setCurrent({ ...message, key: counter.current });
-  }, []);
-  const element = current ? <StatusLine {...current} key={current.key} onDismiss={clear} /> : null;
-  return { show, clear, element, current };
-}
+/* `useStatusLine` (una línea por bloque, con alto suave) vive en StatusSlot.tsx:
+   usa el colapso compartido y así no entra al bundle de arranque. */
 
 /* Puente global para migrar `toast(...)` sin tocar cada llamada: el último
    <StatusOutlet/> montado (uno por pantalla, arriba del contenido o debajo de

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEve
 import { Button, IconButton } from '../Button';
 import { FieldShell, useFieldIds, type FieldProps } from '../Field';
 import { IconCalendar, IconChevronLeft, IconChevronRight } from '../icons';
+import { Collapse } from '../Collapse';
 import { cx } from '../util';
 import { DAYS_LONG, DAYS_SHORT, MONTHS, addDays, addMonths, displayDate, fromIso, inRange, longDate, maskDate, monthGrid, parseMasked, todayIso, weekday } from './dates';
 
@@ -236,7 +237,7 @@ export function DatePicker({ id: idProp, value, onChange, min, max, isDateDisabl
               className="ui-input-btn"
               aria-label={open ? 'Cerrar calendario' : 'Abrir calendario'}
               aria-expanded={open}
-              aria-controls={open ? panelId : undefined}
+              aria-controls={panelId}
               disabled={disabled}
               onClick={event => (open ? close(false) : openCalendar(event.detail === 0))}
             >
@@ -251,7 +252,7 @@ export function DatePicker({ id: idProp, value, onChange, min, max, isDateDisabl
             className={cx('ui-control', 'ui-select-trigger', invalid && 'is-error')}
             aria-label={ariaLabel}
             aria-expanded={open}
-            aria-controls={open ? panelId : undefined}
+            aria-controls={panelId}
             aria-describedby={describedBy}
             disabled={disabled}
             onClick={event => (open ? close(false) : openCalendar(event.detail === 0))}
@@ -260,8 +261,8 @@ export function DatePicker({ id: idProp, value, onChange, min, max, isDateDisabl
             <span className="ui-select-chevron" aria-hidden="true"><IconCalendar size={16} /></span>
           </button>
         )}
-        {open && (
-          <div className="ui-picker-panel ui-enter" id={panelId} role="group" aria-label="Elegir fecha">
+        {/* Se despliega en línea con alto suave (colapso compartido): empuja lo de abajo sin saltos. */}
+        <Collapse open={open} unmountOnClose className="ui-picker-panel" id={panelId} role="group" aria-label="Elegir fecha">
             <Calendar
               focusIso={focusIso}
               onFocusIso={setFocusIso}
@@ -285,8 +286,7 @@ export function DatePicker({ id: idProp, value, onChange, min, max, isDateDisabl
                 {canClear && value && <Button size="sm" variant="ghost" className="ui-picker-clear" onClick={() => pick('')}>Borrar</Button>}
               </div>
             )}
-          </div>
-        )}
+        </Collapse>
       </div>
     </FieldShell>
   );
@@ -386,8 +386,7 @@ export function DateRange({ id: idProp, value, onChange, min, max, presets, disa
           {field('from', fromField, fromLabel)}
           {field('to', toField, toLabel)}
         </div>
-        {open && (
-          <div className="ui-picker-panel ui-enter" role="group" aria-label={editing === 'from' ? 'Elegir desde' : 'Elegir hasta'}>
+        <Collapse open={open} unmountOnClose className="ui-picker-panel" role="group" aria-label={editing === 'from' ? 'Elegir desde' : 'Elegir hasta'}>
             <Calendar focusIso={focusIso} onFocusIso={setFocusIso} range={value} min={min} max={max} onPick={pick} onEscape={() => setOpen(false)} />
             <span className="ui-picker-note">{editing === 'from' ? 'Elegí el primer día' : 'Elegí el último día'}</span>
             {list.length > 0 && (
@@ -397,8 +396,7 @@ export function DateRange({ id: idProp, value, onChange, min, max, presets, disa
                 ))}
               </div>
             )}
-          </div>
-        )}
+        </Collapse>
       </div>
     </FieldShell>
   );
