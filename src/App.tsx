@@ -628,11 +628,11 @@ export function App() {
       {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} olderHidden={agenda.olderHidden} onLoadOlder={agenda.loadOlder} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
       {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'tasks' && <TasksPage key={activeSite} store={tasks} operator={operator} consultationMode={effectiveConsultation} />}
-      {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
+      {view === 'pettycash' && <PettyCashPage key={activeSite} siteCode={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
       {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} sites={sites} onSiteChange={changeSite} onNavigate={navigate} />}
-      {view === 'tools' && <ToolsPage key={activeSite} operator={operator} />}
-      {view === 'quickaccess' && <QuickAccessPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} />}
+      {view === 'tools' && <ToolsPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} canEdit={access.admin || access.edit.has('*') || access.edit.has('tools')} canSend={access.admin} onNavigate={navigate} />}
+      {view === 'quickaccess' && <QuickAccessPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} canEdit={access.admin || access.edit.has('*') || access.edit.has('quickaccess')} />}
       {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}

@@ -78,8 +78,13 @@ function newJobId() {
   return crypto.randomBytes(8).toString('hex');
 }
 
+// Resultados (tarjetas y reportes): viven 30 min y solo los ve quien los generó
+// (tienen contraseñas).
+const JOB_TTL_MS = 30 * 60 * 1000;
+const jobOwner = req => String(req.user?.email || req.user?.id || '').toLowerCase();
+
 function pruneOldJobs() {
-  const ttl = 30 * 60 * 1000;
+  const ttl = JOB_TTL_MS;
   const now = Date.now();
   for (const [id, job] of jobs.entries()) {
     if (now - job.createdAt > ttl) {
@@ -341,21 +346,23 @@ toolsRouter.post('/tools/glifing/generate', async (req, res, next) => {
     const dir = ensureTempDir();
     const filePath = path.join(dir, `${isSantillana ? 'santillana' : 'glifing'}-${id}.html`);
     fs.writeFileSync(filePath, html, 'utf8');
-    jobs.set(id, { type: 'glifing', filePath, createdAt: Date.now() });
-    res.json({ ok: true, jobId: id, total: rows.length, downloadUrl: `/api/tools/glifing/download/${id}` });
+    const createdAt = Date.now();
+    jobs.set(id, { type: 'glifing', kind: isSantillana ? 'santillana' : 'glifing', filePath, createdAt, owner: jobOwner(req) });
+    res.json({ ok: true, jobId: id, total: rows.length, downloadUrl: `/api/tools/glifing/download/${id}`, expiresAt: new Date(createdAt + JOB_TTL_MS).toISOString() });
   } catch (error) { next(error); }
 });
 
+// El resultado se puede abrir (o bajar con ?descargar=1) las veces que haga
+// falta mientras no venza (30 min), y solo quien lo generó. Antes se borraba al
+// primer pedido: recargar la pestaña de tarjetas daba 404.
 toolsRouter.get('/tools/glifing/download/:jobId', (req, res) => {
+  pruneOldJobs();
   const job = jobs.get(req.params.jobId);
-  if (!job || job.type !== 'glifing' || !fs.existsSync(job.filePath)) return res.status(404).json({ ok: false, error: 'Resultado no disponible' });
+  if (!job || job.type !== 'glifing' || job.owner !== jobOwner(req) || !fs.existsSync(job.filePath)) return res.status(404).json({ ok: false, error: 'Resultado no disponible' });
   res.type('text/html; charset=utf-8');
-  res.sendFile(job.filePath, () => {
-    setTimeout(() => {
-      try { fs.unlinkSync(job.filePath); } catch {}
-      jobs.delete(req.params.jobId);
-    }, 1000);
-  });
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.query.descargar === '1') res.setHeader('Content-Disposition', `attachment; filename="tarjetas-${job.kind || 'glifing'}.html"`);
+  res.sendFile(job.filePath);
 });
 
 toolsRouter.get('/tools/santillana/template', (_req, res) => {
@@ -564,7 +571,8 @@ toolsRouter.post('/tools/credentials365/send', async (req, res, next) => {
     const csvOut = '﻿' + rowsToCsv(['mail_destino', 'usuario', 'nombre', 'estado', 'detalle'], results);
     const filePath = path.join(dir, `c365-report-${id}.csv`);
     fs.writeFileSync(filePath, csvOut, 'utf8');
-    jobs.set(id, { type: 'c365-report', filePath, createdAt: Date.now() });
+    const createdAt = Date.now();
+    jobs.set(id, { type: 'c365-report', filePath, createdAt, owner: jobOwner(req) });
 
     const stats = {
       total: results.length,
@@ -572,20 +580,18 @@ toolsRouter.post('/tools/credentials365/send', async (req, res, next) => {
       prueba: results.filter(r => r.estado === 'PRUEBA').length,
       errores: results.filter(r => r.estado === 'ERROR').length
     };
-    res.json({ ok: true, modoPrueba, stats, jobId: id, reportUrl: `/api/tools/credentials365/report/${id}`, sample: results.slice(0, 20) });
+    res.json({ ok: true, modoPrueba, stats, jobId: id, reportUrl: `/api/tools/credentials365/report/${id}`, expiresAt: new Date(createdAt + JOB_TTL_MS).toISOString(), sample: results.slice(0, 20) });
   } catch (error) { next(error); }
 });
 
+// Igual que las tarjetas: se puede volver a bajar mientras no venza.
 toolsRouter.get('/tools/credentials365/report/:jobId', (req, res) => {
+  pruneOldJobs();
   const job = jobs.get(req.params.jobId);
-  if (!job || job.type !== 'c365-report' || !fs.existsSync(job.filePath)) return res.status(404).json({ ok: false, error: 'Reporte no disponible' });
+  if (!job || job.type !== 'c365-report' || job.owner !== jobOwner(req) || !fs.existsSync(job.filePath)) return res.status(404).json({ ok: false, error: 'Reporte no disponible' });
   res.type('text/csv; charset=utf-8').setHeader('Content-Disposition', `attachment; filename="reporte-credenciales365.csv"`);
-  res.sendFile(job.filePath, () => {
-    setTimeout(() => {
-      try { fs.unlinkSync(job.filePath); } catch {}
-      jobs.delete(req.params.jobId);
-    }, 1000);
-  });
+  res.setHeader('Cache-Control', 'no-store');
+  res.sendFile(job.filePath);
 });
 
 // =========================================================

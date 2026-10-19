@@ -1,149 +1,190 @@
-import { useEffect, useState } from 'react';
-import { useQuickLinks, groupLinks } from './quickLinks';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { ClipboardList, ExternalLink, FileSpreadsheet, FileText, Folder, Globe, Mail, Pencil, Presentation, Ticket, Trash2, Video } from 'lucide-react';
 import type { QuickLink } from '../../types';
-import { createQuickLink, deleteQuickLink, updateQuickLink } from '../../services/operationsApi';
-import { Button } from '../layout/Button';
-import { Modal } from '../layout/Modal';
-import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
-
-// Archivos servidos desde public/downloads: no son links configurables, son
-// parte de la app, por eso siguen acá y no en la base.
-type DownloadLink = { name: string; description: string; url: string; filename: string };
-
-const DOWNLOAD_LINKS: DownloadLink[] = [
-  { name: 'Activación Windows / Office (.bat)', description: 'Script institucional. Sólo se descarga, no se ejecuta desde la web.', url: '/downloads/activacion-windows-office.bat', filename: 'activacion-windows-office.bat' },
-  { name: 'Reinicio historial WIFI + limpieza DNS (.bat)', description: 'Liberar/renovar IP, flush DNS y reset Winsock/TCP-IP.', url: '/downloads/reinicio-historial-y-dns.bat', filename: 'reinicio-historial-y-dns.bat' }
-];
+import { Button, Combobox, IconButton, Input, TruncatedText, icons } from '../../ui';
 
 export { useQuickLinks, groupLinks } from './quickLinks';
 
-export function QuickLinkForm({ initial, operator, onDone, onCancel }: {
-  initial: Partial<QuickLink>;
-  operator: string;
-  onDone: () => void;
+/* ── Ícono por dominio (local: no se le pregunta a ningún tercero) ───────── */
+
+export function hostOf(url: string) {
+  return String(url || '').replace(/^https?:\/\//i, '').split(/[/?#]/)[0].replace(/^www\./, '');
+}
+
+export function linkIcon(url: string): ReactNode {
+  const u = String(url || '').toLowerCase();
+  const props = { size: 16, strokeWidth: 1.6 } as const;
+  if (/docs\.google\.com\/spreadsheets|sheets\.|\.xlsx?\b/.test(u)) return <FileSpreadsheet {...props} />;
+  if (/docs\.google\.com\/presentation/.test(u)) return <Presentation {...props} />;
+  if (/docs\.google\.com\/forms|forms\.gle|forms\.office/.test(u)) return <ClipboardList {...props} />;
+  if (/docs\.google\.com\/document|\.docx?\b/.test(u)) return <FileText {...props} />;
+  if (/drive\.google\.com|sharepoint|onedrive|dropbox/.test(u)) return <Folder {...props} />;
+  if (/invgate|handing|ticket|incident|soporte|helpdesk/.test(u)) return <Ticket {...props} />;
+  if (/mail\.|outlook|gmail/.test(u)) return <Mail {...props} />;
+  if (/meet\.google|zoom\.us|teams\.microsoft/.test(u)) return <Video {...props} />;
+  return <Globe {...props} />;
+}
+
+/* ── Validación del link ────────────────────────────────────────────────── */
+
+const DANGEROUS = /^\s*(javascript|data|vbscript|file):/i;
+const HTTP = /^https?:\/\/[^\s/$.?#][^\s]*$/i;
+const LOOKS_DOMAIN = /^[\w-]+(\.[\w-]+)+(:\d+)?([/?#]\S*)?$/;
+
+export function checkUrl(raw: string): { error?: string; suggest?: string } {
+  const value = raw.trim();
+  if (!value) return { error: 'Poné el link.' };
+  if (DANGEROUS.test(value)) return { error: 'Solo se permiten links http:// o https://.' };
+  if (HTTP.test(value)) return {};
+  if (LOOKS_DOMAIN.test(value)) return { error: 'Le falta https:// al principio.', suggest: `https://${value}` };
+  if (/^\/\//.test(value) && LOOKS_DOMAIN.test(value.slice(2))) return { error: 'Le falta https: al principio.', suggest: `https:${value}` };
+  return { error: 'Poné un link que empiece con https:// (o http://).' };
+}
+
+export type LinkDraft = { titulo: string; url: string; descripcion: string; categoria: string };
+
+/**
+ * Alta / edición en línea (reemplaza el modal). Enter guarda, Esc cancela.
+ * Los valores no se pierden ante un error del server (quedan en el form) y si
+ * hay cambios sin guardar, cerrar la pestaña pide confirmación.
+ */
+export function LinkForm({ initial, categories, title, submitLabel, onSubmit, onCancel, autoFocus = true }: {
+  initial: LinkDraft;
+  categories: string[];
+  title?: string;
+  submitLabel: string;
+  onSubmit: (draft: LinkDraft) => Promise<void>;
   onCancel: () => void;
+  autoFocus?: boolean;
 }) {
-  const [draft, setDraft] = useState<Partial<QuickLink>>(initial);
-  const [error, setError] = useState('');
+  const [draft, setDraft] = useState<LinkDraft>(initial);
+  const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const firstRef = useRef<HTMLInputElement | null>(null);
+  const dirty = draft.titulo !== initial.titulo || draft.url !== initial.url || draft.descripcion !== initial.descripcion || draft.categoria !== initial.categoria;
+
+  useEffect(() => { if (autoFocus) firstRef.current?.focus({ preventScroll: true }); }, [autoFocus]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  const urlCheck = checkUrl(draft.url);
+  const titleError = !draft.titulo.trim() ? 'Poné un nombre.' : '';
+  const set = (patch: Partial<LinkDraft>) => { setDraft(current => ({ ...current, ...patch })); setServerError(''); };
+
+  const submit = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (busy) return;
+    setTouched(true);
+    if (titleError || urlCheck.error) return;
+    setBusy(true);
+    setServerError('');
+    try {
+      await onSubmit({ titulo: draft.titulo.trim(), url: draft.url.trim(), descripcion: draft.descripcion.trim(), categoria: draft.categoria.trim() || 'Sin categoría' });
+    } catch (reason) {
+      setServerError(reason instanceof Error && reason.message ? reason.message : 'No se pudo guardar. Reintentá.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const showUrlError = (touched || (draft.url.trim().length > 3 && Boolean(urlCheck.suggest))) && urlCheck.error;
 
   return (
-    <form className="stack" onSubmit={async event => {
-      event.preventDefault();
-      setError('');
-      if (!/^https?:\/\//i.test(String(draft.url || ''))) { setError('Solo se permiten URLs http:// o https://.'); return; }
-      setBusy(true);
-      try {
-        if (draft.id) await updateQuickLink(draft.id, draft);
-        else await createQuickLink({ ...draft, operator });
-        onDone();
-      } catch (reason) {
-        setError(reason instanceof Error ? reason.message : 'No se pudo guardar.');
-      } finally {
-        setBusy(false);
-      }
-    }}>
-      <label>Nombre<input className="input" required value={draft.titulo || ''} onChange={e => setDraft(v => ({ ...v, titulo: e.target.value }))} /></label>
-      <label>URL<input className="input" required value={draft.url || ''} onChange={e => setDraft(v => ({ ...v, url: e.target.value }))} placeholder="https://..." /></label>
-      <label>Descripción<textarea className="input" rows={2} value={draft.descripcion || ''} onChange={e => setDraft(v => ({ ...v, descripcion: e.target.value }))} /></label>
-      <label>Categoría<input className="input" value={draft.categoria || ''} onChange={e => setDraft(v => ({ ...v, categoria: e.target.value }))} placeholder="Institucionales, Personalizados..." /></label>
-      {error && <div className="tool-error">{error}</div>}
-      <div className="actions">
-        <Button variant="primary" type="submit" disabled={busy}>{busy ? 'Guardando...' : 'Guardar'}</Button>
-        <Button type="button" onClick={onCancel}>Cancelar</Button>
+    <form
+      className="qa-form"
+      onSubmit={submit}
+      noValidate
+      data-scanner-ignore=""
+      onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel(); } }}
+    >
+      {title && (
+        <div className="qa-form-head">
+          <h2 className="qa-form-title">{title}</h2>
+          <span className="qa-form-keys">Enter guarda · Esc cancela</span>
+        </div>
+      )}
+      <div className="qa-form-grid">
+        <Input ref={firstRef} label="Nombre" required value={draft.titulo} onValueChange={titulo => set({ titulo })} placeholder="Ej.: Listas EP" error={touched && titleError ? titleError : undefined} autoComplete="off" />
+        <div className="qa-url">
+          <Input
+            label="Link"
+            required
+            inputMode="url"
+            autoComplete="off"
+            spellCheck={false}
+            value={draft.url}
+            onValueChange={url => set({ url })}
+            onBlur={() => { if (draft.url.trim()) setTouched(true); }}
+            placeholder="https://…"
+            error={showUrlError || undefined}
+          />
+          {showUrlError && urlCheck.suggest && (
+            <span className="qa-suggest">
+              <span className="qa-suggest-text">¿Querés decir <span className="qa-mono">{urlCheck.suggest}</span>?</span>
+              <Button size="sm" variant="ghost" onClick={() => set({ url: urlCheck.suggest || '' })}>Usar</Button>
+            </span>
+          )}
+        </div>
+        <Input label="Descripción (opcional)" value={draft.descripcion} onValueChange={descripcion => set({ descripcion })} placeholder="Para qué sirve" autoComplete="off" />
+        <Combobox label="Categoría" value={draft.categoria} onChange={categoria => set({ categoria })} options={categories} placeholder="Institucionales, Personalizados…" />
+      </div>
+      {serverError && <p className="qa-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
+      <div className="qa-form-actions">
+        {!title && <span className="qa-form-keys">Enter guarda · Esc cancela</span>}
+        <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancelar</Button>
+        <Button variant="primary" type="submit" loading={busy} loadingLabel="Guardando…">{submitLabel}</Button>
       </div>
     </form>
   );
 }
 
-export function QuickAccess({ operator, consultationMode }: { operator: string; consultationMode: boolean }) {
-  const { links, handingUrl, reload } = useQuickLinks();
-  const [editing, setEditing] = useState<Partial<QuickLink> | null>(null);
-  const [downloadStatus, setDownloadStatus] = useState<Record<string, 'unknown' | 'available' | 'missing'>>({});
+/* ── Una tarjeta de acceso (vista) ─────────────────────────────────────── */
 
-  useEffect(() => {
-    DOWNLOAD_LINKS.forEach(link => {
-      fetch(link.url, { method: 'HEAD' })
-        .then(r => setDownloadStatus(s => ({ ...s, [link.url]: r.ok ? 'available' : 'missing' })))
-        .catch(() => setDownloadStatus(s => ({ ...s, [link.url]: 'missing' })));
-    });
-  }, []);
-
-  const groups = groupLinks(links);
-
+export function LinkTile({ link, editable, sorting, isFirst, isLast, editing, confirming, onEdit, onDelete, onMove, registerMove }: {
+  link: QuickLink;
+  editable: boolean;
+  sorting: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  editing: boolean;
+  confirming: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onMove: (dir: -1 | 1) => void;
+  registerMove: (dir: -1 | 1, node: HTMLButtonElement | null) => void;
+}) {
+  const domain = hostOf(link.url);
   return (
-    <>
-      <section className="card tool-card">
-        <div className="card-head">
-          <h3>Accesos rápidos</h3>
-          {!consultationMode && <Button variant="primary" onClick={() => setEditing({ titulo: '', url: '', descripcion: '', categoria: 'Institucionales' })}>Nuevo acceso</Button>}
+    <div className="qa-tile">
+      <a className="qa-open" href={link.url} target="_blank" rel="noreferrer" aria-label={`${link.titulo} (abre en una pestaña nueva)`}>
+        <span className="qa-icon" aria-hidden="true">{linkIcon(link.url)}</span>
+        <span className="qa-text">
+          <TruncatedText className="qa-title" lines={2}>{link.titulo}</TruncatedText>
+          {link.descripcion && <TruncatedText className="qa-desc" lines={2}>{link.descripcion}</TruncatedText>}
+          <TruncatedText className="qa-domain">{domain}</TruncatedText>
+        </span>
+        <ExternalLink className="qa-ext" size={14} strokeWidth={1.6} aria-hidden="true" />
+      </a>
+      {editable && (
+        <div className="qa-acts">
+          {sorting ? (
+            <>
+              <IconButton ref={node => registerMove(-1, node)} size="sm" label={`Subir ${link.titulo}`} icon={<icons.IconChevronUp size={16} />} disabled={isFirst} onClick={() => onMove(-1)} />
+              <IconButton ref={node => registerMove(1, node)} size="sm" label={`Bajar ${link.titulo}`} icon={<icons.IconChevronDown size={16} />} disabled={isLast} onClick={() => onMove(1)} />
+            </>
+          ) : (
+            <>
+              <IconButton size="sm" label={editing ? `Cerrar la edición de ${link.titulo}` : `Editar ${link.titulo}`} pressed={editing} icon={<Pencil size={15} strokeWidth={1.6} />} onClick={onEdit} />
+              <IconButton size="sm" label={`Borrar ${link.titulo}`} pressed={confirming} icon={<Trash2 size={15} strokeWidth={1.6} />} onClick={onDelete} />
+            </>
+          )}
         </div>
-        {!links.length && <div className="empty-state">Todavía no hay accesos cargados.</div>}
-        {groups.map(([categoria, rows]) => (
-          <div className="quick-access-group" key={categoria}>
-            <h4>{categoria}</h4>
-            <div className="quick-access-grid">
-              {rows.map(link => (
-                <article key={link.id} className="quick-access-card">
-                  <div>
-                    <h4>{link.titulo}</h4>
-                    {link.descripcion && <p className="muted">{link.descripcion}</p>}
-                  </div>
-                  <div className="actions">
-                    <a className="btn btn-primary" href={link.url} target="_blank" rel="noreferrer">Abrir</a>
-                    {!consultationMode && <button className="btn btn-secondary" type="button" onClick={() => setEditing(link)}>Editar</button>}
-                    {!consultationMode && <button className="btn btn-secondary" type="button" onClick={async () => {
-                      if (!(await confirmDialog({ title: 'Borrar acceso', message: `¿Borrar "${link.titulo}"?`, confirmLabel: 'Borrar', danger: true }))) return;
-                      try {
-                        await deleteQuickLink(link.id, operator);
-                      } catch (reason) {
-                        toast({ message: errorMessage(reason, 'No se pudo borrar el acceso.'), tone: 'error' });
-                        return;
-                      }
-                      await reload();
-                    }}>Borrar</button>}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        ))}
-        {handingUrl && (
-          <p className="muted">Handing configurado en <code>{handingUrl}</code>. Agregalo como acceso si querés tenerlo acá.</p>
-        )}
-      </section>
-
-      <section className="card tool-card">
-        <div className="card-head"><h3>Descargas</h3></div>
-        <p className="muted">Estos archivos sólo se descargan, nunca se ejecutan desde la web. Si el archivo no está cargado en el servidor, el botón se deshabilita.</p>
-        <div className="quick-access-grid">
-          {DOWNLOAD_LINKS.map(link => {
-            const status = downloadStatus[link.url] || 'unknown';
-            return (
-              <article key={link.name} className="quick-access-card">
-                <div>
-                  <h4>{link.name}</h4>
-                  <p className="muted">{link.description}</p>
-                </div>
-                {status === 'available'
-                  ? <a className="btn btn-primary" href={link.url} download={link.filename}>Descargar</a>
-                  : <button className="btn btn-secondary" type="button" disabled title="Archivo no cargado">{status === 'missing' ? 'Archivo no cargado' : 'Verificando…'}</button>}
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {editing && (
-        <Modal title={editing.id ? 'Editar acceso' : 'Nuevo acceso rápido'} onClose={() => setEditing(null)}>
-          <QuickLinkForm
-            initial={editing}
-            operator={operator}
-            onDone={async () => { setEditing(null); await reload(); }}
-            onCancel={() => setEditing(null)}
-          />
-        </Modal>
       )}
-    </>
+    </div>
   );
 }

@@ -1,371 +1,345 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, Plus, ReceiptText, ShoppingCart, WalletCards } from 'lucide-react';
-import { GooeyMenu, type GooeyMenuItem } from '../layout/GooeyMenu';
-import type { PurchaseRequest } from '../../types';
-import { createPettyCashExpense, createPurchaseRequest, getPettyCash, resolvePurchaseRequest, savePettyCashConfig, uploadPettyCashReceipt, type PettyCashResponse } from '../../services/pettyCashApi';
-import { Button } from '../layout/Button';
-import { Modal } from '../layout/Modal';
-import { SkeletonView } from '../layout/Skeleton';
-import { dayKeyAr, todayKeyAr } from '../../utils/formatters';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { Pencil, Plus, ReceiptText, ShoppingCart } from 'lucide-react';
+import type { PettyCashExpense } from '../../types';
+import { discardPettyCashReceipt, getPettyCash, savePettyCashConfig, type PettyCashResponse } from '../../services/pettyCashApi';
+import { Button, ErrorState, Eyebrow, Ring, Skeleton, SkeletonRows, StatusText, Table, TruncatedText, icons, useStatusLine, type Column, type SortState } from '../../ui';
+import { InlineCollapse } from '../common/InlineCollapse';
+import { CompactEmpty } from '../tools/CompactEmpty';
+import { ExpenseForm, MoneyInput, RequestForm, emptyExpense, emptyRequest, useUnsavedWarning, type ExpenseDraft, type RequestDraft } from './PettyForms';
+import { RequestItem } from './RequestItem';
+import { displayDay, money, moneyDraft, parseMoney } from './money';
+import '../../styles/screens/pettycash.css';
 
-const EMPTY_EXPENSE = { expenseDate: '', description: '', supplier: '', amount: 0, category: 'General', receiptUrl: '' };
-const EMPTY_REQUEST = { description: '', category: 'General', estimatedAmount: 0, supplier: '', justification: '', receiptUrl: '' };
+const errorText = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
+const EXPENSES_STEP = 15;
+const RESOLVED_STEP = 6;
 
-export function PettyCashPage({ consultationMode }: { consultationMode: boolean }) {
+/** Mantiene el orden de las solicitudes mientras la pantalla está abierta: resolver una no la hace saltar de lugar. */
+function stableOrder(previous: number[], next: number[]) {
+  const set = new Set(next);
+  const kept = previous.filter(id => set.has(id));
+  const known = new Set(kept);
+  return [...next.filter(id => !known.has(id)), ...kept];
+}
+
+/**
+ * Caja chica (etapa 8c). Resumen con anillo de saldo/fondo; "Editar fondo"
+ * (solo Jefe TIC), "Registrar gasto" y "Solicitar compra" como botones que
+ * abren formularios EN LÍNEA (reemplazan al menú gooey flotante y a los
+ * modales). Los borradores sobreviven a cerrar el panel; Cancelar los
+ * descarta (y borra el comprobante subido). Gastos en tabla que pasa a
+ * filas en angosto; solicitudes a todo el ancho con aprobar/rechazar debajo.
+ */
+export function PettyCashPage({ consultationMode, siteCode }: { consultationMode: boolean; siteCode?: string }) {
   const [data, setData] = useState<PettyCashResponse | null>(null);
-  const [config, setConfig] = useState({ initialAmount: 0, requestsEnabled: true });
-  const [expense, setExpense] = useState<typeof EMPTY_EXPENSE | null>(null);
-  const [request, setRequest] = useState<typeof EMPTY_REQUEST | null>(null);
-  const [resolving, setResolving] = useState<PurchaseRequest | null>(null);
-  const [resolution, setResolution] = useState({ finalCost: 0, supplier: '', note: '', addToInventory: false, cantidad: 1 });
-  const [message, setMessage] = useState('');
-  const [modalError, setModalError] = useState('');
-  const [busy, setBusy] = useState(false);
-  // Error de la carga inicial. Antes se guardaba en `message`, que nunca se
-  // veía porque sin datos se dibuja el esqueleto: quedaba cargando para siempre.
   const [loadError, setLoadError] = useState('');
+  const [retrying, setRetrying] = useState(false);
+  const [fundOpen, setFundOpen] = useState(false);
+  const [fundDraft, setFundDraft] = useState('');
+  const [fundBusy, setFundBusy] = useState(false);
+  const [fundError, setFundError] = useState('');
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [expenseDraft, setExpenseDraft] = useState<ExpenseDraft>(emptyExpense);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestDraft, setRequestDraft] = useState<RequestDraft>(emptyRequest);
+  const [order, setOrder] = useState<number[]>([]);
+  const [itemMsgs, setItemMsgs] = useState<Record<number, { tone: 'ok' | 'bad'; text: string }>>({});
+  const [expensesShown, setExpensesShown] = useState(EXPENSES_STEP);
+  const [resolvedShown, setResolvedShown] = useState(RESOLVED_STEP);
+  const [sort, setSort] = useState<SortState>(null);
+  const status = useStatusLine();
+  const fundBtn = useRef<HTMLButtonElement | null>(null);
+  const expenseBtn = useRef<HTMLButtonElement | null>(null);
+  const requestBtn = useRef<HTMLButtonElement | null>(null);
 
   const refresh = useCallback(async () => {
     const response = await getPettyCash();
     setData(response);
-    setConfig({ ...response.config, requestsEnabled: true });
+    setOrder(current => stableOrder(current, response.requests.map(item => item.id)));
+    setLoadError('');
+    return response;
   }, []);
 
-  const loadInitial = useCallback(() => {
-    setLoadError('');
-    refresh().catch(error => setLoadError(errorMessage(error, 'No se pudo cargar caja chica.')));
+  const load = useCallback(async () => {
+    try { await refresh(); } catch (reason) { setLoadError(errorText(reason, 'No se pudo cargar la caja chica.')); }
   }, [refresh]);
 
-  useEffect(() => {
-    loadInitial();
-  }, [loadInitial]);
+  useEffect(() => { void load(); }, [load]);
 
-  const uploadReceipt = async (file: File) => {
-    const base64 = await readFile(file);
-    return (await uploadPettyCashReceipt({ mimeType: file.type, base64 })).url;
-  };
+  const retry = async () => { setRetrying(true); await load(); setRetrying(false); };
 
-  if (!data && loadError) {
+  const categories = useMemo(() => {
+    const set = new Set<string>(['General']);
+    data?.expenses.forEach(item => item.category && set.add(item.category));
+    data?.requests.forEach(item => item.category && set.add(item.category));
+    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+  }, [data]);
+
+  const requests = useMemo(() => {
+    if (!data) return [];
+    const byId = new Map(data.requests.map(item => [item.id, item]));
+    return order.map(id => byId.get(id)).filter(Boolean) as PettyCashResponse['requests'];
+  }, [data, order]);
+
+  // El orden se aplica a TODOS los gastos y después se recorta ("Ver más"), no solo a los visibles.
+  const sortedExpenses = useMemo(() => {
+    const list = data?.expenses || [];
+    if (!sort) return list;
+    const pick = (row: PettyCashExpense) => (sort.key === 'imp' ? row.amount : sort.key === 'desc' ? row.description.toLowerCase() : row.expenseDate);
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => { const x = pick(a); const y = pick(b); return (x < y ? -1 : x > y ? 1 : b.id - a.id) * dir; });
+  }, [data, sort]);
+
+  const fundAmount = parseMoney(fundDraft);
+  useUnsavedWarning(fundOpen && data !== null && fundAmount !== data.config.initialAmount);
+
+  if (!data) {
     return (
-      <section className="view active petty-cash-page">
-        <div className="tool-error previous-loans-error">
-          <span>{loadError}</span>
-          <button type="button" onClick={loadInitial}>Reintentar</button>
-        </div>
+      <section className="pc-page" aria-label="Caja chica" aria-busy={!loadError}>
+        <header className="pc-head"><div><Eyebrow>Fondo fijo{siteCode ? ` · ${siteCode}` : ''}</Eyebrow><h1 className="pc-h1">Caja chica</h1></div></header>
+        {loadError ? (
+          <ErrorState message={<>{loadError} No mostramos un saldo viejo para no confundir.</>} retrying={retrying} onRetry={() => void retry()} />
+        ) : (
+          <>
+            <div className="pc-card pc-sum" aria-hidden="true">
+              <Skeleton width="8rem" height="0.75rem" />
+              <Skeleton width="12rem" height="2.25rem" />
+              <Skeleton width="16rem" height="0.75rem" />
+            </div>
+            <div className="pc-card pc-skel-list" aria-hidden="true"><SkeletonRows rows={4} /></div>
+          </>
+        )}
       </section>
     );
   }
-  if (!data) return <section className="view active petty-cash-page"><SkeletonView /></section>;
 
-  const openExpense = () => {
-    setModalError('');
-    setExpense({ ...EMPTY_EXPENSE, expenseDate: displayDate(todayKeyAr()) });
+  const { manager, canRequest } = data.permissions;
+  const fund = data.config.initialAmount;
+  const balance = data.balance;
+  const pendingCount = data.requests.filter(item => item.status === 'Pendiente').length;
+  const pendingList = requests.filter(item => item.status === 'Pendiente' || itemMsgs[item.id]);
+  const resolvedList = requests.filter(item => item.status !== 'Pendiente' && !itemMsgs[item.id]);
+  const pct = fund > 0 ? Math.round((Math.max(0, balance) / fund) * 100) : 0;
+
+  const saveFund = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (fundBusy) return;
+    if (fundAmount === null || Number.isNaN(fundAmount) || fundAmount < 0) { setFundError('Poné un importe válido (0 o más).'); return; }
+    setFundBusy(true);
+    setFundError('');
+    try {
+      await savePettyCashConfig({ initialAmount: fundAmount, requestsEnabled: true });
+      setFundOpen(false);
+      fundBtn.current?.focus({ preventScroll: true });
+      status.show({ tone: 'ok', message: `Fondo actualizado a ${money(fundAmount)}.` });
+      await refresh().catch(() => status.show({ tone: 'warn', message: 'El fondo se guardó, pero no se pudo recargar el saldo.', retry: { onRetry: () => load() } }));
+    } catch (reason) {
+      setFundError(errorText(reason, 'No se pudo actualizar el fondo.'));
+    } finally {
+      setFundBusy(false);
+    }
   };
-  const openRequest = () => {
-    setModalError('');
-    setRequest({ ...EMPTY_REQUEST });
+
+  const afterSave = async (message: string, which: 'expense' | 'request') => {
+    if (which === 'expense') { setExpenseOpen(false); setExpenseDraft(emptyExpense()); expenseBtn.current?.focus({ preventScroll: true }); }
+    else { setRequestOpen(false); setRequestDraft(emptyRequest()); requestBtn.current?.focus({ preventScroll: true }); }
+    status.show({ tone: 'ok', message });
+    await refresh().catch(() => status.show({ tone: 'warn', message: `${message} No se pudo recargar la lista.`, retry: { onRetry: () => load() } }));
   };
-  // Los satélites dependen de los permisos del usuario, así que pueden quedar
-  // dos, uno o ninguno. Se arma antes del render para poder decidir con el
-  // largo si va el gooey o los botones sueltos.
-  const gooeyItems: GooeyMenuItem[] = [
-    ...(data.permissions.manager ? [{ id: 'expense', label: 'Registrar gasto', icon: <ReceiptText size={16} />, onSelect: openExpense }] : []),
-    ...(data.permissions.canRequest ? [{ id: 'request', label: 'Solicitar compra', icon: <ShoppingCart size={16} />, onSelect: openRequest }] : [])
+
+  const cancelExpense = () => {
+    if (expenseDraft.receiptUrl) void discardPettyCashReceipt(expenseDraft.receiptUrl).catch(() => {});
+    setExpenseOpen(false);
+    setExpenseDraft(emptyExpense());
+    expenseBtn.current?.focus({ preventScroll: true });
+  };
+  const cancelRequest = () => {
+    if (requestDraft.receiptUrl) void discardPettyCashReceipt(requestDraft.receiptUrl).catch(() => {});
+    setRequestOpen(false);
+    setRequestDraft(emptyRequest());
+    requestBtn.current?.focus({ preventScroll: true });
+  };
+
+  const onResolved = async (id: number, message: string) => {
+    setItemMsgs(current => ({ ...current, [id]: { tone: 'ok', text: message } }));
+    await refresh().catch(() => status.show({ tone: 'warn', message: 'Se resolvió, pero no se pudo recargar el saldo.', retry: { onRetry: () => load() } }));
+  };
+
+  const expenseColumns: Column<PettyCashExpense>[] = [
+    { key: 'fecha', header: 'Fecha', width: '6.5rem', mono: true, card: 'meta', sortValue: row => row.expenseDate, cell: row => displayDay(row.expenseDate) },
+    {
+      key: 'desc', header: 'Descripción', width: 'minmax(0, 2.4fr)', card: 'title', sortValue: row => row.description,
+      cell: row => (
+        <span className="pc-exp-desc">
+          <TruncatedText className="pc-exp-title" lines={2}>{row.description}</TruncatedText>
+          <span className="pc-exp-sub">{row.supplier || 'Sin proveedor'} · {row.category || 'General'}{row.inventoryItemId ? <> · <StatusText tone="info">Inventario #{row.inventoryItemId}</StatusText></> : null}</span>
+        </span>
+      )
+    },
+    { key: 'imp', header: 'Importe', width: '8.5rem', align: 'end', mono: true, sortValue: row => row.amount, cell: row => money(row.amount) },
+    {
+      key: 'comp', header: 'Comprobante', width: '8rem', cell: row => (row.receiptUrl
+        ? <a className="pc-link" href={row.receiptUrl} target="_blank" rel="noopener">Ver comprobante</a>
+        : <span className="pc-none">Sin comprobante</span>)
+    }
   ];
 
-  const openResolution = (item: PurchaseRequest) => {
-    setModalError('');
-    setResolving(item);
-    setResolution({ finalCost: item.estimatedAmount || 0, supplier: item.requestedSupplier || '', note: '', addToInventory: false, cantidad: 1 });
-  };
-
-  const submitExpense = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!expense || busy) return;
-    setModalError('');
-    const expenseDate = isoDate(expense.expenseDate);
-    if (!expenseDate) return setModalError('Ingresá una fecha válida con formato DD/MM/AAAA.');
-    if (expense.amount > data.balance) return setModalError(`No alcanza el saldo. Hay ${money(data.balance)} disponibles y el gasto es de ${money(expense.amount)}.`);
-    setBusy(true);
-    try {
-      await createPettyCashExpense({ ...expense, expenseDate });
-      setExpense(null);
-      setMessage('Gasto registrado.');
-      await refresh();
-    } catch (error) {
-      setModalError(errorMessage(error, 'No se pudo registrar el gasto.'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const submitRequest = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!request || busy) return;
-    setModalError('');
-    setBusy(true);
-    try {
-      await createPurchaseRequest(request);
-      setRequest(null);
-      setMessage('Solicitud enviada al responsable de caja chica.');
-      await refresh();
-    } catch (error) {
-      setModalError(errorMessage(error, 'No se pudo enviar la solicitud.'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const submitResolution = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!resolving || busy) return;
-    setModalError('');
-    if (resolution.finalCost > data.balance) return setModalError(`No alcanza el saldo para aprobarla. Disponible: ${money(data.balance)}.`);
-    setBusy(true);
-    try {
-      await resolvePurchaseRequest(resolving.id, {
-        status: 'Aprobada',
-        finalCost: resolution.finalCost,
-        supplier: resolution.supplier,
-        note: resolution.note,
-        addToInventory: resolution.addToInventory,
-        inventory: { nombre: resolving.description, categoria: resolving.category, cantidad: resolution.cantidad, unidad: 'unidades', estado: 'Nuevo' }
-      });
-      setResolving(null);
-      setMessage('Compra aprobada y descontada del saldo.');
-      await refresh();
-    } catch (error) {
-      setModalError(errorMessage(error, 'No se pudo aprobar la compra.'));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const disabledWhy = consultationMode ? 'Modo consulta' : '';
 
   return (
-    <section className="view active petty-cash-page">
-      <section className="card petty-summary">
-        <div className="petty-summary-copy">
-          <span className="petty-summary-icon" aria-hidden="true"><WalletCards size={22} /></span>
-          <div>
-            <span className="eyebrow">Fondo fijo</span>
-            <h2>Caja chica</h2>
-            <p>Gastos y solicitudes de compra de la sede.</p>
+    <section className="pc-page" aria-label="Caja chica">
+      <header className="pc-head">
+        <div>
+          <Eyebrow>Fondo fijo{siteCode ? ` · ${siteCode}` : ''}</Eyebrow>
+          <h1 className="pc-h1">Caja chica</h1>
+        </div>
+      </header>
+
+      {consultationMode && (
+        <p className="pc-note" role="status"><icons.IconLock size={14} /><span>Modo consulta: podés ver saldo, gastos y solicitudes. Registrar, solicitar y resolver quedan deshabilitados.</span></p>
+      )}
+      {loadError && <ErrorState message={`${loadError} Lo que ves puede estar desactualizado.`} retrying={retrying} onRetry={() => void retry()} />}
+
+      <section className="pc-card pc-sum" aria-label="Saldo de la caja chica">
+        <div className="pc-sum-row">
+          <div className="pc-sum-main">
+            <span className="pc-sum-label">Saldo disponible</span>
+            <span className={`pc-sum-balance pc-mono${balance < 0 ? ' is-bad' : ''}`}>{money(balance)}</span>
+            <span className="pc-sum-facts">
+              <span>Fondo <b className="pc-mono">{money(fund)}</b></span>
+              <span>Gastado <b className="pc-mono">{money(data.spent)}</b></span>
+            </span>
+            {fund <= 0 && <StatusText tone="muted">Todavía no hay un fondo cargado.{manager ? ' Usá “Editar fondo”.' : ''}</StatusText>}
+            {balance < 0 && <StatusText tone="bad">El saldo es negativo: lo gastado supera el fondo.</StatusText>}
+          </div>
+          {fund > 0 && (
+            <div className="pc-sum-ring">
+              <Ring value={Math.max(0, balance)} total={fund} size={40} unit="pesos disponibles" />
+              <span className="pc-sum-pct"><b className="pc-mono">{pct} %</b><span>del fondo disponible</span></span>
+            </div>
+          )}
+          <div className="pc-sum-acts">
+            {manager && (
+              <Button ref={fundBtn} variant="ghost" icon={<Pencil size={15} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={fundOpen} onClick={() => { if (!fundOpen) { setFundDraft(moneyDraft(fund)); setFundError(''); } setFundOpen(open => !open); }}>
+                Editar fondo
+              </Button>
+            )}
+            {manager && (
+              <Button ref={expenseBtn} variant="secondary" icon={<ReceiptText size={16} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={expenseOpen} onClick={() => setExpenseOpen(open => !open)}>
+                Registrar gasto
+              </Button>
+            )}
+            {canRequest && (
+              <Button ref={requestBtn} variant="primary" icon={<ShoppingCart size={16} strokeWidth={1.6} />} disabled={consultationMode} aria-expanded={requestOpen} onClick={() => setRequestOpen(open => !open)}>
+                Solicitar compra
+              </Button>
+            )}
           </div>
         </div>
-        <div className="petty-balance">
-          <span>Saldo disponible</span>
-          <strong>{money(data.balance)}</strong>
-          <small>Fondo {money(data.config.initialAmount)} · Gastado {money(data.spent)}</small>
-        </div>
+        {disabledWhy && (manager || canRequest) && <span className="pc-why">Botones deshabilitados: {disabledWhy.toLowerCase()}.</span>}
+
+        <InlineCollapse open={fundOpen && manager} label="Editar fondo" returnFocus={fundBtn}>
+          <form className="pc-fund" onSubmit={saveFund} noValidate data-scanner-ignore="" onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); setFundOpen(false); fundBtn.current?.focus({ preventScroll: true }); } }}>
+            <MoneyInput
+              label="Fondo inicial"
+              value={fundDraft}
+              onChange={value => { setFundDraft(value); setFundError(''); }}
+              autoFocus
+              error={fundError || undefined}
+              hint={fundAmount !== null && !Number.isNaN(fundAmount) && fundAmount < data.spent ? `Con este fondo el saldo queda en ${money(fundAmount - data.spent)}.` : 'El saldo se recalcula: fondo menos lo gastado.'}
+            />
+            <div className="pc-form-actions">
+              <Button variant="ghost" disabled={fundBusy} onClick={() => { setFundOpen(false); fundBtn.current?.focus({ preventScroll: true }); }}>Cancelar</Button>
+              <Button variant="primary" type="submit" loading={fundBusy} loadingLabel="Guardando…">Guardar fondo</Button>
+            </div>
+          </form>
+        </InlineCollapse>
       </section>
 
-      {message && <div className="tool-info">{message}</div>}
+      {status.element}
 
-      <div className="petty-command-bar">
-        {data.permissions.manager && (
-          <div className="petty-fund-editor">
-            <label>Fondo inicial
-              <input className="input" type="number" min="0" step="0.01" disabled={consultationMode} value={config.initialAmount} onChange={event => setConfig(value => ({ ...value, initialAmount: Number(event.target.value) }))} />
-            </label>
-            <Button disabled={consultationMode} onClick={async () => {
-              try {
-                await savePettyCashConfig({ initialAmount: config.initialAmount, requestsEnabled: true });
-                setMessage('Fondo actualizado.');
-                await refresh();
-              } catch (error) {
-                setMessage(errorMessage(error, 'No se pudo actualizar el fondo.'));
-              }
-            }}>Guardar fondo</Button>
+      {manager && (
+        <InlineCollapse open={expenseOpen && !consultationMode} gap="var(--g-s-4)" returnFocus={expenseBtn} label="Registrar gasto">
+          <div className="pc-card pc-form-card">
+            <ExpenseForm
+              draft={expenseDraft}
+              setDraft={setExpenseDraft}
+              balance={balance}
+              categories={categories}
+              onSaved={message => afterSave(message, 'expense')}
+              onCancel={cancelExpense}
+              onClose={() => { setExpenseOpen(false); expenseBtn.current?.focus({ preventScroll: true }); }}
+            />
           </div>
-        )}
-        <div className="petty-actions">
-          {/* El "+" del gooey junta las dos acciones de alta. Los ítems dependen
-              de permisos: si queda uno solo, GooeyMenu no renderiza (un satélite
-              no se lee como cuerpo líquido) y caen los botones sueltos de abajo. */}
-          {!consultationMode && gooeyItems.length >= 2 && <GooeyMenu ariaLabel="Nuevo movimiento" items={gooeyItems} />}
-          {gooeyItems.length < 2 && data.permissions.manager && <Button disabled={consultationMode} onClick={openExpense}><Plus size={16} /> Registrar gasto</Button>}
-          {gooeyItems.length < 2 && data.permissions.canRequest && <Button variant="primary" disabled={consultationMode} onClick={openRequest}><Plus size={16} /> Solicitar compra</Button>}
+        </InlineCollapse>
+      )}
+      {canRequest && (
+        <InlineCollapse open={requestOpen && !consultationMode} gap="var(--g-s-4)" returnFocus={requestBtn} label="Solicitar compra">
+          <div className="pc-card pc-form-card">
+            <RequestForm
+              draft={requestDraft}
+              setDraft={setRequestDraft}
+              categories={categories}
+              onSaved={message => afterSave(message, 'request')}
+              onCancel={cancelRequest}
+              onClose={() => { setRequestOpen(false); requestBtn.current?.focus({ preventScroll: true }); }}
+            />
+          </div>
+        </InlineCollapse>
+      )}
+
+      <section className="pc-card pc-section" aria-labelledby="pc-req-title">
+        <div className="pc-section-head">
+          <h2 id="pc-req-title" className="pc-section-title">Solicitudes de compra</h2>
+          <span className={`pc-section-count${pendingCount ? ' is-warn' : ''}`}>{pendingCount ? `${pendingCount} ${pendingCount === 1 ? 'pendiente' : 'pendientes'}` : 'Sin pendientes'}</span>
         </div>
-      </div>
+        {data.requests.length === 0 ? (
+          <CompactEmpty
+            icon={<ShoppingCart size={18} strokeWidth={1.6} />}
+            title="No hay solicitudes"
+            description="Las solicitudes de compra del equipo aparecen acá para aprobarlas o rechazarlas."
+            action={canRequest && !consultationMode ? <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setRequestOpen(true)}>Solicitar compra</Button> : undefined}
+          />
+        ) : (
+          <>
+            <ul className="pc-req-list">
+              {[...pendingList, ...resolvedList.slice(0, resolvedShown)].map(item => (
+                <RequestItem key={item.id} item={item} manager={manager} readOnly={consultationMode} balance={balance} message={itemMsgs[item.id] || null} onResolved={onResolved} />
+              ))}
+            </ul>
+            {resolvedList.length > resolvedShown && (
+              <div className="pc-more">
+                <Button size="sm" variant="ghost" onClick={() => setResolvedShown(count => count + RESOLVED_STEP * 2)}>Ver anteriores ({resolvedList.length - resolvedShown})</Button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
 
-      <div className="petty-layout">
-        <section className="card petty-section">
-          <div className="petty-section-head">
-            <div><span className="petty-section-icon"><ReceiptText size={18} /></span><h3>Historial de gastos</h3></div>
-            <span>{data.expenses.length}</span>
-          </div>
-          <div className="petty-list">
-            {data.expenses.map(item => (
-              <article className="petty-row" key={item.id}>
-                <time>{formatDate(item.expenseDate)}</time>
-                <div><strong>{item.description}</strong><span>{item.supplier || 'Sin proveedor'} · {item.category}</span></div>
-                <strong>{money(item.amount)}</strong>
-                {item.receiptUrl ? <a href={item.receiptUrl} target="_blank" rel="noreferrer">Comprobante</a> : <span className="muted">Sin comprobante</span>}
-                {item.inventoryItemId && <span className="inventory-linked">Inventario #{item.inventoryItemId}</span>}
-              </article>
-            ))}
-            {!data.expenses.length && <EmptyPanel icon={<ReceiptText size={30} />} title="Todavía no hay gastos" text="Cuando registres uno aparecerá en este historial." />}
-          </div>
-        </section>
-
-        <section className="card petty-section">
-          <div className="petty-section-head">
-            <div><span className="petty-section-icon"><ShoppingCart size={18} /></span><h3>Solicitudes de compra</h3></div>
-            <span>{data.requests.filter(item => item.status === 'Pendiente').length} pendientes</span>
-          </div>
-          <div className="request-list">
-            {data.requests.map(item => (
-              <article className={`request-card status-${item.status.toLowerCase()}`} key={item.id}>
-                <header><div><strong>{item.description}</strong><span>{item.requesterName} · {formatDate(item.createdAt)}</span></div><span>{item.status}</span></header>
-                <p>{item.justification || 'Sin justificación adicional.'}</p>
-                <div className="request-meta"><span>Estimado {money(item.estimatedAmount)}</span><span>{item.requestedSupplier || 'Proveedor a definir'}</span></div>
-                {item.status !== 'Pendiente' && <small>{item.finalSupplier ? `${item.finalSupplier} · ${money(item.finalCost)}` : item.resolutionNote}</small>}
-                {item.status === 'Pendiente' && data.permissions.manager && (
-                  <div className="actions">
-                    <Button disabled={consultationMode} variant="primary" onClick={() => openResolution(item)}>Resolver <ArrowRight size={15} /></Button>
-                    <Button disabled={consultationMode} onClick={async () => {
-                      try {
-                        await resolvePurchaseRequest(item.id, { status: 'Rechazada', note: 'Rechazada desde caja chica' });
-                        await refresh();
-                      } catch (error) {
-                        setMessage(errorMessage(error, 'No se pudo rechazar la solicitud.'));
-                      }
-                    }}>Rechazar</Button>
-                  </div>
-                )}
-              </article>
-            ))}
-            {!data.requests.length && <EmptyPanel icon={<ShoppingCart size={30} />} title="No hay solicitudes" text="Las solicitudes del equipo se mostrarán acá." />}
-          </div>
-        </section>
-      </div>
-
-      {expense && (
-        <Modal title="Registrar gasto" onClose={() => setExpense(null)}>
-          <form className="stack" onSubmit={submitExpense}>
-            {modalError && <div className="tool-error">{modalError}</div>}
-            <div className="balance-context"><span>Saldo disponible</span><strong>{money(data.balance)}</strong></div>
-            <label>Fecha
-              <input className="input" inputMode="numeric" required value={expense.expenseDate} onChange={event => setExpense(value => ({ ...value!, expenseDate: event.target.value }))} placeholder="DD/MM/AAAA" />
-            </label>
-            <label>Descripción<input className="input" required value={expense.description} onChange={event => setExpense(value => ({ ...value!, description: event.target.value }))} /></label>
-            <div className="grid-2">
-              <label>Proveedor<input className="input" value={expense.supplier} onChange={event => setExpense(value => ({ ...value!, supplier: event.target.value }))} /></label>
-              <label>Categoría<input className="input" value={expense.category} onChange={event => setExpense(value => ({ ...value!, category: event.target.value }))} /></label>
-            </div>
-            <label>Importe<input className="input" type="number" min="0.01" step="0.01" required value={expense.amount || ''} onChange={event => setExpense(value => ({ ...value!, amount: Number(event.target.value) }))} /></label>
-            <ReceiptField url={expense.receiptUrl} onUpload={async file => {
-              try {
-                const receiptUrl = await uploadReceipt(file);
-                setExpense(value => ({ ...value!, receiptUrl }));
-              } catch (error) {
-                setModalError(errorMessage(error, 'No se pudo adjuntar el comprobante.'));
-              }
-            }} />
-            <div className="actions"><Button variant="primary" type="submit" disabled={busy}>{busy ? 'Registrando…' : 'Registrar gasto'}</Button><Button type="button" onClick={() => setExpense(null)}>Cancelar</Button></div>
-          </form>
-        </Modal>
-      )}
-
-      {request && (
-        <Modal title="Solicitar compra" onClose={() => setRequest(null)}>
-          <form className="stack" onSubmit={submitRequest}>
-            {modalError && <div className="tool-error">{modalError}</div>}
-            <label>Qué necesitás comprar<input className="input" required value={request.description} onChange={event => setRequest(value => ({ ...value!, description: event.target.value }))} /></label>
-            <div className="grid-2">
-              <label>Categoría<input className="input" value={request.category} onChange={event => setRequest(value => ({ ...value!, category: event.target.value }))} /></label>
-              <label>Importe estimado<input className="input" type="number" min="0" step="0.01" value={request.estimatedAmount || ''} onChange={event => setRequest(value => ({ ...value!, estimatedAmount: Number(event.target.value) }))} /></label>
-            </div>
-            <label>Proveedor sugerido<input className="input" value={request.supplier} onChange={event => setRequest(value => ({ ...value!, supplier: event.target.value }))} /></label>
-            <label>Justificación<textarea className="input" rows={3} value={request.justification} onChange={event => setRequest(value => ({ ...value!, justification: event.target.value }))} /></label>
-            <ReceiptField url={request.receiptUrl} onUpload={async file => {
-              try {
-                const receiptUrl = await uploadReceipt(file);
-                setRequest(value => ({ ...value!, receiptUrl }));
-              } catch (error) {
-                setModalError(errorMessage(error, 'No se pudo adjuntar el comprobante.'));
-              }
-            }} />
-            <div className="actions"><Button variant="primary" type="submit" disabled={busy}>{busy ? 'Enviando…' : 'Enviar solicitud'}</Button><Button type="button" onClick={() => setRequest(null)}>Cancelar</Button></div>
-          </form>
-        </Modal>
-      )}
-
-      {resolving && (
-        <Modal title={`Aprobar solicitud #${resolving.id}`} onClose={() => setResolving(null)}>
-          <form className="stack" onSubmit={submitResolution}>
-            {modalError && <div className="tool-error">{modalError}</div>}
-            <p className="muted">Al aprobar se crea el gasto y se notifica a {resolving.requesterName}.</p>
-            <div className="balance-context"><span>Saldo disponible</span><strong>{money(data.balance)}</strong></div>
-            <div className="grid-2">
-              <label>Costo final<input className="input" type="number" min="0.01" step="0.01" required value={resolution.finalCost || ''} onChange={event => setResolution(value => ({ ...value, finalCost: Number(event.target.value) }))} /></label>
-              <label>Proveedor<input className="input" required value={resolution.supplier} onChange={event => setResolution(value => ({ ...value, supplier: event.target.value }))} /></label>
-            </div>
-            <label>Nota de resolución<textarea className="input" rows={2} value={resolution.note} onChange={event => setResolution(value => ({ ...value, note: event.target.value }))} /></label>
-            <button className={`toggle-row toggle-row-button ${resolution.addToInventory ? 'active' : ''}`} type="button" role="switch" aria-checked={resolution.addToInventory} onClick={() => setResolution(value => ({ ...value, addToInventory: !value.addToInventory }))}>
-              <span className="toggle-pill"><span /></span>
-              <strong>Registrar también en Inventario TIC</strong>
-            </button>
-            {resolution.addToInventory && <label>Cantidad<input className="input" type="number" min="1" value={resolution.cantidad} onChange={event => setResolution(value => ({ ...value, cantidad: Number(event.target.value) }))} /></label>}
-            <div className="actions"><Button variant="primary" type="submit" disabled={busy}>{busy ? 'Aprobando…' : 'Aprobar y descontar'}</Button><Button type="button" onClick={() => setResolving(null)}>Cancelar</Button></div>
-          </form>
-        </Modal>
-      )}
-
+      <section className="pc-card pc-section" aria-labelledby="pc-exp-title">
+        <div className="pc-section-head">
+          <h2 id="pc-exp-title" className="pc-section-title">Gastos</h2>
+          <span className="pc-section-count pc-mono">{data.expenses.length}</span>
+          <span className="pc-section-hint">Más nuevos primero · ordená tocando el encabezado</span>
+        </div>
+        {data.expenses.length === 0 ? (
+          <CompactEmpty
+            icon={<ReceiptText size={18} strokeWidth={1.6} />}
+            title="Todavía no hay gastos"
+            description="Cuando registres uno (o se apruebe una solicitud) aparece en este historial."
+            action={manager && !consultationMode ? <Button variant="secondary" icon={<Plus size={16} />} onClick={() => setExpenseOpen(true)}>Registrar gasto</Button> : undefined}
+          />
+        ) : (
+          <>
+            <Table rows={sortedExpenses.slice(0, expensesShown)} columns={expenseColumns} sort={sort} onSortChange={setSort} manualSort rowKey={row => String(row.id)} caption="Gastos de la caja chica" cardBelow="md" className="pc-table" />
+            {data.expenses.length > expensesShown && (
+              <div className="pc-more">
+                <Button size="sm" variant="ghost" onClick={() => setExpensesShown(count => count + EXPENSES_STEP * 2)}>Ver más ({data.expenses.length - expensesShown})</Button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
     </section>
   );
-}
-
-function EmptyPanel({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
-  return <div className="petty-empty"><span>{icon}</span><strong>{title}</strong><p>{text}</p></div>;
-}
-
-function ReceiptField({ url, onUpload }: { url: string; onUpload: (file: File) => void | Promise<void> }) {
-  return (
-    <div className="field">
-      <span>Comprobante (opcional)</span>
-      <span className="receipt-field">
-        <input className="input" value={url} readOnly placeholder="Sin archivo" aria-label="Comprobante (opcional)" />
-        <label className="btn btn-secondary">Adjuntar<input type="file" accept="image/*,.pdf" onChange={event => { const file = event.target.files?.[0]; if (file) void onUpload(file); }} /></label>
-      </span>
-    </div>
-  );
-}
-
-function money(value: number) {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(value || 0);
-}
-
-function displayDate(value: string) {
-  const date = String(value || '').slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.split('-').reverse().join('/') : date;
-}
-
-function isoDate(value: string) {
-  const match = String(value || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (!match) return '';
-  const [, day, month, year] = match;
-  const candidate = new Date(`${year}-${month}-${day}T12:00:00`);
-  return candidate.getFullYear() === Number(year) && candidate.getMonth() + 1 === Number(month) && candidate.getDate() === Number(day)
-    ? `${year}-${month}-${day}`
-    : '';
-}
-
-function formatDate(value: string) {
-  // Día en hora argentina: createdAt viene en UTC.
-  const date = dayKeyAr(value || '') || String(value || '').slice(0, 10);
-  return date ? date.split('-').reverse().join('/') : '—';
-}
-
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
-
-function readFile(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 }

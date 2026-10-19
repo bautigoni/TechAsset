@@ -26,6 +26,7 @@ import { assistantTests } from './tests/assistant.mjs';
 import { ticketsTests } from './tests/tickets.mjs';
 import { classroomsTests } from './tests/classrooms.mjs';
 import { knowledgeCanvasTests } from './tests/knowledgeCanvas.mjs';
+import { toolsTests } from './tests/tools.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 
 const args = process.argv.slice(2);
@@ -116,6 +117,7 @@ try {
   await ticketsTests(ctx);
   await classroomsTests(ctx);
   await knowledgeCanvasTests(ctx);
+  await toolsTests(ctx);
   timings.functional = Date.now() - t;
 
   if (!flag('no-baseline')) {

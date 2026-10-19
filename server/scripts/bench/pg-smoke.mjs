@@ -353,6 +353,34 @@ try {
   check('recordatorio: personas de la sede', people.status === 200 && Array.isArray(people.json?.items), people.text.slice(0, 200));
   const pushTest = await call('POST', '/api/reminders/push-test', {});
   check('recordatorio: push de prueba responde', pushTest.status === 200 && typeof pushTest.json?.subscriptions === 'number', pushTest.text.slice(0, 200));
+  // Etapa 8c: accesos rápidos (orden manual, deshacer borrado), herramientas, caja chica.
+  const qa1 = await call('POST', '/api/quick-links', { titulo: 'Smoke B', url: 'https://b.example.org', categoria: 'SmokeCat' });
+  const qa2 = await call('POST', '/api/quick-links', { titulo: 'Smoke A', url: 'https://a.example.org', categoria: 'SmokeCat' });
+  const qaIds = [qa1.json?.item?.id, qa2.json?.item?.id];
+  const reorder = await call('POST', '/api/quick-links/reorder', { ids: qaIds });
+  const qaList = (await call('GET', '/api/quick-links')).json.items.filter(item => item.categoria === 'SmokeCat');
+  check('accesos: orden manual (columna orden, ORDER BY categoria, orden)', reorder.json?.changed === 2 && qaList.map(item => item.titulo).join(',') === 'Smoke B,Smoke A', reorder.text.slice(0, 200));
+  const qa3 = await call('POST', '/api/quick-links', { titulo: 'Smoke C', url: 'https://c.example.org', categoria: 'SmokeCat' });
+  check('accesos: uno nuevo entra al final de la categoría ordenada', qa3.json?.item?.orden === 3, qa3.text.slice(0, 200));
+  await call('DELETE', `/api/quick-links/${qaIds[0]}`);
+  const qaRestore = await call('POST', `/api/quick-links/${qaIds[0]}/restore`, {});
+  check('accesos: deshacer borrado', qaRestore.status === 200 && qaRestore.json?.item?.activo === true, qaRestore.text.slice(0, 200));
+  const cardsCsv = 'Username,Nombre,Apellido,Grupo,Contraseña\njp,Juan,Pérez,4N,X1';
+  const gen = await call('POST', '/api/tools/glifing/generate', { csv: cardsCsv, tipo: 'glifing' });
+  const open1 = await call('GET', gen.json?.downloadUrl || '/api/tools/glifing/download/x');
+  const open2 = await call('GET', gen.json?.downloadUrl || '/api/tools/glifing/download/x');
+  check('tarjetas: el resultado se abre más de una vez', open1.status === 200 && open2.status === 200 && /Tarjetas de acceso/.test(open2.text) && gen.json?.expiresAt, `${open1.status} ${open2.status}`);
+  await call('PATCH', '/api/petty-cash/config', { initialAmount: 1000, requestsEnabled: true });
+  const upload = await call('POST', '/api/petty-cash/upload-receipt', { mimeType: 'image/png', base64: Buffer.from('png').toString('base64') });
+  const discard = await call('POST', '/api/petty-cash/discard-receipt', { url: upload.json?.url });
+  check('caja chica: descartar comprobante sin usar (UNION ALL en Postgres)', discard.status === 200 && discard.json?.removed === true, discard.text.slice(0, 200));
+  const upload2 = await call('POST', '/api/petty-cash/upload-receipt', { mimeType: 'image/png', base64: Buffer.from('png').toString('base64') });
+  await call('POST', '/api/petty-cash/expenses', { description: 'Smoke gasto', amount: 10, expenseDate: '2026-10-19', receiptUrl: upload2.json?.url });
+  const keep = await call('POST', '/api/petty-cash/discard-receipt', { url: upload2.json?.url });
+  check('caja chica: no borra un comprobante en uso', keep.status === 200 && keep.json?.removed === false, keep.text.slice(0, 200));
+  const req = await call('POST', '/api/petty-cash/requests', { description: 'Smoke compra', estimatedAmount: 5 });
+  const rej = await call('PATCH', `/api/petty-cash/requests/${req.json?.item?.id}`, { status: 'Rechazada', note: 'Nota editada' });
+  check('caja chica: rechazar con nota', rej.json?.item?.status === 'Rechazada' && rej.json.item.resolutionNote === 'Nota editada', rej.text.slice(0, 200));
 
   // Errores de SQL en el log del server.
   const sqlErrors = serverLog.split('\n').filter(line => /syntax error|does not exist|operator does not|invalid input|ERROR:/i.test(line));

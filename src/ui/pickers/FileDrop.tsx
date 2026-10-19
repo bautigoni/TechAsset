@@ -34,6 +34,8 @@ export type FileDropProps = {
   className?: string;
   /** Archivos ya presentes al montar (p. ej. adjuntos de un ticket que se edita). */
   defaultItems?: FileDropItem[];
+  /** Si el error de subida se puede reintentar con el mismo archivo (default: siempre). Un "faltan columnas" no se arregla reintentando. */
+  canRetry?: (item: FileDropItem) => boolean;
 };
 
 let counter = 0;
@@ -56,7 +58,7 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
 }
 
-export function FileDrop({ accept, multiple = false, maxSizeMB, upload, onFilesChange, onRemove, title, hint, disabled, pasteable = true, label = 'Adjuntar archivo', className, defaultItems = [] }: FileDropProps) {
+export function FileDrop({ accept, multiple = false, maxSizeMB, upload, onFilesChange, onRemove, title, hint, disabled, pasteable = true, label = 'Adjuntar archivo', className, defaultItems = [], canRetry }: FileDropProps) {
   const [items, setItems] = useState<FileDropItem[]>(defaultItems);
   const [over, setOver] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -168,7 +170,7 @@ export function FileDrop({ accept, multiple = false, maxSizeMB, upload, onFilesC
                 </span>
               </span>
               <span className="ui-file-actions">
-                {item.status === 'error' && upload && matchesAccept(item.file, accept) && !(maxSizeMB && item.file.size > maxSizeMB * 1024 * 1024) && (
+                {item.status === 'error' && upload && matchesAccept(item.file, accept) && !(maxSizeMB && item.file.size > maxSizeMB * 1024 * 1024) && (canRetry ? canRetry(item) : true) && (
                   <Button size="sm" variant="secondary" icon={<IconRetry size={14} />} onClick={() => void start(item)}>Reintentar</Button>
                 )}
                 {!multiple && item.status !== 'uploading' && (

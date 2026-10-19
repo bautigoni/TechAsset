@@ -16,4 +16,6 @@ export const savePettyCashConfig = (payload: { initialAmount: number; requestsEn
 export const createPettyCashExpense = (payload: Partial<PettyCashExpense>) => apiSend('/api/petty-cash/expenses', 'POST', payload);
 export const createPurchaseRequest = (payload: Record<string, unknown>) => apiSend('/api/petty-cash/requests', 'POST', payload);
 export const resolvePurchaseRequest = (id: number, payload: Record<string, unknown>) => apiSend(`/api/petty-cash/requests/${id}`, 'PATCH', payload);
-export const uploadPettyCashReceipt = (payload: { mimeType: string; base64: string }) => apiSend<{ ok: true; url: string }>('/api/petty-cash/upload-receipt', 'POST', payload);
+/** Borra un comprobante subido que no llegó a guardarse (Quitar / Cancelar). */
+export const discardPettyCashReceipt = (url: string) => apiSend<{ ok: true; removed: boolean }>('/api/petty-cash/discard-receipt', 'POST', { url });
+export const uploadPettyCashReceipt =(payload: { mimeType: string; base64: string }) => apiSend<{ ok: true; url: string }>('/api/petty-cash/upload-receipt', 'POST', payload);

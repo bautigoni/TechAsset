@@ -1,10 +1,10 @@
 {
   "note": "Generado por scripts/check-ui.mjs --update. Lo que hay hoy en src/ fuera de src/ui/; se achica a medida que el rediseño reemplaza controles.",
   "totals": {
-    "title-tooltip": 7,
+    "title-tooltip": 6,
     "checkbox-radio-crudo": 9,
-    "input-nativo": 13,
     "details": 2,
+    "input-nativo": 5,
     "hex-en-css": 57
   },
   "entries": [
@@ -394,42 +394,6 @@
     },
     {
       "rule": "input-nativo",
-      "file": "src/components/pettycash/PettyCashPage.tsx",
-      "text": "{resolution.addToInventory && <label>Cantidad<input className=\"input\" type=\"number\" min=\"1\" value={resolution.cantidad} onChange={event => setResolution(value =",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/pettycash/PettyCashPage.tsx",
-      "text": "<input className=\"input\" type=\"number\" min=\"0\" step=\"0.01\" disabled={consultationMode} value={config.initialAmount} onChange={event => setConfig(value => ({ ...",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/pettycash/PettyCashPage.tsx",
-      "text": "<label className=\"btn btn-secondary\">Adjuntar<input type=\"file\" accept=\"image/*,.pdf\" onChange={event => { const file = event.target.files?.[0]; if (file) void ",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/pettycash/PettyCashPage.tsx",
-      "text": "<label>Costo final<input className=\"input\" type=\"number\" min=\"0.01\" step=\"0.01\" required value={resolution.finalCost || ''} onChange={event => setResolution(val",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/pettycash/PettyCashPage.tsx",
-      "text": "<label>Importe estimado<input className=\"input\" type=\"number\" min=\"0\" step=\"0.01\" value={request.estimatedAmount || ''} onChange={event => setRequest(value => (",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/pettycash/PettyCashPage.tsx",
-      "text": "<label>Importe<input className=\"input\" type=\"number\" min=\"0.01\" step=\"0.01\" required value={expense.amount || ''} onChange={event => setExpense(value => ({ ...v",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
       "file": "src/components/settings/InvitesPanel.tsx",
       "text": "<input className=\"input\" type=\"number\" min={1} max={90} value={expiresInDays} disabled={consultationMode} onChange={e => setExpiresInDays(Number(e.target.value)",
       "count": 1
@@ -450,18 +414,6 @@
       "rule": "input-nativo",
       "file": "src/components/settings/TenantsDashboard.tsx",
       "text": "<input type=\"file\" accept=\"image/png,image/jpeg,image/webp\" onChange={event => void handleLogoFile(event.target.files?.[0] || null)} />",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/tools/Credentials365Tool.tsx",
-      "text": "<input type=\"file\" accept=\".csv,text/csv\" hidden onChange={e => onFile(e.target.files?.[0] || null)} />",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/tools/GlifingTool.tsx",
-      "text": "<input type=\"file\" accept=\".csv,text/csv\" hidden onChange={e => onFile(e.target.files?.[0] || null)} />",
       "count": 1
     },
     {
@@ -498,12 +450,6 @@
       "rule": "title-tooltip",
       "file": "src/components/settings/ModulesPanel.tsx",
       "text": "<button title=\"Subir\" disabled={consultationMode || index === 0} onClick={() => move(mod.key, -1)}",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/tools/QuickAccess.tsx",
-      "text": "<button title=\"Archivo no cargado\"",
       "count": 1
     }
   ]

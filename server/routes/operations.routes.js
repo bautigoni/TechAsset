@@ -85,7 +85,7 @@ operationsRouter.post('/daily-closures', async (req, res, next) => {
 });
 
 operationsRouter.get('/quick-links', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM quick_links WHERE activo=1 AND site_code=? ORDER BY categoria, titulo').all(requireSite(_req));
+  const rows = getDb().prepare('SELECT * FROM quick_links WHERE activo=1 AND site_code=? ORDER BY categoria, orden, titulo').all(requireSite(_req));
   res.json({ ok: true, items: rows.map(rowToQuickLink) });
 });
 
@@ -94,8 +94,9 @@ operationsRouter.post('/quick-links', (req, res) => {
   if (!payload.titulo || !payload.url) return res.status(400).json({ ok: false, error: 'Título y URL son obligatorios.' });
   if (!isSafeUrl(payload.url)) return res.status(400).json({ ok: false, error: 'Solo se permiten URLs http:// o https://.' });
   const ts = nowIso();
-  const info = getDb().prepare('INSERT INTO quick_links (site_code, titulo, url, descripcion, categoria, icono, creado_por, activo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)')
-    .run(requireSite(req), payload.titulo, payload.url, payload.descripcion, payload.categoria, payload.icono, payload.creadoPor, ts, ts);
+  const siteCode = requireSite(req);
+  const info = getDb().prepare('INSERT INTO quick_links (site_code, titulo, url, descripcion, categoria, icono, creado_por, activo, orden, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)')
+    .run(siteCode, payload.titulo, payload.url, payload.descripcion, payload.categoria, payload.icono, payload.creadoPor, nextQuickLinkOrder(siteCode, payload.categoria), ts, ts);
   res.json({ ok: true, item: rowToQuickLink(getDb().prepare('SELECT * FROM quick_links WHERE id=?').get(info.lastInsertRowid)) });
 });
 
@@ -103,16 +104,42 @@ operationsRouter.patch('/quick-links/:id', (req, res) => {
   const old = getDb().prepare('SELECT * FROM quick_links WHERE id=? AND site_code=?').get(req.params.id, requireSite(req));
   if (!old) return res.status(404).json({ ok: false, error: 'Acceso no encontrado.' });
   const payload = normalizeQuickLink({ ...old, ...req.body });
+  if (!payload.titulo || !payload.url) return res.status(400).json({ ok: false, error: 'Título y URL son obligatorios.' });
   if (!isSafeUrl(payload.url)) return res.status(400).json({ ok: false, error: 'Solo se permiten URLs http:// o https://.' });
   const siteCode = requireSite(req);
-  getDb().prepare('UPDATE quick_links SET titulo=?, url=?, descripcion=?, categoria=?, icono=?, updated_at=? WHERE id=? AND site_code=?')
-    .run(payload.titulo, payload.url, payload.descripcion, payload.categoria, payload.icono, nowIso(), req.params.id, siteCode);
+  // Si cambia de categoría, entra al final de la nueva (respeta su orden manual).
+  const orden = payload.categoria === String(old.categoria || '').trim() ? Number(old.orden || 0) : nextQuickLinkOrder(siteCode, payload.categoria);
+  getDb().prepare('UPDATE quick_links SET titulo=?, url=?, descripcion=?, categoria=?, icono=?, orden=?, updated_at=? WHERE id=? AND site_code=?')
+    .run(payload.titulo, payload.url, payload.descripcion, payload.categoria, payload.icono, orden, nowIso(), req.params.id, siteCode);
   res.json({ ok: true, item: rowToQuickLink(getDb().prepare('SELECT * FROM quick_links WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
 operationsRouter.delete('/quick-links/:id', (req, res) => {
   const result = getDb().prepare('UPDATE quick_links SET activo=0, updated_at=? WHERE id=? AND site_code=?').run(nowIso(), req.params.id, requireSite(req));
   res.json({ ok: true, deleted: result.changes > 0 });
+});
+
+// Deshacer de "Borrar": el borrado es un soft delete, así que vuelve tal cual.
+operationsRouter.post('/quick-links/:id(\\d+)/restore', (req, res) => {
+  const siteCode = requireSite(req);
+  const result = getDb().prepare('UPDATE quick_links SET activo=1, updated_at=? WHERE id=? AND site_code=?').run(nowIso(), req.params.id, siteCode);
+  if (!result.changes) return res.status(404).json({ ok: false, error: 'Acceso no encontrado.' });
+  res.json({ ok: true, item: rowToQuickLink(getDb().prepare('SELECT * FROM quick_links WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
+});
+
+// Orden manual: recibe los ids de UNA categoría en el orden nuevo. Solo toca
+// accesos activos de la sede; los ids de otra sede se ignoran.
+operationsRouter.post('/quick-links/reorder', (req, res) => {
+  const siteCode = requireSite(req);
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(id => Number.isInteger(id) && id > 0) : [];
+  if (!ids.length || ids.length > 200 || new Set(ids).size !== ids.length) return res.status(400).json({ ok: false, error: 'Orden inválido.' });
+  const ts = nowIso();
+  const update = getDb().prepare('UPDATE quick_links SET orden=?, updated_at=? WHERE id=? AND site_code=? AND activo=1');
+  let changed = 0;
+  getDb().transaction(() => {
+    ids.forEach((id, index) => { changed += update.run(index + 1, ts, id, siteCode).changes; });
+  })();
+  res.json({ ok: true, changed });
 });
 
 operationsRouter.get('/settings/shifts', (_req, res) => {
@@ -181,8 +208,15 @@ function rowToClosure(row) {
   return { id: row.id, fecha: row.fecha, operador: row.operador, resumen, observaciones: row.observaciones, createdAt: row.created_at };
 }
 
+/** Orden para un acceso que entra a una categoría: al final si la categoría ya tiene orden manual; si no, 0 (por título). */
+function nextQuickLinkOrder(siteCode, categoria) {
+  const row = getDb().prepare('SELECT COALESCE(MAX(orden), 0) AS m FROM quick_links WHERE site_code=? AND categoria=? AND activo=1').get(siteCode, categoria);
+  const max = Number(row?.m || 0);
+  return max > 0 ? max + 1 : 0;
+}
+
 function rowToQuickLink(row) {
-  return { id: row.id, titulo: row.titulo, url: row.url, descripcion: row.descripcion, categoria: row.categoria, icono: row.icono, creadoPor: row.creado_por, activo: Boolean(row.activo), createdAt: row.created_at, updatedAt: row.updated_at };
+  return { id: row.id, titulo: row.titulo, url: row.url, descripcion: row.descripcion, categoria: row.categoria, icono: row.icono, orden: Number(row.orden || 0), creadoPor: row.creado_por, activo: Boolean(row.activo), createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
 function normalizeQuickLink(raw) {

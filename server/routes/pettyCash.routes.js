@@ -6,6 +6,7 @@ import { config } from '../config.js';
 import { getDb, nowIso } from '../db.js';
 import { canEditModule, canViewModule, isSiteManager, requireSite } from '../services/siteContext.service.js';
 import { notifySiteAdmins, notifyUser } from '../services/notifications.service.js';
+import { todayLocal } from '../services/localTime.js';
 
 export const pettyCashRouter = Router();
 const RECEIPT_TYPES = new Map([
@@ -149,7 +150,7 @@ pettyCashRouter.patch('/petty-cash/requests/:id', (req, res) => {
       const expense = insertExpense(
         siteCode,
         {
-          expenseDate: String(req.body?.expenseDate || ts.slice(0, 10)),
+          expenseDate: String(req.body?.expenseDate || todayLocal()),
           description: request.description,
           supplier,
           amount: finalCost,
@@ -242,6 +243,24 @@ pettyCashRouter.post('/petty-cash/upload-receipt', (req, res) => {
   res.json({ ok: true, url: `/uploads/petty-cash/${siteCode}/${name}` });
 });
 
+// Quitar un comprobante recién subido que no llegó a guardarse ("Quitar" o
+// "Cancelar" en el formulario): antes quedaba huérfano en el disco. Solo borra
+// archivos de la sede activa con el nombre que genera upload-receipt y que no
+// use ningún gasto ni solicitud.
+pettyCashRouter.post('/petty-cash/discard-receipt', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canEditModule(req, 'pettycash', siteCode)) return forbidden(res);
+  const url = String(req.body?.url || '');
+  const match = url.match(/^\/uploads\/petty-cash\/([A-Za-z0-9_-]+)\/(\d+-[a-f0-9]{10}\.(?:png|jpg|webp|pdf))$/);
+  if (!match || match[1] !== siteCode) return res.status(400).json({ ok: false, error: 'Comprobante inválido.' });
+  const used = getDb().prepare('SELECT 1 FROM petty_cash_expenses WHERE site_code=? AND receipt_url=? UNION ALL SELECT 1 FROM purchase_requests WHERE site_code=? AND receipt_url=? LIMIT 1').get(siteCode, url, siteCode, url);
+  if (used) return res.json({ ok: true, removed: false });
+  const file = path.join(config.rootDir, 'data', 'uploads', 'petty-cash', siteCode, match[2]);
+  let removed = false;
+  try { fs.unlinkSync(file); removed = true; } catch { /* ya no estaba */ }
+  res.json({ ok: true, removed });
+});
+
 function ensureConfig(siteCode) {
   getDb()
     .prepare(
@@ -259,7 +278,7 @@ function currentBalance(siteCode) {
 
 function normalizeExpense(raw = {}) {
   return {
-    expenseDate: String(raw.expenseDate || raw.date || nowIso().slice(0, 10)),
+    expenseDate: String(raw.expenseDate || raw.date || todayLocal()),
     description: String(raw.description || '').trim(),
     supplier: String(raw.supplier || '').trim(),
     amount: Number(raw.amount),

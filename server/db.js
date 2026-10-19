@@ -948,6 +948,8 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'internal_notes', 'site_code', "TEXT DEFAULT 'NFPT'");
   ensureColumn(database, 'daily_closures', 'site_code', "TEXT DEFAULT 'NFPT'");
   ensureColumn(database, 'quick_links', 'site_code', "TEXT DEFAULT 'NFPT'");
+  // Orden manual dentro de su categoría (Accesos rápidos › Subir/Bajar). 0 = sin orden: va por título.
+  ensureColumn(database, 'quick_links', 'orden', 'INTEGER DEFAULT 0');
   ensureColumn(database, 'agenda', 'compus_retiradas', 'INTEGER DEFAULT 0');
   ensureColumn(database, 'classrooms', 'equipment_json', "TEXT DEFAULT ''");
   ensureColumn(database, 'tasks', 'responsables_json', "TEXT DEFAULT ''");

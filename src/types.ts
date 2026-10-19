@@ -362,6 +362,8 @@ export interface QuickLink {
   descripcion: string;
   categoria: string;
   icono: string;
+  /** Orden manual dentro de su categoría (0 = por título). */
+  orden?: number;
   creadoPor: string;
   activo: boolean;
   createdAt: string;
