@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Device } from '../../types';
-import { Button, Checkbox, EmptyState, ErrorState, Input, InlineConfirm, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, Checkbox, EmptyState, ErrorState, Input, InlineConfirm, icons, useStatusLine } from '../../ui';
 import { createDeviceGroup, deleteDeviceGroup, getDeviceGroups, updateDeviceGroup, type DeviceGroup } from '../../services/devicesApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { getOperationalAlias } from '../../utils/classifyDevice';
@@ -153,9 +153,9 @@ export function DeviceGroupsPanel({ devices, consultationMode, onOpenDevice, onC
               <Button size="sm" onClick={() => setLimit(value => value + PICKER_PAGE * 2)}>Ver más</Button>
             </div>
           )}
-          {askDelete && selected && (
-            <InlineConfirm danger message={`¿Eliminar el grupo “${selected.name}”?`} detail="Los equipos no se borran." confirmLabel="Eliminar grupo" busy={busy === 'delete'} onConfirm={() => void remove()} onCancel={() => setAskDelete(false)} />
-          )}
+          <Collapse open={Boolean(askDelete && selected)} unmountOnClose>
+            <InlineConfirm danger message={`¿Eliminar el grupo “${selected?.name || ''}”?`} detail="Los equipos no se borran." confirmLabel="Eliminar grupo" busy={busy === 'delete'} onConfirm={() => void remove()} onCancel={() => setAskDelete(false)} />
+          </Collapse>
           <div className="dv-form-actions">
             <Button variant="primary" disabled={consultationMode || !name.trim()} loading={busy === 'save'} onClick={() => void save()}>Guardar grupo</Button>
             {selected && !consultationMode && <Button variant="danger" aria-expanded={askDelete} onClick={() => setAskDelete(true)}>Eliminar</Button>}

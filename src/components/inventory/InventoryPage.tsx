@@ -4,7 +4,9 @@ import type { Device, InventoryItem } from '../../types';
 import { CONDITION_VALUES } from '../../types';
 import { deleteInventoryItem, getInventoryItems, restoreInventoryItem, undoInventoryReview, updateInventoryItem, type ReviewUndoPayload } from '../../services/inventoryApi';
 import { updateDeviceMetadata } from '../../services/devicesApi';
-import { Button, EmptyState, ErrorState, Eyebrow, Ring, Segmented, SkeletonRows, Table, useStatusLine, type Column, type SortState } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, Eyebrow, Ring, Segmented, SkeletonRows, Table, useHeldKeys, useStatusLine, type Column, type SortState } from '../../ui';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
 import { TruncatedText } from '../../ui/Truncated';
 import { IconChevronDown, IconLock, IconPlus, IconSearch, IconX } from '../../ui/icons';
 import { dayKeyAr, todayKeyAr } from '../../utils/formatters';
@@ -80,6 +82,10 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   const [treeOpen, setTreeOpen] = useState(false);
   const [limit, setLimit] = useState(PAGE);
   const [sort, setSort] = useState<SortState>(null);
+  // En angosto el árbol de categorías se pliega detrás de "Categoría" (en ancho siempre se ve).
+  const narrowTree = useMediaQuery('(max-width: 767px)');
+  // El placeholder más largo que entra en el ancho real del buscador (nunca cortado).
+  const [searchRef, searchPlaceholder] = useFitPlaceholder(['Nombre, etiqueta, modelo… (touch 34, D1436, sensor)', 'Nombre, etiqueta, modelo…', 'Buscar…']);
   const topStatus = useStatusLine();
   const listStatus = useStatusLine();
   const siteCode = getActiveSiteCode();
@@ -202,6 +208,8 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   const openIndex = openKey ? ordered.findIndex(entry => entry.key === openKey) : -1;
   const visible = ordered.slice(0, Math.max(limit, openIndex + 1));
   const openEntry = openKey ? entriesByKey.get(openKey) || null : null;
+  // Tarjetas: la ficha que se cierra sigue dibujada hasta terminar de plegarse.
+  const heldCards = useHeldKeys(view === 'grid' && openEntry ? openKey : null);
 
   const selGroup = selected ? groups.find(group => group.categoria === selected.categoria) : undefined;
   const subChips = selGroup ? selGroup.subgroups.filter(sub => sub.subcategoria) : [];
@@ -453,10 +461,10 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
           <p className="ivt-help ivt-head-desc">Revisado = condición cargada hace menos de 92 días. Vale igual para equipos y recursos.</p>
         </div>
         <div className="ivt-head-actions">
-          <Button disabled={consultationMode} aria-expanded={panel === 'review'} onClick={() => togglePanel('review')}>Revisar condición</Button>
+          <Button disabled={consultationMode} aria-expanded={panel === 'review'} aria-controls="ivt-review" onClick={() => togglePanel('review')}>Revisar condición</Button>
           <Button aria-expanded={panel === 'io'} aria-controls="ivt-ie" onClick={() => togglePanel('io')}>Importar / exportar</Button>
           <Button aria-expanded={panel === 'hidden'} aria-controls="ivt-hidden" onClick={() => togglePanel('hidden')}>Ocultos</Button>
-          <Button variant="primary" icon={<IconPlus size={16} />} disabled={consultationMode} aria-expanded={panel === 'add'} onClick={() => togglePanel('add')}>Agregar recurso</Button>
+          <Button variant="primary" icon={<IconPlus size={16} />} disabled={consultationMode} aria-expanded={panel === 'add'} aria-controls="ivt-add" onClick={() => togglePanel('add')}>Agregar recurso</Button>
         </div>
       </header>
 
@@ -467,19 +475,20 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
         </div>
       )}
 
-      {panel === 'io' && (
+      {/* Paneles en línea: se abren y se cierran suaves con el botón quieto (Collapse). */}
+      <Collapse open={panel === 'io'} id="ivt-ie" outerClassName="ivt-fold" unmountOnClose>
         <ImportExportPanel count={filtered.length} consultationMode={consultationMode} onExport={exportCsv} onTemplate={exportTemplate} onImported={refresh} />
-      )}
-      {panel === 'hidden' && (
+      </Collapse>
+      <Collapse open={panel === 'hidden'} id="ivt-hidden" outerClassName="ivt-fold" unmountOnClose>
         <HiddenPanel
           consultationMode={consultationMode}
           onRestored={item => setItems(current => (current.some(entry => entry.id === item.id) ? current : [...current, item]))}
         />
-      )}
+      </Collapse>
       {topStatus.element}
       {loadError && <ErrorState message={loadError} onRetry={() => void refresh()} />}
 
-      {panel === 'review' && !consultationMode && (
+      <Collapse open={panel === 'review' && !consultationMode} id="ivt-review" outerClassName="ivt-fold" unmountOnClose>
         <ConditionReview
           items={items}
           entriesByKey={entriesByKey}
@@ -489,9 +498,9 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
           onUndo={undoRating}
           onExit={exitReview}
         />
-      )}
+      </Collapse>
 
-      {panel === 'add' && !consultationMode && (
+      <Collapse open={panel === 'add' && !consultationMode} id="ivt-add" outerClassName="ivt-fold" unmountOnClose>
         <section className="ivt-panel">
           <ResourceForm
             items={items}
@@ -501,7 +510,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
             onCancel={() => setPanel('')}
           />
         </section>
-      )}
+      </Collapse>
 
       <div className="ivt-kpis" role="group" aria-label="Filtros rápidos">
         {kpiButton({ id: 'equipos', label: 'Equipos', value: kpis.equipos, pressed: segment === 'equipo' && !kpi, onClick: () => pickSegment('equipo') })}
@@ -517,12 +526,12 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
         })}
       </div>
 
-      {kpi && (
+      <Collapse open={Boolean(kpi)} outerClassName="ivt-fold">
         <div className="ivt-note" role="status">
-          <span className="ivt-grow">{KPI_LABELS[kpi]}</span>
+          <span className="ivt-grow">{kpi ? KPI_LABELS[kpi] : ''}</span>
           <Button size="sm" variant="ghost" onClick={() => { resetList(); setKpi(''); }}>Quitar filtro</Button>
         </div>
-      )}
+      </Collapse>
 
       <div className="ivt-tools">
         <Segmented<Segment>
@@ -539,11 +548,12 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
           <IconSearch size={16} />
           <span className="ivt-sr">Buscar en el inventario</span>
           <input
+            ref={searchRef}
             type="text"
             autoComplete="off"
             spellCheck={false}
             value={search}
-            placeholder="Nombre, etiqueta, modelo… (touch 34, D1436, sensor)"
+            placeholder={searchPlaceholder}
             onChange={event => { resetList(); setSearch(event.target.value); }}
             onKeyDown={event => { if (event.key === 'Escape' && search) { event.preventDefault(); resetList(); setSearch(''); } }}
           />
@@ -585,7 +595,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
           <TruncatedText className="ivt-treepick-value">{selected ? [selected.categoria, selected.subcategoria].filter(Boolean).join(' › ') : 'Todo el inventario'}</TruncatedText>
           <IconChevronDown size={16} className={`ivt-chev${treeOpen ? ' is-open' : ''}`} />
         </button>
-        <div className={`ivt-treewrap${treeOpen ? ' is-open' : ''}`}>
+        <Collapse open={!narrowTree || treeOpen} outerClassName="ivt-treewrap" className="ivt-treewrap-body">
           <InventoryTree
             id="ivt-tree"
             groups={groups}
@@ -595,7 +605,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
             expanded={expanded}
             onToggle={categoria => setExpanded(current => (current.includes(categoria) ? current.filter(item => item !== categoria) : [...current, categoria]))}
           />
-        </div>
+        </Collapse>
 
         <section className="ivt-main" aria-label="Listado">
           <div className="ivt-crumbs">
@@ -676,7 +686,11 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
                 {visible.map(entry => (
                   <Fragment key={entry.key}>
                     <InventoryCard entry={entry} expanded={openKey === entry.key} onOpen={() => toggleOpen(entry.key)} />
-                    {openKey === entry.key && openEntry && <div className="ivt-card-detail ui-enter">{renderDetail(openEntry)}</div>}
+                    {heldCards.drawn(entry.key) && (
+                      <Collapse open={openKey === entry.key} appear unmountOnClose outerClassName="ivt-card-fold" className="ivt-card-detail" onSettled={open => { if (!open) heldCards.release(entry.key); }}>
+                        {renderDetail(entry)}
+                      </Collapse>
+                    )}
                   </Fragment>
                 ))}
               </div>

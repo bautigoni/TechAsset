@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { Reminder } from '../../types';
-import { Button, DateTimeField, Eyebrow, Input, StatusText, useStatusLine } from '../../ui';
+import { Button, Collapse, DateTimeField, Eyebrow, Input, StatusText, useStatusLine } from '../../ui';
 import { completeReminder, createReminder, getReminders } from '../../services/remindersApi';
 import { errorMessage } from '../layout/Feedback';
 import { shortWhen } from './deviceView';
@@ -91,7 +91,7 @@ export function DeviceReminders({ etiqueta, label, consultationMode }: { etiquet
         </div>
       ))}
       {items && !items.length && !open && <span className="dv-muted">Sin recordatorios para este equipo.</span>}
-      {open && (
+      <Collapse open={open} unmountOnClose>
         <form className="dv-rem-form" data-scanner-ignore="" onSubmit={save} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }}>
           <Input label="Qué hay que hacer" value={title} onValueChange={setTitle} placeholder="Ej. revisar el cargador" autoFocus autoComplete="off" />
           <DateTimeField label="Cuándo" value={when} onChange={setWhen} minHour={7} maxHour={20} />
@@ -100,7 +100,7 @@ export function DeviceReminders({ etiqueta, label, consultationMode }: { etiquet
             <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
           </div>
         </form>
-      )}
+      </Collapse>
       {status.element}
     </section>
   );

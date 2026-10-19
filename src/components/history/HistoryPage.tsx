@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { History, SearchX } from 'lucide-react';
 import type { Device } from '../../types';
-import { Button, DateRange, EmptyState, ErrorState, IconButton, Input, SectionHeader, Segmented, SkeletonRows, StatusText, Tabs, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, DateRange, EmptyState, ErrorState, IconButton, Input, SectionHeader, Segmented, SkeletonRows, StatusText, Tabs, icons, useHeldKeys, useStatusLine } from '../../ui';
 import { downloadHistoryCsv, getHistoryDeviceSummary, getLoanHistory, getMovementHistory, type HistoryFilters, type LoanHistoryItem, type MovementHistoryItem } from '../../services/historyApi';
 import { getOperationalAlias } from '../../utils/classifyDevice';
 import { APP_TIME_ZONE, addDaysToKey, dateFormatter, dayKeyAr, todayKeyAr } from '../../utils/formatters';
@@ -8,6 +9,7 @@ import { resolveAliasTags } from '../../utils/deviceSearch';
 import { errorMessage } from '../layout/Feedback';
 import { aliasOf, deviceKind, shortWhen, stateLabel, stateTone } from '../devices/deviceView';
 import { clearHistorySeed, peekHistorySeed } from './historySeed';
+import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
 import '../../styles/screens/history.css';
 
 type Kind = 'loans' | 'all';
@@ -57,9 +59,14 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
   const [openRow, setOpenRow] = useState('');
+  const heldRows = useHeldKeys(openRow);
   const [reload, setReload] = useState(0);
   const requestId = useRef(0);
   const exportStatus = useStatusLine();
+  // El placeholder más largo que entra en el ancho real del buscador (nunca cortado).
+  const [searchRef, searchPlaceholder] = useFitPlaceholder(kind === 'loans'
+    ? ['Persona, equipo (D1436, touch34), curso, operador…', 'Persona, equipo, curso, operador…', 'Persona, equipo, curso…', 'Buscar…']
+    : ['Descripción, equipo, operador…', 'Descripción, equipo…', 'Buscar…']);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -164,6 +171,7 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
       <section className="hs-card hs-filters" aria-label="Filtros" data-scanner-ignore="">
         <div className="hs-filter-row">
           <Input
+            ref={searchRef}
             className="hs-search"
             label="Buscar"
             prefix={<icons.IconSearch size={14} />}
@@ -171,7 +179,7 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
             value={q}
             onValueChange={setQ}
             onKeyDown={event => { if (event.key === 'Escape' && q) { event.stopPropagation(); setQ(''); } }}
-            placeholder={kind === 'loans' ? 'Persona, equipo (D1436, touch34), curso, operador…' : 'Descripción, equipo, operador…'}
+            placeholder={searchPlaceholder}
             autoComplete="off"
             spellCheck={false}
           />
@@ -210,8 +218,8 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
         {loading && <div className="hs-skeleton"><SkeletonRows rows={6} /></div>}
         {!loading && !error && !items.length && (
           hasFilters
-            ? <EmptyState title="No hay resultados para esos filtros." action={<Button size="sm" onClick={clearFilters}>Limpiar filtros</Button>} />
-            : <EmptyState title="Todavía no hay movimientos registrados." />
+            ? <EmptyState compact className="hs-empty" icon={<SearchX size={18} strokeWidth={1.6} />} title="No hay resultados para esos filtros" description="Probá con otra fecha, otro tipo o buscá por etiqueta, alias o persona." action={<Button size="sm" onClick={clearFilters}>Limpiar filtros</Button>} />
+            : <EmptyState compact className="hs-empty" icon={<History size={18} strokeWidth={1.6} />} title="Todavía no hay movimientos registrados" description="Acá aparecen los préstamos, devoluciones y cambios de equipos de la sede." />
         )}
 
         {!loading && items.length > 0 && (
@@ -238,8 +246,10 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
                         {kind === 'loans'
                           ? <LoanRow item={item as LoanHistoryItem} device={device} open={openRow === key} onToggle={toggle} />
                           : <MovementRow item={item as MovementHistoryItem} device={device} open={openRow === key} onToggle={toggle} />}
-                        {openRow === key && device && (
+                        {heldRows.drawn(key) && device && (
                           <MiniDevice
+                            open={openRow === key}
+                            onSettled={open => { if (!open) heldRows.release(key); }}
                             device={device}
                             onClose={() => setOpenRow('')}
                             onOpen={onProfile ? () => onProfile(device) : undefined}
@@ -340,7 +350,7 @@ function MovementRow({ item, device, open, onToggle }: { item: MovementHistoryIt
 }
 
 /** Resumen del equipo en línea, debajo del movimiento (antes abría el modal de la ficha). */
-function MiniDevice({ device, onClose, onOpen, onOnly }: { device: Device; onClose: () => void; onOpen?: () => void; onOnly: () => void }) {
+function MiniDevice({ open, onSettled, device, onClose, onOpen, onOnly }: { open: boolean; onSettled: (open: boolean) => void; device: Device; onClose: () => void; onOpen?: () => void; onOnly: () => void }) {
   const [summary, setSummary] = useState<{ loans: number; lastLoan: string } | null>(null);
   useEffect(() => {
     let alive = true;
@@ -348,7 +358,8 @@ function MiniDevice({ device, onClose, onOpen, onOnly }: { device: Device; onClo
     return () => { alive = false; };
   }, [device.etiqueta]);
   return (
-    <div role="row" className="hs-mini ui-enter">
+    <div role="row" className="hs-mini-row">
+      <Collapse open={open} appear unmountOnClose className="hs-mini" onSettled={onSettled}>
       <div role="cell" className="hs-mini-inner" aria-label={`Resumen de ${device.etiqueta}`} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose(); } }}>
         <div className="hs-mini-id">
           <span className="hs-mini-name"><span className="hs-strong hs-ell">{aliasOf(device)}</span><span className="ui-mono hs-muted">{device.etiqueta}</span></span>
@@ -366,6 +377,7 @@ function MiniDevice({ device, onClose, onOpen, onOnly }: { device: Device; onClo
           <IconButton size="sm" label="Cerrar resumen" icon={<icons.IconX size={14} />} onClick={onClose} />
         </div>
       </div>
+      </Collapse>
     </div>
   );
 }

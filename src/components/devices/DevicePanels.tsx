@@ -9,7 +9,7 @@ import { printDeviceQrs } from './qrPrint';
 export function DevicePanel({ title, note, onClose, children, label }: { title: string; note?: ReactNode; onClose: () => void; children: ReactNode; label?: string }) {
   return (
     <section
-      className="dv-panel ui-enter"
+      className="dv-panel"
       aria-label={label || title}
       data-scanner-ignore=""
       onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) { event.stopPropagation(); onClose(); } }}

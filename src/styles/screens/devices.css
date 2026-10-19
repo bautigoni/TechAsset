@@ -22,6 +22,11 @@
 
 /* ── Encabezado y filtros ─────────────────────────────────────────────── */
 .dv-head-actions { display: flex; flex-wrap: wrap; gap: var(--g-s-2); min-width: 0; }
+/* Paneles entre bloques (Collapse): cerrados no suman el gap de la página. */
+.dv-fold { margin-top: calc(-1 * var(--g-s-4)); }
+.dv-fold > .ui-collapse-clip > * { margin-top: var(--g-s-4); }
+.dv-fold-sm { margin-top: calc(-1 * var(--g-s-3)); }
+.dv-fold-sm > .ui-collapse-clip > * { margin-top: var(--g-s-3); }
 .dv-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--g-s-3) var(--g-s-5); min-width: 0; }
 
 /* ── Tarjetas y paneles en línea ──────────────────────────────────────── */
@@ -133,7 +138,8 @@
 
 /* ── Lista ─────────────────────────────────────────────────────────────── */
 .dv-list { display: flex; flex-direction: column; min-width: 0; }
-.dv-list > .ui-selhead { margin: var(--g-s-2); }
+.dv-selhead.ui-selhead { flex: 1 1 26rem; margin: calc(-1 * var(--g-s-1)) 0; }
+.dv-list-head > .dv-list-title { flex: 1 1 12rem; }
 .dv-list > .ui-status { margin: 0 var(--g-s-3) var(--g-s-2); }
 .dv-list-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2) var(--g-s-3); min-width: 0; padding: var(--g-s-3); }
 .dv-list-title { display: flex; flex: 1 1 12rem; align-items: baseline; gap: var(--g-s-2); min-width: 0; }
@@ -180,7 +186,7 @@
 @keyframes dv-row-hl { 0%, 100% { opacity: 0; } 15%, 75% { opacity: 1; } }
 
 /* ── Ficha en línea / página ──────────────────────────────────────────── */
-.dv-table .ui-tr--detail { padding: var(--g-s-3); background: var(--g-bg); }
+.dv-table .ui-tr--detail { background: var(--g-bg); }
 .dv-detail { display: flex; flex-direction: column; gap: var(--g-s-3); min-width: 0; white-space: normal; }
 .dv-detail .ui-td-value, .dv-table .ui-tr--detail .ui-td { white-space: normal; }
 .dv-block-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--g-s-2) var(--g-s-3); min-width: 0; }

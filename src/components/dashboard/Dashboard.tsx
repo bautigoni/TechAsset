@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ClipboardCheck } from 'lucide-react';
 import type { AgendaItem, Device, Movement, SyncStatus, TaskItem, ViewKey } from '../../types';
-import { Button, StatusText, cx, icons, useStatusLine } from '../../ui';
+import { Button, COLLAPSE_MS, Collapse, StatusText, cx, icons, scrollParentOf, useStatusLine } from '../../ui';
 import { undoLoans, type LoanBatchResponse } from '../../services/loansApi';
 import { getDevicesHealth, subscribeDevicesHealth } from '../../hooks/useDevices';
 import { isEditableTarget } from '../../hooks/useGlobalScanner';
@@ -91,6 +91,7 @@ export function Dashboard(props: DashboardProps) {
   const listStatus = useStatusLine();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
+  const closureBtnRef = useRef<HTMLButtonElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const online = useOnline();
   const updated = useUpdatedLabel();
@@ -123,9 +124,18 @@ export function Dashboard(props: DashboardProps) {
     window.setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
-  const scrollTo = (element: HTMLElement | null) => {
+  // Lleva a un bloque solo si su encabezado no se ve (si ya está a la vista, la
+  // página no se mueve). `afterFold`: espera a que termine de plegarse lo que
+  // se cerró en el mismo click, así el ancla del colapso y el scroll no pelean.
+  const scrollTo = (element: HTMLElement | null, afterFold = false) => {
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(() => element?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }), 40);
+    window.setTimeout(() => {
+      if (!element?.isConnected) return;
+      const view = scrollParentOf(element).getBoundingClientRect();
+      const top = element.getBoundingClientRect().top;
+      const visible = top >= Math.max(0, view.top) && top < Math.min(window.innerHeight, view.bottom) - 96;
+      if (!visible) element.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    }, afterFold && !reduced ? COLLAPSE_MS + 80 : 40);
   };
 
   // Teclado del Inicio: "/" enfoca la barra, "?" muestra los atajos.
@@ -139,13 +149,13 @@ export function Dashboard(props: DashboardProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const pickFilter = (next: ListFilter) => { setFilter(next); setType(''); setTypesOpen(false); scrollTo(listRef.current); };
+  const pickFilter = (next: ListFilter) => { setFilter(next); setType(''); setTypesOpen(false); scrollTo(listRef.current, typesOpen); };
   const toggleTypes = () => {
     if (typesOpen) { setTypesOpen(false); return; }
     setTypesOpen(true);
     setFilter('available');
   };
-  const pickType = (next: string) => { setFilter('available'); setType(next); setTypesOpen(false); scrollTo(listRef.current); };
+  const pickType = (next: string) => { setFilter('available'); setType(next); setTypesOpen(false); scrollTo(listRef.current, true); };
   const lendFromList = (etiquetas: string[]) => {
     if (readOnly) return;
     setLendRequest(current => ({ etiquetas, nonce: (current?.nonce || 0) + 1 }));
@@ -176,8 +186,10 @@ export function Dashboard(props: DashboardProps) {
         {updated && <span className="dash-updated" role="status">Actualizado <span className="ui-mono">{updated}</span></span>}
         <Button
           variant="secondary"
+          ref={closureBtnRef}
           className={cx('dash-closure-btn', closureOpen && 'is-on')}
           aria-expanded={closureOpen}
+          aria-controls="dash-cierre"
           icon={<ClipboardCheck size={16} strokeWidth={1.6} />}
           onClick={() => setClosureOpen(value => !value)}
         >
@@ -185,7 +197,10 @@ export function Dashboard(props: DashboardProps) {
         </Button>
       </div>
 
-      {closureOpen && <div className="dash-closure"><DailyClosureSection operator={operator} consultationMode={consultationMode} onClose={() => setClosureOpen(false)} /></div>}
+      {/* Se abre y se cierra en línea, suave, con el botón quieto (Collapse). */}
+      <Collapse open={closureOpen} id="dash-cierre" outerClassName="dash-fold" className="dash-closure">
+        <DailyClosureSection open={closureOpen} operator={operator} consultationMode={consultationMode} onClose={() => { setClosureOpen(false); closureBtnRef.current?.focus({ preventScroll: true }); }} />
+      </Collapse>
 
       <div ref={barRef} className="dash-anchor">
         <ActionBar
@@ -204,7 +219,7 @@ export function Dashboard(props: DashboardProps) {
           onProfile={onProfile}
         />
       </div>
-      {help && <Shortcuts />}
+      <Collapse open={help} id="dash-atajos" outerClassName="dash-fold"><Shortcuts /></Collapse>
 
       <StatusTiles
         counts={counts}

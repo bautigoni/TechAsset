@@ -1,5 +1,6 @@
 import { IconChevronRight } from '../../ui/icons';
 import { TruncatedText } from '../../ui/Truncated';
+import { Collapse } from '../../ui/Collapse';
 import type { Group } from './inventoryEntries';
 
 export type TreeSelection = { categoria: string; subcategoria: string } | null;
@@ -51,7 +52,9 @@ export function InventoryTree({ groups, total, selected, onSelect, expanded, onT
                 <span className="ivt-count">{group.total}</span>
               </button>
             </div>
-            {isOpen && subs.map(sub => (
+            {subs.length > 0 && (
+              <Collapse open={isOpen}>
+            {subs.map(sub => (
               <div className="ivt-tree-row ivt-tree-sub" key={sub.subcategoria}>
                 <button
                   type="button"
@@ -64,6 +67,8 @@ export function InventoryTree({ groups, total, selected, onSelect, expanded, onT
                 </button>
               </div>
             ))}
+              </Collapse>
+            )}
           </div>
         );
       })}

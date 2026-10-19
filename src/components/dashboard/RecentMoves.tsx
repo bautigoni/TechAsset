@@ -1,9 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, ChevronDown, History, Pencil, Undo2 } from 'lucide-react';
 import type { Movement } from '../../types';
-import { Button, TruncatedText, cx } from '../../ui';
+import { Button, Collapse, TruncatedText, cx, useAnchoredToggle } from '../../ui';
 import { TIME_HM, dateFormatter, dayKeyAr, todayKeyAr, addDaysToKey } from '../../utils/formatters';
-import { Collapse, keepScrollOnShrink, pinAnchor } from './Collapse';
 import { DashEmpty } from './DashEmpty';
 
 const FIRST = 10;
@@ -40,19 +39,14 @@ function when(timestamp: string) {
 export function RecentMoves({ items, canHistory, onHistory }: { items: Movement[]; canHistory: boolean; onHistory: () => void }) {
   const [open, setOpen] = useState(true);
   const [all, setAll] = useState(false);
-  const headRef = useRef<HTMLElement | null>(null);
+  const anchored = useAnchoredToggle();
   const rows = useMemo(() => items.slice(0, all ? MAX : FIRST), [items, all]);
-  const toggle = () => {
-    pinAnchor(headRef.current);
-    setOpen(value => !value);
-  };
-  const toggleAll = () => {
-    if (all) keepScrollOnShrink(headRef.current);
-    setAll(value => !value);
-  };
+  const toggle = () => setOpen(value => !value);
+  // Ver los 20 / Ver menos: el botón tocado queda quieto (la lista crece o se achica abajo).
+  const toggleAll = () => anchored(() => setAll(value => !value));
   return (
     <section className="dash-card dash-moves" aria-labelledby="mov-titulo" data-dash="movimientos">
-      <header className={cx('dash-card-head', open && 'is-open')} ref={headRef}>
+      <header className={cx('dash-card-head', open && 'is-open')}>
         <h2 className="dash-h3" id="mov-titulo">
           <button type="button" className="dash-disclose" aria-expanded={open} aria-controls="mov-lista" onClick={toggle}>
             <ChevronDown size={16} strokeWidth={1.6} aria-hidden="true" className={cx('dash-disclose-chev', !open && 'is-closed')} />
@@ -63,7 +57,7 @@ export function RecentMoves({ items, canHistory, onHistory }: { items: Movement[
         {open && items.length > FIRST && <Button size="sm" variant="ghost" onClick={toggleAll}>{all ? 'Ver menos' : `Ver los ${Math.min(items.length, MAX)}`}</Button>}
         {canHistory && <Button size="sm" variant="ghost" className="dash-link" onClick={onHistory}>Ver historial</Button>}
       </header>
-      <Collapse open={open} id="mov-lista">
+      <Collapse open={open} id="mov-lista" unmountOnClose>
         {rows.length ? (
           <ol className="dash-moves-list">
             {rows.map((item, index) => {

@@ -39,6 +39,8 @@
 .hs-list--all .hs-row { grid-template-columns: 3.25rem minmax(0, .8fr) minmax(0, 3fr) minmax(0, .9fr); }
 .hs-colh { padding-block: var(--g-s-1); color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); letter-spacing: .04em; text-transform: uppercase; }
 .hs-item.is-open { background: var(--g-raised); }
+/* Títulos de columna: si no entran en un renglón bajan a dos (nunca se cortan con lugar al lado). */
+.hs-colh > .hs-ell { overflow: visible; text-overflow: clip; white-space: normal; }
 .hs-cell { display: block; min-width: 0; }
 .hs-cell-label { display: none; }
 .hs-cell-value { display: block; min-width: 0; }

@@ -9,8 +9,11 @@ import { getActiveLoanAccessories, getLoanSuggestions, type LoanBatchResponse, t
 import { Button, Kbd } from '../../ui/Button';
 import { Input } from '../../ui/Field';
 import { Switch } from '../../ui/Toggle';
-import { StatusText, ageTone, type StatusTextTone } from '../../ui/Data';
+import { EmptyState, StatusText, ageTone, type StatusTextTone } from '../../ui/Data';
+import { ScanLine } from 'lucide-react';
 import { useStatusLine } from '../../ui/Status';
+import { Collapse } from '../../ui/Collapse';
+import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
 import { TruncatedText } from '../../ui/Truncated';
 import { IconLock, IconSearch, IconX } from '../../ui/icons';
 import { cx } from '../../ui/util';
@@ -88,6 +91,11 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   const busyRef = useRef(false);
   const codeInputRef = useRef<HTMLInputElement | null>(null);
   const personInputRef = useRef<HTMLInputElement | null>(null);
+  // El placeholder más largo que entra en el ancho real del campo (nunca cortado).
+  const [, personPlaceholder] = useFitPlaceholder(['Nombre (escribí 2 letras para ver sugerencias)', 'Nombre (2 letras: sugerencias)', 'Nombre'], personInputRef);
+  const [, codePlaceholder] = useFitPlaceholder(continuous
+    ? ['Escaneá uno tras otro: cada Enter suma a la lista', 'Escaneá uno tras otro', 'Escaneá…']
+    : ['Escaneá o escribí: D1436, touch 34, plani 5', 'Escaneá o escribí…', 'Escaneá…'], codeInputRef);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanFrameRef = useRef<number | null>(null);
@@ -517,10 +525,8 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
           </div>
         )}
 
-        {status.element}
-
-        {askExit && continuous && (
-          <div className="lo-ask ui-enter" role="group" aria-label="Salir del escaneo continuo">
+        <Collapse open={askExit && continuous} unmountOnClose outerClassName="lo-fold-sm">
+          <div className="lo-ask" role="group" aria-label="Salir del escaneo continuo">
             <span className="lo-ask-text">Hay {queue.length} {queue.length === 1 ? 'equipo' : 'equipos'} en la lista. ¿Los conservás para la próxima vez?</span>
             <span className="lo-ask-actions">
               <Button size="sm" variant="secondary" onClick={() => exitContinuous(true)}>Conservar lista</Button>
@@ -528,10 +534,10 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
               <Button size="sm" variant="ghost" onClick={() => { setAskExit(false); focusCode(); }}>Seguir escaneando</Button>
             </span>
           </div>
-        )}
+        </Collapse>
 
-        {!continuous && (cameraOpen || cameraError) && (
-          <div className="lo-camera ui-enter">
+        <Collapse open={!continuous && (cameraOpen || Boolean(cameraError))} unmountOnClose outerClassName="lo-fold-sm">
+          <div className="lo-camera">
             {cameraOpen && <video ref={videoRef} className="lo-camera-video" playsInline muted autoPlay aria-label="Vista de la cámara trasera" />}
             <div className="lo-camera-text">
               {cameraOpen && <span className="lo-camera-title">Apuntá al QR del equipo</span>}
@@ -539,7 +545,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
               {cameraError && <ScanMessage tone="warn" text={cameraError} />}
             </div>
           </div>
-        )}
+        </Collapse>
 
         <div className="lo-code-row">
           <label htmlFor="lo-code" className="ui-sr">Etiqueta, número o alias del equipo</label>
@@ -557,7 +563,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
             value={code}
             onValueChange={next => { setCode(next); setFormError(''); }}
             onKeyDown={onCodeKeyDown}
-            placeholder={continuous ? 'Escaneá uno tras otro: cada Enter suma a la lista' : 'Escaneá o escribí: D1436, touch 34, plani 5'}
+            placeholder={codePlaceholder}
             autoComplete="off"
             spellCheck={false}
             data-loan-code=""
@@ -568,6 +574,8 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
             </Button>
           )}
         </div>
+
+        {status.element}
 
         {!continuous && scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} success={scanMessage.success} />}
 
@@ -625,7 +633,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
           <NotFound devices={devices} query={trimmed} onPick={etiqueta => { setCode(etiqueta); codeInputRef.current?.focus(); }} />
         )}
 
-        {continuous && (
+        <Collapse open={continuous} outerClassName="lo-fold-sm">
           <div className="lo-queue" data-scan-list="">
             {scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} success={scanMessage.success} className="lo-scan-msg" />}
             <div className="lo-queue-head">
@@ -647,13 +655,14 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                   </div>
                 );
               })}
-              {!queueDevices.length && <div className="lo-empty">Aún no escaneaste ningún equipo.</div>}
+              {!queueDevices.length && <EmptyState compact className="lo-queue-empty" icon={<ScanLine size={18} strokeWidth={1.6} />} title="Todavía no escaneaste ningún equipo" description="Cada Enter suma el equipo a esta lista; después confirmás todos juntos." />}
             </div>
           </div>
-        )}
+        </Collapse>
 
-        {lendOpen && (
-          <div className="lo-lend ui-enter" data-lend-form="">
+        {/* Los datos del préstamo se despliegan debajo del equipo y se pliegan al prestar. */}
+        <Collapse open={lendOpen} outerClassName="lo-fold-sm">
+          <div className="lo-lend" data-lend-form="">
             <div className="lo-lend-title">
               {continuous
                 ? `Datos del préstamo · uno para ${queueAvailable.length === 1 ? 'el disponible' : `los ${queueAvailable.length} disponibles`} de la lista`
@@ -668,7 +677,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                   inputRef={personInputRef}
                   value={person}
                   onChange={next => { setPerson(next); setFormError(''); }}
-                  placeholder="Nombre (escribí 2 letras para ver sugerencias)"
+                  placeholder={personPlaceholder}
                   listLabel="Personas que ya pidieron equipos"
                   footer="Enter elige la marcada. Completa rol, ubicación, curso y motivo más usados."
                   fetcher={q => getLoanSuggestions(q).then(response => response.suggestions || [])}
@@ -693,13 +702,13 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
               <span className="lo-flabel">Ubicación</span>
               <div className="lo-fcontrol">
                 <OptionGroup label="Ubicación" options={locationOptions.map(item => ({ value: item.label, label: item.label }))} value={location} onChange={value => { setLocation(value); setFormError(''); }} />
-                {selectedLocation?.requiresDetail && (
+                <Collapse open={Boolean(selectedLocation?.requiresDetail)}>
                   <Input aria-label="Especificar ubicación" value={locationDetail} onValueChange={setLocationDetail} onKeyDown={onLendKey} placeholder="Especificá la ubicación" autoComplete="off" />
-                )}
+                </Collapse>
               </div>
             </div>
 
-            {requiresSchoolCourse && (
+            <Collapse open={requiresSchoolCourse} outerClassName="lo-fold-row">
               <div className="lo-frow">
                 <span className="lo-flabel">Nivel y curso</span>
                 <div className="lo-fcontrol">
@@ -707,15 +716,15 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                   <GradeGrid label="Grado, año o curso" grades={gradeOptions} value={course} onChange={value => { setCourse(value); setFormError(''); }} />
                 </div>
               </div>
-            )}
+            </Collapse>
 
             <div className="lo-frow">
               <span className="lo-flabel">Motivo</span>
               <div className="lo-fcontrol">
                 <OptionGroup label="Motivo" allowEmpty={false} options={[{ value: '', label: 'Sin motivo' }, ...motiveOptions.map(item => ({ value: item.label, label: item.label }))]} value={reason} onChange={value => { setReason(value); setFormError(''); }} />
-                {selectedReason?.requiresDetail && (
+                <Collapse open={Boolean(selectedReason?.requiresDetail)}>
                   <Input aria-label="Especificar motivo" value={reasonDetail} onValueChange={setReasonDetail} onKeyDown={onLendKey} placeholder="Especificá el motivo" autoComplete="off" />
-                )}
+                </Collapse>
               </div>
             </div>
 
@@ -727,18 +736,19 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
             <div className="lo-frow">
               <span className="lo-flabel">Accesorios</span>
               <div className="lo-fcontrol">
-                <Button size="sm" variant="ghost" className="lo-acc-toggle" disabled={consultationMode} aria-expanded={accessoriesOpen} onClick={() => setAccessoriesOpen(value => !value)}>
-                  {loanAccessories.length ? `Accesorios de entrega · ${loanAccessories.join(', ')}` : 'Agregar accesorios de entrega (opcional)'}
+                <Button size="sm" variant="ghost" className="lo-acc-toggle" disabled={consultationMode} aria-expanded={accessoriesOpen} aria-controls="lo-acc" onClick={() => setAccessoriesOpen(value => !value)}>
+                  {loanAccessories.length ? `${accessoriesOpen ? 'Ocultar' : 'Elegir'} accesorios · ${loanAccessories.length} ${loanAccessories.length === 1 ? 'marcado' : 'marcados'}` : accessoriesOpen ? 'Ocultar accesorios' : 'Agregar accesorios (opcional)'}
                 </Button>
-                {accessoriesOpen && (
-                  <div className="lo-acc ui-enter">
+                {loanAccessories.length > 0 && <span className="lo-acc-picked">{loanAccessories.join(', ')}</span>}
+                <Collapse open={accessoriesOpen} id="lo-acc">
+                  <div className="lo-acc">
                     <AccessoryToggles label="Accesorios de entrega" items={accessoryList} checked={loanAccessories} onToggle={item => setLoanAccessories(list => toggleList(list, item))} />
                     <div className="lo-acc-add">
                       <Input aria-label="Agregar otro accesorio" value={customAccessory} onValueChange={setCustomAccessory} placeholder="Agregar otro accesorio" autoComplete="off" onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addCustomAccessory(); } }} />
                       <Button variant="secondary" onClick={addCustomAccessory} disabled={!customAccessory.trim()}>Agregar</Button>
                     </div>
                   </div>
-                )}
+                </Collapse>
               </div>
             </div>
 
@@ -757,7 +767,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
               {formError && <span key={errorKey} className="lo-form-error t-msg-enter t-input is-shaking" role="alert">{formError}</span>}
             </div>
           </div>
-        )}
+        </Collapse>
       </div>
     </section>
   );
@@ -791,7 +801,7 @@ function FoundDevice({ device, state, busy, consultationMode, onReturn }: { devi
           <span className="lo-found-tag g-num">{device.etiqueta}</span>
           <StatusText tone={tone} className="lo-found-state">{stateText}</StatusText>
         </div>
-        <TruncatedText className="lo-found-detail">{detail}</TruncatedText>
+        <TruncatedText className="lo-found-detail" lines={2}>{detail}</TruncatedText>
       </div>
       {state === 'loaned' && (
         <Button variant="primary" className="lo-found-action" disabled={consultationMode} loading={busy} loadingLabel="Devolviendo…" onClick={onReturn} iconEnd={<Kbd>↵</Kbd>}>

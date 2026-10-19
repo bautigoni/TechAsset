@@ -17,6 +17,10 @@
   font-size: var(--g-fs-base);
 }
 
+/* Paneles y avisos entre bloques (Collapse): cerrados no suman el gap. */
+.ivt-fold { margin-top: calc(-1 * var(--g-s-4)); }
+.ivt-fold > .ui-collapse-clip > * { margin-top: var(--g-s-4); }
+
 /* ── Utilidades ─────────────────────────────────────────────────────────── */
 
 .ivt-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -293,7 +297,8 @@
 /* Tabla (ui Table) */
 .ivt-tablewrap { min-width: 0; overflow: hidden; border: 1px solid var(--g-line); border-radius: var(--g-radius); background: var(--g-surface); }
 .ivt-table .ui-tbody .ui-tr:not(.ui-tr--full) { min-height: calc(var(--g-s-7) + var(--g-s-1)); }
-.ivt-table .ui-tr--detail { padding: 0; background: var(--g-surface); border-bottom: 1px solid var(--g-line); }
+.ivt-table .ui-tr--detail { background: var(--g-surface); }
+.ivt-table .ui-tr-detail-body { padding: 0; }
 .ivt-table .ui-tr--detail > .ui-td { overflow: visible; }
 .ivt-thumb {
   display: inline-flex;
@@ -366,6 +371,9 @@
 .ivt-card-sub { color: var(--g-text-3); font-size: var(--g-fs-xs); }
 .ivt-card-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--g-s-2); min-width: 0; font-size: var(--g-fs-sm); }
 .ivt-card-flags { display: flex; flex-wrap: wrap; gap: 2px var(--g-s-3); min-width: 0; min-height: 1rem; font-size: var(--g-fs-xs); }
+.ivt-card-fold { grid-column: 1 / -1; min-width: 0; }
+.ivt-card-fold:not([data-state="open"]) { margin-top: calc(-1 * var(--g-s-3)); }
+.ivt-card-fold:not([data-state="open"]) > .ui-collapse-clip > * { margin-top: var(--g-s-3); }
 .ivt-card-detail { grid-column: 1 / -1; min-width: 0; border: 1px solid var(--g-line-strong); border-radius: var(--g-radius); background: var(--g-surface); }
 
 .ivt-cat { cursor: pointer; }
@@ -529,8 +537,8 @@
   }
   .ivt-treepick:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; }
   .ivt-treepick-value { flex: 1 1 auto; }
-  .ivt-treewrap { display: none; }
-  .ivt-treewrap.is-open { display: block; padding: var(--g-s-1); border: 1px solid var(--g-line); border-radius: var(--g-radius); background: var(--g-surface); }
+  .ivt-treewrap { margin-top: calc(-1 * var(--g-s-3)); }
+  .ivt-treewrap-body { margin-top: var(--g-s-3); padding: var(--g-s-1); border: 1px solid var(--g-line); border-radius: var(--g-radius); background: var(--g-surface); }
   .ivt-tree { display: flex; }
   .ivt-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ivt-detail { padding: var(--g-s-4) var(--g-s-3) var(--g-s-4); }

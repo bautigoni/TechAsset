@@ -1,13 +1,14 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type Ref, type RefObject } from 'react';
 import { Camera, PackageMinus, PackagePlus, ScanLine } from 'lucide-react';
 import type { Device } from '../../types';
-import { Button, Combobox, IconButton, Input, Kbd, Select, StatusText, cx, icons, type SelectOption, type StatusMessage } from '../../ui';
+import { Button, Collapse, Combobox, IconButton, Input, Kbd, Select, StatusText, cx, icons, type SelectOption, type StatusMessage } from '../../ui';
 import { getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
 import { resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { aliasOf, agoText, fichaFields, loanOf, nearestDevices, nearestFree, stateText, whereOf } from './dashModel';
 import { EMPTY_DRAFT, SCHOOL_LEVELS, applySuggestion, draftPayload, validateDraft, type LendDraft, type LoanOptions } from './loanOptions';
 import type { LoanActions } from './useLoanActions';
 import { useQrCamera } from './useQrCamera';
+import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
 
 type Mode = 'single' | 'lend' | 'return';
 
@@ -48,6 +49,9 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
   const [sending, setSending] = useState(false);
   const [active, setActive] = useState(0);
   const [ficha, setFicha] = useState(false);
+  const heldResult = useRef<ReactNode>(null);
+  // El placeholder más largo que entra en el ancho real del campo (nunca cortado).
+  const [, barPlaceholder] = useFitPlaceholder(['Escaneá o escribí un equipo — touch 34, D1436, plani 5', 'Escaneá o escribí un equipo', 'Escaneá o escribí…'], inputRef as RefObject<HTMLInputElement | null>);
   const byTag = useMemo(() => new Map(devices.map(device => [device.etiqueta, device])), [devices]);
 
   const matches = useMemo(() => (query.trim() ? resolveDeviceMatches(devices, query) : []), [devices, query]);
@@ -189,6 +193,119 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
       : found ? (loanOf(found) === 'loaned' ? 'devuelve' : loanOf(found) === 'available' ? 'abre el préstamo' : 'elige el libre más cercano')
         : pickList.length ? 'elige' : 'acción principal';
 
+  const resultBody = showResult ? (
+    <>
+        {(camera.open || camera.error) && (
+          <div className="dash-res-cam">
+            {camera.open && <video ref={camera.videoRef} className="dash-cam-video" muted playsInline aria-label="Cámara: apuntá al QR del equipo" />}
+            {camera.error && <StatusText tone="warn">{camera.error}</StatusText>}
+            <Button size="sm" variant="ghost" onClick={() => { camera.stop(); camera.clearError(); }}>Cerrar cámara</Button>
+          </div>
+        )}
+  
+        {batch && (
+          <div className="dash-res-batch">
+            <div className="dash-row-wrap">
+              <span className="dash-res-title">{mode === 'return' ? 'Devolver varios' : 'Prestar varios'}</span>
+              <span className="dash-res-hint">Escaneá uno tras otro: cada Enter suma a la cola y confirmás una sola vez.</span>
+              <Button size="sm" variant="ghost" onClick={() => { reset(); focusBar(); }}>Cancelar</Button>
+            </div>
+            <div className="dash-queue" aria-live="polite">
+              {queue.map(tag => {
+                const device = byTag.get(tag);
+                return (
+                  <span key={tag} className="dash-qchip">
+                    <span className="dash-qchip-name">{device ? aliasOf(device) : tag}</span>
+                    <span className="ui-mono dash-qchip-tag">{tag}</span>
+                    <IconButton size="sm" label={`Sacar ${device ? aliasOf(device) : tag} de la cola`} icon={<icons.IconX size={12} />} onClick={() => setQueue(current => current.filter(item => item !== tag))} />
+                  </span>
+                );
+              })}
+              {!queue.length && <span className="dash-res-hint">Cola vacía. Escaneá el primero.</span>}
+            </div>
+            {queueNote && <StatusText tone="warn">{queueNote}</StatusText>}
+          </div>
+        )}
+  
+        {found && !(lendList && lendList.length > 1) && (
+          <FoundCard
+            device={found}
+            devices={devices}
+            batch={batch}
+            inQueue={queue.includes(found.etiqueta)}
+            wantLoaned={mode === 'return'}
+            readOnly={readOnly}
+            readOnlyReason={readOnlyReason}
+            lendOpen={lendOpen}
+            busy={actions.busy.has(found.etiqueta)}
+            ficha={ficha}
+            onFicha={() => setFicha(value => !value)}
+            onReturn={() => void doReturn([found.etiqueta])}
+            onLend={tag => openLend([tag])}
+            onAdd={() => addToQueue(found)}
+            onProfile={() => onProfile(found)}
+          />
+        )}
+  
+        {!found && q.trim() && matches.length > 1 && (
+          <PickList
+            title={`${matches.length} coincidencias${matches.length > pickList.length ? ` · mostrando ${pickList.length}, seguí escribiendo` : ''}`}
+            items={pickList}
+            active={active}
+            onActive={setActive}
+            onPick={device => { setQ(device.etiqueta); focusBar(); }}
+            footer={matches.length > pickList.length ? <Button size="sm" variant="ghost" onClick={() => onShowInList(q)}>+{matches.length - pickList.length} más · ver en la lista</Button> : null}
+          />
+        )}
+  
+        {!found && q.trim() && !matches.length && (
+          <div className="dash-res-none">
+            <div className="dash-row-wrap">
+              <span className="dash-res-title">Sin «{q.trim()}».</span>
+              <span className="dash-res-hint">{suggestions.length ? '¿Quisiste decir…?' : 'No hay un equipo así en esta sede.'}</span>
+            </div>
+            {suggestions.length > 0 && <PickList items={suggestions} active={active} onActive={setActive} onPick={device => { setQ(device.etiqueta); focusBar(); }} />}
+          </div>
+        )}
+  
+        {batch && !q.trim() && !queue.length && <div className="dash-res-idle">Esperando el próximo equipo…</div>}
+  
+        {lendOpen && !readOnly && (mode === 'lend' || lendList) && (
+          <LendForm
+            title={mode === 'lend' ? 'Datos del préstamo (uno para toda la cola)' : lendTags.length === 1 ? `Prestar ${aliasOf(byTag.get(lendTags[0]) || ({ etiqueta: lendTags[0] } as Device))}` : `Prestar ${lendTags.length} equipos`}
+            chips={mode !== 'lend' && lendTags.length > 1 ? lendTags.map(tag => byTag.get(tag)).filter((device): device is Device => Boolean(device)) : []}
+            cta={mode === 'lend' ? `Prestar ${queue.length}` : lendTags.length > 1 ? `Prestar ${lendTags.length}` : 'Confirmar préstamo'}
+            options={options}
+            draft={draft}
+            setDraft={next => { setDraft(next); setLendError(null); }}
+            error={lendError}
+            sending={sending}
+            autoFocus={mode !== 'lend'}
+            onSubmit={() => void submitLend()}
+            onCancel={() => { if (batch) reset(); else { setLendList(null); setLendError(null); } focusBar(); }}
+            onMoreOptions={lendTags.length === 1 ? () => onOpenLoans(lendTags[0]) : undefined}
+          />
+        )}
+  
+        {mode === 'return' && (
+          <div className="dash-row-wrap dash-res-foot">
+            <span className="dash-res-hint dash-grow">{queue.length ? `${queue.length} ${queue.length === 1 ? 'equipo' : 'equipos'} en la cola` : 'Sumá equipos con Enter.'}</span>
+            <Button variant="primary" disabled={!queue.length || readOnly} loading={queue.some(tag => actions.busy.has(tag))} loadingLabel="Devolviendo…" onClick={() => void doReturn(queue)}>
+              Devolver {queue.length}
+            </Button>
+          </div>
+        )}
+  
+        <div className="dash-res-keys">
+          <span className="dash-nw"><Kbd>↵</Kbd> {enterHint}</span>
+          <span className="dash-nw"><Kbd>Esc</Kbd> limpia</span>
+          {pickList.length > 1 && <span className="dash-nw"><Kbd>↑</Kbd><Kbd>↓</Kbd> eligen</span>}
+          <span className="dash-res-hint dash-only-wide dash-grow dash-end">Con el lector USB, en Inicio lo escaneado cae acá.</span>
+        </div>
+    </>
+  ) : null;
+  if (resultBody) heldResult.current = resultBody;
+
   return (
     <section className="dash-bar-wrap" aria-label="Prestar o devolver">
       <div className="dash-bar">
@@ -196,7 +313,7 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
           ref={inputRef}
           className="dash-bar-field"
           aria-label="Escaneá o escribí un equipo"
-          placeholder="Escaneá o escribí un equipo — touch 34, D1436, plani 5"
+          placeholder={barPlaceholder}
           autoComplete="off"
           spellCheck={false}
           value={q}
@@ -222,117 +339,11 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
         </div>
       </div>
 
-      {showResult && (
-        <div id="dash-res" className="dash-res ui-enter" role="region" aria-label="Resultado">
-          {(camera.open || camera.error) && (
-            <div className="dash-res-cam">
-              {camera.open && <video ref={camera.videoRef} className="dash-cam-video" muted playsInline aria-label="Cámara: apuntá al QR del equipo" />}
-              {camera.error && <StatusText tone="warn">{camera.error}</StatusText>}
-              <Button size="sm" variant="ghost" onClick={() => { camera.stop(); camera.clearError(); }}>Cerrar cámara</Button>
-            </div>
-          )}
-
-          {batch && (
-            <div className="dash-res-batch">
-              <div className="dash-row-wrap">
-                <span className="dash-res-title">{mode === 'return' ? 'Devolver varios' : 'Prestar varios'}</span>
-                <span className="dash-res-hint">Escaneá uno tras otro: cada Enter suma a la cola y confirmás una sola vez.</span>
-                <Button size="sm" variant="ghost" onClick={() => { reset(); focusBar(); }}>Cancelar</Button>
-              </div>
-              <div className="dash-queue" aria-live="polite">
-                {queue.map(tag => {
-                  const device = byTag.get(tag);
-                  return (
-                    <span key={tag} className="dash-qchip">
-                      <span className="dash-qchip-name">{device ? aliasOf(device) : tag}</span>
-                      <span className="ui-mono dash-qchip-tag">{tag}</span>
-                      <IconButton size="sm" label={`Sacar ${device ? aliasOf(device) : tag} de la cola`} icon={<icons.IconX size={12} />} onClick={() => setQueue(current => current.filter(item => item !== tag))} />
-                    </span>
-                  );
-                })}
-                {!queue.length && <span className="dash-res-hint">Cola vacía. Escaneá el primero.</span>}
-              </div>
-              {queueNote && <StatusText tone="warn">{queueNote}</StatusText>}
-            </div>
-          )}
-
-          {found && !(lendList && lendList.length > 1) && (
-            <FoundCard
-              device={found}
-              devices={devices}
-              batch={batch}
-              inQueue={queue.includes(found.etiqueta)}
-              wantLoaned={mode === 'return'}
-              readOnly={readOnly}
-              readOnlyReason={readOnlyReason}
-              lendOpen={lendOpen}
-              busy={actions.busy.has(found.etiqueta)}
-              ficha={ficha}
-              onFicha={() => setFicha(value => !value)}
-              onReturn={() => void doReturn([found.etiqueta])}
-              onLend={tag => openLend([tag])}
-              onAdd={() => addToQueue(found)}
-              onProfile={() => onProfile(found)}
-            />
-          )}
-
-          {!found && q.trim() && matches.length > 1 && (
-            <PickList
-              title={`${matches.length} coincidencias${matches.length > pickList.length ? ` · mostrando ${pickList.length}, seguí escribiendo` : ''}`}
-              items={pickList}
-              active={active}
-              onActive={setActive}
-              onPick={device => { setQ(device.etiqueta); focusBar(); }}
-              footer={matches.length > pickList.length ? <Button size="sm" variant="ghost" onClick={() => onShowInList(q)}>+{matches.length - pickList.length} más · ver en la lista</Button> : null}
-            />
-          )}
-
-          {!found && q.trim() && !matches.length && (
-            <div className="dash-res-none">
-              <div className="dash-row-wrap">
-                <span className="dash-res-title">Sin «{q.trim()}».</span>
-                <span className="dash-res-hint">{suggestions.length ? '¿Quisiste decir…?' : 'No hay un equipo así en esta sede.'}</span>
-              </div>
-              {suggestions.length > 0 && <PickList items={suggestions} active={active} onActive={setActive} onPick={device => { setQ(device.etiqueta); focusBar(); }} />}
-            </div>
-          )}
-
-          {batch && !q.trim() && !queue.length && <div className="dash-res-idle">Esperando el próximo equipo…</div>}
-
-          {lendOpen && !readOnly && (mode === 'lend' || lendList) && (
-            <LendForm
-              title={mode === 'lend' ? 'Datos del préstamo (uno para toda la cola)' : lendTags.length === 1 ? `Prestar ${aliasOf(byTag.get(lendTags[0]) || ({ etiqueta: lendTags[0] } as Device))}` : `Prestar ${lendTags.length} equipos`}
-              chips={mode !== 'lend' && lendTags.length > 1 ? lendTags.map(tag => byTag.get(tag)).filter((device): device is Device => Boolean(device)) : []}
-              cta={mode === 'lend' ? `Prestar ${queue.length}` : lendTags.length > 1 ? `Prestar ${lendTags.length}` : 'Confirmar préstamo'}
-              options={options}
-              draft={draft}
-              setDraft={next => { setDraft(next); setLendError(null); }}
-              error={lendError}
-              sending={sending}
-              autoFocus={mode !== 'lend'}
-              onSubmit={() => void submitLend()}
-              onCancel={() => { if (batch) reset(); else { setLendList(null); setLendError(null); } focusBar(); }}
-              onMoreOptions={lendTags.length === 1 ? () => onOpenLoans(lendTags[0]) : undefined}
-            />
-          )}
-
-          {mode === 'return' && (
-            <div className="dash-row-wrap dash-res-foot">
-              <span className="dash-res-hint dash-grow">{queue.length ? `${queue.length} ${queue.length === 1 ? 'equipo' : 'equipos'} en la cola` : 'Sumá equipos con Enter.'}</span>
-              <Button variant="primary" disabled={!queue.length || readOnly} loading={queue.some(tag => actions.busy.has(tag))} loadingLabel="Devolviendo…" onClick={() => void doReturn(queue)}>
-                Devolver {queue.length}
-              </Button>
-            </div>
-          )}
-
-          <div className="dash-res-keys">
-            <span className="dash-nw"><Kbd>↵</Kbd> {enterHint}</span>
-            <span className="dash-nw"><Kbd>Esc</Kbd> limpia</span>
-            {pickList.length > 1 && <span className="dash-nw"><Kbd>↑</Kbd><Kbd>↓</Kbd> eligen</span>}
-            <span className="dash-res-hint dash-only-wide dash-grow dash-end">Con el lector USB, en Inicio lo escaneado cae acá.</span>
-          </div>
-        </div>
-      )}
+      {/* El resultado crece hacia abajo desde la barra y se pliega hacia ella;
+          mientras se cierra se sigue viendo lo último (no se vacía de golpe). */}
+      <Collapse open={showResult} id="dash-res" className="dash-res" role="region" aria-label="Resultado" onSettled={open => { if (!open) heldResult.current = null; }}>
+        {resultBody ?? heldResult.current}
+      </Collapse>
 
       {status.element && <div className="dash-status">{status.element}</div>}
     </section>
@@ -402,14 +413,12 @@ function FoundCard({ device, devices, batch, inQueue, wantLoaned, readOnly, read
           <Button variant="ghost" aria-expanded={ficha} onClick={onFicha}>{ficha ? 'Ocultar ficha' : 'Ficha'}</Button>
         </div>
       </div>
-      {ficha && (
-        <div className="dash-found-ficha ui-enter">
-          <dl className="dash-kv">
-            {fichaFields(device).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
-          </dl>
-          <Button size="sm" variant="ghost" onClick={onProfile}>Ficha completa</Button>
-        </div>
-      )}
+      <Collapse open={ficha} className="dash-found-ficha">
+        <dl className="dash-kv">
+          {fichaFields(device).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
+        </dl>
+        <Button size="sm" variant="ghost" onClick={onProfile}>Ficha completa</Button>
+      </Collapse>
     </div>
   );
 }
@@ -583,7 +592,7 @@ const SHORTCUTS: Array<[ReactNode, string]> = [
 
 export function Shortcuts() {
   return (
-    <dl className="dash-keys ui-enter" aria-label="Atajos del Inicio">
+    <dl className="dash-keys" aria-label="Atajos del Inicio">
       {SHORTCUTS.map(([keys, desc]) => <div key={desc}><dt>{keys}</dt><dd>{desc}</dd></div>)}
     </dl>
   );

@@ -3,12 +3,11 @@ import { ChevronDown, House, SearchX, Undo2 } from 'lucide-react';
 import type { Device } from '../../types';
 import {
   Button, Checkbox, ErrorState, Input, Kbd, Segmented, SelectionHeader, SkeletonRows, StatusText, TruncatedText,
-  cx, icons, useInlineConfirm, useSelection, type StatusMessage
+  Collapse, cx, icons, useAnchoredToggle, useInlineConfirm, useSelection, type StatusMessage
 } from '../../ui';
 import { aliasOf, fichaFields, filterList, initialOf, loanOf, sinceOf, stateText, whereOf, type Counts, type ListFilter } from './dashModel';
 import type { LoanActions } from './useLoanActions';
 import { normalizeText } from '../../utils/formatters';
-import { Collapse, keepScrollOnShrink, pinAnchor } from './Collapse';
 import { DashEmpty } from './DashEmpty';
 
 const FIRST_PAGE = 12;
@@ -53,7 +52,9 @@ export function OutList(props: OutListProps) {
   const selection = useSelection();
   const confirm = useInlineConfirm();
   const listRef = useRef<HTMLUListElement | null>(null);
-  const sectionRef = useRef<HTMLElement | null>(null);
+  // La fila tocada: la ficha que se abre y la que se cierra se anclan a ella (no se mueve).
+  const pinned = useRef<HTMLElement | null>(null);
+  const anchored = useAnchoredToggle();
 
   const list = useMemo(() => filterList(devices, filter, type, query), [devices, filter, type, query]);
   const visible = list.slice(0, shown);
@@ -92,7 +93,7 @@ export function OutList(props: OutListProps) {
     if (target.closest('.ui-trunc.is-cut') && (pointer === 'touch' || pointer === 'pen')) return;
     if (!readOnly && loanOf(device) !== 'blocked' && selection.handleClick(device.etiqueta, event, order)) return;
     // La fila tocada queda quieta aunque arriba se cierre otra ficha.
-    pinAnchor(event.currentTarget as HTMLElement);
+    pinned.current = event.currentTarget as HTMLElement;
     setOpen(current => (current === device.etiqueta ? null : device.etiqueta));
   };
 
@@ -151,7 +152,7 @@ export function OutList(props: OutListProps) {
         ariaLabel="Filtrar la lista"
         className="dash-tabs"
         value={filter === 'overdue' ? 'loaned' : (filter as 'loaned' | 'available' | 'all')}
-        onChange={value => { keepScrollOnShrink(sectionRef.current); onFilter(value); }}
+        onChange={value => anchored(() => onFilter(value))}
         options={[
           { value: 'loaned', label: 'Prestados', count: counts.loaned },
           { value: 'available', label: 'Disponibles', count: counts.available },
@@ -175,12 +176,13 @@ export function OutList(props: OutListProps) {
   );
 
   return (
-    <section ref={sectionRef} className={cx('dash-card', 'dash-list', readOnly && 'is-readonly', !hasRows && 'is-empty')} aria-labelledby="afuera-titulo" data-dash="afuera">
+    <section className={cx('dash-card', 'dash-list', readOnly && 'is-readonly', !hasRows && 'is-empty')} aria-labelledby="afuera-titulo" data-dash="afuera">
       <SelectionHeader
         count={selection.count}
         onClear={() => { confirm.cancel(); selection.clear(); }}
         noun={['seleccionado', 'seleccionados']}
         className="dash-selhead"
+        stable
         confirm={confirm.element}
         actions={(
           <>
@@ -229,7 +231,8 @@ export function OutList(props: OutListProps) {
               onCheck={event => { selection.handleClick(device.etiqueta, { ctrlKey: true, metaKey: false, shiftKey: event.shiftKey }, order); }}
               onReturn={() => void actions.returnDevices([device.etiqueta], status.show)}
               onLend={() => onLend([device.etiqueta])}
-              onClose={() => setOpen(null)}
+              onClose={() => { pinned.current = null; setOpen(null); }}
+              anchor={() => pinned.current}
               onEdit={() => onEdit(device)}
               onProfile={() => onProfile(device)}
               onCopy={() => onCopy(device)}
@@ -282,7 +285,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
   );
 }
 
-function Row({ device, open, selected, busy, readOnly, personCount, onClick, onCheck, onReturn, onLend, onClose, onEdit, onProfile, onCopy }: {
+function Row({ device, open, selected, busy, readOnly, personCount, onClick, onCheck, onReturn, onLend, onClose, anchor, onEdit, onProfile, onCopy }: {
   device: Device;
   open: boolean;
   selected: boolean;
@@ -294,6 +297,8 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
   onReturn: () => void;
   onLend: () => void;
   onClose: () => void;
+  /** Lo que queda quieto al abrir o cerrar la ficha (la fila tocada). */
+  anchor: () => HTMLElement | null;
   onEdit: () => void;
   onProfile: () => void;
   onCopy: () => void;
@@ -304,11 +309,12 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
   const st = stateText(device);
   const where = state === 'loaned' ? whereOf(device) || '—' : [device.marca, device.modelo].filter(Boolean).join(' ') || '—';
   const blocked = state === 'blocked';
+  const lineRef = useRef<HTMLDivElement | null>(null);
   return (
     <li className={cx('dash-row', selected && 'is-selected', open && 'is-open', busy && 'is-busy')} data-device-tag={device.etiqueta}>
       {/* Toda la fila responde al mouse (clic abre la ficha; Ctrl/Cmd/Shift marcan);
           con teclado, el botón del equipo hace lo mismo. */}
-      <div className="dash-row-line" onClick={onClick}>
+      <div ref={lineRef} className="dash-row-line" onClick={onClick}>
         {!readOnly && (
           <span className="dash-row-check" onClick={event => event.stopPropagation()}>
             <Checkbox ariaLabel={`${selected ? 'Desmarcar' : 'Marcar'} ${alias}`} checked={selected} disabled={blocked} onCheckedChange={(_, event) => onCheck(event)} />
@@ -347,7 +353,7 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
           <ChevronDown size={16} strokeWidth={1.6} aria-hidden="true" className={cx('dash-row-chev', open && 'is-open')} />
         </span>
       </div>
-      <Collapse open={open}>
+      <Collapse open={open} anchor={() => anchor() || lineRef.current} unmountOnClose>
         <div className="dash-ficha" role="region" aria-label={`Ficha de ${alias}`}>
           <dl className="dash-kv">
             {fichaFields(device).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
@@ -359,7 +365,7 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
             <Button size="sm" variant="secondary" onClick={onProfile}>Ficha completa</Button>
             <Button size="sm" variant="secondary" onClick={onCopy}>Copiar etiqueta</Button>
             <span className="dash-grow" />
-            <Button size="sm" variant="ghost" onClick={onClose}>Cerrar</Button>
+            <Button size="sm" variant="ghost" onClick={() => { onClose(); lineRef.current?.querySelector<HTMLButtonElement>('.dash-row-hit')?.focus({ preventScroll: true }); }}>Cerrar</Button>
           </div>
         </div>
       </Collapse>

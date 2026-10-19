@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarClock, House } from 'lucide-react';
 import type { Device, Movement, PreviousDayLoan } from '../../types';
 import { classifyDeviceType, getOperationalAlias } from '../../utils/classifyDevice';
 import { formatDate, formatLoanDateTime, formatTimeOnly, loanAgeDays } from '../../utils/formatters';
 import { getDeviceStateKey } from '../../utils/deviceState';
 import { getPreviousDayLoans, undoLoans, type LoanBatchResponse } from '../../services/loansApi';
 import { Button } from '../../ui/Button';
-import { ErrorState, Eyebrow, SkeletonRows, StatusText, ageTone } from '../../ui/Data';
+import { EmptyState, ErrorState, Eyebrow, SkeletonRows, StatusText, ageTone } from '../../ui/Data';
+import { Collapse, useAnchoredToggle } from '../../ui/Collapse';
 import { useStatusLine } from '../../ui/Status';
 import { TruncatedText } from '../../ui/Truncated';
 import { cx } from '../../ui/util';
@@ -51,6 +53,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
   const [seed, setSeed] = useState<{ code: string; nonce: number } | undefined>();
   const [batchSeed, setBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
   const [closureOpen, setClosureOpen] = useState(false);
+  const closureBtnRef = useRef<HTMLButtonElement | null>(null);
 
   // App manda '' y después la etiqueta: cada pedido nuevo llega aunque se repita.
   useEffect(() => {
@@ -84,12 +87,15 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
     <section className="lo-page" data-loans-page="">
       <div className="lo-toolbar">
         <span className="lo-toolbar-date">{capitalize(formatDate(new Date(), { weekday: 'short', day: 'numeric', month: 'short' }))}</span>
-        <Button size="sm" variant="secondary" aria-expanded={closureOpen} aria-controls="lo-cierre" onClick={() => setClosureOpen(value => !value)}>
+        <Button ref={closureBtnRef} size="sm" variant="secondary" aria-expanded={closureOpen} aria-controls="lo-cierre" onClick={() => setClosureOpen(value => !value)}>
           Cierre del día
         </Button>
       </div>
 
-      {closureOpen && <DailyClosureSection operator={operator} consultationMode={consultationMode} onClose={() => setClosureOpen(false)} />}
+      {/* En línea, suave y con el botón quieto (Collapse); lo escrito se conserva al cerrar. */}
+      <Collapse open={closureOpen} id="lo-cierre" outerClassName="lo-fold">
+        <DailyClosureSection open={closureOpen} operator={operator} consultationMode={consultationMode} onClose={() => { setClosureOpen(false); closureBtnRef.current?.focus({ preventScroll: true }); }} />
+      </Collapse>
 
       <div className="lo-cols">
         <div className="lo-main">
@@ -106,14 +112,15 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
           />
           <DeviceChipsPanel devices={devices} consultationMode={consultationMode} onReturnBatch={onReturnBatch} onUndo={onUndo} onSeedCode={seedLoanCode} onBatchLend={seedLoanBatch} />
           <PhotoPassPanel consultationMode={consultationMode} />
+          {/* Va en la columna principal: si la lateral es más corta no queda un hueco
+              arriba de esta tabla (en angosto baja al final, ver loans.css). */}
+          <PreviousDay devices={devices} onProfile={onProfile} />
         </div>
         <div className="lo-side">
           <NowSummary devices={devices} site={site} />
           <LoanedNow devices={devices} consultationMode={consultationMode} onReview={seedLoanCode} onReturnBatch={onReturnBatch} onUndo={onUndo} onProfile={onProfile} />
         </div>
       </div>
-
-      <PreviousDay devices={devices} onProfile={onProfile} />
     </section>
   );
 }
@@ -175,6 +182,7 @@ function LoanedNow({ devices, consultationMode, onReview, onReturnBatch, onUndo,
   onProfile?: (device: Device) => void;
 }) {
   const [all, setAll] = useState(false);
+  const anchored = useAnchoredToggle();
   const [busyTag, setBusyTag] = useState('');
   const status = useStatusLine();
   // Los que están afuera hace más tiempo, primero.
@@ -226,25 +234,24 @@ function LoanedNow({ devices, consultationMode, onReview, onReturnBatch, onUndo,
           const alias = getOperationalAlias(device) || device.etiqueta;
           return (
             <div className="lo-loaned-row" key={device.id || device.etiqueta} data-loaned-tag={device.etiqueta}>
-              <div className="lo-loaned-main">
-                <div className="lo-loaned-line">
-                  <button type="button" className="lo-link" aria-label={`Abrir ficha de ${alias} (${device.etiqueta})`} onClick={() => onProfile?.(device)}>{alias}</button>
-                  <span className="lo-loaned-tag g-num">{device.etiqueta}</span>
-                </div>
-                <TruncatedText className="lo-loaned-who">{`${device.prestadoA || 'Sin persona'} · ${[device.ubicacion, device.curso].filter(Boolean).join(' · ') || 'Sin ubicación'}`}</TruncatedText>
-                <StatusText tone={ageTone(days)} mono className="lo-loaned-since"><span>{formatLoanDateTime(device.loanedAt) || 'Sin fecha'}</span> · <span>{days <= 0 ? 'Hoy' : days === 1 ? '1 día' : `${days} días`}</span></StatusText>
+              {/* Equipo y acciones arriba; quién/dónde y desde cuándo usan todo el ancho abajo. */}
+              <div className="lo-loaned-line">
+                <button type="button" className="lo-link" aria-label={`Abrir ficha de ${alias} (${device.etiqueta})`} onClick={() => onProfile?.(device)}>{alias}</button>
+                <span className="lo-loaned-tag g-num">{device.etiqueta}</span>
+                <span className="lo-loaned-actions">
+                  <Button size="sm" variant="ghost" aria-label={`Revisar la devolución de ${alias}`} disabled={consultationMode} onClick={() => onReview(device.etiqueta)}>Revisar</Button>
+                  <Button size="sm" variant="secondary" aria-label={`Devolver ${alias}`} disabled={consultationMode || Boolean(busyTag)} loading={busyTag === device.etiqueta} onClick={() => void returnOne(device)}>Devolver</Button>
+                </span>
               </div>
-              <div className="lo-loaned-actions">
-                <Button size="sm" variant="ghost" aria-label={`Revisar la devolución de ${alias}`} disabled={consultationMode} onClick={() => onReview(device.etiqueta)}>Revisar</Button>
-                <Button size="sm" variant="secondary" aria-label={`Devolver ${alias}`} disabled={consultationMode || Boolean(busyTag)} loading={busyTag === device.etiqueta} onClick={() => void returnOne(device)}>Devolver</Button>
-              </div>
+              <TruncatedText className="lo-loaned-who" lines={2}>{`${device.prestadoA || 'Sin persona'} · ${[device.ubicacion, device.curso].filter(Boolean).join(' · ') || 'Sin ubicación'}`}</TruncatedText>
+              <StatusText tone={ageTone(days)} mono className="lo-loaned-since">{formatLoanDateTime(device.loanedAt) || 'Sin fecha'} · {days <= 0 ? 'hoy' : days === 1 ? '1 día' : `${days} días`}</StatusText>
             </div>
           );
         })}
-        {!loaned.length && <div className="lo-empty">No hay equipos prestados ahora.</div>}
+        {!loaned.length && <EmptyState compact className="lo-empty-state" icon={<House size={18} strokeWidth={1.6} />} title="Todo en casa" description="No hay equipos prestados ahora." />}
       </div>
       {loaned.length > SIDE_N && (
-        <Button size="sm" variant="ghost" block className="lo-more" onClick={() => setAll(value => !value)}>
+        <Button size="sm" variant="ghost" block className="lo-more" onClick={() => anchored(() => setAll(value => !value))}>
           {all ? `Ver solo los ${SIDE_N} más antiguos` : `Ver todos (${loaned.length})`}
         </Button>
       )}
@@ -261,6 +268,7 @@ function PreviousDay({ devices, onProfile }: { devices: Device[]; onProfile?: (d
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [all, setAll] = useState(false);
+  const anchored = useAnchoredToggle();
 
   const load = useCallback(async (alive: () => boolean = () => true) => {
     setLoading(true);
@@ -308,7 +316,7 @@ function PreviousDay({ devices, onProfile }: { devices: Device[]; onProfile?: (d
         <div id="lo-prev-body">
           {error && <ErrorState message={error} onRetry={() => void load()} retrying={loading} />}
           {!error && loading && !items.length && <SkeletonRows rows={4} />}
-          {!error && !loading && !items.length && <div className="lo-empty">Sin préstamos registrados en días anteriores.</div>}
+          {!error && !loading && !items.length && <EmptyState compact className="lo-empty-state" icon={<CalendarClock size={18} strokeWidth={1.6} />} title="Sin préstamos anteriores" description="Cuando haya un día con préstamos, acá se ve qué salió, a quién y con qué." />}
           {!error && items.length > 0 && (
             <div className="lo-prev-table" role="table" aria-label="Préstamos del último día con préstamos">
               <div className="lo-prev-row lo-prev-row--head" role="row">
@@ -336,7 +344,7 @@ function PreviousDay({ devices, onProfile }: { devices: Device[]; onProfile?: (d
             </div>
           )}
           {items.length > PREV_N && (
-            <Button size="sm" variant="ghost" block className="lo-more" onClick={() => setAll(value => !value)}>{all ? 'Ver menos' : `Ver los ${items.length}`}</Button>
+            <Button size="sm" variant="ghost" block className="lo-more" onClick={() => anchored(() => setAll(value => !value))}>{all ? 'Ver menos' : `Ver los ${items.length}`}</Button>
           )}
         </div>
       </LazyBody>

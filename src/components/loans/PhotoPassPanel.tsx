@@ -9,9 +9,10 @@ import { Input } from '../../ui/Field';
 import { useStatusLine } from '../../ui/Status';
 import { ErrorState } from '../../ui/Data';
 import { TruncatedText } from '../../ui/Truncated';
+import { Collapse, keepInPlace } from '../../ui/Collapse';
 import { fold, cx } from '../../ui/util';
 import { PersonSuggestInput } from './PersonSuggestInput';
-import { ChipLegend, GroupToggle, LazyBody, SelectModeButton, SelectionBar, batchResultMessage, isMarkClick, usePanelOpen } from './ChipPanelKit';
+import { ChipLegend, GroupToggle, LazyBody, SelectModeButton, SelectionBar, SelectionSwap, batchResultMessage, isMarkClick, usePanelOpen } from './ChipPanelKit';
 import { SuccessCheck } from './ScanMessage';
 
 /**
@@ -40,6 +41,10 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
   const [items, setItems] = useState<PhotoPass[]>([]);
   const [options, setOptions] = useState<PhotoPassOptions>({ alumnos: [], cursos: [], docentes: [] });
   const [lending, setLending] = useState<PhotoPass[] | null>(null);
+  // El formulario se pliega con lo último que mostraba (no se vacía de golpe).
+  const lastLending = useRef<PhotoPass[] | null>(null);
+  if (lending) lastLending.current = lending;
+  const shownLending = lending || lastLending.current;
   const [form, setForm] = useState(EMPTY);
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -158,7 +163,8 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
     const key = String(pass.numero);
     if (selectMode || isMarkClick(event)) {
       event.preventDefault();
-      if (!selectMode) setSelectMode(true);
+      // Al entrar en selección aparecen "Todos / Ninguno": el chip tocado no se corre.
+      if (!selectMode) { keepInPlace(event.currentTarget as HTMLElement, { duration: 120 }); setSelectMode(true); }
       setConfirming(false);
       const from = anchor.current;
       if (event.shiftKey && from && from !== key) {
@@ -189,7 +195,7 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
 
   return (
     <section className="lo-card lo-chips lo-passes" aria-labelledby="lo-passes-title" data-loans-grid="passes" data-select-mode={selectMode ? 'on' : 'off'}>
-      {selectMode ? (
+      <SelectionSwap active={selectMode} bar={(
         <SelectionBar
           label="Selección de cartelitos"
           count={marcados.length}
@@ -217,7 +223,7 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
             </>
           )}
         />
-      ) : (
+      )}>
         <div className="lo-card-head lo-passes-head">
           <GroupToggle
             open={open}
@@ -231,25 +237,26 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
           />
           <SelectModeButton disabled={consultationMode || loading} onClick={() => { setSelectMode(true); if (!open) setOpen(true); }} />
         </div>
-      )}
+      </SelectionSwap>
       <h2 id="lo-passes-title" className="ui-sr">Cartelitos de fotos</h2>
 
       {status.element && <div className="lo-card-status">{status.element}</div>}
 
       <LazyBody open={open || selectMode} className="lo-passes-body">
         <div id="lo-passes-body">
-          {lending && (
-            <div className="lo-lend lo-pass-form ui-enter" role="group" aria-labelledby="lo-pf-title" data-scanner-ignore="">
+          <Collapse open={Boolean(lending)} outerClassName="lo-pass-fold">
+          {shownLending && (
+            <div className="lo-lend lo-pass-form" role="group" aria-labelledby="lo-pf-title" data-scanner-ignore="">
               <div className="lo-pf-head">
-                <span id="lo-pf-title" className="lo-lend-title">{lending.length === 1 ? `Entregar cartelito ${lending[0].numero}` : `Entregar ${lending.length} cartelitos`}</span>
-                {lending.length > 1 && (
+                <span id="lo-pf-title" className="lo-lend-title">{shownLending.length === 1 ? `Entregar cartelito ${shownLending[0].numero}` : `Entregar ${shownLending.length} cartelitos`}</span>
+                {shownLending.length > 1 && (
                   <span className="lo-pf-chips" aria-label="Cartelitos a entregar">
-                    {lending.map(pass => <span key={pass.numero} className="lo-chip lo-chip--sample is-selected">{pass.numero}</span>)}
+                    {shownLending.map(pass => <span key={pass.numero} className="lo-chip lo-chip--sample is-selected">{pass.numero}</span>)}
                   </span>
                 )}
               </div>
               <div className="lo-frow">
-                <label htmlFor="lo-pf-alumno" className="lo-flabel">{lending.length > 1 ? 'Responsable' : 'Alumno'}</label>
+                <label htmlFor="lo-pf-alumno" className="lo-flabel">{shownLending.length > 1 ? 'Responsable' : 'Alumno'}</label>
                 <div className="lo-fcontrol">
                   {/* Elegir al alumno completa curso y docente con los que suele venir. */}
                   <PersonSuggestInput
@@ -289,13 +296,14 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
               </div>
               <div className="lo-lend-actions">
                 <Button variant="primary" loading={busy} loadingLabel="Entregando…" disabled={consultationMode || !form.persona.trim()} onClick={() => void submitLend()} iconEnd={<Kbd>↵</Kbd>}>
-                  {lending.length > 1 ? `Entregar ${lending.length}` : 'Entregar'}
+                  {shownLending.length > 1 ? `Entregar ${shownLending.length}` : 'Entregar'}
                 </Button>
                 <Button variant="ghost" disabled={busy} onClick={() => { setLending(null); setFormError(''); }}>Cancelar</Button>
                 {formError && <span className="lo-form-error t-msg-enter t-input is-shaking" role="alert">{formError}</span>}
               </div>
             </div>
           )}
+          </Collapse>
 
           {loadError && <ErrorState message={loadError} onRetry={() => { setLoading(true); void refresh(); }} />}
 

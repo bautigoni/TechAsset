@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-import { Ring, Skeleton, cx } from '../../ui';
+import { Collapse, Ring, Skeleton, cx } from '../../ui';
 import type { Counts, ListFilter, TypeStat } from './dashModel';
 
 /**
@@ -37,7 +37,7 @@ export function StatusTiles({ counts, types, filter, type, typesOpen, loading, o
   const tiles: Array<{ key: ListFilter; label: string; short?: string; value: number; detail: string; tone?: 'warn' }> = [
     { key: 'available', label: 'Disponibles', value: counts.available, detail: `de ${counts.total} · elegí el tipo` },
     { key: 'loaned', label: 'Prestados', value: counts.loaned, detail: counts.people === 1 ? '1 persona' : `${counts.people} personas` },
-    { key: 'overdue', label: 'Más de 1 día afuera', short: '+1 día afuera', value: counts.overdue, detail: warn ? 'devolver o reclamar' : 'nada atrasado', tone: warn ? 'warn' : undefined }
+    { key: 'overdue', label: 'Más de 1 día afuera', short: 'Atrasados', value: counts.overdue, detail: warn ? 'devolver o reclamar' : 'nada atrasado', tone: warn ? 'warn' : undefined }
   ];
   return (
     <section className="dash-state" aria-label="Estado de los equipos ahora">
@@ -68,14 +68,12 @@ export function StatusTiles({ counts, types, filter, type, typesOpen, loading, o
           );
         })}
       </div>
-      {typesOpen && (
-        <div id="dash-types" className="dash-types ui-enter" role="group" aria-label="Disponibles por tipo">
+      <Collapse open={typesOpen} id="dash-types" outerClassName="dash-fold" className="dash-types" role="group" aria-label="Disponibles por tipo">
           <TypeChip name="Todos los tipos" free={counts.available} total={counts.total} on={filter === 'available' && !type} onClick={() => onType('')} />
           {types.map(stat => (
             <TypeChip key={stat.name} name={stat.name} free={stat.free} total={stat.total} on={filter === 'available' && type === stat.name} onClick={() => onType(stat.name)} />
           ))}
-        </div>
-      )}
+      </Collapse>
     </section>
   );
 }

@@ -167,7 +167,7 @@ export function NotesPanel({ operator, readOnly, onCount }: { operator: string; 
             ref={inputRef}
             className="dash-grow"
             aria-label="Escribir una nota"
-            placeholder="Escribí una nota y apretá Enter…"
+            placeholder="Escribí una nota…"
             autoComplete="off"
             value={text}
             onValueChange={setText}

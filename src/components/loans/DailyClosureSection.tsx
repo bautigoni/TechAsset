@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ClipboardCheck } from 'lucide-react';
 import { createDailyClosure, fetchDailyClosurePreview, fetchDailyClosures } from '../../services/operationsApi';
 import { formatDate } from '../../utils/formatters';
 import { Button } from '../../ui/Button';
 import { Textarea } from '../../ui/Field';
 import { ErrorState, Eyebrow, SkeletonText } from '../../ui/Data';
 import { TruncatedText } from '../../ui/Truncated';
+import { Collapse } from '../../ui/Collapse';
+import { EmptyState } from '../../ui/Data';
 
 type Closure = { id: number | string; fecha?: string; operador?: string; observaciones?: string; createdAt?: string };
 
@@ -14,7 +17,13 @@ type Closure = { id: number | string; fecha?: string; operador?: string; observa
  * Copiar, Generar cierre (deshabilitado en consulta) e historial de cierres
  * con fecha, operador y observaciones.
  */
-export function DailyClosureSection({ operator, consultationMode, onClose }: { operator: string; consultationMode: boolean; onClose: () => void }) {
+export function DailyClosureSection({ open = true, operator, consultationMode, onClose }: {
+  /** Va adentro de un Collapse: al reabrirse se recarga el resumen (lo escrito se conserva). */
+  open?: boolean;
+  operator: string;
+  consultationMode: boolean;
+  onClose: () => void;
+}) {
   const [resumen, setResumen] = useState<Record<string, unknown> | null>(null);
   const [history, setHistory] = useState<Closure[]>([]);
   const [observaciones, setObservaciones] = useState('');
@@ -38,7 +47,12 @@ export function DailyClosureSection({ operator, consultationMode, onClose }: { o
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  // Se carga al abrir y se refresca cada vez que se vuelve a abrir.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open && !wasOpen.current) void load();
+    wasOpen.current = open;
+  }, [open, load]);
 
   const text = resumen ? renderClosureText(resumen, observaciones, operator) : '';
 
@@ -68,22 +82,21 @@ export function DailyClosureSection({ operator, consultationMode, onClose }: { o
   };
 
   return (
-    <section id="lo-cierre" className="lo-card lo-closure ui-enter" aria-labelledby="lo-cierre-title" data-scanner-ignore="">
+    <section className="lo-card lo-closure" aria-labelledby="lo-cierre-title" data-scanner-ignore="">
       <div className="lo-card-head">
         <div className="lo-head-text">
           <Eyebrow>Cierre del día TIC</Eyebrow>
           <h2 id="lo-cierre-title" className="lo-h2">{capitalize(formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' }))}</h2>
         </div>
         <div className="lo-head-actions">
-          <Button size="sm" variant="ghost" aria-expanded={historyOpen} onClick={() => setHistoryOpen(value => !value)}>
+          <Button size="sm" variant="ghost" aria-expanded={historyOpen} aria-controls="lo-cierre-historial" onClick={() => setHistoryOpen(value => !value)}>
             {historyOpen ? 'Ocultar historial' : `Historial (${history.length})`}
           </Button>
           <Button size="sm" variant="ghost" onClick={onClose}>Cerrar</Button>
         </div>
       </div>
 
-      {historyOpen && (
-        <div className="lo-closure-history ui-enter">
+      <Collapse open={historyOpen} id="lo-cierre-historial" className="lo-closure-history">
           {history.map(item => (
             <div className="lo-closure-hrow" key={String(item.id)}>
               <span className="lo-closure-hwhen g-num">{item.fecha || formatDate(item.createdAt)}</span>
@@ -91,9 +104,8 @@ export function DailyClosureSection({ operator, consultationMode, onClose }: { o
               <TruncatedText className="lo-closure-hobs">{item.observaciones || 'Sin observaciones.'}</TruncatedText>
             </div>
           ))}
-          {!history.length && <span className="lo-muted">Todavía no hay cierres guardados en esta sede.</span>}
-        </div>
-      )}
+          {!history.length && <EmptyState compact icon={<ClipboardCheck size={18} strokeWidth={1.6} />} title="Todavía no hay cierres guardados" description="Cada cierre que generes queda acá con su fecha, operador y observaciones." />}
+      </Collapse>
 
       {loadError && <ErrorState message={loadError} onRetry={() => void load()} retrying={loading} />}
 

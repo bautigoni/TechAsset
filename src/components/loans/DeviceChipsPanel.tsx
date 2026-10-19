@@ -8,8 +8,9 @@ import { Button } from '../../ui/Button';
 import { useStatusLine } from '../../ui/Status';
 import { TruncatedText } from '../../ui/Truncated';
 import { cx } from '../../ui/util';
+import { keepInPlace } from '../../ui/Collapse';
 import {
-  ChipLegend, GroupToggle, LazyBody, SelectModeButton, SelectionBar, batchResultMessage, deviceChipKind, isMarkClick, usePanelOpen
+  ChipLegend, GroupToggle, LazyBody, SelectModeButton, SelectionBar, SelectionSwap, batchResultMessage, deviceChipKind, isMarkClick, usePanelOpen
 } from './ChipPanelKit';
 import { SuccessCheck } from './ScanMessage';
 import type { UndoFn } from './LoanForm';
@@ -171,7 +172,8 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onU
   const onChipClick = (event: MouseEvent, device: Device, group: Group) => {
     if (selectMode || isMarkClick(event)) {
       event.preventDefault();
-      if (!selectMode) setSelectMode(true);
+      // Al entrar en selección aparecen "Todos / Ninguno": el chip tocado no se corre.
+      if (!selectMode) { keepInPlace(event.currentTarget as HTMLElement, { duration: 120 }); setSelectMode(true); }
       // Mejora: Shift + clic sobre otro del mismo tipo marca desde el último marcado hasta acá.
       const from = anchor.current;
       if (event.shiftKey && from && from.group === group.nombre && from.key !== device.etiqueta) {
@@ -194,7 +196,7 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onU
 
   return (
     <section className="lo-card lo-chips" aria-labelledby="lo-chips-title" data-loans-grid="devices" data-select-mode={selectMode ? 'on' : 'off'}>
-      {selectMode ? (
+      <SelectionSwap active={selectMode} bar={(
         <SelectionBar
           label="Selección de equipos"
           count={selectedDevices.length}
@@ -216,7 +218,7 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onU
             </>
           )}
         />
-      ) : (
+      )}>
         <div className="lo-card-head lo-chips-head">
           <div className="lo-head-text">
             <h2 id="lo-chips-title" className="lo-h2">Equipos por tipo</h2>
@@ -227,7 +229,7 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onU
           </div>
           <SelectModeButton disabled={consultationMode} onClick={() => setSelectMode(true)} />
         </div>
-      )}
+      </SelectionSwap>
 
       {status.element && <div className="lo-card-status">{status.element}</div>}
 

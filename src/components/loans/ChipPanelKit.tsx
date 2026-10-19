@@ -162,6 +162,20 @@ export function SelectionBar({ count, hint, idleHint, actions, confirm, onClear,
   );
 }
 
+/**
+ * Encabezado de la sección y barra de selección en la MISMA celda: el bloque
+ * mide lo que el más alto, así entrar o salir de la selección no corre los
+ * chips que están debajo del cursor.
+ */
+export function SelectionSwap({ active, bar, children }: { active: boolean; bar: ReactNode; children: ReactNode }) {
+  return (
+    <div className="ui-selswap">
+      <div className="ui-selswap-base" inert={active} aria-hidden={active || undefined}>{children}</div>
+      {active && bar}
+    </div>
+  );
+}
+
 /** Botón "Seleccionar varios" (en mobile, "Varios"). */
 export function SelectModeButton({ disabled, onClick }: { disabled?: boolean; onClick: () => void }) {
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { Device } from '../../types';
-import { Button, ErrorState, Eyebrow, IconButton, Input, Segmented, Textarea, icons } from '../../ui';
+import { Button, Collapse, ErrorState, Eyebrow, IconButton, Input, Segmented, Textarea, icons } from '../../ui';
 import { getDeviceCategories } from '../../services/devicesApi';
 import { errorMessage } from '../layout/Feedback';
 import { MANUAL_STATES, isLoaned, stateLabel } from './deviceView';
@@ -150,11 +150,11 @@ export function DeviceForm({ initial, existingTags, saving, onSave, onCancel }: 
         {loaned && <span className="dv-note">Tiene un préstamo activo: para cambiar el estado, devolvelo primero.</span>}
       </div>
       <Textarea label="Observaciones" minRows={2} value={draft.comentarios} onValueChange={set('comentarios')} placeholder="Opcional: lo que haya que saber del equipo" />
-      {renaming && (
+      <Collapse open={Boolean(renaming)}>
         <p className="dv-note dv-note--warn" role="status">
           Vas a renombrar {original} → {tag}. La condición, la clase y la vida útil pasan a {tag}; el historial de préstamos, el estado guardado y el grupo quedan con {original}.
         </p>
-      )}
+      </Collapse>
       {error && <ErrorState message={error} />}
       <div className="dv-form-actions">
         <Button type="submit" variant="primary" loading={busy || saving} loadingLabel="Guardando…">{editing ? 'Guardar cambios' : 'Añadir dispositivo'}</Button>

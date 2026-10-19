@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { Device, ViewKey } from '../../types';
 import {
-  Button, EmptyState, IconButton, InlineConfirm, Input, Kbd, SectionHeader, Segmented, SelectionHeader, SkeletonRows, StatusText, Table, TruncatedText,
+  Button, Collapse, EmptyState, IconButton, InlineConfirm, Input, Kbd, SectionHeader, Segmented, SelectionHeader, SkeletonRows, StatusText, Table, TruncatedText,
   ageTone, icons, useSelection, useStatusLine, type Column, type SortState
 } from '../../ui';
 import { deleteDevicesBatch, getDeletedDevices, getDeviceGroups, restoreDevice, restoreDevicesBatch, updateDeviceStatus, updateDevicesStatusBatch, type DeviceBatchResponse } from '../../services/devicesApi';
@@ -80,6 +80,8 @@ export function DevicesPage(props: DevicesPageProps) {
   const [returning, setReturning] = useState('');
   const [pageEditing, setPageEditing] = useState(Boolean(props.pageEdit));
   const scrollTo = useRef<string | null>(null);
+  // Botones del encabezado: al cerrar un panel desde adentro, el foco vuelve a su botón.
+  const panelButtons = useRef<Partial<Record<Exclude<Panel, null> | 'create', HTMLButtonElement | null>>>({});
   const selection = useSelection();
   const listStatus = useStatusLine();
   const refresh = useCallback(async () => { await onImported?.(); }, [onImported]);
@@ -238,7 +240,11 @@ export function DevicesPage(props: DevicesPageProps) {
   };
 
   const detailActions = (device: Device) => ({
-    onClose: () => setOpen(null),
+    // Al cerrar la ficha, el foco vuelve a su fila (no se pierde en la página).
+    onClose: () => {
+      setOpen(null);
+      document.querySelector<HTMLElement>(`.dv-table [data-device-tag="${CSS.escape(device.etiqueta)}"]`)?.focus({ preventScroll: true });
+    },
     onLoan: consultationMode ? undefined : props.onLoan,
     onReturn: consultationMode ? undefined : async (item: Device) => { await runReturn(item); },
     onEdit: consultationMode ? undefined : (item: Device) => (props.pageTag ? setPageEditing(true) : setOpen({ tag: item.etiqueta, mode: 'edit' })),
@@ -453,6 +459,11 @@ export function DevicesPage(props: DevicesPageProps) {
   const stateTitle = STATE_FILTERS.find(item => item.value === stateFilter)?.title || 'Todos los equipos';
   const listTitle = typeFilter === 'all' ? stateTitle : `${stateTitle} · ${typeFilter}`;
   const togglePanel = (next: Exclude<Panel, null>) => { setPanel(current => (current === next ? null : next)); setCreating(false); };
+  const closePanel = (which: Exclude<Panel, null> | 'create') => {
+    if (which === 'create') setCreating(false);
+    else setPanel(null);
+    panelButtons.current[which]?.focus({ preventScroll: true });
+  };
   const onToggle = (key: string, event: MouseEvent) => {
     if (event.shiftKey) selection.selectRange(key, visibleKeys);
     else selection.toggle(key);
@@ -465,19 +476,32 @@ export function DevicesPage(props: DevicesPageProps) {
         title="Equipos de la sede"
         actions={(
           <div className="dv-head-actions">
-            {!consultationMode && <Button aria-expanded={panel === 'import'} icon={<icons.IconUpload size={14} />} onClick={() => togglePanel('import')}>Importar CSV</Button>}
-            <Button aria-expanded={panel === 'export'} icon={<icons.IconFile size={14} />} onClick={() => togglePanel('export')}>Exportar</Button>
-            <Button aria-expanded={panel === 'groups'} onClick={() => togglePanel('groups')}>Grupos{counts.groups !== null && <span className="ui-mono dv-count">{counts.groups}</span>}</Button>
-            <Button aria-expanded={panel === 'trash'} onClick={() => togglePanel('trash')}>Papelera{counts.trash !== null && <span className="ui-mono dv-count">{counts.trash}</span>}</Button>
-            {!consultationMode && <Button variant="primary" icon={<icons.IconPlus size={14} />} aria-expanded={creating} onClick={() => { setCreating(value => !value); setPanel(null); setOpen(null); }}>Añadir dispositivo</Button>}
+            {!consultationMode && <Button ref={el => { panelButtons.current.import = el; }} aria-expanded={panel === 'import'} aria-controls="dv-panel-import" icon={<icons.IconUpload size={14} />} onClick={() => togglePanel('import')}>Importar CSV</Button>}
+            <Button ref={el => { panelButtons.current.export = el; }} aria-expanded={panel === 'export'} aria-controls="dv-panel-export" icon={<icons.IconFile size={14} />} onClick={() => togglePanel('export')}>Exportar</Button>
+            <Button ref={el => { panelButtons.current.groups = el; }} aria-expanded={panel === 'groups'} aria-controls="dv-panel-groups" onClick={() => togglePanel('groups')}>Grupos{counts.groups !== null && <span className="ui-mono dv-count">{counts.groups}</span>}</Button>
+            <Button ref={el => { panelButtons.current.trash = el; }} aria-expanded={panel === 'trash'} aria-controls="dv-panel-trash" onClick={() => togglePanel('trash')}>Papelera{counts.trash !== null && <span className="ui-mono dv-count">{counts.trash}</span>}</Button>
+            {!consultationMode && <Button ref={el => { panelButtons.current.create = el; }} variant="primary" icon={<icons.IconPlus size={14} />} aria-expanded={creating} aria-controls="dv-create" onClick={() => { setCreating(value => !value); setPanel(null); setOpen(null); }}>Añadir dispositivo</Button>}
           </div>
         )}
       />
 
-      {panel === 'import' && !consultationMode && <ImportPanel operator={props.operator} onImported={refresh} onClose={() => setPanel(null)} />}
-      {panel === 'export' && <ExportPanel visible={visible} siteCode={props.siteCode || ''} onClose={() => setPanel(null)} />}
-      {panel === 'groups' && <DeviceGroupsPanel devices={allDevices} consultationMode={consultationMode} onOpenDevice={tag => openInList(tag)} onCount={groups => setCounts(current => ({ ...current, groups }))} onClose={() => setPanel(null)} />}
-      {panel === 'trash' && <DeviceTrashPanel consultationMode={consultationMode} onRestored={refresh} onCount={trash => setCounts(current => ({ ...current, trash }))} onClose={() => setPanel(null)} />}
+      {/* Paneles en línea: se abren y se cierran suaves con el botón quieto (Collapse).
+          Importar y Grupos conservan lo que se estaba haciendo; Exportar y la
+          Papelera se vuelven a leer cada vez que se abren. */}
+      {!consultationMode && (
+        <Collapse open={panel === 'import'} id="dv-panel-import" outerClassName="dv-fold">
+          <ImportPanel operator={props.operator} onImported={refresh} onClose={() => closePanel('import')} />
+        </Collapse>
+      )}
+      <Collapse open={panel === 'export'} id="dv-panel-export" outerClassName="dv-fold" unmountOnClose>
+        <ExportPanel visible={visible} siteCode={props.siteCode || ''} onClose={() => closePanel('export')} />
+      </Collapse>
+      <Collapse open={panel === 'groups'} id="dv-panel-groups" outerClassName="dv-fold">
+        <DeviceGroupsPanel devices={allDevices} consultationMode={consultationMode} onOpenDevice={tag => openInList(tag)} onCount={groups => setCounts(current => ({ ...current, groups }))} onClose={() => closePanel('groups')} />
+      </Collapse>
+      <Collapse open={panel === 'trash'} id="dv-panel-trash" outerClassName="dv-fold" unmountOnClose>
+        <DeviceTrashPanel consultationMode={consultationMode} onRestored={refresh} onCount={trash => setCounts(current => ({ ...current, trash }))} onClose={() => closePanel('trash')} />
+      </Collapse>
 
       <div className="dv-filters">
         <Segmented<StateFilter>
@@ -499,7 +523,11 @@ export function DevicesPage(props: DevicesPageProps) {
       </div>
 
       <section className="dv-card dv-list" aria-label="Lista de equipos">
+        {/* Con equipos marcados, la barra de selección reemplaza SOLO el título:
+            el buscador y el orden siguen a la vista y se pueden usar. */}
+        <div className="dv-list-head">
         <SelectionHeader
+          className="dv-selhead"
           count={consultationMode ? 0 : selection.count}
           noun={['equipo marcado', 'equipos marcados']}
           onClear={() => { selection.clear(); setBatch(null); }}
@@ -519,11 +547,11 @@ export function DevicesPage(props: DevicesPageProps) {
             </>
           )}
         >
-          <div className="dv-list-head">
             <div className="dv-list-title">
               <h3 className="dv-h3 dv-ell">{listTitle}</h3>
               <span className="dv-muted dv-nowrap"><span className="ui-mono">{visible.length}</span> visibles</span>
             </div>
+        </SelectionHeader>
             <Input
               className="dv-search"
               aria-label="Filtrar por etiqueta, alias, número, SN o persona"
@@ -543,16 +571,17 @@ export function DevicesPage(props: DevicesPageProps) {
               onChange={value => { setOrder(value as 'original' | 'operational'); setSort(null); }}
               options={[{ value: 'original', label: 'Orden original' }, { value: 'operational', label: 'Nº operativo' }]}
             />
-          </div>
-          {query.trim() && !sort && <p className="dv-hint">Mientras buscás, se ordena por número operativo. Entiende touch34, 34touch, D1436, 1436, plani 5, planificación 5, el SN y la persona que lo tiene.</p>}
-        </SelectionHeader>
+        </div>
+        <Collapse open={Boolean(query.trim() && !sort)}>
+          <p className="dv-hint">Mientras buscás, se ordena por número operativo. Entiende touch34, 34touch, D1436, 1436, plani 5, planificación 5, el SN y la persona que lo tiene.</p>
+        </Collapse>
 
         {listStatus.element}
 
-        {creating && !consultationMode && (
-          <div className="dv-create">
-            <DeviceForm existingTags={new Set(allDevices.map(item => item.etiqueta))} onSave={saveDevice} onCancel={() => setCreating(false)} />
-          </div>
+        {!consultationMode && (
+          <Collapse open={creating} id="dv-create" className="dv-create" unmountOnClose>
+            <DeviceForm existingTags={new Set(allDevices.map(item => item.etiqueta))} onSave={saveDevice} onCancel={() => closePanel('create')} />
+          </Collapse>
         )}
 
         <Table

@@ -15,9 +15,6 @@
   gap: var(--g-s-3);
   min-width: 0;
   padding: var(--g-s-4) var(--dash-pad-x) var(--g-s-6);
-  /* Piso de scroll (Collapse.tsx): alto extra temporal para que plegar algo
-     cerca del final no recorte el scroll ni mueva el encabezado tocado. */
-  padding-bottom: calc(var(--g-s-6) + var(--dash-floor, 0px));
   /* El cuerpo reparte sus columnas según el ancho real del Inicio (con o sin
      menú, con o sin asistente), no según la ventana. */
   container: dash / inline-size;
@@ -41,6 +38,11 @@
 .dash-h2 { margin: 0; font-size: var(--g-fs-md); font-weight: var(--g-fw-semibold); line-height: 1.5rem; white-space: nowrap; }
 .dash-h3 { margin: 0; min-width: 0; font-size: var(--g-fs-base); font-weight: var(--g-fw-semibold); line-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash .ui-btn { white-space: nowrap; }
+/* Plegables entre bloques (Collapse): cerrados no suman el gap del contenedor;
+   el gap viaja adentro y se anima con el alto. */
+.dash-fold { margin-top: calc(-1 * var(--dash-fold-gap, var(--g-s-3))); }
+.dash-fold > .ui-collapse-clip > * { margin-top: var(--dash-fold-gap, var(--g-s-3)); }
+.dash-state > .dash-fold { --dash-fold-gap: var(--g-s-2); }
 @media (max-width: 639px) { .dash-only-wide { display: none !important; } }
 
 .dash-card {
@@ -733,7 +735,6 @@
 .dash-move-kind > svg { flex: none; }
 .dash-move-desc { font-size: var(--g-fs-sm); line-height: 1.125rem; overflow-wrap: anywhere; }
 .dash-move-op { min-width: 0; overflow: hidden; color: var(--g-text-2); font-size: var(--g-fs-xs); line-height: 1rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
-.dash-collapse { min-width: 0; }
 
 /* Angosto: filas apiladas (tipo · operador · hora arriba, descripción abajo). */
 @container dashmoves (max-width: 539px) {

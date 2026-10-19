@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { Input } from '../../ui/Field';
 import { cx } from '../../ui/util';
+import { Collapse } from '../../ui/Collapse';
 import { getPhotoPassSuggestions, type PhotoPassSuggestion } from '../../services/photoPassesApi';
 
 export type SuggestRow = { name: string; hint: string; times: string };
@@ -54,6 +55,10 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, row, itemKey, on
   }, [value]);
 
   const visible = open && items.length > 0;
+  // Mientras la lista se pliega se sigue viendo lo último (no se vacía de golpe).
+  const shownItems = useRef<T[]>([]);
+  if (items.length) shownItems.current = items;
+  const listItems = items.length ? items : shownItems.current;
   const pick = (item: T) => {
     picked.current = row(item).name.trim();
     onPick(item);
@@ -97,9 +102,8 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, row, itemKey, on
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
         onKeyDown={onKeyDown}
       />
-      {visible && (
-        <div className="lo-suggest-list ui-enter" id={listId} role="listbox" aria-label={listLabel}>
-          {items.map((item, index) => {
+      <Collapse open={visible} id={listId} role="listbox" aria-label={listLabel} className="lo-suggest-list" reveal={false}>
+          {listItems.map((item, index) => {
             const data = row(item);
             return (
               <button
@@ -122,8 +126,7 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, row, itemKey, on
             );
           })}
           {footer && <div className="lo-suggest-foot">{footer}</div>}
-        </div>
-      )}
+      </Collapse>
     </div>
   );
 }

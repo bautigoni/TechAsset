@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Device } from '../../types';
-import { Button, DatePicker, ErrorState, Eyebrow, IconButton, InlineConfirm, NumberField, Segmented, Skeleton, SkeletonText, StatusText, ageTone, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, DatePicker, ErrorState, Eyebrow, IconButton, InlineConfirm, NumberField, Segmented, Skeleton, SkeletonText, StatusText, ageTone, icons, useStatusLine } from '../../ui';
 import { getDeviceOverview, updateDeviceMetadata, type DeviceOverviewResponse } from '../../services/devicesApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { getOperationalAlias } from '../../utils/classifyDevice';
@@ -174,7 +174,7 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
         </div>
       </div>
 
-      {askDelete && (
+      <Collapse open={askDelete} unmountOnClose outerClassName="dv-fold-sm">
         <InlineConfirm
           danger
           message={`¿Mover ${tag} a la papelera?`}
@@ -184,7 +184,7 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
           onConfirm={() => void runDelete()}
           onCancel={() => setAskDelete(false)}
         />
-      )}
+      </Collapse>
       {loadError && <ErrorState message={loadError} />}
       {status.element}
       {overview?.aiSummary?.text && (
