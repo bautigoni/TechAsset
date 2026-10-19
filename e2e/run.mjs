@@ -20,6 +20,7 @@ import {
 } from './lib/env.mjs';
 import { functionalTests } from './tests/functional.mjs';
 import { inventoryTests } from './tests/inventory.mjs';
+import { tasksTests } from './tests/tasks.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 
 const args = process.argv.slice(2);
@@ -104,6 +105,7 @@ try {
   t = Date.now();
   await functionalTests(ctx);
   await inventoryTests(ctx);
+  await tasksTests(ctx);
   timings.functional = Date.now() - t;
 
   if (!flag('no-baseline')) {

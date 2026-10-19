@@ -155,6 +155,23 @@ try {
   check('GET /tasks', tasks.status === 200 && tasks.json.items.length >= 2, tasks.text.slice(0, 200));
   const analytics = await call('GET', '/api/tasks/analytics');
   check('GET /tasks/analytics (antes 500 con 2+ tareas)', analytics.status === 200, analytics.text.slice(0, 200));
+  // Etapa 7a (Tareas): Deshacer de borrar tarea y de eliminar columna, actividad por tarea.
+  const firstTask = tasks.json.items[0];
+  const removed = await call('DELETE', `/api/tasks/${firstTask.id}`, { operator: 'Smoke' });
+  const taskBack = await call('POST', `/api/tasks/${firstTask.id}/restore`, { operator: 'Smoke' });
+  check('POST /tasks/:id/restore (Deshacer de borrar)', removed.status === 200 && taskBack.status === 200 && taskBack.json?.item?.id === firstTask.id, taskBack.text.slice(0, 200));
+  const history = await call('GET', `/api/tasks/history?taskId=${encodeURIComponent(firstTask.id)}`);
+  check('GET /tasks/history?taskId (actividad de una tarea)', history.status === 200 && history.json.items.length >= 3 && history.json.items.every(item => item.task_id === firstTask.id), history.text.slice(0, 200));
+  const newColumn = await call('POST', '/api/task-columns', { name: 'Smoke col' });
+  const moved = await call('PATCH', `/api/tasks/${firstTask.id}`, { ...firstTask, columnId: newColumn.json?.item?.id, operator: 'Smoke' });
+  const colsBefore = (await call('GET', '/api/task-columns')).json.items.map(item => item.id);
+  const dropped = await call('DELETE', `/api/task-columns/${newColumn.json?.item?.id}`);
+  const colRestore = await call('POST', `/api/task-columns/${newColumn.json?.item?.id}/restore`, { taskIds: [firstTask.id], ids: colsBefore });
+  const back = (await call('GET', '/api/tasks?space=all')).json.items.find(item => item.id === firstTask.id);
+  check('POST /task-columns/:id/restore (Deshacer de eliminar columna)', moved.status === 200 && dropped.status === 200 && colRestore.status === 200 && colRestore.json.items.some(item => item.id === newColumn.json.item.id) && back?.columnId === newColumn.json.item.id, colRestore.text.slice(0, 200));
+  await call('DELETE', `/api/task-columns/${newColumn.json?.item?.id}`);
+  const reborn = await call('POST', '/api/task-columns', { name: 'Smoke col' });
+  check('crear una columna con el nombre de una borrada la reactiva', reborn.status === 200 && reborn.json?.item?.id === newColumn.json.item.id, reborn.text.slice(0, 200));
   const closure = await call('GET', '/api/daily-closures/preview');
   check('GET /daily-closures/preview (antes caía con 2+ tareas)', closure.status === 200 && closure.json?.resumen, closure.text.slice(0, 200));
   const notifications = await call('GET', '/api/notifications');

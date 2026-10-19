@@ -47,8 +47,13 @@ const MAX_SPAN_DEG = 116;
  *   la anticipación corre en 0s.
  * - `openRef` duplica el estado porque los listeners de documento se atan una
  *   sola vez y leerían un `open` viejo.
+ *
+ * Opcionales (no tocan la animación): `onOpenChange` avisa al abrir y cerrar
+ * (Tareas lo usa para que el abanico empuje el contenido en vez de taparlo) y
+ * `caption` escribe el nombre del satélite en el hueco que deja el abanico, sin
+ * tooltip flotante: el texto en reposo y, al pasar o enfocar uno, su label.
  */
-export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 'left' }: { items: GooeyMenuItem[]; ariaLabel?: string; direction?: GooeyDirection }) {
+export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 'left', onOpenChange, caption }: { items: GooeyMenuItem[]; ariaLabel?: string; direction?: GooeyDirection; onOpenChange?: (open: boolean) => void; caption?: string }) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
   const blurRef = useRef<SVGFEGaussianBlurElement | null>(null);
   const matrixRef = useRef<SVGFEColorMatrixElement | null>(null);
@@ -56,6 +61,9 @@ export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 
   const openRef = useRef(false);
   const [open, setOpen] = useState(false);
   const [anticipating, setAnticipating] = useState(false);
+  const [hovered, setHovered] = useState('');
+  const openChangeRef = useRef(onOpenChange);
+  openChangeRef.current = onOpenChange;
   // El id del filtro es global al documento: derivarlo de useId permite tener
   // más de un menú en pantalla sin que se pisen.
   const filterId = `t-goo-filter-${useId().replace(/:/g, '')}`;
@@ -77,6 +85,8 @@ export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 
     openRef.current = next;
     applyGooKnobs();
     setOpen(next);
+    setHovered('');
+    openChangeRef.current?.(next);
     window.clearTimeout(timerRef.current);
     if (next) { setAnticipating(false); return; }
     // Al cerrar, el conjunto hace un amague hacia abajo contra la inercia de
@@ -174,7 +184,10 @@ export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 
           className="t-goo-item"
           style={fan[index]}
           aria-label={item.label}
-          title={item.label}
+          onPointerEnter={() => setHovered(item.label)}
+          onPointerLeave={() => setHovered('')}
+          onFocus={() => setHovered(item.label)}
+          onBlur={() => setHovered('')}
           // Inalcanzables por teclado mientras están apilados debajo del botón
           // principal; con el menú abierto sí entran en el orden de tabulado.
           tabIndex={open ? 0 : -1}
@@ -200,6 +213,7 @@ export function GooeyMenu({ items, ariaLabel = 'Acciones rápidas', direction = 
           </span>
         </span>
       </button>
+      {caption !== undefined && <span className="t-goo-caption" aria-hidden="true">{hovered || caption}</span>}
     </div>
   );
 }

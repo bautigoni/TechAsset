@@ -1,47 +1,79 @@
-import { useEffect, useState } from 'react';
-import type { TaskItem } from '../../types';
-import { getSiteAssistants } from '../../services/authApi';
+import { useMemo } from 'react';
+import type { TaskColumn, TaskItem } from '../../types';
+import { ProgressRing } from './TaskBits';
+import { columnOf, isTaskDone, plural, responsablesOf } from './taskModel';
 
-export function TaskAnalytics({ tasks }: { tasks: TaskItem[] }) {
-  const [sitePeople, setSitePeople] = useState<string[]>([]);
-  useEffect(() => {
-    getSiteAssistants()
-      .then(response => setSitePeople(response.items.map(item => item.name).filter(Boolean)))
-      .catch(() => setSitePeople([]));
-  }, []);
-  const people = sitePeople.length
-    ? sitePeople
-    : Array.from(new Set(tasks.flatMap(task => task.responsables?.length ? task.responsables : String(task.responsable || '').split(',').map(item => item.trim())).filter(Boolean)));
+type Person = { name: string; turno?: string };
+
+/**
+ * Carga del equipo (solo en el espacio Equipo): por persona, asignadas,
+ * pendientes, en proceso, hechas y el avance con un anillo fino neutro. Se
+ * calcula con las tareas que ya están en memoria (cero pedidos extra).
+ * "Compartida" (y el viejo "Ambos") cuentan para todos.
+ */
+export function TaskAnalytics({ tasks, columns, people }: { tasks: TaskItem[]; columns: TaskColumn[]; people: Person[] }) {
+  const rows = useMemo(() => {
+    const names: Person[] = people.length
+      ? people
+      : Array.from(new Set(tasks.flatMap(task => responsablesOf(task)).filter(name => name && !['Sin asignar', 'Compartida', 'Ambos'].includes(name)))).map(name => ({ name }));
+    return names.map(person => {
+      const assigned = tasks.filter(task => {
+        const list = responsablesOf(task);
+        return list.includes(person.name) || list.includes('Compartida') || list.includes('Ambos');
+      });
+      const open = assigned.filter(task => !isTaskDone(task, columns));
+      const pending = open.filter(task => columnOf(task, columns)?.name === 'Pendiente').length;
+      const progress = open.filter(task => columnOf(task, columns)?.name === 'En proceso').length;
+      const done = assigned.length - open.length;
+      return { ...person, assigned: assigned.length, pending, progress, done, pct: assigned.length ? Math.round((done / assigned.length) * 100) : null };
+    });
+  }, [tasks, columns, people]);
+
+  const others = tasks.filter(task => {
+    if (isTaskDone(task, columns)) return false;
+    const name = columnOf(task, columns)?.name;
+    return name !== 'Pendiente' && name !== 'En proceso';
+  }).length;
+
+  if (!rows.length) return null;
+
   return (
-    <section className="card assistant-task-analytics">
-      <div className="card-head"><h3>Analítica de asistentes</h3><span className="muted">Datos reales de tareas</span></div>
-      <div className="grid-2">
-        {people.map((person, index) => {
-          const assigned = tasks.filter(task => task.responsables?.includes(person) || String(task.responsable || '').split(',').map(v => v.trim()).includes(person) || task.responsable === 'Ambos');
-          const done = assigned.filter(task => task.estado === 'Hecha').length;
-          const pending = assigned.filter(task => task.estado === 'Pendiente').length;
-          const progress = assigned.filter(task => task.estado === 'En proceso').length;
-          // Sin tareas asignadas no hay porcentaje que mostrar: 100% verde daba
-          // a entender que estaba todo hecho y obligaba a una nota al pie.
-          const pct = assigned.length ? Math.round((done / assigned.length) * 100) : null;
-          return (
-            <div className={`assistant-progress-card assistant-progress-${index}`} key={person}>
-              <div className="assistant-progress-head">
-                <strong>{person}</strong>
-                <span>{pct === null ? '—' : `${pct}%`}</span>
-              </div>
-              <div className="progress assistant-progress"><span style={{ width: `${pct ?? 0}%` }} /></div>
-              <div className="assistant-progress-grid">
-                <span>Asignadas</span><strong>{assigned.length}</strong>
-                <span>Pendientes</span><strong>{pending}</strong>
-                <span>En proceso</span><strong>{progress}</strong>
-                <span>Hechas</span><strong>{done}</strong>
-              </div>
-              {!assigned.length && <p className="muted">Sin tareas asignadas.</p>}
-            </div>
-          );
-        })}
+    <section className="tk-people" aria-labelledby="tk-people-title">
+      <header className="tk-section-head">
+        <div className="tk-section-titles">
+          <span className="tk-eyebrow">Asistentes</span>
+          <h2 id="tk-people-title" className="tk-h2">Carga del equipo</h2>
+        </div>
+        <span className="tk-hint">Cuenta las tareas del espacio Equipo</span>
+      </header>
+      <div className="tk-people-table" role="table" aria-label="Carga del equipo">
+        <div className="tk-people-row tk-people-row--head" role="row">
+          <span role="columnheader" className="tk-people-name">Persona</span>
+          <span role="columnheader">Asignadas</span>
+          <span role="columnheader">Pendientes</span>
+          <span role="columnheader">En proceso</span>
+          <span role="columnheader">Hechas</span>
+          <span role="columnheader" className="tk-people-ring">Avance</span>
+        </div>
+        {rows.map(row => (
+          <div className="tk-people-row" role="row" key={row.name}>
+            <span role="cell" className="tk-people-name">
+              <span className="tk-people-who">{row.name}</span>
+              {row.turno && row.turno !== 'Sin turno' && <span className="tk-muted tk-small">{row.turno}</span>}
+              {!row.assigned && <span className="tk-muted tk-small">Sin tareas asignadas.</span>}
+            </span>
+            <span role="cell" className="tk-people-num" data-label="Asignadas">{row.assigned}</span>
+            <span role="cell" className="tk-people-num tk-text-2" data-label="Pendientes">{row.pending}</span>
+            <span role="cell" className="tk-people-num tk-text-2" data-label="En proceso">{row.progress}</span>
+            <span role="cell" className="tk-people-num tk-text-2" data-label="Hechas">{row.done}</span>
+            <span role="cell" className="tk-people-ring">
+              <ProgressRing done={row.done} total={row.assigned} label={row.pct === null ? `${row.name}: sin tareas` : `${row.name}: ${row.done} de ${row.assigned} hechas`} />
+              <span className="tk-mono">{row.pct === null ? '—' : `${row.pct}%`}</span>
+            </span>
+          </div>
+        ))}
       </div>
+      {others > 0 && <p className="tk-hint">{plural(others, 'tarea abierta está', 'tareas abiertas están')} en columnas propias: suman a Asignadas, no a Pendientes ni En proceso.</p>}
     </section>
   );
 }

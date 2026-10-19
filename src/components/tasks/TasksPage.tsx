@@ -1,184 +1,623 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { TaskColumn, TaskItem, TaskState } from '../../types';
-import { Button } from '../layout/Button';
-import { TaskBoard, TaskBoardSkeleton } from './TaskBoard';
-import { TaskModal } from './TaskModal';
-import { TaskCard } from './TaskCard';
-import { TaskAnalytics } from './TaskAnalytics';
-import { createTaskColumn, deleteTaskColumn, getTaskColumns, reorderTaskColumns, updateTaskColumn } from '../../services/tasksApi';
-import { useTabPill } from '../../hooks/useTabPill';
-import { useCardResize } from '../../hooks/useCardResize';
-import { AnimatedNumber } from '../layout/AnimatedNumber';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { ArrowLeft, Columns3, Eye, Lock, Trash2, Users, X } from 'lucide-react';
+import type { TaskChecklistItem, TaskColumn, TaskItem } from '../../types';
+import type { TasksStore } from '../../hooks/useTasks';
+import { Button, Checkbox, ErrorState, IconButton, InlineConfirm, Input, Kbd, SkeletonText, StatusLine, TruncatedText, cx, useSelection, useStatusLine, type StatusMessage } from '../../ui';
+import { IconSearch } from '../../ui/icons';
 import { GooeyMenu } from '../layout/GooeyMenu';
-import { Columns3, Lock, Users } from 'lucide-react';
-import { Modal } from '../layout/Modal';
-import { SelectionBar, useSelection } from '../layout/Selection';
-import { deleteTask } from '../../services/tasksApi';
-import { confirmDialog, toast, toastError } from '../layout/Feedback';
-import { clearOpenTask, peekOpenTask } from '../../utils/openTask';
+import { getSiteAssistants } from '../../services/authApi';
+import { getActiveSiteCode } from '../../services/activeSite';
+import { createTaskColumn, deleteTaskColumn, getTaskColumns, reorderTaskColumns, restoreTaskColumn, updateTaskColumn } from '../../services/tasksApi';
+import { isEditableTarget } from '../../hooks/useGlobalScanner';
+import { scrollAppToTop } from '../../utils/scroll';
+import { TaskBoard, TaskBoardSkeleton, type Lane } from './TaskBoard';
+import { TaskForm } from './TaskForm';
+import { TaskDetail, TaskNotFound } from './TaskDetail';
+import { TaskAnalytics } from './TaskAnalytics';
+import { MOBILE_QUERY, PillTabs, useMedia } from './TaskBits';
+import type { CardHandlers } from './TaskCard';
+import { useTaskActions } from './useTaskActions';
+import {
+  PAGE_SIZE, PRIORITIES, columnOf, dueInfo, inSpace, isTaskDone, matchesQuery, plural, priorityLane, readTaskRoute, sortTasks, taskRouteUrl,
+  type Space, type Tab, type TaskRoute
+} from './taskModel';
+import '../../styles/screens/tasks.css';
 
-const PRIORITIES = ['Urgente', 'Media', 'Baja'];
+type Person = { name: string; email?: string; turno?: string };
+type ColumnsState = 'loading' | 'ready' | 'error';
 
-export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, number>; operator: string; consultationMode: boolean; onSave: (task: Partial<TaskItem>) => Promise<unknown>; onMove: (id: string, state: TaskState, columnId?: number | null) => Promise<unknown> | void; onDelete: (id: string) => void; onRefresh?: () => Promise<unknown> | void }) {
-  const { tasks, operator, consultationMode, onSave, onMove, onDelete, onRefresh } = props;
-  const [space, setSpace] = useState<'my' | 'team'>('team');
-  // Selección múltiple: mover o borrar varias tareas de una.
-  const selection = useSelection();
-  const [bulkBusy, setBulkBusy] = useState(false);
-  const selectedTasks = tasks.filter(task => selection.selected.has(task.id));
-  // Se mueve a una COLUMNA (cada sede tiene las suyas): con solo el estado, la
-  // tarea conservaba su columna vieja y el server la dejaba donde estaba.
-  const bulkMove = async (column: TaskColumn) => {
-    setBulkBusy(true);
-    try {
-      for (const task of selectedTasks) if (task.columnId !== column.id) await onMove(task.id, column.name, column.id);
-      toast({ message: `${selectedTasks.length} tareas en "${column.name}".`, tone: 'ok' });
-    } catch (reason) {
-      toast({ message: reason instanceof Error ? reason.message : 'No se pudieron mover todas.', tone: 'error' });
-    } finally {
-      setBulkBusy(false);
-      selection.clear();
-    }
-  };
-  const bulkDelete = async () => {
-    if (!(await confirmDialog({ title: `Borrar ${selectedTasks.length} tareas`, message: selectedTasks.map(task => task.titulo).join(' · '), confirmLabel: 'Borrar', danger: true }))) return;
-    setBulkBusy(true);
-    const failed: string[] = [];
-    for (const task of selectedTasks) {
-      try { await deleteTask(task.id, operator); } catch { failed.push(task.titulo); }
-    }
-    setBulkBusy(false);
-    selection.clear();
-    await onRefresh?.();
-    if (failed.length) toast({ message: `No se pudieron borrar: ${failed.join(', ')}`, tone: 'error' });
-  };
-  const taskSelection = consultationMode ? undefined : { selected: selection.selected, onToggle: selection.toggle };
-  const [tab, setTab] = useState<'board' | 'priority'>('board');
-  const tabPill = useTabPill<HTMLDivElement>(tab);
-  const spacePill = useTabPill<HTMLDivElement>(space);
-  const resizeRef = useCardResize<HTMLDivElement>(`${space}:${tab}`);
+const errorText = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
+
+/**
+ * Tareas TIC (rediseño Grafito). Tablero / Prioridad, Equipo / Mis tareas,
+ * alta en línea arriba del tablero, la tarea como página propia con URL,
+ * selección múltiple con la barra que reemplaza a la de herramientas, y
+ * Deshacer / Reintentar como línea de estado. El "+" (menú gooey) es el de
+ * siempre; al abrirse empuja el contenido.
+ */
+export function TasksPage({ store: core, operator, consultationMode }: { store: TasksStore; operator: string; consultationMode: boolean }) {
+  const store = useTaskActions(core);
+  const canEdit = !consultationMode;
+  const isMobile = useMedia(MOBILE_QUERY);
+  const tasks = store.items;
+
+  const [space, setSpace] = useState<Space>('team');
+  const [tab, setTab] = useState<Tab>('board');
+  const [query, setQuery] = useState('');
   const [columns, setColumns] = useState<TaskColumn[]>([]);
-  const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<TaskItem | null>(null);
-  // Inicio → "Tus tareas": abre ESA tarea apenas llega a la lista.
-  useEffect(() => {
-    const id = peekOpenTask();
-    if (!id) return;
-    const task = tasks.find(item => String(item.id) === id);
-    if (!task) return;
-    clearOpenTask();
-    setEditing(task);
-  }, [tasks]);
-  const [message, setMessage] = useState('');
-  // `null` = cerrado. Un string vacío abre el modal de nueva columna.
-  const [columnDraft, setColumnDraft] = useState<string | null>(null);
+  const [columnsState, setColumnsState] = useState<ColumnsState>('loading');
+  const [route, setRoute] = useState<TaskRoute>(readTaskRoute);
+  const [creating, setCreating] = useState<'team' | 'private' | null>(null);
+  const [colForm, setColForm] = useState<{ name: string; error: string; saving: boolean } | null>(null);
+  const [gooOpen, setGooOpen] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState(false);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [shown, setShown] = useState<Record<string, number>>({});
+  const [mobileKey, setMobileKey] = useState('');
+  const [reveal, setReveal] = useState<{ key: string; n: number } | null>(null);
+  const [cardStatus, setCardStatus] = useState<{ taskId: string; key: number; message: StatusMessage } | null>(null);
+  const boardStatus = useStatusLine();
+  const detailStatus = useStatusLine();
+  const selection = useSelection();
+  const pushed = useRef(0);
+  const colInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Las columnas llegan por red. Hasta que estén, el tablero se dibuja como
-  // esqueleto: si no, renderiza vacío, la analítica de abajo sube hasta el tope
-  // y después la empujan las columnas al llegar — parecía que cargaba dos veces.
-  const [columnsLoading, setColumnsLoading] = useState(true);
-  const refreshColumns = useCallback(async () => {
+  /* ── Datos ── */
+  const loadColumns = useCallback(async () => {
     try {
       const response = await getTaskColumns();
       setColumns(response.items);
-    } finally {
-      setColumnsLoading(false);
+      setColumnsState('ready');
+    } catch {
+      setColumnsState(current => (current === 'ready' ? current : 'error'));
     }
   }, []);
-  useEffect(() => { refreshColumns().catch(() => setMessage('No se pudieron cargar las columnas.')); }, [refreshColumns]);
+  useEffect(() => { void loadColumns(); }, [loadColumns]);
+  useEffect(() => {
+    getSiteAssistants().then(response => setPeople(response.items.filter(item => item.name))).catch(() => setPeople([]));
+  }, []);
 
-  const visibleTasks = useMemo(() => tasks.filter(task => {
-    if (space === 'team') return task.visibility !== 'private';
-    if (task.visibility === 'private') return true;
-    return task.responsables?.includes(operator) || String(task.responsable || '').split(',').map(value => value.trim()).includes(operator);
-  }), [tasks, space, operator]);
+  /* ── URL: /sede/<sede>/tasks[/<id>[/editar]] ── */
+  useEffect(() => {
+    const onPop = () => {
+      if (pushed.current > 0) pushed.current -= 1;
+      setRoute(readTaskRoute());
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const go = useCallback((next: TaskRoute, replace = false) => {
+    const url = taskRouteUrl(next, getActiveSiteCode());
+    if (url !== window.location.pathname) {
+      if (replace) window.history.replaceState({ techasset: true }, '', url);
+      else { window.history.pushState({ techasset: true }, '', url); pushed.current += 1; }
+    }
+    setRoute(next);
+    setBulkConfirm(false);
+    scrollAppToTop();
+  }, []);
+  // "Tareas TIC" en el menú estando en la página de una tarea: vuelve al tablero
+  // (App no cambia de vista porque ya está en Tareas).
+  useEffect(() => {
+    const onClick = (event: globalThis.MouseEvent) => {
+      if (!(event.target as HTMLElement | null)?.closest?.('[data-view="tasks"]') || !readTaskRoute()) return;
+      go(null);
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [go]);
+  /** Volver: si la entrada la sumamos nosotros, Atrás del navegador (no crece el historial). */
+  const back = useCallback((to: TaskRoute) => {
+    if (pushed.current > 0) { window.history.back(); return; }
+    go(to, true);
+  }, [go]);
 
-  const byPriority = useMemo(() => Object.fromEntries(PRIORITIES.map(priority => [priority, visibleTasks.filter(task => !task.done && (task.prioridad || 'Media') === priority)])) as Record<string, TaskItem[]>, [visibleTasks]);
+  /* ── Derivados ── */
+  const doneOf = useCallback((task: TaskItem) => isTaskDone(task, columns), [columns]);
+  const spaceTasks = useMemo(() => tasks.filter(task => inSpace(task, space, operator)), [tasks, space, operator]);
+  const visible = useMemo(() => sortTasks(spaceTasks.filter(task => matchesQuery(task, query)), columns), [spaceTasks, query, columns]);
+  const lanes = useMemo<Lane[]>(() => (tab === 'board'
+    ? columns.map(column => ({ key: `c${column.id}`, title: column.name, column, tasks: visible.filter(task => columnOf(task, columns)?.id === column.id) }))
+    : PRIORITIES.map(priority => ({ key: `p${priority}`, title: priority, tasks: visible.filter(task => !isTaskDone(task, columns) && priorityLane(task) === priority) }))
+  ), [tab, columns, visible]);
+  const openIn = (sp: Space) => tasks.filter(task => inSpace(task, sp, operator) && !doneOf(task)).length;
+  const openN = visible.filter(task => !doneOf(task)).length;
+  const doneN = visible.length - openN;
+  const overN = visible.filter(task => dueInfo(task, doneOf(task))?.overdue).length;
+  const tipos = useMemo(() => Array.from(new Set(tasks.map(task => task.tipo || '').filter(Boolean))), [tasks]);
 
-  const createColumn = async (name: string) => { await createTaskColumn({ name }); await refreshColumns(); };
-  const renameColumn = async (column: TaskColumn, name: string) => { await updateTaskColumn(column.id, { name }); await refreshColumns(); await onRefresh?.(); };
-  const removeColumn = async (column: TaskColumn) => { await deleteTaskColumn(column.id); await refreshColumns(); await onRefresh?.(); };
-  const reorderColumns = async (ids: number[]) => { const response = await reorderTaskColumns(ids); setColumns(response.items); };
+  const resetKey = `${space}:${tab}`;
+  useEffect(() => { setShown({}); }, [space, tab, query]);
+  const shownIn = useCallback((key: string) => shown[key] ?? PAGE_SIZE, [shown]);
+  const activeKey = lanes.some(lane => lane.key === mobileKey) ? mobileKey : lanes[0]?.key || '';
+  // Orden de lo que se ve (para Shift+click con rango y "seleccionar todo").
+  const order = useMemo(() => (isMobile ? lanes.filter(lane => lane.key === activeKey) : lanes).flatMap(lane => lane.tasks.slice(0, shownIn(lane.key)).map(task => task.id)), [isMobile, lanes, activeKey, shownIn]);
 
-  return <section className="view active tasks-workspace">
-    {/* Solapas a la izquierda, el "+" al medio, el espacio a la derecha. Sin
-        la tarjeta de fondo: las dos píldoras ya se leen como controles y la
-        caja alrededor sólo agregaba peso. El botón de refrescar se fue — la
-        vista se actualiza sola y ese ícono suelto no sumaba. */}
-    <div className="tasks-compact-toolbar">
-      <div className="tasks-subnav t-tabs" ref={tabPill.ref}>
-        <span className="t-tabs-pill" style={tabPill.style} aria-hidden="true" />
-        <button className={tab === 'board' ? 'active' : ''} data-tab-active={tab === 'board'} onClick={() => setTab('board')}>Tablero</button>
-        <button className={tab === 'priority' ? 'active' : ''} data-tab-active={tab === 'priority'} onClick={() => setTab('priority')}>Prioridad</button>
+  // La selección se recalcula contra lo vivo (una tarea borrada por otro sale sola).
+  useEffect(() => { selection.prune(tasks.map(task => task.id)); }, [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const changeSpace = (next: Space) => { if (next !== space) { setSpace(next); setCardStatus(null); } };
+  const changeTab = (next: Tab) => { if (next !== tab) { setTab(next); setCardStatus(null); } };
+
+  /* ── Líneas de estado ── */
+  const showCard = (taskId: string, message: StatusMessage) => setCardStatus({ taskId, message, key: Date.now() });
+  const showFor = (place: 'card' | 'detail' | 'board', taskId: string, message: StatusMessage) => {
+    if (place === 'detail') detailStatus.show(message);
+    else if (place === 'card') showCard(taskId, message);
+    else boardStatus.show(message);
+  };
+
+  /* ── Mover ── */
+  const columnName = (id: number | null | undefined, fallback: string) => columns.find(column => column.id === id)?.name || fallback;
+  const moveTasks = async (ids: string[], column: TaskColumn, bulk: boolean, place: 'board' | 'detail' = 'board') => {
+    const status = place === 'detail' ? detailStatus : boardStatus;
+    const before = new Map(tasks.filter(task => ids.includes(task.id)).map(task => [task.id, task]));
+    if (bulk) { selection.clear(); setBulkConfirm(false); }
+    try {
+      const { result, moved } = await store.moveMany(ids, column);
+      if (result === 'busy') { status.show({ tone: 'info', message: 'Esperá un segundo: todavía se está guardando el movimiento anterior.' }); return; }
+      if (result !== 'ok') return;
+      if (bulk) status.show({ tone: 'ok', message: `${plural(moved.length, 'tarea', 'tareas')} en «${column.name}».`, undo: { onUndo: () => store.moveBack(moved) } });
+      else if (place === 'detail') status.show({ tone: 'ok', message: `Movida a «${column.name}».`, undo: { onUndo: () => store.moveBack(moved) } });
+    } catch (reason) {
+      const failed = (reason as { failed?: string[] }).failed || ids;
+      const first = before.get(failed[0]);
+      const from = first ? columnName(first.columnId, first.estado) : '';
+      status.show({
+        tone: 'bad',
+        message: `No se pudo mover «${first?.titulo || 'la tarea'}» a «${column.name}». ${failed.length > 1 ? `${failed.length} tareas volvieron` : `Volvió a «${from}»`}. ${errorText(reason, '')}`.trim(),
+        retry: { onRetry: () => moveTasks(failed, column, false, place) }
+      });
+    }
+  };
+  const keyMove = (task: TaskItem, dir: -1 | 1) => {
+    const current = columnOf(task, columns);
+    const index = columns.findIndex(column => column.id === current?.id);
+    const target = columns[index + dir];
+    if (target) void moveTasks([task.id], target, false);
+  };
+
+  /* ── Borrar (con Deshacer) ── */
+  const deleteTasks = async (ids: string[]) => {
+    setBulkConfirm(false);
+    for (const id of ids) if (selection.isSelected(id)) selection.toggle(id);
+    const { removed, failed } = await store.removeMany(ids);
+    if (failed.length) {
+      boardStatus.show({
+        tone: 'bad',
+        message: `No se ${failed.length === 1 ? 'pudo' : 'pudieron'} borrar: ${failed.map(task => `«${task.titulo}»`).join(', ')}.${removed.length ? ` ${plural(removed.length, 'se borró', 'se borraron')}.` : ''}`,
+        retry: { onRetry: () => deleteTasks(failed.map(task => task.id)) }
+      });
+      return;
+    }
+    if (!removed.length) return;
+    boardStatus.show({
+      tone: 'info',
+      message: removed.length === 1 ? `Borraste «${removed[0].titulo}».` : `Borraste ${removed.length} tareas.`,
+      undo: {
+        seconds: 10,
+        onUndo: async () => {
+          try { await store.restore(removed); } catch (reason) { boardStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudo deshacer el borrado.') }); }
+        }
+      }
+    });
+  };
+
+  /* ── Subtareas (al instante) ── */
+  const toggleItem = (task: TaskItem, item: TaskChecklistItem, next: boolean, place: 'card' | 'detail') => {
+    store.toggleItem(task.id, item.id, next).catch(reason => showFor(place, task.id, {
+      tone: 'bad', message: `No se pudo ${next ? 'tildar' : 'destildar'} «${item.texto}». ${errorText(reason, '')}`.trim(),
+      retry: { onRetry: () => toggleItem(task, item, next, place) }
+    }));
+  };
+  const addItem = (task: TaskItem, texto: string, place: 'card' | 'detail') => {
+    store.addItem(task.id, texto).catch(reason => showFor(place, task.id, {
+      tone: 'bad', message: `No se pudo agregar «${texto}». ${errorText(reason, '')}`.trim(),
+      retry: { onRetry: () => addItem(task, texto, place) }
+    }));
+  };
+  const removeItem = (task: TaskItem, item: TaskChecklistItem, place: 'card' | 'detail') => {
+    store.removeItem(task.id, item)
+      .then(() => showFor(place, task.id, {
+        tone: 'info',
+        message: `Quitaste «${item.texto}».`,
+        // Deshacer: la vuelve a crear con el mismo texto (al final) y, si estaba hecha, tildada.
+        undo: { onUndo: () => store.addItem(task.id, item.texto, item.completada).then(() => undefined, reason => showFor(place, task.id, { tone: 'bad', message: errorText(reason, 'No se pudo restaurar la subtarea.') })) }
+      }))
+      .catch(reason => showFor(place, task.id, { tone: 'bad', message: `No se pudo quitar «${item.texto}». ${errorText(reason, '')}`.trim(), retry: { onRetry: () => removeItem(task, item, place) } }));
+  };
+
+  /* ── Columnas ── */
+  const createColumn = async () => {
+    if (!colForm) return;
+    const name = colForm.name.trim();
+    if (!name) { setColForm({ ...colForm, error: 'Poné un nombre.' }); return; }
+    if (columns.some(column => column.name.toLowerCase() === name.toLowerCase())) { setColForm({ ...colForm, error: `Ya hay una columna «${name}».` }); return; }
+    setColForm({ ...colForm, saving: true, error: '' });
+    try {
+      const response = await createTaskColumn({ name });
+      await loadColumns();
+      setColForm(null);
+      setTab('board');
+      setMobileKey(`c${response.item.id}`);
+      setReveal(current => ({ key: `c${response.item.id}`, n: (current?.n || 0) + 1 }));
+      boardStatus.show({
+        tone: 'ok',
+        message: `Creaste la columna «${name}».`,
+        undo: { onUndo: async () => { try { await deleteTaskColumn(response.item.id); await loadColumns(); await store.refresh(); } catch (reason) { boardStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudo deshacer.') }); } } }
+      });
+    } catch (reason) {
+      setColForm(current => current && { ...current, saving: false, error: errorText(reason, 'No se pudo crear la columna.') });
+    }
+  };
+  const saveColumn = async (column: TaskColumn, patch: { name: string; isDone: boolean }) => {
+    await updateTaskColumn(column.id, patch);
+    await loadColumns();
+    await store.refresh();
+  };
+  const deleteColumn = async (column: TaskColumn) => {
+    const order = columns.map(item => item.id);
+    const movedIds = tasks.filter(task => columnOf(task, columns)?.id === column.id).map(task => task.id);
+    try {
+      const response = await deleteTaskColumn(column.id);
+      await loadColumns();
+      await store.refresh();
+      const fallback = response.fallback?.name || columns.find(item => item.id !== column.id)?.name || '';
+      boardStatus.show({
+        tone: 'info',
+        message: `Eliminaste «${column.name}».${movedIds.length ? ` ${plural(movedIds.length, 'tarea pasó', 'tareas pasaron')} a «${fallback}».` : ''}`,
+        undo: {
+          seconds: 10,
+          onUndo: async () => {
+            try {
+              const restored = await restoreTaskColumn(column.id, { taskIds: movedIds, ids: order });
+              setColumns(restored.items);
+              await store.refresh();
+            } catch (reason) {
+              boardStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudo deshacer.') });
+            }
+          }
+        }
+      });
+    } catch (reason) {
+      boardStatus.show({ tone: 'bad', message: `No se pudo eliminar «${column.name}». ${errorText(reason, '')}`.trim(), retry: { onRetry: () => deleteColumn(column) } });
+    }
+  };
+  const reorderColumns = async (ids: number[]) => {
+    const previous = columns;
+    setColumns(ids.map(id => columns.find(column => column.id === id)).filter((column): column is TaskColumn => Boolean(column)));
+    try {
+      const response = await reorderTaskColumns(ids);
+      setColumns(response.items);
+    } catch (reason) {
+      setColumns(previous);
+      boardStatus.show({ tone: 'bad', message: `No se pudo reordenar las columnas. ${errorText(reason, '')}`.trim(), retry: { onRetry: () => reorderColumns(ids) } });
+    }
+  };
+
+  /* ── Alta y edición ── */
+  const openCreate = (visibility: 'team' | 'private') => {
+    const target: Space = visibility === 'private' ? 'my' : 'team';
+    changeSpace(target);
+    setCreating(visibility);
+    setColForm(null);
+    selection.clear();
+    if (route) go(null);
+    scrollAppToTop();
+  };
+  const openColumnForm = () => {
+    setCreating(null);
+    setColForm({ name: '', error: '', saving: false });
+    if (route) go(null);
+    window.setTimeout(() => colInputRef.current?.focus(), 60);
+  };
+  const submitCreate = async (payload: Partial<TaskItem>) => {
+    const item = await store.save(payload);
+    setCreating(null);
+    const first = columns[0];
+    if (first) setMobileKey(`c${first.id}`);
+    const landing = first ? ` en «${first.name}»` : '';
+    if (item?.visibility === 'private' && space === 'team') {
+      boardStatus.show({ tone: 'ok', message: `Creaste «${item.titulo}»${landing}. Es privada: está en Mis tareas.`, action: { label: 'Ver Mis tareas', onClick: () => changeSpace('my') } });
+    } else if (item && space === 'my' && !inSpace(item, 'my', operator)) {
+      boardStatus.show({ tone: 'ok', message: `Creaste «${item.titulo}»${landing}. No estás entre los responsables: está en Equipo.`, action: { label: 'Ver Equipo', onClick: () => changeSpace('team') } });
+    } else if (item) {
+      boardStatus.show({ tone: 'ok', message: `Creaste «${item.titulo}»${landing}.`, undo: { onUndo: async () => { await store.removeMany([item.id]); } } });
+    }
+  };
+  const submitEdit = async (payload: Partial<TaskItem>) => {
+    await store.save(payload);
+    if (route) go({ id: route.id, edit: false }, true);
+    detailStatus.show({ tone: 'ok', message: 'Guardaste los cambios.' });
+  };
+
+  /* ── Selección y apertura ── */
+  const latest = useRef({ selection, order, canEdit, isMobile, go, keyMove, toggleItem, addItem, removeItem });
+  latest.current = { selection, order, canEdit, isMobile, go, keyMove, toggleItem, addItem, removeItem };
+  const handlers = useMemo<Omit<CardHandlers, 'onPointerDown'>>(() => ({
+    onOpen: (task: TaskItem, event: MouseEvent) => {
+      const l = latest.current;
+      if (l.canEdit && (event.ctrlKey || event.metaKey || event.shiftKey || (l.isMobile && l.selection.count > 0))) {
+        l.selection.handleClick(task.id, event, l.order);
+        return;
+      }
+      l.go({ id: task.id, edit: false });
+    },
+    onSelect: (task: TaskItem, event: MouseEvent) => {
+      const l = latest.current;
+      if (event.shiftKey) l.selection.selectRange(task.id, l.order);
+      else l.selection.toggle(task.id);
+    },
+    onKeyMove: (task: TaskItem, dir: -1 | 1) => latest.current.keyMove(task, dir),
+    onToggleItem: (task: TaskItem, item: TaskChecklistItem, next: boolean) => latest.current.toggleItem(task, item, next, 'card'),
+    onAddItem: (task: TaskItem, texto: string) => latest.current.addItem(task, texto, 'card'),
+    onRemoveItem: (task: TaskItem, item: TaskChecklistItem) => latest.current.removeItem(task, item, 'card')
+  }), []);
+
+  /* ── Escape: cierra lo último que se abrió ── */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || isEditableTarget(event.target)) return;
+      if (bulkConfirm) { setBulkConfirm(false); return; }
+      if (colForm) { setColForm(null); return; }
+      if (selection.count) selection.clear();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [bulkConfirm, colForm, selection]);
+
+  /* ── Render ── */
+  const routeTask = route ? tasks.find(task => task.id === route.id) : undefined;
+  const selectedIds = Array.from(selection.selected);
+  const selectedCount = selectedIds.length;
+  const visibleSelected = order.filter(id => selection.selected.has(id)).length;
+  const hiddenSelected = selectedCount - visibleSelected;
+  const selectedTitles = tasks.filter(task => selection.selected.has(task.id)).map(task => task.titulo).join(' · ');
+  const showSelection = canEdit && selectedCount > 0 && !route;
+  const loadingColumns = columnsState === 'loading';
+  const cardStatusNode = cardStatus ? { taskId: cardStatus.taskId, element: <StatusLine key={cardStatus.key} {...cardStatus.message} className="tk-status--card" onDismiss={() => setCardStatus(null)} /> } : null;
+
+  const hint = tab === 'priority'
+    ? 'Solo tareas abiertas. Para mover de columna, usá el Tablero o la página de la tarea.'
+    : !canEdit ? 'Modo consulta: no se mueven tarjetas.'
+      : isMobile ? 'Deslizá para cambiar de columna. Para mover una tarea, abrila o elegí varias y usá «Mover a».'
+        : 'Arrastrá una tarjeta a otra columna (o Alt + ← →), y el asa de una columna para reordenarla. Ctrl+click o Shift+click para elegir varias.';
+
+  const queryText = query.trim() ? `${plural(visible.length, 'resultado', 'resultados')} para «${query.trim()}»` : '';
+  const boardTitle = tab === 'board' ? (space === 'team' ? 'Tareas del equipo' : 'Mis tareas') : (space === 'team' ? 'Abiertas del equipo por prioridad' : 'Mis abiertas por prioridad');
+  const sums = (
+    <>
+      <span className="tk-mono tk-text-2">{plural(openN, 'abierta', 'abiertas')}</span>
+      {overN > 0 ? <span className="tk-mono tk-bad">{plural(overN, 'vencida', 'vencidas')}</span> : <span className="tk-mono tk-muted">{plural(doneN, 'hecha', 'hechas')}</span>}
+    </>
+  );
+
+  const toolbar = (
+    <div className={cx('tk-toolbar', gooOpen && 'is-goo-open')}>
+      <div className="tk-tb-title">
+        <span className="tk-eyebrow">{tab === 'board' ? 'Tablero' : 'Prioridad'}</span>
+        <span className="tk-tb-heading">{space === 'team' ? 'Equipo' : 'Mis tareas'}</span>
       </div>
-
-      <div className="tasks-primary-actions">
-        {!consultationMode && (
+      <div className="tk-tb-segs">
+        <PillTabs ariaLabel="Vista" value={tab} onChange={changeTab} block={isMobile} options={[{ value: 'board', label: 'Tablero' }, { value: 'priority', label: 'Prioridad' }]} />
+        <PillTabs ariaLabel="Espacio de tareas" value={space} onChange={changeSpace} block={isMobile} options={[{ value: 'team', label: 'Equipo', count: openIn('team') }, { value: 'my', label: 'Mis tareas', count: openIn('my') }]} />
+      </div>
+      <div className="tk-tb-plus">
+        {canEdit && (
           <GooeyMenu
-            ariaLabel="Nueva tarea"
+            ariaLabel="Crear: tarea o columna"
             direction="down"
+            caption="Equipo · Privada · Columna"
+            onOpenChange={setGooOpen}
             items={[
-              { id: 'team', label: 'Nueva tarea de equipo', icon: <Users size={16} />, onSelect: () => { setSpace('team'); setCreating(true); } },
-              { id: 'mine', label: 'Nueva tarea privada', icon: <Lock size={16} />, onSelect: () => { setSpace('my'); setCreating(true); } },
-              { id: 'column', label: 'Nueva columna', icon: <Columns3 size={16} />, onSelect: () => setColumnDraft('') }
+              { id: 'team', label: 'Nueva tarea de equipo', icon: <Users size={16} />, onSelect: () => openCreate('team') },
+              { id: 'mine', label: 'Nueva tarea privada', icon: <Lock size={16} />, onSelect: () => openCreate('private') },
+              { id: 'column', label: 'Nueva columna', icon: <Columns3 size={16} />, onSelect: openColumnForm }
             ]}
           />
         )}
       </div>
-
-      <div className="task-space-toggle t-tabs" aria-label="Espacio de tareas" ref={spacePill.ref}>
-        <span className="t-tabs-pill" style={spacePill.style} aria-hidden="true" />
-        <button className={space === 'team' ? 'active' : ''} data-tab-active={space === 'team'} onClick={() => setSpace('team')}>Equipo</button>
-        <button className={space === 'my' ? 'active' : ''} data-tab-active={space === 'my'} onClick={() => setSpace('my')}>Mis tareas</button>
+      <div className="tk-tb-sums">{sums}</div>
+      <div className="tk-tb-search" data-scanner-ignore="">
+        <Input
+          aria-label="Buscar tareas"
+          value={query}
+          placeholder="Buscar tarea, persona o subtarea"
+          enterKeyHint="search"
+          prefix={<IconSearch size={16} />}
+          suffix={query ? <IconButton size="sm" label="Limpiar búsqueda" icon={<X size={14} />} onClick={() => setQuery('')} /> : undefined}
+          onValueChange={setQuery}
+          onKeyDown={event => { if (event.key === 'Escape' && query) { event.preventDefault(); event.stopPropagation(); setQuery(''); } }}
+        />
+        {isMobile && queryText && <span className="tk-hint">{queryText}</span>}
       </div>
+      <div className="tk-goo-room" aria-hidden="true" />
     </div>
-    {message && <div className="tool-info">{message}</div>}
+  );
 
-    {/* El alto entre Tablero y Prioridad (y entre Equipo y Mis tareas) cambia
-        bastante. Sin esto el bloque salta de una altura a la otra y el resto de
-        la página pega un tirón; ahora se estira. */}
-    <div className="t-resize" ref={resizeRef}>
-    {tab === 'board' && columnsLoading ? <TaskBoardSkeleton /> : tab === 'board' ? <TaskBoard tasks={visibleTasks} columns={columns} operator={operator} consultationMode={consultationMode} animKey={`${space}:${tab}`} onSave={onSave} onMove={onMove} onDelete={onDelete} onEdit={setEditing} onRefresh={onRefresh} onRenameColumn={renameColumn} onDeleteColumn={removeColumn} onReorderColumns={reorderColumns} selection={taskSelection} /> : <div className="task-schedule-grid">{PRIORITIES.map(priority => <section className={`task-schedule-col task-priority-${priority.toLowerCase()}`} key={priority}><header className="task-schedule-head"><strong>{priority}</strong><span className="badge subtle"><AnimatedNumber value={byPriority[priority].length} /></span></header><div className="task-schedule-list t-stagger" key={`${space}:${tab}`}>{byPriority[priority].map(task => <TaskCard key={task.id} task={task} consultationMode={consultationMode} operator={operator} onMove={() => undefined} onDelete={() => onDelete(task.id)} onPatch={patch => onSave({ ...task, ...patch })} onEdit={() => setEditing(task)} onRefresh={onRefresh} selected={selection.selected.has(task.id)} onToggleSelect={taskSelection ? () => selection.toggle(task.id) : undefined} />)}{!byPriority[priority].length && <div className="empty-state">Sin tareas</div>}</div></section>)}</div>}
-
-    {space === 'team' && <TaskAnalytics tasks={visibleTasks} />}
-    </div>
-
-    {creating && <TaskModal operator={operator} defaultVisibility={space === 'my' ? 'private' : 'team'} onClose={() => setCreating(false)} onSave={onSave} />}
-    {editing && <TaskModal operator={operator} initial={editing} defaultVisibility={editing.visibility || 'team'} onClose={() => setEditing(null)} onSave={onSave} />}
-
-    {columnDraft !== null && (
-      <Modal title="Nueva columna" onClose={() => setColumnDraft(null)}>
-        <form className="stack" onSubmit={async event => {
-          event.preventDefault();
-          const name = columnDraft.trim();
-          if (!name) return;
-          try {
-            await createColumn(name);
-          } catch (reason) {
-            // Ej. 409 si ya existe una columna con ese nombre: el modal queda abierto.
-            toastError(reason, 'No se pudo crear la columna.');
-            return;
-          }
-          setColumnDraft(null);
-        }}>
-          <label>Nombre
-            <input autoFocus className="input" value={columnDraft} onChange={event => setColumnDraft(event.target.value)} placeholder="Ej. En revisión" />
-          </label>
-          <div className="actions">
-            <Button variant="primary" type="submit">Crear columna</Button>
-            <Button type="button" onClick={() => setColumnDraft(null)}>Cancelar</Button>
+  const selectionBar = showSelection && (
+    <div className="tk-selbar ui-enter" role="region" aria-label="Selección de tareas">
+      {!bulkConfirm ? (
+        <>
+          <div className="tk-selbar-main">
+            <Checkbox
+              checked={order.length > 0 && visibleSelected === order.length}
+              indeterminate={visibleSelected > 0 && visibleSelected < order.length}
+              ariaLabel="Seleccionar todas las tareas visibles"
+              onCheckedChange={() => selection.toggleMany(order)}
+            />
+            <span className="tk-selbar-count"><b className="tk-mono">{selectedCount}</b> {selectedCount === 1 ? 'seleccionada' : 'seleccionadas'}</span>
+            {hiddenSelected > 0 && <span className="tk-muted tk-small tk-nw">{hiddenSelected} fuera de esta vista</span>}
+            {isMobile && <Button size="sm" variant="ghost" className="tk-selbar-clear" onClick={selection.clear}>Limpiar</Button>}
           </div>
-        </form>
-      </Modal>
-    )}
+          <div className="tk-selbar-move">
+            <span className="tk-label">Mover a</span>
+            <div className={cx('tk-selbar-cols', isMobile && 'tk-chips--grid')}>
+              {columns.map(column => <Button key={column.id} size="sm" disabled={store.moving} onClick={() => void moveTasks(selectedIds, column, true)}>{column.name}</Button>)}
+            </div>
+          </div>
+          <span className="tk-grow" />
+          <div className="tk-selbar-end">
+            <Button size="sm" variant="ghost" className="tk-danger-link" icon={<Trash2 size={14} />} onClick={() => setBulkConfirm(true)}>Borrar</Button>
+            {!isMobile && <Button size="sm" variant="ghost" onClick={selection.clear} iconEnd={<Kbd>Esc</Kbd>}>Limpiar</Button>}
+          </div>
+        </>
+      ) : (
+        <InlineConfirm
+          danger
+          className="tk-selbar-confirm"
+          message={`¿Borrar ${plural(selectedCount, 'tarea', 'tareas')}?`}
+          detail={<TruncatedText>{selectedTitles}</TruncatedText>}
+          confirmLabel={`Borrar ${plural(selectedCount, 'tarea', 'tareas')}`}
+          onConfirm={() => void deleteTasks(selectedIds)}
+          onCancel={() => setBulkConfirm(false)}
+        />
+      )}
+    </div>
+  );
 
-  {!consultationMode && (
-      <SelectionBar count={selectedTasks.length} onClear={selection.clear} floating>
-        {columns.map(column => (
-          <Button key={column.id} disabled={bulkBusy} variant={column.isDone ? 'success' : 'secondary'} onClick={() => void bulkMove(column)}>{column.name}</Button>
-        ))}
-        <Button variant="danger" disabled={bulkBusy} onClick={() => void bulkDelete()}>Borrar</Button>
-      </SelectionBar>
-    )}
-    </section>;
+  const columnForm = colForm && canEdit && !route && (
+    <form className="tk-colform ui-enter" aria-label="Nueva columna" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void createColumn(); }} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setColForm(null); } }}>
+      <span className="tk-eyebrow tk-colform-label">Nueva columna</span>
+      <Input
+        ref={colInputRef}
+        aria-label="Nombre de la columna"
+        className="tk-colform-input"
+        value={colForm.name}
+        placeholder="Ej. En revisión"
+        error={colForm.error || undefined}
+        onValueChange={value => setColForm({ ...colForm, name: value, error: '' })}
+      />
+      <div className="tk-row">
+        <Button variant="primary" type="submit" loading={colForm.saving}>Crear columna</Button>
+        <Button variant="ghost" onClick={() => setColForm(null)}>Cancelar</Button>
+      </div>
+    </form>
+  );
+
+  let body: ReactNode;
+  if (route) {
+    const backBar = (label: string, to: TaskRoute) => (
+      <div className="tk-back">
+        <Button size="sm" variant="ghost" icon={<ArrowLeft size={16} />} onClick={() => back(to)}>{label}</Button>
+        {routeTask && !isMobile && <><span className="tk-back-sep" aria-hidden="true">/</span><TruncatedText className="tk-back-trail">{routeTask.titulo}</TruncatedText></>}
+      </div>
+    );
+    if (!routeTask) {
+      body = <>{backBar('Tareas TIC', null)}{store.loaded ? <TaskNotFound onBack={() => back(null)} /> : <SkeletonText lines={4} />}</>;
+    } else if (route.edit && canEdit) {
+      body = (
+        <>
+          {backBar('Volver a la tarea', { id: routeTask.id, edit: false })}
+          <TaskForm
+            key={routeTask.id}
+            mode="edit"
+            initial={routeTask}
+            defaultVisibility={routeTask.visibility || 'team'}
+            operator={operator}
+            people={people}
+            tipos={tipos}
+            isMobile={isMobile}
+            onCancel={() => back({ id: routeTask.id, edit: false })}
+            onSubmit={submitEdit}
+          />
+        </>
+      );
+    } else {
+      body = (
+        <>
+          {backBar('Tareas TIC', null)}
+          <TaskDetail
+            key={routeTask.id}
+            task={routeTask}
+            column={columnOf(routeTask, columns)}
+            columns={columns}
+            done={doneOf(routeTask)}
+            canEdit={canEdit}
+            moving={store.moving}
+            isMobile={isMobile}
+            status={detailStatus.element}
+            onEdit={() => go({ id: routeTask.id, edit: true })}
+            onDelete={() => { back(null); void deleteTasks([routeTask.id]); }}
+            onMove={column => void moveTasks([routeTask.id], column, false, 'detail')}
+            onSaveNote={async text => { await store.save({ ...routeTask, comentario: text }); detailStatus.show({ tone: 'ok', message: 'Guardaste la nota.' }); }}
+            onToggleItem={(item, next) => toggleItem(routeTask, item, next, 'detail')}
+            onAddItem={texto => addItem(routeTask, texto, 'detail')}
+            onRemoveItem={item => removeItem(routeTask, item, 'detail')}
+            onCommented={() => store.patchLocal(routeTask.id, task => ({ ...task, commentsCount: (task.commentsCount || 0) + 1 }))}
+          />
+        </>
+      );
+    }
+  } else {
+    body = (
+      <>
+        {showSelection ? selectionBar : toolbar}
+        {boardStatus.element}
+        {columnForm}
+        {creating && canEdit && (
+          <TaskForm
+            mode="create"
+            defaultVisibility={creating}
+            operator={operator}
+            people={people}
+            tipos={tipos}
+            firstColumn={columns[0]?.name}
+            isMobile={isMobile}
+            onCancel={() => setCreating(null)}
+            onSubmit={submitCreate}
+          />
+        )}
+        <section className="tk-board-sec" aria-labelledby="tk-board-title">
+          <header className="tk-section-head tk-board-head">
+            <div className="tk-section-titles">
+              <span className="tk-eyebrow">{tab === 'board' ? 'Tablero' : 'Prioridad'}</span>
+              <h2 id="tk-board-title" className="tk-h2">{boardTitle}</h2>
+            </div>
+            <div className="tk-board-sums">
+              {queryText && <><span className="tk-nw tk-text-2">{queryText}</span><button type="button" className="tk-link" onClick={() => setQuery('')}>Limpiar búsqueda</button></>}
+              {sums}
+              {store.moving && <span className="tk-mono tk-muted">Guardando…</span>}
+            </div>
+          </header>
+          {columnsState === 'error' && tab === 'board' && <ErrorState message="No se pudieron cargar las columnas." onRetry={() => { setColumnsState('loading'); void loadColumns(); }} />}
+          {loadingColumns ? <TaskBoardSkeleton isMobile={isMobile} /> : (columnsState === 'ready' || tab === 'priority') && (
+            <TaskBoard
+              lanes={lanes}
+              columns={columns}
+              resetKey={resetKey}
+              canEdit={canEdit}
+              isMobile={isMobile}
+              boardMode={tab === 'board'}
+              hasQuery={Boolean(query.trim())}
+              doneOf={doneOf}
+              selected={selection.selected}
+              cardStatus={cardStatusNode}
+              handlers={handlers}
+              shownIn={shownIn}
+              onShowMore={key => setShown(current => ({ ...current, [key]: (current[key] ?? PAGE_SIZE) + PAGE_SIZE }))}
+              activeKey={activeKey}
+              onActiveKey={setMobileKey}
+              reveal={reveal}
+              onMoveTask={(taskId, column) => void moveTasks([taskId], column, false)}
+              onReorder={ids => void reorderColumns(ids)}
+              onSaveColumn={saveColumn}
+              onDeleteColumn={column => void deleteColumn(column)}
+            />
+          )}
+          <p className="tk-hint">{hint}</p>
+        </section>
+        {space === 'team' && <TaskAnalytics tasks={spaceTasks} columns={columns} people={people} />}
+      </>
+    );
+  }
+
+  return (
+    <section className="tk-screen" data-route={route ? (route.edit ? 'edit' : 'detail') : 'list'}>
+      {consultationMode && (
+        <p className="tk-consulta"><Eye size={16} aria-hidden="true" />Modo consulta: ves las tareas y sus comentarios, sin editar.</p>
+      )}
+      {body}
+    </section>
+  );
 }

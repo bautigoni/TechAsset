@@ -1,189 +1,196 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { MessageSquare, MoreHorizontal, Pencil, Plus, StickyNote, Trash2 } from 'lucide-react';
-import type { TaskComment, TaskItem, TaskState } from '../../types';
-import { Button } from '../layout/Button';
-import { Modal } from '../layout/Modal';
-import { AnimatedNumber } from '../layout/AnimatedNumber';
-import { useMountTransition } from '../../hooks/useMountTransition';
-import { formatDdMm } from '../../utils/taskDate';
-import { createTaskComment, createTaskItem, deleteTaskItem, getTaskComments, updateTaskItem } from '../../services/tasksApi';
-import { toast, toastError } from '../layout/Feedback';
-import { formatDate } from '../../utils/formatters';
+import { memo, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { Lock, MessageSquare, Paperclip, Plus, X } from 'lucide-react';
+import type { TaskChecklistItem, TaskItem } from '../../types';
+import { Button, Checkbox, StatusText, TruncatedText, cx } from '../../ui';
+import { getActiveSiteCode } from '../../services/activeSite';
+import { CARD_ITEMS, dueInfo, joinNames, responsablesOf, taskRouteUrl } from './taskModel';
 
-export function TaskCard({ task, operator, consultationMode, onDelete, onPatch, onEdit, onRefresh, onPointerDragStart, selected, onToggleSelect }: { task: TaskItem; operator: string; consultationMode: boolean; onMove: (state: TaskState) => void; onDelete: () => void; onPatch?: (patch: Partial<TaskItem>) => Promise<unknown> | void; onEdit?: () => void; onRefresh?: () => Promise<unknown> | void; onPointerDragStart?: () => void; selected?: boolean; onToggleSelect?: () => void }) {
-  const [noteOpen, setNoteOpen] = useState(false);
-  const [itemText, setItemText] = useState('');
-  const [comment, setComment] = useState(task.comentario || '');
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [comments, setComments] = useState<TaskComment[]>([]);
-  const [commentText, setCommentText] = useState('');
+export type CardHandlers = {
+  /** Click en la tarjeta o el título: abre la página (o selecciona con Ctrl/Shift). */
+  onOpen: (task: TaskItem, event: MouseEvent) => void;
+  onSelect: (task: TaskItem, event: MouseEvent) => void;
+  onPointerDown?: (task: TaskItem, event: PointerEvent<HTMLElement>) => void;
+  /** Alt + ← / → mueve a la columna de al lado (teclado). */
+  onKeyMove?: (task: TaskItem, dir: -1 | 1) => void;
+  onToggleItem: (task: TaskItem, item: TaskChecklistItem, next: boolean) => void;
+  onAddItem: (task: TaskItem, texto: string) => void;
+  onRemoveItem: (task: TaskItem, item: TaskChecklistItem) => void;
+};
+
+type Props = CardHandlers & {
+  task: TaskItem;
+  done: boolean;
+  selected: boolean;
+  canEdit: boolean;
+  draggable: boolean;
+  dragging: boolean;
+  /** Línea de estado de la tarjeta (Deshacer de una subtarea, error). */
+  status?: ReactNode;
+};
+
+/**
+ * Tarjeta del tablero. Se abre como página (click en la tarjeta o el título);
+ * desde acá se operan las subtareas sin salir del tablero. Sin menú "⋯":
+ * editar, nota, comentarios, borrar y mover viven en la página de la tarea.
+ */
+export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, draggable, dragging, status, onOpen, onSelect, onPointerDown, onKeyMove, onToggleItem, onAddItem, onRemoveItem }: Props) {
   const [adding, setAdding] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuWrapRef = useRef<HTMLDivElement | null>(null);
-  const menu = useMountTransition(menuOpen, 120); // --dropdown-close-dur
-  const total = task.checklistTotal || task.items?.length || 0;
-  const done = task.checklistDone ?? task.items?.filter(item => item.completada).length ?? 0;
-  const isDone = Boolean(task.done) || task.estado === 'Hecha';
+  const [text, setText] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => { if (adding) inputRef.current?.focus({ preventScroll: true }); }, [adding]);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDocClick = (event: MouseEvent) => {
-      if (!menuWrapRef.current?.contains(event.target as Node)) setMenuOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false); };
-    document.addEventListener('click', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('click', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [menuOpen]);
+  const items = task.items || [];
+  const doneItems = items.filter(item => item.completada).length;
+  const due = dueInfo(task, done);
+  const who = joinNames(responsablesOf(task));
+  const urgent = !done && (task.prioridad === 'Urgente' || task.prioridad === 'Alta');
+  const note = String(task.comentario || '').replace(/\s+/g, ' ').trim();
+  const comments = task.commentsCount || 0;
+  const files = task.attachments?.length || 0;
+  const shownItems = showAll ? items : items.slice(0, CARD_ITEMS);
+
+  const submit = () => {
+    const value = text.trim();
+    if (!value) return;
+    onAddItem(task, value);
+    setText('');
+    inputRef.current?.focus({ preventScroll: true });
+  };
+
+  const onCardClick = (event: MouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('button, input, textarea, a, [data-nodrag]')) return;
+    // En touch, tocar un texto cortado lo despliega en línea (no abre la tarea).
+    const pointer = (event.nativeEvent as globalThis.PointerEvent).pointerType;
+    if ((pointer === 'touch' || pointer === 'pen') && target.closest('.ui-trunc.is-cut')) return;
+    onOpen(task, event);
+  };
+
+  const onTitleKey = (event: KeyboardEvent<HTMLAnchorElement>) => {
+    if (!event.altKey || !onKeyMove) return;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      onKeyMove(task, event.key === 'ArrowLeft' ? -1 : 1);
+    }
+  };
+
   return (
     <article
-      className={`task-card task-state-${task.estado.toLowerCase().replace(/\s+/g, '-')} ${selected ? 'is-selected' : ''}`}
+      className={cx('tk-card', selected && 'is-selected', dragging && 'is-dragging', draggable && 'can-drag', done && 'is-done')}
       data-task-id={task.id}
-      draggable={!consultationMode}
-      onPointerDown={event => {
-        if (consultationMode) return;
-        if ((event.target as HTMLElement).closest('button, input, textarea, select')) return;
-        onPointerDragStart?.();
-      }}
-      onDragStart={event => {
-        event.currentTarget.classList.add('dragging');
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', `task:${task.id}`);
-      }}
-      onDragEnd={event => event.currentTarget.classList.remove('dragging')}
-      style={{ viewTransitionName: `task-${task.id.replace(/[^a-zA-Z0-9_-]/g, '-')}` }}
+      aria-label={`${task.titulo}${done ? ', hecha' : ''}`}
+      onClick={onCardClick}
+      onPointerDown={event => onPointerDown?.(task, event)}
     >
-      {onToggleSelect ? (
-        <div className="task-card-title-row">
-          <input type="checkbox" className="task-select" aria-label={`Seleccionar tarea ${task.titulo}`} checked={Boolean(selected)} onChange={onToggleSelect} />
-          <strong>{task.titulo}</strong>
+      <div className="tk-card-head">
+        {canEdit && (
+          <Checkbox
+            className="tk-card-check"
+            checked={selected}
+            ariaLabel={`Seleccionar «${task.titulo}»`}
+            onCheckedChange={(_, event) => onSelect(task, event)}
+          />
+        )}
+        {/* Link de verdad a la página de la tarea (el título puede ocupar
+            varias líneas; el click lo maneja la app: abre, o con Ctrl/Shift
+            selecciona). El botón del medio la abre en otra pestaña. */}
+        <a className="tk-card-title" href={taskRouteUrl({ id: task.id, edit: false }, getActiveSiteCode())} onClick={event => { event.preventDefault(); event.stopPropagation(); onOpen(task, event); }} onKeyDown={onTitleKey}>
+          {task.titulo}
+        </a>
+      </div>
+
+      <div className="tk-card-meta">
+        <span className="tk-nw">{who}</span>
+        <span className={cx('tk-nw', urgent && 'tk-bad')}>{task.prioridad || 'Media'}</span>
+        {task.tipo && <span className="tk-nw">{task.tipo}</span>}
+        {task.turno && task.turno !== 'Sin turno' && <span className="tk-nw">{task.turno}</span>}
+        {due && <StatusText tone={due.tone} mono>{due.text}</StatusText>}
+        {task.visibility === 'private' && <span className="tk-nw tk-private"><Lock size={12} aria-hidden="true" />Privada</span>}
+      </div>
+
+      {task.descripcion && <TruncatedText as="p" lines={2} className="tk-card-desc">{task.descripcion}</TruncatedText>}
+      {note && (
+        <div className="tk-card-note">
+          <span className="tk-card-note-label">Nota</span>
+          <TruncatedText className="tk-card-note-text" tooltip={task.comentario}>{note}</TruncatedText>
         </div>
-      ) : <strong>{task.titulo}</strong>}
-      <div className="muted">{task.responsables?.join(', ') || task.responsable} - {task.prioridad}{task.turno ? ` · ${task.turno}` : ''}{task.fechaVencimiento ? ` · Vence ${formatDdMm(task.fechaVencimiento)}` : ''}</div>
-      <div className={`task-state-pill task-state-pill-${task.estado.toLowerCase().replace(/\s+/g, '-')}`}>{task.done ? `✓ ${task.estado}` : task.estado}</div>
-      {task.visibility === 'private' && <span className="task-private-pill">Privada</span>}
-      {task.descripcion && <p>{task.descripcion}</p>}
-      {task.comentario && <p className="task-note">Nota: {task.comentario}</p>}
-      {!!task.attachments?.length && <div className="task-card-attachments">{task.attachments.map((attachment, index) => <a key={`${attachment.url}-${index}`} href={attachment.url} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()}>📎 {attachment.name}</a>)}</div>}
-      {/* El <progress> nativo se ve distinto en cada browser y no acepta el
-          tema. Barra propia: pista + relleno con los tokens de la app, y el
-          relleno fluye con la curva spring como el resto de las barras. */}
-      {total > 0 && (
-        <div className="task-progress">
-          <span>Subtareas <b><AnimatedNumber value={done} />/<AnimatedNumber value={total} /></b></span>
-          <span className="task-progress-track" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={total}>
-            <span className="task-progress-fill" style={{ '--task-progress': total ? done / total : 0 } as CSSProperties} />
-          </span>
-        </div>
-      )}
-      {task.items?.length ? (
-        <div className="task-checklist">
-          {task.items.map(item => (
-            <label key={item.id} className="task-check-item">
-              <input
-                type="checkbox"
-                checked={item.completada}
-                disabled={consultationMode}
-                onChange={async event => {
-                  try {
-                    await updateTaskItem(task.id, item.id, { completada: event.target.checked, operator });
-                    await onRefresh?.();
-                  } catch (reason) {
-                    toastError(reason, 'No se pudo actualizar la subtarea.');
-                  }
-                }}
-              />
-              <span>{item.texto}</span>
-              <button type="button" disabled={consultationMode} aria-label={`Quitar subtarea ${item.texto}`} onClick={async event => {
-                event.preventDefault();
-                try {
-                  await deleteTaskItem(task.id, item.id, operator);
-                  await onRefresh?.();
-                } catch (reason) {
-                  toastError(reason, 'No se pudo quitar la subtarea.');
-                  return;
-                }
-                // Una subtarea se borra seguido y de a muchas: en vez de preguntar
-                // cada vez, se puede deshacer (la vuelve a crear con el mismo texto).
-                toast({ message: `Subtarea quitada: ${item.texto}`, action: { label: 'Deshacer', onClick: async () => { try { await createTaskItem(task.id, { texto: item.texto, operator }); await onRefresh?.(); } catch (reason) { toastError(reason, 'No se pudo restaurar la subtarea.'); } } } });
-              }}>×</button>
-            </label>
-          ))}
-        </div>
-      ) : null}
-      {/* Una tarea terminada no admite subtareas nuevas: agregar trabajo a algo
-          ya cerrado no tiene sentido y ensuciaba el contador. */}
-      {!consultationMode && !isDone && (
-        adding ? (
-          <form className="task-add-item t-msg-enter" onSubmit={async event => {
-            event.preventDefault();
-            if (!itemText.trim()) return;
-            try {
-              await createTaskItem(task.id, { texto: itemText, operator });
-              setItemText('');
-              await onRefresh?.();
-            } catch (reason) {
-              toastError(reason, 'No se pudo agregar la subtarea.');
-            }
-          }}>
-            <input autoFocus className="input" value={itemText} onChange={event => setItemText(event.target.value)} placeholder="¿Qué falta hacer?" onBlur={() => { if (!itemText.trim()) setAdding(false); }} />
-            <Button type="submit">Agregar</Button>
-          </form>
-        ) : (
-          <button type="button" className="task-add-trigger" onClick={event => { event.stopPropagation(); setAdding(true); }}>
-            <Plus size={14} /> Subtarea
-          </button>
-        )
       )}
 
-      {/* Los cuatro botones sueltos ocupaban media tarjeta. Ahora viven en un
-          menú detrás de un solo disparador; la tarjeta queda para su contenido. */}
-      <div className="task-card-menu" ref={menuWrapRef} draggable={false} onMouseDown={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()}>
-        <button
-          type="button"
-          className="task-menu-trigger"
-          aria-haspopup="menu"
-          aria-expanded={menu.mounted}
-          aria-label="Acciones de la tarea"
-          onClick={event => { event.stopPropagation(); setMenuOpen(open => !open); }}
-        >
-          <MoreHorizontal size={16} />
-        </button>
-        {menu.mounted && (
-          <div className={`task-menu t-dropdown ${menu.stateClass}`.trim()} data-origin="top-right" role="menu">
-            <button type="button" role="menuitem" disabled={consultationMode} onClick={event => { event.stopPropagation(); setMenuOpen(false); onEdit?.(); }}><Pencil size={14} /> Editar</button>
-            <button type="button" role="menuitem" disabled={consultationMode} onClick={event => { event.stopPropagation(); setMenuOpen(false); setNoteOpen(true); }}><StickyNote size={14} /> Nota</button>
-            <button type="button" role="menuitem" onClick={async event => { event.stopPropagation(); setMenuOpen(false); try { const response = await getTaskComments(task.id); setComments(response.items); setCommentsOpen(true); } catch (reason) { toastError(reason, 'No se pudieron cargar los comentarios.'); } }}>
-              <MessageSquare size={14} /> Comentarios{task.commentsCount ? <span className="task-menu-count"><AnimatedNumber value={task.commentsCount} /></span> : null}
-            </button>
-            <button type="button" role="menuitem" className="is-danger" disabled={consultationMode} onClick={event => { event.stopPropagation(); setMenuOpen(false); onDelete(); }}><Trash2 size={14} /> Borrar</button>
+      {items.length > 0 && (
+        <div className="tk-subs" data-nodrag="">
+          <div className="tk-subs-head">
+            <span>Subtareas</span>
+            <span className="tk-mono">{doneItems}/{items.length}</span>
           </div>
+          {shownItems.map(item => (
+            <div className="tk-sub" key={item.id}>
+              <Checkbox
+                checked={item.completada}
+                disabled={!canEdit || item.id < 0}
+                ariaLabel={`Subtarea: ${item.texto}`}
+                onCheckedChange={next => onToggleItem(task, item, next)}
+              />
+              <TruncatedText className={cx('tk-sub-text', item.completada && 'is-done')}>{item.texto}</TruncatedText>
+              {canEdit && (
+                <button type="button" className="tk-sub-x" aria-label={`Quitar la subtarea «${item.texto}»`} disabled={item.id < 0} onClick={() => onRemoveItem(task, item)}>
+                  <X size={12} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          ))}
+          {items.length > CARD_ITEMS && (
+            <button type="button" className="tk-link tk-link--sm" onClick={() => setShowAll(value => !value)}>
+              {showAll ? 'Ver menos' : `Ver ${items.length - CARD_ITEMS} más`}
+            </button>
+          )}
+        </div>
+      )}
+
+      {status && <div className="tk-card-status" data-nodrag="">{status}</div>}
+
+      {adding && (
+        <form
+          className="tk-card-add"
+          data-nodrag=""
+          data-scanner-ignore=""
+          onSubmit={event => { event.preventDefault(); submit(); }}
+        >
+          <input
+            ref={inputRef}
+            className="tk-input tk-input--sm"
+            value={text}
+            placeholder="¿Qué falta hacer?"
+            aria-label={`Nueva subtarea para «${task.titulo}»`}
+            onChange={event => setText(event.target.value)}
+            onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setAdding(false); setText(''); } }}
+            // Si se va el foco con el campo vacío, se cierra (como siempre).
+            onBlur={() => window.setTimeout(() => { if (!inputRef.current?.value.trim()) setAdding(false); }, 150)}
+          />
+          <Button size="sm" type="submit">Agregar</Button>
+        </form>
+      )}
+
+      <div className="tk-card-foot">
+        <button type="button" className="tk-foot-btn" aria-label={`${comments} ${comments === 1 ? 'comentario' : 'comentarios'} en «${task.titulo}»`} onClick={event => { event.stopPropagation(); onOpen(task, event); }}>
+          <MessageSquare size={14} aria-hidden="true" />
+          <span className="tk-mono">{comments}</span>
+        </button>
+        {files > 0 && (
+          <button type="button" className="tk-foot-btn" aria-label={`${files} ${files === 1 ? 'adjunto' : 'adjuntos'} en «${task.titulo}»`} onClick={event => { event.stopPropagation(); onOpen(task, event); }}>
+            <Paperclip size={14} aria-hidden="true" />
+            <span className="tk-mono">{files}</span>
+          </button>
+        )}
+        <span className="tk-grow" />
+        {/* Una tarea hecha no suma subtareas nuevas (como siempre). */}
+        {canEdit && !done && !adding && (
+          <button type="button" className="tk-foot-btn" onClick={event => { event.stopPropagation(); setAdding(true); }}>
+            <Plus size={14} aria-hidden="true" />
+            Subtarea
+          </button>
         )}
       </div>
-      {noteOpen && (
-        <Modal title={`Nota - ${task.titulo}`} onClose={() => setNoteOpen(false)}>
-          <form className="stack" onSubmit={async event => {
-            event.preventDefault();
-            try {
-              await onPatch?.({ comentario: comment });
-            } catch (reason) {
-              toastError(reason, 'No se pudo guardar la nota.');
-              return;
-            }
-            setNoteOpen(false);
-          }}>
-            <label>Nota<textarea className="input" rows={5} value={comment} onChange={event => setComment(event.target.value)} /></label>
-            <div className="actions">
-              <Button variant="primary" type="submit">Guardar nota</Button>
-              <Button type="button" onClick={() => setNoteOpen(false)}>Cancelar</Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-      {commentsOpen && <Modal title={`Comentarios · ${task.titulo}`} onClose={() => setCommentsOpen(false)}><div className="task-comments"><div className="task-comment-list">{comments.map(item => <article key={item.id}><header><strong>{item.authorName || item.authorEmail}</strong><time>{formatDate(item.createdAt)}</time></header><p>{item.body}</p></article>)}{!comments.length && <div className="empty-state">Todavía no hay comentarios.</div>}</div>{!consultationMode && <form onSubmit={async event => { event.preventDefault(); if (!commentText.trim()) return; try { const response = await createTaskComment(task.id, commentText); setComments(value => [...value, response.item]); setCommentText(''); await onRefresh?.(); } catch (reason) { toastError(reason, 'No se pudo enviar el comentario.'); } }}><textarea className="input" rows={3} value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Escribí un comentario" /><Button variant="primary" type="submit">Comentar</Button></form>}</div></Modal>}
     </article>
   );
-}
+});

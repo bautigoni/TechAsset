@@ -155,15 +155,40 @@ tasksRouter.delete('/tasks/:id', (req, res) => {
   res.json({ ok: true, id: req.params.id });
 });
 
+// Deshacer de "Borrar tarea" (en el tablero, en lote o desde la página de la
+// tarea): el borrado es blando, así que restaurar es volver a prender la fila.
+tasksRouter.post('/tasks/:id/restore', (req, res) => {
+  const db = getDb();
+  const siteCode = requireSite(req);
+  if (!canEditModule(req, 'tasks', siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para restaurar tareas.' });
+  const old = db.prepare('SELECT * FROM tasks WHERE id=? AND eliminada=1 AND site_code=?').get(req.params.id, siteCode);
+  if (!old) return res.status(404).json({ ok: false, error: 'No hay una tarea borrada con ese id.' });
+  const oldItem = rowToTask(old);
+  const email = String(req.user?.email || '').toLowerCase();
+  if (!canSeeTask(oldItem, email)) return res.status(404).json({ ok: false, error: 'No hay una tarea borrada con ese id.' });
+  if (oldItem.visibility === 'private' && oldItem.ownerEmail !== email) return res.status(403).json({ ok: false, error: 'Solo el propietario puede restaurar esta tarea privada.' });
+  const operator = req.body?.operator || req.user?.nombre || '';
+  const ts = nowIso();
+  db.transaction(() => {
+    db.prepare('UPDATE tasks SET eliminada=0, operador_ultimo_cambio=?, ultima_modificacion=? WHERE id=? AND site_code=?').run(operator, ts, req.params.id, siteCode);
+    db.prepare('INSERT INTO task_history (task_id, site_code, timestamp, titulo, accion, responsable, estado_anterior, estado_nuevo, comentario, operador, agenda_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(req.params.id, siteCode, ts, old.titulo, 'tarea restaurada', old.responsable, old.estado, old.estado, old.comentario, operator, old.agenda_id);
+  })();
+  res.json({ ok: true, item: rowToTask(db.prepare('SELECT * FROM tasks WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
+});
+
+// ?taskId=… acota a una tarea (la "Actividad" de la página de la tarea). Sin
+// él, las últimas 200 de la sede como siempre. No se pollea: se pide al abrir.
 tasksRouter.get('/tasks/history', (req, res) => {
   const siteCode = requireSite(req);
   const email = String(req.user?.email || '').toLowerCase();
+  const taskId = String(req.query.taskId || '').trim();
   const items = getDb().prepare(`
     SELECT h.* FROM task_history h
     JOIN tasks t ON t.id=h.task_id AND t.site_code=h.site_code
-    WHERE h.site_code=? AND (COALESCE(t.visibility,'team')<>'private' OR lower(t.owner_email)=?)
-    ORDER BY h.id DESC LIMIT 200
-  `).all(siteCode, email);
+    WHERE h.site_code=? AND (COALESCE(t.visibility,'team')<>'private' OR lower(t.owner_email)=?)${taskId ? ' AND h.task_id=?' : ''}
+    ORDER BY h.id DESC LIMIT ${taskId ? 50 : 200}
+  `).all(...(taskId ? [siteCode, email, taskId] : [siteCode, email]));
   res.json({ ok: true, items });
 });
 
@@ -192,10 +217,18 @@ tasksRouter.post('/task-columns', (req, res) => {
   if (!canEditModule(req, 'tasks', siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para configurar columnas.' });
   const name = String(req.body?.name || '').trim();
   if (!name) return res.status(400).json({ ok: false, error: 'La columna necesita un nombre.' });
-  const existing = getDb().prepare('SELECT id FROM task_columns WHERE site_code=? AND lower(name)=lower(?)').get(siteCode, name);
-  if (existing) return res.status(409).json({ ok: false, error: 'Ya existe una columna con ese nombre.' });
+  const existing = getDb().prepare('SELECT id, active FROM task_columns WHERE site_code=? AND lower(name)=lower(?)').get(siteCode, name);
+  if (existing && existing.active) return res.status(409).json({ ok: false, error: 'Ya existe una columna con ese nombre.' });
   const position = Number(getDb().prepare('SELECT COALESCE(MAX(position),-1) AS value FROM task_columns WHERE site_code=? AND active=1').get(siteCode).value) + 1;
   const ts = nowIso();
+  // Una columna borrada queda inactiva (sus datos y el UNIQUE(site_code, name)
+  // siguen ahí): crearla de nuevo con el mismo nombre la vuelve a prender al
+  // final, en vez de chocar contra la restricción.
+  if (existing) {
+    getDb().prepare('UPDATE task_columns SET name=?, active=1, position=?, is_done=?, updated_at=? WHERE id=? AND site_code=?')
+      .run(name, position, req.body?.isDone ? 1 : 0, ts, existing.id, siteCode);
+    return res.json({ ok: true, item: rowToColumn(getDb().prepare('SELECT * FROM task_columns WHERE id=?').get(existing.id)) });
+  }
   const info = getDb().prepare('INSERT INTO task_columns (site_code, name, color, position, is_done, active, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)')
     .run(siteCode, name, String(req.body?.color || '#64748b'), position, req.body?.isDone ? 1 : 0, req.user?.nombre || req.user?.email || '', ts, ts);
   res.json({ ok: true, item: rowToColumn(getDb().prepare('SELECT * FROM task_columns WHERE id=?').get(info.lastInsertRowid)) });
@@ -240,6 +273,31 @@ tasksRouter.delete('/task-columns/:id', (req, res) => {
     getDb().prepare('UPDATE task_columns SET active=0, updated_at=? WHERE id=? AND site_code=?').run(nowIso(), old.id, siteCode);
   })();
   res.json({ ok: true, deleted: true, fallback: rowToColumn(fallback) });
+});
+
+// Deshacer de "Eliminar columna": la vuelve a prender, le devuelve las tareas
+// que se habían pasado a otra (`taskIds`) y, si viene `ids`, el orden de antes.
+tasksRouter.post('/task-columns/:id/restore', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canEditModule(req, 'tasks', siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para configurar columnas.' });
+  const db = getDb();
+  const column = db.prepare('SELECT * FROM task_columns WHERE id=? AND site_code=?').get(req.params.id, siteCode);
+  if (!column) return res.status(404).json({ ok: false, error: 'Columna no encontrada.' });
+  const clash = db.prepare('SELECT id FROM task_columns WHERE site_code=? AND lower(name)=lower(?) AND id<>? AND active=1').get(siteCode, column.name, column.id);
+  if (clash) return res.status(409).json({ ok: false, error: 'Ya existe otra columna con ese nombre.' });
+  const taskIds = Array.isArray(req.body?.taskIds) ? req.body.taskIds.map(value => String(value)).filter(Boolean).slice(0, 500) : [];
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Number.isFinite) : [];
+  const ts = nowIso();
+  db.transaction(() => {
+    db.prepare('UPDATE task_columns SET active=1, updated_at=? WHERE id=? AND site_code=?').run(ts, column.id, siteCode);
+    const move = db.prepare('UPDATE tasks SET column_id=?, estado=?, ultima_modificacion=? WHERE id=? AND site_code=?');
+    taskIds.forEach(taskId => move.run(column.id, column.name, ts, taskId, siteCode));
+    if (ids.length) {
+      const position = db.prepare('UPDATE task_columns SET position=?, updated_at=? WHERE id=? AND site_code=? AND active=1');
+      ids.forEach((id, index) => position.run(index, ts, id, siteCode));
+    }
+  })();
+  res.json({ ok: true, items: db.prepare('SELECT * FROM task_columns WHERE site_code=? AND active=1 ORDER BY position, id').all(siteCode).map(rowToColumn) });
 });
 
 tasksRouter.get('/tasks/:id/comments', (req, res) => {

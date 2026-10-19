@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TaskItem, TaskState } from '../types';
-import { createTask, deleteTask, getTasks, updateTask } from '../services/tasksApi';
+import type { TaskItem } from '../types';
+import { getTasks } from '../services/tasksApi';
 import { fetchShiftSettings } from '../services/operationsApi';
 import { isOverdue } from '../utils/dates';
-import { confirmDialog } from '../components/layout/Feedback';
 import { getActiveSiteCode } from '../services/activeSite';
 
 export function useTasks(operator: string) {
   const [items, setItems] = useState<TaskItem[]>([]);
   const [shifts, setShifts] = useState({ morningOperator: '', afternoonOperator: '' });
+  // Sede cuya lista ya llegó al menos una vez (para no decir "no existe" antes de cargar).
+  const [loadedSite, setLoadedSite] = useState('');
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   // Misma guarda que en agenda: el hook pide al montar y App vuelve a pedir al
   // cambiar de sede, y salían dos GET /api/tasks (el más pesado de todos).
@@ -16,6 +19,11 @@ export function useTasks(operator: string) {
   // no se reutiliza y su respuesta se descarta si ya cambió la sede.
   const inFlight = useRef<{ site: string; promise: Promise<void> } | null>(null);
   const lastKey = useRef('');
+  // Cambios optimistas en vuelo y "época" de escrituras: un poll que salió
+  // antes de un cambio (o que llega mientras otro está en vuelo) no pisa lo
+  // que el usuario acaba de hacer; el próximo poll trae lo que quedó.
+  const pending = useRef(0);
+  const epoch = useRef(0);
   // Turnos de la sede: antes se pedían solo al montar y el KPI "mías" seguía con
   // los turnos de la sede inicial después de cambiar de sede.
   const shiftsSite = useRef('');
@@ -30,10 +38,13 @@ export function useTasks(operator: string) {
     const site = getActiveSiteCode();
     loadShifts(site);
     if (inFlight.current && inFlight.current.site === site) return inFlight.current.promise;
+    const startedAt = epoch.current;
     // Se pollea (App, cada 30 s): si no cambió nada no hay re-render.
     const promise: Promise<void> = getTasks()
       .then(data => {
         if (getActiveSiteCode() !== site) return;
+        setLoadedSite(site);
+        if (pending.current > 0 || epoch.current !== startedAt) return;
         const key = `${site}|${JSON.stringify(data.items)}`;
         if (key === lastKey.current) return;
         lastKey.current = key;
@@ -57,64 +68,25 @@ export function useTasks(operator: string) {
     mine: items.filter(item => isAssignedTo(item, operator) && isOwnShift(item, operator, shifts)).length
   }), [items, operator, shifts]);
 
-  // Un arrastre a la vez: con la respuesta inmediata es fácil encadenar dos
-  // drops antes de que conteste el primero, y el segundo pisaría al primero.
-  const moving = useRef(false);
+  /** Envuelve una escritura optimista: bloquea que el poll la pise. */
+  const track = useCallback(async <T,>(work: () => Promise<T>) => {
+    pending.current += 1;
+    epoch.current += 1;
+    try { return await work(); } finally { pending.current -= 1; }
+  }, []);
 
-  /**
-   * Mueve la tarjeta en el mismo frame y recién después habla con el servidor.
-   * Antes el tablero esperaba el PATCH + un GET de la lista entera (~6 s en dev)
-   * sin mostrar nada, así que el gesto parecía no haber funcionado.
-   * Si el PATCH falla se vuelve al estado anterior: la vista no puede mostrar
-   * algo que el servidor nunca aceptó.
-   */
-  const move = async (id: string, estado: TaskState, columnId?: number | null) => {
-    if (moving.current) return;
-    const current = items.find(item => item.id === id);
-    if (!current) return;
-    const previousItems = items;
-    moving.current = true;
-    const patch = { estado, ...(columnId === undefined ? {} : { columnId }) };
-    // Actualización optimista, sin adornos. Antes esto hacía
-    // `const t = document.startViewTransition; t(cb)`, que pierde el `this` y
-    // tira "Illegal invocation" en Chrome: la tarjeta no se movía nunca.
-    // Un setState en un handler de evento ya renderiza antes del próximo pintado,
-    // así que se ve instantáneo sin flushSync ni view transitions.
-    setItems(previous => previous.map(item => item.id === id ? { ...item, ...patch } : item));
-    try {
-      // El PATCH ya devuelve la tarea actualizada: se mergea en vez de volver a
-      // pedir la lista completa.
-      const data = await updateTask(id, { ...current, ...patch, operator });
-      if (data?.item) setItems(previous => previous.map(item => item.id === id ? data.item : item));
-    } catch (error) {
-      setItems(previousItems);
-      throw error;
-    } finally {
-      moving.current = false;
-    }
-  };
+  const patchLocal = useCallback((id: string, change: (task: TaskItem) => TaskItem) => {
+    setItems(previous => previous.map(item => (item.id === id ? change(item) : item)));
+  }, []);
 
-  const save = async (payload: Partial<TaskItem>) => {
-    if (payload.id) {
-      const data = await updateTask(payload.id, { ...payload, operator });
-      if (data?.item) setItems(previous => previous.map(item => item.id === payload.id ? data.item : item));
-      return data.item;
-    }
-    const data = await createTask({ ...payload, operator });
-    // Una tarea nueva puede caer en cualquier orden: acá sí conviene releer.
-    await refresh();
-    return data.item;
-  };
+  const loaded = loadedSite !== '' && loadedSite === getActiveSiteCode();
 
-  const remove = async (id: string) => {
-    const task = items.find(entry => entry.id === id);
-    if (!(await confirmDialog({ title: 'Borrar tarea', message: task?.titulo || undefined, confirmLabel: 'Borrar', danger: true }))) return;
-    await deleteTask(id, operator);
-    await refresh();
-  };
-
-  return { items, kpis, refresh, move, save, remove };
+  // Las escrituras (mover, borrar, subtareas…) viven en el chunk de Tareas
+  // (components/tasks/useTaskActions): acá queda solo lo que usa la app entera.
+  return { items, setItems, itemsRef, kpis, refresh, loaded, track, patchLocal, operator };
 }
+
+export type TasksStore = ReturnType<typeof useTasks>;
 
 function isAssignedTo(item: TaskItem, operator: string) {
   if (item.responsables?.includes(operator)) return true;

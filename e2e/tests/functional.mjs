@@ -598,28 +598,37 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
     // e) Tareas y tickets ─────────────────────────────────────────────────────
     await test('e', 'Tareas', 'Mover una tarea de columna (drag & drop)', async () => {
       await gotoView(page, base, 'tasks');
-      await page.waitForSelector('.infinite-task-column', { timeout: 20000 });
-      let card = await page.$('.infinite-task-column .task-card[data-task-id]');
+      // Etapa 7a: el tablero arrastra con pointer events (sin fantasma ni
+      // DataTransfer): se aprieta en el cuerpo de la tarjeta, se mueve y se suelta
+      // sobre otra columna.
+      await page.waitForSelector('.tk-lane[data-lane]', { timeout: 20000 });
+      let card = await page.$('.tk-lane .tk-card[data-task-id]');
       if (!card) {
         await api.post('/api/tasks', { titulo: 'Tarea E2E', responsable: 'Bauti', prioridad: 'Media', estado: 'Pendiente' });
         await gotoView(page, base, 'tasks');
-        card = await page.waitForSelector('.infinite-task-column .task-card[data-task-id]', { timeout: 15000 });
+        card = await page.waitForSelector('.tk-lane .tk-card[data-task-id]', { timeout: 15000 });
       }
       const move = await page.evaluate(() => {
-        const cardEl = document.querySelector('.infinite-task-column .task-card[data-task-id]');
-        const columns = [...document.querySelectorAll('.infinite-task-column')];
-        const from = columns.findIndex(column => column.contains(cardEl));
+        const cardEl = document.querySelector('.tk-lane .tk-card[data-task-id]');
+        const lanes = [...document.querySelectorAll('.tk-lane[data-lane]')];
+        const from = lanes.findIndex(lane => lane.contains(cardEl));
         const to = from === 0 ? 1 : 0;
-        const target = columns[to];
-        const dataTransfer = new DataTransfer();
-        const fire = (el, type) => el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer }));
-        fire(cardEl, 'dragstart');
-        fire(target, 'dragenter');
-        fire(target, 'dragover');
-        fire(target, 'drop');
-        fire(cardEl, 'dragend');
-        return { id: cardEl.getAttribute('data-task-id'), from: columns[from].querySelector('.infinite-column-head strong')?.textContent, to: target.querySelector('.infinite-column-head strong')?.textContent };
+        const grab = cardEl.querySelector('.tk-card-meta').getBoundingClientRect();
+        const drop = lanes[to].getBoundingClientRect();
+        return {
+          id: cardEl.getAttribute('data-task-id'),
+          from: lanes[from].querySelector('.tk-lane-title')?.textContent,
+          to: lanes[to].querySelector('.tk-lane-title')?.textContent,
+          start: { x: grab.left + 4, y: grab.top + grab.height / 2 },
+          end: { x: drop.left + drop.width / 2, y: drop.top + 20 }
+        };
       });
+      await page.mouse.move(move.start.x, move.start.y);
+      await page.mouse.down();
+      await page.mouse.move(move.start.x + 20, move.start.y + 20, { steps: 3 });
+      await page.mouse.move(move.end.x, move.end.y, { steps: 8 });
+      await page.waitForSelector('.tk-drop', { timeout: 3000 });
+      await page.mouse.up();
       const task = await until(async () => {
         const items = (await api.get('/api/tasks?space=all')).data.items || [];
         const found = items.find(item => item.id === move.id);

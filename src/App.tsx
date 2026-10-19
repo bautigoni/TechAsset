@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { isViewKey, type AuthUser, type Device, type Movement, type SiteInfo, type TaskState, type ViewKey } from './types';
+import { isViewKey, type AuthUser, type Device, type Movement, type SiteInfo, type ViewKey } from './types';
 import { AppShell } from './components/layout/AppShell';
 import { navItem, visibleNavItems } from './components/layout/nav';
 import { SkeletonView } from './components/layout/Skeleton';
@@ -219,7 +219,8 @@ export function App() {
     const next = `/sede/${activeSite.toLowerCase()}/${view}${view === 'devices' && devicePage ? `/${encodeURIComponent(devicePage.tag)}` : ''}`;
     const push = pushNext.current;
     pushNext.current = false;
-    if (window.location.pathname === next) return;
+    // /sede/x/tasks/<id>: la página de una tarea es parte de la vista Tareas.
+    if (window.location.pathname === next || window.location.pathname.toLowerCase().startsWith(`${next}/`)) return;
     if (push) window.history.pushState({ techasset: true }, '', next);
     else window.history.replaceState(null, '', next);
   }, [activeSite, view, user, devicePage]);
@@ -606,7 +607,7 @@ export function App() {
       {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
       {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} olderHidden={agenda.olderHidden} onLoadOlder={agenda.loadOlder} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
       {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
-      {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState, columnId?: number | null) => tasks.move(id, state, columnId)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
+      {view === 'tasks' && <TasksPage key={activeSite} store={tasks} operator={operator} consultationMode={effectiveConsultation} />}
       {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
       {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
