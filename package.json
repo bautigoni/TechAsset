@@ -23,6 +23,7 @@
     "check:ui": "node scripts/check-ui.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@vitejs/plugin-react": "^5.0.0",
     "better-sqlite3": "12.9.0",
     "compression": "^1.8.1",

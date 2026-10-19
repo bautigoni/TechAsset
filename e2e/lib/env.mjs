@@ -174,7 +174,7 @@ export async function startServer({ dbCopy, tmpDir, port }) {
     RESEND_API_KEY: '', RESEND_FROM: '',
     GOOGLE_SHEET_CSV_URL: '',
     GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '', GOOGLE_REDIRECT_URI: '',
-    OPENAI_API_KEY: '',
+    OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', AI_PROVIDER: 'local',
     VAPID_PUBLIC_KEY: '', VAPID_PRIVATE_KEY: '',
     SUPERADMIN_EMAILS: '',
     LOCALTUNNEL_SUBDOMAIN: '',

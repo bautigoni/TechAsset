@@ -1,8 +1,10 @@
 import { config } from '../config.js';
 
-export async function callOpenAiResponses({ input, instructions, tools, toolChoice = 'auto', maxOutputTokens }) {
+// Cliente base de OpenAI (Responses API). Solo lo usa el adaptador de proveedor
+// (services/ai/provider.js) como respaldo mientras exista OPENAI_API_KEY.
+export async function callOpenAiResponses({ input, instructions, tools, toolChoice = 'auto', maxOutputTokens, model }) {
   if (!config.openaiApiKey) throw new Error('OpenAI no está configurado.');
-  const body = { model: config.openaiModel || 'gpt-4.1-mini', input };
+  const body = { model: model || config.openaiModel || 'gpt-4.1-mini', input };
   if (instructions) body.instructions = instructions;
   if (Array.isArray(tools) && tools.length) { body.tools = tools; body.tool_choice = toolChoice; }
   if (maxOutputTokens) body.max_output_tokens = maxOutputTokens;

@@ -15,7 +15,8 @@ const RPC_TIMEOUT_MS = Math.max(5000, Number(process.env.PG_SYNC_TIMEOUT_MS || 3
 // Tablas SIN columna `id` autonumérica: no se les puede pedir RETURNING id.
 const NO_ID_TABLES = new Set([
   'local_devices', 'local_states', 'hidden_devices', 'app_settings',
-  'classrooms', 'user_sessions', 'petty_cash_config', 'device_ai_summaries'
+  'classrooms', 'user_sessions', 'petty_cash_config', 'device_ai_summaries',
+  'ai_usage_daily'
 ]);
 
 function translateDialect(sql) {

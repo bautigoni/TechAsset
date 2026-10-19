@@ -30,6 +30,15 @@ export const config = {
   sqliteDbPath: path.resolve(rootDir, process.env.SQLITE_DB_PATH || './data/techasset.db'),
   cacheCsvPath: path.resolve(rootDir, process.env.CACHE_CSV_PATH || './data/cache_sheet.csv'),
   devicesAppCsvPath: path.resolve(rootDir, process.env.DEVICES_APP_CSV_PATH || './data/devices_app.csv'),
+  // IA: AI_PROVIDER elige el proveedor (anthropic | openai | local). Las keys
+  // viven solo en el .env del server. Sacar OPENAI_API_KEY deja todo en Claude.
+  aiProvider: String(process.env.AI_PROVIDER || '').trim().toLowerCase(),
+  aiModel: String(process.env.AI_MODEL || '').trim(),
+  // Esfuerzo del chat (low | medium | high). Resúmenes y diagnósticos usan low.
+  aiEffort: String(process.env.AI_EFFORT || '').trim().toLowerCase(),
+  // Tope diario de llamadas a la IA por sede (chat + resúmenes + diagnósticos). 0 = sin tope.
+  aiDailyLimitPerSite: Math.max(0, Number(process.env.AI_DAILY_LIMIT_PER_SITE ?? 400) || 0),
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   openaiModel: process.env.OPENAI_MODEL || '',
   openaiPromptId: process.env.OPENAI_PROMPT_ID || '',

@@ -516,6 +516,47 @@ export function initDb(database = getDb()) {
       generated_at TEXT,
       PRIMARY KEY(site_code, device_tag)
     );
+    /* Asistente / IA: consumo diario por sede (tope configurable con
+       AI_DAILY_LIMIT_PER_SITE), auditoría de cada llamada a herramienta y las
+       acciones de escritura con lo necesario para deshacerlas. */
+    CREATE TABLE IF NOT EXISTS ai_usage_daily (
+      site_code TEXT NOT NULL,
+      day TEXT NOT NULL,
+      requests INTEGER DEFAULT 0,
+      input_tokens INTEGER DEFAULT 0,
+      output_tokens INTEGER DEFAULT 0,
+      cache_read_tokens INTEGER DEFAULT 0,
+      cache_write_tokens INTEGER DEFAULT 0,
+      updated_at TEXT,
+      PRIMARY KEY(site_code, day)
+    );
+    CREATE TABLE IF NOT EXISTS assistant_audit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT NOT NULL,
+      user_email TEXT DEFAULT '',
+      tool TEXT NOT NULL,
+      args_json TEXT DEFAULT '{}',
+      ok INTEGER DEFAULT 1,
+      error TEXT DEFAULT '',
+      duration_ms INTEGER DEFAULT 0,
+      action_id INTEGER,
+      provider TEXT DEFAULT '',
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_assistant_audit_site ON assistant_audit(site_code, created_at);
+    CREATE TABLE IF NOT EXISTS assistant_actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT NOT NULL,
+      user_id INTEGER DEFAULT 0,
+      user_email TEXT DEFAULT '',
+      tool TEXT NOT NULL,
+      label TEXT DEFAULT '',
+      undo_json TEXT DEFAULT '{}',
+      undone_at TEXT DEFAULT '',
+      undone_by TEXT DEFAULT '',
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_assistant_actions_site ON assistant_actions(site_code, id);
     CREATE TABLE IF NOT EXISTS invites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,
