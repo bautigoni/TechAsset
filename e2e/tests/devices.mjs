@@ -1,14 +1,25 @@
 // Pruebas de Dispositivos e Historial (etapa 5a): selección con Ctrl/Shift,
 // lotes en un solo request, selección acotada a lo visible, página del equipo y
 // búsqueda por alias en el Historial. Corren contra la copia de la base.
-import { assert, clickButton, clickWithModifier, findButton, gotoView, pathname, sleep, text, typeInto, until } from '../lib/browser.mjs';
+import { assert, clickButton, clickStable, findButton, gotoView, pathname, sleep, text, typeInto, until, waitStable } from '../lib/browser.mjs';
 
 const ROW = '.dv-table [data-device-tag]';
 const SEARCH = '.dv-search input';
 
 async function showAll(page) {
-  const more = await findButton(page, /^Ver todos$/, { scope: '.dv-foot' });
-  if (more) { await more.click(); await sleep(150); }
+  // Se vuelve a buscar si la lista se rearmó entre encontrarlo y el click (y si ya no está, ya se ve todo).
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const more = await findButton(page, /^Ver todos$/, { scope: '.dv-foot' });
+    if (!more) return;
+    await waitStable(more);
+    try {
+      await more.click();
+      await sleep(150);
+      return;
+    } catch (error) {
+      if (!/not clickable|not an Element|detached/i.test(String(error?.message || error))) throw error;
+    }
+  }
 }
 
 async function row(page, tag) {
@@ -17,9 +28,10 @@ async function row(page, tag) {
 
 /** Click en la fila sobre una celda de texto (no en botones ni en la casilla). */
 async function clickRow(page, tag, modifier) {
-  const handle = await row(page, tag);
-  const cell = await handle.$('.dv-c-eq') || handle;
-  await clickWithModifier(page, cell, modifier);
+  await clickStable(page, async () => {
+    const handle = await row(page, tag);
+    return await handle.$('.dv-c-eq') || handle;
+  }, { modifier });
 }
 
 async function selCount(page) {

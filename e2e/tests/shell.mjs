@@ -2,7 +2,7 @@
 // alto suave sin que el encabezado tocado se mueva ni el documento salte; la
 // franja de Accesos rápidos usa el ancho; ningún ítem del menú lateral queda
 // cortado o tapado por el bloque de abajo.
-import { assert, gotoView, openContext, sleep, until } from '../lib/browser.mjs';
+import { assert, clickButton, gotoView, openContext, sleep, until } from '../lib/browser.mjs';
 
 /**
  * Instala un muestreador por frame (después de pintar cada frame) que registra cuánto se movió en
@@ -47,7 +47,7 @@ function animated(heights) {
   return heights.some(height => height > lo && height < hi);
 }
 
-export async function shellTests({ browser, base, admin, releaseVersion, test, track = () => {} }) {
+export async function shellTests({ browser, base, api, admin, releaseVersion, test, track = () => {} }) {
   // ── Préstamos: grupo y "Cartelitos de fotos" ─────────────────────────────
   const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
   track(page);
@@ -207,6 +207,139 @@ export async function shellTests({ browser, base, admin, releaseVersion, test, t
         assert(!info.footItems, 'Hay controles del pie fuera de la pantalla.');
         assert(!info.scrolls, `A ${width}×${height} la lista no entra sin scroll.`);
         return `${info.count} ítems · densidad ${info.density}`;
+      });
+    } finally {
+      await ctx.context.close().catch(() => {});
+    }
+  }
+
+  // ── Línea de estado global (pushStatus): entra y sale con alto suave ───────
+  {
+    const ctx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
+    track(ctx.page);
+    try {
+      await test('sh', 'Shell', 'Línea de estado de la cabecera: aparece y se va con alto suave (Ctrl K → equipo → "Quitar filtro")', async () => {
+        const p = ctx.page;
+        const free = (await api.devices()).find(device => /^(|disponible|devuelto)$/i.test(String(device.estado || '').trim()))?.etiqueta;
+        assert(free, 'No hay equipos libres.');
+        await gotoView(p, base, 'loans');
+        await p.waitForSelector('.shell-nav .shell-nav-item', { timeout: 20000 });
+        await sleep(800); // chunk de las franjas precargado en idle
+        const sample = async ms => {
+          const heights = [];
+          const t0 = Date.now();
+          while (Date.now() - t0 < ms) {
+            heights.push(await p.evaluate(() => Math.round(document.querySelector('.shell-head .shell-status')?.closest('.ui-collapse')?.getBoundingClientRect().height ?? -1)));
+          }
+          return heights;
+        };
+        await p.keyboard.down('Control'); await p.keyboard.press('KeyK'); await p.keyboard.up('Control');
+        await until(() => p.evaluate(() => Boolean(document.activeElement?.matches('.shell-palette .shell-pal-input'))), { message: 'la paleta abierta' });
+        await p.keyboard.type(free, { delay: 10 });
+        await p.waitForSelector('.shell-pal-item.is-active');
+        await p.keyboard.press('Enter');
+        const opening = await sample(450);
+        await p.waitForSelector('.shell-head .shell-status', { timeout: 5000 });
+        const full = opening.filter(h => h >= 0);
+        const max = Math.max(...full);
+        assert(max > 20, `No apareció la línea de estado (${opening.slice(0, 8).join(', ')}).`);
+        assert(full.some(h => h > 2 && h < max - 2), `La línea apareció de golpe (${full.slice(0, 10).join(', ')}).`);
+        await clickButton(p, /^Quitar filtro$/, { scope: '.shell-head .shell-status' });
+        const closing = await sample(450);
+        const seen = closing.filter(h => h >= 0);
+        assert(seen.some(h => h > 2 && h < max - 2), `La línea se fue de golpe (${closing.slice(0, 10).join(', ')}).`);
+        await until(() => p.evaluate(() => !document.querySelector('.shell-head .shell-status')), { message: 'que la línea se desmonte al terminar' });
+        return `entra ${full.slice(0, 6).join('→')}… sale ${seen.slice(0, 6).join('→')}…`;
+      });
+    } finally {
+      await ctx.context.close().catch(() => {});
+    }
+  }
+
+  // ── Mobile: con el teclado abierto la barra inferior se esconde y el campo
+  //    enfocado queda a la vista; al cerrarlo, vuelve. ──────────────────────
+  {
+    const ctx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 390, height: 844 } });
+    track(ctx.page);
+    try {
+      await test('sh', 'Shell', 'Mobile: con el teclado abierto la barra inferior se esconde, el campo queda a la vista y al cerrar vuelve', async () => {
+        const p = ctx.page;
+        await gotoView(p, base, 'loans');
+        await p.waitForSelector('.shell-tabbar .shell-tab', { timeout: 20000 });
+        await sleep(400);
+        const tabbarShown = () => p.evaluate(() => {
+          const bar = document.querySelector('.shell-tabbar');
+          return Boolean(bar && getComputedStyle(bar).display !== 'none' && bar.getBoundingClientRect().height > 0);
+        });
+        assert(await tabbarShown(), 'Sin teclado no se ve la barra inferior.');
+        const field = await p.evaluateHandle(() => [...document.querySelectorAll('.shell-view input:not([type="hidden"]), .shell-view textarea')]
+          .find(el => el.checkVisibility?.() && el.getBoundingClientRect().height > 0) || null);
+        assert(field.asElement(), 'No hay un campo a la vista en Préstamos.');
+        await field.asElement().focus();
+        // El teclado achica el viewport (interactive-widget=resizes-content).
+        await p.setViewport({ width: 390, height: 470 });
+        await until(async () => p.evaluate(() => document.querySelector('.shell')?.classList.contains('is-kb-open')), { message: 'que la app detecte el teclado' });
+        assert(!(await tabbarShown()), 'Con el teclado abierto la barra inferior sigue a la vista.');
+        await sleep(200);
+        const visible = await p.evaluate(() => {
+          const el = document.activeElement;
+          const box = document.querySelector('.shell-scroll').getBoundingClientRect();
+          const r = el.getBoundingClientRect();
+          return { inside: r.top >= box.top - 1 && r.bottom <= box.bottom + 1, field: [Math.round(r.top), Math.round(r.bottom)], area: [Math.round(box.top), Math.round(box.bottom)] };
+        });
+        assert(visible.inside, `El campo enfocado quedó fuera del área visible: ${JSON.stringify(visible)}`);
+        await p.evaluate(() => document.activeElement?.blur());
+        await p.setViewport({ width: 390, height: 844 });
+        await until(tabbarShown, { message: 'que vuelva la barra inferior' });
+        return `barra escondida con el teclado; campo en ${visible.field.join('..')} dentro de ${visible.area.join('..')}`;
+      });
+    } finally {
+      await ctx.context.close().catch(() => {});
+    }
+  }
+
+  // ── Ventanas bajas (rail a 1024, menú a 1280×640): la lista puede scrollear,
+  //    pero en ninguna posición queda un ítem a medias ni tapado por el pie. ──
+  for (const [width, height] of [[1024, 640], [1024, 768], [1280, 640]]) {
+    const ctx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width, height } });
+    track(ctx.page);
+    try {
+      await test('sh', 'Shell', `Menú a ${width}×${height}: si la lista scrollea, nunca queda un ítem a medias (arriba, rueda, al fondo)`, async () => {
+        const p = ctx.page;
+        await gotoView(p, base, 'dashboard');
+        await p.waitForSelector('.shell-nav-groups .shell-nav-item', { timeout: 20000 });
+        await sleep(400);
+        const measure = () => p.evaluate(() => {
+          const nav = document.querySelector('.shell-nav');
+          const list = nav.querySelector('.shell-nav-groups');
+          const box = list.getBoundingClientRect();
+          const foot = nav.querySelector('.shell-nav-foot').getBoundingClientRect();
+          const half = [];
+          for (const el of list.querySelectorAll('.shell-nav-item')) {
+            const r = el.getBoundingClientRect();
+            const inside = r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5;
+            const outside = r.bottom <= box.top + 0.5 || r.top >= box.bottom - 0.5;
+            if (!inside && !outside) half.push(`${el.getAttribute('aria-label')} (${Math.round(r.top - box.top)}..${Math.round(r.bottom - box.top)} de ${Math.round(box.height)})`);
+          }
+          return { mode: document.querySelector('.shell')?.dataset.nav, density: nav.dataset.density, scrolls: list.scrollHeight > list.clientHeight + 1, top: Math.round(list.scrollTop), half, overlap: box.bottom > foot.top + 0.5, center: [box.left + box.width / 2, box.top + box.height / 2] };
+        });
+        const first = await measure();
+        const seen = [first];
+        if (first.scrolls) {
+          await p.mouse.move(first.center[0], first.center[1]);
+          for (let i = 0; i < 3; i += 1) {
+            await p.mouse.wheel({ deltaY: 45 });
+            await sleep(450); // el snap se asienta
+            seen.push(await measure());
+          }
+          await p.evaluate(() => { const list = document.querySelector('.shell-nav-groups'); list.scrollTop = list.scrollHeight; });
+          await sleep(450);
+          seen.push(await measure());
+        }
+        const problems = seen.flatMap(item => item.half.map(label => `scroll ${item.top}: ${label}`));
+        assert(!problems.length, `Ítems a medias: ${problems.slice(0, 4).join('; ')}`);
+        assert(!seen.some(item => item.overlap), 'La lista se superpone al pie.');
+        return `${first.mode} · densidad ${first.density}${first.scrolls ? ` · scrollea (posiciones ${seen.map(item => item.top).join(', ')})` : ' · sin scroll'}`;
       });
     } finally {
       await ctx.context.close().catch(() => {});

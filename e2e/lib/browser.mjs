@@ -88,9 +88,57 @@ export async function findButton(page, pattern, { scope = 'body', includeDisable
 }
 
 export async function clickButton(page, pattern, options = {}) {
-  const button = await until(() => findButton(page, pattern, options), { timeout: options.timeout ?? 8000, message: `el botón ${pattern}` });
-  await button.click();
-  return button;
+  const find = () => until(() => findButton(page, pattern, options), { timeout: options.timeout ?? 8000, message: `el botón ${pattern}` });
+  return clickStable(page, find);
+}
+
+const STALE = /not clickable|not an Element|detached/i;
+
+/**
+ * Espera a que el elemento esté conectado, con caja y quieto (mismo rect dos
+ * frames seguidos: sin animación de entrada ni algo que lo esté corriendo).
+ * Devuelve false si se desmontó.
+ */
+export async function waitStable(handle, { timeout = 2000 } = {}) {
+  return handle.evaluate((el, limit) => new Promise(resolve => {
+    const started = performance.now();
+    let last = '';
+    let same = 0;
+    const tick = () => {
+      if (!el.isConnected) { resolve(false); return; }
+      const r = el.getBoundingClientRect();
+      const key = `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+      same = r.width > 0 && r.height > 0 && key === last ? same + 1 : 0;
+      last = key;
+      if (same >= 2 || performance.now() - started > limit) { resolve(r.width > 0 && r.height > 0); return; }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }), timeout).catch(() => false);
+}
+
+/**
+ * Click "como un usuario" sobre lo que `find` devuelve: espera a que esté
+ * quieto y, si React lo reemplazó entre que se encontró y el click (un
+ * re-render por polling, una lista que se rearma), lo vuelve a buscar y
+ * reintenta (hasta 3 veces). Si sigue fallando, el error dice por qué.
+ */
+export async function clickStable(page, find, { modifier, attempts = 3 } = {}) {
+  let handle = null;
+  for (let attempt = 1; ; attempt += 1) {
+    handle = await find();
+    await waitStable(handle);
+    if (modifier) await page.keyboard.down(modifier);
+    try {
+      await handle.click();
+      return handle;
+    } catch (error) {
+      if (attempt >= attempts || !STALE.test(String(error?.message || error))) throw await explainClickError(handle, error);
+      await sleep(120);
+    } finally {
+      if (modifier) await page.keyboard.up(modifier);
+    }
+  }
 }
 
 /** Elige una opción de un SelectField (botón trigger con aria-label + lista role=option). */
@@ -158,10 +206,36 @@ export async function text(page, selector) {
 
 /** Click con modificadores reales (keydown → click → keyup), como un usuario. */
 export async function clickWithModifier(page, handle, modifier) {
+  await waitStable(handle);
   if (modifier) await page.keyboard.down(modifier);
   try {
     await handle.click();
+  } catch (error) {
+    throw await explainClickError(handle, error);
   } finally {
     if (modifier) await page.keyboard.up(modifier);
   }
+}
+
+/**
+ * "Node is either not clickable or not an Element" no dice por qué: se suma el
+ * estado del nodo (desmontado, sin cajas, fuera de la vista, scroll del área).
+ */
+export async function explainClickError(handle, error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (!STALE.test(message)) return error;
+  const state = await handle.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    const sc = document.querySelector('.shell-scroll');
+    return {
+      connected: el.isConnected,
+      node: `${el.tagName.toLowerCase()}.${String(el.className || '').split(/\s+/).slice(0, 2).join('.')}`,
+      rects: el.getClientRects().length,
+      rect: [Math.round(r.top), Math.round(r.bottom), Math.round(r.left), Math.round(r.right)],
+      viewport: [window.innerWidth, window.innerHeight],
+      scrollTop: sc ? Math.round(sc.scrollTop) : null,
+      scrollMax: sc ? sc.scrollHeight - sc.clientHeight : null
+    };
+  }).catch(reason => ({ evaluate: String(reason?.message || reason) }));
+  return new Error(`${message} · ${JSON.stringify(state)}`);
 }

@@ -3,8 +3,11 @@
 Red de seguridad del rediseño (PLAN §7): corre la app **actual** de verdad y verifica los flujos críticos antes y después de cada etapa.
 
 ```bash
-npm run e2e                        # todo: funcionales (a–h, k, l) + línea base (i, j) · ~5 min
-npm run e2e -- --no-baseline       # solo funcionales · ~30 s
+npm run e2e                        # todo: funcionales + línea base (i, j) + barrido ux · ~10 min
+npm run e2e -- --no-baseline       # solo funcionales (sin i, j ni ux) · ~4,5 min
+npm run e2e -- --no-ux             # todo menos el barrido ux
+npm run e2e -- --only=ux           # solo el barrido ux (--only="ux recursos", --only="ux equipo"...) · ~4 min
+npm run e2e -- --ux-strict         # el barrido ux corta la corrida (exit 1) si encuentra algo
 npm run e2e -- --only=prestamos    # filtra por grupo o nombre (sin tildes ni mayúsculas)
 npm run e2e -- --no-build          # usa dist/ como esté, aunque sea más viejo que src/
 npm run e2e -- --build             # buildea sí o sí
@@ -17,7 +20,7 @@ npm run check:ui                   # guardia de controles nativos (scripts/check
 
 1. **Build:** si `dist/` no existe o es más viejo que `src/`/`public/`, corre `vite build` (sin `tsc`: el chequeo de tipos es de `npm run build`).
 2. **Base:** copia `data/techasset.db` a un temporal con la API de backup de SQLite. **Nunca** toca la base real ni Postgres. En la copia: sesión para el superadmin existente, un usuario de **solo consulta** (lo crea si no hay), un equipo puesto *Fuera de servicio* para el chip bloqueado, `mail.modoPrueba=true` y sin suscripciones push.
-3. **Server:** `node server/index.js` en un puerto libre de `127.0.0.1`, con `DATABASE_URL`, SMTP, Resend, OpenAI, Google, VAPID y la planilla vacíos y `MODO_PRUEBA=true`: no sale ningún mail, push ni llamada externa.
+3. **Server:** `node server/index.js` en un puerto libre de `127.0.0.1`, con `DATABASE_URL`, SMTP, Resend, OpenAI, Google, VAPID y la planilla vacíos y `MODO_PRUEBA=true`: no sale ningún mail, push ni llamada externa. Adjuntos (`UPLOADS_DIR`), temporales de Herramientas (`TOOLS_TEMP_DIR`) y CSV de caché van al temporal de la corrida (se copian los adjuntos que ya había para que los de la base abran) y se borran con él: **una corrida no deja nada en `data/`**. La copia de la base se hace sin crear `-wal`/`-shm` al lado de la fuente.
 4. **Navegador:** Chrome (si no, Edge; `E2E_BROWSER=<ruta>` lo pisa) con `puppeteer-core`, sin `--hide-scrollbars` para que las barras ocupen lugar como en la vida real. Cada grupo usa un contexto aislado con la cookie de sesión y la sede `NFPT`.
 5. **Salida:** tabla en consola, `e2e/last-run.json` con todo el detalle (incluye las muestras de layout por vista y ancho) y capturas de las pruebas que fallan en `e2e/.out/fallas/`.
 
@@ -50,7 +53,26 @@ Cada prueba verifica el efecto en la base (vía API), no solo lo que se ve.
 | ini | **Inicio sin huecos ni truncados** (`tests/inicio.mjs`): 8 casos de datos servidos interceptando los GET (sin préstamos, 1, 34, sin agenda, sin tareas, sin notas, muchas notas, todo vacío) × 360/768/1024/1280/1366/1440/1920 × oscuro y claro. Falla si hay un hueco > 48 px entre bloques consecutivos de una columna o dentro de una tarjeta, un texto cortado con elipsis que tenía lugar en su renglón, scroll horizontal, solapamientos o botones partidos. Además: el vacío de "Afuera ahora" es compacto, sin pie de atajos, y sus acciones enfocan la barra / cambian la lista; plegar "Últimos movimientos" y cambiar de ficha dejan quieto el encabezado tocado (≤ 2 px). Capturas en `e2e/.out/inicio-fix/` |
 | i | **Línea base de layout** por vista a 360/768/1024/1280/1366/1440: scroll horizontal de la página, barra de la página, barras visibles en contenedores, botones con el texto partido, hermanos que se pisan (> 2 px) |
 | j | **Línea base mobile** (iPhone 13): pinza con dos dedos (`Input.dispatchTouchEvent`), swipe horizontal, doble toque y foco en un campo dejan escala 1 y `scrollX` 0; campos con texto ≥ 16 px. Incluye un control: la misma pinza tiene que hacer zoom en una página que no lo bloquea |
-| sh | **Shell y colapsos** (funcional): en Préstamos, abrir y cerrar un grupo y "Cartelitos de fotos" con el área scrolleada lo más abajo posible: el encabezado tocado no se mueve más de 2 px en ningún frame, el documento no scrollea y el alto pasa por valores intermedios (se anima). En el Inicio, la franja de Accesos rápidos: el rayo no se mueve al abrir ni al cerrar, scrolleado lo que se mira no salta, los accesos usan más de una columna y ningún título se corta. Menú lateral a 1440×900 y 1366×768: todos los ítems enteros dentro de la lista, ninguno tapado por el pie, sin scroll |
+| ux | **Barrido de REGLAS-UX** (`tests/ux.mjs`, línea base salvo `--ux-strict`): todas las vistas del menú y las páginas de detalle con URL (equipo, tarea, ticket, artículo, cada panel de Configuración) a 390, 1024 y 1440 en oscuro y claro, con la sonda `lib/ux-probe.mjs`: huecos > 48 px entre bloques, tarjetas con franjas vacías, truncados con lugar, texto cortado sin elipsis, controles tapados (recorriendo el scroll), cursor de mano sin control, y cada colapsable (`aria-expanded`) abre y cierra sin mover su disparador (± 2 px), sin scrollear el documento, sin cambiar el alto de golpe y con `aria-controls`. Shell aparte (cabecera, menú, barra inferior). Capturas y `report.json` en `e2e/.out/ux/` |
+| sh | **Shell y colapsos** (funcional): en Préstamos, abrir y cerrar un grupo y "Cartelitos de fotos" con el área scrolleada lo más abajo posible: el encabezado tocado no se mueve más de 2 px en ningún frame, el documento no scrollea y el alto pasa por valores intermedios (se anima). En el Inicio, la franja de Accesos rápidos: el rayo no se mueve al abrir ni al cerrar, scrolleado lo que se mira no salta, los accesos usan más de una columna y ningún título se corta. Menú lateral a 1440×900 y 1366×768: todos los ítems enteros dentro de la lista, ninguno tapado por el pie, sin scroll; a 1024×640, 1024×768 (rail) y 1280×640 puede scrollear pero ningún ítem queda a medias (arriba, con la rueda y al fondo). Línea de estado de la cabecera con alto suave al aparecer y al irse. Mobile: con el teclado abierto la barra inferior se esconde y el campo enfocado queda a la vista |
+
+## Sonda UX compartida (`lib/ux-probe.mjs`)
+
+Para las pruebas de cada pantalla:
+
+```js
+import { probeView, checkCollapsibles, formatProbe, setTheme, settle } from '../lib/ux-probe.mjs';
+
+await settle(page);                                   // sin skeletons y la API quieta
+await setTheme(page, 'light');                         // oscuro/claro sin recargar
+const probe = await probeView(page, { scope: '.mi-pantalla' });   // counts + muestras con 'where' (selector legible)
+const toggles = await checkCollapsibles(page, { scope: '.mi-pantalla', max: 8 });
+assert(!probe.total && !toggles.problems.length, formatProbe(probe, toggles));
+```
+
+- `probeView` mide `gaps`, `innerGaps`, `truncated`, `cut`, `covered` (recorre el área que scrollea en `scrollSteps` pasos) y `fakeClickable`. Opciones: `scope`, `maxGap` (48), `ignore` (selectores), `scrollSteps` (6). `uxProbe` es la función que corre en la página, por si se quiere una sola medición.
+- `checkCollapsibles` abre y cierra con el mouse cada botón con `aria-expanded` del `scope` (salvo destructivos: `skip`), con el movimiento prendido, y mide frame a frame. Devuelve `items` y `problems`.
+- `data-ux-ignore` en un elemento lo saca de la sonda (solo para lienzos/planos donde el vacío es el contenido).
 
 ## Notas
 

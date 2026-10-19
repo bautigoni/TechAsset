@@ -3,7 +3,7 @@
 // no toca ningún dato real.
 import { loanState, SITE } from '../lib/env.mjs';
 import {
-  assert, clickButton, clickWithModifier, findButton, gotoView, openContext, pathname,
+  assert, clickButton, clickStable, clickWithModifier, findButton, gotoView, openContext, pathname,
   readOptions, selectOption, sleep, text, typeInto, until
 } from '../lib/browser.mjs';
 import { devicesTests } from './devices.mjs';
@@ -527,7 +527,8 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       await page.waitForSelector(DEVICE_ROW, { timeout: 20000 });
       const showAll = async () => {
         const more = await findButton(page, /^Ver todos$/, { scope: '.dv-foot' });
-        if (more) { await more.click(); await sleep(150); }
+        // (se vuelve a buscar si la lista se rearmó entre encontrarlo y el click)
+        if (more) { await clickStable(page, async () => (await findButton(page, /^Ver todos$/, { scope: '.dv-foot' })) || more); await sleep(150); }
       };
       await showAll();
       const rows = await page.$$eval(DEVICE_ROW, list => list.map(row => ({ tag: row.getAttribute('data-device-tag'), alias: (row.querySelector('.dv-strong')?.textContent || '').trim() })));
@@ -567,8 +568,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       // Borrar vive en la ficha (se abre debajo de la fila) con confirmación en línea.
       const deleteRow = async () => {
         await typeInto(page, DEVICE_SEARCH, tag);
-        const row = await page.waitForSelector(`.dv-table [data-device-tag="${tag}"]`, { timeout: 15000 });
-        await row.click();
+        await clickStable(page, () => page.waitForSelector(`.dv-table [data-device-tag="${tag}"]`, { timeout: 15000 }));
         await page.waitForSelector('.dv-detail');
         await clickButton(page, /^Borrar$/, { scope: '.dv-detail' });
         await clickButton(page, /^Mover a la papelera$/, { scope: '.dv-detail .ui-confirm' });

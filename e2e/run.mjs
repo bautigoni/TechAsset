@@ -8,6 +8,8 @@
 //   npm run e2e -- --headful          # con el navegador a la vista
 //   npm run e2e -- --keep             # no borra la copia de la base (para inspeccionarla)
 //   npm run e2e -- --ai               # el server de prueba usa la IA del .env (gasta tokens; prueba k4)
+//   npm run e2e -- --no-ux            # sin el barrido de REGLAS-UX (ux) de todas las vistas
+//   npm run e2e -- --ux-strict        # el barrido ux cuenta como funcional (corta con exit 1)
 //
 // Corre contra el server real (`node server/index.js`) y una COPIA descartable de
 // data/techasset.db: nunca la base real ni Postgres, nunca sale un mail ni una
@@ -32,6 +34,7 @@ import { shellTests } from './tests/shell.mjs';
 import { inicioTests } from './tests/inicio.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
+import { uxTests } from './tests/ux.mjs';
 
 const args = process.argv.slice(2);
 const flag = name => args.includes(`--${name}`);
@@ -80,6 +83,7 @@ let browser;
 let layout = {};
 let mobile = {};
 let inicio = {};
+let ux = {};
 let buildInfo = {};
 try {
   let t = Date.now();
@@ -140,6 +144,13 @@ try {
     mobile = await mobileTests(ctx);
     timings.mobile = Date.now() - t;
   }
+  // Con --only, el barrido corre solo si el filtro empieza con "ux" (--only=ux, --only="ux recursos", --only="ux equipo").
+  if (!flag('no-baseline') && !flag('no-ux') && (!only || only.startsWith('ux'))) {
+    console.log('\nBarrido de REGLAS-UX (ux) — todas las vistas a 390/1024/1440 en oscuro y claro');
+    t = Date.now();
+    ux = await uxTests({ ...ctx, strict: flag('ux-strict') });
+    timings.ux = Date.now() - t;
+  }
 } catch (error) {
   results.push({ code: '-', group: 'Entorno', name: 'Preparar y levantar', kind: 'funcional', status: 'FALLA', detail: error instanceof Error ? error.stack || error.message : String(error), ms: 0 });
   console.error(`\nNo se pudo correr el banco: ${error instanceof Error ? error.message : error}`);
@@ -192,7 +203,8 @@ const out = {
   results,
   layout,
   mobile,
-  inicio
+  inicio,
+  ux
 };
 fs.writeFileSync(path.join(root, 'e2e', 'last-run.json'), JSON.stringify(out, null, 2));
 console.log(`Detalle completo en e2e/last-run.json`);
