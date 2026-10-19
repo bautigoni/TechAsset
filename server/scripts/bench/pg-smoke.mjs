@@ -306,6 +306,26 @@ try {
   await call('DELETE', `/api/suggestions/${sg?.id}`);
   const sgRestore = await call('POST', `/api/suggestions/${sg?.id}/restore`, {});
   check('sugerencias: eliminar y recuperar', sgRestore.json?.item?.id === sg?.id && sgRestore.json.item.status === 'Implemented', sgRestore.text.slice(0, 200));
+  // Etapa 6b: Estado de aulas (último diagnóstico) y Recordatorios (deshacer, personas, push de prueba).
+  const healthBefore = await call('GET', '/api/classrooms/pp_6F/health');
+  check('aulas: diagnóstico guardado vacío', healthBefore.status === 200 && healthBefore.json?.report === null, healthBefore.text.slice(0, 200));
+  const healthNew = await call('POST', '/api/classrooms/pp_6F/health', {});
+  const healthAfter = await call('GET', '/api/classrooms/pp_6F/health');
+  check('aulas: el diagnóstico se vuelve a leer', healthNew.status === 200 && typeof healthAfter.json?.report?.score === 'number' && healthAfter.json.generatedAt, healthAfter.text.slice(0, 200));
+  const rem = await call('POST', '/api/reminders', { title: 'Smoke recordatorio', remindAt: new Date(Date.now() + 3600e3).toISOString(), priority: 'Alta' });
+  const remId = rem.json?.item?.id;
+  check('recordatorio: alta con mine/canEdit', rem.status === 200 && rem.json.item.mine === true && rem.json.item.canEdit === true, rem.text.slice(0, 200));
+  const done = await call('POST', `/api/reminders/${remId}/complete`, {});
+  const reopened = await call('POST', `/api/reminders/${remId}/undo`, { previous: { status: 'pending', remindAt: rem.json?.item?.remindAt, notificationSentAt: '', completedAt: '', completedBy: '' } });
+  check('recordatorio: completar → deshacer', done.json?.item?.status === 'completed' && reopened.json?.item?.status === 'pending' && reopened.json.item.completedAt === '', reopened.text.slice(0, 200));
+  const remRemoved = await call('DELETE', `/api/reminders/${remId}`);
+  const remRestored = await call('POST', `/api/reminders/${remId}/undo`, { previous: { status: 'pending', remindAt: rem.json?.item?.remindAt } });
+  const listed = (await call('GET', '/api/reminders')).json?.items?.some(item => item.id === remId);
+  check('recordatorio: borrar → deshacer lo recupera', remRemoved.json?.deleted && remRestored.status === 200 && listed, remRestored.text.slice(0, 200));
+  const people = await call('GET', '/api/reminders/people');
+  check('recordatorio: personas de la sede', people.status === 200 && Array.isArray(people.json?.items), people.text.slice(0, 200));
+  const pushTest = await call('POST', '/api/reminders/push-test', {});
+  check('recordatorio: push de prueba responde', pushTest.status === 200 && typeof pushTest.json?.subscriptions === 'number', pushTest.text.slice(0, 200));
 
   // Errores de SQL en el log del server.
   const sqlErrors = serverLog.split('\n').filter(line => /syntax error|does not exist|operator does not|invalid input|ERROR:/i.test(line));

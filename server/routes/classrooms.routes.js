@@ -565,8 +565,19 @@ classroomsRouter.post('/classrooms/:roomKey/health', async (req, res, next) => {
     const ts=nowIso();
     getDb().prepare(`INSERT INTO classroom_health_reports (site_code,room_key,report_json,generated_by,generated_at) VALUES (?,?,?,?,?) ON CONFLICT(site_code,room_key) DO UPDATE SET report_json=excluded.report_json,generated_by=excluded.generated_by,generated_at=excluded.generated_at`)
       .run(siteCode,req.params.roomKey,JSON.stringify(report),req.user?.nombre||req.user?.email||'',ts);
-    res.json({ok:true,report,generatedAt:ts});
+    res.json({ok:true,report,generatedAt:ts,generatedBy:req.user?.nombre||req.user?.email||''});
   } catch(error){ next(error); }
+});
+
+// Último diagnóstico guardado (antes se guardaba y nunca se volvía a mostrar).
+// Una sola lectura por índice único (site_code, room_key); no crea filas.
+classroomsRouter.get('/classrooms/:roomKey/health', (req, res) => {
+  const siteCode = requireSite(req);
+  const row = getDb().prepare('SELECT report_json, generated_by, generated_at FROM classroom_health_reports WHERE site_code=? AND room_key=?').get(siteCode, req.params.roomKey);
+  if (!row) return res.json({ ok: true, report: null, generatedAt: '', generatedBy: '' });
+  let report = null;
+  try { report = parseHealthReport(row.report_json); } catch { report = null; }
+  res.json({ ok: true, report, generatedAt: row.generated_at || '', generatedBy: row.generated_by || '' });
 });
 
 // Salida estructurada del diagnóstico (Anthropic la garantiza con output_config.format).

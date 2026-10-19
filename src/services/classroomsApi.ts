@@ -19,7 +19,9 @@ export const fetchClassroomHistory = (roomKey: string) => apiGet<{ ok: true; ite
 
 export const fetchClassroomIncidents = (roomKey: string) => apiGet<{ ok: true; summary: ClassroomIncidentSummary; items: ClassroomIncident[] }>(`/api/classrooms/${encodeURIComponent(roomKey)}/incidents`);
 export interface ClassroomHealthReport { score:number; status:string; summary:string; recurringProblems:string[]; positives:string[]; risks:string[]; preventiveActions:string[] }
-export const generateClassroomHealth = (roomKey:string) => apiSend<{ok:true;report:ClassroomHealthReport;generatedAt:string}>(`/api/classrooms/${encodeURIComponent(roomKey)}/health`,'POST',{});
+export const generateClassroomHealth = (roomKey:string) => apiSend<{ok:true;report:ClassroomHealthReport;generatedAt:string;generatedBy?:string}>(`/api/classrooms/${encodeURIComponent(roomKey)}/health`,'POST',{});
+/** Último diagnóstico guardado del aula (null si nunca se generó). */
+export const fetchClassroomHealth = (roomKey:string) => apiGet<{ok:true;report:ClassroomHealthReport|null;generatedAt:string;generatedBy:string}>(`/api/classrooms/${encodeURIComponent(roomKey)}/health`);
 
 export const fetchClassroomCategories = () => apiGet<{ ok: true; items: ClassroomCategory[]; canManage: boolean }>('/api/classroom-categories');
 export const createClassroomCategory = (payload: Partial<ClassroomCategory>) => apiSend<{ ok: true; item: ClassroomCategory }>('/api/classroom-categories', 'POST', payload);

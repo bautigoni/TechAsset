@@ -1,0 +1,599 @@
+{
+  "note": "IDs de aulas de los planos SVG anteriores al rediseño (etapa 6b). Son room_key de la base: no se renombran.",
+  "clickable": {
+    "NFPT": {
+      "planta": [
+        {
+          "roomKey": "room_3ero_N",
+          "nombre": "3ero N"
+        },
+        {
+          "roomKey": "room_5to_N",
+          "nombre": "5to N"
+        },
+        {
+          "roomKey": "room_5to_F",
+          "nombre": "5to F"
+        },
+        {
+          "roomKey": "room_5to_S",
+          "nombre": "5to S"
+        },
+        {
+          "roomKey": "room_3ero_F",
+          "nombre": "3ero F"
+        },
+        {
+          "roomKey": "room_3ero_S",
+          "nombre": "3ero S"
+        },
+        {
+          "roomKey": "room_4to_N",
+          "nombre": "4to N"
+        },
+        {
+          "roomKey": "room_4to_F",
+          "nombre": "4to F"
+        },
+        {
+          "roomKey": "room_4to_S",
+          "nombre": "4to S"
+        },
+        {
+          "roomKey": "room_Arte",
+          "nombre": "Arte"
+        },
+        {
+          "roomKey": "room_2do_N",
+          "nombre": "2do N"
+        },
+        {
+          "roomKey": "room_2do_F",
+          "nombre": "2do F"
+        },
+        {
+          "roomKey": "room_2do_S",
+          "nombre": "2do S"
+        },
+        {
+          "roomKey": "room_1ero_N",
+          "nombre": "1ero N"
+        },
+        {
+          "roomKey": "room_1ero_F",
+          "nombre": "1ero F"
+        },
+        {
+          "roomKey": "room_1ero_S",
+          "nombre": "1ero S"
+        },
+        {
+          "roomKey": "room_Zoom",
+          "nombre": "Zoom"
+        }
+      ],
+      "primero": [
+        {
+          "roomKey": "pp_Direccion",
+          "nombre": "Dirección"
+        },
+        {
+          "roomKey": "pp_2N",
+          "nombre": "2N"
+        },
+        {
+          "roomKey": "pp_2F",
+          "nombre": "2F"
+        },
+        {
+          "roomKey": "pp_2S",
+          "nombre": "2S"
+        },
+        {
+          "roomKey": "pp_Precep",
+          "nombre": "PRECEP"
+        },
+        {
+          "roomKey": "pp_3N",
+          "nombre": "3N"
+        },
+        {
+          "roomKey": "pp_5S",
+          "nombre": "5S"
+        },
+        {
+          "roomKey": "pp_5F",
+          "nombre": "5F"
+        },
+        {
+          "roomKey": "pp_Lab",
+          "nombre": "LAB"
+        },
+        {
+          "roomKey": "pp_Maker",
+          "nombre": "MAKER"
+        },
+        {
+          "roomKey": "pp_SalaProfs",
+          "nombre": "SALA PROFES"
+        },
+        {
+          "roomKey": "pp_3F",
+          "nombre": "3F"
+        },
+        {
+          "roomKey": "pp_6F",
+          "nombre": "6F"
+        },
+        {
+          "roomKey": "pp_6N",
+          "nombre": "6N"
+        },
+        {
+          "roomKey": "pp_1F",
+          "nombre": "1F"
+        },
+        {
+          "roomKey": "pp_1N",
+          "nombre": "1N"
+        },
+        {
+          "roomKey": "pp_6F2",
+          "nombre": "6F (T)"
+        },
+        {
+          "roomKey": "pp_1S",
+          "nombre": "1S"
+        },
+        {
+          "roomKey": "pp_6S",
+          "nombre": "6S"
+        },
+        {
+          "roomKey": "pp_6N2",
+          "nombre": "6N (T)"
+        }
+      ],
+      "segundo": [
+        {
+          "roomKey": "4N",
+          "nombre": "4N"
+        },
+        {
+          "roomKey": "4F",
+          "nombre": "4F"
+        },
+        {
+          "roomKey": "4S",
+          "nombre": "4S"
+        },
+        {
+          "roomKey": "3S",
+          "nombre": "3S"
+        }
+      ]
+    },
+    "NFND": {
+      "planta": [
+        {
+          "roomKey": "nd_pb_2S_EP",
+          "nombre": "2°S EP"
+        },
+        {
+          "roomKey": "nd_pb_2F_EP",
+          "nombre": "2°F EP"
+        },
+        {
+          "roomKey": "nd_pb_2N_EP",
+          "nombre": "2°N EP"
+        },
+        {
+          "roomKey": "nd_pb_1S_EP",
+          "nombre": "1°S EP"
+        },
+        {
+          "roomKey": "nd_pb_1F_EP",
+          "nombre": "1°F EP"
+        },
+        {
+          "roomKey": "nd_pb_1N_EP",
+          "nombre": "1°N EP"
+        },
+        {
+          "roomKey": "nd_pb_agora",
+          "nombre": "Ágora"
+        },
+        {
+          "roomKey": "nd_pb_blooming",
+          "nombre": "Blooming"
+        },
+        {
+          "roomKey": "nd_pb_5N_ES",
+          "nombre": "5°N ES"
+        },
+        {
+          "roomKey": "nd_pb_5F_ES",
+          "nombre": "5°F ES"
+        },
+        {
+          "roomKey": "nd_pb_5S_ES",
+          "nombre": "5°S ES"
+        },
+        {
+          "roomKey": "nd_pb_under",
+          "nombre": "Under"
+        },
+        {
+          "roomKey": "nd_pb_6N_ES",
+          "nombre": "6°N ES"
+        },
+        {
+          "roomKey": "nd_pb_6F_ES",
+          "nombre": "6°F ES"
+        }
+      ],
+      "primero": [
+        {
+          "roomKey": "nd_p1_3F_EP",
+          "nombre": "3°F EP"
+        },
+        {
+          "roomKey": "nd_p1_3N_EP",
+          "nombre": "3°N EP"
+        },
+        {
+          "roomKey": "nd_p1_3S_EP",
+          "nombre": "3°S EP"
+        },
+        {
+          "roomKey": "nd_p1_5N_EP",
+          "nombre": "5°N EP"
+        },
+        {
+          "roomKey": "nd_p1_TICS",
+          "nombre": "TICS"
+        },
+        {
+          "roomKey": "nd_p1_2N_ES",
+          "nombre": "2do N ES"
+        },
+        {
+          "roomKey": "nd_p1_2F_ES",
+          "nombre": "2do F ES"
+        },
+        {
+          "roomKey": "nd_p1_2S_ES",
+          "nombre": "2do S ES"
+        },
+        {
+          "roomKey": "nd_p1_4N_EP",
+          "nombre": "4°N EP"
+        },
+        {
+          "roomKey": "nd_p1_4NF_EP",
+          "nombre": "4°NF EP"
+        },
+        {
+          "roomKey": "nd_p1_4S_EP",
+          "nombre": "4°S EP"
+        },
+        {
+          "roomKey": "nd_p1_5F_EP",
+          "nombre": "5°F EP"
+        },
+        {
+          "roomKey": "nd_p1_5S_EP",
+          "nombre": "5°S EP"
+        },
+        {
+          "roomKey": "nd_p1_1N_ES",
+          "nombre": "1ro N ES"
+        },
+        {
+          "roomKey": "nd_p1_1F_ES",
+          "nombre": "1ro F ES"
+        },
+        {
+          "roomKey": "nd_p1_1S_ES",
+          "nombre": "1ro S ES"
+        }
+      ],
+      "segundo": [
+        {
+          "roomKey": "nd_p2_TICS",
+          "nombre": "TICS"
+        },
+        {
+          "roomKey": "nd_p2_6S_EP",
+          "nombre": "6°S EP"
+        },
+        {
+          "roomKey": "nd_p2_lab",
+          "nombre": "Laboratorio"
+        },
+        {
+          "roomKey": "nd_p2_4N_ES",
+          "nombre": "4to N ES"
+        },
+        {
+          "roomKey": "nd_p2_4F_ES",
+          "nombre": "4to F ES"
+        },
+        {
+          "roomKey": "nd_p2_4S_ES",
+          "nombre": "4to S ES"
+        },
+        {
+          "roomKey": "nd_p2_6N_EP",
+          "nombre": "6°N EP"
+        },
+        {
+          "roomKey": "nd_p2_6F_EP",
+          "nombre": "6°F EP"
+        },
+        {
+          "roomKey": "nd_p2_3N_ES",
+          "nombre": "3ro N ES"
+        },
+        {
+          "roomKey": "nd_p2_3F_ES",
+          "nombre": "3ro F ES"
+        },
+        {
+          "roomKey": "nd_p2_3S_ES",
+          "nombre": "3ro S ES"
+        }
+      ],
+      "inicial": [
+        {
+          "roomKey": "nd_ini_K1y2",
+          "nombre": "K 1y2"
+        },
+        {
+          "roomKey": "nd_ini_K2F",
+          "nombre": "K2 F"
+        },
+        {
+          "roomKey": "nd_ini_K2N",
+          "nombre": "K2 N"
+        },
+        {
+          "roomKey": "nd_ini_SUM",
+          "nombre": "SUM"
+        },
+        {
+          "roomKey": "nd_ini_K3Taller",
+          "nombre": "K3 Taller"
+        },
+        {
+          "roomKey": "nd_ini_K4N",
+          "nombre": "K4 N"
+        },
+        {
+          "roomKey": "nd_ini_K4F",
+          "nombre": "K4 F"
+        },
+        {
+          "roomKey": "nd_ini_K4S",
+          "nombre": "K4 S"
+        },
+        {
+          "roomKey": "nd_ini_K3N",
+          "nombre": "K3 N"
+        },
+        {
+          "roomKey": "nd_ini_K3F",
+          "nombre": "K3 F"
+        },
+        {
+          "roomKey": "nd_ini_K5S",
+          "nombre": "K5 S"
+        },
+        {
+          "roomKey": "nd_ini_K5F",
+          "nombre": "K5 F"
+        },
+        {
+          "roomKey": "nd_ini_K5N",
+          "nombre": "K5 N"
+        }
+      ],
+      "artes": [
+        {
+          "roomKey": "nd_art_SUM",
+          "nombre": "SUM"
+        },
+        {
+          "roomKey": "nd_art_music",
+          "nombre": "Música"
+        },
+        {
+          "roomKey": "nd_art_arte",
+          "nombre": "Arte"
+        },
+        {
+          "roomKey": "nd_art_esceno",
+          "nombre": "Escenografía"
+        },
+        {
+          "roomKey": "nd_art_blooming",
+          "nombre": "Blooming Inicial"
+        },
+        {
+          "roomKey": "nd_art_drama",
+          "nombre": "Drama"
+        }
+      ]
+    }
+  },
+  "allIdsByFile": {
+    "FloorMapPrimerPiso.jsx": [
+      "pp_Banos",
+      "pp_Direccion",
+      "pp_DOE",
+      "pp_2N",
+      "pp_2F",
+      "pp_2S",
+      "pp_Precep",
+      "pp_3N",
+      "pp_5S",
+      "pp_5F",
+      "pp_Escalera",
+      "pp_Lab",
+      "pp_Maker",
+      "pp_SalaProfs",
+      "pp_Pasillo",
+      "pp_3F",
+      "pp_6F",
+      "pp_6N",
+      "pp_1F",
+      "pp_1N",
+      "pp_6F2",
+      "pp_TIC",
+      "pp_1S",
+      "pp_6S",
+      "pp_6N2"
+    ],
+    "FloorModelBase.jsx": [],
+    "NordeltaFloorKit.jsx": [],
+    "NordeltaInicial.jsx": [
+      "nd_ini_K1y2",
+      "nd_ini_K2F",
+      "nd_ini_K2N",
+      "nd_ini_SUM",
+      "nd_ini_K3Taller",
+      "nd_ini_K4N",
+      "nd_ini_K4F",
+      "nd_ini_K4S",
+      "nd_ini_dirStaff",
+      "nd_ini_K3N",
+      "nd_ini_K3F",
+      "nd_ini_recepcion",
+      "nd_ini_K5S",
+      "nd_ini_K5F",
+      "nd_ini_K5N"
+    ],
+    "NordeltaModels.jsx": [
+      "nd_ini_corr_h",
+      "nd_ini_esc",
+      "nd_ini_K1y2",
+      "nd_ini_K2F",
+      "nd_ini_K2N",
+      "nd_ini_SUM",
+      "nd_ini_K3Taller",
+      "nd_ini_K4N",
+      "nd_ini_K4F",
+      "nd_ini_K4S",
+      "nd_ini_dirStaff",
+      "nd_ini_K3N",
+      "nd_ini_K3F",
+      "nd_ini_recepcion",
+      "nd_ini_K5S",
+      "nd_ini_K5F",
+      "nd_ini_K5N",
+      "nd_art_corr_v",
+      "nd_art_SUM",
+      "nd_art_music",
+      "nd_art_arte",
+      "nd_art_esceno",
+      "nd_art_blooming",
+      "nd_art_drama"
+    ],
+    "NordeltaPlantaBaja.jsx": [
+      "nd_pb_2S_EP",
+      "nd_pb_2F_EP",
+      "nd_pb_2N_EP",
+      "nd_pb_1S_EP",
+      "nd_pb_1F_EP",
+      "nd_pb_1N_EP",
+      "nd_pb_agora",
+      "nd_pb_blooming",
+      "nd_pb_5N_ES",
+      "nd_pb_5F_ES",
+      "nd_pb_5S_ES",
+      "nd_pb_under",
+      "nd_pb_6N_ES",
+      "nd_pb_6F_ES"
+    ],
+    "NordeltaPrimerPiso.jsx": [
+      "nd_p1_3F_EP",
+      "nd_p1_3N_EP",
+      "nd_p1_3S_EP",
+      "nd_p1_5N_EP",
+      "nd_p1_TICS",
+      "nd_p1_2N_ES",
+      "nd_p1_2F_ES",
+      "nd_p1_2S_ES",
+      "nd_p1_4N_EP",
+      "nd_p1_4NF_EP",
+      "nd_p1_4S_EP",
+      "nd_p1_5F_EP",
+      "nd_p1_5S_EP",
+      "nd_p1_1N_ES",
+      "nd_p1_1F_ES",
+      "nd_p1_1S_ES"
+    ],
+    "NordeltaSegundoPiso.jsx": [
+      "nd_p2_TICS",
+      "nd_p2_dirEP",
+      "nd_p2_TICs2",
+      "nd_p2_6S_EP",
+      "nd_p2_lab",
+      "nd_p2_4N_ES",
+      "nd_p2_4F_ES",
+      "nd_p2_4S_ES",
+      "nd_p2_6N_EP",
+      "nd_p2_6F_EP",
+      "nd_p2_staffEP",
+      "nd_p2_dirSec",
+      "nd_p2_3N_ES",
+      "nd_p2_3F_ES",
+      "nd_p2_3S_ES",
+      "nd_p2_staffES"
+    ],
+    "PrimerPisoModel.jsx": [
+      "room_Banos_1",
+      "room_Directores",
+      "room_Salita",
+      "room_Preceptoria_2",
+      "room_3ero_N",
+      "room_5to_N",
+      "room_5to_F",
+      "room_5to_S",
+      "room_Drama",
+      "room_Musica",
+      "room_3ero_F",
+      "room_3ero_S",
+      "room_4to_N",
+      "room_4to_F",
+      "room_4to_S",
+      "room_Arte",
+      "room_Banos_2",
+      "room_Hall_Entrada",
+      "room_Escalera",
+      "room_2do_N",
+      "room_2do_F",
+      "room_2do_S",
+      "room_1ero_N",
+      "room_1ero_F",
+      "room_1ero_S",
+      "pasillo_horiz",
+      "pasillo_col",
+      "pasillo_pre1ero",
+      "pasillo_zoom_com",
+      "room_Patio_Primaria",
+      "room_Kiosco",
+      "room_Front",
+      "room_Zoom",
+      "room_Comedor",
+      "room_Zoom_exit",
+      "sector_1er_piso",
+      "escalera_1er_piso",
+      "pasillo_precep_1er_piso",
+      "4N",
+      "4F",
+      "4S",
+      "3S"
+    ]
+  }
+}

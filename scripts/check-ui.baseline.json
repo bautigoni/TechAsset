@@ -1,11 +1,10 @@
 {
   "note": "Generado por scripts/check-ui.mjs --update. Lo que hay hoy en src/ fuera de src/ui/; se achica a medida que el rediseño reemplaza controles.",
   "totals": {
-    "title-tooltip": 9,
-    "input-nativo": 17,
-    "checkbox-radio-crudo": 15,
-    "details": 5,
-    "datalist": 1,
+    "title-tooltip": 8,
+    "input-nativo": 15,
+    "checkbox-radio-crudo": 11,
+    "details": 3,
     "hex-en-css": 57
   },
   "entries": [
@@ -14,18 +13,6 @@
       "file": "src/components/canvas/CanvasPage.tsx",
       "text": "type=\"checkbox\"",
       "count": 2
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/classrooms/ClassroomCategoryManager.tsx",
-      "text": "<input name=\"options\" type=\"checkbox\" value={option} defaultChecked={category.options.includes(option)} />",
-      "count": 1
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/classrooms/ClassroomInfoPanel.tsx",
-      "text": "type=\"checkbox\"",
-      "count": 1
     },
     {
       "rule": "checkbox-radio-crudo",
@@ -76,39 +63,9 @@
       "count": 1
     },
     {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/tickets/TicketDetailModal.tsx",
-      "text": "type=\"checkbox\"",
-      "count": 1
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/tickets/TicketsPage.tsx",
-      "text": "type=\"checkbox\"",
-      "count": 1
-    },
-    {
-      "rule": "datalist",
-      "file": "src/components/suggestions/SuggestionsPage.tsx",
-      "text": "<datalist id=\"suggestion-categories\">",
-      "count": 1
-    },
-    {
       "rule": "details",
       "file": "src/components/canvas/CanvasPage.tsx",
       "text": "<details>",
-      "count": 1
-    },
-    {
-      "rule": "details",
-      "file": "src/components/classrooms/ClassroomInfoPanel.tsx",
-      "text": "<details className=\"classroom-history\">",
-      "count": 1
-    },
-    {
-      "rule": "details",
-      "file": "src/components/classrooms/ClassroomStatusPage.tsx",
-      "text": "<details className=\"classroom-model-list\">",
       "count": 1
     },
     {
@@ -497,12 +454,6 @@
     },
     {
       "rule": "input-nativo",
-      "file": "src/components/reminders/RemindersPage.tsx",
-      "text": "<input className=\"input\" type=\"datetime-local\" required value={draft.remindAt} onChange={e => setDraft({ ...draft, remindAt: e.target.value })} />",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
       "file": "src/components/settings/InvitesPanel.tsx",
       "text": "<input className=\"input\" type=\"number\" min={1} max={90} value={expiresInDays} disabled={consultationMode} onChange={e => setExpiresInDays(Number(e.target.value)",
       "count": 1
@@ -523,12 +474,6 @@
       "rule": "input-nativo",
       "file": "src/components/settings/TenantsDashboard.tsx",
       "text": "<input type=\"file\" accept=\"image/png,image/jpeg,image/webp\" onChange={event => void handleLogoFile(event.target.files?.[0] || null)} />",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/tickets/TicketsPage.tsx",
-      "text": "<input type=\"file\" accept=\"application/pdf,image/png,image/jpeg,image/jpg,image/webp\" className=\"sr-only\" onChange={e => handleFile(e.target.files?.[0])} disabl",
       "count": 1
     },
     {
@@ -559,12 +504,6 @@
       "rule": "title-tooltip",
       "file": "src/components/analytics/ParqueSection.tsx",
       "text": "<i title={`${row.label}: ${row.value}`} /",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/classrooms/ClassroomStatusPage.tsx",
-      "text": "<button title={f.enabled ? f.label : 'Próximamente'}",
       "count": 1
     },
     {

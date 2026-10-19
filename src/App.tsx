@@ -623,7 +623,7 @@ export function App() {
       {view === 'tasks' && <TasksPage key={activeSite} store={tasks} operator={operator} consultationMode={effectiveConsultation} />}
       {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
-      {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
+      {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} sites={sites} onSiteChange={changeSite} onNavigate={navigate} />}
       {view === 'tools' && <ToolsPage key={activeSite} operator={operator} />}
       {view === 'quickaccess' && <QuickAccessPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} />}
       {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
