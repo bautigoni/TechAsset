@@ -2,10 +2,10 @@
   "note": "Generado por scripts/check-ui.mjs --update. Lo que hay hoy en src/ fuera de src/ui/; se achica a medida que el rediseño reemplaza controles.",
   "totals": {
     "input-nativo": 20,
-    "title-tooltip": 16,
+    "title-tooltip": 14,
     "checkbox-radio-crudo": 18,
     "details": 6,
-    "datalist": 3,
+    "datalist": 2,
     "hex-en-css": 57
   },
   "entries": [
@@ -109,12 +109,6 @@
       "rule": "datalist",
       "file": "src/components/devices/AddDeviceModal.tsx",
       "text": "<datalist id=\"device-category-options\">",
-      "count": 1
-    },
-    {
-      "rule": "datalist",
-      "file": "src/components/loans/PhotoPassPanel.tsx",
-      "text": "<datalist id=\"pass-cursos\">{options.cursos.map(value => <option key={value} value={value} />)}</datalist>",
       "count": 1
     },
     {
@@ -643,18 +637,6 @@
       "rule": "title-tooltip",
       "file": "src/components/layout/GooeyMenu.tsx",
       "text": "<button title={item.label}",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/loans/DeviceChipsPanel.tsx",
-      "text": "<button title={bloqueado",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/loans/PhotoPassPanel.tsx",
-      "text": "<button title={bloqueado",
       "count": 1
     },
     {

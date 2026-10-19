@@ -7,9 +7,12 @@ import {
   readOptions, selectOption, sleep, text, typeInto, until
 } from '../lib/browser.mjs';
 
-const CODE_INPUT = 'form.stack input.input[autocomplete="off"]';
-const DEVICE_STACK = '.device-pass-stack:not(.pass-stack)';
-const PASS_STACK = '.pass-stack';
+// Préstamos (etapa 4): selectores por data-* para no depender del estilo.
+const CODE_INPUT = 'input[data-loan-code]';
+const LOAN_FORM = '[data-loan-form]';
+const DEVICE_STACK = '[data-loans-grid="devices"]';
+const PASS_STACK = '[data-loans-grid="passes"]';
+const CONT_SWITCH = `${LOAN_FORM} button.lo-cont-switch[role="switch"]`;
 const escapeRx = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const exact = value => new RegExp(`^${escapeRx(value)}$`);
 
@@ -31,31 +34,38 @@ export const NAV_ACTIVE = '.shell-nav .shell-nav-item[aria-current="page"]';
 async function openLoans(page, base) {
   await gotoView(page, base, 'loans');
   // La grilla de equipos solo se dibuja cuando llegó el inventario.
-  await page.waitForSelector('.chip-stack-head', { timeout: 20000 });
+  await page.waitForSelector(DEVICE_STACK, { timeout: 20000 });
   await page.waitForSelector(CODE_INPUT);
+}
+
+/** Elige una opción de un grupo de botones (Rol, Ubicación, Nivel...) por texto. */
+async function pickOption(page, groupLabel, pattern) {
+  const ok = await page.evaluate((label, source, flags) => {
+    const rx = new RegExp(source, flags);
+    const group = document.querySelector(`[data-loan-form] [role="group"][aria-label="${label}"]`);
+    const button = group && [...group.querySelectorAll('button')].find(node => rx.test((node.textContent || '').trim()));
+    if (!button) return false;
+    if (button.getAttribute('aria-pressed') !== 'true') button.click();
+    return true;
+  }, groupLabel, pattern.source, pattern.flags);
+  assert(ok, `No encontré la opción ${pattern} en "${groupLabel}".`);
 }
 
 /** Completa persona, rol, ubicación (y nivel/curso/detalles si la ubicación los pide). */
 async function fillLoanPerson(page) {
-  const person = await page.waitForSelector('.loan-person-field input');
+  const person = await page.waitForSelector(`${LOAN_FORM} #lo-persona`);
   await typeInto(page, person, 'E2E Prueba');
   await page.keyboard.press('Tab');
-  const roles = await readOptions(page, 'Rol');
-  await selectOption(page, 'Rol', exact(roles.includes('DOE') ? 'DOE' : roles[0]));
-  const locations = await readOptions(page, 'Ubicación');
-  await selectOption(page, 'Ubicación', exact(locations.includes('DOE') ? 'DOE' : locations[0]));
-  if (await page.$('button.field-select-trigger[aria-label="Nivel"]')) {
-    await selectOption(page, 'Nivel', /^EP$/);
-    const courses = await readOptions(page, 'Grado, año o curso');
-    await selectOption(page, 'Grado, año o curso', exact(courses[0]));
+  const roles = await page.$$eval(`${LOAN_FORM} [role="group"][aria-label="Rol"] button`, nodes => nodes.map(node => node.textContent.trim()));
+  await pickOption(page, 'Rol', exact(roles.includes('DOE') ? 'DOE' : roles[0]));
+  const locations = await page.$$eval(`${LOAN_FORM} [role="group"][aria-label="Ubicación"] button`, nodes => nodes.map(node => node.textContent.trim()));
+  await pickOption(page, 'Ubicación', exact(locations.includes('DOE') ? 'DOE' : locations[0]));
+  await sleep(100);
+  if (await page.$(`${LOAN_FORM} [role="group"][aria-label="Nivel"]`)) {
+    await pickOption(page, 'Nivel', /^EP$/);
+    await pickOption(page, 'Grado, año o curso', /./);
   }
-  const details = await page.$$('form.stack label');
-  for (const label of details) {
-    const labelText = await label.evaluate(node => node.textContent || '');
-    if (!/^Especificar/.test(labelText.trim())) continue;
-    const input = await label.$('input');
-    if (input) await typeInto(page, input, 'E2E');
-  }
+  for (const input of await page.$$(`${LOAN_FORM} input[aria-label^="Especificar"]`)) await typeInto(page, input, 'E2E');
 }
 
 async function codeValue(page) {
@@ -63,16 +73,14 @@ async function codeValue(page) {
 }
 
 async function openAllDevicePanels(page) {
-  await page.$$eval(`${DEVICE_STACK} .chip-panel-toggle[aria-expanded="false"]`, buttons => buttons.forEach(button => button.click()));
-  await until(() => page.$$eval(`${DEVICE_STACK} .chip-panel-toggle[aria-expanded="false"]`, list => list.length === 0), { message: 'los grupos de equipos abiertos' });
-  await page.waitForSelector(`${DEVICE_STACK} .pass-chip`);
+  await page.$$eval(`${DEVICE_STACK} .lo-group-toggle[aria-expanded="false"]`, buttons => buttons.forEach(button => button.click()));
+  await until(() => page.$$eval(`${DEVICE_STACK} .lo-group-toggle[aria-expanded="false"]`, list => list.length === 0), { message: 'los grupos de equipos abiertos' });
+  await page.waitForSelector(`${DEVICE_STACK} .lo-chip[data-device-tag]`);
   await sleep(250);
 }
 
 async function deviceChip(page, tag) {
-  const handle = await page.evaluateHandle((stack, etiqueta) => [...document.querySelectorAll(`${stack} .pass-chip`)]
-    .find(chip => (chip.getAttribute('title') || '').includes(` · ${etiqueta} —`)) || null, DEVICE_STACK, tag);
-  const element = handle.asElement();
+  const element = await page.$(`${DEVICE_STACK} .lo-chip[data-device-tag="${tag}"]`);
   assert(element, `No encontré el chip de ${tag} en la grilla.`);
   return element;
 }
@@ -86,40 +94,39 @@ async function chipState(handle) {
 }
 
 async function selectModeOn(page, stack) {
-  return page.$eval(`${stack} .chip-select-toggle`, button => button.getAttribute('aria-pressed') === 'true').catch(() => false);
+  return page.$eval(stack, section => section.getAttribute('data-select-mode') === 'on').catch(() => false);
 }
 
 async function exitSelectMode(page, stack) {
   if (await selectModeOn(page, stack)) {
-    await page.$eval(`${stack} .chip-select-toggle`, button => button.click());
+    await page.$eval(`${stack} .lo-selbar-done`, button => button.click());
     await until(async () => !(await selectModeOn(page, stack)), { message: 'que se apague el modo selección' });
   }
 }
 
 async function barText(page, stack) {
-  return text(page, `${stack} .chip-selection-bar`);
+  return text(page, `${stack} .lo-selbar`);
 }
 
 async function passChip(page, numero) {
-  const handle = await page.evaluateHandle((stack, n) => [...document.querySelectorAll(`${stack} .pass-chip`)]
-    .find(chip => (chip.textContent || '').trim() === String(n)) || null, PASS_STACK, numero);
-  const element = handle.asElement();
+  const element = await page.$(`${PASS_STACK} .lo-chip[data-pass="${numero}"]`);
   assert(element, `No encontré el cartelito ${numero}.`);
   return element;
 }
 
+const continuousOn = page => page.$eval(CONT_SWITCH, b => b.getAttribute('aria-checked') === 'true');
+
 async function cancelContinuous(page) {
-  const cancel = await findButton(page, /^Cancelar escaneo continuo$/);
-  if (!cancel) return;
-  await cancel.click();
-  // Si había lista, pregunta si conservarla.
-  const empty = await until(() => findButton(page, /^Vaciar lista$/, { scope: '.modal' }), { timeout: 1500 }).catch(() => null);
+  if (!(await continuousOn(page).catch(() => false))) return;
+  await page.$eval(CONT_SWITCH, button => button.click());
+  // Si había lista, pregunta (en línea) si conservarla.
+  const empty = await until(() => findButton(page, /^Vaciar lista$/, { scope: `${LOAN_FORM} .lo-ask` }), { timeout: 1500 }).catch(() => null);
   if (empty) await empty.click();
-  await until(() => page.$eval('button.toggle-row-button[role="switch"]', b => b.getAttribute('aria-checked') === 'false'), { message: 'el escaneo continuo apagado' });
+  await until(async () => !(await continuousOn(page)), { message: 'el escaneo continuo apagado' });
 }
 
 async function scanMessage(page) {
-  return text(page, '.continuous-scan-panel .t-msg-enter');
+  return text(page, '[data-scan-list] .lo-scan-msg');
 }
 
 export async function functionalTests({ browser, base, api, apiConsulta, admin, consulta, releaseVersion, blockedTag, test, track = () => {} }) {
@@ -154,9 +161,9 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       assert(tagA, 'No hay equipos disponibles en la copia.');
       await openLoans(page, base);
       await typeInto(page, CODE_INPUT, tagA);
-      await until(() => findButton(page, /^Prestar$/, { scope: 'form.stack' }), { message: 'el botón Prestar' });
+      await until(() => findButton(page, /^Prestar\s*↵?$/, { scope: LOAN_FORM }), { message: 'el botón Prestar' });
       await fillLoanPerson(page);
-      await clickButton(page, /^Prestar$/, { scope: 'form.stack' });
+      await clickButton(page, /^Prestar\s*↵?$/, { scope: LOAN_FORM });
       const device = await until(async () => { const d = await api.device(tagA); return loanState(d?.estado) === 'loaned' && d; }, { message: `${tagA} prestado en la base` });
       return `${tagA} → ${device.estado} a ${device.prestadoA}`;
     });
@@ -164,7 +171,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
     await test('a', 'Préstamos', 'Devolver uno por formulario', async () => {
       await openLoans(page, base);
       await typeInto(page, CODE_INPUT, tagA);
-      await clickButton(page, /^Devolver$/, { scope: 'form.stack' });
+      await clickButton(page, /^Devolver\s*↵?$/, { scope: LOAN_FORM });
       const device = await until(async () => { const d = await api.device(tagA); return loanState(d?.estado) === 'available' && d; }, { message: `${tagA} devuelto en la base` });
       return `${tagA} → ${device.estado}`;
     });
@@ -172,8 +179,8 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
     await test('a', 'Préstamos', 'Escaneo continuo con Enter: duplicado, no disponible y lote', async () => {
       assert(tagB && tagC && loanedTag1, 'Faltan equipos libres o prestados en la copia.');
       await openLoans(page, base);
-      await page.$eval('button.toggle-row-button[role="switch"]', button => button.click());
-      await page.waitForSelector('.continuous-scan-panel');
+      await page.$eval(CONT_SWITCH, button => button.click());
+      await page.waitForSelector('[data-scan-list]');
       const messages = [];
       for (const tag of [tagB, tagC, tagB, loanedTag1]) {
         await typeInto(page, CODE_INPUT, tag);
@@ -184,13 +191,13 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       assert(/Agregado: /.test(messages[0]), `Primer escaneo: "${messages[0]}"`);
       assert(/ya estaba en la lista/.test(messages[2]), `Duplicado no avisado: "${messages[2]}"`);
       assert(/Agregado con error/.test(messages[3]), `No disponible no marcado: "${messages[3]}"`);
-      const rows = await page.$$eval('.continuous-scan-table tbody tr:not(:has(.empty-state))', list => list.length);
-      const errorRows = await page.$$eval('.continuous-scan-table tbody tr.row-error', list => list.length);
+      const rows = await page.$$eval('[data-scan-list] .lo-qrow', list => list.length);
+      const errorRows = await page.$$eval('[data-scan-list] .lo-qrow.is-error', list => list.length);
       assert(rows === 3 && errorRows === 1, `Lista: ${rows} filas, ${errorRows} con error (esperaba 3 y 1).`);
-      assert(await findButton(page, /^Confirmar préstamo múltiple \(2\)$/), 'El botón no dice "Confirmar préstamo múltiple (2)".');
+      assert(await findButton(page, /^Confirmar préstamo múltiple \(2\)\s*↵?$/), 'El botón no dice "Confirmar préstamo múltiple (2)".');
       assert(await codeValue(page) === '', 'Enter no limpió el campo de código.');
       await fillLoanPerson(page);
-      await clickButton(page, /^Confirmar préstamo múltiple \(2\)$/);
+      await clickButton(page, /^Confirmar préstamo múltiple \(2\)\s*↵?$/);
       await until(async () => {
         const [b, c] = await Promise.all([api.device(tagB), api.device(tagC)]);
         return loanState(b?.estado) === 'loaned' && loanState(c?.estado) === 'loaned';
@@ -235,10 +242,10 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       assert(loanState((await api.device(prestado))?.estado) === 'loaned', `${prestado} se devolvió solo con marcarlo.`);
       // Prestar N manda el lote a la lista del escaneo continuo.
       await clickButton(page, /^Prestar 2$/, { scope: DEVICE_STACK });
-      await until(() => page.$eval('button.toggle-row-button[role="switch"]', b => b.getAttribute('aria-checked') === 'true'), { message: 'escaneo continuo prendido por el lote' });
-      const tags = await page.$$eval('.continuous-scan-table tbody tr td:first-child', cells => cells.map(cell => cell.textContent.trim()));
+      await until(() => continuousOn(page), { message: 'escaneo continuo prendido por el lote' });
+      const tags = await page.$$eval('[data-scan-list] [data-queue-tag]', rows => rows.map(row => row.getAttribute('data-queue-tag')));
       assert(tags.includes(tagD) && tags.includes(tagE), `La lista del continuo tiene ${tags.join(', ')}.`);
-      const focused = await page.evaluate(() => document.activeElement?.closest('.loan-person-field') !== null);
+      const focused = await until(() => page.evaluate(() => document.activeElement?.id === 'lo-persona'), { timeout: 1500 }).catch(() => false);
       await cancelContinuous(page);
       return `"${bar}" → continuo con ${tags.join(', ')}${focused ? ' (foco en Persona)' : ' (sin foco en Persona)'}`;
     });
@@ -267,17 +274,63 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       await openLoans(page, base);
       await openAllDevicePanels(page);
       await exitSelectMode(page, DEVICE_STACK);
+      const before = await api.device(prestado);
       await (await deviceChip(page, prestado)).click();
       await until(async () => loanState((await api.device(prestado))?.estado) === 'available', { message: `${prestado} devuelto en la base` });
-      return `${prestado} devuelto`;
+      // Deshacer (línea de estado en línea, debajo del encabezado de la grilla): vuelve a quedar prestado con los mismos datos.
+      await clickButton(page, /Deshacer/, { scope: `${DEVICE_STACK} .lo-card-status` });
+      const again = await until(async () => { const d = await api.device(prestado); return loanState(d?.estado) === 'loaned' && d; }, { message: `${prestado} prestado de nuevo por el Deshacer` });
+      assert(again.prestadoA === before.prestadoA, `Deshacer lo prestó a "${again.prestadoA}" (antes "${before.prestadoA}").`);
+      return `${prestado} devuelto → Deshacer → prestado otra vez a ${again.prestadoA}`;
+    });
+
+    await test('a', 'Préstamos', 'Shift+Click marca el rango dentro de un tipo (sin actuar)', async () => {
+      await openLoans(page, base);
+      await openAllDevicePanels(page);
+      await exitSelectMode(page, DEVICE_STACK);
+      // Primer grupo con al menos 4 equipos seleccionables seguidos.
+      const range = await page.evaluate(stack => {
+        for (const group of document.querySelectorAll(`${stack} .lo-group`)) {
+          const chips = [...group.querySelectorAll('.lo-chip[data-device-tag]')].filter(chip => !chip.disabled);
+          if (chips.length >= 4) return chips.slice(0, 4).map(chip => chip.getAttribute('data-device-tag'));
+        }
+        return null;
+      }, DEVICE_STACK);
+      assert(range, 'No hay un tipo con 4 equipos seleccionables.');
+      const statesBefore = await Promise.all(range.map(tag => api.device(tag).then(d => d?.estado)));
+      await clickWithModifier(page, await deviceChip(page, range[0]), 'Shift');
+      await clickWithModifier(page, await deviceChip(page, range[3]), 'Shift');
+      await sleep(200);
+      const marked = await page.$$eval(`${DEVICE_STACK} .lo-chip.is-selected`, chips => chips.map(chip => chip.getAttribute('data-device-tag')));
+      assert(range.every(tag => marked.includes(tag)), `Marcados: ${marked.join(', ')} (esperaba ${range.join(', ')}).`);
+      const statesAfter = await Promise.all(range.map(tag => api.device(tag).then(d => d?.estado)));
+      assert(JSON.stringify(statesBefore) === JSON.stringify(statesAfter), 'Marcar con Shift cambió estados en la base.');
+      const bar = await barText(page, DEVICE_STACK);
+      await exitSelectMode(page, DEVICE_STACK);
+      return `${range.join(', ')} marcados · barra "${bar}"`;
+    });
+
+    await test('a', 'Préstamos', 'Enter en el código devuelve un prestado; Deshacer lo re-presta', async () => {
+      const prestado = (await api.devices()).find(device => loanState(device.estado) === 'loaned');
+      assert(prestado, 'No hay equipos prestados.');
+      await openLoans(page, base);
+      await typeInto(page, CODE_INPUT, prestado.etiqueta);
+      await until(() => findButton(page, /^Devolver\s*↵?$/, { scope: LOAN_FORM }), { message: 'el resultado con Devolver' });
+      await page.keyboard.press('Enter');
+      await until(async () => loanState((await api.device(prestado.etiqueta))?.estado) === 'available', { message: `${prestado.etiqueta} devuelto con Enter` });
+      assert(await codeValue(page) === '', 'Después de devolver no se limpió el código.');
+      await clickButton(page, /Deshacer/, { scope: LOAN_FORM });
+      const again = await until(async () => { const d = await api.device(prestado.etiqueta); return loanState(d?.estado) === 'loaned' && d; }, { message: 'el Deshacer' });
+      assert(again.prestadoA === prestado.prestadoA, `Deshacer lo prestó a "${again.prestadoA}".`);
+      return `${prestado.etiqueta}: Enter → devuelto → Deshacer → ${again.prestadoA}`;
     });
 
     await test('a', 'Préstamos', 'Cartelitos: Ctrl/Meta/Shift+Click marcan sin entregar ni devolver', async () => {
       assert(lentPass, 'No hay cartelitos en la copia.');
       await openLoans(page, base);
-      const toggle = await page.waitForSelector(`${PASS_STACK} .chip-panel-toggle`);
+      const toggle = await page.waitForSelector(`${PASS_STACK} .lo-group-toggle`);
       if (await toggle.evaluate(button => button.getAttribute('aria-expanded') === 'false')) await toggle.click();
-      await page.waitForSelector(`${PASS_STACK} .pass-chip:not(.pass-chip-skel)`);
+      await page.waitForSelector(`${PASS_STACK} .lo-chip[data-pass]`);
       await sleep(250);
       const states = async () => Object.fromEntries(((await api.get('/api/photo-passes')).data.items || []).map(pass => [pass.numero, pass.estado]));
       const before = await states();
@@ -289,7 +342,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
         await clickWithModifier(page, await passChip(page, free), modifier);
         await sleep(150);
         assert(await selectModeOn(page, PASS_STACK), `${modifier}: no se prendió el modo selección.`);
-        assert(!(await page.$('.modal')), `${modifier}: abrió el modal de entrega.`);
+        assert(!(await page.$(`${PASS_STACK} .lo-pass-form`)), `${modifier}: abrió el formulario de entrega.`);
         const bar = await barText(page, PASS_STACK);
         assert(/Entregar 1/.test(bar), `${modifier}: barra "${bar}"`);
         details.push(`${modifier} ok`);
@@ -511,7 +564,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
   }
 
   // g) Modo consulta ──────────────────────────────────────────────────────────
-  const WRITE = /^(\+\s*)?(Prestar|Devolver|Borrar|Eliminar|Editar|Guardar|Añadir|Agregar(?! a lista)|Importar|Confirmar|Generar|Enviar|Restaurar|Nueva|Nuevo|Crear|Entregar|Revisar devolución|Seleccionar varios|Varios)\b/i;
+  const WRITE = /^(\+\s*)?(Prestar|Devolver|Borrar|Eliminar|Editar|Guardar|Añadir|Agregar(?! a lista)|Importar|Confirmar|Generar|Enviar|Restaurar|Nueva|Nuevo|Crear|Entregar|Revisar devolución|Revisar$|Seleccionar varios|Varios)\b/i;
   const writeControls = page => page.evaluate((source, flags) => {
     const rx = new RegExp(source, flags);
     const main = document.querySelector('main') || document.body;
@@ -523,7 +576,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       if (!rect.width || !rect.height) continue;
       out.push(label);
     }
-    const chips = [...main.querySelectorAll('.pass-chip')].filter(chip => !chip.disabled).length;
+    const chips = [...main.querySelectorAll('.pass-chip, .lo-chip:not(.lo-chip--sample)')].filter(chip => chip.tagName === 'BUTTON' && !chip.disabled).length;
     const checkboxes = [...main.querySelectorAll('input[type="checkbox"]')].filter(box => !box.disabled).length;
     return { buttons: out, chips, checkboxes };
   }, WRITE.source, WRITE.flags);
@@ -531,14 +584,14 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
   const reader = await openContext(browser, { base, token: consulta.token, releaseVersion });
   track(reader.page);
   try {
-    for (const [view, ready, label] of [['dashboard', 'tr[data-device-tag]', 'Inicio'], ['loans', '.chip-stack-head', 'Préstamos'], ['devices', 'tr[data-device-tag]', 'Dispositivos']]) {
+    for (const [view, ready, label] of [['dashboard', 'tr[data-device-tag]', 'Inicio'], ['loans', DEVICE_STACK, 'Préstamos'], ['devices', 'tr[data-device-tag]', 'Dispositivos']]) {
       await test('g', 'Modo consulta', `${label}: ninguna acción de escritura habilitada`, async () => {
         await gotoView(reader.page, base, view);
         await reader.page.waitForSelector(ready, { timeout: 20000 });
         if (view === 'loans') {
           await openAllDevicePanels(reader.page);
-          const passToggle = await reader.page.$(`${PASS_STACK} .chip-panel-toggle[aria-expanded="false"]`);
-          if (passToggle) { await passToggle.click(); await reader.page.waitForSelector(`${PASS_STACK} .pass-chip:not(.pass-chip-skel)`).catch(() => {}); }
+          const passToggle = await reader.page.$(`${PASS_STACK} .lo-group-toggle[aria-expanded="false"]`);
+          if (passToggle) { await passToggle.click(); await reader.page.waitForSelector(`${PASS_STACK} .lo-chip[data-pass]`).catch(() => {}); }
           // Un equipo libre identificado: el botón Prestar tiene que estar deshabilitado.
           const free = (await apiConsulta.devices()).find(device => loanState(device.estado) === 'available')?.etiqueta;
           if (free) { await typeInto(reader.page, CODE_INPUT, free); await sleep(300); }

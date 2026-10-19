@@ -19,6 +19,8 @@ export type StatusLineProps = {
   /** Otra acción (p. ej. "Ver en la lista"). */
   action?: { label: string; onClick: () => void };
   onDismiss?: () => void;
+  /** Reemplaza el ícono del tono (p. ej. el tilde animado de prestar/devolver). */
+  icon?: ReactNode;
   /** Se va sola a los N ms (default: ok/info 8000; warn/bad/offline quedan). 0 = nunca. */
   autoHideMs?: number;
   className?: string;
@@ -32,7 +34,7 @@ const TONE_ICON: Record<StatusTone, ReactNode> = {
   offline: <IconWifiOff size={14} />
 };
 
-export function StatusLine({ tone = 'info', message, undo, retry, action, onDismiss, autoHideMs, className }: StatusLineProps) {
+export function StatusLine({ tone = 'info', message, undo, retry, action, onDismiss, icon, autoHideMs, className }: StatusLineProps) {
   const total = undo ? undo.seconds ?? 8 : 0;
   const [left, setLeft] = useState(total);
   const [busy, setBusy] = useState<'undo' | 'retry' | null>(null);
@@ -69,7 +71,7 @@ export function StatusLine({ tone = 'info', message, undo, retry, action, onDism
   const alert = tone === 'bad' || tone === 'warn';
   return (
     <div className={cx('ui-status', `ui-status--${tone}`, 'ui-enter', className)} role={alert ? 'alert' : 'status'}>
-      <span className="ui-status-icon" aria-hidden="true">{TONE_ICON[tone]}</span>
+      <span className="ui-status-icon" aria-hidden="true">{icon ?? TONE_ICON[tone]}</span>
       <span className="ui-status-msg">{message}</span>
       <span className="ui-status-actions">
         {undo && (

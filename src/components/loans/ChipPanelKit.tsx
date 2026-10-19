@@ -1,10 +1,18 @@
-import { useCallback, useState, type PropsWithChildren, type ReactNode } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useCallback, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import type { Device } from '../../types';
+import { getDeviceStateKey } from '../../utils/deviceState';
+import { loanAgeDays } from '../../utils/formatters';
+import { Button } from '../../ui/Button';
+import { InlineConfirm } from '../../ui/Inline';
+import { IconChevronDown } from '../../ui/icons';
+import { Ring } from '../../ui/Data';
+import { cx } from '../../ui/util';
 
 /**
- * Piezas compartidas por las grillas de chips de Préstamos (equipos por tipo y
- * cartelitos): sección desplegable que recuerda si quedó abierta, y barra de
- * acciones para la selección múltiple.
+ * Piezas compartidas por las dos grillas de Préstamos (equipos por tipo y
+ * cartelitos): desplegable que recuerda si quedó abierto, chip con su estado,
+ * gramática de selección (Ctrl/Cmd/Shift + clic) y la barra de selección que
+ * REEMPLAZA al encabezado de la sección (no flota).
  */
 
 const OPEN_KEY = 'techasset_loans_open_panels';
@@ -18,9 +26,12 @@ function readOpenPanels(): Record<string, boolean> {
   }
 }
 
-/** Abierto/cerrado por panel, recordado entre visitas. Arranca cerrado. */
-export function usePanelOpen(id: string) {
-  const [open, setOpenState] = useState(() => Boolean(readOpenPanels()[id]));
+/** Abierto/cerrado por panel, recordado entre visitas (`fallback` si nunca se tocó). */
+export function usePanelOpen(id: string, fallback = false) {
+  const [open, setOpenState] = useState(() => {
+    const saved = readOpenPanels()[id];
+    return saved === undefined ? fallback : Boolean(saved);
+  });
   const setOpen = useCallback((next: boolean) => {
     setOpenState(next);
     try {
@@ -32,64 +43,145 @@ export function usePanelOpen(id: string) {
   return [open, setOpen] as const;
 }
 
-export function CollapsiblePanel({ id, title, used, total, usedLabel, loading = false, extra, className = '', children }: PropsWithChildren<{
-  id: string;
+/**
+ * Contenido que se monta recién la primera vez que se abre (cerrados, los
+ * grupos no tienen sus chips en el DOM) y después queda montado para que
+ * cerrar/abrir no vuelva a construirlo. Entra con `ui-enter`.
+ */
+export function LazyBody({ open, className, children }: { open: boolean; className?: string; children: ReactNode }) {
+  const mounted = useRef(open);
+  if (open) mounted.current = true;
+  if (!mounted.current) return null;
+  return <div className={cx(className, open && 'ui-enter')} hidden={!open}>{children}</div>;
+}
+
+export type ChipKind = 'free' | 'loaned' | 'late1' | 'late2' | 'blocked';
+
+/** Estado del chip de un equipo: misma regla que getDeviceStateKey, más la antigüedad. */
+export function deviceChipKind(device: Device): ChipKind {
+  const key = getDeviceStateKey(device);
+  if (key === 'missing' || key === 'out') return 'blocked';
+  if (key === 'available') return 'free';
+  const days = loanAgeDays(device.loanedAt);
+  return days >= 2 ? 'late2' : days === 1 ? 'late1' : 'loaned';
+}
+
+/** Ctrl (Windows/Linux), Cmd (Mac, metaKey) o Shift: marcan sin actuar. */
+export function isMarkClick(event: Pick<MouseEvent, 'ctrlKey' | 'metaKey' | 'shiftKey'>) {
+  return event.ctrlKey || event.metaKey || event.shiftKey;
+}
+
+export function Chevron({ open }: { open: boolean }) {
+  return <span className={cx('lo-chev', open && 'is-open')} aria-hidden="true"><IconChevronDown size={16} /></span>;
+}
+
+/** Encabezado desplegable de un grupo: chevron, nombre, anillo libres/total y textos de estado. */
+export function GroupToggle({ open, onToggle, title, titleAs = 'span', free, total, out, warn, loading, controls }: {
+  open: boolean;
+  onToggle: () => void;
   title: string;
-  used: number;
+  titleAs?: 'span' | 'h2';
+  free: number;
   total: number;
-  usedLabel: string;
+  out: string;
+  warn?: string;
   loading?: boolean;
-  /** Botones que van a la derecha del encabezado, fuera del área que despliega. */
-  extra?: ReactNode;
-  className?: string;
-}>) {
-  const [open, setOpen] = usePanelOpen(id);
-  // El contenido se monta recién la primera vez que se abre: cerrados, los
-  // paneles de Préstamos tenían igual todos sus chips y listas en el DOM.
-  // Después queda montado para que cerrar/abrir siga animando.
-  const [mounted, setMounted] = useState(open);
-  const toggle = () => {
-    if (open) return setOpen(false);
-    if (mounted) return setOpen(true);
-    setMounted(true);
-    // Un frame cerrado con el contenido ya montado, para que la apertura anime.
-    requestAnimationFrame(() => requestAnimationFrame(() => setOpen(true)));
-  };
-  const percent = total ? Math.round((used / total) * 100) : 0;
+  controls?: string;
+}) {
+  const Title = titleAs;
   return (
-    <section className={`chip-panel ${open ? 'is-open' : ''} ${className}`.trim()}>
-      <div className="chip-panel-head">
-        <button type="button" className="chip-panel-toggle" aria-expanded={open} onClick={toggle}>
-          <ChevronDown className="chip-panel-chevron" size={18} aria-hidden="true" />
-          <span className="chip-panel-title">{title}</span>
-          <span className="chip-panel-meter" aria-hidden="true"><span style={{ width: `${percent}%` }} /></span>
-          <span className="chip-panel-count">
-            {loading ? '…' : <><b>{used}</b>/{total} <span className="chip-panel-count-label">{usedLabel}</span></>}
-          </span>
-        </button>
-        {open && extra}
-      </div>
-      <div className="chip-panel-body" inert={!open}>
-        <div className="chip-panel-inner">{mounted && children}</div>
-      </div>
-    </section>
+    <button type="button" className="lo-group-toggle" aria-expanded={open} aria-controls={controls} onClick={onToggle}>
+      <span className="lo-group-name">
+        <Chevron open={open} />
+        <Title className="lo-group-title">{title}</Title>
+      </span>
+      <span className="lo-group-ring">
+        {loading
+          ? <span className="lo-ring-skel" aria-hidden="true" />
+          : <Ring value={free} total={total} size={32} unit="libres" />}
+        <span className="lo-group-ratio">
+          <b className="g-num">{loading ? '…' : `${free}/${total}`}</b>
+          <span>libres</span>
+        </span>
+      </span>
+      <span className="lo-group-meta">
+        <span className="lo-group-out">{out}</span>
+        {warn && <span className="lo-group-warn">{warn}</span>}
+      </span>
+    </button>
   );
 }
 
-// La selección vive en layout/Selection (la comparten Préstamos y Dispositivos).
-export { useSelection as useChipSelection, SelectionBar } from '../layout/Selection';
-
-export function SelectModeToggle({ active, disabled, onChange }: { active: boolean; disabled?: boolean; onChange: (next: boolean) => void }) {
+/**
+ * Barra de selección: reemplaza al encabezado de la sección mientras dura el
+ * modo "Seleccionar varios". "Limpiar" vacía sin salir; "Listo" vacía y sale.
+ * Devolver más de uno se confirma EN la barra.
+ */
+export function SelectionBar({ count, hint, idleHint, actions, confirm, onClear, onDone, label }: {
+  count: number;
+  hint: string;
+  idleHint: string;
+  actions: ReactNode;
+  confirm?: { message: string; detail: string; confirmLabel: string; onConfirm: () => void; onCancel: () => void; busy?: boolean } | null;
+  onClear: () => void;
+  onDone: () => void;
+  label: string;
+}) {
   return (
-    <button
-      type="button"
-      className={`chip-select-toggle ${active ? 'is-on' : ''}`}
-      aria-pressed={active}
-      disabled={disabled}
-      onClick={() => onChange(!active)}
+    <div
+      className="lo-selbar ui-enter"
+      role="region"
+      aria-label={label}
+      onKeyDown={event => { if (event.key === 'Escape' && !confirm) { event.stopPropagation(); onDone(); } }}
     >
-      {active ? 'Listo' : <><span className="chip-select-long">Seleccionar varios</span><span className="chip-select-short">Varios</span></>}
-    </button>
+      {confirm ? (
+        <InlineConfirm
+          className="lo-selbar-confirm"
+          message={confirm.message}
+          detail={confirm.detail}
+          confirmLabel={confirm.confirmLabel}
+          busy={confirm.busy}
+          onConfirm={confirm.onConfirm}
+          onCancel={confirm.onCancel}
+        />
+      ) : (
+        <>
+          <span className="lo-selbar-text">
+            <span className="lo-selbar-count" aria-live="polite">
+              {count ? <><b className="g-num">{count}</b> {count === 1 ? 'seleccionado' : 'seleccionados'}</> : 'Modo selección'}
+            </span>
+            <span className="lo-selbar-hint">{count ? hint : idleHint}</span>
+          </span>
+          <span className="lo-selbar-actions">
+            {actions}
+            {count > 0 && <Button size="sm" variant="ghost" onClick={onClear}>Limpiar</Button>}
+            <Button size="sm" variant="ghost" className="lo-selbar-done" onClick={onDone}>Listo</Button>
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Botón "Seleccionar varios" (en mobile, "Varios"). */
+export function SelectModeButton({ disabled, onClick }: { disabled?: boolean; onClick: () => void }) {
+  return (
+    <Button size="sm" variant="secondary" className="lo-selmode" disabled={disabled} onClick={onClick}>
+      <span className="lo-long">Seleccionar varios</span><span className="lo-short">Varios</span>
+    </Button>
+  );
+}
+
+/** Referencia de cómo se ve cada estado del chip (sin puntitos ni fondos de color). */
+export function ChipLegend({ items }: { items: Array<[ChipKind | 'selected', string]> }) {
+  return (
+    <div className="lo-legend" aria-hidden="true">
+      {items.map(([kind, text]) => (
+        <span key={kind} className="lo-legend-item">
+          <span className={cx('lo-chip', 'lo-chip--sample', `is-${kind}`)}>12</span>{text}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -98,4 +190,91 @@ export function batchResultMessage(verb: string, noun: string, total: number, er
   const ok = total - errors.length;
   if (!errors.length) return { tone: 'ok' as const, text: `${verb} ${ok} ${noun}.` };
   return { tone: 'warn' as const, text: `${verb} ${ok} de ${total} ${noun}. ${errors.join('; ')}` };
+}
+
+/** Botones de opción (rol, ubicación, motivo, nivel): uno marcado; tocar el marcado lo suelta. */
+export function OptionGroup({ label, options, value, onChange, allowEmpty = true, disabled, className, mono }: {
+  label: string;
+  options: Array<{ value: string; label: string }>;
+  value: string;
+  onChange: (value: string) => void;
+  allowEmpty?: boolean;
+  disabled?: boolean;
+  className?: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className={cx('lo-opts', className)} role="group" aria-label={label}>
+      {options.map(option => {
+        const on = option.value === value;
+        return (
+          <button
+            key={option.value || '_empty'}
+            type="button"
+            className={cx('lo-opt', on && 'is-on', mono && 'lo-opt--mono')}
+            aria-pressed={on}
+            disabled={disabled}
+            onClick={() => onChange(on && allowEmpty && option.value !== '' ? '' : option.value)}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Grilla de grados (1N…6S) en filas por división; lo que no sigue ese formato
+ * (cursos configurados en la sede) va en una fila aparte.
+ */
+export function GradeGrid({ label, grades, value, onChange, disabled }: { label: string; grades: string[]; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  const pattern = /^(\d)([A-Za-z])$/;
+  const sections: string[] = [];
+  const bySection = new Map<string, string[]>();
+  const rest: string[] = [];
+  for (const grade of grades) {
+    const match = grade.match(pattern);
+    if (!match) { rest.push(grade); continue; }
+    const section = match[2].toUpperCase();
+    if (!bySection.has(section)) { bySection.set(section, []); sections.push(section); }
+    bySection.get(section)!.push(grade);
+  }
+  const rows = [...sections.map(section => bySection.get(section)!.sort()), ...(rest.length ? [rest] : [])];
+  return (
+    <div className="lo-grades" role="group" aria-label={label}>
+      {rows.map((row, index) => (
+        <div className="lo-grades-row" key={index}>
+          {row.map(grade => {
+            const on = grade === value;
+            return (
+              <button key={grade} type="button" className={cx('lo-opt', 'lo-opt--mono', 'lo-opt--grade', on && 'is-on')} aria-pressed={on} disabled={disabled} onClick={() => onChange(on ? '' : grade)}>
+                {grade}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Interruptores de accesorios (lo que se entrega o lo que vuelve). */
+export function AccessoryToggles({ label, items, checked, onToggle, prefixOn }: { label: string; items: string[]; checked: string[]; onToggle: (item: string) => void; prefixOn?: string }) {
+  return (
+    <div className="lo-opts" role="group" aria-label={label}>
+      {items.map(item => {
+        const on = checked.includes(item);
+        return (
+          <button key={item} type="button" role="switch" aria-checked={on} className={cx('lo-opt', on && 'is-on')} onClick={() => onToggle(item)}>
+            {on && prefixOn ? `${prefixOn}${item}` : item}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function toggleList(items: string[], item: string) {
+  return items.includes(item) ? items.filter(value => value !== item) : [...items, item];
 }
