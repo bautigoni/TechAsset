@@ -34,6 +34,13 @@ export {
 } from './Inline';
 export { useSelection, type Selection } from './selection';
 
+// Abrir y cerrar sin saltos (toda sección, grupo, ficha o panel que se despliega)
+export {
+  Collapse, keepInPlace, useAnchoredToggle, revealInView, scrollParentOf, recentTrigger, COLLAPSE_MS,
+  type CollapseProps, type KeepInPlace, type KeepInPlaceOptions
+} from './Collapse';
+export { useScrollEdges } from './scrollEdges';
+
 // Datos y estados
 export { StatusText, ageTone, Ring, ringTone, Skeleton, SkeletonText, SkeletonRows, EmptyState, ErrorState, Eyebrow, SectionHeader, type StatusTextTone, type RingProps } from './Data';
 export { Table, type Column, type TableProps, type TableSelection, type SortState, type SortDir } from './Table';

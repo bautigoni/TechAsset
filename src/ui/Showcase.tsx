@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import './showcase.css';
 import {
-  Button, Checkbox, ColorField, Combobox, DateField, DatePicker, DateRange, DateTimeField, Disclosure, EmptyState, ErrorState,
+  Button, Checkbox, Collapse, ColorField, Combobox, DateField, DatePicker, DateRange, DateTimeField, Disclosure, EmptyState, ErrorState,
   Eyebrow, FileDrop, IconButton, InlineConfirm, Input, Kbd, NumberField, RadioGroup, Ring, Segmented, Select, SectionHeader,
   SelectionHeader, Skeleton, SkeletonRows, SkeletonText, StatusLine, StatusText, Switch, Table, Tabs, TagInput, Textarea, TimeField,
-  TruncatedText, ageTone, icons, useInlineConfirm, useSelection, useStatusLine, type Column, type FileDropItem
+  TruncatedText, ageTone, icons, useAnchoredToggle, useInlineConfirm, useSelection, useStatusLine, type Column, type FileDropItem
 } from './index';
 
 /**
@@ -73,6 +73,77 @@ const DEVICES: Device[] = [
   { tag: 'D0112', alias: 'Plani 1', who: 'Wanda · Maestra · Planificación móvil · Planificación', where: '2do piso', since: 0, free: false },
   { tag: 'D0757', alias: 'Dell 2', who: '—', where: 'Depósito TIC', since: 0, free: true }
 ];
+
+/**
+ * Collapse: toda sección, grupo, ficha o panel que se despliega abre y cierra
+ * con alto suave hacia su encabezado, y lo que se tocó no se mueve en pantalla
+ * (REGLAS-UX, agregado 19/10). Esta muestra es la referencia de uso.
+ */
+function CollapseDemo() {
+  const [group, setGroup] = useState(true);
+  const [more, setMore] = useState(false);
+  const [card, setCard] = useState<string | null>(null);
+  const anchored = useAnchoredToggle();
+  const [extra, setExtra] = useState(false);
+  const chips = Array.from({ length: 36 }, (_, index) => index + 1);
+  const rows = ['Touch 34 · 5F · Aula 3B', 'Touch 8 · Biblioteca', 'TIC 4 · Laboratorio', 'Plani 1 · 2do piso', 'Dell 2 · Depósito', 'Tablet 3 · Sala de 5', 'Touch 12 · 6° A', 'Plani 5 · Dirección'];
+  return (
+    <>
+      <p className="ui-sc-note">
+        <code>{'<Collapse open={open} id="x" className="cuerpo">…</Collapse>'}</code> con el botón
+        {' '}<code>{'aria-expanded={open} aria-controls="x"'}</code>. Ancla sola al control tocado; se puede
+        pasar <code>anchor</code> (ref o función) o <code>anchor={'{false}'}</code>. Para cambios de alto sin
+        Collapse: <code>{'const anchored = useAnchoredToggle(); anchored(() => setX(v => !v))'}</code>.
+      </p>
+
+      <div className="ui-sc-cgroup">
+        <button type="button" className="ui-sc-chead" aria-expanded={group} aria-controls="ui-sc-cg" onClick={() => setGroup(value => !value)}>
+          <icons.IconChevronDown size={16} className={group ? 'is-open' : ''} />
+          <span>Grupo (como "Cartelitos de fotos")</span>
+          <StatusText tone="muted" mono>{chips.length}</StatusText>
+        </button>
+        <Collapse open={group} id="ui-sc-cg" className="ui-sc-cbody">
+          <div className="ui-sc-chips">
+            {chips.map(chip => <span key={chip} className="ui-sc-chip">{chip}</span>)}
+          </div>
+        </Collapse>
+      </div>
+
+      <div className="ui-sc-cgroup">
+        <ul className="ui-sc-clist">{rows.slice(0, 3).map(row => <li key={row}>{row}</li>)}</ul>
+        <Collapse open={more} id="ui-sc-more">
+          <ul className="ui-sc-clist">{rows.slice(3).map(row => <li key={row}>{row}</li>)}</ul>
+        </Collapse>
+        {/* El disparador está DEBAJO: el ancla automática es este botón, no se mueve. */}
+        <Button size="sm" variant="ghost" aria-expanded={more} aria-controls="ui-sc-more" onClick={() => setMore(value => !value)}>
+          {more ? 'Ver menos' : `Ver más (${rows.length - 3})`}
+        </Button>
+      </div>
+
+      <div className="ui-sc-cgroup">
+        {rows.slice(0, 3).map(row => (
+          <div key={row} className="ui-sc-crow">
+            <button type="button" className="ui-sc-chead" aria-expanded={card === row} onClick={() => setCard(current => (current === row ? null : row))}>
+              <icons.IconChevronDown size={16} className={card === row ? 'is-open' : ''} />
+              <span>Ficha: {row}</span>
+            </button>
+            <Collapse open={card === row} className="ui-sc-cbody">
+              <SkeletonText lines={3} />
+              <span className="ui-sc-row-items"><Button size="sm" variant="primary">Devolver</Button><Button size="sm">Editar</Button></span>
+            </Collapse>
+          </div>
+        ))}
+      </div>
+
+      <div className="ui-sc-cgroup">
+        <Button size="sm" variant="secondary" onClick={() => anchored(() => setExtra(value => !value))}>
+          {extra ? 'Quitar aviso' : 'Mostrar aviso (useAnchoredToggle)'}
+        </Button>
+        {extra && <StatusLine tone="info" message="Aviso que aparece sin Collapse: el botón tocado igual queda quieto." autoHideMs={0} />}
+      </div>
+    </>
+  );
+}
 
 const COURSES = ['1° A', '1° B', '2° A', '2° B', '3° A', '3° B', '4° A', '4° B', '5° A', '5° B', '6° A', '6° B', 'Sala de 5', 'Biblioteca', 'Dirección'];
 
@@ -267,6 +338,10 @@ export function Showcase() {
             </div>
           </Card>
 
+          <Card eyebrow="Abrir y cerrar" title="Collapse · useAnchoredToggle" wide>
+            <CollapseDemo />
+          </Card>
+
           <Card eyebrow="Patrones en línea" title="Selección · Confirmación · Estado" wide>
             <Eyebrow>Ctrl/Cmd+click marca · Shift+click rango · con selección el click simple marca</Eyebrow>
             <SelectionHeader
@@ -356,8 +431,9 @@ export function Showcase() {
                 <Eyebrow>Error por bloque</Eyebrow>
                 <ErrorState message="No se pudo actualizar la lista" updatedAt="hace 3 min" onRetry={() => {}} />
                 <ErrorState message="Reintentando…" onRetry={() => {}} retrying />
-                <Eyebrow>Vacío</Eyebrow>
-                <EmptyState compact title="Agenda de hoy: no hay actividades." description="Ver la semana" />
+                <Eyebrow>Vacío (compacto, con ícono y acción)</Eyebrow>
+                <EmptyState compact icon={<icons.IconCalendar size={18} />} title="Agenda de hoy: no hay actividades." description="La próxima es mañana a las 8:00." action={<Button size="sm" variant="secondary">Ver la semana</Button>} />
+                <EmptyState center icon={<icons.IconCheck size={22} />} title="Todo en casa." description="No hay equipos afuera ahora." />
               </div>
             </div>
             <Eyebrow>TruncatedText (hover/foco = tooltip; tocar = se despliega)</Eyebrow>

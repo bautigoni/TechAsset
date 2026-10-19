@@ -114,12 +114,32 @@ export function SkeletonRows({ rows = 3, className }: { rows?: number; className
 
 /* ══ EmptyState / ErrorState ══ */
 
-/** "Dice qué pasa, no 'sin datos'": una frase concreta y, si aplica, la salida. */
-export function EmptyState({ title, description, action, compact, className }: { title: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string }) {
+/**
+ * Vacío diseñado: "dice qué pasa, no 'sin datos'". Una frase concreta, un
+ * ícono sobrio opcional (sin caja ni color) y, si aplica, la acción siguiente.
+ * `compact` = una fila (ícono · texto · acción) para tarjetas y franjas: nunca
+ * una línea perdida en una tarjeta alta ni un hueco grande.
+ *
+ *   <EmptyState compact icon={<Bell size={18} />} title="No tenés notificaciones." description="Te avisamos acá cuando pase algo." />
+ */
+export function EmptyState({ title, description, action, icon, compact, center, className }: {
+  title: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+  /** Ícono de 18–24 px (lucide o `icons`); va en gris, sin fondo. */
+  icon?: ReactNode;
+  compact?: boolean;
+  /** Centrado (para un bloque vacío que ocupa toda una columna). */
+  center?: boolean;
+  className?: string;
+}) {
   return (
-    <div className={cx('ui-empty', compact && 'ui-empty--compact', className)} role="status">
-      <span className="ui-empty-title">{title}</span>
-      {description && <span className="ui-empty-desc">{description}</span>}
+    <div className={cx('ui-empty', compact && 'ui-empty--compact', center && 'ui-empty--center', className)} role="status">
+      {icon && <span className="ui-empty-icon" aria-hidden="true">{icon}</span>}
+      <span className="ui-empty-text">
+        <span className="ui-empty-title">{title}</span>
+        {description && <span className="ui-empty-desc">{description}</span>}
+      </span>
       {action && <div className="ui-empty-action">{action}</div>}
     </div>
   );

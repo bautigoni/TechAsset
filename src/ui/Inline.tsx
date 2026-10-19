@@ -3,6 +3,7 @@ import { Button } from './Button';
 import { Input } from './Field';
 import { Select } from './Select';
 import { IconChevronDown } from './icons';
+import { Collapse } from './Collapse';
 import { cx } from './util';
 
 /* ══ Disclosure: sección que se expande en el lugar (reemplaza <details>) ══ */
@@ -41,7 +42,8 @@ export function Disclosure({ title, summary, open: openProp, defaultOpen = false
         </button>
         {actions && <div className="ui-disclosure-actions">{actions}</div>}
       </div>
-      {open && <div id={contentId} className="ui-disclosure-body ui-enter">{children}</div>}
+      {/* Se abre y se cierra suave hacia su encabezado, que no se mueve (Collapse). */}
+      <Collapse open={open} id={contentId} className="ui-disclosure-body">{children}</Collapse>
     </section>
   );
 }

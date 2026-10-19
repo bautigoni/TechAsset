@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useState, type MouseEvent, type ReactNode } from 'react';
 import type { Device } from '../../types';
 import { getDeviceStateKey } from '../../utils/deviceState';
 import { loanAgeDays } from '../../utils/formatters';
@@ -7,6 +7,7 @@ import { InlineConfirm } from '../../ui/Inline';
 import { IconChevronDown } from '../../ui/icons';
 import { Ring } from '../../ui/Data';
 import { cx } from '../../ui/util';
+import { Collapse } from '../../ui/Collapse';
 
 /**
  * Piezas compartidas por las dos grillas de Préstamos (equipos por tipo y
@@ -46,13 +47,11 @@ export function usePanelOpen(id: string, fallback = false) {
 /**
  * Contenido que se monta recién la primera vez que se abre (cerrados, los
  * grupos no tienen sus chips en el DOM) y después queda montado para que
- * cerrar/abrir no vuelva a construirlo. Entra con `ui-enter`.
+ * cerrar/abrir no vuelva a construirlo. Abre y cierra con Collapse: alto
+ * suave hacia el encabezado, y el encabezado tocado no se mueve en pantalla.
  */
 export function LazyBody({ open, className, children }: { open: boolean; className?: string; children: ReactNode }) {
-  const mounted = useRef(open);
-  if (open) mounted.current = true;
-  if (!mounted.current) return null;
-  return <div className={cx(className, open && 'ui-enter')} hidden={!open}>{children}</div>;
+  return <Collapse open={open} className={className}>{children}</Collapse>;
 }
 
 export type ChipKind = 'free' | 'loaned' | 'late1' | 'late2' | 'blocked';
