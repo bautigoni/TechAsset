@@ -136,6 +136,38 @@ try {
   const notifications = await call('GET', '/api/notifications');
   check('GET /notifications (subconsulta de no leídas)', notifications.status === 200 && typeof notifications.json.unread === 'number', notifications.text.slice(0, 200));
   check('GET /agenda/history (antes tapada por /agenda/:id)', (await call('GET', '/api/agenda/history')).status === 200);
+
+  // Etapa 6a: capacidad por fecha y al editar, restaurar, registro con JOIN, horarios.
+  const touchA = await call('POST', '/api/agenda', { dia: 'Martes', turno: 'Mañana', desde: '18:00', hasta: '18:45', curso: 'CapA', actividad: 'Prueba', tipoDispositivo: 'Touch', cantidad: 20, estado: 'Pendiente' });
+  const touchB = await call('POST', '/api/agenda', { dia: 'Martes', turno: 'Mañana', desde: '18:45', hasta: '19:30', curso: 'CapB', actividad: 'Prueba', tipoDispositivo: 'Touch', cantidad: 20, estado: 'Pendiente' });
+  check('agenda: dos Touch en franjas distintas', touchA.status === 200 && touchB.status === 200, touchB.text.slice(0, 200));
+  const moved = await call('PATCH', `/api/agenda/${touchB.json?.item?.id}`, { desde: '18:30', hasta: '19:00' });
+  check('agenda: PATCH que superpone sobre el tope da 409', moved.status === 409, moved.text.slice(0, 200));
+  const badTimes = await call('POST', '/api/agenda', { dia: 'Martes', turno: 'Mañana', desde: '10:00', hasta: '09:00', curso: 'X', tipoDispositivo: 'Dell', cantidad: 1 });
+  check('agenda: Hasta antes de Desde da 400', badTimes.status === 400, badTimes.text.slice(0, 200));
+  await call('PATCH', `/api/agenda/${touchA.json?.item?.id}`, { estado: 'Cancelado' });
+  const freed = await call('PATCH', `/api/agenda/${touchB.json?.item?.id}`, { desde: '18:30', hasta: '19:00' });
+  check('agenda: una cancelada no ocupa lugar', freed.status === 200, freed.text.slice(0, 200));
+  const nextTuesday = (() => { const d = new Date(); d.setDate(d.getDate() + ((9 - d.getDay()) % 7 || 7)); return d.toISOString().slice(0, 10); })();
+  const dated = await call('POST', '/api/agenda', { fecha: nextTuesday, dia: 'Lunes', turno: 'Mañana', desde: '18:40', hasta: '18:50', curso: 'CapC', tipoDispositivo: 'Touch', cantidad: 10, estado: 'Pendiente' });
+  check('agenda: con fecha choca con la semanal de ese día (y el día sale de la fecha)', dated.status === 409, dated.text.slice(0, 200));
+  await call('DELETE', `/api/agenda/${touchB.json?.item?.id}`, {});
+  const restoredAgenda = await call('POST', `/api/agenda/${touchB.json?.item?.id}/restore`, {});
+  check('agenda: restaurar borrada', restoredAgenda.status === 200 && restoredAgenda.json?.item?.id === touchB.json?.item?.id, restoredAgenda.text.slice(0, 200));
+  const log = await call('GET', '/api/agenda/history?limit=5');
+  check('agenda: registro con datos de la actividad (LEFT JOIN)', log.status === 200 && log.json.items.length === 5 && log.json.items.some(item => item.curso === 'CapB'), log.text.slice(0, 200));
+  const ics = await call('GET', '/api/agenda/calendar-feed');
+  const feed = ics.json?.token ? await fetch(`${base}/calendar/${ics.json.token}.ics`).then(response => response.text()) : '';
+  check('feed ICS con RRULE semanal', /RRULE:FREQ=WEEKLY;BYDAY=TU/.test(feed), feed.slice(0, 200));
+  const schedule = await call('POST', '/api/teacher-schedules', { teacher: 'Smoke', course: '1A', schoolLevel: 'primary_first', dayOfWeek: 1, startTime: '08:00', endTime: '08:45' });
+  await call('DELETE', `/api/teacher-schedules/${schedule.json?.item?.id}`, {});
+  const scheduleBack = await call('POST', `/api/teacher-schedules/${schedule.json?.item?.id}/restore`, {});
+  check('horarios: restaurar borrado', scheduleBack.status === 200 && scheduleBack.json?.item?.teacher === 'Smoke', scheduleBack.text.slice(0, 200));
+  const recessOk = await call('PUT', '/api/recess-schedules', { groups: [{ name: 'G1', slots: [{ label: 'Recreo', startTime: '10:00', endTime: '10:15' }] }, { name: 'G2', slots: [] }] });
+  check('recreos: guardar y leer (franjas en un JOIN)', recessOk.status === 200 && recessOk.json?.groups?.[0]?.slots?.length === 1, recessOk.text.slice(0, 200));
+  const recessBad = await call('PUT', '/api/recess-schedules', { groups: [{ name: 'G1', slots: [{ label: 'Recreo', startTime: '10:15', endTime: '10:00' }] }] });
+  const recessKept = await call('GET', '/api/recess-schedules');
+  check('recreos: franja inválida da 400 y no borra lo guardado', recessBad.status === 400 && recessKept.json?.groups?.length === 2, recessBad.text.slice(0, 200));
   check('ruta /api inexistente da 404 JSON', (await call('GET', '/api/no-existe')).status === 404);
 
   // Login y links de contraseña (tabla nueva password_tokens).

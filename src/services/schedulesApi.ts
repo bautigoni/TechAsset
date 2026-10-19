@@ -5,5 +5,7 @@ export const getTeacherSchedules = () => apiGet<{ ok: true; items: TeacherSchedu
 export const createTeacherSchedule = (payload: Partial<TeacherScheduleEntry>) => apiSend<{ ok: true; item: TeacherScheduleEntry }>('/api/teacher-schedules', 'POST', payload);
 export const updateTeacherSchedule = (id: number, payload: Partial<TeacherScheduleEntry>) => apiSend<{ ok: true; item: TeacherScheduleEntry }>(`/api/teacher-schedules/${id}`, 'PATCH', payload);
 export const deleteTeacherSchedule = (id: number) => apiSend<{ ok: true; deleted: boolean }>(`/api/teacher-schedules/${id}`, 'DELETE');
+/** Deshacer de Borrar (el borrado es lógico). */
+export const restoreTeacherSchedule = (id: number) => apiSend<{ ok: true; item: TeacherScheduleEntry }>(`/api/teacher-schedules/${id}/restore`, 'POST');
 export const getRecessSchedules = () => apiGet<{ ok: true; groups: RecessGroup[]; active: Array<{ groupName: string; label: string; startTime: string; endTime: string }>; canConfigure: boolean }>('/api/recess-schedules');
 export const saveRecessSchedules = (groups: RecessGroup[]) => apiSend<{ ok: true; groups: RecessGroup[] }>('/api/recess-schedules', 'PUT', { groups });

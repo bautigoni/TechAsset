@@ -2,11 +2,15 @@ import { Router } from 'express';
 import { getDb, nowIso, rowToAgenda } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
 import { sendWithEtag } from '../services/etag.service.js';
+import { todayLocal } from '../services/localTime.js';
 
 export const agendaRouter = Router();
 
 const VALID_STATES = new Set(['Pendiente', 'Entregado', 'Realizado', 'Cancelado', 'Faltaron equipos']);
 const CAPACITY = { touch: 25, tic: 99, plani: 99, dell: 99 };
+// Las terminadas no tienen equipos afuera: no cuentan para el tope por franja.
+const NOT_COUNTED = new Set(['Cancelado', 'Realizado']);
+const WEEKDAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // Por defecto no viajan las actividades TERMINADAS (realizadas o canceladas)
 // con más de AGENDA_RECENT_DAYS: la agenda se pollea y, sin tope, crecía año a
@@ -51,6 +55,8 @@ agendaRouter.post('/agenda', (req, res) => {
   const db = getDb();
   const siteCode = requireSite(req);
   const payload = normalizeAgendaPayload(req.body);
+  const invalid = validateAgendaTimes(payload);
+  if (invalid) return res.status(400).json({ ok: false, error: invalid });
   const conflict = agendaCapacityConflict(payload, siteCode);
   if (conflict) return res.status(409).json({ ok: false, error: conflict });
   const id = payload.id || `AG${Date.now()}`;
@@ -71,6 +77,21 @@ agendaRouter.patch('/agenda/:id', (req, res) => {
   if (!old) return res.status(404).json({ ok: false, error: 'Actividad no encontrada.' });
   const oldItem = rowToAgenda(old);
   const payload = normalizeAgendaPayload({ ...oldItem, ...req.body, id: req.params.id });
+  // Solo se revalida lo que cambió: marcar Entregado una actividad vieja que ya
+  // estaba sobre el tope no se bloquea; mover horario, tipo, cantidad o fecha, sí.
+  const timesChanged = payload.desde !== oldItem.desde || payload.hasta !== oldItem.hasta;
+  if (timesChanged) {
+    const invalid = validateAgendaTimes(payload);
+    if (invalid) return res.status(400).json({ ok: false, error: invalid });
+  }
+  const slotChanged = timesChanged || payload.dia !== oldItem.dia || payload.fecha !== oldItem.fecha
+    || String(payload.tipoDispositivo).toLowerCase() !== String(oldItem.tipoDispositivo).toLowerCase()
+    || payload.cantidad > Number(oldItem.cantidad || 0)
+    || (NOT_COUNTED.has(oldItem.estado) && !NOT_COUNTED.has(payload.estado));
+  if (slotChanged) {
+    const conflict = agendaCapacityConflict(payload, siteCode);
+    if (conflict) return res.status(409).json({ ok: false, error: conflict });
+  }
   const ts = nowIso();
   db.prepare(`
     UPDATE agenda SET dia=@dia, fecha=@fecha, turno=@turno, desde=@desde, hasta=@hasta, curso=@curso, actividad=@actividad,
@@ -101,8 +122,33 @@ agendaRouter.delete('/agenda/:id', (req, res) => {
   res.json({ ok: true, id: req.params.id });
 });
 
+// Deshacer de "Borrar": vuelve a la agenda la actividad borrada (soft delete).
+agendaRouter.post('/agenda/:id/restore', (req, res) => {
+  const db = getDb();
+  const siteCode = requireSite(req);
+  const old = db.prepare('SELECT * FROM agenda WHERE id=? AND eliminada=1 AND site_code=?').get(req.params.id, siteCode);
+  if (!old) return res.status(404).json({ ok: false, error: 'No hay una actividad borrada con ese id.' });
+  const item = rowToAgenda(old);
+  const conflict = agendaCapacityConflict(normalizeAgendaPayload(item), siteCode);
+  if (conflict) return res.status(409).json({ ok: false, error: `No se pudo restaurar. ${conflict}` });
+  const operator = req.body?.operator || '';
+  const ts = nowIso();
+  db.prepare('UPDATE agenda SET eliminada=0, operador_ultimo_cambio=?, ultima_modificacion=? WHERE id=? AND site_code=?').run(operator, ts, req.params.id, siteCode);
+  db.prepare('INSERT INTO agenda_history (agenda_id, site_code, timestamp, accion, estado_anterior, estado_nuevo, nota, operador) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(req.params.id, siteCode, ts, 'actividad restaurada', old.estado, old.estado, old.nota, operator);
+  res.json({ ok: true, item: rowToAgenda(db.prepare('SELECT * FROM agenda WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
+});
+
+// Registro de cambios. Viaja con curso/actividad/día/horario de la actividad
+// (aunque esté borrada) para que la pantalla no tenga que cruzarlo a mano.
 agendaRouter.get('/agenda/history', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM agenda_history WHERE site_code=? ORDER BY id DESC LIMIT 200').all(requireSite(_req));
+  const limit = Math.min(200, Math.max(1, Math.floor(Number(_req.query.limit)) || 200));
+  const rows = getDb().prepare(`
+    SELECT h.*, a.curso AS curso, a.actividad AS actividad, a.dia AS dia, a.fecha AS fecha, a.desde AS desde, a.hasta AS hasta
+    FROM agenda_history h
+    LEFT JOIN agenda a ON a.id = h.agenda_id AND a.site_code = h.site_code
+    WHERE h.site_code=? ORDER BY h.id DESC LIMIT ${limit}
+  `).all(requireSite(_req));
   res.json({ ok: true, items: rows });
 });
 
@@ -113,10 +159,12 @@ agendaRouter.get('/agenda/export.csv', (_req, res) => {
 
 function normalizeAgendaPayload(raw) {
   const estado = VALID_STATES.has(raw.estado) ? raw.estado : 'Pendiente';
+  const fecha = String(raw.fecha || '').trim();
   return {
     id: raw.id || '',
-    dia: raw.dia || '',
-    fecha: raw.fecha || '',
+    // Con fecha concreta el día sale de la fecha (no puede contradecirla).
+    dia: weekdayOfDate(fecha) || raw.dia || '',
+    fecha,
     turno: raw.turno || '',
     desde: raw.desde || '',
     hasta: raw.hasta || '',
@@ -133,13 +181,49 @@ function normalizeAgendaPayload(raw) {
   };
 }
 
+/**
+ * Tope por tipo en una franja. Suma las actividades del mismo tipo que se
+ * superponen en horario y caen el mismo día:
+ * - con fecha: las de esa fecha y las semanales de ese día de la semana;
+ * - semanal: las semanales del mismo día y las de fecha (de hoy en adelante)
+ *   que caen ese día de la semana.
+ * Canceladas y realizadas no cuentan (no tienen equipos afuera).
+ * La misma regla está en src/components/agenda/agendaModel.ts (aviso antes de guardar).
+ */
 function agendaCapacityConflict(payload, siteCode) {
   const type = String(payload.tipoDispositivo || '').toLowerCase();
   const max = CAPACITY[type];
-  if (!max) return '';
-  const rows = getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? AND lower(dia)=lower(?) AND lower(tipo_dispositivo)=lower(?) AND id <> ?').all(siteCode, payload.dia, payload.tipoDispositivo, payload.id || '');
-  const used = rows.filter(row => overlaps(payload.desde, payload.hasta, row.desde, row.hasta)).reduce((sum, row) => sum + Number(row.cantidad || 0), 0);
+  if (!max || NOT_COUNTED.has(payload.estado)) return '';
+  const rows = getDb().prepare('SELECT id, dia, fecha, desde, hasta, cantidad, estado FROM agenda WHERE eliminada=0 AND site_code=? AND lower(tipo_dispositivo)=lower(?) AND id <> ?').all(siteCode, payload.tipoDispositivo, payload.id || '');
+  const day = comparableDay(payload.dia);
+  const today = todayLocal();
+  const sameDay = row => {
+    const rowFecha = String(row.fecha || '');
+    if (payload.fecha) return rowFecha ? rowFecha === payload.fecha : comparableDay(row.dia) === day;
+    if (!rowFecha) return comparableDay(row.dia) === day;
+    return rowFecha >= today && comparableDay(weekdayOfDate(rowFecha) || row.dia) === day;
+  };
+  const used = rows
+    .filter(row => !NOT_COUNTED.has(row.estado) && sameDay(row) && overlaps(payload.desde, payload.hasta, row.desde, row.hasta))
+    .reduce((sum, row) => sum + Number(row.cantidad || 0), 0);
   return used + Number(payload.cantidad || 0) > max ? `Conflicto de disponibilidad: ${payload.tipoDispositivo} supera ${max} en ese horario.` : '';
+}
+
+function validateAgendaTimes(payload) {
+  if (!/^\d{1,2}:\d{2}$/.test(payload.desde) || !/^\d{1,2}:\d{2}$/.test(payload.hasta)) return 'Horario inválido: usá HH:MM en Desde y Hasta.';
+  if (minutes(payload.desde) >= minutes(payload.hasta)) return 'Hasta tiene que ser después de Desde.';
+  return '';
+}
+
+function comparableDay(value) {
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+
+function weekdayOfDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+  if (!match) return '';
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return Number.isNaN(date.getTime()) ? '' : WEEKDAY_NAMES[date.getUTCDay()];
 }
 
 function minutes(value) {

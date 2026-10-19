@@ -1,8 +1,8 @@
 {
   "note": "Generado por scripts/check-ui.mjs --update. Lo que hay hoy en src/ fuera de src/ui/; se achica a medida que el rediseño reemplaza controles.",
   "totals": {
-    "input-nativo": 20,
     "title-tooltip": 14,
+    "input-nativo": 19,
     "checkbox-radio-crudo": 18,
     "details": 6,
     "datalist": 2,
@@ -475,12 +475,6 @@
       "rule": "hex-en-css",
       "file": "src/styles/responsive.css",
       "text": "color:#fff!important;",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/agenda/AgendaModal.tsx",
-      "text": "<label>Cantidad<input className=\"input\" type=\"number\" min=\"1\" max={item.tipoDispositivo === 'Touch' ? 25 : 99} value={item.cantidad || 1} onChange={e => update(",
       "count": 1
     },
     {

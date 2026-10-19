@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AgendaItem } from '../types';
 import { createAgenda, deleteAgenda, getAgenda, updateAgenda } from '../services/agendaApi';
-import { confirmDialog } from '../components/layout/Feedback';
 import { getActiveSiteCode } from '../services/activeSite';
 
 export function useAgenda(operator: string) {
@@ -19,8 +18,13 @@ export function useAgenda(operator: string) {
   // descarta.
   const inFlight = useRef<{ site: string; promise: Promise<void> } | null>(null);
   const lastKey = useRef('');
+  const lastSite = useRef('');
   const refresh = useCallback(async () => {
     const site = getActiveSiteCode();
+    // "Ver anteriores" es de la sede donde se pidió: al cambiar de sede se vuelve
+    // a traer solo lo reciente.
+    if (lastSite.current && lastSite.current !== site) includeAll.current = false;
+    lastSite.current = site;
     if (inFlight.current && inFlight.current.site === site) return inFlight.current.promise;
     // Se pollea (App, cada 30 s): si no cambió nada no hay re-render.
     const promise: Promise<void> = getAgenda(includeAll.current)
@@ -61,11 +65,9 @@ export function useAgenda(operator: string) {
     return data.item;
   };
 
-  // Borrar una actividad no pedía confirmación: un clic de más la perdía.
+  // La confirmación ("¿Borrar …?") va en línea en la pantalla (AgendaRow), que
+  // además ofrece Deshacer: acá solo se borra.
   const remove = async (id: string) => {
-    const item = items.find(entry => entry.id === id);
-    const label = item ? [item.curso, item.actividad].filter(Boolean).join(' · ') : '';
-    if (!(await confirmDialog({ title: 'Borrar actividad', message: label || undefined, confirmLabel: 'Borrar', danger: true }))) return;
     await deleteAgenda(id, operator);
     await refresh();
   };

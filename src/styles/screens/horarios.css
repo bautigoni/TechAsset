@@ -1,0 +1,212 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Horarios docentes y recreos (etapa 6a). Solo tokens; clases `hr-`.
+   Ancho: docentes a la izquierda y recreos a la derecha. Angosto: el recreo
+   en curso arriba y pestañas Docentes / Recreos (la inactiva queda montada y
+   oculta, así un borrador de recreos no se pierde al cambiar de pestaña).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.hr-page {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--g-s-5);
+  min-width: 0;
+  padding: var(--g-s-5) var(--g-s-6) var(--g-s-6);
+  color: var(--g-text);
+  font-family: var(--g-font);
+  font-size: var(--g-fs-base);
+}
+.hr-muted { color: var(--g-text-2); font-size: var(--g-fs-sm); }
+
+.hr-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-3) var(--g-s-5); min-width: 0; }
+.hr-head-text { flex: 1 1 20rem; min-width: 0; }
+.hr-title { margin: var(--g-s-1) 0 0; overflow: hidden; font-size: var(--g-fs-lg); font-weight: var(--g-fw-semibold); line-height: 1.75rem; text-overflow: ellipsis; white-space: nowrap; }
+.hr-head-sub { margin: 2px 0 0; color: var(--g-text-2); font-size: var(--g-fs-sm); line-height: 1.25rem; }
+
+/* ── Cuerpo ─────────────────────────────────────────────────────────────── */
+
+.hr-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18.75rem, 25rem);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "doc now" "doc rec";
+  gap: var(--g-s-4) var(--g-s-5);
+  align-items: start;
+  min-width: 0;
+}
+.hr-now-recess { grid-area: now; }
+.hr-tabs { display: none; grid-area: tabs; }
+.hr-docentes { grid-area: doc; display: flex; flex-direction: column; gap: var(--g-s-4); min-width: 0; }
+.hr-recess { grid-area: rec; min-width: 0; }
+
+@container (max-width: 56rem) {
+  .hr-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "now" "tabs" "main"; }
+  .hr-tabs { display: block; }
+  .hr-docentes, .hr-recess { grid-area: main; }
+  .hr-body.is-docentes .hr-recess,
+  .hr-body.is-recreos .hr-docentes { display: none; }
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+
+.hr-card { min-width: 0; border: 1px solid var(--g-line); border-radius: var(--g-radius); background: var(--g-surface); }
+.hr-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--g-s-2) var(--g-s-3);
+  min-height: calc(var(--g-control-h) + var(--g-s-4));
+  padding: var(--g-s-2) var(--g-s-2) var(--g-s-2) var(--g-s-4);
+  border-bottom: 1px solid var(--g-line);
+}
+.hr-card-head .hr-h3 { flex: 1 1 auto; }
+.hr-h3 { min-width: 0; margin: 0; overflow: hidden; font-size: var(--g-fs-base); font-weight: var(--g-fw-semibold); line-height: 1.25rem; text-overflow: ellipsis; white-space: nowrap; }
+.hr-head-flag { font-size: var(--g-fs-xs); }
+.hr-card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2); padding: var(--g-s-3) var(--g-s-4); border-top: 1px solid var(--g-line); }
+.hr-note { margin: 0; padding: 10px var(--g-s-4); color: var(--g-text-3); font-size: var(--g-fs-xs); line-height: 1.125rem; }
+.hr-empty { margin: 0; padding: var(--g-s-5) var(--g-s-4); border-top: 1px solid var(--g-line); color: var(--g-text-2); text-align: center; }
+
+/* ── Recreo ahora ───────────────────────────────────────────────────────── */
+
+.hr-now-recess { display: flex; flex-direction: column; gap: var(--g-s-1); padding: var(--g-s-3) var(--g-s-4); }
+.hr-recess-line { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hr-recess-name { display: flex; align-items: baseline; gap: var(--g-s-2); min-width: 0; font-size: var(--g-fs-md); font-weight: var(--g-fw-semibold); }
+.hr-recess-name .ui-trunc { min-width: 0; }
+.hr-recess-time { flex: none; color: var(--g-text-2); font-family: var(--g-font-mono); font-size: var(--g-fs-sm); font-weight: var(--g-fw-regular); }
+.hr-recess-left { color: var(--g-text-2); font-size: var(--g-fs-sm); }
+.hr-recess-left.is-live { color: var(--g-info); }
+
+/* ── Ahora (clases en curso) ────────────────────────────────────────────── */
+
+.hr-now { display: flex; flex-direction: column; gap: var(--g-s-2); min-width: 0; }
+.hr-now-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--g-s-2); }
+.hr-now-head .hr-muted { font-size: var(--g-fs-xs); color: var(--g-text-3); }
+.hr-now-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.75rem), 1fr)); gap: var(--g-s-2); }
+.hr-now-card { display: flex; flex-direction: column; gap: 2px; padding: var(--g-s-3) 14px; }
+.hr-now-teacher { display: block; font-weight: var(--g-fw-semibold); }
+.hr-now-course { display: block; color: var(--g-text-2); font-size: var(--g-fs-sm); }
+.hr-now-when { overflow: hidden; color: var(--g-text-2); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); text-overflow: ellipsis; white-space: nowrap; }
+.hr-now-empty { margin: 0; padding: var(--g-s-3) 14px; border: 1px solid var(--g-line); border-radius: var(--g-radius); color: var(--g-text-2); font-size: var(--g-fs-sm); }
+
+/* ── Buscar y agrupar ───────────────────────────────────────────────────── */
+
+.hr-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2) var(--g-s-3); min-width: 0; }
+.hr-search { flex: 1 1 16rem; max-width: 26rem; }
+.hr-result { margin-left: auto; color: var(--g-text-3); font-size: var(--g-fs-sm); white-space: nowrap; }
+.hr-result .g-num { font-family: var(--g-font-mono); }
+
+/* ── Grupos (docente o curso) ───────────────────────────────────────────── */
+
+.hr-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: var(--g-s-3); align-items: start; min-width: 0; }
+.hr-group { container-type: inline-size; overflow: clip; }
+.hr-group-head { display: flex; align-items: center; gap: var(--g-s-3); min-height: calc(var(--g-s-7) + var(--g-s-2)); padding: var(--g-s-2) var(--g-s-4); }
+.hr-group-title { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.hr-group-name { display: block; font-size: var(--g-fs-md); font-weight: var(--g-fw-semibold); }
+.hr-group-count { flex: none; color: var(--g-text-3); font-size: var(--g-fs-xs); white-space: nowrap; }
+.hr-group-count .g-num { font-family: var(--g-font-mono); }
+.hr-day-label {
+  padding: var(--g-s-1) var(--g-s-4);
+  border-top: 1px solid var(--g-line);
+  border-bottom: 1px solid var(--g-line);
+  background: var(--g-bg);
+  color: var(--g-text-3);
+  font-family: var(--g-font-mono);
+  font-size: .6875rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.hr-row {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+  gap: var(--g-s-3);
+  align-items: center;
+  min-height: var(--g-s-7);
+  padding: var(--g-s-1) var(--g-s-2) var(--g-s-1) var(--g-s-4);
+}
+.hr-row + .hr-row, .hr-row + .hr-row-edit, .hr-row + .hr-row-confirm, .hr-row-edit + .hr-row, .hr-row-confirm + .hr-row { border-top: 1px solid var(--g-line); }
+.hr-row-time { display: flex; flex-direction: column; font-family: var(--g-font-mono); font-size: var(--g-fs-sm); line-height: 1rem; }
+.hr-row-end { color: var(--g-text-3); font-size: var(--g-fs-xs); }
+.hr-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hr-row-title { display: flex; align-items: baseline; gap: var(--g-s-1); min-width: 0; }
+.hr-row-main { min-width: 0; font-weight: var(--g-fw-medium); }
+.hr-row-now { flex: none; color: var(--g-info); font-size: var(--g-fs-xs); white-space: nowrap; }
+.hr-row-sub { display: block; color: var(--g-text-2); font-size: var(--g-fs-xs); }
+.hr-row-sub.is-empty { color: var(--g-text-3); }
+.hr-row-actions { display: flex; gap: 2px; }
+.hr-row-edit { background: var(--g-raised); }
+.hr-row-confirm { padding: var(--g-s-2); background: var(--g-raised); }
+
+/* ── Formulario (alta y edición) ────────────────────────────────────────── */
+
+.hr-form { display: flex; flex-direction: column; min-width: 0; }
+.hr-form-head { display: flex; align-items: center; gap: var(--g-s-3); min-height: calc(var(--g-control-h) + var(--g-s-4)); padding: var(--g-s-2) var(--g-s-2) var(--g-s-2) var(--g-s-4); border-bottom: 1px solid var(--g-line); }
+.hr-form-head .hr-h3 { flex: 1 1 auto; }
+.hr-form--compact .hr-form-head { border-bottom-color: var(--g-line-strong); }
+.hr-form-body { display: flex; flex-direction: column; gap: var(--g-s-4); min-width: 0; padding: var(--g-s-4); }
+.hr-form-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--g-s-3) var(--g-s-4); min-width: 0; }
+.hr-form-row > * { min-width: 0; }
+.hr-grow-1 { flex: 1 1 7.5rem; }
+.hr-grow-2 { flex: 2 1 11rem; }
+.hr-form-time { flex: 1 1 13rem; max-width: 22rem; }
+.hr-chips { display: flex; flex-wrap: wrap; gap: var(--g-s-2); min-width: 0; }
+.hr-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: var(--ui-control-sm);
+  margin: 0;
+  padding: 0 var(--g-s-3);
+  border: 1px solid var(--g-line);
+  border-radius: var(--g-radius-sm);
+  background: transparent;
+  color: var(--g-text-2);
+  font-family: var(--g-font-mono);
+  font-size: var(--g-fs-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.hr-chip:hover { border-color: var(--g-line-strong); color: var(--g-text); }
+.hr-chip.is-on { border-color: var(--g-line-strong); background: var(--g-raised); color: var(--g-text); }
+.hr-chip:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; }
+.hr-form-error { margin: 0; color: var(--g-bad); font-size: var(--g-fs-sm); }
+.hr-form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2); padding-top: var(--g-s-3); border-top: 1px solid var(--g-line); }
+.hr-form-note { flex: 1 1 15rem; min-width: 0; color: var(--g-text-3); font-size: var(--g-fs-xs); }
+.hr-form--compact .hr-form-body { gap: var(--g-s-3); padding: var(--g-s-3); }
+
+/* ── Franjas de recreo ──────────────────────────────────────────────────── */
+
+.hr-rgroup { display: flex; flex-direction: column; gap: var(--g-s-2); padding: var(--g-s-3) var(--g-s-4); border-top: 1px solid var(--g-line); }
+.hr-rgroup-head { display: flex; align-items: flex-start; gap: var(--g-s-2); min-width: 0; }
+.hr-rgroup-name { flex: 1 1 auto; }
+.hr-rgroup-name .ui-input-el { font-weight: var(--g-fw-semibold); }
+.hr-slot { display: flex; flex-direction: column; gap: var(--g-s-1); min-width: 0; padding: var(--g-s-2) 0; }
+.hr-slot + .hr-slot { border-top: 1px dashed var(--g-line); }
+.hr-slot-line { display: flex; align-items: center; gap: var(--g-s-2); min-width: 0; }
+.hr-slot-label { flex: 1 1 auto; }
+.hr-slot-times { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--g-s-2); min-width: 0; }
+.hr-slot-time { flex: 1 1 7.5rem; min-width: 0; }
+.hr-slot-time .ui-time-input { max-width: none; }
+/* El selector de hora abierto toma toda la fila (con el ancho de la columna, las fichas de hora no entran). */
+.hr-slot-time:has(.ui-time.is-open) { flex-basis: 100%; }
+.hr-slot-dash { flex: none; align-self: center; color: var(--g-text-3); }
+.hr-slot-time:has(.ui-time.is-open) ~ .hr-slot-dash,
+.hr-slot-times:has(.hr-slot-time .ui-time.is-open) .hr-slot-dash { display: none; }
+.hr-slot-ro { color: var(--g-text); font-family: var(--g-font-mono); font-size: var(--g-fs-sm); }
+.hr-slot-msg { font-size: var(--g-fs-xs); }
+.hr-slot-msg--bad { color: var(--g-bad); }
+.hr-add-slot { align-self: flex-start; }
+.hr-rstate { flex: 1 1 10rem; min-width: 0; font-size: var(--g-fs-sm); white-space: normal; }
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .hr-page { gap: var(--g-s-4); padding: var(--g-s-4); }
+  .hr-head > .ui-btn { width: 100%; }
+  .hr-search { max-width: none; flex-basis: 100%; }
+  .hr-tools .ui-seg { display: flex; flex: 1 1 auto; }
+  .hr-tools .ui-seg-item { flex: 1 1 0; }
+  .hr-result { margin-left: 0; }
+  .hr-chip { height: var(--ui-touch); }
+  .hr-form-time { max-width: none; }
+}

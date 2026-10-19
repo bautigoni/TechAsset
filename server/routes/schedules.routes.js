@@ -57,14 +57,28 @@ schedulesRouter.delete('/teacher-schedules/:id', (req, res) => {
   res.json({ ok: true, deleted: result.changes > 0 });
 });
 
+// Deshacer de "Borrar": el borrado es lógico (active=0), así que se reactiva.
+schedulesRouter.post('/teacher-schedules/:id/restore', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canEditModule(req, 'schedules', siteCode)) return forbidden(res);
+  const result = getDb().prepare('UPDATE teacher_schedule_entries SET active=1, updated_at=? WHERE id=? AND site_code=? AND active=0').run(nowIso(), req.params.id, siteCode);
+  if (!result.changes) return res.status(404).json({ ok: false, error: 'No hay un horario borrado con ese id.' });
+  res.json({ ok: true, item: rowToSchedule(getDb().prepare('SELECT * FROM teacher_schedule_entries WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
+});
+
 schedulesRouter.get('/recess-schedules', (req, res) => {
   const siteCode = requireSite(req);
   if (!canViewModule(req, 'schedules', siteCode)) return forbidden(res);
+  // Grupos y franjas en dos consultas (antes, una más por grupo).
+  const slotRows = getDb().prepare(`
+    SELECT s.* FROM recess_slots s JOIN recess_groups g ON g.id = s.group_id
+    WHERE g.site_code=? AND g.active=1 ORDER BY s.sort_order, s.start_time, s.id
+  `).all(siteCode);
   const groups = getDb().prepare('SELECT * FROM recess_groups WHERE site_code=? AND active=1 ORDER BY sort_order, id').all(siteCode).map(group => ({
     id: group.id,
     name: group.name,
     sortOrder: Number(group.sort_order || 0),
-    slots: getDb().prepare('SELECT * FROM recess_slots WHERE group_id=? ORDER BY sort_order, start_time, id').all(group.id).map(slot => ({ id: slot.id, label: slot.label || 'Recreo', startTime: slot.start_time, endTime: slot.end_time, sortOrder: Number(slot.sort_order || 0) }))
+    slots: slotRows.filter(slot => Number(slot.group_id) === Number(group.id)).map(slot => ({ id: slot.id, label: slot.label || 'Recreo', startTime: slot.start_time, endTime: slot.end_time, sortOrder: Number(slot.sort_order || 0) }))
   }));
   const clock = localClock();
   const active = groups.flatMap(group => group.slots.map(slot => ({ ...slot, groupId: group.id, groupName: group.name }))).filter(slot => slot.startTime <= clock.time && slot.endTime > clock.time);
@@ -76,6 +90,12 @@ schedulesRouter.put('/recess-schedules', (req, res) => {
   if (!isSiteManager(req, siteCode)) return forbidden(res, 'Solo un administrador de la sede puede configurar los recreos.');
   const groups = Array.isArray(req.body?.groups) ? req.body.groups : [];
   if (groups.some(group => !String(group?.name || '').trim())) return res.status(400).json({ ok: false, error: 'Todos los grupos necesitan un nombre.' });
+  // Antes las franjas inválidas se descartaban en silencio al guardar: ahora se
+  // rechaza el guardado y se dice cuáles son.
+  const badSlots = groups.flatMap(group => (Array.isArray(group.slots) ? group.slots : [])
+    .filter(slot => !validRecessSlot(slot))
+    .map(slot => `${String(group.name).trim()} · ${String(slot.label || 'Recreo').trim()} ${slot.startTime || '--:--'}–${slot.endTime || '--:--'}`));
+  if (badSlots.length) return res.status(400).json({ ok: false, error: `Franjas con horario inválido (el fin tiene que ser después del inicio): ${badSlots.join(', ')}.`, invalidSlots: badSlots });
   const ts = nowIso();
   const db = getDb();
   db.transaction(() => {
@@ -88,9 +108,7 @@ schedulesRouter.put('/recess-schedules', (req, res) => {
       const groupInfo = insertGroup.run(siteCode, String(group.name).trim(), groupIndex, ts, ts);
       const slots = Array.isArray(group.slots) ? group.slots : [];
       slots.forEach((slot, slotIndex) => {
-        const start = String(slot.startTime || '').trim();
-        const end = String(slot.endTime || '').trim();
-        if (/^\d{2}:\d{2}$/.test(start) && /^\d{2}:\d{2}$/.test(end) && start < end) insertSlot.run(groupInfo.lastInsertRowid, String(slot.label || 'Recreo').trim(), start, end, slotIndex, ts, ts);
+        insertSlot.run(groupInfo.lastInsertRowid, String(slot.label || 'Recreo').trim() || 'Recreo', String(slot.startTime).trim(), String(slot.endTime).trim(), slotIndex, ts, ts);
       });
     });
   })();
@@ -119,6 +137,12 @@ function validateSchedule(item) {
   if (!DAYS.has(item.dayOfWeek)) return 'Día inválido.';
   if (!/^\d{2}:\d{2}$/.test(item.startTime) || !/^\d{2}:\d{2}$/.test(item.endTime) || item.startTime >= item.endTime) return 'El rango horario no es válido.';
   return '';
+}
+
+function validRecessSlot(slot) {
+  const start = String(slot?.startTime || '').trim();
+  const end = String(slot?.endTime || '').trim();
+  return /^\d{2}:\d{2}$/.test(start) && /^\d{2}:\d{2}$/.test(end) && start < end;
 }
 
 function rowToSchedule(row) {

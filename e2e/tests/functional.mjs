@@ -13,6 +13,17 @@ const LOAN_FORM = '[data-loan-form]';
 const DEVICE_STACK = '[data-loans-grid="devices"]';
 const PASS_STACK = '[data-loans-grid="passes"]';
 const CONT_SWITCH = `${LOAN_FORM} button.lo-cont-switch[role="switch"]`;
+/** Busca y clickea en el mismo tick (las listas que se re-renderizan dejan handles viejos). */
+async function press(page, pattern, scope) {
+  return until(() => page.evaluate((source, flags, scopeSelector) => {
+    const rx = new RegExp(source, flags);
+    for (const root of document.querySelectorAll(scopeSelector)) {
+      const button = [...root.querySelectorAll('button')].find(node => !node.disabled && rx.test((node.textContent || '').replace(/\s+/g, ' ').trim()) && node.getBoundingClientRect().width > 0);
+      if (button) { button.click(); return true; }
+    }
+    return false;
+  }, pattern.source, pattern.flags, scope), { message: `el botón ${pattern} en ${scope}` });
+}
 const escapeRx = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const exact = value => new RegExp(`^${escapeRx(value)}$`);
 
@@ -542,22 +553,82 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       // Algo ya reservado en ese horario: con eso, 25 Touch más supera el máximo.
       await api.post('/api/agenda', { dia: 'Lunes', turno: 'Mañana', desde: '09:05', hasta: '09:55', curso: 'E2E base', actividad: 'E2E', tipoDispositivo: 'Touch', cantidad: 5, estado: 'Pendiente' });
       await gotoView(page, base, 'agenda');
-      await page.waitForSelector('button.t-goo-main', { timeout: 20000 });
-      await page.$eval('button.t-goo-main', button => button.click());
-      await page.waitForSelector('button.t-goo-item[aria-label="Nueva actividad"]');
-      await sleep(200);
-      await page.$eval('button.t-goo-item[aria-label="Nueva actividad"]', button => button.click());
-      await page.waitForSelector('.modal form');
-      const field = async label => (await page.evaluateHandle(name => [...document.querySelectorAll('.modal label')].find(node => node.textContent.trim().startsWith(name))?.querySelector('input') || null, label)).asElement();
+      // Etapa 6a: el alta es un formulario en línea y el conflicto se avisa ANTES de guardar.
+      await clickButton(page, /^Nueva actividad$/, { scope: '.ag-head-actions', timeout: 20000 });
+      await page.waitForSelector('form.ag-form');
+      const field = async label => (await page.evaluateHandle(name => [...document.querySelectorAll('form.ag-form .ui-field')].find(node => node.querySelector('.ui-label-text')?.textContent.trim() === name)?.querySelector('input') || null, label)).asElement();
       await typeInto(page, await field('Curso'), 'E2E conflicto');
-      await typeInto(page, await field('Cantidad'), '25');
-      await clickButton(page, /^Guardar$/, { scope: '.modal' });
-      const error = await until(() => text(page, '.modal .form-error'), { message: 'el aviso de conflicto' });
+      await typeInto(page, 'form.ag-form input[role="spinbutton"]', '25');
+      await page.keyboard.press('Tab');
+      const error = await until(() => text(page, 'form.ag-form .ag-cap.is-conflict'), { message: 'el aviso de conflicto antes de guardar' });
       assert(/conflicto/i.test(error), `Aviso: "${error}"`);
+      const disabled = await page.$eval('form.ag-form button[type="submit"]', button => button.disabled);
+      assert(disabled, 'Con conflicto, "Guardar actividad" sigue habilitado.');
+      // El server también lo frena (por si alguien guarda igual).
+      const forced = await api.post('/api/agenda', { dia: 'Lunes', turno: 'Mañana', desde: '09:05', hasta: '09:55', curso: 'E2E conflicto', actividad: 'E2E', tipoDispositivo: 'Touch', cantidad: 25, estado: 'Pendiente' });
+      assert(forced.status === 409, `POST con conflicto respondió ${forced.status}`);
       const created = ((await api.get('/api/agenda?all=1')).data.items || []).some(item => item.curso === 'E2E conflicto');
       assert(!created, 'La actividad en conflicto se guardó igual.');
-      await page.keyboard.press('Escape');
+      await clickButton(page, /^Cancelar$/, { scope: 'form.ag-form .ag-form-head' });
       return error;
+    });
+
+    await test('f', 'Agenda', 'Editar, marcar realizada con Deshacer, borrar con confirmación en línea y Deshacer', async () => {
+      const made = await api.post('/api/agenda', { dia: 'Viernes', turno: 'Tarde', desde: '16:30', hasta: '17:15', curso: 'E2E edición', actividad: 'E2E', tipoDispositivo: 'Dell', cantidad: 2, estado: 'Pendiente' });
+      assert(made.status === 200, `No se pudo crear la actividad de prueba (${made.status})`);
+      const id = made.data.item.id;
+      const read = async () => ((await api.get('/api/agenda?all=1')).data.items || []).find(item => item.id === id);
+      await gotoView(page, base, 'agenda');
+      await press(page, /^Vie$/, '.ag-controls');
+      const row = `.ag-list [data-agenda-id="${id}"]`;
+      await page.waitForSelector(`${row} .ag-toggle`);
+      await page.$eval(`${row} .ag-toggle`, button => button.click());
+      // Marcar realizada → Deshacer.
+      await press(page, /^Marcar realizada$/, `${row} .ag-detail`);
+      await until(async () => (await read())?.estado === 'Realizado', { message: 'Realizado en la base' });
+      await press(page, /^Deshacer$/, '.ag-main');
+      await until(async () => (await read())?.estado === 'Pendiente', { message: 'Pendiente después de Deshacer' });
+      // Editar en línea: cambia la cantidad.
+      await page.waitForSelector(`${row} .ag-detail`);
+      await press(page, /^Editar$/, `${row} .ag-detail`);
+      await page.waitForSelector(`${row} form.ag-form`);
+      await typeInto(page, `${row} form.ag-form input[role="spinbutton"]`, '3');
+      await page.keyboard.press('Tab');
+      await press(page, /^Guardar cambios$/, `${row} form.ag-form`);
+      await until(async () => (await read())?.cantidad === 3, { message: 'cantidad editada en la base' });
+      // Borrar: confirmación en línea → Deshacer restaura.
+      await page.waitForSelector(`${row} .ag-detail`);
+      await press(page, /^Borrar$/, `${row} .ag-detail-actions`);
+      await press(page, /^Borrar$/, `${row} .ui-confirm`);
+      await until(async () => !(await read()), { message: 'actividad borrada' });
+      await until(async () => /borrada de la agenda/.test(await text(page, '.ag-main .ui-status')), { message: 'el aviso de borrado con Deshacer' });
+      await press(page, /^Deshacer$/, '.ag-main .ui-status');
+      await until(async () => Boolean(await read()), { message: 'actividad restaurada' });
+      await api.del(`/api/agenda/${id}`);
+      return `${id}: realizada ↔ pendiente, cantidad 2 → 3, borrada y restaurada`;
+    });
+
+    await test('f', 'Horarios', 'Alta en línea, error 400 visible y borrar con Deshacer', async () => {
+      await gotoView(page, base, 'schedules');
+      await clickButton(page, /^Agregar horario$/, { scope: '.hr-head', timeout: 20000 });
+      await page.waitForSelector('form.hr-form');
+      const field = async label => (await page.evaluateHandle(name => [...document.querySelectorAll('form.hr-form .ui-field')].find(node => node.querySelector('.ui-label-text')?.textContent.trim() === name)?.querySelector('input') || null, label)).asElement();
+      // Sin docente: el error se ve en el formulario (antes el modal quedaba mudo).
+      await clickButton(page, /^Guardar horario$/, { scope: 'form.hr-form' });
+      const error = await until(() => text(page, 'form.hr-form .hr-form-error'), { message: 'el error del formulario' });
+      await typeInto(page, await field('Docente'), 'E2E Docente');
+      await typeInto(page, await field('Curso'), 'E2E 9Z');
+      await clickButton(page, /^Guardar horario$/, { scope: 'form.hr-form' });
+      const find = async () => ((await api.get('/api/teacher-schedules')).data.items || []).find(item => item.teacher === 'E2E Docente');
+      const created = await until(find, { message: 'horario en la base' });
+      await page.waitForSelector('.hr-row');
+      await page.evaluate(() => [...document.querySelectorAll('.hr-row-actions button')].find(button => /E2E Docente/.test(button.getAttribute('aria-label') || '') && /^Borrar/.test(button.getAttribute('aria-label') || ''))?.click());
+      await clickButton(page, /^Borrar$/, { scope: '.hr-row-confirm' });
+      await until(async () => !(await find()), { message: 'horario borrado' });
+      await clickButton(page, /^Deshacer$/, { scope: '.hr-docentes' });
+      await until(find, { message: 'horario restaurado' });
+      await api.del(`/api/teacher-schedules/${created.id}`);
+      return `error "${error}"; alta, borrado y Deshacer de #${created.id}`;
     });
   } finally {
     await admin1.context.close();

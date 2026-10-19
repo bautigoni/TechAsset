@@ -97,12 +97,16 @@ function buildIcs({ siteCode, items }) {
     const start = resolveDateTime(item, item.desde || '08:00');
     const end = resolveDateTime(item, item.hasta || item.desde || '09:00');
     if (!start || !end) continue;
+    // Las semanales (sin fecha) se repiten: con RRULE el calendario suscripto
+    // las ve todas las semanas, no solo la semana en curso.
+    const byDay = item.fecha ? '' : ICS_DAYS[weekdayIndex(item.dia)] || '';
     lines.push(
       'BEGIN:VEVENT',
       `UID:${escapeIcs(`${siteCode}-${item.id}@techasset`)}`,
       `DTSTAMP:${now}`,
       `DTSTART:${formatIcsDateTime(start)}`,
       `DTEND:${formatIcsDateTime(end)}`,
+      ...(byDay ? [`RRULE:FREQ=WEEKLY;BYDAY=${byDay}`] : []),
       `SUMMARY:${escapeIcs(`${item.curso || 'Actividad'} - ${item.actividad || 'Agenda TIC'}`)}`,
       `LOCATION:${escapeIcs(item.ubicacion || '')}`,
       `DESCRIPTION:${escapeIcs(describeItem(item))}`,
@@ -140,6 +144,8 @@ function dateFromWeekday(dayName) {
   const current = localParts(new Date()).weekday || 7;
   return addDaysToLocalDate(todayLocal(), wanted - current);
 }
+
+const ICS_DAYS = ['', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
 function weekdayIndex(value) {
   const text = String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
