@@ -230,10 +230,10 @@ export function App() {
     const next = `/sede/${activeSite.toLowerCase()}/${view}${view === 'devices' && devicePage ? `/${encodeURIComponent(devicePage.tag)}` : ''}`;
     const push = pushNext.current;
     pushNext.current = false;
-    // /sede/x/tasks/<id>: la página de una tarea es parte de la vista Tareas (la
-    // maneja TasksPage). Solo Tareas: en Dispositivos la página del equipo va en
-    // `next`, y volver a la lista tiene que sacar la etiqueta de la URL.
-    if (window.location.pathname === next || (view === 'tasks' && window.location.pathname.toLowerCase().startsWith(`${next}/`))) return;
+    // /sede/x/tasks/<id> y /sede/x/tickets/<id>: el detalle es parte de la vista
+    // (lo manejan TasksPage y TicketsPage). En Dispositivos la página del equipo
+    // va en `next`, y volver a la lista tiene que sacar la etiqueta de la URL.
+    if (window.location.pathname === next || ((view === tasks || view === tickets) && window.location.pathname.toLowerCase().startsWith(`${next}/`))) return;
     if (push) window.history.pushState({ techasset: true }, '', next);
     else window.history.replaceState(null, '', next);
   }, [activeSite, view, user, devicePage]);

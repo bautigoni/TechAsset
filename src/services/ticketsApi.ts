@@ -29,7 +29,15 @@ export const getTicketDetail = (id:number) => apiGet<{ok:true;item:Ticket;commen
 export const addTicketRelation = (id:number,ticketId:number,relationType:'related'|'parent'='related') => apiSend<{ok:true;items:TicketRelation[]}>(`/api/tickets/${id}/relations`,'POST',{ticketId,relationType});
 export const deleteTicketRelation = (id:number,relationId:number) => apiSend<{ok:true;deleted:boolean}>(`/api/tickets/${id}/relations/${relationId}`,'DELETE');
 export const addTicketComment = (id:number,body:string) => apiSend<{ok:true;item:TicketComment}>(`/api/tickets/${id}/comments`,'POST',{body});
-export const addTicketChecklistItem = (id:number,text:string) => apiSend<{ok:true;item:TicketChecklistItem}>(`/api/tickets/${id}/checklist`,'POST',{text});
+/** `restore` (Deshacer de "quitar paso"): vuelve a su posición y con su tilde. */
+export const addTicketChecklistItem = (id:number,text:string,restore?:{position:number;done:boolean;completedBy?:string;completedAt?:string}) => apiSend<{ok:true;item:TicketChecklistItem}>(`/api/tickets/${id}/checklist`,'POST',{text,...(restore||{})});
+export const restoreTicketTemplate = (id:number) => apiSend<{ok:true;item:TicketTemplate}>(`/api/ticket-templates/${id}/restore`,'POST',{});
+/** Lotes en un request: estado (igual para todos o por ticket), borrar, restaurar. */
+export type TicketBulkPayload =
+  | { action: 'estado'; ids: number[]; estado: string }
+  | { action: 'estado'; items: Array<{ id: number; estado: string }> }
+  | { action: 'delete' | 'restore'; ids: number[] };
+export const bulkTickets = (payload: TicketBulkPayload) => apiSend<{ok:true;changed:number[]}>('/api/tickets/bulk','POST',payload);
 export const updateTicketChecklistItem = (id:number,itemId:number,payload:Partial<TicketChecklistItem>) => apiSend<{ok:true;item:TicketChecklistItem}>(`/api/tickets/${id}/checklist/${itemId}`,'PATCH',payload);
 export const deleteTicketChecklistItem = (id:number,itemId:number) => apiSend<{ok:true;deleted:boolean}>(`/api/tickets/${id}/checklist/${itemId}`,'DELETE');
 export const regenerateTicketSummary = (id:number) => apiSend<{ok:true;summary:string;updatedAt:string}>(`/api/tickets/${id}/summary`,'POST',{});

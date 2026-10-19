@@ -271,6 +271,42 @@ try {
   const visibleAgain = (await call('GET', '/api/inventory/items')).json.items.some(item => item.id === invId);
   check('restaurar recurso oculto', invRestore.json?.item?.id === invId && visibleAgain, invRestore.text.slice(0, 200));
 
+  // Etapa 7b: Tickets (lotes en un request, Deshacer de borrado, paso de
+  // checklist recuperado en su lugar, plantilla recuperada) y Sugerencias
+  // (conteos de filtros, restaurar, estado en español en la notificación).
+  const tk = [];
+  for (const numero of ['7001', '7002', '7003']) tk.push((await call('POST', '/api/tickets', { numero, titulo: `Smoke ${numero}`, origen: 'tik', checklist: ['Uno', 'Dos', 'Tres'] })).json?.item?.id);
+  check('alta de 3 tickets con checklist', tk.every(Boolean));
+  const bulkEstado = await call('POST', '/api/tickets/bulk', { action: 'estado', ids: tk, estado: 'Hecho' });
+  const afterBulk = (await call('GET', '/api/tickets')).json.items.filter(item => tk.includes(item.id));
+  check('tickets: estado en lote (transacción)', bulkEstado.json?.changed?.length === 3 && afterBulk.every(item => item.estado === 'Hecho' && item.resolvedAt), bulkEstado.text.slice(0, 200));
+  const bulkUndo = await call('POST', '/api/tickets/bulk', { action: 'estado', items: tk.map((id, index) => ({ id, estado: index ? 'En proceso' : 'No hecho' })) });
+  check('tickets: deshacer lote con estado por ticket', bulkUndo.json?.changed?.length === 3, bulkUndo.text.slice(0, 200));
+  const bulkDel = await call('POST', '/api/tickets/bulk', { action: 'delete', ids: tk.slice(0, 2) });
+  const goneOk = !(await call('GET', '/api/tickets')).json.items.some(item => tk.slice(0, 2).includes(item.id));
+  const bulkRestore = await call('POST', '/api/tickets/bulk', { action: 'restore', ids: tk.slice(0, 2) });
+  const backOk = (await call('GET', '/api/tickets')).json.items.filter(item => tk.includes(item.id)).length === 3;
+  check('tickets: borrar en lote y restaurar', bulkDel.json?.changed?.length === 2 && goneOk && bulkRestore.json?.changed?.length === 2 && backOk, `${bulkDel.text.slice(0, 100)} ${bulkRestore.text.slice(0, 100)}`);
+  const detail = (await call('GET', `/api/tickets/${tk[2]}/detail`)).json;
+  const middle = detail.checklist[1];
+  await call('PATCH', `/api/tickets/${tk[2]}/checklist/${middle.id}`, { done: true });
+  await call('DELETE', `/api/tickets/${tk[2]}/checklist/${middle.id}`);
+  const readded = await call('POST', `/api/tickets/${tk[2]}/checklist`, { text: middle.text, position: middle.position, done: true });
+  const order = (await call('GET', `/api/tickets/${tk[2]}/detail`)).json.checklist.map(item => `${item.text}${item.done ? '✓' : ''}`).join(',');
+  check('tickets: deshacer "quitar paso" vuelve a su lugar y tildado', readded.json?.item?.done && order === 'Uno,Dos✓,Tres', order);
+  const tpl = (await call('POST', '/api/ticket-templates', { title: 'Smoke plantilla', checklist: ['a'], tags: ['x'] })).json?.item;
+  await call('DELETE', `/api/ticket-templates/${tpl?.id}`);
+  const tplRestore = await call('POST', `/api/ticket-templates/${tpl?.id}/restore`, {});
+  check('plantilla: eliminar y recuperar', tplRestore.json?.item?.id === tpl?.id && (await call('GET', '/api/ticket-templates')).json.items.some(item => item.id === tpl?.id), tplRestore.text.slice(0, 200));
+  const sg = (await call('POST', '/api/suggestions', { title: 'Smoke idea', description: 'Probar', category: 'Smoke' })).json?.item;
+  await call('POST', '/api/suggestions', { title: 'Smoke idea 2', description: 'Probar', category: 'Otra' });
+  await call('PATCH', `/api/suggestions/${sg?.id}`, { status: 'Implemented' });
+  const sgList = await call('GET', '/api/suggestions?category=Smoke');
+  check('sugerencias: conteos de filtros', sgList.json?.counts?.status?.all === 1 && sgList.json.counts.status.Implemented === 1 && sgList.json.counts.category.all >= 2, JSON.stringify(sgList.json?.counts));
+  await call('DELETE', `/api/suggestions/${sg?.id}`);
+  const sgRestore = await call('POST', `/api/suggestions/${sg?.id}/restore`, {});
+  check('sugerencias: eliminar y recuperar', sgRestore.json?.item?.id === sg?.id && sgRestore.json.item.status === 'Implemented', sgRestore.text.slice(0, 200));
+
   // Errores de SQL en el log del server.
   const sqlErrors = serverLog.split('\n').filter(line => /syntax error|does not exist|operator does not|invalid input|ERROR:/i.test(line));
   check('sin errores de SQL en el log', !sqlErrors.length, sqlErrors.slice(0, 5).join(' | '));

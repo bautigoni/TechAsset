@@ -648,8 +648,10 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       }
       const ticket = tickets.find(item => item.estado !== 'En proceso') || tickets[0];
       const target = ticket.estado === 'En proceso' ? 'Hecho' : 'En proceso';
-      await gotoView(page, base, 'tickets');
-      await selectOption(page, `Estado del ticket ${ticket.numero}`, exact(target));
+      // Etapa 7b: el estado se cambia en la ficha del ticket (URL propia), al instante.
+      await gotoView(page, base, `tickets/${ticket.id}`);
+      await page.waitForSelector('.tkx-detail .tkx-estado [role="radio"]:not([disabled])', { timeout: 20000 });
+      await page.evaluate(label => [...document.querySelectorAll('.tkx-detail .tkx-estado [role="radio"]')].find(button => button.textContent.trim() === label)?.click(), target);
       await until(async () => ((await api.get('/api/tickets')).data.items || []).find(item => item.id === ticket.id)?.estado === target, { message: `ticket en "${target}" en la base` });
       return `#${ticket.numero}: ${ticket.estado} → ${target}${created ? ' (creado en la copia)' : ''}`;
     });

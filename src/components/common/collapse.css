@@ -1,0 +1,19 @@
+/* Colapso suave de alto (helper de la etapa 7b, ver Collapse.tsx). Solo tokens. */
+.cmx-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  min-width: 0;
+}
+/* En contenedores flex/grid con gap, el padre define --cmx-gap: cerrado, el
+   bloque se come su propio gap y no queda un hueco que salte al desmontarse. */
+.cmx-collapse:not(.is-open) { margin-top: calc(-1 * var(--cmx-gap, 0px)); }
+.cmx-collapse.is-open { grid-template-rows: 1fr; }
+.cmx-collapse-inner { min-height: 0; min-width: 0; overflow: hidden; }
+/* Abierto y quieto: el contenido respira (anillos de foco, sombras del tooltip). */
+.cmx-collapse.is-settled > .cmx-collapse-inner { overflow: visible; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .cmx-collapse { transition: grid-template-rows var(--g-dur) var(--g-ease), margin-top var(--g-dur) var(--g-ease); }
+  .cmx-collapse-inner { transition: opacity var(--g-dur) var(--g-ease); }
+  .cmx-collapse:not(.is-open) > .cmx-collapse-inner { opacity: 0; }
+}

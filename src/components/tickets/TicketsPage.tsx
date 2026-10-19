@@ -1,509 +1,573 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { ExternalLink, LayoutTemplate } from 'lucide-react';
+import { IconChevronLeft as ChevronLeft, IconPlus as Plus } from '../../ui/icons';
+import '../../styles/screens/tickets.css';
 import type { Classroom, Ticket, TicketSource, TicketState, TicketTemplate } from '../../types';
-import { createTicket, deleteTicket, getTickets, getTicketTemplates, updateTicket, uploadTicketImage } from '../../services/ticketsApi';
-import { getSiteSettings } from '../../services/authApi';
+import { bulkTickets, getTickets, getTicketTemplates } from '../../services/ticketsApi';
+import { getSiteAssistants, getSiteSettings } from '../../services/authApi';
 import { fetchToolsConfig } from '../../services/toolsApi';
 import { fetchClassrooms } from '../../services/classroomsApi';
-import { formatDateTime } from '../../utils/formatters';
-import { Button } from '../layout/Button';
-import { Modal } from '../layout/Modal';
-import { TicketTemplateManager } from './TicketTemplateManager';
-import { TicketDetailModal } from './TicketDetailModal';
-import { GooeyMenu } from '../layout/GooeyMenu';
-import { SkeletonPanel } from '../layout/Skeleton';
-import { useCardResize } from '../../hooks/useCardResize';
-import { LayoutTemplate, TicketPlus } from 'lucide-react';
-import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
-import { clickableProps } from '../../utils/a11y';
-import { SelectionBar, useSelection } from '../layout/Selection';
-import { SelectField } from '../layout/SelectField';
-import { ListTextInput } from '../layout/ListTextInput';
+import {
+  Button, Checkbox, EmptyState, ErrorState, InlineConfirm, Input, SelectionHeader, Segmented, SkeletonRows, StatusText, useSelection, useStatusLine
+} from '../../ui';
+import { TruncatedText } from '../../ui/Truncated';
+import { IconLock, IconSearch, IconX } from '../../ui/icons';
+import { cx, fold } from '../../ui/util';
+import { appScroller } from '../../utils/scroll';
+import { Collapse } from '../common/Collapse';
+import { TicketDetail } from './TicketDetail';
+import { TicketForm } from './TicketForm';
+import { TicketTemplates } from './TicketTemplates';
+import {
+  DEFAULT_HANDING, DEFAULT_INVGATE, ESTADOS, ORIGENES, errorText, estadoTone, externalLink, prioridadTone, readTicketRoute, sourceLabel,
+  systemLabel, ticketAge, ticketHaystack, ticketNumber, ticketRoutePath, type LinkBases, type TicketRoute
+} from './ticketUtils';
 
-const ESTADOS: TicketState[] = ['No hecho', 'En proceso', 'Hecho'];
-const ORIGENES: Array<{ key: TicketSource; label: string; helper: string }> = [
-  { key: 'tik', label: 'Tiknology', helper: 'Ticket Tik/InVgate' },
-  { key: 'handing', label: 'Handing', helper: 'Ticket Handing' }
-];
-const DEFAULT_INVGATE = 'https://tikno.sd.cloud.invgate.net/requests/show/index/id/';
-const DEFAULT_HANDING = 'https://techasset.bauhub.online';
+const PAGE = 30;
+const NARROW = 880;
+type Pending = { run: () => void } | null;
 
-const ESTADO_BADGE: Record<TicketState, string> = {
-  'No hecho': 'badge off',
-  'En proceso': 'badge loaned',
-  'Hecho': 'badge available'
-};
-
-type Draft = Partial<Ticket>;
-const EMPTY: Draft = { numero: '', titulo: '', descripcion: '', categoria: '', estado: 'No hecho', prioridad: 'Media', imagenUrl: '', origen: 'tik', tags: [], checklist: [], responsables: [], classroom: '', classroomKey: '', school: '' };
-
-const isPdf = (url?: string) => /\.pdf($|\?)/i.test(String(url || ''));
-// A1: el número de InVgate es solo dígitos (strippeamos el '#' o cualquier otra cosa).
-const normalizeNumero = (value: unknown) => String(value ?? '').replace(/\D+/g, '');
-const normalizeReference = (value: unknown, source: TicketSource) => source === 'tik'
-  ? normalizeNumero(value)
-  : String(value ?? '').trim();
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
-    reader.readAsDataURL(file);
-  });
-}
-
-// A4: preview compacto. PDF -> thumbnail + "Ver PDF" que abre modal con el embed.
-function FilePreview({ url, compact = false }: { url: string; compact?: boolean }) {
-  const [expanded, setExpanded] = useState(false);
-  if (!url) return null;
-
-  if (isPdf(url)) {
-    if (compact) {
-      return (
-        <>
-          <button type="button" className="ticket-file-chip" onClick={() => setExpanded(true)}>
-            <span className="ticket-file-chip-icon">PDF</span>
-            <span>Ver PDF</span>
-          </button>
-          {expanded && (
-            <Modal title="Ticket exportado" onClose={() => setExpanded(false)}>
-              <object data={`${url}#toolbar=0&navpanes=0`} type="application/pdf" className="ticket-file-embed">
-                <a href={url} target="_blank" rel="noreferrer">Abrir PDF en pestaña nueva ↗</a>
-              </object>
-              <div className="actions mt-8">
-                <a className="btn btn-secondary" href={url} target="_blank" rel="noreferrer">Abrir en pestaña ↗</a>
-              </div>
-            </Modal>
-          )}
-        </>
-      );
-    }
-    return (
-      <div className="ticket-file">
-        <object data={`${url}#toolbar=0&navpanes=0`} type="application/pdf" className="ticket-file-embed">
-          <a href={url} target="_blank" rel="noreferrer">Abrir PDF ↗</a>
-        </object>
-        <a href={url} target="_blank" rel="noreferrer" className="ticket-file-open">Abrir PDF ↗</a>
-      </div>
-    );
-  }
-  return (
-    <a href={url} target="_blank" rel="noreferrer" className={`ticket-file ${compact ? 'is-compact' : ''}`}>
-      <img src={url} alt="Ticket" />
-    </a>
-  );
-}
-
-const MAX_DESC_LEN = 120;
-
-function DescriptionBox({ desc }: { desc: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const needsTrunc = desc.length > MAX_DESC_LEN;
-  const show = expanded || !needsTrunc ? desc : desc.slice(0, MAX_DESC_LEN) + '…';
-  return (
-    <p
-      className={`ticket-card-description${needsTrunc && !expanded ? ' is-trunc' : ''}`}
-      {...(needsTrunc ? { ...clickableProps(() => setExpanded(prev => !prev)), 'aria-expanded': expanded, title: expanded ? 'Mostrar menos' : 'Mostrar todo' } : {})}
-    >{show}</p>
-  );
-}
-
+/**
+ * Tickets: bandeja maestro-detalle. La lista (prioridad, número en mono, aula,
+ * tags, estado y antigüedad como texto) a la izquierda; la ficha, el
+ * formulario o las plantillas al lado, en línea. En angosto se ve una sola de
+ * las dos, con "Volver". Cada ficha tiene su URL (/sede/x/tickets/<id>).
+ */
 export function TicketsPage({ consultationMode }: { consultationMode: boolean }) {
+  const canEdit = !consultationMode;
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState<'todos' | TicketState>('todos');
-  const [sourceFilter, setSourceFilter] = useState<'todos' | TicketSource>('todos');
-  const gridResizeRef = useCardResize<HTMLDivElement>(`${filter}:${sourceFilter}`);
-  const [search, setSearch] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [invgateBase, setInvgateBase] = useState(DEFAULT_INVGATE);
-  const [handingBase, setHandingBase] = useState(DEFAULT_HANDING);
+  const [loadError, setLoadError] = useState('');
+  const [retrying, setRetrying] = useState(false);
   const [templates, setTemplates] = useState<TicketTemplate[]>([]);
-  const [templatesOpen, setTemplatesOpen] = useState(false);
-  const [detailId, setDetailId] = useState<number | null>(null);
+  const [templatesError, setTemplatesError] = useState('');
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [assistants, setAssistants] = useState<string[]>([]);
+  const [bases, setBases] = useState<LinkBases>({ invgate: DEFAULT_INVGATE, handing: DEFAULT_HANDING });
+  const [route, setRoute] = useState<TicketRoute>(() => readTicketRoute());
+  const [q, setQ] = useState('');
+  const [estado, setEstado] = useState<'todos' | TicketState>('todos');
+  const [origen, setOrigen] = useState<'todos' | TicketSource>('todos');
+  const [limit, setLimit] = useState(PAGE);
+  const selection = useSelection();
+  const listStatus = useStatusLine();
+  const paneStatus = useStatusLine();
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkRef = useRef(false);
+  const setBulk = (on: boolean) => { bulkRef.current = on; setBulkBusy(on); };
+  const [askBulkDelete, setAskBulkDelete] = useState(false);
+  const [pending, setPending] = useState<Pending>(null);
+  const formDirty = useRef(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const paneRef = useRef<HTMLElement | null>(null);
+  const [narrow, setNarrow] = useState(false);
+  // Volver a la lista en angosto: misma posición de scroll y foco en la fila.
+  const returnPoint = useRef<{ id: number | null; top: number } | null>(null);
+  const focusAfter = useRef<'pane' | 'row' | null>(null);
 
-  const load = () => {
-    setLoading(true);
-    getTickets()
-      .then(response => setTickets(response.items || []))
-      .catch(err => setError(err instanceof Error ? err.message : 'No se pudieron cargar los tickets.'))
-      .finally(() => setLoading(false));
-  };
-  useEffect(load, []);
-  const loadTemplates = async () => { const response = await getTicketTemplates(); setTemplates(response.items || []); };
-  useEffect(() => { void loadTemplates(); }, []);
-  useEffect(() => { fetchClassrooms().then(response => setClassrooms(response.items || [])).catch(() => setClassrooms([])); }, []);
+  /* ── Datos ── */
+  const load = useCallback(async () => {
+    try {
+      const response = await getTickets();
+      setTickets(response.items || []);
+      setLoadError('');
+    } catch (reason) {
+      setLoadError(errorText(reason, 'No se pudieron cargar los tickets.'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  const loadTemplates = useCallback(async () => {
+    try {
+      const response = await getTicketTemplates();
+      setTemplates(response.items || []);
+      setTemplatesError('');
+    } catch (reason) {
+      setTemplatesError(errorText(reason, 'No se pudieron cargar las plantillas.'));
+    }
+  }, []);
   useEffect(() => {
+    void load();
+    void loadTemplates();
+    // Lo auxiliar (aulas, links, personas) no frena la pantalla si falla: los
+    // campos quedan con lo que hay y el link usa la base por defecto.
+    fetchClassrooms().then(response => setClassrooms(response.items || [])).catch(() => setClassrooms([]));
+    getSiteAssistants().then(response => setAssistants((response.items || []).map(item => item.name).filter(Boolean))).catch(() => setAssistants([]));
     getSiteSettings()
       .then(response => {
         const url = String((response.settings as Record<string, unknown>)?.['tickets.invgateUrl'] || '').trim();
-        if (url) setInvgateBase(url.endsWith('/') ? url : `${url}/`);
+        if (url) setBases(current => ({ ...current, invgate: url.endsWith('/') ? url : `${url}/` }));
       })
       .catch(() => {});
     fetchToolsConfig()
-      .then(response => {
-        if (response.handingTicketUrl) setHandingBase(response.handingTicketUrl);
-      })
+      .then(response => { if (response.handingTicketUrl) setBases(current => ({ ...current, handing: response.handingTicketUrl })); })
       .catch(() => {});
+  }, [load, loadTemplates]);
+  const retry = async () => { setRetrying(true); await load(); setRetrying(false); };
+
+  /* ── Rutas propias dentro de /tickets ── */
+  useEffect(() => {
+    const onPop = () => setRoute(readTicketRoute());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // Con cambios sin guardar, cerrar la pestaña o recargar pide confirmación del navegador.
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => { if (formDirty.current) { event.preventDefault(); event.returnValue = ''; } };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
 
-  const counts = useMemo(() => ({
-    todos: tickets.length,
-    'No hecho': tickets.filter(t => t.estado === 'No hecho').length,
-    'En proceso': tickets.filter(t => t.estado === 'En proceso').length,
-    'Hecho': tickets.filter(t => t.estado === 'Hecho').length
-  }), [tickets]);
+  const go = useCallback((next: TicketRoute, { replace = false } = {}) => {
+    const path = ticketRoutePath(next);
+    if (window.location.pathname !== path) {
+      if (replace) window.history.replaceState({ techasset: true }, '', path);
+      else window.history.pushState({ techasset: true }, '', path);
+    }
+    setRoute(next);
+    setPending(null);
+  }, []);
+  /** Si hay un formulario con cambios, primero se pregunta en línea. */
+  const guard = (run: () => void) => {
+    if (formDirty.current && (route.kind === 'new' || route.kind === 'edit')) { setPending({ run: () => { formDirty.current = false; run(); } }); return; }
+    run();
+  };
 
-  const sourceCounts = useMemo(() => ({
-    todos: tickets.length,
-    tik: tickets.filter(t => (t.origen || 'tik') === 'tik').length,
-    handing: tickets.filter(t => t.origen === 'handing').length
-  }), [tickets]);
-
-  // A3: búsqueda por número, título, descripción, categoría, responsables y creadoPor.
-  const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return tickets.filter(t => {
-      if (filter !== 'todos' && t.estado !== filter) return false;
-      if (sourceFilter !== 'todos' && (t.origen || 'tik') !== sourceFilter) return false;
-      if (!q) return true;
-      const hay = [
-        t.numero, t.titulo, t.descripcion, t.categoria, t.creadoPor,
-        Array.isArray(t.responsables) ? t.responsables.join(' ') : ''
-      ].join(' ').toLowerCase();
-      return hay.includes(q);
+  /* ── Ancho: en angosto se ve la lista O el panel ── */
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width || 0;
+      setNarrow(current => (current === width < NARROW ? current : width < NARROW));
     });
-  }, [tickets, filter, search, sourceFilter]);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
-  const invgateLink = (numero: string) => `${invgateBase}${encodeURIComponent(normalizeNumero(numero))}`;
-  const handingLink = (numero: string) => {
-    const base = handingBase.trim() || DEFAULT_HANDING;
-    const ref = String(numero || '').trim();
-    if (base.includes('{ticket}')) return base.replace('{ticket}', encodeURIComponent(ref));
-    return base;
+  const paneOpen = route.kind !== 'list';
+  const currentId = route.kind === 'detail' || route.kind === 'edit' ? route.id : null;
+
+  // Abrir o cerrar el panel lo deja a la vista (sin mover nada si ya se ve) y
+  // en angosto, al volver, recupera la posición y el foco en la fila.
+  useEffect(() => {
+    const want = focusAfter.current;
+    focusAfter.current = null;
+    if (!want) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (want === 'pane') {
+      const pane = paneRef.current;
+      if (!pane) return;
+      if (narrow) {
+        const scroller = appScroller();
+        if (scroller) {
+          const top = pane.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 8;
+          if (top < scroller.scrollTop) scroller.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+        }
+        pane.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+      } else {
+        // La ficha se abre al lado: si su encabezado quedó arriba de lo visible
+        // (se abrió desde abajo de la lista), se lo trae; si ya se ve, nada se mueve.
+        const scroller = appScroller();
+        if (scroller) {
+          const view = scroller.getBoundingClientRect();
+          const box = pane.getBoundingClientRect();
+          if (box.top < view.top || box.top > view.bottom - 120) {
+            scroller.scrollTo({ top: Math.max(0, box.top - view.top + scroller.scrollTop - 12), behavior: reduced ? 'auto' : 'smooth' });
+          }
+        }
+      }
+    } else if (want === 'row') {
+      const point = returnPoint.current;
+      const scroller = appScroller();
+      // En angosto la lista vuelve a aparecer: misma posición que cuando se abrió la ficha.
+      if (point && scroller && narrow) scroller.scrollTo({ top: point.top, behavior: 'auto' });
+      const row = point?.id ? wrapRef.current?.querySelector<HTMLElement>(`[data-ticket-id="${point.id}"] .tkx-row-open`) : null;
+      if (row) {
+        row.focus({ preventScroll: true });
+        // En ancho la lista no se movió, salvo que se haya traído la ficha: la fila vuelve a la vista.
+        if (!narrow && scroller) {
+          const view = scroller.getBoundingClientRect();
+          const box = row.getBoundingClientRect();
+          if (box.bottom < view.top || box.top > view.bottom) scroller.scrollTo({ top: point?.top || 0, behavior: 'auto' });
+        }
+      }
+    }
+  }, [route, narrow]);
+
+  const openPane = (next: TicketRoute) => guard(() => {
+    if (route.kind === 'list') returnPoint.current = { id: next.kind === 'detail' ? next.id : null, top: appScroller()?.scrollTop || 0 };
+    else if (next.kind === 'detail' && returnPoint.current) returnPoint.current = { ...returnPoint.current, id: next.id };
+    focusAfter.current = 'pane';
+    paneStatus.clear();
+    go(next);
+  });
+  const backToList = () => guard(() => { focusAfter.current = 'row'; go({ kind: 'list' }); });
+
+  /* ── Filtros (búsqueda sin tildes; conteos cruzados) ── */
+  const query = fold(q);
+  const haystacks = useMemo(() => new Map(tickets.map(ticket => [ticket.id, ticketHaystack(ticket)])), [tickets]);
+  const matchesQ = useCallback((ticket: Ticket) => !query || (haystacks.get(ticket.id) || '').includes(query), [haystacks, query]);
+  const byOrigin = useMemo(() => tickets.filter(ticket => matchesQ(ticket) && (origen === 'todos' || (ticket.origen || 'tik') === origen)), [tickets, matchesQ, origen]);
+  const byEstado = useMemo(() => tickets.filter(ticket => matchesQ(ticket) && (estado === 'todos' || ticket.estado === estado)), [tickets, matchesQ, estado]);
+  const visible = useMemo(() => byOrigin.filter(ticket => estado === 'todos' || ticket.estado === estado), [byOrigin, estado]);
+  useEffect(() => { setLimit(PAGE); }, [query, estado, origen]);
+  const shown = visible.slice(0, limit);
+  const orderedKeys = useMemo(() => visible.map(ticket => String(ticket.id)), [visible]);
+  const estadoOptions = [
+    { value: 'todos' as const, label: 'Todos', count: byOrigin.length },
+    ...ESTADOS.map(value => ({ value, label: value, count: byOrigin.filter(ticket => ticket.estado === value).length }))
+  ];
+  const origenOptions = [
+    { value: 'todos' as const, label: 'Todos los orígenes', count: byEstado.length },
+    ...ORIGENES.map(item => ({ value: item.key, label: item.label, count: byEstado.filter(ticket => (ticket.origen || 'tik') === item.key).length }))
+  ];
+  const clearFilters = () => { setQ(''); setEstado('todos'); setOrigen('todos'); };
+
+  // La selección se recalcula contra lo que existe.
+  useEffect(() => { selection.prune(tickets.map(ticket => String(ticket.id))); }, [tickets, selection.prune]);
+  const selected = tickets.filter(ticket => selection.selected.has(String(ticket.id)));
+  const visibleSelected = visible.filter(ticket => selection.selected.has(String(ticket.id))).length;
+  useEffect(() => { if (!selection.count) setAskBulkDelete(false); }, [selection.count]);
+
+  const patchLocal = useCallback((id: number, patch: Partial<Ticket>) => {
+    setTickets(current => current.map(ticket => (ticket.id === id ? { ...ticket, ...patch } : ticket)));
+  }, []);
+
+  /* ── Lotes (un request) con Deshacer ── */
+  const bulkEstado = async (next: TicketState) => {
+    if (bulkRef.current) return;
+    const targets = selected.filter(ticket => ticket.estado !== next);
+    if (!targets.length) { listStatus.show({ tone: 'info', message: `Los seleccionados ya están en «${next}».` }); return; }
+    const before = targets.map(ticket => ({ id: ticket.id, estado: ticket.estado }));
+    setBulk(true);
+    setTickets(current => current.map(ticket => (targets.some(target => target.id === ticket.id) ? { ...ticket, estado: next } : ticket)));
+    try {
+      const response = await bulkTickets({ action: 'estado', ids: targets.map(ticket => ticket.id), estado: next });
+      selection.clear();
+      const n = response.changed.length;
+      listStatus.show({
+        tone: 'ok',
+        message: `${n} ${n === 1 ? 'ticket ahora está' : 'tickets ahora están'} en «${next}».`,
+        undo: {
+          onUndo: async () => {
+            try {
+              await bulkTickets({ action: 'estado', items: before });
+              listStatus.show({ tone: 'info', message: 'Volvieron a su estado anterior.' });
+            } catch (reason) {
+              listStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudo deshacer.') });
+            }
+            await load();
+          }
+        }
+      });
+      void load();
+    } catch (reason) {
+      listStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudo cambiar el estado de los tickets.'), retry: { onRetry: () => bulkEstado(next) } });
+      await load();
+    } finally {
+      setBulk(false);
+    }
   };
-  const ticketLink = (ticket: Pick<Ticket, 'numero' | 'origen'>) => ticket.origen === 'handing' ? handingLink(ticket.numero) : invgateLink(ticket.numero);
 
-  const openCreate = () => { setDraft(EMPTY); setEditingId(null); setError(''); setModalOpen(true); };
-  const openEdit = (ticket: Ticket) => {
-    setDraft({
-      numero: ticket.numero,
-      titulo: ticket.titulo,
-      descripcion: ticket.descripcion,
-      categoria: ticket.categoria,
-      estado: ticket.estado,
-      prioridad: ticket.prioridad,
-      responsables: ticket.responsables,
-      imagenUrl: ticket.imagenUrl,
-      nota: ticket.nota,
-      origen: ticket.origen || 'tik',
-      tags: ticket.tags || [],
-      templateId: ticket.templateId,
-      classroom: ticket.classroom || '',
-      classroomKey: ticket.classroomKey || '',
-      school: ticket.school || ''
+  const bulkDelete = async () => {
+    if (bulkRef.current) return;
+    const ids = selected.map(ticket => ticket.id);
+    setBulk(true);
+    try {
+      const response = await bulkTickets({ action: 'delete', ids });
+      const removed = response.changed;
+      setTickets(current => current.filter(ticket => !removed.includes(ticket.id)));
+      selection.clear();
+      setAskBulkDelete(false);
+      if (currentId && removed.includes(currentId)) go({ kind: 'list' }, { replace: true });
+      listStatus.show({
+        tone: 'ok',
+        message: `${removed.length} ${removed.length === 1 ? 'ticket borrado' : 'tickets borrados'}.`,
+        undo: {
+          onUndo: async () => {
+            try {
+              await bulkTickets({ action: 'restore', ids: removed });
+              listStatus.show({ tone: 'info', message: `${removed.length === 1 ? 'Ticket recuperado' : 'Tickets recuperados'}.` });
+            } catch (reason) {
+              listStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudieron recuperar.') });
+            }
+            await load();
+          }
+        }
+      });
+      void load();
+    } catch (reason) {
+      listStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudieron borrar los tickets.') });
+    } finally {
+      setBulk(false);
+    }
+  };
+
+  const onDeleted = (ticket: Ticket) => {
+    setTickets(current => current.filter(item => item.id !== ticket.id));
+    focusAfter.current = 'row';
+    go({ kind: 'list' }, { replace: true });
+    listStatus.show({
+      tone: 'ok',
+      message: `Ticket ${ticketNumber(ticket)} borrado.`,
+      undo: {
+        onUndo: async () => {
+          try {
+            await bulkTickets({ action: 'restore', ids: [ticket.id] });
+            await load();
+            listStatus.show({ tone: 'info', message: `Ticket ${ticketNumber(ticket)} recuperado.`, action: { label: 'Abrir', onClick: () => openPane({ kind: 'detail', id: ticket.id }) } });
+          } catch (reason) {
+            listStatus.show({ tone: 'bad', message: errorText(reason, 'No se pudo recuperar el ticket.') });
+          }
+        }
+      }
     });
-    setEditingId(ticket.id);
-    setError('');
-    setModalOpen(true);
   };
 
-  const handleFile = async (file?: File) => {
-    if (!file) return;
-    setUploading(true);
-    setError('');
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const response = await uploadTicketImage({ fileName: file.name, dataUrl });
-      setDraft(current => ({ ...current, imagenUrl: response.url }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo subir el archivo.');
-    } finally {
-      setUploading(false);
-    }
+  /* ── Filas: click abre; Ctrl/Cmd+click marca; Shift+click marca el rango ── */
+  const onRowClick = (ticket: Ticket, event: MouseEvent<HTMLElement>) => {
+    if (canEdit && selection.handleClick(String(ticket.id), event, orderedKeys)) return;
+    openPane({ kind: 'detail', id: ticket.id });
+  };
+  const onListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const target = event.target as HTMLElement;
+    if (!target.classList.contains('tkx-row-open')) return;
+    const rows = [...(event.currentTarget.querySelectorAll<HTMLElement>('.tkx-row-open'))];
+    const index = rows.indexOf(target);
+    const next = rows[index + (event.key === 'ArrowDown' ? 1 : -1)];
+    if (next) { event.preventDefault(); next.focus(); }
   };
 
-  const save = async () => {
-    const origen = draft.origen || 'tik';
-    const numero = normalizeReference(draft.numero, origen);
-    if (origen === 'tik' && !numero) { setError('Cargá el número de ticket Tik/InVgate (solo dígitos).'); return; }
-    setBusy(true);
-    setError('');
-    try {
-      const payload = { ...draft, numero, origen };
-      if (editingId) await updateTicket(editingId, payload);
-      else await createTicket(payload);
-      setModalOpen(false);
-      load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el ticket.');
-    } finally {
-      setBusy(false);
-    }
+  const allVisible = visible.length > 0 && visibleSelected === visible.length;
+  const selectAll = () => {
+    if (allVisible) selection.clear();
+    else { selection.setMode(true); selection.setSelected([...selection.selected, ...orderedKeys]); }
   };
 
-  const changeEstado = async (ticket: Ticket, estado: TicketState) => {
-    setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, estado } : t));
-    try {
-      await updateTicket(ticket.id, { estado });
-    } catch (reason) {
-      // Antes el error se tragaba y el estado volvía solo, sin explicación.
-      toast({ message: errorMessage(reason, 'No se pudo cambiar el estado.'), tone: 'error' });
-      load();
-    }
-  };
+  const editingTicket = route.kind === 'edit' ? tickets.find(ticket => ticket.id === route.id) : undefined;
+  const paneLabel = route.kind === 'new' || route.kind === 'edit' ? 'Formulario de ticket' : route.kind === 'templates' ? 'Plantillas' : 'Detalle del ticket';
 
-  // Selección múltiple: cambiar el estado de varios o borrarlos de una.
-  const selection = useSelection();
-  const selectedTickets = tickets.filter(ticket => selection.selected.has(String(ticket.id)));
-  const [bulkBusy, setBulkBusy] = useState(false);
-  const bulkEstado = async (estado: TicketState) => {
-    const list = selectedTickets.filter(ticket => ticket.estado !== estado);
-    setBulkBusy(true);
-    setTickets(prev => prev.map(t => selection.selected.has(String(t.id)) ? { ...t, estado } : t));
-    const failed: string[] = [];
-    for (const ticket of list) {
-      try { await updateTicket(ticket.id, { estado }); } catch { failed.push(`#${ticket.numero}`); }
+  const renderPane = () => {
+    if (route.kind === 'list') {
+      return <EmptyState title="Elegí un ticket de la lista" description="El detalle se abre acá, al lado de la lista. Ctrl o Shift + click marca varios." />;
     }
-    setBulkBusy(false);
-    selection.clear();
-    if (failed.length) { toast({ message: `No se pudieron actualizar: ${failed.join(', ')}`, tone: 'error' }); load(); }
-    else toast({ message: `${list.length} tickets ahora están "${estado}".`, tone: 'ok' });
-  };
-  const bulkRemove = async () => {
-    if (!(await confirmDialog({ title: `Borrar ${selectedTickets.length} tickets`, message: selectedTickets.map(ticket => `#${ticket.numero}`).join(', '), confirmLabel: 'Borrar', danger: true }))) return;
-    setBulkBusy(true);
-    const failed: string[] = [];
-    for (const ticket of selectedTickets) {
-      try { await deleteTicket(ticket.id); } catch { failed.push(`#${ticket.numero}`); }
+    if (route.kind === 'templates') {
+      return (
+        <TicketTemplates
+          templates={templates}
+          loadError={templatesError}
+          canEdit={canEdit}
+          onReload={loadTemplates}
+          onClose={backToList}
+          closeLabel="Volver a la lista"
+        />
+      );
     }
-    setBulkBusy(false);
-    selection.clear();
-    if (failed.length) toast({ message: `No se pudieron borrar: ${failed.join(', ')}`, tone: 'error' });
-    load();
-  };
-
-  const remove = async (ticket: Ticket) => {
-    if (!(await confirmDialog({ title: `Borrar ticket #${ticket.numero}`, message: ticket.titulo || undefined, confirmLabel: 'Borrar', danger: true }))) return;
-    try {
-      await deleteTicket(ticket.id);
-    } catch (reason) {
-      toast({ message: errorMessage(reason, 'No se pudo borrar el ticket.'), tone: 'error' });
+    if ((route.kind === 'new' || route.kind === 'edit') && !canEdit) {
+      return <EmptyState title="Modo consulta: solo lectura" description="En este modo no se pueden cargar ni editar tickets." action={<Button size="sm" variant="secondary" onClick={backToList}>Volver a la lista</Button>} />;
     }
-    load();
+    if (route.kind === 'new' || route.kind === 'edit') {
+      if (route.kind === 'edit' && !editingTicket) {
+        return loading ? <SkeletonRows rows={4} /> : <EmptyState title="Este ticket no existe o fue borrado." action={<Button size="sm" variant="secondary" onClick={backToList}>Volver a la lista</Button>} />;
+      }
+      return (
+        <TicketForm
+          key={route.kind === 'edit' ? `edit-${route.id}` : 'new'}
+          initial={editingTicket}
+          templates={templates}
+          classrooms={classrooms}
+          assistants={assistants}
+          tickets={tickets}
+          bases={bases}
+          onDirtyChange={dirty => { formDirty.current = dirty; }}
+          onCancel={() => guard(() => {
+            focusAfter.current = route.kind === 'edit' ? 'pane' : 'row';
+            if (route.kind === 'edit') go({ kind: 'detail', id: route.id });
+            else go({ kind: 'list' });
+          })}
+          onSaved={(ticket, created) => {
+            formDirty.current = false;
+            setTickets(current => (created ? [ticket, ...current] : current.map(item => (item.id === ticket.id ? ticket : item))));
+            focusAfter.current = 'pane';
+            go({ kind: 'detail', id: ticket.id }, { replace: true });
+            paneStatus.show({ tone: 'ok', message: created ? `Ticket ${ticketNumber(ticket)} cargado.` : `Cambios de ${ticketNumber(ticket)} guardados.` });
+            void load();
+          }}
+        />
+      );
+    }
+    return (
+      <TicketDetail
+        key={route.id}
+        id={route.id}
+        tickets={tickets}
+        classrooms={classrooms}
+        bases={bases}
+        canEdit={canEdit}
+        onOpen={id => openPane({ kind: 'detail', id })}
+        onEdit={id => openPane({ kind: 'edit', id })}
+        onDeleted={onDeleted}
+        onLocalPatch={patchLocal}
+        onChanged={() => void load()}
+      />
+    );
   };
 
   return (
-    <section className="view active">
-      <div className="card-head mb-12">
-        <h3>Tickets</h3>
-        {/* El "+" del gooey reemplaza a "Cargar ticket": las dos acciones de
-            creación viven adentro del mismo botón. */}
-        <div className="actions">
-          {!consultationMode && (
-            <GooeyMenu
-              ariaLabel="Cargar ticket"
-              items={[
-                { id: 'new', label: 'Cargar ticket', icon: <TicketPlus size={16} />, onSelect: openCreate },
-                { id: 'templates', label: 'Plantillas', icon: <LayoutTemplate size={16} />, onSelect: () => setTemplatesOpen(true) }
-              ]}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* A3: búsqueda + chips de estado con contador */}
-      <div className="ticket-toolbar">
-        <input
-          className="input ticket-search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por número, título, categoría, responsable…"
+    <section className={cx('view active tkx', narrow && 'is-narrow')} aria-label="Tickets">
+      <div className="tkx-toolbar">
+        <Input
+          className="tkx-search"
+          type="search"
+          aria-label="Buscar tickets"
+          prefix={<IconSearch size={16} />}
+          suffix={q ? <button type="button" className="ui-icon-btn ui-btn--ghost ui-btn--sm" aria-label="Limpiar búsqueda" onClick={() => setQ('')}><IconX size={14} /></button> : undefined}
+          value={q}
+          placeholder="Buscar número, título, descripción, categoría, quién lo cargó o responsable"
+          autoComplete="off"
+          onValueChange={setQ}
         />
-        <div className="ticket-chips">
-          {(['todos', ...ESTADOS] as const).map(key => (
-            <button
-              key={key}
-              type="button"
-              className={`ticket-chip ${filter === key ? 'is-active' : ''}`}
-              onClick={() => setFilter(key)}
-            >
-              {key === 'todos' ? 'Todos' : key}
-              <span className="ticket-chip-count">{counts[key]}</span>
-            </button>
-          ))}
-        </div>
-        <div className="ticket-chips ticket-source-chips">
-          {(['todos', ...ORIGENES.map(item => item.key)] as const).map(key => (
-            <button
-              key={key}
-              type="button"
-              className={`ticket-chip ${sourceFilter === key ? 'is-active' : ''}`}
-              onClick={() => setSourceFilter(key)}
-            >
-              {key === 'todos' ? 'Todos los orígenes' : ORIGENES.find(item => item.key === key)?.label}
-              <span className="ticket-chip-count">{sourceCounts[key]}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="muted text-13 mt-6">
-        {visible.length} {visible.length === 1 ? 'resultado' : 'resultados'}
+        {canEdit ? (
+          <div className="tkx-actions">
+            <Button variant="secondary" icon={<LayoutTemplate size={16} />} aria-pressed={route.kind === 'templates'} onClick={() => openPane({ kind: 'templates' })}>Plantillas</Button>
+            <Button variant="primary" icon={<Plus size={16} />} onClick={() => openPane({ kind: 'new' })}>Cargar ticket</Button>
+          </div>
+        ) : (
+          <span className="tkx-consulta"><IconLock size={14} /> Modo consulta: solo lectura</span>
+        )}
       </div>
 
-      {error && !modalOpen && <div className="tool-error mt-12">{error}</div>}
-      {loading && <div className="mt-12"><SkeletonPanel rows={3} head={false} rowHeight={96} /></div>}
-      {!loading && visible.length === 0 && <div className="tool-info mt-12">No hay tickets en este filtro.</div>}
+      <div className="tkx-filters">
+        <Segmented ariaLabel="Filtrar por estado" size="sm" value={estado} onChange={setEstado} options={estadoOptions} />
+        <Segmented ariaLabel="Filtrar por origen" size="sm" value={origen} onChange={setOrigen} options={origenOptions} />
+        <span className="tkx-count" role="status">{visible.length} {visible.length === 1 ? 'resultado' : 'resultados'}</span>
+      </div>
 
-      {/* Cambiar de filtro cambia cuántas tarjetas entran, así que la grilla
-          cambia de alto. Con el resize se estira en vez de saltar. */}
-      <div className="ticket-grid t-resize mt-12" ref={gridResizeRef}>
-        {visible.map(ticket => (
-          <section className={`ticket-card ${selection.selected.has(String(ticket.id)) ? 'is-selected' : ''}`} key={ticket.id}>
-            {/* A5: header limpio con #numero azul + badge estado */}
-            <div className="ticket-card-head">
-              {!consultationMode && (
-                <input
-                  type="checkbox"
-                  className="ticket-select"
-                  aria-label={`Seleccionar ticket ${normalizeNumero(ticket.numero)}`}
-                  checked={selection.selected.has(String(ticket.id))}
-                  onChange={() => selection.toggle(String(ticket.id))}
+      <div ref={wrapRef} className={cx('tkx-wrap', paneOpen ? 'has-pane' : 'no-pane')}>
+        <section className="tkx-list" aria-label="Lista de tickets">
+          <div className="tkx-list-head">
+            <SelectionHeader
+              count={canEdit ? selected.length : 0}
+              onClear={selection.clear}
+              noun={['ticket seleccionado', 'tickets seleccionados']}
+              confirm={askBulkDelete ? (
+                <InlineConfirm
+                  danger
+                  busy={bulkBusy}
+                  message={`¿Borrar ${selected.length} ${selected.length === 1 ? 'ticket' : 'tickets'}?`}
+                  detail={`${selected.map(ticketNumber).join(', ')}. Salen de la lista y quedan guardados como borrados; vas a poder deshacerlo.`}
+                  confirmLabel={`Borrar ${selected.length}`}
+                  onConfirm={() => void bulkDelete()}
+                  onCancel={() => setAskBulkDelete(false)}
                 />
+              ) : undefined}
+              actions={(
+                <>
+                  <Checkbox checked={allVisible} indeterminate={!allVisible && visibleSelected > 0} ariaLabel="Seleccionar todos los visibles" onCheckedChange={selectAll} />
+                  <span className="tkx-small tkx-muted tkx-nowrap">Pasar a</span>
+                  {ESTADOS.map(value => (
+                    <Button key={value} size="sm" variant="secondary" disabled={bulkBusy} onClick={() => void bulkEstado(value)}>{value}</Button>
+                  ))}
+                  <Button size="sm" variant="danger" disabled={bulkBusy} onClick={() => setAskBulkDelete(true)}>Borrar</Button>
+                </>
               )}
-              <a href={ticketLink(ticket)} target="_blank" rel="noreferrer" className="ticket-number-link">{ticket.origen === 'handing' ? 'Handing' : `#${normalizeNumero(ticket.numero)}`} ↗</a>
-              <span className={ESTADO_BADGE[ticket.estado]}>{ticket.estado}</span>
-            </div>
-            <div className="ticket-source-line">{ticket.origen === 'handing' ? `Handing${ticket.numero ? ` · ${ticket.numero}` : ''}` : `Tiknology / InVgate · #${normalizeNumero(ticket.numero)}`}</div>
-            <div className="ticket-creator-line">
-              Cargado por <strong>{ticket.creadoPor || 'Sin usuario'}</strong>
-              {ticket.createdAt && <span> · {formatDateTime(ticket.createdAt)}</span>}
-            </div>
-            {ticket.titulo && <div className="ticket-card-title">{ticket.titulo}</div>}
-            {ticket.categoria && <div className="ticket-card-meta">{ticket.categoria}</div>}
-            {ticket.descripcion && <DescriptionBox desc={ticket.descripcion} />}
-            {!!ticket.tags?.length && <div className="ticket-tags">{ticket.tags.map(tag => <span key={tag}>{tag}</span>)}</div>}
-            {ticket.aiSummary && <p className="ticket-summary-preview"><strong>Resumen:</strong> {ticket.aiSummary}</p>}
-            {ticket.imagenUrl && <div className="ticket-card-file"><FilePreview url={ticket.imagenUrl} compact /></div>}
-            <div className="ticket-card-actions">
-              <Button onClick={() => setDetailId(ticket.id)}>Ver detalle</Button>
-              <Button disabled={consultationMode} onClick={() => openEdit(ticket)}>Editar</Button>
-              <SelectField ariaLabel={`Estado del ticket ${ticket.numero}`} value={ticket.estado} disabled={consultationMode} onChange={value => changeEstado(ticket, value as TicketState)} options={ESTADOS.map(value => ({ value, label: value }))} />
-              <Button disabled={consultationMode} onClick={() => remove(ticket)} className="btn-ghost-danger">Borrar</Button>
-            </div>
-          </section>
-        ))}
-      </div>
+            >
+              <div className="tkx-list-title">
+                {canEdit && visible.length > 0 && (
+                  <Checkbox checked={false} ariaLabel="Seleccionar todos los visibles" onCheckedChange={selectAll} />
+                )}
+                <span className="ui-eyebrow">Pendientes primero</span>
+                <span className="tkx-small tkx-muted tkx-ell">No hecho · En proceso · Hecho</span>
+              </div>
+            </SelectionHeader>
+          </div>
+          {listStatus.element && <div className="tkx-list-status">{listStatus.element}</div>}
 
-      {!consultationMode && (
-        <SelectionBar count={selectedTickets.length} onClear={selection.clear} floating>
-          {ESTADOS.map(estado => (
-            <Button key={estado} disabled={bulkBusy} variant={estado === 'Hecho' ? 'success' : 'secondary'} onClick={() => void bulkEstado(estado)}>{estado}</Button>
-          ))}
-          <Button variant="danger" disabled={bulkBusy} onClick={() => void bulkRemove()}>Borrar</Button>
-        </SelectionBar>
-      )}
-
-      {modalOpen && (
-        <Modal title={editingId ? 'Editar ticket' : 'Cargar ticket'} onClose={() => setModalOpen(false)}>
-          <div className="ticket-source-control" role="group" aria-label="Origen del ticket">
-            {ORIGENES.map(item => (
-              <button
-                key={item.key}
-                type="button"
-                className={draft.origen === item.key ? 'active' : ''}
-                onClick={() => setDraft(d => ({ ...d, origen: item.key, numero: normalizeReference(d.numero, item.key) }))}
-              >
-                <strong>{item.label}</strong>
-                <span>{item.helper}</span>
-              </button>
-            ))}
-          </div>
-          {!editingId && templates.length > 0 && <label>Usar plantilla<SelectField ariaLabel="Usar plantilla" value={String(draft.templateId || '')} onChange={value => { const template = templates.find(item => item.id === Number(value)); setDraft(current => template ? { ...current, templateId: template.id, titulo: template.title, descripcion: template.description, prioridad: template.priority, categoria: template.category, responsables: template.suggestedAssignee ? [template.suggestedAssignee] : [], checklist: template.checklist, tags: template.tags } : { ...current, templateId: undefined }); }} options={[{ value: '', label: 'Sin plantilla' }, ...templates.map(item => ({ value: String(item.id), label: item.title }))]} /></label>}
-          <div className="grid-2">
-            <label>{draft.origen === 'handing' ? 'Referencia de ticket (Handing)' : 'Número de ticket (InVgate)'}
-              <input
-                className="input"
-                value={draft.numero || ''}
-                onChange={e => setDraft(d => ({ ...d, numero: normalizeReference(e.target.value, d.origen || 'tik') }))}
-                placeholder={draft.origen === 'handing' ? 'Ej. HDMI-2103' : 'Ej. 2103'}
-                inputMode={draft.origen === 'handing' ? 'text' : 'numeric'}
-                autoFocus
-              />
-              <span className="muted text-12">{draft.origen === 'handing' ? 'No usa #id: podés dejarlo vacío o escribir una referencia interna.' : <>Solo el número, sin <code>#</code> - ej. <code>2103</code></>}</span>
-            </label>
-            <label>Estado
-              <SelectField ariaLabel="Estado" value={draft.estado || 'No hecho'} onChange={value => setDraft(d => ({ ...d, estado: value as TicketState }))} options={ESTADOS.map(value => ({ value, label: value }))} />
-            </label>
-          </div>
-          <div className="grid-2"><label>Prioridad<SelectField ariaLabel="Prioridad" value={draft.prioridad || 'Media'} onChange={value => setDraft(d => ({ ...d, prioridad: value }))} options={['Baja', 'Media', 'Alta', 'Urgente'].map(value => ({ value, label: value }))} /></label><label>Responsables (separados por coma)<ListTextInput value={draft.responsables} onChange={responsables => setDraft(d => ({ ...d, responsables }))} /></label></div>
-          <div className="grid-2">
-            <label>Escuela<input className="input" value={draft.school || ''} onChange={e => setDraft(d => ({ ...d, school: e.target.value }))} placeholder="Sede o escuela" /></label>
-            <label>Aula (opcional)
-              <SelectField ariaLabel="Aula" value={draft.classroomKey || ''} onChange={value => { const selectedRoom = classrooms.find(room => room.roomKey === value); setDraft(d => ({ ...d, classroomKey: selectedRoom?.roomKey || '', classroom: selectedRoom?.nombre || '' })); }} options={[{ value: '', label: 'Sin aula vinculada' }, ...classrooms.map(room => ({ value: room.roomKey, label: room.nombre, hint: room.piso || undefined }))]} />
-              {!draft.classroomKey && draft.classroom && <span className="muted">Dato anterior: {draft.classroom}</span>}
-            </label>
-          </div>
-          <label>Tags (separados por coma)<ListTextInput value={draft.tags} onChange={tags => setDraft(d => ({ ...d, tags }))} /></label>
-          {!editingId && <label>Checklist inicial (un paso por línea)<ListTextInput separator="line" rows={3} value={draft.checklist} onChange={checklist => setDraft(d => ({ ...d, checklist }))} /></label>}
-          <div className="grid-2">
-            <label>Titulo
-              <input
-                className="input"
-                value={draft.titulo || ''}
-                onChange={e => setDraft(d => ({ ...d, titulo: e.target.value }))}
-                placeholder="Ej. Proyector sin imagen"
-              />
-            </label>
-            <label>Categoria
-              <input
-                className="input"
-                value={draft.categoria || ''}
-                onChange={e => setDraft(d => ({ ...d, categoria: e.target.value }))}
-                placeholder="Hardware, cuenta, conectividad..."
-              />
-            </label>
-          </div>
-          <label>Descripcion
-            <textarea
-              className="input"
-              rows={3}
-              value={draft.descripcion || ''}
-              onChange={e => setDraft(d => ({ ...d, descripcion: e.target.value }))}
-              placeholder="Detalle breve del problema o pedido"
-            />
-          </label>
-          {normalizeReference(draft.numero, draft.origen || 'tik') && (
-            <a href={(draft.origen || 'tik') === 'handing' ? handingLink(draft.numero || '') : invgateLink(draft.numero || '')} target="_blank" rel="noreferrer" className="muted text-13">
-              Abrir en {(draft.origen || 'tik') === 'handing' ? 'Handing' : 'InVgate'} ↗
-            </a>
+          {loading && !tickets.length ? (
+            <SkeletonRows rows={6} className="tkx-skel" />
+          ) : loadError && !tickets.length ? (
+            <ErrorState message={loadError} onRetry={() => void retry()} retrying={retrying} />
+          ) : !visible.length ? (
+            tickets.length
+              ? <EmptyState compact title="No hay tickets en este filtro." action={<Button size="sm" variant="secondary" onClick={clearFilters}>Limpiar filtros y búsqueda</Button>} />
+              : <EmptyState compact title="Todavía no hay tickets cargados." description="Cargá el primero con su número de InVgate o la referencia de Handing." action={canEdit ? <Button size="sm" variant="primary" icon={<Plus size={14} />} onClick={() => openPane({ kind: 'new' })}>Cargar ticket</Button> : undefined} />
+          ) : (
+            <div className="tkx-rows" onKeyDown={onListKeyDown}>
+              {loadError && <ErrorState message={loadError} onRetry={() => void retry()} retrying={retrying} />}
+              {shown.map(ticket => {
+                const key = String(ticket.id);
+                const checked = selection.selected.has(key);
+                const current = currentId === ticket.id;
+                const age = ticketAge(ticket);
+                const prio = prioridadTone(ticket.prioridad);
+                const meta = [ticket.classroom, (ticket.tags || []).slice(0, 3).join(', '), ticket.responsables?.length ? ticket.responsables.join(', ') : 'Sin responsable'].filter(Boolean).join(' · ');
+                return (
+                  <div key={ticket.id} className={cx('tkx-row', current && 'is-current', checked && 'is-selected')} data-ticket-id={ticket.id}>
+                    {canEdit && (
+                      <Checkbox
+                        className="tkx-row-check"
+                        checked={checked}
+                        ariaLabel={`Seleccionar ${ticketNumber(ticket)} ${ticket.titulo}`}
+                        onCheckedChange={(_, event) => {
+                          selection.setMode(true);
+                          if (event.shiftKey) selection.selectRange(key, orderedKeys);
+                          else selection.toggle(key);
+                        }}
+                      />
+                    )}
+                    <a className="tkx-row-open" href={ticketRoutePath({ kind: 'detail', id: ticket.id })} aria-current={current ? 'page' : undefined} onClick={event => { if (event.button !== 0) return; event.preventDefault(); onRowClick(ticket, event); }}>
+                      <span className="tkx-row-line">
+                        <span className="tkx-mono tkx-strong tkx-nowrap">{ticketNumber(ticket)}</span>
+                        <span className="tkx-muted tkx-small tkx-nowrap">{sourceLabel(ticket.origen)}</span>
+                        <span className="tkx-grow" />
+                        {prio && <StatusText tone={prio} className="tkx-small">{ticket.prioridad}</StatusText>}
+                        <StatusText tone={estadoTone(ticket.estado)} strong className="tkx-small">{ticket.estado}</StatusText>
+                      </span>
+                      <TruncatedText className="tkx-row-title" lines={2}>{ticket.titulo || 'Ticket sin título'}</TruncatedText>
+                      <span className="tkx-row-line">
+                        <TruncatedText className="tkx-row-meta">{meta}</TruncatedText>
+                        {age.label && <StatusText tone={age.tone} className="tkx-small tkx-nowrap">{age.label}</StatusText>}
+                      </span>
+                    </a>
+                    <a className="ui-icon-btn ui-btn--ghost ui-btn--sm tkx-row-ext" href={externalLink(ticket, bases)} target="_blank" rel="noreferrer" aria-label={`Abrir ${ticketNumber(ticket)} en ${systemLabel(ticket.origen)}`}>
+                      <ExternalLink size={14} aria-hidden="true" />
+                    </a>
+                  </div>
+                );
+              })}
+              {visible.length > shown.length && (
+                <div className="tkx-more">
+                  <Button size="sm" variant="ghost" onClick={() => setLimit(current => current + PAGE)}>
+                    Ver {Math.min(PAGE, visible.length - shown.length)} más ({visible.length - shown.length} restantes)
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
-          <label>Ticket exportado (PDF o foto)
-            <div className="row-wrap">
-              <label className="btn btn-secondary">
-                {uploading ? 'Subiendo…' : (draft.imagenUrl ? 'Reemplazar archivo' : 'Subir PDF / foto')}
-                <input type="file" accept="application/pdf,image/png,image/jpeg,image/jpg,image/webp" className="sr-only" onChange={e => handleFile(e.target.files?.[0])} disabled={uploading} />
-              </label>
-              {draft.imagenUrl && <a href={draft.imagenUrl} target="_blank" rel="noreferrer">Abrir ↗</a>}
-            </div>
-          </label>
-          {draft.imagenUrl && <FilePreview url={draft.imagenUrl} />}
-          {error && <div className="tool-error">{error}</div>}
-          <div className="actions mt-8">
-            <Button variant="primary" disabled={busy || uploading} onClick={save}>{busy ? 'Guardando…' : 'Guardar ticket'}</Button>
-            <Button onClick={() => setModalOpen(false)}>Cancelar</Button>
-          </div>
-        </Modal>
-      )}
-      {templatesOpen && <TicketTemplateManager templates={templates} onClose={() => setTemplatesOpen(false)} onChanged={loadTemplates} />}
-      {detailId != null && <TicketDetailModal initialId={detailId} tickets={tickets} consultationMode={consultationMode} onClose={() => setDetailId(null)} onChanged={load} />}
+          <p className="tkx-list-foot tkx-small tkx-muted">Click en un ticket para ver el detalle. El ícono de la derecha abre el sistema externo.</p>
+        </section>
 
+        <section ref={paneRef} className="tkx-pane" aria-label={paneLabel}>
+          {narrow && paneOpen && (
+            <Button size="sm" variant="ghost" className="tkx-back" icon={<ChevronLeft size={16} />} onClick={backToList}>Volver a la lista</Button>
+          )}
+          <Collapse open={Boolean(pending)}>
+            <InlineConfirm
+              danger
+              message="Tenés cambios sin guardar."
+              detail="Si salís ahora se pierden."
+              confirmLabel="Descartar y salir"
+              cancelLabel="Seguir editando"
+              onConfirm={() => pending?.run()}
+              onCancel={() => setPending(null)}
+            />
+          </Collapse>
+          {paneStatus.element}
+          {renderPane()}
+        </section>
+      </div>
     </section>
   );
 }

@@ -7,8 +7,9 @@ export function getSuggestions(filters: { status?: string; category?: string; so
   if (filters.category) params.set('category', filters.category);
   if (filters.sort) params.set('sort', filters.sort);
   const query = params.toString();
-  return apiGet<{ ok:true; items:Suggestion[]; stats:SuggestionStats; categories:string[]; canManage:boolean }>(`/api/suggestions${query ? `?${query}` : ''}`);
+  return apiGet<{ ok:true; items:Suggestion[]; stats:SuggestionStats; categories:string[]; canManage:boolean; counts?: { status: Record<string, number>; category: Record<string, number> } }>(`/api/suggestions${query ? `?${query}` : ''}`);
 }
+export const restoreSuggestion = (id:number) => apiSend<{ok:true;item:Suggestion}>(`/api/suggestions/${id}/restore`,'POST',{});
 export const createSuggestion = (payload:{title:string;description:string;category:string}) => apiSend<{ok:true;item:Suggestion}>('/api/suggestions','POST',payload);
 export const updateSuggestion = (id:number,payload:Partial<{title:string;description:string;category:string;status:SuggestionStatus}>) => apiSend<{ok:true;item:Suggestion}>(`/api/suggestions/${id}`,'PATCH',payload);
 export const deleteSuggestion = (id:number) => apiSend<{ok:true;deleted:boolean}>(`/api/suggestions/${id}`,'DELETE');

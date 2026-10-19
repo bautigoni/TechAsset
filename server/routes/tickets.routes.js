@@ -65,6 +65,79 @@ ticketsRouter.delete('/ticket-templates/:id', (req, res) => {
   res.json({ ok: true, deleted: result.changes > 0 });
 });
 
+// Deshacer el borrado de una plantilla (el DELETE es soft: active=0).
+ticketsRouter.post('/ticket-templates/:id/restore', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canEditModule(req, 'tickets', siteCode)) return forbidden(res);
+  const result = getDb().prepare('UPDATE ticket_templates SET active=1,updated_at=? WHERE id=? AND site_code=? AND active=0').run(nowIso(), req.params.id, siteCode);
+  if (!result.changes) return res.status(404).json({ ok: false, error: 'La plantilla ya no se puede recuperar.' });
+  res.json({ ok: true, item: rowToTemplate(getDb().prepare('SELECT * FROM ticket_templates WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
+});
+
+/**
+ * Lotes en UN request (antes: un PATCH/DELETE por ticket, en serie):
+ *   { action: 'estado', ids, estado }            → mismo estado para todos
+ *   { action: 'estado', items: [{ id, estado }] } → estado por ticket (Deshacer)
+ *   { action: 'delete', ids }                     → borrado soft
+ *   { action: 'restore', ids }                    → Deshacer del borrado
+ * Todo en una transacción; devuelve los ids que cambiaron de verdad.
+ */
+ticketsRouter.post('/tickets/bulk', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canEditModule(req, 'tickets', siteCode)) return forbidden(res);
+  const action = String(req.body?.action || '');
+  if (!['estado', 'delete', 'restore'].includes(action)) return res.status(400).json({ ok: false, error: 'Acción de lote desconocida.' });
+  const fallbackEstado = String(req.body?.estado || '');
+  const raw = Array.isArray(req.body?.items) ? req.body.items : Array.isArray(req.body?.ids) ? req.body.ids.map(id => ({ id })) : [];
+  const seen = new Set();
+  const items = [];
+  for (const entry of raw) {
+    const id = Number(entry?.id ?? entry);
+    if (!Number.isInteger(id) || id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    items.push({ id, estado: String(entry?.estado || fallbackEstado) });
+  }
+  if (!items.length) return res.status(400).json({ ok: false, error: 'Elegí al menos un ticket.' });
+  if (items.length > 200) return res.status(400).json({ ok: false, error: 'Máximo 200 tickets por lote.' });
+  if (action === 'estado' && items.some(item => !ESTADOS.has(item.estado))) return res.status(400).json({ ok: false, error: 'Estado inválido.' });
+
+  const db = getDb();
+  const ts = nowIso();
+  const who = actor(req);
+  const changed = [];
+  db.transaction(() => {
+    const read = db.prepare('SELECT id,numero,estado,resolved_at,activo FROM tickets WHERE id=? AND site_code=?');
+    for (const item of items) {
+      const old = read.get(item.id, siteCode);
+      if (!old) continue;
+      if (action === 'estado') {
+        if (Number(old.activo) !== 1 || old.estado === item.estado) continue;
+        const resolvedAt = item.estado === 'Hecho' ? (old.resolved_at || ts) : '';
+        db.prepare('UPDATE tickets SET estado=?,resolved_at=?,operador_ultimo_cambio=?,updated_at=? WHERE id=? AND site_code=?').run(item.estado, resolvedAt, who, ts, item.id, siteCode);
+        addActivity(siteCode, item.id, `Estado: ${old.estado} → ${item.estado}`, '', req);
+        changed.push({ id: item.id, numero: old.numero, from: old.estado, to: item.estado });
+      } else if (action === 'delete') {
+        if (Number(old.activo) !== 1) continue;
+        db.prepare('UPDATE tickets SET activo=0,deleted_at=?,deleted_by=?,updated_at=? WHERE id=? AND site_code=?').run(ts, who, ts, item.id, siteCode);
+        changed.push({ id: item.id, numero: old.numero });
+      } else {
+        if (Number(old.activo) === 1) continue;
+        db.prepare("UPDATE tickets SET activo=1,deleted_at='',deleted_by='',updated_at=? WHERE id=? AND site_code=?").run(ts, item.id, siteCode);
+        addActivity(siteCode, item.id, 'Ticket restaurado', '', req);
+        changed.push({ id: item.id, numero: old.numero });
+      }
+    }
+  })();
+  if (action === 'estado' && changed.length) {
+    const targets = [...new Set(changed.map(item => item.to))];
+    const title = changed.length === 1
+      ? `Ticket #${changed[0].numero || changed[0].id}: ${changed[0].to}`
+      : targets.length === 1 ? `${changed.length} tickets: ${targets[0]}` : `${changed.length} tickets cambiaron de estado`;
+    try { notifySiteAdmins({ siteCode, kind: 'ticket.updated', title, body: changed.map(item => `#${item.numero || item.id}`).join(', ').slice(0, 160), link: `/sede/${siteCode}/tickets`, exceptEmail: req.user?.email }); } catch { /* noop */ }
+  }
+  res.json({ ok: true, changed: changed.map(item => item.id) });
+});
+
 ticketsRouter.post('/tickets/upload-image', (req, res) => {
   const siteCode = requireSite(req);
   if (!canEditModule(req, 'tickets', siteCode)) return forbidden(res);
@@ -189,8 +262,18 @@ ticketsRouter.post('/tickets/:id/checklist', (req, res) => {
   if (!canEditModule(req, 'tickets', siteCode)) return forbidden(res);
   const text = String(req.body?.text || '').trim();
   if (!text) return res.status(400).json({ ok: false, error: 'La tarea está vacía.' });
-  const position = Number(getDb().prepare('SELECT COALESCE(MAX(position),-1) value FROM ticket_checklist_items WHERE ticket_id=? AND site_code=?').get(req.params.id, siteCode).value) + 1;
-  const info = getDb().prepare('INSERT INTO ticket_checklist_items (site_code,ticket_id,text,done,position,created_at) VALUES (?,?,?,0,?,?)').run(siteCode, req.params.id, text, position, nowIso());
+  const ticket = getDb().prepare('SELECT id FROM tickets WHERE id=? AND site_code=? AND activo=1').get(req.params.id, siteCode);
+  if (!ticket) return res.status(404).json({ ok: false, error: 'Ticket no encontrado.' });
+  // `position` y `done` opcionales: el Deshacer de "quitar paso" lo devuelve a
+  // su lugar y con su tilde. Sin ellos, va al final y sin tildar (como siempre).
+  const requested = req.body?.position;
+  const position = requested !== undefined && requested !== null && requested !== '' && Number.isInteger(Number(requested)) && Number(requested) >= 0
+    ? Number(requested)
+    : Number(getDb().prepare('SELECT COALESCE(MAX(position),-1) value FROM ticket_checklist_items WHERE ticket_id=? AND site_code=?').get(req.params.id, siteCode).value) + 1;
+  const done = req.body?.done ? 1 : 0;
+  const ts = nowIso();
+  const info = getDb().prepare('INSERT INTO ticket_checklist_items (site_code,ticket_id,text,done,position,completed_by,completed_at,created_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run(siteCode, req.params.id, text, done, position, done ? String(req.body?.completedBy || actor(req)) : '', done ? String(req.body?.completedAt || ts) : '', ts);
   queueTicketSummary(req.params.id, siteCode);
   res.json({ ok: true, item: rowToChecklist(getDb().prepare('SELECT * FROM ticket_checklist_items WHERE id=?').get(info.lastInsertRowid)) });
 });

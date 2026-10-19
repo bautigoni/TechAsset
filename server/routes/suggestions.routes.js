@@ -6,6 +6,15 @@ import { notifySiteAdmins, notifyUser } from '../services/notifications.service.
 export const suggestionsRouter = Router();
 
 const STATUSES = new Set(['Proposed', 'Under Review', 'Planned', 'In Progress', 'Implemented', 'Rejected']);
+// La base guarda el estado en inglés; lo que lee la gente (notificaciones) va en español.
+const STATUS_LABEL = {
+  Proposed: 'Propuesta',
+  'Under Review': 'En revisión',
+  Planned: 'Planificada',
+  'In Progress': 'En progreso',
+  Implemented: 'Implementada',
+  Rejected: 'Rechazada'
+};
 
 suggestionsRouter.get('/suggestions', (req, res) => {
   const siteCode = requireSite(req);
@@ -39,9 +48,27 @@ suggestionsRouter.get('/suggestions', (req, res) => {
     .all(req.user?.email || '', ...args);
   const canManage = canEditModule(req, 'suggestions', siteCode);
   const items = rows.map(row => rowToSuggestion(row, req.user?.email, canManage));
+  // La misma consulta de antes (ahora con la categoría) alimenta los conteos de
+  // los filtros: estado dentro de la categoría elegida y categoría dentro del
+  // estado elegido. Sin queries nuevas.
   const all = getDb()
-    .prepare("SELECT id,status FROM suggestions WHERE site_code=? AND active=1 AND COALESCE(deleted_at,'')='' ")
+    .prepare("SELECT id,status,category FROM suggestions WHERE site_code=? AND active=1 AND COALESCE(deleted_at,'')='' ")
     .all(siteCode);
+  const sameCategory = row => !category || String(row.category || 'General').toLowerCase() === category.toLowerCase();
+  const sameStatus = row => !status || !STATUSES.has(status) || row.status === status;
+  const statusCounts = { all: 0 };
+  const categoryCounts = { all: 0 };
+  for (const row of all) {
+    if (sameCategory(row)) {
+      statusCounts.all += 1;
+      statusCounts[row.status] = (statusCounts[row.status] || 0) + 1;
+    }
+    if (sameStatus(row)) {
+      const key = row.category || 'General';
+      categoryCounts.all += 1;
+      categoryCounts[key] = (categoryCounts[key] || 0) + 1;
+    }
+  }
   const top = getDb()
     .prepare(
       `SELECT s.id,s.title,COUNT(v.id) AS votes FROM suggestions s LEFT JOIN suggestion_votes v ON v.site_code=s.site_code AND v.suggestion_id=s.id WHERE s.site_code=? AND s.active=1 AND COALESCE(s.deleted_at,'')='' GROUP BY s.id,s.title ORDER BY votes DESC,s.created_at DESC LIMIT 1`
@@ -60,6 +87,7 @@ suggestionsRouter.get('/suggestions', (req, res) => {
           .filter(Boolean)
       )
     ],
+    counts: { status: statusCounts, category: categoryCounts },
     stats: {
       total: all.length,
       mostVoted: top ? { id: Number(top.id), title: top.title, votes: Number(top.votes || 0) } : null,
@@ -187,6 +215,21 @@ suggestionsRouter.delete('/suggestions/:id', (req, res) => {
   res.json({ ok: true, deleted: result.changes > 0 });
 });
 
+// Deshacer el borrado (soft: active=0). Mismo permiso que borrar: autor o quien gestiona.
+suggestionsRouter.post('/suggestions/:id/restore', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canViewModule(req, 'suggestions', siteCode)) return forbidden(res);
+  const old = getDb().prepare('SELECT * FROM suggestions WHERE id=? AND site_code=? AND active=0').get(req.params.id, siteCode);
+  if (!old) return notFound(res);
+  const canManage = canEditModule(req, 'suggestions', siteCode);
+  const owns = String(old.author_email || '').toLowerCase() === String(req.user?.email || '').toLowerCase();
+  if (!owns && !canManage) return res.status(403).json({ ok: false, error: 'Solo podés recuperar tus propias sugerencias.' });
+  getDb()
+    .prepare("UPDATE suggestions SET active=1,deleted_at='',deleted_by='',updated_at=? WHERE id=? AND site_code=?")
+    .run(nowIso(), old.id, siteCode);
+  res.json({ ok: true, item: readSuggestion(old.id, siteCode, req) });
+});
+
 function readSuggestion(id, siteCode, req) {
   const row = getDb()
     .prepare(
@@ -256,7 +299,7 @@ function notifySuggestionFollowers(suggestion, siteCode, status, exceptEmail) {
           siteCode,
           email,
           kind: 'suggestion.status',
-          title: `Sugerencia: ${status}`,
+          title: `Sugerencia: ${STATUS_LABEL[status] || status}`,
           body: suggestion.title,
           link: `/sede/${siteCode}/suggestions`
         });
