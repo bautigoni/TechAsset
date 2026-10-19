@@ -24,6 +24,7 @@ import { clearApiCache, SESSION_EXPIRED_EVENT } from './services/apiClient';
 import { activeSiteRole, isSuperadmin, roleAccess } from './utils/permissions';
 import { resolveDeviceMatches } from './utils/normalizeSearch';
 import type { AssistantContext } from './services/assistantApi';
+import { isSettingsAlias, panelFromPath, requestSettingsPanel } from './components/settings/settingsRoute';
 
 // Cada vista viaja en su propio chunk: el bundle inicial baja de ~570 kB a lo que
 // hace falta para pintar el dashboard. Los chunks del resto se precargan en idle
@@ -49,8 +50,6 @@ const TicketsPage = lazyView('tickets', () => import('./components/tickets/Ticke
 const KnowledgePage = lazyView('knowledge', () => import('./components/knowledge/KnowledgePage'), 'KnowledgePage');
 const CanvasPage = lazyView('canvas', () => import('./components/canvas/CanvasPage'), 'CanvasPage');
 const RemindersPage = lazyView('reminders', () => import('./components/reminders/RemindersPage'), 'RemindersPage');
-const TenantsDashboard = lazyView('tenants', () => import('./components/settings/TenantsDashboard'), 'TenantsDashboard');
-const UsersByTenantPage = lazyView('adminusers', () => import('./components/settings/UsersByTenantPage'), 'UsersByTenantPage');
 const SettingsPage = lazyView('settings', () => import('./components/settings/SettingsPage'), 'SettingsPage');
 const UiShowcase = lazyView('ui', () => import('./ui/Showcase'), 'Showcase');
 // Fuera del nav: modales y pantallas de auth. La landing solo la ve quien no
@@ -233,7 +232,7 @@ export function App() {
     const current = window.location.pathname;
     if (current === next) return;
     // Subrutas que maneja la vista misma (/tasks/<id>, /tickets/<id>,
-    // /knowledge/<id>[/editar], etc.): se conservan, también al entrar por un
+    // /knowledge/<id>[/editar], /settings/<panel>, etc.): se conservan, también al entrar por un
     // link directo, y solo se normaliza la sede a minúsculas. En Dispositivos
     // la página del equipo va en `next`, y volver a la lista tiene que sacar la
     // etiqueta de la URL.
@@ -637,10 +636,8 @@ export function App() {
       {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
-      {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={changeSite} onChanged={refreshSessionSites} />}
-      {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
       {view === 'ui' && superadmin && <UiShowcase />}
-      {view === 'settings' && <SettingsPage key={activeSite} operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
+      {view === 'settings' && <SettingsPage key={activeSite} operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} isSiteAdmin={access.admin} activeSite={activeSite} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} onSwitchSite={changeSite} onLogout={handleLogout} />}
       </Suspense>
       </div>
     </AppShell>
@@ -695,6 +692,12 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1];
+  // Tenants y Usuarios ahora son paneles de Configuración, y los mails apuntan
+  // a /configuracion/usuarios: el panel se recuerda hasta que monte la vista.
+  if (isSettingsAlias(view)) {
+    requestSettingsPanel(panelFromPath(window.location.pathname));
+    return 'settings';
+  }
   return isViewKey(view) ? view : null;
 }
 

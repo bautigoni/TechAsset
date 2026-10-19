@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Button, ErrorState, Skeleton, Switch } from '../../ui';
+import { IconCheck } from '../../ui/icons';
 import { enableBrowserPush, getNotificationPrefs, setNotificationEmailPref, setNotificationTypePrefs, type NotificationTypePrefs } from '../../services/notificationsApi';
-import { toast, errorMessage } from '../layout/Feedback';
+import { Card, CardFoot, CheckField, SettingRow, errorText } from './settingsKit';
 
 const DEFAULT_TYPES: NotificationTypePrefs = {
   releases: true,
@@ -14,62 +16,71 @@ const DEFAULT_TYPES: NotificationTypePrefs = {
 
 const TYPE_OPTIONS: Array<{ key: keyof NotificationTypePrefs; title: string; text: string }> = [
   { key: 'suggestions', title: 'Sugerencias e ideas', text: 'Comentarios y cambios de estado de las ideas que seguís.' },
-  { key: 'tasks', title: 'Tareas TIC', text: 'Tareas creadas o asignadas por otros integrantes de la sede.' },  { key: 'tickets', title: 'Tickets', text: 'Tickets nuevos o cambios relevantes.' },
+  { key: 'tasks', title: 'Tareas TIC', text: 'Tareas creadas o asignadas por otros integrantes de la sede.' },
+  { key: 'tickets', title: 'Tickets', text: 'Tickets nuevos o cambios relevantes.' },
   { key: 'releases', title: 'Novedades de TechAsset', text: 'Avisos de actualización y cambios de versión.' },
   { key: 'registrations', title: 'Altas e invitaciones', text: 'Registros, aprobaciones e invitaciones de usuarios.' },
   { key: 'system', title: 'Sistema', text: 'Avisos generales de la plataforma.' }
 ];
 
-export function NotificationsPanel() {
+type Msg = { tone: 'ok' | 'bad'; text: string; where: 'channels' | 'types' } | null;
+
+/** Preferencias personales: no dependen de la sede ni del modo consulta. */
+export function NotificationsPanel({ header }: { header: (actions?: ReactNode) => ReactNode }) {
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [email, setEmail] = useState(false);
   const [types, setTypes] = useState<NotificationTypePrefs>(DEFAULT_TYPES);
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushAvailable, setPushAvailable] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState<'push' | 'email' | keyof NotificationTypePrefs | ''>('');
+  const [msg, setMsg] = useState<Msg>(null);
 
   const load = () => {
+    setLoadError('');
     getNotificationPrefs()
-      .then(p => {
-        setEmail(p.email);
-        setTypes(p.types || DEFAULT_TYPES);
-        setPushSubscribed(p.pushSubscribed);
-        setPushAvailable(p.pushAvailable);
+      .then(prefs => {
+        setEmail(prefs.email);
+        setTypes(prefs.types || DEFAULT_TYPES);
+        setPushSubscribed(prefs.pushSubscribed);
+        setPushAvailable(prefs.pushAvailable);
+        setLoaded(true);
       })
-      .catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar tus preferencias de notificaciones.'), tone: 'error' }));
+      .catch(reason => setLoadError(errorText(reason, 'No se pudieron cargar tus preferencias de notificaciones.')));
   };
-
   useEffect(load, []);
-  useEffect(() => {
-    if (!msg && !err) return;
-    const t = setTimeout(() => { setMsg(''); setErr(''); }, 3500);
-    return () => clearTimeout(t);
-  }, [msg, err]);
 
-  const activarPush = async () => {
-    setBusy(true);
-    setErr('');
-    setMsg('');
-    const r = await enableBrowserPush();
-    if (r.ok) {
+  // Los avisos de éxito se van solos (3,5 s); los errores quedan hasta la próxima acción.
+  useEffect(() => {
+    if (!msg || msg.tone !== 'ok') return;
+    const timer = window.setTimeout(() => setMsg(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [msg]);
+
+  const activatePush = async () => {
+    setBusy('push');
+    setMsg(null);
+    const result = await enableBrowserPush().catch(reason => ({ ok: false, error: errorText(reason, 'No se pudo activar.') }));
+    if (result.ok) {
       setPushSubscribed(true);
-      setMsg('Notificaciones push activadas.');
+      setMsg({ tone: 'ok', text: 'Notificaciones push activadas en este dispositivo.', where: 'channels' });
     } else {
-      setErr(r.error || 'No se pudo activar.');
+      setMsg({ tone: 'bad', text: result.error || 'No se pudo activar.', where: 'channels' });
     }
-    setBusy(false);
+    setBusy('');
   };
 
-  const toggleEmail = async () => {
-    const next = !email;
+  const toggleEmail = async (next: boolean) => {
     setEmail(next);
+    setBusy('email');
     try {
       await setNotificationEmailPref(next);
-      setMsg(next ? 'Te vamos a avisar por mail.' : 'Avisos por mail desactivados.');
-    } catch {
+      setMsg({ tone: 'ok', text: next ? 'Te vamos a avisar por mail.' : 'Avisos por mail desactivados.', where: 'channels' });
+    } catch (reason) {
       setEmail(!next);
-      setErr('No se pudo guardar.');
+      setMsg({ tone: 'bad', text: errorText(reason, 'No se pudo guardar.'), where: 'channels' });
+    } finally {
+      setBusy('');
     }
   };
 
@@ -77,65 +88,57 @@ export function NotificationsPanel() {
     const previous = types;
     const next = { ...types, [key]: !types[key] };
     setTypes(next);
+    setBusy(key);
     try {
       await setNotificationTypePrefs(next);
-      setMsg('Preferencias guardadas.');
-    } catch {
+      setMsg({ tone: 'ok', text: 'Preferencias guardadas.', where: 'types' });
+    } catch (reason) {
       setTypes(previous);
-      setErr('No se pudo guardar.');
+      setMsg({ tone: 'bad', text: errorText(reason, 'No se pudo guardar.'), where: 'types' });
+    } finally {
+      setBusy('');
     }
   };
 
+  if (loadError) return <>{header()}<ErrorState message={loadError} onRetry={load} /></>;
+
   return (
-    <section className="card">
-      <div className="card-head"><h3>Notificaciones</h3></div>
-      <p className="muted mt-0">Elegi como y sobre que queres recibir avisos en TechAsset.</p>
-
-      <div className="notif-pref-row">
-        <div className="notif-pref-text">
-          <strong>Notificaciones push</strong>
-          <span>En este dispositivo. Llegan aunque no tengas la app abierta.</span>
-          {!pushAvailable && <span className="notif-pref-warn">El servidor no tiene push configurado.</span>}
+    <>
+      {header()}
+      <Card ariaLabel="Canales">
+        <SettingRow
+          name="Notificaciones push"
+          desc={<>En este dispositivo; llegan aunque no tengas la app abierta. En iPhone, primero instalá la app desde Compartir › Agregar a inicio.{loaded && !pushAvailable && <span className="cfg-block is-warn">El servidor no tiene push configurado.</span>}</>}
+        >
+          {!loaded ? <Skeleton width="6rem" height="var(--g-control-h)" radius="sm" />
+            : pushSubscribed ? <span className="cfg-inline cfg-t2"><IconCheck size={14} /> Activadas</span>
+            : <Button variant="secondary" loading={busy === 'push'} loadingLabel="Activando…" disabled={!pushAvailable} onClick={() => void activatePush()}>Activar</Button>}
+        </SettingRow>
+        <SettingRow name="Avisos por mail" desc="Además de la campana, te llega un mail cuando te asignan algo o hay novedades.">
+          <span className="cfg-inline">
+            <span className="cfg-t2">{email ? 'Activados' : 'Apagados'}</span>
+            <Switch checked={email} disabled={!loaded} loading={busy === 'email'} ariaLabel="Avisos por mail" onCheckedChange={next => void toggleEmail(next)} />
+          </span>
+        </SettingRow>
+        {msg?.where === 'channels' && <CardFoot status={msg.text} tone={msg.tone} />}
+      </Card>
+      <Card title="Qué te avisamos" meta="Se guarda al tocar">
+        <div className="cfg-checklist">
+          {TYPE_OPTIONS.map(option => (
+            <div className="cfg-check-row" key={option.key}>
+              <CheckField
+                checked={Boolean(types[option.key])}
+                disabled={!loaded || busy === option.key}
+                label={option.title}
+                description={option.text}
+                onChange={() => void toggleType(option.key)}
+              />
+              <span className="cfg-t3 cfg-nowrap">{types[option.key] ? 'Activo' : 'Pausado'}</span>
+            </div>
+          ))}
         </div>
-        {pushSubscribed
-          ? <span className="badge available">Activadas</span>
-          : <button type="button" className="btn btn-primary" disabled={busy || !pushAvailable} onClick={activarPush}>{busy ? 'Activando...' : 'Activar'}</button>}
-      </div>
-
-      <div className="notif-pref-row">
-        <div className="notif-pref-text">
-          <strong>Avisos por mail</strong>
-          <span>Recibi un correo cuando te asignen algo o haya novedades.</span>
-        </div>
-        <button type="button" role="switch" aria-checked={email} aria-label="Avisos por mail" className={`switch ${email ? 'is-on' : ''}`} onClick={toggleEmail}>
-          <span className="switch-knob" />
-        </button>
-      </div>
-
-      <div className="notif-type-grid">
-        {TYPE_OPTIONS.map(option => (
-          <button
-            key={option.key}
-            type="button"
-            className={`notif-type-card ${types[option.key] ? 'is-on' : ''}`}
-            aria-pressed={types[option.key]}
-            onClick={() => toggleType(option.key)}
-          >
-            <span className="notif-type-copy">
-              <strong>{option.title}</strong>
-              <span>{option.text}</span>
-            </span>
-            <span className="notif-type-state">{types[option.key] ? 'Activo' : 'Pausado'}</span>
-          </button>
-        ))}
-      </div>
-
-      <p className="muted text-12 mb-0">
-        En iPhone, para recibir push primero instala la app desde Compartir / Agregar a pantalla de inicio.
-      </p>
-
-      {msg && <div className="tool-info mt-10">{msg}</div>}
-      {err && <div className="tool-error mt-10">{err}</div>}
-    </section>
+        <CardFoot status={msg?.where === 'types' ? msg.text : undefined} tone={msg?.where === 'types' ? msg.tone : undefined} />
+      </Card>
+    </>
   );
 }

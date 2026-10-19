@@ -1,10 +1,10 @@
 {
   "note": "Generado por scripts/check-ui.mjs --update. Lo que hay hoy en src/ fuera de src/ui/; se achica a medida que el rediseño reemplaza controles.",
   "totals": {
-    "title-tooltip": 6,
-    "checkbox-radio-crudo": 9,
-    "details": 2,
-    "input-nativo": 5,
+    "title-tooltip": 3,
+    "checkbox-radio-crudo": 2,
+    "details": 1,
+    "input-nativo": 1,
     "hex-en-css": 57
   },
   "entries": [
@@ -13,54 +13,6 @@
       "file": "src/components/devices/DeviceTable.tsx",
       "text": "type=\"checkbox\"",
       "count": 2
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/settings/AllowedUsersPanel.tsx",
-      "text": "<input type=\"checkbox\" checked={selected.has(site.siteCode)} onChange={e => toggleSite(site.siteCode, e.target.checked)} />",
-      "count": 1
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/settings/LoanSettingsPanel.tsx",
-      "text": "{showCourse && <label><input type=\"checkbox\" checked={Boolean(item.requiresCourse)} onChange={event => update(index, { requiresCourse: event.target.checked })} ",
-      "count": 1
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/settings/LoanSettingsPanel.tsx",
-      "text": "<label><input type=\"checkbox\" checked={Boolean(item.requiresDetail)} onChange={event => update(index, { requiresDetail: event.target.checked })} /> Detalle</lab",
-      "count": 1
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/settings/RolesPanel.tsx",
-      "text": "<input type=\"checkbox\" checked={role.admin} disabled={consultationMode} onChange={e => setAdmin(idx, e.target.checked)} />",
-      "count": 1
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/settings/RolesPanel.tsx",
-      "text": "<input type=\"checkbox\" checked={role.edit.has(mod.key)} disabled={consultationMode} onChange={() => toggle(idx, 'edit', mod.key)} />",
-      "count": 1
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/settings/RolesPanel.tsx",
-      "text": "<input type=\"checkbox\" checked={role.view.has(mod.key)} disabled={consultationMode} onChange={() => toggle(idx, 'view', mod.key)} />",
-      "count": 1
-    },
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/settings/TenantsDashboard.tsx",
-      "text": "<input type=\"checkbox\" checked={draft.activo !== false} onChange={event => setDraft(current => ({ ...current, activo: event.target.checked }))} />",
-      "count": 1
-    },
-    {
-      "rule": "details",
-      "file": "src/components/settings/AdvancedSettings.tsx",
-      "text": "<details className=\"card\">",
-      "count": 1
     },
     {
       "rule": "details",
@@ -394,30 +346,6 @@
     },
     {
       "rule": "input-nativo",
-      "file": "src/components/settings/InvitesPanel.tsx",
-      "text": "<input className=\"input\" type=\"number\" min={1} max={90} value={expiresInDays} disabled={consultationMode} onChange={e => setExpiresInDays(Number(e.target.value)",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/settings/LifecyclePanel.tsx",
-      "text": "type=\"number\"",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/settings/TenantsDashboard.tsx",
-      "text": "<input className=\"input\" type=\"color\" value={draft.themeColor || '#3b82f6'} onChange={event => setDraft(current => ({ ...current, themeColor: event.target.value",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/settings/TenantsDashboard.tsx",
-      "text": "<input type=\"file\" accept=\"image/png,image/jpeg,image/webp\" onChange={event => void handleLogoFile(event.target.files?.[0] || null)} />",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
       "file": "src/components/tools/MailSettings.tsx",
       "text": "<label>SMTP port<input className=\"input\" type=\"number\" value={draft.smtpPort} onChange={e => update('smtpPort', Number(e.target.value) || 0)} placeholder=\"465\" ",
       "count": 1
@@ -432,24 +360,6 @@
       "rule": "title-tooltip",
       "file": "src/components/analytics/ParqueSection.tsx",
       "text": "<i title={`${row.label}: ${row.value}`} /",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/settings/AllowedUsersPanel.tsx",
-      "text": "<strong title={user.email}",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/settings/ModulesPanel.tsx",
-      "text": "<button title=\"Bajar\" disabled={consultationMode || index === modules.length - 1} onClick={() => m",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/settings/ModulesPanel.tsx",
-      "text": "<button title=\"Subir\" disabled={consultationMode || index === 0} onClick={() => move(mod.key, -1)}",
       "count": 1
     }
   ]

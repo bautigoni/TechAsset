@@ -1,144 +1,231 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Button, EmptyState, ErrorState, InlineConfirm, Input, NumberField, SkeletonRows, StatusLine } from '../../ui';
+import { cx } from '../../ui/util';
 import { createInvite, getInvites, getSiteSettings, resendInvite, revokeInvite, type Invite } from '../../services/authApi';
-import { Button } from '../layout/Button';
-import { MailStatusChip } from './MailStatusChip';
-import { DATE_ONLY, formatDate } from '../../utils/formatters';
-import { toast, errorMessage, copyToClipboard } from '../layout/Feedback';
-import { SelectField } from '../layout/SelectField';
+import { formatDate, DATE_ONLY } from '../../utils/formatters';
+import { Card, CardBody, CardFoot, ChoiceField, Collapse, CopyButton, errorText } from './settingsKit';
+import { MailStatusLine } from './MailStatusLine';
 
 const DEFAULT_TURNOS = ['Sin turno', 'Mañana', 'Tarde', 'Todo el día'];
+const FALLBACK_ROLES = ['Administrador', 'Asistente', 'Consulta'];
 
-export function InvitesPanel({ consultationMode }: { consultationMode: boolean }) {
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [roles, setRoles] = useState<string[]>(['Administrador', 'Asistente', 'Consulta']);
+type Result = { link: string; emailSent: boolean; hadEmail: boolean; emailError: string } | null;
+type RowNote = { key: number; tone: 'ok' | 'bad'; text: string };
+
+const daysLeft = (iso: string) => {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms)) return '';
+  const days = Math.ceil(ms / 86400000);
+  return days <= 0 ? 'vence hoy' : `vence en ${days} día${days === 1 ? '' : 's'}`;
+};
+
+/**
+ * Invitaciones de la sede: generar (rol, turno, mail opcional, vencimiento de
+ * 1 a 90 días), copiar el link, reenviar la misma invitación y revocar con
+ * confirmación en línea. El server limita a 20 por hora (429 con el motivo).
+ */
+export function InvitesPanel({ header, readOnly, onChanged }: { header: (actions?: ReactNode) => ReactNode; readOnly: boolean; siteCode: string; onChanged?: () => void }) {
+  const [invites, setInvites] = useState<Invite[] | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [roles, setRoles] = useState<string[]>(FALLBACK_ROLES);
   const [turnos, setTurnos] = useState<string[]>(DEFAULT_TURNOS);
   const [role, setRole] = useState('Consulta');
   const [turno, setTurno] = useState('Sin turno');
   const [email, setEmail] = useState('');
-  const [expiresInDays, setExpiresInDays] = useState(14);
+  const [days, setDays] = useState<number | null>(14);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [lastLink, setLastLink] = useState('');
-  const [lastEmailSent, setLastEmailSent] = useState<boolean | null>(null);
+  const [result, setResult] = useState<Result>(null);
+  const [rowBusy, setRowBusy] = useState(0);
+  const [revoking, setRevoking] = useState(0);
+  const [notes, setNotes] = useState<Record<number, RowNote>>({});
+  const noteSeq = useRef(0);
 
-  const load = () => getInvites().then(r => setInvites(r.items || [])).catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar las invitaciones.'), tone: 'error' }));
+  const load = () => {
+    setLoadError('');
+    return getInvites()
+      .then(response => setInvites(response.items || []))
+      .catch(reason => setLoadError(errorText(reason, 'No se pudieron cargar las invitaciones.')));
+  };
   useEffect(() => {
-    load();
-    getSiteSettings().then(r => {
-      const cfg = (r.settings as Record<string, unknown>)?.['roles.config'];
+    void load();
+    getSiteSettings().then(response => {
+      const cfg = response.settings?.['roles.config'];
       if (Array.isArray(cfg) && cfg.length) {
-        const names = cfg.map(x => String((x as { name?: string }).name || '')).filter(Boolean);
-        setRoles(names);
-        setRole(names.find(n => n !== 'Administrador') || names[0]);
+        const names = cfg.map(item => String((item as { name?: string }).name || '')).filter(Boolean);
+        if (names.length) {
+          setRoles(names);
+          setRole(names.find(name => name !== 'Administrador') || names[0]);
+        }
       }
-      const sh = (r.settings as Record<string, unknown>)?.['shift.options'];
-      if (Array.isArray(sh) && sh.length) setTurnos(sh.map(String));
-    }).catch(() => {});
+      const shifts = response.settings?.['shift.options'];
+      if (Array.isArray(shifts) && shifts.length) setTurnos(shifts.map(String));
+    }).catch(() => undefined);
   }, []);
 
+  const note = (id: number, value: Omit<RowNote, 'key'>) => {
+    noteSeq.current += 1;
+    const key = noteSeq.current;
+    setNotes(current => ({ ...current, [id]: { ...value, key } }));
+  };
+  const dropNote = (id: number) => setNotes(current => { const next = { ...current }; delete next[id]; return next; });
+
   const generate = async () => {
+    if (busy || readOnly) return;
+    const mail = email.trim().toLowerCase();
+    if (mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { setError('El mail no parece válido. Dejalo vacío si solo querés el link.'); return; }
     setBusy(true);
     setError('');
-    setLastLink('');
-    setLastEmailSent(null);
+    setResult(null);
     try {
-      const response = await createInvite({ role, turno, email: email.trim() || undefined, expiresInDays });
-      setLastLink(response.invite.registerUrl);
-      setLastEmailSent(response.emailSent);
+      const response = await createInvite({ role, turno, email: mail || undefined, expiresInDays: Math.min(90, Math.max(1, days || 14)) });
+      setResult({ link: response.invite.registerUrl, emailSent: response.emailSent, hadEmail: Boolean(mail), emailError: (response as { emailError?: string }).emailError || '' });
       setEmail('');
       await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo crear la invitación.');
+      onChanged?.();
+    } catch (reason) {
+      setError(errorText(reason, 'No se pudo crear la invitación.'));
     } finally {
       setBusy(false);
     }
   };
 
-  // Reenvia la misma invitacion en vez de generar un codigo nuevo, que dejaria
-  // a la persona con dos codigos vivos.
-  const resend = async (id: number) => {
-    setBusy(true);
-    setError('');
+  // Reenvía la MISMA invitación (no genera un código nuevo).
+  const resend = async (invite: Invite) => {
+    setRowBusy(invite.id);
     try {
-      const response = await resendInvite(id);
-      if (!response.emailSent) setError(response.emailError || 'No se pudo reenviar el mail.');
-      load();
+      const response = await resendInvite(invite.id);
+      note(invite.id, response.emailSent ? { tone: 'ok', text: `Reenviada a ${invite.email}.` } : { tone: 'bad', text: response.emailError || 'No se pudo reenviar el mail.' });
+      await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se pudo reenviar la invitacion.');
+      note(invite.id, { tone: 'bad', text: errorText(reason, 'No se pudo reenviar la invitación.') });
     } finally {
-      setBusy(false);
+      setRowBusy(0);
     }
   };
 
-  const revoke = async (id: number) => {
+  const revoke = async (invite: Invite) => {
+    setRowBusy(invite.id);
     try {
-      await revokeInvite(id);
-      toast({ message: 'Invitación revocada.', tone: 'ok' });
+      await revokeInvite(invite.id);
+      setRevoking(0);
+      note(invite.id, { tone: 'ok', text: `Invitación ${invite.code} revocada: el link ya no sirve.` });
+      await load();
+      onChanged?.();
     } catch (reason) {
-      toast({ message: errorMessage(reason, 'No se pudo revocar la invitación.'), tone: 'error' });
+      note(invite.id, { tone: 'bad', text: errorText(reason, 'No se pudo revocar la invitación.') });
+    } finally {
+      setRowBusy(0);
     }
-    load();
   };
 
-  const copy = (text: string) => { void copyToClipboard(text); };
+  const active = (invites || []).filter(invite => invite.status === 'Activa').length;
 
   return (
-    <section className="card">
-      <div className="card-head"><h3>Invitaciones</h3><MailStatusChip /></div>
-      <p className="muted" style={{ marginTop: 0 }}>Generá un código de un solo uso para que alguien se registre con un rol y turno definidos.</p>
-      <div className="grid-2">
-        <label>Rol
-          <SelectField value={String(role)} disabled={consultationMode} onChange={value => setRole(value)} options={[...roles.map(r => ({ value: String(r), label: String(r) }))]} />
-        </label>
-        <label>Turno
-          <SelectField value={String(turno)} disabled={consultationMode} onChange={value => setTurno(value)} options={[...turnos.map(t => ({ value: String(t), label: String(t) }))]} />
-        </label>
-      </div>
-      <div className="grid-2">
-        <label>Mail (opcional, para enviar la invitación)
-          <input className="input" type="email" value={email} disabled={consultationMode} onChange={e => setEmail(e.target.value)} placeholder="persona@colegio.edu.ar" />
-        </label>
-        <label>Vence en (días)
-          <input className="input" type="number" min={1} max={90} value={expiresInDays} disabled={consultationMode} onChange={e => setExpiresInDays(Number(e.target.value) || 14)} />
-        </label>
-      </div>
-      <div className="actions" style={{ marginTop: 8 }}>
-        <Button variant="primary" disabled={busy || consultationMode} onClick={generate}>{busy ? 'Generando…' : 'Generar invitación'}</Button>
-      </div>
-      {error && <div className="tool-error">{error}</div>}
-      {lastLink && (
-        <div className="tool-info" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span>Link: <code>{lastLink}</code></span>
-          <Button className="mini-action-btn" onClick={() => copy(lastLink)}>Copiar link</Button>
-          {lastEmailSent === true && <span>· mail enviado ✓</span>}
-          {lastEmailSent === false && email === '' && <span>· compartí el link</span>}
-        </div>
-      )}
+    <>
+      {header()}
+      <MailStatusLine context="invites" />
+      <Card title="Nueva invitación" meta="Hasta 20 por hora">
+        <CardBody>
+          <div className="cfg-stack" data-scanner-ignore="">
+            <ChoiceField label="Rol" value={role} disabled={readOnly} options={roles.map(name => ({ value: name, label: name }))} onChange={setRole} />
+            <ChoiceField label="Turno" value={turno} disabled={readOnly} options={turnos.map(name => ({ value: name, label: name }))} onChange={setTurno} />
+            <div className="cfg-grid">
+              <Input
+                label="Mail (opcional)"
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                value={email}
+                disabled={readOnly}
+                placeholder="Si lo completás, le mandamos la invitación"
+                onValueChange={value => { setEmail(value); setError(''); }}
+                onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void generate(); } }}
+              />
+              <NumberField label="Vence en" unit="días" min={1} max={90} value={days} disabled={readOnly} hint="De 1 a 90 días." onChange={setDays} />
+            </div>
+          </div>
+        </CardBody>
+        <CardFoot status={error || (readOnly ? 'Modo consulta: no se pueden generar invitaciones.' : '')} tone={error ? 'bad' : 'muted'}>
+          <Button variant="primary" loading={busy} loadingLabel="Generando…" disabled={readOnly} onClick={() => void generate()}>Generar invitación</Button>
+        </CardFoot>
+        <Collapse open={Boolean(result)}>
+          {result && (
+            <div className="cfg-result" role="status">
+              <span className="cfg-nowrap cfg-strong">Link listo</span>
+              <span className="cfg-t2">
+                {result.emailSent ? '· mail enviado' : result.hadEmail ? `· el mail no salió${result.emailError ? ` (${result.emailError})` : ''}: compartí el link` : '· compartí el link'}
+              </span>
+              <code className="cfg-link">{result.link}</code>
+              <CopyButton text={result.link} />
+            </div>
+          )}
+        </Collapse>
+      </Card>
 
-      <div className="table-wrap" style={{ marginTop: 12 }}>
-        <table className="compact-table">
-          <thead><tr><th>Código</th><th>Rol</th><th>Turno</th><th>Estado</th><th>Mail</th><th>Envío</th><th></th></tr></thead>
-          <tbody>
-            {invites.map(inv => (
-              <tr key={inv.id}>
-                <td><code>{inv.code}</code></td>
-                <td>{inv.role}</td>
-                <td>{inv.turno}</td>
-                <td>{inv.status}</td>
-                <td>{inv.email || '-'}</td>
-                <td className="muted">{inv.emailSentAt ? `Enviado ${formatDate(inv.emailSentAt, DATE_ONLY)}` : inv.emailError ? <span className="is-error">{inv.emailError}</span> : inv.email ? 'Sin registro' : '—'}</td>
-                <td>{inv.status === 'Activa' && !consultationMode && (
-                  <div className="table-actions">
-                    {inv.email && <Button className="mini-action-btn" disabled={busy} onClick={() => void resend(inv.id)}>Reenviar</Button>}
-                    <Button className="mini-action-btn" onClick={() => revoke(inv.id)}>Revocar</Button>
+      <Card title="Invitaciones de la sede" meta={invites ? <span className="cfg-mono">{active} activa{active === 1 ? '' : 's'} · {invites.length} en total</span> : undefined}>
+        {loadError && <div className="cfg-pad"><ErrorState message={loadError} onRetry={() => void load()} /></div>}
+        {!invites && !loadError && <div className="cfg-pad"><SkeletonRows rows={3} /></div>}
+        {invites && !invites.length && (
+          <div className="cfg-pad"><EmptyState compact title="Todavía no generaste invitaciones." description="Generá una arriba: el link sirve aunque no cargues mail." /></div>
+        )}
+        {invites && invites.length > 0 && (
+          <div className="cfg-table cfg-ti" role="table" aria-label="Invitaciones">
+            <div className="cfg-trow is-head" role="row">
+              <span role="columnheader">Código</span><span role="columnheader">Rol y turno</span><span role="columnheader" className="cfg-ti-mail">Mail y envío</span><span role="columnheader">Estado</span><span role="columnheader" className="cfg-ti-act">Acciones</span>
+            </div>
+            {invites.map(invite => {
+              const isActive = invite.status === 'Activa';
+              const rowNote = notes[invite.id];
+              return (
+                <div className="cfg-tgroup" key={invite.id}>
+                  <div className="cfg-trow" role="row">
+                    <span role="cell" className="cfg-stack-xs">
+                      <span className="cfg-mono cfg-break">{invite.code}</span>
+                      <span className="cfg-t3">{isActive ? daysLeft(invite.expiresAt) : `creada ${formatDate(invite.createdAt, DATE_ONLY, '')}`}</span>
+                    </span>
+                    <span role="cell" className="cfg-stack-xs">
+                      <span className="cfg-wrap">{invite.role}{invite.kind === 'admin' && <span className="cfg-t3"> · código admin</span>}</span>
+                      <span className="cfg-t3">{invite.turno}</span>
+                    </span>
+                    <span role="cell" className="cfg-stack-xs cfg-ti-mail">
+                      <span className={cx('cfg-break', !invite.email && 'cfg-t3')}>{invite.email || 'Solo link'}</span>
+                      <span className="cfg-t3">
+                        {invite.emailSentAt ? `Enviado ${formatDate(invite.emailSentAt, DATE_ONLY)}` : invite.emailError ? <span className="is-bad">{invite.emailError}</span> : invite.email ? 'Sin registro de envío' : 'sin envío'}
+                      </span>
+                    </span>
+                    <span role="cell" className={cx('cfg-nowrap', isActive ? 'cfg-t2' : 'cfg-t3')}>{invite.status}</span>
+                    <span role="cell" className="cfg-ti-act">
+                      {isActive && !readOnly && (
+                        <>
+                          {invite.email && <Button size="sm" variant="ghost" loading={rowBusy === invite.id && revoking !== invite.id} disabled={Boolean(rowBusy)} onClick={() => void resend(invite)}>Reenviar</Button>}
+                          <Button size="sm" variant="ghost" className="cfg-danger-text" disabled={Boolean(rowBusy)} aria-expanded={revoking === invite.id} onClick={() => setRevoking(revoking === invite.id ? 0 : invite.id)}>Revocar</Button>
+                        </>
+                      )}
+                    </span>
                   </div>
-                )}</td>
-              </tr>
-            ))}
-            {!invites.length && <tr><td colSpan={7} className="empty-state">Todavía no generaste invitaciones.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </section>
+                  <Collapse open={revoking === invite.id}>
+                    <InlineConfirm
+                      danger
+                      className="cfg-row-confirm"
+                      message={`¿Revocar la invitación ${invite.code}?`}
+                      detail="El link deja de servir. Si la persona todavía la necesita, vas a tener que generar otra."
+                      confirmLabel="Revocar"
+                      busy={rowBusy === invite.id}
+                      onConfirm={() => void revoke(invite)}
+                      onCancel={() => setRevoking(0)}
+                    />
+                  </Collapse>
+                  <Collapse open={Boolean(rowNote)}>
+                    {rowNote && <StatusLine key={rowNote.key} className="cfg-row-status" tone={rowNote.tone} message={rowNote.text} onDismiss={() => dropNote(invite.id)} />}
+                  </Collapse>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <CardFoot status="Reenviar manda la misma invitación (no cambia el código). Revocar pide confirmación acá mismo." tone="muted" />
+      </Card>
+    </>
   );
 }

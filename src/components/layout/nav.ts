@@ -4,7 +4,6 @@ import {
   BellRing,
   BookOpen,
   Boxes,
-  Building2,
   CalendarDays,
   Clock3,
   ClipboardCheck,
@@ -19,7 +18,6 @@ import {
   Settings,
   Shapes,
   Ticket,
-  Users,
   WalletCards,
   Wrench
 } from 'lucide-react';
@@ -75,8 +73,8 @@ export const NAV: NavItem[] = [
   { key: 'canvas', label: 'Canvas', hint: 'Pizarra libre', Icon: Shapes, group: 'recursos' },
   { key: 'tools', label: 'Herramientas', hint: 'Utilidades del equipo TIC', Icon: Wrench, group: 'recursos' },
   { key: 'quickaccess', label: 'Accesos rápidos', hint: 'Links que se abren en otra pestaña', Icon: Link2, group: 'recursos' },
-  { key: 'tenants', label: 'Tenants', hint: 'Sedes, branding e importación', Icon: Building2, group: 'admin', superadminOnly: true },
-  { key: 'adminusers', label: 'Usuarios', hint: 'Usuarios de todas las sedes', Icon: Users, group: 'admin', superadminOnly: true },
+  // Tenants y Usuarios (superadmin) viven en Configuración › Sedes / Usuarios
+  // desde la etapa 8b; sus URLs viejas abren esos paneles.
   // Página de muestra de la librería src/ui (interna, etapa 1 del rediseño).
   { key: 'ui', label: 'Componentes UI', hint: 'Librería Grafito', Icon: Palette, group: 'admin', superadminOnly: true },
   { key: 'settings', label: 'Configuración', hint: 'Sede, usuarios y preferencias', Icon: Settings, group: 'config' }

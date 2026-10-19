@@ -1,83 +1,109 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Button, EmptyState, ErrorState, NumberField, SkeletonRows } from '../../ui';
+import { IconCheck } from '../../ui/icons';
+import { cx } from '../../ui/util';
 import { getLifecycleDefaults, updateLifecycleDefault, type LifecycleDefault } from '../../services/devicesApi';
-import { Button } from '../layout/Button';
+import { Card, CardFoot, errorText, useDirty } from './settingsKit';
 
-// Vida útil esperada por clase de activo. La cadena es: override por equipo →
-// este override por sede → baseline global. Una sede nueva funciona sin cargar
-// nada acá; guardar en blanco vuelve al valor global.
-export function LifecyclePanel({ consultationMode }: { consultationMode: boolean }) {
-  const [rows, setRows] = useState<LifecycleDefault[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+type RowState = { tone: 'ok' | 'bad'; text: string };
+
+/**
+ * Vida útil esperada por clase de activo. Cadena de prioridad: equipo → esta
+ * sede → valor del sistema. Vacío (o 0) vuelve al del sistema. El server pide
+ * permiso de edición de Dispositivos.
+ */
+export function LifecyclePanel({ header, readOnly }: { header: (actions?: ReactNode) => ReactNode; readOnly: boolean; siteCode: string }) {
+  const [rows, setRows] = useState<LifecycleDefault[] | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, number | null>>({});
+  const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState('');
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [rowState, setRowState] = useState<Record<string, RowState>>({});
 
-  const load = () => getLifecycleDefaults()
-    .then(response => {
-      setRows(response.items);
-      setDrafts(Object.fromEntries(response.items.map(item => [item.assetClass, item.origen === 'global' ? '' : String(item.meses)])));
-    })
-    .catch(err => setError(err instanceof Error ? err.message : 'No se pudo cargar la vida útil.'));
-
+  const apply = (items: LifecycleDefault[]) => {
+    setRows(items);
+    setDrafts(Object.fromEntries(items.map(item => [item.assetClass, item.origen === 'sede' ? item.meses : null])));
+  };
+  const load = () => {
+    setLoadError('');
+    return getLifecycleDefaults().then(response => apply(response.items)).catch(reason => setLoadError(errorText(reason, 'No se pudo cargar la vida útil.')));
+  };
   useEffect(() => { void load(); }, []);
 
-  const save = async (assetClass: string) => {
-    setBusy(assetClass);
-    setError('');
-    setMessage('');
+  const savedValue = (row: LifecycleDefault) => (row.origen === 'sede' ? row.meses : null);
+  const dirtyClasses = (rows || []).filter(row => (drafts[row.assetClass] ?? null) !== savedValue(row));
+  useDirty('vida-util', dirtyClasses.length > 0);
+
+  const save = async (row: LifecycleDefault) => {
+    setBusy(row.assetClass);
+    setRowState(current => { const next = { ...current }; delete next[row.assetClass]; return next; });
+    const value = drafts[row.assetClass];
     try {
-      const raw = drafts[assetClass];
-      await updateLifecycleDefault({ assetClass, meses: raw ? Number(raw) : 0 });
-      setMessage(`${assetClass} actualizado.`);
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar.');
+      await updateLifecycleDefault({ assetClass: row.assetClass, meses: value && value > 0 ? value : 0 });
+      const response = await getLifecycleDefaults();
+      // Se pisa solo la fila guardada: lo que estés tipeando en otras no se pierde.
+      const fresh = response.items.find(item => item.assetClass === row.assetClass);
+      setRows(response.items);
+      if (fresh) setDrafts(current => ({ ...current, [row.assetClass]: fresh.origen === 'sede' ? fresh.meses : null }));
+      setRowState(current => ({ ...current, [row.assetClass]: { tone: 'ok', text: value && value > 0 ? 'Guardado para esta sede.' : 'Volvió al valor del sistema.' } }));
+    } catch (reason) {
+      setRowState(current => ({ ...current, [row.assetClass]: { tone: 'bad', text: errorText(reason, 'No se pudo guardar.') } }));
     } finally {
       setBusy('');
     }
   };
 
+  if (loadError && !rows) return <>{header()}<ErrorState message={loadError} onRetry={() => void load()} /></>;
+
   return (
-    <section className="card">
-      <div className="card-head">
-        <h3>Vida útil esperada</h3>
-        <span className="muted">Por clase de activo, en meses</span>
-      </div>
-      <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>
-        Dejalo vacío para usar el valor por defecto del sistema. Un equipo puntual puede tener su propio valor desde su perfil.
-      </p>
-      {message && <div className="tool-info">{message}</div>}
-      {error && <div className="tool-error">{error}</div>}
-      <div className="table-wrap">
-        <table>
-          <thead><tr><th>Clase</th><th>Meses</th><th>Origen</th><th /></tr></thead>
-          <tbody>
-            {rows.map(row => (
-              <tr key={row.assetClass}>
-                <td>{row.assetClass}</td>
-                <td>
-                  <input
-                    aria-label={`Vida útil de ${row.assetClass} en meses`}
-                    className="input"
-                    type="number"
-                    min="0"
-                    placeholder={String(row.meses)}
-                    value={drafts[row.assetClass] ?? ''}
-                    disabled={consultationMode}
-                    onChange={event => setDrafts(current => ({ ...current, [row.assetClass]: event.target.value }))}
-                  />
-                </td>
-                <td className="muted">{row.origen === 'sede' ? `${row.meses} (esta sede)` : `${row.meses} (por defecto)`}</td>
-                <td>
-                  <Button type="button" disabled={consultationMode || busy === row.assetClass} onClick={() => void save(row.assetClass)}>
-                    {busy === row.assetClass ? 'Guardando...' : 'Guardar'}
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <>
+      {header()}
+      <Card ariaLabel="Vida útil por clase">
+        {!rows ? <div className="cfg-pad"><SkeletonRows rows={6} /></div> : !rows.length ? (
+          <div className="cfg-pad"><EmptyState compact title="No hay clases de activo cargadas." description="Aparecen cuando el inventario tiene equipos con clase." /></div>
+        ) : (
+          <div className="cfg-table cfg-tv" role="table" aria-label="Vida útil por clase de activo">
+            <div className="cfg-trow is-head" role="row">
+              <span role="columnheader">Clase</span><span role="columnheader">Meses en esta sede</span><span role="columnheader" className="cfg-tv-or">Origen</span><span role="columnheader" className="ui-sr">Guardar</span>
+            </div>
+            {rows.map(row => {
+              const value = drafts[row.assetClass] ?? null;
+              const changed = value !== savedValue(row);
+              const state = rowState[row.assetClass];
+              return (
+                <div className="cfg-tgroup" key={row.assetClass}>
+                  <div className="cfg-trow" role="row">
+                    <span role="cell" className="cfg-strong cfg-wrap">{row.assetClass}</span>
+                    <span role="cell">
+                      <NumberField
+                        ariaLabel={`Vida útil de ${row.assetClass} en meses`}
+                        value={value}
+                        min={0}
+                        max={600}
+                        unit="meses"
+                        placeholder={String(row.origen === 'sede' ? '' : row.meses)}
+                        disabled={readOnly}
+                        onChange={next => { setDrafts(current => ({ ...current, [row.assetClass]: next === 0 ? null : next })); setRowState(current => { const copy = { ...current }; delete copy[row.assetClass]; return copy; }); }}
+                      />
+                    </span>
+                    <span role="cell" className="cfg-tv-or cfg-t2 cfg-wrap">
+                      <span className="cfg-mono">{row.meses}</span> meses · {row.origen === 'sede' ? 'esta sede' : 'por defecto'}
+                    </span>
+                    <span role="cell" className="cfg-cell-end">
+                      <Button size="sm" variant={changed ? 'primary' : 'ghost'} loading={busy === row.assetClass} loadingLabel="Guardando…" disabled={readOnly || !changed || Boolean(busy)} onClick={() => void save(row)}>Guardar</Button>
+                    </span>
+                  </div>
+                  {state && (
+                    <p className={cx('cfg-rowmsg', state.tone === 'bad' ? 'is-bad' : 'cfg-t2')} role={state.tone === 'bad' ? 'alert' : 'status'}>
+                      {state.tone === 'ok' && <IconCheck size={14} />} {row.assetClass}: {state.text}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <CardFoot status="Dejalo vacío para usar el valor por defecto del sistema. Un equipo puntual puede tener su propio valor desde su ficha. Prioridad: equipo, sede, sistema." tone="muted" />
+      </Card>
+    </>
   );
 }

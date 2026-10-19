@@ -381,6 +381,25 @@ try {
   const req = await call('POST', '/api/petty-cash/requests', { description: 'Smoke compra', estimatedAmount: 5 });
   const rej = await call('PATCH', `/api/petty-cash/requests/${req.json?.item?.id}`, { status: 'Rechazada', note: 'Nota editada' });
   check('caja chica: rechazar con nota', rej.json?.item?.status === 'Rechazada' && rej.json.item.resolutionNote === 'Nota editada', rej.text.slice(0, 200));
+  // Etapa 8b: Configuración (usuarios en consultas fijas + último login, Deshacer, validación de claves).
+  const pendMail = `smoke-pend-${Date.now()}@test.local`;
+  const pendNew = await call('POST', '/api/allowed-users', { email: pendMail, nombre: 'Pend', defaultRole: 'Consulta', status: 'Pendiente', sites: ['NFPT'], defaultSiteCode: 'NFPT' });
+  check('alta de usuario pendiente', pendNew.status === 200, pendNew.text.slice(0, 200));
+  const allowedList = await call('GET', '/api/allowed-users');
+  const pendRow = allowedList.json?.items?.find(item => item.email === pendMail);
+  check('usuarios: sedes en lote + lastLoginAt (LEFT JOIN)', allowedList.status === 200 && pendRow?.sites?.some(site => site.siteCode === 'NFPT') && 'lastLoginAt' in (pendRow || {}) && allowedList.json.items.find(item => item.email === email)?.sites?.length >= 1, allowedList.text.slice(0, 200));
+  const approve = await call('POST', `/api/allowed-users/${pendRow?.id}/approve`, {});
+  const undoApprove = await call('POST', `/api/allowed-users/${pendRow?.id}/undo`, { status: 'Pendiente' });
+  const afterUndoUser = (await call('GET', '/api/allowed-users')).json.items.find(item => item.email === pendMail);
+  check('usuarios: aprobar y deshacer (cancela el mail)', approve.status === 200 && undoApprove.json?.mailCancelled === true && afterUndoUser?.status === 'Pendiente', undoApprove.text.slice(0, 200));
+  await call('POST', `/api/allowed-users/${pendRow?.id}/delete`, {});
+  const undoDelete = await call('POST', `/api/allowed-users/${pendRow?.id}/undo`, { status: 'Pendiente' });
+  check('usuarios: deshacer un borrado', undoDelete.status === 200 && (await call('GET', '/api/allowed-users')).json.items.some(item => item.email === pendMail), undoDelete.text.slice(0, 200));
+  const badRoles = await call('PATCH', '/api/site-settings', { settings: { 'roles.config': [{ name: 'Sin admin', admin: false }] } });
+  const badModules = await call('PATCH', '/api/site-settings', { settings: { 'modules.enabled': 'devices' } });
+  check('site-settings valida claves conocidas (400)', badRoles.status === 400 && badModules.status === 400, `${badRoles.text.slice(0, 100)} ${badModules.text.slice(0, 100)}`);
+  const goodKey = await call('PATCH', '/api/site-settings', { settings: { 'shift.options': ['Sin turno', 'Mañana'] } });
+  check('site-settings guarda una clave válida', goodKey.status === 200 && goodKey.json?.settings?.['shift.options']?.length === 2, goodKey.text.slice(0, 200));
 
   // Errores de SQL en el log del server.
   const sqlErrors = serverLog.split('\n').filter(line => /syntax error|does not exist|operator does not|invalid input|ERROR:/i.test(line));

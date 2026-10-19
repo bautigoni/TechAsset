@@ -54,18 +54,58 @@ sitesRouter.patch('/site-settings', (req, res) => {
   const siteCode = requireSite(req);
   if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para editar esta sede.' });
   const body = req.body || {};
+  const entries = Object.entries(body.settings || body).filter(([key]) => key !== 'siteCode' && key !== 'site_code');
+  // Las claves que usa la app tienen forma fija: un valor mal escrito (por
+  // ejemplo desde Avanzado) podía dejar a todos sin acceso o sin menú.
+  for (const [key, value] of entries) {
+    const problem = validateSiteSetting(key, value);
+    if (problem) return res.status(400).json({ ok: false, error: `${key}: ${problem}` });
+  }
   const ts = nowIso();
   const stmt = getDb().prepare(`
     INSERT INTO site_settings (site_code, key, value_json, updated_at)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(site_code, key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at
   `);
-  for (const [key, value] of Object.entries(body.settings || body)) {
-    if (key === 'siteCode' || key === 'site_code') continue;
+  for (const [key, value] of entries) {
     stmt.run(siteCode, key, JSON.stringify(value), ts);
   }
   res.json({ ok: true, siteCode, settings: loadSiteSettings(siteCode) });
 });
+
+const STRING_LIST_SETTINGS = new Set(['modules.enabled', 'modules.order', 'loan.roles', 'loan.gradeOptions', 'devices.categories', 'shift.options']);
+const OPTION_LIST_SETTINGS = new Set(['loan.locations', 'loan.motives']);
+
+/** Devuelve el problema de una clave conocida de site_settings, o '' si está bien. */
+export function validateSiteSetting(key, value) {
+  if (!/^[A-Za-z0-9_.-]{1,80}$/.test(key)) return 'nombre de clave inválido.';
+  if (value === undefined) return 'falta el valor.';
+  if (STRING_LIST_SETTINGS.has(key)) {
+    if (!Array.isArray(value) || value.some(item => typeof item !== 'string')) return 'tiene que ser una lista de textos.';
+    return '';
+  }
+  if (OPTION_LIST_SETTINGS.has(key)) {
+    if (!Array.isArray(value)) return 'tiene que ser una lista.';
+    const bad = value.some(item => typeof item !== 'string' && (!item || typeof item !== 'object' || typeof (item.label ?? item.nombre) !== 'string'));
+    return bad ? 'cada opción tiene que ser un texto o {"label": "..."}.' : '';
+  }
+  if (key === 'roles.config') {
+    if (!Array.isArray(value) || !value.length) return 'tiene que ser una lista con al menos un rol.';
+    for (const role of value) {
+      if (!role || typeof role !== 'object' || typeof role.name !== 'string' || !role.name.trim()) return 'cada rol necesita un "name".';
+      if (role.admin !== undefined && typeof role.admin !== 'boolean') return `"admin" de ${role.name} tiene que ser true o false.`;
+      for (const field of ['view', 'edit']) {
+        if (role[field] !== undefined && (!Array.isArray(role[field]) || role[field].some(item => typeof item !== 'string'))) return `"${field}" de ${role.name} tiene que ser una lista de módulos.`;
+      }
+    }
+    if (!value.some(role => role.admin === true)) return 'tiene que quedar al menos un rol administrador.';
+    return '';
+  }
+  if (key === 'shift.morningOperator' || key === 'shift.afternoonOperator') {
+    return typeof value === 'string' ? '' : 'tiene que ser un texto.';
+  }
+  return '';
+}
 
 sitesRouter.post('/sites', (req, res) => {
   if (!isSuperadmin(req.user)) return res.status(403).json({ ok: false, error: 'Solo Superadmin puede administrar sedes.' });
@@ -128,23 +168,61 @@ sitesRouter.patch('/sites/:siteCode', (req, res) => {
 sitesRouter.get('/allowed-users', (req, res) => {
   const siteCode = requireSite(req);
   if (!isSiteManager(req, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para administrar usuarios de esta sede.' });
-  const rows = isSuperadmin(req.user)
-    ? getDb().prepare("SELECT id, email, nombre, default_role AS defaultRole, can_choose_role AS canChooseRole, status, activo FROM allowed_users WHERE COALESCE(deleted_at,'')='' ORDER BY status='Pendiente' DESC, email").all()
+  const superadmin = isSuperadmin(req.user);
+  // El último login (vive en `users`) viaja en la misma consulta. Antes las sedes
+  // de cada usuario se pedían una por una (N+1: dos consultas por usuario);
+  // ahora son tres consultas fijas y se arma en memoria.
+  const rows = superadmin
+    ? getDb().prepare(`
+      SELECT au.id, au.email, au.nombre, au.default_role AS defaultRole, au.can_choose_role AS canChooseRole, au.status, au.activo,
+             COALESCE(u.last_login_at,'') AS lastLoginAt
+      FROM allowed_users au
+      LEFT JOIN users u ON lower(u.email)=lower(au.email)
+      WHERE COALESCE(au.deleted_at,'')=''
+      ORDER BY au.status='Pendiente' DESC, au.email
+    `).all()
     : getDb().prepare(`
-      SELECT au.id, au.email, au.nombre, au.default_role AS defaultRole, au.can_choose_role AS canChooseRole, au.status, au.activo
+      SELECT au.id, au.email, au.nombre, au.default_role AS defaultRole, au.can_choose_role AS canChooseRole, au.status, au.activo,
+             COALESCE(u.last_login_at,'') AS lastLoginAt
       FROM allowed_users au
       JOIN allowed_user_sites aus ON aus.allowed_user_id=au.id
+      LEFT JOIN users u ON lower(u.email)=lower(au.email)
       WHERE aus.site_code=? AND aus.activo=1 AND au.default_role <> 'Superadmin' AND COALESCE(au.deleted_at,'')=''
       ORDER BY au.status='Pendiente' DESC, au.email
     `).all(siteCode);
-  res.json({ ok: true, items: rows.map(row => ({
-    ...row,
-    canChooseRole: Boolean(row.canChooseRole),
-    activo: Boolean(row.activo),
-    status: row.status || (row.activo ? 'Activo' : 'Inactivo'),
-    sites: isSuperadmin(req.user) ? getAllowedUserSites(row.id) : getAllowedUserSites(row.id).filter(site => normalizeSiteCode(site.siteCode) === siteCode)
-  })) });
+  const sitesByUser = bulkAllowedUserSites(rows);
+  res.json({ ok: true, items: rows.map(row => {
+    const sites = sitesByUser.get(Number(row.id)) || [];
+    return {
+      ...row,
+      canChooseRole: Boolean(row.canChooseRole),
+      activo: Boolean(row.activo),
+      status: row.status || (row.activo ? 'Activo' : 'Inactivo'),
+      sites: superadmin ? sites : sites.filter(site => normalizeSiteCode(site.siteCode) === siteCode)
+    };
+  }) });
 });
+
+/** Lo mismo que getAllowedUserSites para muchos usuarios, con dos consultas fijas. */
+function bulkAllowedUserSites(rows) {
+  const out = new Map();
+  if (!rows.length) return out;
+  const activeSites = getDb().prepare('SELECT site_code AS siteCode FROM sites WHERE activo=1 ORDER BY site_code').all();
+  const owners = new Map(rows.map(row => [Number(row.id), row]));
+  for (const [id, row] of owners) {
+    out.set(id, isSuperadmin({ rolGlobal: row.defaultRole })
+      ? activeSites.map((site, index) => ({ siteCode: site.siteCode, siteRole: 'Superadmin', turno: 'Todo el día', isDefault: index === 0, activo: true }))
+      : []);
+  }
+  const all = getDb().prepare('SELECT allowed_user_id AS userId, site_code AS siteCode, site_role AS siteRole, turno, is_default AS isDefault, activo FROM allowed_user_sites ORDER BY is_default DESC, site_code').all();
+  for (const site of all) {
+    const id = Number(site.userId);
+    const owner = owners.get(id);
+    if (!owner || isSuperadmin({ rolGlobal: owner.defaultRole })) continue;
+    out.get(id).push({ siteCode: site.siteCode, siteRole: site.siteRole, turno: site.turno, isDefault: Boolean(site.isDefault), activo: Boolean(site.activo) });
+  }
+  return out;
+}
 
 sitesRouter.get('/site-assistants', (req, res) => {
   const siteCode = requireSite(req);
@@ -243,6 +321,27 @@ sitesRouter.patch('/allowed-users/:id', (req, res) => {
   res.json({ ok: true, item: { ...updated, sites: getAllowedUserSites(updated.id) } });
 });
 
+/*
+ * Deshacer una acción sobre un usuario (aprobar, rechazar, desactivar, borrar):
+ * vuelve al estado anterior que manda el front y cancela el mail que la acción
+ * dejó en espera. Va antes de la ruta genérica `/:id/:action`.
+ */
+sitesRouter.post('/allowed-users/:id/undo', (req, res) => {
+  const siteCode = requireSite(req);
+  const allowed = getDb().prepare('SELECT * FROM allowed_users WHERE id=?').get(req.params.id);
+  if (!allowed) return res.status(404).json({ ok: false, error: 'Usuario permitido no encontrado.' });
+  if (!canManageAllowedUser(req, allowed.id, siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para administrar este usuario.' });
+  if (allowed.default_role === 'Superadmin' && !isSuperadmin(req.user)) return res.status(403).json({ ok: false, error: 'Solo Superadmin puede editar otro Superadmin.' });
+  const status = String(req.body?.status || '').trim();
+  if (!['Pendiente', 'Activo', 'Rechazado', 'Inactivo'].includes(status)) return res.status(400).json({ ok: false, error: 'Estado inválido para deshacer.' });
+  const mailCancelled = cancelPendingUserMail(Number(allowed.id));
+  getDb().prepare("UPDATE allowed_users SET status=?, activo=?, deleted_at='', deleted_by='', updated_at=? WHERE id=?")
+    .run(status, status === 'Activo' ? 1 : 0, nowIso(), allowed.id);
+  const updated = getDb().prepare('SELECT * FROM allowed_users WHERE id=?').get(allowed.id);
+  syncExistingUserSites(updated.email, updated);
+  res.json({ ok: true, mailCancelled, item: { ...updated, sites: getAllowedUserSites(updated.id) } });
+});
+
 sitesRouter.post('/allowed-users/:id/:action', (req, res) => {
   const siteCode = requireSite(req);
   const action = String(req.params.action || '').toLowerCase();
@@ -272,11 +371,37 @@ sitesRouter.post('/allowed-users/:id/:action', (req, res) => {
   const updated = getDb().prepare('SELECT * FROM allowed_users WHERE id=?').get(allowed.id);
   syncExistingUserSites(updated.email, updated);
 
-  // Notificar por mail (best-effort, no bloquea la respuesta).
-  notifyAllowedUserAction(updated, action).catch(error => console.warn('[allowed-users/notify]', error?.message || error));
+  // Notificar por mail (best-effort, no bloquea la respuesta). Sale cuando se
+  // cierra la ventana de Deshacer: si la acción se deshace, el mail no se manda.
+  scheduleUserMail(updated, action);
 
   res.json({ ok: true, item: { ...updated, sites: getAllowedUserSites(updated.id) } });
 });
+
+// Mails de acciones sobre usuarios en espera durante la ventana de Deshacer del
+// front (8 s) más un margen. En memoria: si el server se reinicia en esos
+// segundos el aviso se pierde (era best-effort también antes).
+const USER_MAIL_DELAY_MS = Math.max(0, Number(process.env.USER_MAIL_DELAY_MS ?? 12000) || 0);
+const pendingUserMails = new Map();
+
+function scheduleUserMail(allowed, action) {
+  const id = Number(allowed.id);
+  cancelPendingUserMail(id);
+  const timer = setTimeout(() => {
+    pendingUserMails.delete(id);
+    notifyAllowedUserAction(allowed, action).catch(error => console.warn('[allowed-users/notify]', error?.message || error));
+  }, USER_MAIL_DELAY_MS);
+  timer.unref?.();
+  pendingUserMails.set(id, timer);
+}
+
+function cancelPendingUserMail(id) {
+  const timer = pendingUserMails.get(id);
+  if (!timer) return false;
+  clearTimeout(timer);
+  pendingUserMails.delete(id);
+  return true;
+}
 
 async function notifyAllowedUserAction(allowed, action) {
   if (!allowed?.email) return;
