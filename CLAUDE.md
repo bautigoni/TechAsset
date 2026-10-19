@@ -157,12 +157,22 @@ Botón opcional en la pantalla de login al lado del tradicional por mail. Si las
 - VAPID setup: si `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` no están seteados, las push caen gracefully a in-app + mail sin romper.
 - Broadcast de release: `POST /api/admin/release-notes` (solo Superadmin, idempotente por `version`). Alternativa CLI: `npm run release:broadcast -- --version=vX.Y.Z --title="..." --file=./release-notes.md`.
 
+## Asistente e IA
+
+- Todo lo que usa IA pasa por el adaptador `server/services/ai/provider.js` (`getAiProvider()`: `createChat` con herramientas + streaming, `generateText` para resúmenes/diagnósticos). Proveedor por env: `AI_PROVIDER=anthropic|openai|local`, `AI_MODEL` (default `claude-haiku-5-5`), `AI_EFFORT` (chat, default `low`: en las evals fue más rápido y acertó más que `medium`), `ANTHROPIC_API_KEY`. OpenAI queda de respaldo solo mientras exista `OPENAI_API_KEY`; sacarla deja todo en Claude. Sin keys, el asistente cae al modo local de reglas.
+- `server/services/ai/text.js` (`generateAiText`): resúmenes de tickets/equipos (`aiSummaries.service.js`) y diagnóstico de aulas (`classrooms.routes.js`, salida JSON con esquema). Devuelve null sin proveedor o con el tope: el que llama usa su versión determinística.
+- Tope diario por sede (`AI_DAILY_LIMIT_PER_SITE`, default 400, 0 = sin tope) y tokens en `ai_usage_daily`; cada llamada deja una línea `[ai] op=... in= out= cache_read= ms=` en el log (sin contenido).
+- Chat: `server/services/assistant/chat.service.js` (prompt estable cacheado + bloque SESIÓN volátil; contexto de pantalla y artículos de conocimiento van en el mensaje del usuario como `<datos_no_confiables>`), herramientas en `tools.js` (formato Anthropic, `strict` en las de escritura: la API limita a 24 parámetros opcionales sumando las estrictas), auditoría y Deshacer en `actions.service.js` (`assistant_audit`, `assistant_actions`).
+- Seguridad: permisos por herramienta en el server (`writePermissionError`, por módulo); préstamos/devoluciones solo si el equipo (y la persona) aparecen en lo que escribió el usuario o en la pantalla abierta (frena instrucciones metidas en notas/tareas); más de 5 equipos en un pedido piden confirmación.
+- Endpoints: `POST /api/asistente/chat` (respuesta completa, compatible), `POST /api/asistente/chat/stream` (SSE: `start`, `delta`, `tool`, `action`, `done`, `error`), `POST /api/asistente/deshacer` (`{ actionId }`; mismos permisos, misma sede, mismo usuario o admin, hasta 12 h), `GET /api/asistente/status` (proveedor, modelo, tope y uso del día). `/asistente/transcribir` responde 410: el dictado es del navegador (`src/hooks/useSpeechDictation.ts`).
+- Evaluaciones: `node server/scripts/ai-evals.mjs [--db=ruta] [--only=a,b] [--effort=low|medium] [--verbose]` corre ~35 pedidos contra una copia temporal de la base con la key del `.env`. Correrlas antes de cambiar modelo, prompt o herramientas.
+
 ## Deployment
 
 **Producción real (VM bauhub, desde julio 2026): systemd, NO Docker.**
 
 - Caddy corre en el host y proxea `techasset.bauhub.online` → `reverse_proxy 127.0.0.1:3013` (ver `/etc/caddy/Caddyfile`).
-- En el 3013 escucha el servicio systemd `techasset` (`/etc/systemd/system/techasset.service`): `node server/index.js` desde `/opt/apps/techasset`, con `.env` ahí (PORT=3013, `DATABASE_URL` a Postgres/Supabase, `OPENAI_API_KEY`).
+- En el 3013 escucha el servicio systemd `techasset` (`/etc/systemd/system/techasset.service`): `node server/index.js` desde `/opt/apps/techasset`, con `.env` ahí (PORT=3013, `DATABASE_URL` a Postgres/Supabase, `AI_PROVIDER`/`AI_MODEL`/`ANTHROPIC_API_KEY`; `OPENAI_API_KEY` solo hasta que se confirme Claude en producción).
 - **Deploy: `ssh oracle` y correr `/opt/apps/techasset/deploy.sh`** (pull + npm install + build + `systemctl restart techasset` + health check). El restart NO es opcional: node no relee código del disco — actualizar la carpeta sin reiniciar deja el proceso viejo sirviendo (causa histórica de "deployé y sigue igual").
 - Cuidado con el nombre: el `hostname` de la VM es `bauhub`, pero el alias en `~/.ssh/config` es **`oracle`** (`168.75.68.75`, user `ubuntu`, key `oracle-bauhub.key`). `ssh bauhub` no resuelve.
 - La VM **no tiene credenciales de GitHub**: el código llega por un `git bundle` subido por scp, y el `origin` del repo remoto apunta a ese archivo en `/tmp` (que se borra al reiniciar la VM). Si `deploy.sh` avisa que el bundle no existe, desde la máquina de desarrollo: `git bundle create /tmp/techasset.bundle <sha-en-la-vm>..main`, `scp` a `bauhub:/tmp/`, `git remote set-url origin` al nuevo path y correr `deploy.sh`. El script imprime los comandos exactos con el SHA correcto.

@@ -236,6 +236,8 @@ Panel del asistente (columna)──►  /api/asistente/chat (SSE, streaming)
 4. `ANTHROPIC_API_KEY` y `AI_MODEL=claude-haiku-5-5` en el `.env` del server (nunca en el repo), deploy, verificación de las 4 funciones en producción.
 5. Recién entonces se borra `OPENAI_API_KEY` del `.env` de producción y la dependencia `openai` de `package.json`.
 
+**Estado (19/10):** pasos 1 a 3 hechos en código. Adaptador `server/services/ai/provider.js` (Anthropic por defecto, OpenAI de respaldo mientras exista su key) usado por el chat, los resúmenes y el diagnóstico de aulas; streaming SSE (`/asistente/chat/stream`), Deshacer (`/asistente/deshacer`), auditoría (`assistant_audit`), tope diario por sede y evaluaciones (`server/scripts/ai-evals.mjs`, 38/38 con `AI_EFFORT=low`). Dictado: hook `useSpeechDictation` (Web Speech API); `/asistente/transcribir` responde 410 hasta que el panel nuevo use el hook. Falta: enchufar el hook, el stream y las tarjetas con Deshacer en el panel nuevo; pasos 4 y 5 (deploy, verificación en producción, borrar OpenAI).
+
 1. **Claves**: solo en el `.env` del server (`OPENAI_API_KEY`, opcional `ANTHROPIC_API_KEY`), nunca con prefijo `VITE_`. Una prueba del build falla si el `dist/` contiene algo con forma de key.
 2. **Adaptador de proveedor**: una interfaz (`generate({ messages, tools, stream })`) con implementación OpenAI (la actual) y opcional Anthropic, elegida por `AI_PROVIDER`/`AI_MODEL`. Cambiar de modelo no toca el resto.
 3. **Streaming (SSE)**: la respuesta aparece mientras se escribe; las llamadas a la IA son asíncronas y no bloquean el proceso. Las consultas de las herramientas sí son sincrónicas (`pg-sync`): se mantienen acotadas (sin SQL libre, como hoy) y medidas con el banco.
