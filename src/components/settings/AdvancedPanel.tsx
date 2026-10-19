@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Braces, RefreshCw } from 'lucide-react';
 import { Button, Collapse, EmptyState, ErrorState, Input, SkeletonRows, Textarea } from '../../ui';
 import { TruncatedText } from '../../ui/Truncated';
 import { cx } from '../../ui/util';
@@ -52,6 +52,8 @@ function diagValue(key: string, value: unknown) {
     return '—';
   }
   if (key === 'lastImportAt' && typeof value === 'string') return formatDate(value, SHORT_DATE_TIME, value);
+  // La fuente trae la fecha cruda de la última importación: ya se muestra formateada al lado.
+  if (key === 'source' && typeof value === 'string') return value.replace(/\s*·\s*Última importación:.*$/i, '');
   return typeof value === 'object' ? JSON.stringify(value) : String(value);
 }
 
@@ -168,7 +170,7 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
         </Collapse>
         {loadError && <div className="cfg-pad"><ErrorState message={loadError} onRetry={loadSettings} /></div>}
         {!settings && !loadError && <div className="cfg-pad"><SkeletonRows rows={6} /></div>}
-        {settings && !keys.length && <div className="cfg-pad"><EmptyState compact title="Esta sede no tiene claves guardadas." description="Se crean solas al guardar en las otras secciones." /></div>}
+        {settings && !keys.length && <div className="cfg-pad"><EmptyState compact icon={<Braces size={18} aria-hidden="true" />} title="Esta sede no tiene claves guardadas." description="Se crean solas al guardar en las otras secciones." /></div>}
         {keys.length > 0 && <div className="cfg-table cfg-tk" role="list" aria-label="Claves de la sede">
         {keys.map(key => {
           const isOpen = open === key;

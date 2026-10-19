@@ -91,7 +91,7 @@ export function ParqueSection({ data, loading, error, onRetry }: Props) {
         <p className="an-callout" role="note">Solo el {summary.cobertura}% del inventario tiene condición cargada. Corré la revisión desde Inventario TIC para que estos números sean confiables.</p>
       )}
       {(data || initial) && <KpiStrip label="Parque" items={kpis} loading={initial} />}
-      <FlowRows has={has} render={render} rows={[[['cond', 6], ['cls', 6]], [['ren', 6], ['vida', 6]], [['ar', 12]]]} />
+      <FlowRows has={has} render={render} rows={[[['cond', 6], ['cls', 6, 'wide']], [['ren', 6], ['vida', 6]], [['ar', 12]]]} />
       {data && !data.aRenovar.length && <RenewEmpty />}
       {data && missing.length > 0 && (
         <EmptyCard id="an-par-empty" title="Sin datos del parque para estos gráficos" reason="Aparecen cuando los equipos tengan condición, fecha de alta o vida útil cargadas (Inventario TIC y Configuración › Vida útil esperada)." items={missing} />

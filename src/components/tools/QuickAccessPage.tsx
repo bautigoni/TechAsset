@@ -358,7 +358,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
           <section className="qa-card qa-extra" aria-labelledby="qa-handing">
             <h2 id="qa-handing" className="qa-extra-title">Handing está configurado</h2>
             <p className="qa-extra-text">La sede tiene un formulario de mantenimiento en Handing. {handingAdded ? 'Ya está en tus accesos.' : 'Si lo querés acá, agregalo como acceso.'}</p>
-            <TruncatedText className="qa-mono qa-extra-url">{handingUrl}</TruncatedText>
+            <TruncatedText className="qa-mono qa-extra-url" lines={2}>{handingUrl}</TruncatedText>
             {editable && !handingAdded && (
               <div><Button size="sm" variant="secondary" icon={<Plus size={14} />} onClick={() => openNew({ titulo: 'Handing (mantenimiento)', url: handingUrl, descripcion: 'Pedido de mantenimiento edilicio', categoria: 'Institucionales' })}>Agregar como acceso</Button></div>
             )}

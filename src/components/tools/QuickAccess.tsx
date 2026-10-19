@@ -175,7 +175,7 @@ export function LinkTile({ link, editable, sorting, isFirst, isLast, editing, co
         <span className="qa-text">
           <TruncatedText className="qa-title" lines={2}>{link.titulo}</TruncatedText>
           {link.descripcion && <TruncatedText className="qa-desc" lines={2}>{link.descripcion}</TruncatedText>}
-          <TruncatedText className="qa-domain">{domain}</TruncatedText>
+          <TruncatedText className="qa-domain" lines={2}>{domain}</TruncatedText>
         </span>
         <ExternalLink className="qa-ext" size={14} strokeWidth={1.6} aria-hidden="true" />
       </a>

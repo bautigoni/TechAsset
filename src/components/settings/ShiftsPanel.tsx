@@ -78,8 +78,8 @@ export function ShiftsPanel({ header, readOnly, siteCode }: { header: (actions?:
           <p className="cfg-hint">Escribí el nombre tal como entra cada uno a TechAsset: así "Mis tareas del turno" le muestra las suyas.</p>
         </CardBody>
         <CardFoot
-          status={status?.text || (readOnly ? 'Modo consulta: no se puede guardar.' : changed ? 'Hay cambios sin guardar.' : '')}
-          tone={status ? status.tone : changed ? 'warn' : readOnly ? 'muted' : undefined}
+          status={status?.text || (readOnly ? 'Modo consulta: no se puede guardar.' : changed ? 'Hay cambios sin guardar.' : 'Sin cambios para guardar.')}
+          tone={status ? status.tone : changed ? 'warn' : 'muted'}
         >
           {changed && <Button variant="ghost" disabled={saving} onClick={discard}>Descartar</Button>}
           <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={readOnly || !changed} onClick={() => void save()}>Guardar turnos</Button>

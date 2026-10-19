@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { MailPlus, Plus, RefreshCw, Search, UserRound } from 'lucide-react';
 import type { SiteInfo } from '../../types';
 import { Button, Collapse, EmptyState, ErrorState, InlineConfirm, Input, Segmented, SkeletonRows, StatusLine } from '../../ui';
 import { cx, fold } from '../../ui/util';
@@ -388,6 +388,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
             <div className="cfg-pad">
               <EmptyState
                 compact
+                icon={q ? <Search size={18} aria-hidden="true" /> : <UserRound size={18} aria-hidden="true" />}
                 title={q ? 'Nadie coincide con esa búsqueda.' : filter === 'pendientes' ? 'No hay solicitudes pendientes.' : filter === 'sinsede' ? 'Todos los usuarios tienen al menos una sede.' : 'No hay usuarios con este filtro.'}
                 description={q ? 'Probá con parte del mail o del nombre.' : undefined}
                 action={(q || filter !== 'todos' || siteFilter !== 'todas') ? <Button size="sm" onClick={() => { setQuery(''); setFilter('todos'); setSiteFilter('todas'); }}>Ver todos</Button> : undefined}
@@ -428,7 +429,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                 </div>
               ))}
             </div>
-          ) : <div className="cfg-pad"><EmptyState compact title="Esta sede no tiene invitaciones." /></div>}
+          ) : <div className="cfg-pad"><EmptyState compact icon={<MailPlus size={18} aria-hidden="true" />} title="Esta sede no tiene invitaciones." /></div>}
           <CardFoot status="Para reenviar o revocar, entrá a la sede y abrí Invitaciones." tone="muted" />
         </Card>
       )}

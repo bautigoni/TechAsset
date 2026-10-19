@@ -1,3 +1,4 @@
+import { CalendarClock } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button, EmptyState, ErrorState, NumberField, SkeletonRows } from '../../ui';
 import { IconCheck } from '../../ui/icons';
@@ -59,7 +60,7 @@ export function LifecyclePanel({ header, readOnly }: { header: (actions?: ReactN
       {header()}
       <Card ariaLabel="Vida útil por clase">
         {!rows ? <div className="cfg-pad"><SkeletonRows rows={6} /></div> : !rows.length ? (
-          <div className="cfg-pad"><EmptyState compact title="No hay clases de activo cargadas." description="Aparecen cuando el inventario tiene equipos con clase." /></div>
+          <div className="cfg-pad"><EmptyState compact icon={<CalendarClock size={18} aria-hidden="true" />} title="No hay clases de activo cargadas." description="Aparecen cuando el inventario tiene equipos con clase." /></div>
         ) : (
           <div className="cfg-table cfg-tv" role="table" aria-label="Vida útil por clase de activo">
             <div className="cfg-trow is-head" role="row">

@@ -7,7 +7,7 @@ import {
 } from '../../services/knowledgeApi';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
-import { Button, InlineConfirm, Skeleton, SkeletonText, cx, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, InlineConfirm, Skeleton, SkeletonText, cx, icons, useStatusLine } from '../../ui';
 import { appScroller } from '../../utils/scroll';
 import { KnowledgeList } from './KnowledgeList';
 import { KnowledgeReader } from './KnowledgeReader';
@@ -315,19 +315,24 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
   );
   const tagSuggestions = useMemo(() => Array.from(new Set(list.items.flatMap(item => item.tags))).sort(), [list.items]);
 
-  const leaveConfirm = pending ? (
-    <div className="kb-leave">
-      <InlineConfirm
-        danger
-        message="Tenés cambios sin guardar."
-        detail={`Si querés ${pending.label}, se descartan. También podés seguir editando y guardar.`}
-        confirmLabel="Descartar cambios"
-        cancelLabel="Seguir editando"
-        onConfirm={pending.run}
-        onCancel={() => setPending(null)}
-      />
-    </div>
-  ) : null;
+  // Se abre suave debajo del encabezado del editor (y te lleva hasta él si quedó arriba).
+  const leaveConfirm = (
+    <Collapse open={Boolean(pending)} gap="var(--g-s-4)">
+      {pending && (
+        <div className="kb-leave">
+          <InlineConfirm
+            danger
+            message="Tenés cambios sin guardar."
+            detail={`Si querés ${pending.label}, se descartan. También podés seguir editando y guardar.`}
+            confirmLabel="Descartar cambios"
+            cancelLabel="Seguir editando"
+            onConfirm={pending.run}
+            onCancel={() => setPending(null)}
+          />
+        </div>
+      )}
+    </Collapse>
+  );
 
   const showList = !narrow || route.kind === 'list';
   const showMain = !narrow || route.kind !== 'list';

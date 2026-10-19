@@ -264,7 +264,8 @@ function Heatmap({ matrix, hours, hourTotals, dayTotals, total, cells, quiet, un
           <h4 className="an-card-title" id="an-slots-t">Dónde tener equipos cargados</h4>
         </div>
         <ol className="an-slots">
-          {cells.slice(0, 7).map(item => {
+          {/* Hasta 10: al lado del mapa llenan su alto (sin un hueco entre la lista y la nota). */}
+          {cells.slice(0, 10).map(item => {
             const key = `${item.day}-${item.hour}`;
             return (
               <li key={key}>

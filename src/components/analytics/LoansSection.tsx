@@ -101,7 +101,7 @@ export function LoansSection({ summary, loading, periodLabel, onOpenSettings }: 
         rows={[
           [['evo', 8], ['ann', 4]],
           [['dur', 12]],
-          [['eq', 6], ['per', 6]],
+          [['eq', 6, 'wide'], ['per', 6, 'wide']],
           [['reason', 5], ['loc', 7]],
           [['course', 12]]
         ]}

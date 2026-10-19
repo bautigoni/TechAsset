@@ -35,6 +35,7 @@ import { inicioTests } from './tests/inicio.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
 import { operacionTests } from './tests/operacion.mjs';
 import { barridoOperacionTests } from './tests/barridoOperacion.mjs';
+import { uxRecursosTests } from './tests/uxRecursos.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 import { uxTests } from './tests/ux.mjs';
 
@@ -139,6 +140,7 @@ try {
   await operacionTests(ctx);
   console.log('\nBarrido UX: agenda, horarios, aulas, recordatorios, tareas, tickets y sugerencias (bxo)');
   barridoOperacion = await barridoOperacionTests(ctx);
+  await uxRecursosTests(ctx);
   timings.functional = Date.now() - t;
 
   if (!flag('no-baseline')) {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Building2, Plus, Search } from 'lucide-react';
 import type { SiteInfo } from '../../types';
 import { Button, Collapse, EmptyState, ErrorState, Input, SkeletonRows } from '../../ui';
 import { cx, fold } from '../../ui/util';
@@ -106,7 +106,7 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
         {!sites && !loadError && <div className="cfg-pad"><SkeletonRows rows={3} /></div>}
         {sites && !filtered.length && (
           <div className="cfg-pad">
-            <EmptyState compact title={query ? 'No hay sedes para esa búsqueda.' : 'Todavía no hay sedes.'} action={query ? <Button size="sm" onClick={() => setQuery('')}>Ver todas</Button> : undefined} />
+            <EmptyState compact icon={query ? <Search size={18} aria-hidden="true" /> : <Building2 size={18} aria-hidden="true" />} title={query ? 'No hay sedes para esa búsqueda.' : 'Todavía no hay sedes.'} action={query ? <Button size="sm" onClick={() => setQuery('')}>Ver todas</Button> : undefined} />
           </div>
         )}
         {filtered.length > 0 && <div className="cfg-table cfg-ts" role="list" aria-label="Sedes">

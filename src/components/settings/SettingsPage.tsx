@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import '../../styles/screens/settings.css';
 import type { AuthUser, Operator, SiteInfo, SyncStatus } from '../../types';
 import { Button, Collapse, EmptyState, InlineConfirm, releaseScrollReserve } from '../../ui';
-import { IconChevronLeft, IconChevronRight } from '../../ui/icons';
+import { IconChevronLeft, IconChevronRight, IconLock } from '../../ui/icons';
 import { cx } from '../../ui/util';
 import { getInvites, getSiteSettings } from '../../services/authApi';
 import { getManagedUsers } from '../../services/settingsApi';
@@ -363,6 +363,7 @@ export function SettingsPage(props: SettingsPageProps) {
                 <>
                   {header(effective)()}
                   <EmptyState
+                    icon={<IconLock size={20} />}
                     title="Esta sección es para administradores"
                     description={PANELS[effective].access === 'super' ? 'Solo un superadmin puede abrirla.' : 'Tu rol en esta sede no es administrador. Pedile acceso a quien administre la sede.'}
                     action={<Button onClick={() => goTo(narrow ? null : 'cuenta')}>{narrow ? 'Volver a Configuración' : 'Ir a Cuenta'}</Button>}

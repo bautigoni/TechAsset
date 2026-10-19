@@ -178,7 +178,7 @@ export function LoanOptionsPanel({ header, readOnly, siteCode }: { header: (acti
           </div>
           {draft[list].map(item => (
             <div className="cfg-trow" role="row" key={item.uid}>
-              <span role="cell"><Input size="sm" aria-label={`Nombre de la ${noun}`} value={item.label} disabled={readOnly} error={!item.label.trim()} onValueChange={next => patchOption(list, item.uid, { label: next })} /></span>
+              <span role="cell"><Input size="sm" aria-label={course ? 'Nombre de la ubicación' : 'Nombre del motivo'} value={item.label} disabled={readOnly} error={!item.label.trim()} onValueChange={next => patchOption(list, item.uid, { label: next })} /></span>
               <span role="cell"><Checkbox checked={Boolean(item.requiresDetail)} disabled={readOnly} label="Detalle" onCheckedChange={next => patchOption(list, item.uid, { requiresDetail: next })} /></span>
               {course && <span role="cell"><Checkbox checked={Boolean(item.requiresCourse)} disabled={readOnly} label="Curso" onCheckedChange={next => patchOption(list, item.uid, { requiresCourse: next })} /></span>}
               <span role="cell" className="cfg-cell-end"><Button size="sm" variant="ghost" disabled={readOnly} aria-label={`Quitar ${item.label || noun}`} onClick={() => removeOption(list, item.uid)}>Quitar</Button></span>
@@ -188,7 +188,7 @@ export function LoanOptionsPanel({ header, readOnly, siteCode }: { header: (acti
         <div className="cfg-add" data-scanner-ignore="">
           <Input
             size="sm"
-            aria-label={`Nueva ${noun}`}
+            aria-label={course ? 'Nueva ubicación' : 'Nuevo motivo'}
             placeholder={`Agregar ${noun} y Enter`}
             value={value}
             disabled={readOnly}

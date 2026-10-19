@@ -1,3 +1,4 @@
+import { MailPlus } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button, Collapse, EmptyState, ErrorState, InlineConfirm, Input, NumberField, SkeletonRows, StatusLine } from '../../ui';
 import { cx } from '../../ui/util';
@@ -167,7 +168,7 @@ export function InvitesPanel({ header, readOnly, onChanged }: { header: (actions
         {loadError && <div className="cfg-pad"><ErrorState message={loadError} onRetry={() => void load()} /></div>}
         {!invites && !loadError && <div className="cfg-pad"><SkeletonRows rows={3} /></div>}
         {invites && !invites.length && (
-          <div className="cfg-pad"><EmptyState compact title="Todavía no generaste invitaciones." description="Generá una arriba: el link sirve aunque no cargues mail." /></div>
+          <div className="cfg-pad"><EmptyState compact icon={<MailPlus size={18} aria-hidden="true" />} title="Todavía no generaste invitaciones." description="Generá una arriba: el link sirve aunque no cargues mail." /></div>
         )}
         {invites && invites.length > 0 && (
           <div className="cfg-table cfg-ti" role="table" aria-label="Invitaciones">

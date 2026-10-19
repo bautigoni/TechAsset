@@ -256,14 +256,15 @@ export function EmptyCard({ id, title, reason, items, action, span = 12 }: {
    otra en la misma columna). Lo que no tiene datos sale y los demás se
    reparten las 12 columnas. */
 
-export type FlowItem = [string | string[], number];
+/** [clave(s), columnas de 12, "wide" = en anchos medios va a fila entera (tablas: lado a lado quedan apretadas y desparejas en alto)]. */
+export type FlowItem = [string | string[], number, ('wide')?];
 
 export function FlowRows({ rows, has, render }: { rows: FlowItem[][]; has: (key: string) => boolean; render: (key: string, span: number) => ReactNode }) {
   return (
     <>
       {rows.map((row, index) => {
         const items = row
-          .map(([key, span]) => [Array.isArray(key) ? key.filter(has) : has(key) ? [key] : [], span] as [string[], number])
+          .map(([key, span, wide]) => [Array.isArray(key) ? key.filter(has) : has(key) ? [key] : [], span, wide] as [string[], number, 'wide' | undefined])
           .filter(([keys]) => keys.length > 0);
         if (!items.length) return null;
         const total = items.reduce((acc, [, span]) => acc + span, 0);
@@ -276,7 +277,7 @@ export function FlowRows({ rows, has, render }: { rows: FlowItem[][]; has: (key:
         // En anchos medios la fila se mantiene si todas sus tarjetas son de
         // media fila o menos (2 o 3 por fila); si alguna es ancha, todas bajan
         // a fila entera (nada de una tarjeta sola al lado de un hueco).
-        const midKeeps = shares.every(share => share <= 6);
+        const midKeeps = shares.every(share => share <= 6) && !items.some(([, , wide]) => wide);
         return (
           <div className="an-grid" key={index}>
             {items.map(([keys], i) => {

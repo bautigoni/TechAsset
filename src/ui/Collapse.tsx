@@ -91,8 +91,11 @@ function setReserve(scroller: HTMLElement, px: number) {
 function trimReserve(scroller: HTMLElement) {
   const state = stateOf(scroller);
   if (state.holds > 0 || state.reserve <= 0) return;
+  // Hace falta lo justo para que el scroll actual siga siendo válido. Arriba de
+  // todo (scrollTop 0) no hace falta nada: soltarla no mueve nada y en una
+  // página corta no queda un hueco al pie.
   const contentBottom = scroller.scrollHeight - state.reserve;
-  const visible = scroller.scrollTop + scroller.clientHeight - contentBottom;
+  const visible = scroller.scrollTop <= 0 ? 0 : scroller.scrollTop + scroller.clientHeight - contentBottom;
   const next = Math.max(0, Math.min(state.reserve, Math.ceil(visible)));
   if (next !== state.reserve) setReserve(scroller, next);
   if (next === 0) stopTrimming(scroller);
