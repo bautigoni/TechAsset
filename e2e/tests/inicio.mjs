@@ -302,8 +302,14 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
   const realDevices = devicesResponse.items || [];
   const session = (await api.get('/api/auth/session')).data;
   const operator = session?.user?.nombre || session?.user?.name || 'Bauti';
-  fs.rmSync(outDir, { recursive: true, force: true });
-  fs.mkdirSync(outDir, { recursive: true });
+  // Las capturas se renuevan solo si corre alguna prueba de este grupo (no con --only de otra cosa).
+  let outReady = false;
+  const prepareOut = () => {
+    if (outReady) return;
+    fs.rmSync(outDir, { recursive: true, force: true });
+    fs.mkdirSync(outDir, { recursive: true });
+    outReady = true;
+  };
 
   const dataFor = item => ({
     devicesResponse,
@@ -319,6 +325,7 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
     await test('l', 'Inicio', `Sin huecos ni truncados: ${item.label} (${INICIO_WIDTHS.join('/')} px, oscuro y claro)`, async () => {
       const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, reducedMotion: true, viewport: { width: 1440, height: 900 } });
       track(page);
+      prepareOut();
       const problems = [];
       const summary = [];
       try {
