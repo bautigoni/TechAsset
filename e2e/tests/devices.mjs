@@ -129,7 +129,11 @@ export async function devicesTests({ page, base, api, test, free }) {
     await page.waitForSelector('.dv-detail--page', { timeout: 20000 });
     const title = await text(page, '.dv-detail--page .dv-tag');
     assert(title === tagB, `La página muestra "${title}" (esperaba ${tagB}).`);
-    return `${tagA} en línea → página → Atrás; deep link ${tagB}`;
+    // "Dispositivos" en el menú estando en la página del equipo: vuelve a la lista y la URL pierde la etiqueta.
+    await page.click('.shell-nav-item[data-view="devices"]');
+    await until(async () => (await pathname(page)).endsWith('/devices'), { message: 'el menú vuelve a /devices' });
+    await page.waitForSelector(ROW);
+    return `${tagA} en línea → página → Atrás; deep link ${tagB} → menú → lista`;
   });
 
   await test('d', 'Historial', 'Buscar por alias sin espacio (touch34) encuentra al equipo; resumen en línea; CSV de todo lo filtrado', async () => {

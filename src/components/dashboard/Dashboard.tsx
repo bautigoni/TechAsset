@@ -5,7 +5,6 @@ import { Button, StatusText, cx, icons, useStatusLine } from '../../ui';
 import { undoLoans, type LoanBatchResponse } from '../../services/loansApi';
 import { getDevicesHealth, subscribeDevicesHealth } from '../../hooks/useDevices';
 import { isEditableTarget } from '../../hooks/useGlobalScanner';
-import { requestOpenTask } from '../../utils/openTask';
 import { errorMessage } from '../layout/Feedback';
 import { ActionBar, Shortcuts } from './ActionBar';
 // Cierre del día en línea: la misma sección que Préstamos (etapa 4).
@@ -32,6 +31,8 @@ export type DashboardProps = {
   scan?: { code: string; nonce: number };
   canOpen: (view: ViewKey) => boolean;
   onNavigate: (view: ViewKey) => void;
+  /** Abre la página de ESA tarea (/sede/x/tasks/<id>). */
+  onOpenTask: (id: string) => void;
   onOpenLoans: (etiqueta: string) => void;
   onProfile: (device: Device) => void;
   onEdit: (device: Device) => void;
@@ -77,7 +78,7 @@ function useUpdatedLabel() {
  * Sin analíticas, sin modales: todo se abre en línea.
  */
 export function Dashboard(props: DashboardProps) {
-  const { operator, consultationMode = false, devices, sync, agenda, tasks, movements, siteSettings, scan, canOpen, onNavigate, onOpenLoans, onProfile, onEdit, onLoanChanged, onRefresh, onAgendaSave } = props;
+  const { operator, consultationMode = false, devices, sync, agenda, tasks, movements, siteSettings, scan, canOpen, onNavigate, onOpenTask, onOpenLoans, onProfile, onEdit, onLoanChanged, onRefresh, onAgendaSave } = props;
   const [filter, setFilter] = useState<ListFilter>('loaned');
   const [type, setType] = useState('');
   const [query, setQuery] = useState('');
@@ -254,7 +255,7 @@ export function Dashboard(props: DashboardProps) {
             onAgendaSave={onAgendaSave}
             onOpenAgenda={() => onNavigate('agenda')}
             onOpenTasks={() => onNavigate('tasks')}
-            onOpenTask={task => { requestOpenTask(task.id); onNavigate('tasks'); }}
+            onOpenTask={task => onOpenTask(String(task.id))}
           />
         </div>
       </div>

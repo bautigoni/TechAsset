@@ -213,14 +213,27 @@ export function App() {
   // Ctrl K y el asistente): ahora llevan a la página del equipo.
   const setProfile = useCallback((device: Device | null) => { if (device) openDevicePage(device.etiqueta); }, [openDevicePage]);
   const setEditingDevice = useCallback((device: Device | null) => { if (device) openDevicePage(device.etiqueta, true); }, [openDevicePage]);
+  // "Abrir ESTA tarea" desde otra vista (Inicio → Tus tareas): la URL de la
+  // tarea y la vista Tareas; TasksPage lee /sede/x/tasks/<id> al montarse.
+  const openTaskPage = useCallback((id: string) => {
+    const url = `/sede/${activeSite.toLowerCase()}/tasks/${encodeURIComponent(id)}`;
+    pushNext.current = false;
+    if (window.location.pathname !== url) window.history.pushState({ techasset: true }, '', url);
+    setDevicePage(null);
+    // Ya en Tareas no se vuelve a montar: que relea la ruta.
+    if (viewRef.current === 'tasks') window.dispatchEvent(new PopStateEvent('popstate'));
+    else setView('tasks');
+  }, [activeSite]);
 
   useEffect(() => {
     if (!user || !activeSite) return;
     const next = `/sede/${activeSite.toLowerCase()}/${view}${view === 'devices' && devicePage ? `/${encodeURIComponent(devicePage.tag)}` : ''}`;
     const push = pushNext.current;
     pushNext.current = false;
-    // /sede/x/tasks/<id>: la página de una tarea es parte de la vista Tareas.
-    if (window.location.pathname === next || window.location.pathname.toLowerCase().startsWith(`${next}/`)) return;
+    // /sede/x/tasks/<id>: la página de una tarea es parte de la vista Tareas (la
+    // maneja TasksPage). Solo Tareas: en Dispositivos la página del equipo va en
+    // `next`, y volver a la lista tiene que sacar la etiqueta de la URL.
+    if (window.location.pathname === next || (view === 'tasks' && window.location.pathname.toLowerCase().startsWith(`${next}/`))) return;
     if (push) window.history.pushState({ techasset: true }, '', next);
     else window.history.replaceState(null, '', next);
   }, [activeSite, view, user, devicePage]);
@@ -599,7 +612,7 @@ export function App() {
           trabajo la espera se siente como lentitud. */}
       <div key={view} className="view-enter">
       <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
-      {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={devices} sync={sync} agenda={agenda.items} tasks={tasks.items} movements={movements} siteSettings={siteSettings} scan={dashScan} canOpen={target => navItems.some(item => item.key === target)} onNavigate={navigate} onOpenLoans={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onLoanChanged={afterLoanChange} onRefresh={() => refresh({ force: true, wait: true })} onAgendaSave={agenda.save} />}
+      {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={devices} sync={sync} agenda={agenda.items} tasks={tasks.items} movements={movements} siteSettings={siteSettings} scan={dashScan} canOpen={target => navItems.some(item => item.key === target)} onNavigate={navigate} onOpenTask={openTaskPage} onOpenLoans={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onLoanChanged={afterLoanChange} onRefresh={() => refresh({ force: true, wait: true })} onAgendaSave={agenda.save} />}
       {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} allDevices={devices} siteCode={activeSite} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} pageTag={devicePage?.tag} pageEdit={devicePage?.edit} onOpenPage={openDevicePage} onNavigate={navigate} />}
       {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onRefresh={() => Promise.all([refresh({ force: true, wait: true }), refreshMovements(true)])} siteCode={activeSite} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} scanRequest={scanRequest} />}
       {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}

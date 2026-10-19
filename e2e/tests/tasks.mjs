@@ -100,6 +100,24 @@ export async function tasksTests({ browser, base, api, apiConsulta, admin, consu
     return `${createdId} borrada y restaurada`;
   });
 
+  await test('e', 'Tareas', 'Inicio → "Tus tareas" abre la página de ESA tarea (/tasks/<id>); Atrás vuelve al Inicio', async () => {
+    await gotoView(page, base, 'dashboard');
+    const button = await page.waitForSelector('.dash-task:not([disabled])', { timeout: 20000 });
+    const label = await button.evaluate(node => node.getAttribute('aria-label') || '');
+    const titulo = label.replace(/^Abrir la tarea /, '');
+    const task = (await tasksOf(api)).find(item => item.titulo === titulo);
+    assert(task, `no encontré la tarea «${titulo}» en la base`);
+    await button.click();
+    const url = `/sede/${SITE.toLowerCase()}/tasks/${String(task.id).toLowerCase()}`;
+    await until(async () => (await pathname(page)).toLowerCase() === url, { message: 'la URL de la tarea' });
+    await page.waitForSelector('.tk-detail', { timeout: 8000 });
+    const shown = await page.$eval('.tk-detail', node => node.textContent || '');
+    assert(shown.includes(titulo), `la página muestra otra tarea (esperaba «${titulo}»)`);
+    await page.goBack();
+    await until(async () => (await pathname(page)).toLowerCase().endsWith('/dashboard'), { message: 'volver al Inicio con Atrás' });
+    return `«${titulo}» → ${url} → Atrás al Inicio`;
+  });
+
   await test('e', 'Tareas', 'Ctrl+click en dos tarjetas → Mover a (lote) → Deshacer', async () => {
     const columns = await columnsOf(api);
     const ids = [];
