@@ -1,5 +1,7 @@
 # Plan de migración y rediseño de TechAsset
 
+> **Documentos que mandan sobre este plan:** [DIRECTIVA-FINAL.md](DIRECTIVA-FINAL.md) (directiva del dueño del 19/10: etapas sin frenar, 3 pasadas de rendimiento, búsqueda rápida < 200 ms, auditoría con 10 subagentes, segunda validación, sin merge) y [REGLAS-UX.md](REGLAS-UX.md) (cosas que jamás tienen que pasar en una web y reglas innegociables de UX/UI y verificación). Progreso: [PROGRESO.md](PROGRESO.md).
+
 Estado: **propuesta para aprobar**. No se implementó nada todavía. Rama de trabajo: `rediseno-grafito`.
 
 Regla de este plan: **primero entender, después rediseñar**. Antes de tocar una pantalla se lee su inventario, se migra, y se tilda su lista de verificación completa. Si algo del inventario no se puede conservar, se frena y se pregunta.

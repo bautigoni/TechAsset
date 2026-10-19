@@ -11,6 +11,8 @@ Cada pantalla se implementa en un git worktree propio (base `rediseno-grafito`) 
 
 ## Qué leer antes de tocar nada
 
+- **`docs/redesign/REGLAS-UX.md` (obligatorio, del dueño):** cosas que jamás tienen que pasar en una web y reglas innegociables de UX/UI con su proceso de verificación. Tu pantalla las cumple todas y tu informe lo demuestra.
+
 - `CLAUDE.md` (reglas de UI del dueño: nada superpuesto, sin barras de scroll, sin modales ni capas flotantes salvo el tooltip de texto truncado, sin "AI slop", mobile fijo; rendimiento: cada query es sincrónica en prod).
 - `docs/redesign/PLAN.md` (§2, §4, §5, §5.1, §7 y tu etapa en §6) y `docs/redesign/TOKENS.md`.
 - El inventario de tu pantalla en `docs/redesign/inventario/0*.md` **completo**, con su lista de verificación: todo lo que hace hoy tiene que seguir funcionando. Si algo no se puede conservar, no lo saques: documentalo en tu informe.

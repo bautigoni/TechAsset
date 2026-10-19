@@ -1,0 +1,808 @@
+{
+  "meta": {
+    "label": "02-etapa2",
+    "date": "2026-10-19T14:50:49.452Z",
+    "repo": "C:\\Users\\Usuario\\AppData\\Local\\Temp\\techasset-etapa2",
+    "git": {
+      "sha": "cd38156d7d8ebeebcc894cd060bddb7ed966688d",
+      "branch": "HEAD",
+      "describe": "cd38156 docs: brief común de implementación de pantallas"
+    },
+    "runs": 7,
+    "cpu": 4,
+    "latency": 15,
+    "net": {
+      "rtt": 40,
+      "down": 10,
+      "up": 5
+    },
+    "viewport": {
+      "width": 1366,
+      "height": 800
+    },
+    "node": "v24.19.0",
+    "cpuModel": "AMD Ryzen 5 5560U with Radeon Graphics ×12",
+    "os": "Windows_NT 10.0.26200",
+    "dbSource": "C:\\Users\\Usuario\\AppData\\Local\\Temp\\claude\\C--Users-Usuario-Downloads-techasset\\28d4eb43-9ca6-445e-8c97-66e1be73520e\\scratchpad\\snapshot.db",
+    "only": [
+      "startup",
+      "views",
+      "people",
+      "devsearch",
+      "history",
+      "scroll",
+      "ops",
+      "api",
+      "sizes"
+    ],
+    "peopleDebounceNote": "220 ms (debounce)",
+    "build": {
+      "built": false,
+      "stale": false,
+      "ms": 0
+    },
+    "totalSeconds": 0
+  },
+  "summary": {
+    "startup": {
+      "cold": {
+        "fcp": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "shell": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "dashboardData": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "tti": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "tbt": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "dcl": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "longTaskMs": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "transferKB": null
+      },
+      "warm": {
+        "fcp": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "shell": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "dashboardData": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "tti": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "tbt": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "dcl": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "longTaskMs": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "transferKB": null
+      }
+    },
+    "views": {
+      "dashboard": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "loans": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "devices": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "inventory": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "agenda": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "tasks": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "tickets": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "history": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "analytics": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      },
+      "settings": {
+        "firstResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "firstContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondResponse": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "secondContent": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "failures": 0
+      }
+    },
+    "people": {},
+    "devsearch": {
+      "ms": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "rowsBefore": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "rows": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "found": 0,
+      "n": 0
+    },
+    "history": {
+      "first": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "firstRows": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "more": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "moreRows": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      }
+    },
+    "scroll": {
+      "devices": {
+        "p95": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "p50": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "worst": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "over50": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "frames": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "rows": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "scroller": null
+      },
+      "history": {
+        "p95": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "p50": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "worst": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "over50": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "frames": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "rows": {
+          "n": 0,
+          "median": null,
+          "p95": null,
+          "min": null,
+          "max": null,
+          "values": []
+        },
+        "scroller": null
+      }
+    },
+    "ops": {
+      "lend": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "lendPost": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "ret": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      },
+      "retPost": {
+        "n": 0,
+        "median": null,
+        "p95": null,
+        "min": null,
+        "max": null,
+        "values": []
+      }
+    }
+  },
+  "results": {
+    "startup": {
+      "cold": [],
+      "warm": []
+    },
+    "views": {
+      "first": {},
+      "second": {}
+    },
+    "people": {},
+    "devsearch": [],
+    "history": {
+      "first": [],
+      "more": []
+    },
+    "scroll": {
+      "devices": [],
+      "history": []
+    },
+    "ops": {
+      "lend": [],
+      "ret": []
+    },
+    "api": {},
+    "sizes": {
+      "critical": [
+        {
+          "file": "index.html",
+          "kind": "html",
+          "raw": 4034,
+          "gzip": 1614,
+          "rawKB": 3.9,
+          "gzipKB": 1.6
+        },
+        {
+          "file": "assets/index-DQolaGR3.js",
+          "kind": "js",
+          "raw": 320752,
+          "gzip": 101674,
+          "rawKB": 313.2,
+          "gzipKB": 99.3
+        },
+        {
+          "file": "assets/index-B3eDcoiL.css",
+          "kind": "css",
+          "raw": 262980,
+          "gzip": 44834,
+          "rawKB": 256.8,
+          "gzipKB": 43.8
+        },
+        {
+          "file": "assets/geist-latin-wght-normal-BgDaEnEv.woff2",
+          "kind": "font",
+          "raw": 29400,
+          "gzip": 29400,
+          "rawKB": 28.7,
+          "gzipKB": 28.7
+        }
+      ],
+      "initialJsGzipKB": 99.3,
+      "initialJsRawKB": 313.2,
+      "initialCssGzipKB": 43.8,
+      "initialCssRawKB": 256.8,
+      "preloadFontsKB": 28.7,
+      "criticalTotalGzipKB": 173.4,
+      "allJs": {
+        "files": 44,
+        "rawKB": 826.5,
+        "gzipKB": 267
+      },
+      "allCss": {
+        "files": 5,
+        "rawKB": 281.9,
+        "gzipKB": 50.1
+      }
+    },
+    "errors": [
+      {
+        "section": "entorno",
+        "run": -1,
+        "message": "SqliteError: unable to open database file\n    at new Database (C:\\Users\\Usuario\\Downloads\\techasset\\node_modules\\better-sqlite3\\lib\\database.js:69:26)\n    at prepareDatabase (file:///C:/Users/Usuario/Downloads/techasset/perf/suite.mjs:214:18)\n    at file:///C:/Users/Usuario/Downloads/techasset/perf/suite.mjs:1407:15\n    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async node:internal/modules/esm/loader:643:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)"
+      }
+    ],
+    "observedApis": [],
+    "startupApis": [],
+    "viewApis": {}
+  }
+}
