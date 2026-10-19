@@ -16,6 +16,9 @@ async function openBoard(page, base) {
 /** Reemplaza el texto de un campo (Ctrl+A y tipear). */
 async function typeIn(page, selector, text) {
   const el = await page.waitForSelector(selector, { timeout: 8000 });
+  // Si el campo está en un plegable que todavía se abre, el centro puede estar
+  // recortado y el click caería en otra cosa (y lo tipeado, en el escáner global).
+  await page.waitForFunction(node => !node.closest('.ui-collapse:not([data-state="open"])'), { timeout: 3000 }, el).catch(() => {});
   await el.click();
   await page.keyboard.down('Control');
   await page.keyboard.press('KeyA');
