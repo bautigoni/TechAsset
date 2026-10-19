@@ -186,6 +186,13 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
       return `prueba 1 · errores 2 · reporte ${twice.join('/')}`;
     });
 
+    await test('l', 'Herramientas', 'Configurar correo abre Configuración › Mail y SMTP (/settings/mail)', async () => {
+      await gotoView(page, base, 'tools');
+      await clickByText(page, '.tl-page button', /^Configurar correo en Configuración$/);
+      const where = await until(() => page.evaluate(() => (/\/settings\/mail$/i.test(window.location.pathname) && /Mail y SMTP/.test(document.querySelector('main')?.textContent || '') ? window.location.pathname : null)), { message: 'Configuración › Mail y SMTP' });
+      return where;
+    });
+
     // ── Caja chica ────────────────────────────────────────────────────
     await api.patch('/api/petty-cash/config', { initialAmount: 500000, requestsEnabled: true });
     const desc = `Gasto e2e ${stamp}`;

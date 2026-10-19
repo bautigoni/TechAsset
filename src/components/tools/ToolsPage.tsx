@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { Button, Eyebrow, StatusText, Tabs, icons } from '../../ui';
 import { fetchToolsConfig, type ToolsConfig } from '../../services/toolsApi';
 import type { ViewKey } from '../../types';
+import { requestSettingsPanel } from '../settings/settingsRoute';
 import { GlifingTool } from './GlifingTool';
 import { Credentials365Tool } from './Credentials365Tool';
 import { DownloadList } from './Downloads';
@@ -64,6 +65,8 @@ export function ToolsPage({ consultationMode = false, canEdit = true, canSend = 
   };
 
   const readOnly = consultationMode || !canEdit;
+  // Abre Configuración directo en el panel de Mail y SMTP (/sede/<sede>/settings/mail).
+  const openMailSettings = onNavigate ? () => { requestSettingsPanel('mail'); onNavigate('settings'); } : undefined;
   const mail = mailState(config);
 
   return (
@@ -81,8 +84,8 @@ export function ToolsPage({ consultationMode = false, canEdit = true, canSend = 
               <Button size="sm" variant="ghost" icon={<icons.IconRetry size={14} />} onClick={loadConfig}>Reintentar</Button>
             </span>
           )}
-          {onNavigate && (
-            <Button size="sm" variant="ghost" iconEnd={<ArrowRight size={14} strokeWidth={1.6} />} onClick={() => onNavigate('settings')}>
+          {openMailSettings && (
+            <Button size="sm" variant="ghost" iconEnd={<ArrowRight size={14} strokeWidth={1.6} />} onClick={openMailSettings}>
               Configurar correo en Configuración
             </Button>
           )}
@@ -104,7 +107,7 @@ export function ToolsPage({ consultationMode = false, canEdit = true, canSend = 
         <GlifingTool readOnly={readOnly} />
       </div>
       <div role="tabpanel" aria-label="Credenciales 365" hidden={tab !== 'creds'} className="tl-panel">
-        <Credentials365Tool readOnly={readOnly} canSend={canSend} config={config} onConfig={setConfig} onOpenMailSettings={onNavigate ? () => onNavigate('settings') : undefined} />
+        <Credentials365Tool readOnly={readOnly} canSend={canSend} config={config} onConfig={setConfig} onOpenMailSettings={openMailSettings} />
       </div>
       <div role="tabpanel" aria-label="Descargas" hidden={tab !== 'dl'} className="tl-panel">
         <section className="tl-card tl-dl-card" aria-labelledby="tl-dl-title">
