@@ -79,6 +79,8 @@ export async function tasksTests({ browser, base, api, apiConsulta, admin, consu
     await until(async () => (await tasksOf(api)).find(item => item.id === createdId)?.items?.find(entry => entry.id === itemId)?.completada, { message: 'la subtarea tildada en la base' });
     await page.click('.tk-detail .tk-sub--row .tk-sub-x');
     await until(async () => !(await tasksOf(api)).find(item => item.id === createdId)?.items?.length, { message: 'la subtarea quitada en la base' });
+    await page.waitForSelector('.tk-detail .ui-collapse[data-state="open"] .ui-status', { timeout: 5000 }); // la línea de estado terminó de abrir
+    await sleep(450); // y, si quedó fuera de vista, terminó de traerla
     await press(page, /Deshacer/, '.tk-detail');
     await until(async () => (await tasksOf(api)).find(item => item.id === createdId)?.items?.some(entry => entry.texto === 'Paso E2E' && entry.completada), { message: 'la subtarea restaurada (y tildada) por Deshacer' });
     await typeIn(page, '.tk-detail textarea[aria-label="Nuevo comentario"]', 'Comentario E2E');

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { AgendaItem } from '../../types';
 import { Button, DatePicker, Input, NumberField, Ring, Segmented, Textarea, TimeField, cx, preloadPickers } from '../../ui';
 import { weekdayOfKey } from '../../utils/formatters';
@@ -77,6 +77,7 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
   const [draft, setDraft] = useState<Draft>(() => (initial ? fromItem(initial) : BLANK));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const modId = useId();
   const set = (patch: Partial<Draft>) => { setDraft(current => ({ ...current, ...patch })); setError(''); };
 
@@ -109,10 +110,13 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    // Doble Enter / doble click no crea dos actividades.
+    if (savingRef.current) return;
     if (!draft.curso.trim()) { setError('Escribí el curso para guardar la actividad.'); return; }
     if (dated && !draft.fecha) { setError('Elegí la fecha de la actividad.'); return; }
     if (!timeOk) { setError('Hasta tiene que ser después de Desde.'); return; }
     if (conflict) { setError(`Conflicto de disponibilidad: ${draft.tipo} supera ${max} en ese horario.`); return; }
+    savingRef.current = true;
     setSaving(true);
     setError('');
     try {
@@ -120,6 +124,8 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
     } catch (err) {
       setError(errorText(err));
       setSaving(false);
+    } finally {
+      savingRef.current = false;
     }
   };
 

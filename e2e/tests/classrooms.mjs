@@ -46,6 +46,9 @@ async function openRoom(page, roomKey) {
   await room.focus();
   await page.keyboard.press('Enter');
   await page.waitForSelector(`${SHEET} .cls-eq-item`, { timeout: 15000 });
+  // La ficha entra con el colapso compartido (y, si quedó afuera, se la trae): se espera a que termine antes de tocar adentro.
+  await page.waitForSelector(`.ui-collapse[data-state="open"] > .ui-collapse-clip > * > ${SHEET}`, { timeout: 5000 });
+  await sleep(400);
 }
 
 const classroom = async (api, key) => (await api.get(`/api/classrooms/${encodeURIComponent(key)}`)).data.item;
@@ -291,6 +294,8 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
       await openReminders();
       await (await (await row()).$('.rem-check')).click();
       await until(async () => (await get())?.status === 'completed', { message: 'completado en la base' });
+      await page2.waitForSelector(`.rem-list-col ${settled('.ui-status')}`); // la línea de estado terminó de abrir (StatusSlot)
+      await sleep(450);
       await clickButton(page2, /Deshacer/, { scope: '.rem-list-col' });
       await until(async () => (await get())?.status === 'pending', { message: 'pendiente otra vez' });
       const before = (await get()).remindAt;
@@ -325,6 +330,8 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
       assert(await get(), 'Se borró sin confirmar.');
       await clickButton(page2, /^Borrar$/, { scope: '.rem-row .ui-confirm' });
       await until(async () => !(await get()), { message: 'borrado' });
+      await page2.waitForSelector(`.rem-list-col ${settled('.ui-status')}`); // la línea de estado terminó de abrir (StatusSlot)
+      await sleep(450);
       await clickButton(page2, /Deshacer/, { scope: '.rem-list-col' });
       await until(async () => Boolean(await get()), { message: 'recuperado' });
       const view = await openContext(browser, { base, token: consulta.token, releaseVersion });

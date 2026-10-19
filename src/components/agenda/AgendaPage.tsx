@@ -563,7 +563,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
               return (
                 <button key={item.id} type="button" className="ag-next" onClick={() => goToItem(item, 'Hoy')}>
                   <span className="ag-time g-num">{item.desde}–{item.hasta}</span>
-                  <TruncatedText className="ag-next-label" lines={2}>{`${item.curso} · ${item.actividad}`}</TruncatedText>
+                  <TruncatedText className="ag-next-label">{`${item.curso} · ${item.actividad}`}</TruncatedText>
                   <StatusText tone={st.tone}>{st.label}</StatusText>
                 </button>
               );

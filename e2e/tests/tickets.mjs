@@ -208,7 +208,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       await page.waitForSelector(`#sgx-${created.id} .ui-confirm`);
       await visibleClick(page, `#sgx-${created.id} .ui-confirm button`, /^Eliminar$/);
       await until(async () => !((await api.get('/api/suggestions')).data.items || []).some(item => item.id === created.id), { message: 'eliminada' });
-      await visibleClick(page, '.sgx-main > .ui-status button', /Deshacer/);
+      await visibleClick(page, '.sgx-main .ui-status button', /Deshacer/);
       const back = await until(async () => ((await api.get('/api/suggestions')).data.items || []).find(item => item.id === created.id), { message: 'recuperada' });
       assert(back.voteCount === 1, 'Al recuperarla perdió el voto.');
       return `${title}: validación en el lugar, voto, eliminar y Deshacer (conserva el voto)`;

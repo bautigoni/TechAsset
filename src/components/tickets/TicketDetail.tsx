@@ -9,7 +9,7 @@ import { ApiError } from '../../services/apiClient';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { Collapse } from '../../ui';
 import {
-  Button, Checkbox, EmptyState, ErrorState, Eyebrow, IconButton, InlineConfirm, Segmented, Select, SkeletonText, StatusText, Textarea, StatusSlot, useStatusLine
+  Button, Checkbox, EmptyState, ErrorState, Eyebrow, IconButton, InlineConfirm, Segmented, Select, SkeletonText, StatusText, Textarea, StatusSlot, useAnchoredToggle, useStatusLine
 } from '../../ui';
 import { IconPlus, IconRetry, IconX } from '../../ui/icons';
 import { TruncatedText } from '../../ui/Truncated';
@@ -142,6 +142,7 @@ export function TicketDetail({ id, tickets, classrooms, bases, canEdit, onOpen, 
 
   /* ── Descripción y archivo ── */
   const [descOpen, setDescOpen] = useState(false);
+  const anchored = useAnchoredToggle();
   const [fileOpen, setFileOpen] = useState(false);
 
   if (!item && !loadError) {
@@ -217,7 +218,7 @@ export function TicketDetail({ id, tickets, classrooms, bases, canEdit, onOpen, 
             <div className="tkx-sec-head"><h3 id={`tkx-desc-${id}`}>Descripción</h3></div>
             <p className="tkx-para tkx-pre">{!desc ? 'Sin descripción.' : descLong && !descOpen ? `${desc.slice(0, DESC_LONG).trimEnd()}…` : desc}</p>
             {descLong && (
-              <button type="button" className="tkx-link" aria-expanded={descOpen} onClick={() => setDescOpen(open => !open)}>
+              <button type="button" className="tkx-link" aria-expanded={descOpen} onClick={event => { const at = event.currentTarget; anchored(() => setDescOpen(open => !open), at); }}>
                 {descOpen ? 'Mostrar menos' : 'Mostrar todo'}
               </button>
             )}

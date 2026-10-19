@@ -136,7 +136,7 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
                 ariaLabel={`Subtarea: ${item.texto}`}
                 onCheckedChange={next => onToggleItem(task, item, next)}
               />
-              <TruncatedText className={cx('tk-sub-text', item.completada && 'is-done')}>{item.texto}</TruncatedText>
+              <TruncatedText className={cx('tk-sub-text', item.completada && 'is-done')} lines={2}>{item.texto}</TruncatedText>
               {canEdit && (
                 <button type="button" className="tk-sub-x" aria-label={`Quitar la subtarea «${item.texto}»`} disabled={item.id < 0} onClick={() => onRemoveItem(task, item)}>
                   <X size={12} aria-hidden="true" />

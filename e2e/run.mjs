@@ -34,6 +34,7 @@ import { shellTests } from './tests/shell.mjs';
 import { inicioTests } from './tests/inicio.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
 import { operacionTests } from './tests/operacion.mjs';
+import { barridoOperacionTests } from './tests/barridoOperacion.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 import { uxTests } from './tests/ux.mjs';
 
@@ -85,6 +86,7 @@ let layout = {};
 let mobile = {};
 let inicio = {};
 let ux = {};
+let barridoOperacion = {};
 let buildInfo = {};
 try {
   let t = Date.now();
@@ -135,6 +137,8 @@ try {
   await analyticsTests(ctx);
   console.log('\nOperación: plegables, huecos, truncados y acciones (op)');
   await operacionTests(ctx);
+  console.log('\nBarrido UX: agenda, horarios, aulas, recordatorios, tareas, tickets y sugerencias (bxo)');
+  barridoOperacion = await barridoOperacionTests(ctx);
   timings.functional = Date.now() - t;
 
   if (!flag('no-baseline')) {
@@ -207,7 +211,8 @@ const out = {
   layout,
   mobile,
   inicio,
-  ux
+  ux,
+  barridoOperacion
 };
 fs.writeFileSync(path.join(root, 'e2e', 'last-run.json'), JSON.stringify(out, null, 2));
 console.log(`Detalle completo en e2e/last-run.json`);

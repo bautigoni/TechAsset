@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { Classroom, Ticket, TicketSource, TicketState, TicketTemplate } from '../../types';
 import { createTicket, updateTicket, uploadTicketImage } from '../../services/ticketsApi';
 import {
-  Button, Combobox, Eyebrow, FileDrop, Input, RadioGroup, Segmented, Select, TagInput, Textarea, StatusSlot, useStatusLine
+  Button, Collapse, Combobox, Eyebrow, FileDrop, Input, RadioGroup, Segmented, Select, TagInput, Textarea, StatusSlot, useStatusLine
 } from '../../ui';
 import { IconAlert, IconFile } from '../../ui/icons';
 import { fold } from '../../ui/util';
@@ -82,6 +82,8 @@ export function TicketForm({ initial, templates, classrooms, assistants, tickets
   const [numError, setNumError] = useState('');
   const [aulaError, setAulaError] = useState('');
   const [error, setError] = useState('');
+  const lastError = useRef(error);
+  if (error) lastError.current = error;
   const [saving, setSaving] = useState(false);
   // Doble click / doble Enter: el segundo envío no sale (el estado tarda un render).
   const savingRef = useRef(false);
@@ -340,12 +342,12 @@ export function TicketForm({ initial, templates, classrooms, assistants, tickets
         </div>
       </div>
 
-      {error && (
+      <Collapse open={Boolean(error)}>
         <div className="ui-error" role="alert">
           <span className="ui-status-icon" aria-hidden="true"><IconAlert size={14} /></span>
-          <span className="ui-error-msg">{error}</span>
+          <span className="ui-error-msg">{error || lastError.current}</span>
         </div>
-      )}
+      </Collapse>
       <div className="tkx-actions">
         <Button type="submit" variant="primary" loading={saving} loadingLabel="Guardando…" disabled={uploads > 0}>{uploads > 0 ? 'Subiendo archivo…' : 'Guardar ticket'}</Button>
         <Button variant="ghost" onClick={onCancel}>Cancelar</Button>

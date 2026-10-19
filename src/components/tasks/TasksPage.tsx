@@ -229,7 +229,8 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
 
   /* ── Columnas ── */
   const createColumn = async () => {
-    if (!colForm) return;
+    // Doble Enter no crea dos columnas (la lista de columnas todavía no se recargó).
+    if (!colForm || colForm.saving) return;
     const name = colForm.name.trim();
     if (!name) { setColForm({ ...colForm, error: 'Poné un nombre.' }); return; }
     if (columns.some(column => column.name.toLowerCase() === name.toLowerCase())) { setColForm({ ...colForm, error: `Ya hay una columna «${name}».` }); return; }

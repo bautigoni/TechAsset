@@ -87,6 +87,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
     itemRef.current?.focus({ preventScroll: true });
   };
   const saveNote = async () => {
+    if (noteSaving) return;
     setNoteSaving(true);
     setNoteError('');
     try {

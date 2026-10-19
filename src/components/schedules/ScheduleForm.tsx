@@ -25,6 +25,7 @@ export function ScheduleForm({ initial, title, compact, onSubmit, onCancel, onDr
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const modId = useId();
+  const savingRef = useRef(false);
   const lastError = useRef(error);
   if (error) lastError.current = error;
   const set = (patch: Partial<ScheduleDraft>) => { setDraft(current => ({ ...current, ...patch })); setError(''); };
@@ -34,8 +35,11 @@ export function ScheduleForm({ initial, title, compact, onSubmit, onCancel, onDr
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    // Doble Enter / doble click no carga dos veces el mismo horario.
+    if (savingRef.current) return;
     if (!draft.teacher.trim() || !draft.course.trim()) { setError('Completá docente y curso para guardar.'); return; }
     if (!timeOk) { setError('Hasta tiene que ser después de Desde.'); return; }
+    savingRef.current = true;
     setSaving(true);
     setError('');
     try {
@@ -43,6 +47,8 @@ export function ScheduleForm({ initial, title, compact, onSubmit, onCancel, onDr
     } catch (err) {
       setError(errorText(err));
       setSaving(false);
+    } finally {
+      savingRef.current = false;
     }
   };
 

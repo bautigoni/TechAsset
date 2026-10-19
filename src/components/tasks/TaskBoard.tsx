@@ -90,7 +90,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
   useEffect(() => { if (editing) editRef.current?.focus({ preventScroll: true }); }, [editing?.id]);
   const openEditor = (column: TaskColumn) => setEditing(current => (current?.id === column.id ? null : { id: column.id, name: column.name, isDone: column.isDone, error: '', confirmDelete: false, saving: false }));
   const saveEditor = async (column: TaskColumn) => {
-    if (!editing) return;
+    if (!editing || editing.saving) return;
     const name = editing.name.trim();
     if (!name) { setEditing({ ...editing, error: 'Poné un nombre.' }); return; }
     if (columns.some(item => item.id !== column.id && item.name.toLowerCase() === name.toLowerCase())) { setEditing({ ...editing, error: 'Ya hay una columna con ese nombre.' }); return; }
