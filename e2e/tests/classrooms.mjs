@@ -1,4 +1,4 @@
-// l) Estado de aulas y m) Recordatorios (etapa 6b). Cada prueba verifica el
+// au) Estado de aulas y rec) Recordatorios (etapa 6b). Cada prueba verifica el
 // efecto en la base por API. Incluye la prueba de IDs de los planos: los IDs
 // son room_key de la base y no pueden cambiar respecto de los SVG viejos.
 import fs from 'node:fs';
@@ -71,7 +71,7 @@ function arDay(offset) {
 }
 
 export async function classroomsTests({ browser, base, api, apiConsulta, consulta, releaseVersion, admin, test, track = () => {} }) {
-  await test('l', 'Estado de aulas', 'IDs de los planos iguales a los de los SVG anteriores (room_key de la base)', async () => {
+  await test('au', 'Estado de aulas', 'IDs de los planos iguales a los de los SVG anteriores (room_key de la base)', async () => {
     const fixture = JSON.parse(fs.readFileSync(path.join(root, 'e2e/fixtures/classroom-room-ids.json'), 'utf8'));
     const { FLOOR_PLANS, roomsOf } = await import(pathToFileURL(path.join(root, 'src/components/classrooms/plan/floorPlans.js')).href);
     const diffs = [];
@@ -97,7 +97,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
   const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion });
   track(page);
   try {
-    await test('l', 'Estado de aulas', 'Teclado: Tab/Enter abre la ficha EN LÍNEA; cambio → aviso de cambios sin guardar → Guardar → Deshacer', async () => {
+    await test('au', 'Estado de aulas', 'Teclado: Tab/Enter abre la ficha EN LÍNEA; cambio → aviso de cambios sin guardar → Guardar → Deshacer', async () => {
       await openFloor(page, base, '1er piso');
       const before = await classroom(api, 'pp_2N');
       const current = stateOf(before, 'proyector') || 'Sin revisar';
@@ -134,7 +134,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
       return `proyector ${current} → ${target} → ${current}`;
     });
 
-    await test('l', 'Estado de aulas', 'Resumen filtra; zoom con botones; diagnóstico guardado se vuelve a mostrar', async () => {
+    await test('au', 'Estado de aulas', 'Resumen filtra; zoom con botones; diagnóstico guardado se vuelve a mostrar', async () => {
       await openFloor(page, base, '1er piso');
       await clickByText(page, '.cls-sum', /^Sin revisar/);
       const dims = await page.$$eval('.cls-room.is-dim', nodes => nodes.length);
@@ -161,7 +161,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
       return `filtro: ${dims} atenuadas, ${listCount} en la lista · zoom ${Math.round(before)} → ${Math.round(after)} px · score ${saved.report.score}`;
     });
 
-    await test('l', 'Estado de aulas', 'Crear ticket en línea vinculado al aula; categorías en línea (crear y eliminar con confirmación)', async () => {
+    await test('au', 'Estado de aulas', 'Crear ticket en línea vinculado al aula; categorías en línea (crear y eliminar con confirmación)', async () => {
       await openFloor(page, base, '1er piso');
       await openRoom(page, 'pp_5S');
       const before = (await api.get('/api/classrooms/pp_5S/incidents')).data.summary.total;
@@ -187,7 +187,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
     await context.close();
   }
 
-  await test('l', 'Estado de aulas', 'iPhone: la pinza con dos dedos acerca SOLO el plano (la página queda en escala 1) y un dedo lo mueve', async () => {
+  await test('au', 'Estado de aulas', 'iPhone: la pinza con dos dedos acerca SOLO el plano (la página queda en escala 1) y un dedo lo mueve', async () => {
     const view = await openContext(browser, { base, token: admin.token, releaseVersion, device: KnownDevices['iPhone 13'], reducedMotion: true });
     track(view.page);
     try {
@@ -215,7 +215,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
     }
   });
 
-  await test('l', 'Estado de aulas', 'Modo consulta: sin escritura en la ficha', async () => {
+  await test('au', 'Estado de aulas', 'Modo consulta: sin escritura en la ficha', async () => {
     const view = await openContext(browser, { base, token: consulta.token, releaseVersion });
     track(view.page);
     try {
@@ -240,7 +240,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
   const enabled = Array.isArray(settings['modules.enabled']) ? settings['modules.enabled'] : [];
   if (!enabled.includes('reminders')) await api.patch('/api/site-settings', { 'modules.enabled': [...enabled, 'reminders'] });
 
-  await test('m', 'Recordatorios', 'iPhone (Safari): alta con fecha y hora del selector propio, sin parsear texto del navegador', async () => {
+  await test('rec', 'Recordatorios', 'iPhone (Safari): alta con fecha y hora del selector propio, sin parsear texto del navegador', async () => {
     const view = await openContext(browser, { base, token: admin.token, releaseVersion, device: KnownDevices['iPhone 13'] });
     track(view.page);
     try {
@@ -287,7 +287,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
       await until(row, { message: 'la fila sembrada' });
     };
 
-    await test('m', 'Recordatorios', 'Completar → Deshacer; posponer en línea; editar (PATCH) en línea', async () => {
+    await test('rec', 'Recordatorios', 'Completar → Deshacer; posponer en línea; editar (PATCH) en línea', async () => {
       await openReminders();
       await (await (await row()).$('.rem-check')).click();
       await until(async () => (await get())?.status === 'completed', { message: 'completado en la base' });
@@ -317,7 +317,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
       return `completar/deshacer, pospuesto a ${postponed}, editado`;
     });
 
-    await test('m', 'Recordatorios', 'Borrar con confirmación en línea → Deshacer lo recupera; modo consulta sin acciones', async () => {
+    await test('rec', 'Recordatorios', 'Borrar con confirmación en línea → Deshacer lo recupera; modo consulta sin acciones', async () => {
       await openReminders();
       const r = await row();
       await (await r.$('button[aria-label^="Borrar recordatorio"]')).click();

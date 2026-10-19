@@ -1,4 +1,4 @@
-// l) Shell y colapsos (REGLAS-UX, agregado 19/10): abrir y cerrar secciones con
+// sh) Shell y colapsos (REGLAS-UX, agregado 19/10): abrir y cerrar secciones con
 // alto suave sin que el encabezado tocado se mueva ni el documento salte; la
 // franja de Accesos rápidos usa el ancho; ningún ítem del menú lateral queda
 // cortado o tapado por el bloque de abajo.
@@ -52,7 +52,7 @@ export async function shellTests({ browser, base, admin, releaseVersion, test, t
   const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
   track(page);
   try {
-    await test('l', 'Shell', 'Anclaje de colapso en Préstamos: el encabezado tocado no se mueve (± 2 px) al abrir y cerrar, y el documento no salta', async () => {
+    await test('sh', 'Shell', 'Anclaje de colapso en Préstamos: el encabezado tocado no se mueve (± 2 px) al abrir y cerrar, y el documento no salta', async () => {
       await gotoView(page, base, 'loans');
       await page.waitForSelector('.lo-group-toggle', { timeout: 20000 });
       await sleep(800);
@@ -102,7 +102,7 @@ export async function shellTests({ browser, base, admin, releaseVersion, test, t
   const home = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
   track(home.page);
   try {
-    await test('l', 'Shell', 'Franja de Accesos rápidos: se abre y cierra suave, el rayo y la página no saltan, usa el ancho sin truncar', async () => {
+    await test('sh', 'Shell', 'Franja de Accesos rápidos: se abre y cierra suave, el rayo y la página no saltan, usa el ancho sin truncar', async () => {
       const p = home.page;
       await gotoView(p, base, 'dashboard');
       const bolt = 'button[aria-label="Ver accesos rápidos"]';
@@ -183,7 +183,7 @@ export async function shellTests({ browser, base, admin, releaseVersion, test, t
     const ctx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width, height } });
     track(ctx.page);
     try {
-      await test('l', 'Shell', `Menú lateral a ${width}×${height}: todos los ítems entran enteros y nada los tapa`, async () => {
+      await test('sh', 'Shell', `Menú lateral a ${width}×${height}: todos los ítems entran enteros y nada los tapa`, async () => {
         await gotoView(ctx.page, base, 'dashboard');
         await ctx.page.waitForSelector('.shell-nav-groups .shell-nav-item', { timeout: 20000 });
         await sleep(400);

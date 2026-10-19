@@ -116,7 +116,7 @@ try {
   await functionalTests(ctx);
   await inventoryTests(ctx);
   await tasksTests(ctx);
-  console.log('\nInicio: huecos, truncados y plegado (l)');
+  console.log('\nInicio: huecos, truncados y plegado (ini)');
   inicio = await inicioTests(ctx);
   console.log('\nAsistente (k)');
   await assistantTests(ctx);

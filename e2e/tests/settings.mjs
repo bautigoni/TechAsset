@@ -1,4 +1,4 @@
-// m) Configuración (etapa 8b): Usuarios con Deshacer y borrado confirmado,
+// cfg) Configuración (etapa 8b): Usuarios con Deshacer y borrado confirmado,
 // Módulos (conteo, aviso de cambios sin guardar, orden y menú), Roles (Editar
 // marca Ver), Invitaciones (link y revocar en línea), Sedes (409), Avanzado
 // (JSON inválido), links viejos, gate de administración y que el encabezado no
@@ -35,7 +35,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
   const findUser = async () => ((await api.get('/api/allowed-users')).data.items || []).find(user => user.email === email);
 
   try {
-    await test('m', 'Configuración', 'Usuarios: aprobar → Deshacer (sin mail) y borrar con confirmación → Deshacer', async () => {
+    await test('cfg', 'Configuración', 'Usuarios: aprobar → Deshacer (sin mail) y borrar con confirmación → Deshacer', async () => {
       const created = await api.post('/api/allowed-users', { email, nombre: 'E2E Pendiente', defaultRole: 'Consulta', status: 'Pendiente', sites: ['NFPT'], defaultSiteCode: 'NFPT' });
       assert(created.status === 200, `no se pudo crear el pendiente (${created.status})`);
       await openPanel(page, base, 'usuarios');
@@ -54,7 +54,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       return 'aprobar, deshacer, borrar confirmado y deshacer';
     });
 
-    await test('m', 'Configuración', 'Módulos: conteo de cambios, aviso al salir, Descartar; reordenar y el menú se actualiza', async () => {
+    await test('cfg', 'Configuración', 'Módulos: conteo de cambios, aviso al salir, Descartar; reordenar y el menú se actualiza', async () => {
       await openPanel(page, base, 'modulos');
       await page.evaluate(() => document.querySelector('.cfg-mod [role=switch]').click());
       await sleep(200);
@@ -78,7 +78,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       return `${first} bajó y volvió`;
     });
 
-    await test('m', 'Configuración', 'Roles: marcar Editar marca Ver y se guarda; eliminar pide confirmación', async () => {
+    await test('cfg', 'Configuración', 'Roles: marcar Editar marca Ver y se guarda; eliminar pide confirmación', async () => {
       const before = (await api.get('/api/site-settings')).data.settings['roles.config'];
       const target = before.find(role => !role.admin);
       assert(target, 'no hay un rol no administrador');
@@ -112,7 +112,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       return `${target.name}: Editar ${viewEdit} marcó Ver`;
     });
 
-    await test('m', 'Configuración', 'Invitaciones: generar link; revocar con confirmación en línea', async () => {
+    await test('cfg', 'Configuración', 'Invitaciones: generar link; revocar con confirmación en línea', async () => {
       await openPanel(page, base, 'invitaciones');
       await clickText(page, '.cfg-card-fa button', /^Generar invitación$/);
       await until(() => page.$('.cfg-result .cfg-link'), { message: 'link generado' });
@@ -125,7 +125,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       return code;
     });
 
-    await test('m', 'Configuración', 'Sedes: crear con un código existente avisa (409) y no pisa nada', async () => {
+    await test('cfg', 'Configuración', 'Sedes: crear con un código existente avisa (409) y no pisa nada', async () => {
       const sites = (await api.get('/api/sites')).data.items;
       const existing = sites[0];
       await openPanel(page, base, 'sedes');
@@ -139,7 +139,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       return existing.siteCode;
     });
 
-    await test('m', 'Configuración', 'Avanzado: JSON inválido muestra el error y no deja guardar', async () => {
+    await test('cfg', 'Configuración', 'Avanzado: JSON inválido muestra el error y no deja guardar', async () => {
       await openPanel(page, base, 'avanzado');
       await clickText(page, '.cfg-tk .cfg-trow button', /^Editar$/);
       const area = await page.waitForSelector('.cfg-tk textarea');
@@ -152,7 +152,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       return 'cliente y server validan';
     });
 
-    await test('m', 'Configuración', 'Links viejos (/tenants, /adminusers, /configuracion/usuarios) y Atrás entre paneles', async () => {
+    await test('cfg', 'Configuración', 'Links viejos (/tenants, /adminusers, /configuracion/usuarios) y Atrás entre paneles', async () => {
       for (const [url, panel] of [['/sede/NFPT/tenants', 'sedes'], ['/sede/NFPT/adminusers', 'usuarios'], ['/sede/nfpt/configuracion/usuarios', 'usuarios']]) {
         await page.goto(`${base}${url}`, { waitUntil: 'domcontentloaded' });
         await until(() => page.$(`[data-settings-panel="${panel}"]`), { timeout: 20000, message: `${url} → ${panel}` });
@@ -165,7 +165,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       return 'ok';
     });
 
-    await test('m', 'Configuración', 'Cerrar un panel en línea no mueve el encabezado tocado', async () => {
+    await test('cfg', 'Configuración', 'Cerrar un panel en línea no mueve el encabezado tocado', async () => {
       await openPanel(page, base, 'usuarios');
       const last = await page.$$eval('[data-user-row]', list => list[list.length - 1].dataset.userRow);
       const sel = `[data-user-row="${last}"]`;
@@ -188,7 +188,7 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
   const view = await openContext(browser, { base, token: consulta.token, releaseVersion });
   track(view.page);
   try {
-    await test('m', 'Configuración', 'Rol sin admin: solo Tu cuenta y Turnos; Turnos de solo lectura; Usuarios explica que es de admin', async () => {
+    await test('cfg', 'Configuración', 'Rol sin admin: solo Tu cuenta y Turnos; Turnos de solo lectura; Usuarios explica que es de admin', async () => {
       await openPanel(view.page, base, 'turnos');
       const panels = await view.page.$$eval('.cfg-nav-i', list => list.map(node => node.dataset.panel));
       assert(!panels.includes('usuarios') && !panels.includes('modulos'), `ve administración: ${panels.join(',')}`);

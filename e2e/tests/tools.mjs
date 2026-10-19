@@ -1,4 +1,4 @@
-// l) Herramientas, Accesos rápidos y Caja chica (etapa 8c). Todo en línea:
+// tl) Herramientas, Accesos rápidos y Caja chica (etapa 8c). Todo en línea:
 // alta/edición/borrar con Deshacer/ordenar accesos; CSV de tarjetas y de
 // credenciales con FileDrop; formularios de caja chica, aprobar y rechazar
 // debajo de la solicitud; modo consulta. Cada prueba verifica el efecto en la
@@ -77,7 +77,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
 
   try {
     // ── Accesos rápidos ────────────────────────────────────────────────
-    await test('l', 'Accesos rápidos', 'Alta en línea: valida http(s), sugiere https:// y Enter guarda', async () => {
+    await test('tl', 'Accesos rápidos', 'Alta en línea: valida http(s), sugiere https:// y Enter guarda', async () => {
       await gotoView(page, base, 'quickaccess');
       await page.waitForSelector('.qa-group, .tl-empty', { timeout: 20000 });
       const before = await top(page, '.qa-head');
@@ -96,7 +96,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
       return `${saved.titulo} → ${saved.url}`;
     });
 
-    await test('l', 'Accesos rápidos', 'Editar en la fila: Esc cancela sin guardar, Enter guarda', async () => {
+    await test('tl', 'Accesos rápidos', 'Editar en la fila: Esc cancela sin guardar, Enter guarda', async () => {
       await page.waitForSelector(`button[aria-label="Editar ${title}"]`);
       await page.click(`button[aria-label="Editar ${title}"]`);
       await page.waitForSelector('.qa-cell.is-active .qa-inline form');
@@ -112,7 +112,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
       return 'Esc no guarda · Enter guarda';
     });
 
-    await test('l', 'Accesos rápidos', 'Borrar con confirmación en línea → Deshacer lo restaura', async () => {
+    await test('tl', 'Accesos rápidos', 'Borrar con confirmación en línea → Deshacer lo restaura', async () => {
       const id = (await links(api)).find(link => link.titulo === title).id;
       await page.waitForSelector(`button[aria-label="Borrar ${title}"]`);
       await page.click(`button[aria-label="Borrar ${title}"]`);
@@ -127,7 +127,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
       return `#${id} borrado y restaurado`;
     });
 
-    await test('l', 'Accesos rápidos', 'Ordenar: Bajar mueve el acceso y se guarda (orden manual)', async () => {
+    await test('tl', 'Accesos rápidos', 'Ordenar: Bajar mueve el acceso y se guarda (orden manual)', async () => {
       await gotoView(page, base, 'quickaccess');
       await page.waitForSelector('.qa-group');
       const group = await page.$$eval('.qa-group', nodes => {
@@ -146,7 +146,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
     });
 
     // ── Herramientas ──────────────────────────────────────────────────
-    await test('l', 'Herramientas', 'Tarjetas: columnas faltantes, vista previa de 10 con contraseña oculta, abrir resultado 2 veces', async () => {
+    await test('tl', 'Herramientas', 'Tarjetas: columnas faltantes, vista previa de 10 con contraseña oculta, abrir resultado 2 veces', async () => {
       await gotoView(page, base, 'tools');
       await page.waitForSelector('.tl-page [role=tablist]');
       await drop(page, 0, tmpFile('malo.csv', 'Username,Nombre,Apellido,Contraseña\na,b,c,d'));
@@ -164,7 +164,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
       return `${href} se abre 2 veces`;
     });
 
-    await test('l', 'Herramientas', 'Credenciales 365: Enviar exige validar; inválidas con motivo; envío de prueba y reporte re-descargable', async () => {
+    await test('tl', 'Herramientas', 'Credenciales 365: Enviar exige validar; inválidas con motivo; envío de prueba y reporte re-descargable', async () => {
       await clickByText(page, '.tl-page [role=tab]', /^Credenciales 365$/);
       const csv = 'Nombre para mostrar,Nombre de usuario,mail,Contraseña,Sede,Licencias\n'
         + 'Uno,uno@x.edu,uno@gmail.com,A1!,NFPT,A1\nDos,dos@x.edu,sin-arroba,A2!,NFPT,A1\nTres,tres@x.edu,tres@gmail.com,,NFPT,A1';
@@ -186,7 +186,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
       return `prueba 1 · errores 2 · reporte ${twice.join('/')}`;
     });
 
-    await test('l', 'Herramientas', 'Configurar correo abre Configuración › Mail y SMTP (/settings/mail)', async () => {
+    await test('tl', 'Herramientas', 'Configurar correo abre Configuración › Mail y SMTP (/settings/mail)', async () => {
       await gotoView(page, base, 'tools');
       await clickByText(page, '.tl-page button', /^Configurar correo en Configuración$/);
       const where = await until(() => page.evaluate(() => (/\/settings\/mail$/i.test(window.location.pathname) && /Mail y SMTP/.test(document.querySelector('main')?.textContent || '') ? window.location.pathname : null)), { message: 'Configuración › Mail y SMTP' });
@@ -197,7 +197,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
     await api.patch('/api/petty-cash/config', { initialAmount: 500000, requestsEnabled: true });
     const desc = `Gasto e2e ${stamp}`;
     const expenseForm = 'form[aria-label="Registrar gasto"]';
-    await test('l', 'Caja chica', 'Registrar gasto en línea (importe 1.234,50, Enter) y control de saldo', async () => {
+    await test('tl', 'Caja chica', 'Registrar gasto en línea (importe 1.234,50, Enter) y control de saldo', async () => {
       await gotoView(page, base, 'pettycash');
       await page.waitForSelector('.pc-sum-acts');
       const anchor = await top(page, '.pc-sum');
@@ -219,7 +219,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
 
     const reqDesc = `Compra e2e ${stamp}`;
     const requestForm = 'form[aria-label="Solicitar compra"]';
-    await test('l', 'Caja chica', 'Solicitar compra → Resolver en línea con alta en Inventario TIC', async () => {
+    await test('tl', 'Caja chica', 'Solicitar compra → Resolver en línea con alta en Inventario TIC', async () => {
       await clickByText(page, '.pc-sum-acts button', /^Solicitar compra$/);
       await page.waitForSelector(requestForm);
       await typeField(page, requestForm, 'Qué necesitás comprar', reqDesc);
@@ -238,7 +238,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
       return `#${done.id} aprobada · gasto ${expense.amount} · inventario #${expense.inventoryItemId}`;
     });
 
-    await test('l', 'Caja chica', 'Rechazar pide confirmación en línea con la nota editable', async () => {
+    await test('tl', 'Caja chica', 'Rechazar pide confirmación en línea con la nota editable', async () => {
       const other = `Rechazo e2e ${stamp}`;
       const created = (await api.post('/api/petty-cash/requests', { description: other, estimatedAmount: 10 })).data.item;
       await gotoView(page, base, 'pettycash');
@@ -260,7 +260,7 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
   const reader = await openContext(browser, { base, token: consulta.token, releaseVersion });
   track(reader.page);
   try {
-    await test('l', 'Herramientas, Accesos y Caja chica', 'Modo consulta: sin escrituras en las tres pantallas', async () => {
+    await test('tl', 'Herramientas, Accesos y Caja chica', 'Modo consulta: sin escrituras en las tres pantallas', async () => {
       const found = [];
       await gotoView(reader.page, base, 'quickaccess');
       await reader.page.waitForSelector('.qa-page');

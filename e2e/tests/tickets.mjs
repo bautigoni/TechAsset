@@ -1,4 +1,4 @@
-// l) Tickets y Sugerencias (etapa 7b): bandeja maestro-detalle con URL propia,
+// tk) Tickets y Sugerencias (etapa 7b): bandeja maestro-detalle con URL propia,
 // alta en el lugar (número solo dígitos, tags y checklist de corrido, sin
 // duplicar con doble click), estado al instante con Deshacer, quitar paso con
 // Deshacer en su lugar, selección con Ctrl+click y borrado en lote con
@@ -41,7 +41,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
     const seed = [];
     for (const n of ['1', '2', '3']) seed.push((await api.post('/api/tickets', { numero: `${numero}${n}`, titulo: `E2E bandeja ${n}`, origen: 'tik', estado: 'No hecho', prioridad: n === '1' ? 'Urgente' : 'Media', checklist: ['Paso A', 'Paso B', 'Paso C'] })).data.item);
 
-    await test('l', 'Tickets', 'Abrir la ficha desde la lista (URL propia) y volver con Atrás', async () => {
+    await test('tk', 'Tickets', 'Abrir la ficha desde la lista (URL propia) y volver con Atrás', async () => {
       await gotoView(page, base, 'tickets');
       await page.waitForSelector('.tkx-row', { timeout: 20000 });
       await visibleClick(page, `.tkx-row[data-ticket-id="${seed[0].id}"] .tkx-row-open`, /E2E bandeja 1/);
@@ -64,7 +64,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       return `#${seed[0].numero}: ficha en /tickets/${seed[0].id}, Atrás y Volver OK`;
     });
 
-    await test('l', 'Tickets', 'Alta en el lugar: número solo dígitos, tags y checklist de corrido, sin duplicar', async () => {
+    await test('tk', 'Tickets', 'Alta en el lugar: número solo dígitos, tags y checklist de corrido, sin duplicar', async () => {
       await gotoView(page, base, 'tickets/nuevo');
       await page.waitForSelector('.tkx-form');
       // Guardar sin número: error en el campo y no se manda nada.
@@ -98,7 +98,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       return `#${numero}9 con 2 tags y 2 pasos, uno solo`;
     });
 
-    await test('l', 'Tickets', 'Cambios sin guardar: avisa en línea y no navega', async () => {
+    await test('tk', 'Tickets', 'Cambios sin guardar: avisa en línea y no navega', async () => {
       await gotoView(page, base, 'tickets/nuevo');
       await page.waitForSelector('.tkx-form');
       await typeIn(page, await fieldByLabel(page, '.tkx-form', 'Título'), 'Borrador que no se pierde');
@@ -114,7 +114,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       return 'aviso en línea, Seguir editando conserva, Descartar navega';
     });
 
-    await test('l', 'Tickets', 'Estado al instante con Deshacer', async () => {
+    await test('tk', 'Tickets', 'Estado al instante con Deshacer', async () => {
       await gotoView(page, base, `tickets/${seed[1].id}`);
       await page.waitForSelector('.tkx-detail .tkx-estado [role="radio"]:not([disabled])', { timeout: 20000 });
       await page.evaluate(() => [...document.querySelectorAll('.tkx-detail .tkx-estado [role="radio"]')].find(b => b.textContent.trim() === 'Hecho').click());
@@ -124,7 +124,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       return `#${seed[1].numero}: No hecho → Hecho → Deshacer`;
     });
 
-    await test('l', 'Tickets', 'Quitar un paso del checklist y Deshacer lo devuelve a su lugar', async () => {
+    await test('tk', 'Tickets', 'Quitar un paso del checklist y Deshacer lo devuelve a su lugar', async () => {
       await gotoView(page, base, `tickets/${seed[1].id}`);
       await page.waitForSelector('.tkx-checklist');
       await visibleClick(page, '.tkx-checklist button', /Quitar el paso Paso B/);
@@ -137,7 +137,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       return order;
     });
 
-    await test('l', 'Tickets', 'Ctrl+click marca filas; borrar en lote con confirmación en línea y Deshacer', async () => {
+    await test('tk', 'Tickets', 'Ctrl+click marca filas; borrar en lote con confirmación en línea y Deshacer', async () => {
       await gotoView(page, base, 'tickets');
       await page.waitForSelector(`.tkx-row[data-ticket-id="${seed[2].id}"]`);
       for (const ticket of [seed[0], seed[2]]) {
@@ -160,7 +160,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       return '2 marcados, confirmación en la barra, borrados y recuperados';
     });
 
-    await test('l', 'Tickets', 'Plantillas: crear y eliminar con confirmación y Deshacer', async () => {
+    await test('tk', 'Tickets', 'Plantillas: crear y eliminar con confirmación y Deshacer', async () => {
       await gotoView(page, base, 'tickets/plantillas');
       await page.waitForSelector('.tkx-templates');
       await visibleClick(page, '.tkx-templates button', /Nueva plantilla/);
@@ -182,7 +182,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
       return tpl.title;
     });
 
-    await test('l', 'Sugerencias', 'Alta con validación en el lugar, votar y eliminar con Deshacer', async () => {
+    await test('tk', 'Sugerencias', 'Alta con validación en el lugar, votar y eliminar con Deshacer', async () => {
       await gotoView(page, base, 'suggestions');
       await page.waitForSelector('.sgx-head');
       await visibleClick(page, '.sgx-head button', /Nueva sugerencia/);
@@ -214,7 +214,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
   const ro = await openContext(browser, { base, token: consulta.token, releaseVersion });
   track(ro.page);
   try {
-    await test('l', 'Tickets', 'Modo consulta: sin alta ni selección, estado deshabilitado y el server responde 403', async () => {
+    await test('tk', 'Tickets', 'Modo consulta: sin alta ni selección, estado deshabilitado y el server responde 403', async () => {
       const any = (await listTickets(api))[0];
       await gotoView(ro.page, base, `tickets/${any.id}`);
       await ro.page.waitForSelector('.tkx-detail .tkx-estado', { timeout: 20000 });

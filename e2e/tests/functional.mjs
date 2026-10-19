@@ -452,7 +452,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       await undo.click();
     };
 
-    await test('k', 'Inicio', 'El lector en el Inicio cae en la barra; Enter devuelve; Deshacer re-presta con los mismos datos', async () => {
+    await test('n', 'Inicio', 'El lector en el Inicio cae en la barra; Enter devuelve; Deshacer re-presta con los mismos datos', async () => {
       assert(tagK1, 'No hay equipos libres de sobra en la copia.');
       await api.post('/api/loans/lend', { etiqueta: tagK1, person: 'E2E Inicio', role: 'DOE', location: 'DOE' });
       await gotoView(page, base, 'dashboard');
@@ -475,7 +475,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       return `${tagK1}: lector → barra → Enter devuelve → Deshacer (sigue con ${device.prestadoA})`;
     });
 
-    await test('k', 'Inicio', 'Prestar en línea desde la barra (persona, rol, ubicación) y Deshacer lo devuelve', async () => {
+    await test('n', 'Inicio', 'Prestar en línea desde la barra (persona, rol, ubicación) y Deshacer lo devuelve', async () => {
       assert(tagK2, 'No hay equipos libres de sobra en la copia.');
       await gotoView(page, base, 'dashboard');
       await page.waitForSelector(DASH_READY, { timeout: 20000 });
@@ -502,7 +502,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       return `${tagK2}: prestado en línea y deshecho`;
     });
 
-    await test('k', 'Inicio', 'Ctrl/Shift+Click marca filas; Devolver N pide confirmación en la barra y devuelve en un request', async () => {
+    await test('n', 'Inicio', 'Ctrl/Shift+Click marca filas; Devolver N pide confirmación en la barra y devuelve en un request', async () => {
       assert(tagK3 && tagK2, 'No hay equipos libres de sobra en la copia.');
       await api.post('/api/loans/lend-batch', { etiquetas: [tagK2, tagK3], person: 'E2E Lote', role: 'DOE', location: 'DOE' });
       await gotoView(page, base, 'dashboard');

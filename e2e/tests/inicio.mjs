@@ -1,4 +1,4 @@
-// Inicio (l): layout sin huecos ni truncados en todos los casos de datos, y
+// ini) Inicio (layout): layout sin huecos ni truncados en todos los casos de datos, y
 // plegado con el encabezado anclado. Los datos de cada caso se sirven
 // interceptando los GET de la API desde los datos reales de la copia (equipos,
 // agenda, tareas, notas, movimientos): no se escribe nada en la base.
@@ -322,7 +322,7 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
 
   const report = {};
   for (const item of CASES) {
-    await test('l', 'Inicio', `Sin huecos ni truncados: ${item.label} (${INICIO_WIDTHS.join('/')} px, oscuro y claro)`, async () => {
+    await test('ini', 'Inicio (layout)', `Sin huecos ni truncados: ${item.label} (${INICIO_WIDTHS.join('/')} px, oscuro y claro)`, async () => {
       const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, reducedMotion: true, viewport: { width: 1440, height: 900 } });
       track(page);
       prepareOut();
@@ -369,7 +369,7 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
   }
 
   // Interacción: estado vacío con la acción siguiente y sin pie de atajos.
-  await test('l', 'Inicio', 'Vacío: frase + "Prestar un equipo" enfoca la barra, "Ver disponibles" cambia la lista; sin pie de atajos sin filas', async () => {
+  await test('ini', 'Inicio (layout)', 'Vacío: frase + "Prestar un equipo" enfoca la barra, "Ver disponibles" cambia la lista; sin pie de atajos sin filas', async () => {
     const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
     track(page);
     try {
@@ -402,7 +402,7 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
 
   // Interacción: plegar con el encabezado anclado (al final de la página, que es donde el navegador recortaría el scroll).
   for (const width of [1440, 360]) {
-    await test('l', 'Inicio', `Plegar "Últimos movimientos" y abrir/cerrar fichas deja quieto el encabezado tocado (${width} px)`, async () => {
+    await test('ini', 'Inicio (layout)', `Plegar "Últimos movimientos" y abrir/cerrar fichas deja quieto el encabezado tocado (${width} px)`, async () => {
       const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width, height: width < 768 ? 800 : 900 } });
       track(page);
       try {

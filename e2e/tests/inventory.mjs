@@ -1,4 +1,4 @@
-// k) Inventario TIC (etapa 5b): búsqueda flexible, ficha en línea, ocultar con
+// inv) Inventario TIC (etapa 5b): búsqueda flexible, ficha en línea, ocultar con
 // Deshacer, "Crear las N" en un request, recorrido de revisión con atajos y
 // Deshacer, y modo consulta. Cada prueba verifica el efecto en la base por API.
 import { assert, gotoView, openContext, sleep, until } from '../lib/browser.mjs';
@@ -56,7 +56,7 @@ export async function inventoryTests({ browser, base, api, admin, consulta, rele
   track(page);
 
   try {
-    await test('k', 'Inventario TIC', 'Búsqueda flexible de equipos (touchN, Ntouch, etiqueta, número)', async () => {
+    await test('inv', 'Inventario TIC', 'Búsqueda flexible de equipos (touchN, Ntouch, etiqueta, número)', async () => {
       const device = devices.find(item => /^touch\s*\d+$/i.test(item.aliasOperativo || '')) || devices.find(item => item.aliasOperativo);
       assert(device, 'La copia no tiene equipos con alias.');
       const [, word, num] = String(device.aliasOperativo).match(/^(\S+)\s*(\d+)$/) || [];
@@ -81,7 +81,7 @@ export async function inventoryTests({ browser, base, api, admin, consulta, rele
     });
 
     const resource = items.find(item => Number(item.cantidad) > 1 && !item.unidadesCargadas) || items[0];
-    await test('k', 'Inventario TIC', 'Ficha en línea: condición de un recurso cuenta como revisión', async () => {
+    await test('inv', 'Inventario TIC', 'Ficha en línea: condición de un recurso cuenta como revisión', async () => {
       assert(resource, 'La copia no tiene recursos.');
       await openInventory(page, base);
       await pickSegment(page, 'Recursos');
@@ -93,7 +93,7 @@ export async function inventoryTests({ browser, base, api, admin, consulta, rele
       return `${resource.nombre}: Regular`;
     });
 
-    await test('k', 'Inventario TIC', '"Crear las N" unidades en un solo request', async () => {
+    await test('inv', 'Inventario TIC', '"Crear las N" unidades en un solo request', async () => {
       assert(resource && Number(resource.cantidad) > 1, 'No hay recurso con cantidad > 1.');
       const posts = [];
       const onRequest = request => { if (request.method() === 'POST' && /\/api\/inventory\/items\/\d+\/units/.test(request.url())) posts.push(request.url()); };
@@ -109,7 +109,7 @@ export async function inventoryTests({ browser, base, api, admin, consulta, rele
       }
     });
 
-    await test('k', 'Inventario TIC', 'Ocultar con confirmación en línea → Deshacer lo vuelve a mostrar', async () => {
+    await test('inv', 'Inventario TIC', 'Ocultar con confirmación en línea → Deshacer lo vuelve a mostrar', async () => {
       await clickByText(page, '.ivt-detail .ivt-actions button', /^Ocultar$/);
       await page.waitForSelector('.ivt-detail .ui-confirm');
       await clickByText(page, '.ivt-detail .ui-confirm button', /^Ocultar$/);
@@ -120,7 +120,7 @@ export async function inventoryTests({ browser, base, api, admin, consulta, rele
       return `${resource.nombre}: oculto y restaurado`;
     });
 
-    await test('k', 'Inventario TIC', 'Recorrido: Ctrl+1 no califica, 2 califica, Deshacer restaura, S salta, Esc sale', async () => {
+    await test('inv', 'Inventario TIC', 'Recorrido: Ctrl+1 no califica, 2 califica, Deshacer restaura, S salta, Esc sale', async () => {
       const queue = (await api.get('/api/devices/review-queue')).data.items || [];
       const first = queue[0];
       assert(first, 'Cola de revisión vacía.');
@@ -155,7 +155,7 @@ export async function inventoryTests({ browser, base, api, admin, consulta, rele
   const reader = await openContext(browser, { base, token: consulta.token, releaseVersion });
   track(reader.page);
   try {
-    await test('k', 'Inventario TIC', 'Modo consulta: sin escrituras (revisar, agregar, condición, editar, ocultar)', async () => {
+    await test('inv', 'Inventario TIC', 'Modo consulta: sin escrituras (revisar, agregar, condición, editar, ocultar)', async () => {
       await openInventory(reader.page, base);
       const head = await reader.page.$$eval('.ivt-head-actions button', buttons => buttons.filter(button => /Revisar|Agregar/.test(button.textContent) && !button.disabled).map(button => button.textContent.trim()));
       assert(!head.length, `Habilitados: ${head.join(', ')}`);
