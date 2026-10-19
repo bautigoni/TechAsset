@@ -23,6 +23,16 @@ canvasRouter.get('/canvas/items', (req, res) => {
   res.json({ ok: true, items });
 });
 
+// Huella liviana para el polling del lienzo: una sola query (cantidad + última
+// modificación, incluidos los borrados lógicos, que también tocan updated_at).
+// La pantalla pide /canvas/items solo cuando la huella cambia.
+canvasRouter.get('/canvas/version', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canViewModule(req, 'canvas', siteCode)) return forbidden(res);
+  const row = getDb().prepare('SELECT COUNT(*) AS n, MAX(updated_at) AS ts FROM canvas_items WHERE site_code=?').get(siteCode) || {};
+  res.json({ ok: true, version: `${Number(row.n || 0)}:${row.ts || ''}` });
+});
+
 canvasRouter.post('/canvas/items', (req, res) => {
   const siteCode = requireSite(req);
   if (!canEditModule(req, 'canvas', siteCode)) return forbidden(res);
@@ -57,6 +67,15 @@ canvasRouter.delete('/canvas/items/:id', (req, res) => {
   if (!canEditModule(req, 'canvas', siteCode)) return forbidden(res);
   const result = getDb().prepare('UPDATE canvas_items SET active=0, updated_at=? WHERE id=? AND site_code=?').run(nowIso(), req.params.id, siteCode);
   res.json({ ok: true, deleted: result.changes > 0 });
+});
+
+// Deshacer de "Borrar" un nodo (el borrado es lógico).
+canvasRouter.post('/canvas/items/:id/restore', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canEditModule(req, 'canvas', siteCode)) return forbidden(res);
+  const result = getDb().prepare('UPDATE canvas_items SET active=1, updated_at=? WHERE id=? AND site_code=?').run(nowIso(), req.params.id, siteCode);
+  if (!result.changes) return res.status(404).json({ ok: false, error: 'Elemento no encontrado.' });
+  res.json({ ok: true, item: rowToCanvasItem(getDb().prepare('SELECT * FROM canvas_items WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
 canvasRouter.post('/canvas/upload', (req, res) => {

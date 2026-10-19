@@ -1,19 +1,13 @@
 {
   "note": "Generado por scripts/check-ui.mjs --update. Lo que hay hoy en src/ fuera de src/ui/; se achica a medida que el rediseño reemplaza controles.",
   "totals": {
-    "title-tooltip": 8,
-    "input-nativo": 15,
-    "checkbox-radio-crudo": 11,
-    "details": 3,
+    "title-tooltip": 7,
+    "checkbox-radio-crudo": 9,
+    "input-nativo": 13,
+    "details": 2,
     "hex-en-css": 57
   },
   "entries": [
-    {
-      "rule": "checkbox-radio-crudo",
-      "file": "src/components/canvas/CanvasPage.tsx",
-      "text": "type=\"checkbox\"",
-      "count": 2
-    },
     {
       "rule": "checkbox-radio-crudo",
       "file": "src/components/devices/DeviceTable.tsx",
@@ -60,12 +54,6 @@
       "rule": "checkbox-radio-crudo",
       "file": "src/components/settings/TenantsDashboard.tsx",
       "text": "<input type=\"checkbox\" checked={draft.activo !== false} onChange={event => setDraft(current => ({ ...current, activo: event.target.checked }))} />",
-      "count": 1
-    },
-    {
-      "rule": "details",
-      "file": "src/components/canvas/CanvasPage.tsx",
-      "text": "<details>",
       "count": 1
     },
     {
@@ -406,18 +394,6 @@
     },
     {
       "rule": "input-nativo",
-      "file": "src/components/canvas/CanvasPage.tsx",
-      "text": "type=\"file\"",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
-      "file": "src/components/knowledge/KnowledgePage.tsx",
-      "text": "type=\"file\"",
-      "count": 1
-    },
-    {
-      "rule": "input-nativo",
       "file": "src/components/pettycash/PettyCashPage.tsx",
       "text": "{resolution.addToInventory && <label>Cantidad<input className=\"input\" type=\"number\" min=\"1\" value={resolution.cantidad} onChange={event => setResolution(value =",
       "count": 1
@@ -504,12 +480,6 @@
       "rule": "title-tooltip",
       "file": "src/components/analytics/ParqueSection.tsx",
       "text": "<i title={`${row.label}: ${row.value}`} /",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/knowledge/KnowledgePage.tsx",
-      "text": "<iframe title={selected.title}",
       "count": 1
     },
     {

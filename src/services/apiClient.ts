@@ -39,7 +39,7 @@ export function siteHeaders(extra?: HeadersInit): HeadersInit {
 // Cualquier escritura propia (apiSend) vacía la caché entera: lo que uno cambió
 // se ve siempre al toque. Lo que se pollea o tiene que estar al día no pasa por acá.
 const GET_CACHE_MS = 15 * 1000;
-const NO_CACHE = /^\/api\/(auth\/|devices(\?|$|\/diagnostics)|movements|notifications|release-notes|push\/|agenda(\?|$)|tasks(\?|$))/;
+const NO_CACHE = /^\/api\/(auth\/|devices(\?|$|\/diagnostics)|movements|notifications|release-notes|push\/|agenda(\?|$)|tasks(\?|$)|canvas\/(items|version)$)/;
 const getCache = new Map<string, { at: number; data: unknown }>();
 const getInflight = new Map<string, Promise<unknown>>();
 // Cambia con cada escritura: una lectura que salió antes no guarda su resultado.

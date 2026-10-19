@@ -22,18 +22,31 @@ export function searchKnowledgeArticles(siteCode, query = '', limit = 8) {
  *   ordena por relevancia y después por actualización.
  *
  * El cursor es el offset (string) del próximo bloque; '' cuando no hay más.
+ * `category` filtra (vacía = "General"); `categories` trae el conteo por
+ * categoría de la búsqueda (sin el filtro de categoría) en el primer bloque.
  */
-export function listKnowledgeArticles(siteCode, { q = '', limit = 50, cursor = '' } = {}) {
+export function listKnowledgeArticles(siteCode, { q = '', limit = 50, cursor = '', category = '' } = {}) {
   const size = Math.max(1, Math.min(200, Math.floor(Number(limit)) || 50));
   const offset = Math.max(0, Math.floor(Number(cursor)) || 0);
   const tokens = normalize(q).split(/\s+/).filter(Boolean).slice(0, 12);
+  const cat = String(category || '').trim().slice(0, 100);
   if (!tokens.length) {
-    const rows = getDb().prepare('SELECT *, COUNT(*) OVER() AS total_count FROM knowledge_articles WHERE site_code=? AND active=1 ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?').all(siteCode, size, offset);
+    // Categoría vacía = "General" (así la muestra la pantalla).
+    const catSql = cat ? ` AND COALESCE(NULLIF(TRIM(category),''),'General')=?` : '';
+    const args = cat ? [siteCode, cat] : [siteCode];
+    const rows = getDb().prepare(`SELECT *, COUNT(*) OVER() AS total_count FROM knowledge_articles WHERE site_code=? AND active=1${catSql} ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?`).all(...args, size, offset);
     // Pasado el final no vuelven filas (ni el total): se cuenta aparte, caso raro.
     const total = rows.length
       ? Number(rows[0].total_count || 0)
-      : Number(getDb().prepare('SELECT COUNT(*) AS total FROM knowledge_articles WHERE site_code=? AND active=1').get(siteCode)?.total || 0);
-    return { items: rows.map(rowToKnowledgeArticle), total, nextCursor: offset + rows.length < total ? String(offset + rows.length) : '' };
+      : Number(getDb().prepare(`SELECT COUNT(*) AS total FROM knowledge_articles WHERE site_code=? AND active=1${catSql}`).get(...args)?.total || 0);
+    // Conteo por categoría solo en el primer bloque (los "Ver más" no lo repiten).
+    const categories = offset
+      ? undefined
+      : getDb()
+          .prepare(`SELECT COALESCE(NULLIF(TRIM(category),''),'General') AS name, COUNT(*) AS n FROM knowledge_articles WHERE site_code=? AND active=1 GROUP BY COALESCE(NULLIF(TRIM(category),''),'General')`)
+          .all(siteCode)
+          .map(row => ({ name: String(row.name), count: Number(row.n || 0) }));
+    return { items: rows.map(rowToKnowledgeArticle), total, nextCursor: offset + rows.length < total ? String(offset + rows.length) : '', categories };
   }
   const matches = getDb().prepare('SELECT * FROM knowledge_articles WHERE site_code=? AND active=1 ORDER BY updated_at DESC, id DESC').all(siteCode)
     .map(row => {
@@ -42,13 +55,22 @@ export function listKnowledgeArticles(siteCode, { q = '', limit = 50, cursor = '
     })
     .filter(entry => entry.matches)
     .sort((a, b) => b.score - a.score || String(b.row.updated_at || '').localeCompare(String(a.row.updated_at || '')) || Number(b.row.id) - Number(a.row.id));
-  const page = matches.slice(offset, offset + size);
+  const counts = new Map();
+  for (const entry of matches) {
+    const name = categoryName(entry.row.category);
+    counts.set(name, (counts.get(name) || 0) + 1);
+  }
+  const filtered = cat ? matches.filter(entry => categoryName(entry.row.category) === cat) : matches;
+  const page = filtered.slice(offset, offset + size);
   return {
     items: page.map(entry => rowToKnowledgeArticle(entry.row)),
-    total: matches.length,
-    nextCursor: offset + page.length < matches.length ? String(offset + page.length) : ''
+    total: filtered.length,
+    nextCursor: offset + page.length < filtered.length ? String(offset + page.length) : '',
+    categories: offset ? undefined : [...counts].map(([name, count]) => ({ name, count }))
   };
 }
+
+function categoryName(value) { return String(value || '').trim() || 'General'; }
 
 export function rowToKnowledgeArticle(row) {
   return { id: Number(row.id), title: row.title, content: row.content || '', contentText: stripHtml(row.content || ''), category: row.category || '', tags: safeArray(row.tags_json), attachments: safeArray(row.attachments_json), createdBy: row.created_by || '', updatedBy: row.updated_by || '', createdAt: row.created_at || '', updatedAt: row.updated_at || '' };

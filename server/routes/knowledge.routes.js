@@ -27,9 +27,10 @@ knowledgeRouter.get('/knowledge/articles', (req, res) => {
   const page = listKnowledgeArticles(siteCode, {
     q: String(req.query.q || ''),
     limit: req.query.limit,
-    cursor: req.query.cursor ?? req.query.offset ?? ''
+    cursor: req.query.cursor ?? req.query.offset ?? '',
+    category: String(req.query.category || '')
   });
-  res.json({ ok: true, items: page.items, total: page.total, nextCursor: page.nextCursor });
+  res.json({ ok: true, items: page.items, total: page.total, nextCursor: page.nextCursor, categories: page.categories });
 });
 
 knowledgeRouter.get('/knowledge/articles/:id', (req, res) => {
@@ -113,6 +114,17 @@ knowledgeRouter.delete('/knowledge/articles/:id', (req, res) => {
     .prepare('UPDATE knowledge_articles SET active=0,updated_by=?,updated_at=? WHERE id=? AND site_code=?')
     .run(req.user?.nombre || req.user?.email || '', nowIso(), req.params.id, siteCode);
   res.json({ ok: true, deleted: result.changes > 0 });
+});
+
+// Deshacer de "Eliminar": el borrado es lógico (active=0), volver es prenderlo.
+knowledgeRouter.post('/knowledge/articles/:id/restore', (req, res) => {
+  const siteCode = requireSite(req);
+  if (!canEditModule(req, 'knowledge', siteCode)) return forbidden(res);
+  const result = getDb()
+    .prepare('UPDATE knowledge_articles SET active=1,updated_by=?,updated_at=? WHERE id=? AND site_code=?')
+    .run(req.user?.nombre || req.user?.email || '', nowIso(), req.params.id, siteCode);
+  if (!result.changes) return res.status(404).json({ ok: false, error: 'Artículo no encontrado.' });
+  res.json({ ok: true, item: rowToKnowledgeArticle(getDb().prepare('SELECT * FROM knowledge_articles WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
 knowledgeRouter.post('/knowledge/upload', (req, res) => {

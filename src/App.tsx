@@ -230,10 +230,17 @@ export function App() {
     const next = `/sede/${activeSite.toLowerCase()}/${view}${view === 'devices' && devicePage ? `/${encodeURIComponent(devicePage.tag)}` : ''}`;
     const push = pushNext.current;
     pushNext.current = false;
-    // /sede/x/tasks/<id> y /sede/x/tickets/<id>: el detalle es parte de la vista
-    // (lo manejan TasksPage y TicketsPage). En Dispositivos la página del equipo
-    // va en `next`, y volver a la lista tiene que sacar la etiqueta de la URL.
-    if (window.location.pathname === next || ((view === 'tasks' || view === 'tickets') && window.location.pathname.toLowerCase().startsWith(`${next}/`))) return;
+    const current = window.location.pathname;
+    if (current === next) return;
+    // Subrutas que maneja la vista misma (/tasks/<id>, /tickets/<id>,
+    // /knowledge/<id>[/editar], etc.): se conservan, también al entrar por un
+    // link directo, y solo se normaliza la sede a minúsculas. En Dispositivos
+    // la página del equipo va en `next`, y volver a la lista tiene que sacar la
+    // etiqueta de la URL.
+    if (view !== 'devices' && current.toLowerCase().startsWith(`${next}/`)) {
+      if (!current.startsWith(`${next}/`)) window.history.replaceState(window.history.state, '', `${next}${current.slice(next.length)}`);
+      return;
+    }
     if (push) window.history.pushState({ techasset: true }, '', next);
     else window.history.replaceState(null, '', next);
   }, [activeSite, view, user, devicePage]);

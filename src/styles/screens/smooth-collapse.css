@@ -1,0 +1,22 @@
+/* Colapso suave (SmoothCollapse, etapa 7c). Solo tokens. */
+.sc-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  min-width: 0;
+}
+.sc-collapse.is-open { grid-template-rows: 1fr; }
+.sc-collapse-inner {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+/* Ya abierto: los anillos de foco y lo que sobresale no se recortan. */
+.sc-collapse.is-settled > .sc-collapse-inner { overflow: visible; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sc-collapse { transition: grid-template-rows var(--g-dur) var(--g-ease); }
+  .sc-collapse-inner { transition: opacity var(--g-dur) var(--g-ease); }
+  .sc-collapse:not(.is-open) > .sc-collapse-inner { opacity: 0; }
+}
+
+.sc-spacer { flex: none; width: 100%; pointer-events: none; }
