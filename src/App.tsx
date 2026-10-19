@@ -623,7 +623,7 @@ export function App() {
       {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onRefresh={() => Promise.all([refresh({ force: true, wait: true }), refreshMovements(true)])} siteCode={activeSite} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} scanRequest={scanRequest} />}
       {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
       {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
-      {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
+      {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} onNavigate={navigate} />}
       {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} olderHidden={agenda.olderHidden} onLoadOlder={agenda.loadOlder} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
       {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'tasks' && <TasksPage key={activeSite} store={tasks} operator={operator} consultationMode={effectiveConsultation} />}

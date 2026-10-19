@@ -1,7 +1,6 @@
 {
   "note": "Generado por scripts/check-ui.mjs --update. Lo que hay hoy en src/ fuera de src/ui/; se achica a medida que el rediseño reemplaza controles.",
   "totals": {
-    "title-tooltip": 3,
     "checkbox-radio-crudo": 2,
     "hex-en-css": 57
   },
@@ -334,18 +333,6 @@
       "rule": "hex-en-css",
       "file": "src/styles/responsive.css",
       "text": "color:#fff!important;",
-      "count": 1
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/analytics/ChartCard.tsx",
-      "text": "<em title={row.label}",
-      "count": 2
-    },
-    {
-      "rule": "title-tooltip",
-      "file": "src/components/analytics/ParqueSection.tsx",
-      "text": "<i title={`${row.label}: ${row.value}`} /",
       "count": 1
     }
   ]

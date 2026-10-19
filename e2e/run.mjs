@@ -30,6 +30,7 @@ import { toolsTests } from './tests/tools.mjs';
 import { settingsTests } from './tests/settings.mjs';
 import { shellTests } from './tests/shell.mjs';
 import { inicioTests } from './tests/inicio.mjs';
+import { analyticsTests } from './tests/analytics.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 
 const args = process.argv.slice(2);
@@ -126,6 +127,7 @@ try {
   await toolsTests(ctx);
   await settingsTests(ctx);
   await shellTests(ctx);
+  await analyticsTests(ctx);
   timings.functional = Date.now() - t;
 
   if (!flag('no-baseline')) {

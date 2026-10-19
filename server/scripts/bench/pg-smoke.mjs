@@ -153,6 +153,22 @@ try {
   for (const titulo of ['Tarea 1', 'Tarea 2']) await call('POST', '/api/tasks', { titulo, estado: 'Pendiente', responsables: ['Smoke'] });
   const tasks = await call('GET', '/api/tasks?space=team');
   check('GET /tasks', tasks.status === 200 && tasks.json.items.length >= 2, tasks.text.slice(0, 200));
+  // Analítica (etapa 8a): una lectura de loan_events, una de tickets y una de tareas (GROUP BY + SUM CASE).
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const an = await call('GET', `/api/analytics?from=2000-01-01&to=${todayKey}`);
+  const s = an.json?.summary;
+  check('analítica: responde en Postgres', an.status === 200 && s && !('events' in an.json), an.text.slice(0, 200));
+  check('analítica: hora × día 7×24 y tipo por hora', s?.hourWeekday?.length === 7 && s.hourWeekday.every(row => row.length === 24) && Array.isArray(s.byTypeHour), JSON.stringify(s?.byTypeHour || []).slice(0, 200));
+  check('analítica: duración por préstamo (mediana, cuartiles, tramos)', s?.durations?.count >= 1 && s.durations.buckets.length === 6 && typeof s.durations.median === 'number', JSON.stringify({ ...(s?.durations || {}), hours: undefined }).slice(0, 200));
+  check('analítica: operadores con préstamos y devoluciones', s?.byOperatorSplit?.length >= 1 && s.byOperatorSplit.every(op => typeof op.prestamos === 'number' && typeof op.devoluciones === 'number'), JSON.stringify(s?.byOperatorSplit || []).slice(0, 200));
+  check('analítica: tareas abiertas por tipo (SUM CASE)', s?.tareasAbiertas >= 2 && Array.isArray(s.openTasksByType) && s.byTaskType.every(row => typeof row.value === 'number'), JSON.stringify({ a: s?.tareasAbiertas, t: s?.byTaskType }).slice(0, 200));
+  check('analítica: evolución densa sin período anterior en "Todo"', s?.evolution?.granularity === 'month' && s.evolution.prevAvailable === false && s.ticketMetrics?.evolution?.points?.length >= 1, JSON.stringify(s?.evolution || {}).slice(0, 200));
+  const anWeek = await call('GET', `/api/analytics?from=${new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)}&to=${todayKey}`);
+  check('analítica: semana por día con período anterior alineado', anWeek.status === 200 && anWeek.json.summary.evolution.granularity === 'day' && anWeek.json.summary.evolution.points.every(point => typeof point.prev === 'number'), anWeek.text.slice(0, 200));
+  const anEvents = await call('GET', `/api/analytics?from=2000-01-01&to=${todayKey}&events=1`);
+  check('analítica: events solo con ?events=1', anEvents.status === 200 && Array.isArray(anEvents.json.events) && anEvents.json.events.length >= 1, anEvents.text.slice(0, 200));
+  const parque = await call('GET', '/api/analytics/parque');
+  check('analítica: parque', parque.status === 200 && Array.isArray(parque.json?.condicionTotales), parque.text.slice(0, 200));
   const analytics = await call('GET', '/api/tasks/analytics');
   check('GET /tasks/analytics (antes 500 con 2+ tareas)', analytics.status === 200, analytics.text.slice(0, 200));
   // Etapa 7a (Tareas): Deshacer de borrar tarea y de eliminar columna, actividad por tarea.

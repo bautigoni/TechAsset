@@ -63,7 +63,8 @@ async function fetchJson<T>(url: string, background = false): Promise<T> {
   return data as T;
 }
 
-export async function apiGet<T>(url: string): Promise<T> {
+/** `fresh`: no responde con la caché corta (botones "Recargar"); igual guarda lo nuevo. */
+export async function apiGet<T>(url: string, options?: { fresh?: boolean }): Promise<T> {
   if (NO_CACHE.test(url)) return fetchJson<T>(url);
   const key = `${getActiveSiteCode()}|${url}`;
   const load = (background = false) => {
@@ -79,7 +80,7 @@ export async function apiGet<T>(url: string): Promise<T> {
     getInflight.set(key, request);
     return request;
   };
-  const cached = getCache.get(key);
+  const cached = options?.fresh ? undefined : getCache.get(key);
   if (cached && Date.now() - cached.at < GET_CACHE_MS) {
     void load(true).catch(() => undefined);
     // Copia: quien la reciba puede ordenarla o mutarla sin tocar la caché.
