@@ -137,7 +137,7 @@ knowledgeRouter.post('/knowledge/upload', (req, res) => {
   const buffer = Buffer.from(raw, 'base64');
   if (!buffer.length || buffer.length > config.maxUploadMb * 1024 * 1024)
     return res.status(400).json({ ok: false, error: `El archivo supera ${config.maxUploadMb} MB.` });
-  const dir = path.join(config.rootDir, 'data', 'uploads', 'knowledge', siteCode);
+  const dir = path.join(config.uploadsDir, 'knowledge', siteCode);
   fs.mkdirSync(dir, { recursive: true });
   const stored = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}.${ext}`;
   fs.writeFileSync(path.join(dir, stored), buffer);

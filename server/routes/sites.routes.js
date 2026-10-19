@@ -444,7 +444,7 @@ function saveLogoDataUrl(siteCode, dataUrl) {
   const buffer = Buffer.from(match[2], 'base64');
   const maxBytes = Math.min(Math.max(1, config.maxUploadMb || 2), 2) * 1024 * 1024;
   if (!buffer.length || buffer.length > maxBytes) throw new Error('El logo supera el límite de 2 MB.');
-  const dir = path.join(config.rootDir, 'data', 'uploads', 'site-logos');
+  const dir = path.join(config.uploadsDir, 'site-logos');
   fs.mkdirSync(dir, { recursive: true });
   const hash = crypto.createHash('sha256').update(buffer).digest('hex').slice(0, 16);
   const filename = `${normalizeSiteCode(siteCode).toLowerCase()}-${hash}.${ext}`;

@@ -236,7 +236,7 @@ pettyCashRouter.post('/petty-cash/upload-receipt', (req, res) => {
   const buffer = Buffer.from(raw, 'base64');
   if (!buffer.length || buffer.length > config.maxUploadMb * 1024 * 1024)
     return res.status(400).json({ ok: false, error: `El archivo supera ${config.maxUploadMb} MB.` });
-  const dir = path.join(config.rootDir, 'data', 'uploads', 'petty-cash', siteCode);
+  const dir = path.join(config.uploadsDir, 'petty-cash', siteCode);
   fs.mkdirSync(dir, { recursive: true });
   const name = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}.${ext}`;
   fs.writeFileSync(path.join(dir, name), buffer);
@@ -255,7 +255,7 @@ pettyCashRouter.post('/petty-cash/discard-receipt', (req, res) => {
   if (!match || match[1] !== siteCode) return res.status(400).json({ ok: false, error: 'Comprobante inválido.' });
   const used = getDb().prepare('SELECT 1 FROM petty_cash_expenses WHERE site_code=? AND receipt_url=? UNION ALL SELECT 1 FROM purchase_requests WHERE site_code=? AND receipt_url=? LIMIT 1').get(siteCode, url, siteCode, url);
   if (used) return res.json({ ok: true, removed: false });
-  const file = path.join(config.rootDir, 'data', 'uploads', 'petty-cash', siteCode, match[2]);
+  const file = path.join(config.uploadsDir, 'petty-cash', siteCode, match[2]);
   let removed = false;
   try { fs.unlinkSync(file); removed = true; } catch { /* ya no estaba */ }
   res.json({ ok: true, removed });

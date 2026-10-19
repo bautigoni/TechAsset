@@ -94,12 +94,29 @@ export function ensureBuild(mode, log) {
  *   - todo lo que podría salir afuera apagado: modo prueba de mail forzado en la
  *     base y sin suscripciones push.
  */
+/**
+ * Copia consistente de una base SQLite sin dejar rastros al lado de la fuente.
+ * Una conexión de solo lectura a una base en WAL crea `-wal`/`-shm` y, como no
+ * puede hacer checkpoint, no los borra al cerrar: quedaban en data/ después de
+ * cada corrida. Si no existen, nadie la tiene abierta en WAL y el archivo
+ * principal está completo: se copia tal cual. Si existen (el server de
+ * desarrollo la tiene abierta), se usa la API de backup, que no crea nada nuevo.
+ */
+export async function snapshotDatabase(sourcePath, destPath) {
+  if (!fs.existsSync(sourcePath)) throw new Error(`No existe ${sourcePath}.`);
+  const sidecars = [`${sourcePath}-wal`, `${sourcePath}-shm`];
+  if (!sidecars.some(file => fs.existsSync(file))) {
+    fs.copyFileSync(sourcePath, destPath);
+    return;
+  }
+  const source = new Database(sourcePath, { readonly: true, fileMustExist: true });
+  try { await source.backup(destPath); } finally { source.close(); }
+}
+
 export async function prepareDatabase() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'techasset-e2e-'));
   const dbCopy = path.join(tmpDir, 'e2e.db');
-  const source = new Database(path.join(root, 'data', 'techasset.db'), { readonly: true, fileMustExist: true });
-  await source.backup(dbCopy);
-  source.close();
+  await snapshotDatabase(path.join(root, 'data', 'techasset.db'), dbCopy);
 
   const db = new Database(dbCopy);
   const now = new Date().toISOString();
@@ -162,6 +179,14 @@ export async function prepareDatabase() {
 
 /** Levanta el server real contra la copia. Todo lo que habla con afuera queda vacío. */
 export async function startServer({ dbCopy, tmpDir, port, ai = false }) {
+  // Adjuntos en el temporal de la corrida (se borra con él): las pruebas suben
+  // archivos de canvas, conocimiento, caja chica... y no pueden caer en
+  // data/uploads. Se copian los que ya hay para que los adjuntos de la copia
+  // de la base sigan abriendo.
+  const uploadsDir = path.join(tmpDir, 'uploads');
+  const realUploads = path.join(root, 'data', 'uploads');
+  if (fs.existsSync(realUploads)) fs.cpSync(realUploads, uploadsDir, { recursive: true });
+  else fs.mkdirSync(uploadsDir, { recursive: true });
   const env = {
     ...process.env,
     PORT: String(port),
@@ -182,6 +207,7 @@ export async function startServer({ dbCopy, tmpDir, port, ai = false }) {
     CACHE_CSV_PATH: path.join(tmpDir, 'cache_sheet.csv'),
     DEVICES_APP_CSV_PATH: path.join(tmpDir, 'devices_app.csv'),
     TOOLS_TEMP_DIR: path.join(tmpDir, 'tools'),
+    UPLOADS_DIR: uploadsDir,
     APP_BASE_URL: `http://127.0.0.1:${port}`,
     TECHASSET_PUBLIC_URL: `http://127.0.0.1:${port}`,
     DEBUG_DEVICE_PERF: ''

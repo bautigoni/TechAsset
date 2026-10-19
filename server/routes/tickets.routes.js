@@ -149,7 +149,7 @@ ticketsRouter.post('/tickets/upload-image', (req, res) => {
   const buffer = Buffer.from(match[2], 'base64');
   if (!ext || !buffer.length) return res.status(400).json({ ok: false, error: 'Archivo inválido.' });
   if (buffer.length > Math.max(1, config.maxUploadMb) * 1024 * 1024) return res.status(413).json({ ok: false, error: `El archivo supera ${config.maxUploadMb} MB.` });
-  const uploadDir = path.join(config.rootDir, 'data', 'uploads', 'tickets', siteCode);
+  const uploadDir = path.join(config.uploadsDir, 'tickets', siteCode);
   fs.mkdirSync(uploadDir, { recursive: true });
   const baseName = sanitizeFileName(fileName).replace(/\.[a-z0-9]+$/i, '') || 'ticket';
   const storedName = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${baseName}.${ext}`;

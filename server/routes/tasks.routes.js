@@ -56,7 +56,7 @@ tasksRouter.post('/tasks/upload', (req, res) => {
   if (!extension || !raw) return res.status(400).json({ ok: false, error: 'Tipo de archivo no permitido.' });
   const buffer = Buffer.from(raw, 'base64');
   if (!buffer.length || buffer.length > config.maxUploadMb * 1024 * 1024) return res.status(400).json({ ok: false, error: `El archivo supera ${config.maxUploadMb} MB.` });
-  const directory = path.join(config.rootDir, 'data', 'uploads', 'tasks', siteCode);
+  const directory = path.join(config.uploadsDir, 'tasks', siteCode);
   fs.mkdirSync(directory, { recursive: true });
   const storedName = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}.${extension}`;
   fs.writeFileSync(path.join(directory, storedName), buffer);

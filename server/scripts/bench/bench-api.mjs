@@ -16,6 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import Database from 'better-sqlite3';
+import { snapshotDatabase } from '../../../e2e/lib/env.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../../..');
@@ -43,9 +44,7 @@ const ENDPOINTS = [
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'techasset-bench-'));
 const dbCopy = path.join(tmpDir, 'bench.db');
-const source = new Database(path.join(root, 'data', 'techasset.db'), { readonly: true });
-await source.backup(dbCopy);
-source.close();
+await snapshotDatabase(path.join(root, 'data', 'techasset.db'), dbCopy);
 
 const token = crypto.randomBytes(32).toString('hex');
 {
@@ -69,7 +68,12 @@ const child = spawn(process.execPath, ['--import', pathToFileURL(path.join(here,
     MODO_PRUEBA: 'true',
     SMTP_SERVER: '', SMTP_USER: '', SMTP_APP_PASSWORD: '', RESEND_API_KEY: '',
     DEBUG_DEVICE_PERF: '',
-    GOOGLE_SHEET_CSV_URL: ''
+    GOOGLE_SHEET_CSV_URL: '',
+    // Nada del banco cae en data/: todo al temporal que se borra al final.
+    CACHE_CSV_PATH: path.join(tmpDir, 'cache_sheet.csv'),
+    DEVICES_APP_CSV_PATH: path.join(tmpDir, 'devices_app.csv'),
+    TOOLS_TEMP_DIR: path.join(tmpDir, 'tools'),
+    UPLOADS_DIR: path.join(tmpDir, 'uploads')
   },
   stdio: ['ignore', 'pipe', 'pipe']
 });

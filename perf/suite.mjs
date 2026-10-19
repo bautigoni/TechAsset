@@ -59,6 +59,7 @@ import zlib from 'node:zlib';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import Database from 'better-sqlite3';
 import puppeteer from 'puppeteer-core';
+import { snapshotDatabase } from '../e2e/lib/env.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const suiteRoot = path.resolve(here, '..');
@@ -211,9 +212,7 @@ function git(root, ...args) {
 async function prepareDatabase() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'techasset-suite-'));
   const dbCopy = path.join(tmpDir, 'suite.db');
-  const source = new Database(DB_SOURCE, { readonly: true, fileMustExist: true });
-  await source.backup(dbCopy);
-  source.close();
+  await snapshotDatabase(DB_SOURCE, dbCopy);
   const db = new Database(dbCopy);
   const now = new Date().toISOString();
   const admin = db.prepare("SELECT id, email FROM users WHERE rol_global='Superadmin' AND activo=1 ORDER BY id LIMIT 1").get();
@@ -292,6 +291,7 @@ async function startServer({ dbCopy, tmpDir }) {
     CACHE_CSV_PATH: path.join(tmpDir, 'cache_sheet.csv'),
     DEVICES_APP_CSV_PATH: path.join(tmpDir, 'devices_app.csv'),
     TOOLS_TEMP_DIR: path.join(tmpDir, 'tools'),
+    UPLOADS_DIR: path.join(tmpDir, 'uploads'),
     APP_BASE_URL: `http://127.0.0.1:${port}`,
     TECHASSET_PUBLIC_URL: `http://127.0.0.1:${port}`,
     DEBUG_DEVICE_PERF: '',

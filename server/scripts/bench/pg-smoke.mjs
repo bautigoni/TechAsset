@@ -5,9 +5,16 @@
 //   docker run -d --rm --name techasset-pgtest -e POSTGRES_PASSWORD=pgtest -e POSTGRES_DB=techasset -p 127.0.0.1:55432:5432 postgres:17-alpine
 //   PG_TEST_URL="postgresql://postgres:pgtest@127.0.0.1:55432/techasset?sslmode=disable" node server/scripts/bench/pg-smoke.mjs
 //
+// El chat real del asistente gasta una consulta paga: solo corre con PG_SMOKE_AI=1
+// (y el .env con AI_PROVIDER=anthropic + ANTHROPIC_API_KEY); sin eso el server de
+// prueba arranca sin IA. Adjuntos, CSV y temporales van a un directorio propio de
+// la corrida que se borra al final: nada cae en data/.
+//
 // NUNCA apuntarlo a producción: crea usuarios, sesiones, equipos y movimientos.
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
@@ -22,10 +29,15 @@ const PORT = Number(process.env.PG_SMOKE_PORT || 8061);
 const base = `http://127.0.0.1:${PORT}`;
 const results = [];
 let serverLog = '';
+const withAi = process.env.PG_SMOKE_AI === '1';
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'techasset-pgsmoke-'));
 
 const child = spawn(process.execPath, ['server/index.js'], {
   cwd: root,
-  env: { ...process.env, PORT: String(PORT), DATABASE_URL: url, DB_DRIVER: 'postgres', MODO_PRUEBA: 'true', SMTP_SERVER: '', SMTP_USER: '', SMTP_APP_PASSWORD: '', RESEND_API_KEY: '', GOOGLE_SHEET_CSV_URL: '', BOOTSTRAP_SITES: 'NFPT:Northfield Puertos,NFND:Northfield Nordelta', DEFAULT_SITE_CODE: 'NFPT' },
+  env: { ...process.env, PORT: String(PORT), DATABASE_URL: url, DB_DRIVER: 'postgres', MODO_PRUEBA: 'true', SMTP_SERVER: '', SMTP_USER: '', SMTP_APP_PASSWORD: '', RESEND_API_KEY: '', GOOGLE_SHEET_CSV_URL: '', BOOTSTRAP_SITES: 'NFPT:Northfield Puertos,NFND:Northfield Nordelta', DEFAULT_SITE_CODE: 'NFPT',
+    UPLOADS_DIR: path.join(tmpDir, 'uploads'), TOOLS_TEMP_DIR: path.join(tmpDir, 'tools'),
+    CACHE_CSV_PATH: path.join(tmpDir, 'cache_sheet.csv'), DEVICES_APP_CSV_PATH: path.join(tmpDir, 'devices_app.csv'),
+    ...(withAi ? {} : { AI_PROVIDER: 'local', ANTHROPIC_API_KEY: '', OPENAI_API_KEY: '' }) },
   stdio: ['ignore', 'pipe', 'pipe']
 });
 child.stdout.on('data', chunk => { serverLog += chunk; });
@@ -286,7 +298,7 @@ try {
   check('asistente: status', aiStatus.status === 200, aiStatus.text.slice(0, 200));
   const undoMissing = await call('POST', '/api/asistente/deshacer', { actionId: 999999 });
   check('asistente: deshacer inexistente da 404', undoMissing.status === 404, undoMissing.text.slice(0, 200));
-  if (aiStatus.json?.provider === 'anthropic' && aiStatus.json?.hasApiKey) {
+  if (withAi && aiStatus.json?.provider === 'anthropic' && aiStatus.json?.hasApiKey) {
     const chat = await call('POST', '/api/asistente/chat', { messages: [{ role: 'user', content: '¿Cuántos equipos hay prestados?' }] });
     check('asistente: chat real (uso diario + auditoría en Postgres)', chat.status === 200 && chat.json?.reply, chat.text.slice(0, 200));
   }
@@ -427,8 +439,11 @@ try {
   const exited = new Promise(resolve => child.once('exit', resolve));
   child.kill();
   await exited;
+  for (let i = 0; i < 20; i += 1) {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); break; } catch { await new Promise(resolve => setTimeout(resolve, 150)); }
+  }
   const failed = results.filter(item => !item.ok);
   for (const item of results) console.log(`${item.ok ? 'OK  ' : 'FALLA'} ${item.name}${item.ok ? '' : `\n      ${item.detail}`}`);
-  console.log(`\n${results.length - failed.length}/${results.length} OK`);
+  console.log(`\n${results.length - failed.length}/${results.length} OK${withAi ? '' : ' (sin el chat real del asistente: PG_SMOKE_AI=1 lo suma)'}`);
   process.exitCode = failed.length ? 1 : 0;
 }

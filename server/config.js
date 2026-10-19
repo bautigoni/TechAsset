@@ -44,6 +44,9 @@ export const config = {
   openaiPromptId: process.env.OPENAI_PROMPT_ID || '',
   localtunnelSubdomain: process.env.LOCALTUNNEL_SUBDOMAIN || 'techasset-nfpt',
   toolsTempDir: path.resolve(rootDir, process.env.TOOLS_TEMP_DIR || './data/tmp'),
+  // Adjuntos (/uploads/<categoría>/<SEDE>/...). Los bancos de prueba (e2e,
+  // pg-smoke, perf) lo apuntan a un temporal para no ensuciar data/uploads.
+  uploadsDir: path.resolve(rootDir, process.env.UPLOADS_DIR || './data/uploads'),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 10),
   smtp: {
     server: process.env.SMTP_SERVER || '',

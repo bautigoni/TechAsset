@@ -87,7 +87,7 @@ canvasRouter.post('/canvas/upload', (req, res) => {
   if (!ext || !raw) return res.status(400).json({ ok: false, error: 'Tipo de archivo no permitido.' });
   const buffer = Buffer.from(raw, 'base64');
   if (!buffer.length || buffer.length > config.maxUploadMb * 1024 * 1024) return res.status(400).json({ ok: false, error: `El archivo supera ${config.maxUploadMb} MB.` });
-  const dir = path.join(config.rootDir, 'data', 'uploads', 'canvas', siteCode);
+  const dir = path.join(config.uploadsDir, 'canvas', siteCode);
   fs.mkdirSync(dir, { recursive: true });
   const name = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}.${ext}`;
   fs.writeFileSync(path.join(dir, name), buffer);

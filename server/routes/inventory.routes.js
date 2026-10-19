@@ -265,7 +265,7 @@ inventoryRouter.post('/inventory/upload-image', (req, res) => {
   const maxBytes = Math.max(1, config.maxUploadMb) * 1024 * 1024;
   if (buffer.length > maxBytes) return res.status(413).json({ ok: false, error: `La imagen supera el límite de ${config.maxUploadMb} MB.` });
 
-  const uploadDir = path.join(config.rootDir, 'data', 'uploads', 'inventory', siteCode);
+  const uploadDir = path.join(config.uploadsDir, 'inventory', siteCode);
   fs.mkdirSync(uploadDir, { recursive: true });
   const baseName = sanitizeFileName(fileName).replace(/\.[a-z0-9]+$/i, '') || 'inventario';
   const storedName = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${baseName}.${ext}`;

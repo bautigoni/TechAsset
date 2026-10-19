@@ -67,7 +67,7 @@ app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
 // inventario, PDFs de tickets...). Los logos de sede quedan públicos porque
 // van en mails y antes del login.
 // fallthrough: false = un adjunto que no existe da 404, no el index.html de la SPA.
-const serveUploads = express.static(path.join(config.rootDir, 'data', 'uploads'), { maxAge: '7d', immutable: true, fallthrough: false });
+const serveUploads = express.static(config.uploadsDir, { maxAge: '7d', immutable: true, fallthrough: false });
 app.use('/uploads', (req, res, next) => {
   const [category, siteSegment, ...rest] = req.path.split('/').filter(Boolean);
   if (category === 'site-logos') return serveUploads(req, res, next);
