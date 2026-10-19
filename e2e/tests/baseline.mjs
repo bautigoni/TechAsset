@@ -102,7 +102,7 @@ const viewportState = page => page.evaluate(() => ({
 export async function mobileTests({ browser, base, admin, releaseVersion, test, track = () => {} }) {
   const device = KnownDevices['iPhone 13'];
   const report = {};
-  const views = [['dashboard', 'tr[data-device-tag], .card'], ['loans', '[data-loans-grid="devices"]'], ['devices', 'tr[data-device-tag]']];
+  const views = [['dashboard', 'tr[data-device-tag], .card'], ['loans', '[data-loans-grid="devices"]'], ['devices', '.dv-table [data-device-tag]']];
 
   // Control del instrumento: la misma pinza sobre una página que NO bloquea el
   // zoom tiene que agrandarla. Si no, "escala 1" en la app no probaría nada.

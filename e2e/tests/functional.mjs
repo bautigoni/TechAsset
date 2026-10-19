@@ -6,6 +6,7 @@ import {
   assert, clickButton, clickWithModifier, findButton, gotoView, openContext, pathname,
   readOptions, selectOption, sleep, text, typeInto, until
 } from '../lib/browser.mjs';
+import { devicesTests } from './devices.mjs';
 
 // Préstamos (etapa 4): selectores por data-* para no depender del estilo.
 const CODE_INPUT = 'input[data-loan-code]';
@@ -24,6 +25,9 @@ async function press(page, pattern, scope) {
     return false;
   }, pattern.source, pattern.flags, scope), { message: `el botón ${pattern} en ${scope}` });
 }
+// Dispositivos (etapa 5a): tabla de src/ui (filas div[role=row]) y buscador propio.
+const DEVICE_ROW = '.dv-table [data-device-tag]';
+const DEVICE_SEARCH = '.dv-search input';
 const escapeRx = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const exact = value => new RegExp(`^${escapeRx(value)}$`);
 
@@ -382,24 +386,27 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       return `${tag} → /loans con "${value}"`;
     });
 
-    await test('b', 'Escáner global', 'Tipear dentro de un campo o de un diálogo no navega', async () => {
+    await test('b', 'Escáner global', 'Tipear dentro de un campo o de un panel en línea no navega', async () => {
       await gotoView(page, base, 'devices');
-      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
-      const search = await page.waitForSelector('input.compact-search');
+      await page.waitForSelector(DEVICE_ROW, { timeout: 20000 });
+      const search = await page.waitForSelector(DEVICE_SEARCH);
       await search.click();
       await page.keyboard.type('D1436', { delay: 15 });
       await page.keyboard.press('Enter');
       await sleep(500);
       assert((await pathname(page)).endsWith('/devices'), `Tipear en el buscador navegó a ${await pathname(page)}.`);
-      await clickButton(page, /^Papelera$/);
-      await page.waitForSelector('.modal .modal-close');
-      await page.$eval('.modal .modal-close', button => button.focus());
+      await typeInto(page, DEVICE_SEARCH, '');
+      // La papelera ya no es un modal: es un panel en línea con [data-scanner-ignore].
+      await clickButton(page, /^Papelera/);
+      await page.waitForSelector('.dv-panel[aria-label="Papelera de dispositivos"] button[aria-label="Cerrar papelera"]');
+      await page.$eval('.dv-panel[aria-label="Papelera de dispositivos"] button[aria-label="Cerrar papelera"]', button => button.focus());
       await page.keyboard.type('1436', { delay: 15 });
       await sleep(500);
-      assert((await pathname(page)).endsWith('/devices'), `Tipear con foco en un diálogo navegó a ${await pathname(page)}.`);
-      assert(await page.$('.modal'), 'El diálogo se cerró solo.');
+      assert((await pathname(page)).endsWith('/devices'), `Tipear con foco en un panel en línea navegó a ${await pathname(page)}.`);
+      assert(await page.$('.dv-panel[aria-label="Papelera de dispositivos"]'), 'El panel se cerró solo.');
       await page.keyboard.press('Escape');
-      return 'buscador y diálogo: sin navegar';
+      await until(async () => !(await page.$('.dv-panel[aria-label="Papelera de dispositivos"]')), { message: 'que Esc cierre la papelera' });
+      return 'buscador y panel en línea: sin navegar; Esc cierra';
     });
 
     await test('b', 'Escáner global', 'Tipeo humano fuera de campos, Ctrl K y el asistente no navegan', async () => {
@@ -435,13 +442,13 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
     // c) Búsqueda flexible ────────────────────────────────────────────────────
     await test('c', 'Dispositivos', 'Búsqueda flexible (touch 34, touch34, 34touch, D1436, 1436, plani 5, planificación 5)', async () => {
       await gotoView(page, base, 'devices');
-      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      await page.waitForSelector(DEVICE_ROW, { timeout: 20000 });
       const showAll = async () => {
-        const more = await findButton(page, /^Ver todos$/, { scope: '.device-table-more' });
+        const more = await findButton(page, /^Ver todos$/, { scope: '.dv-foot' });
         if (more) { await more.click(); await sleep(150); }
       };
       await showAll();
-      const rows = await page.$$eval('tr[data-device-tag]', list => list.map(row => ({ tag: row.getAttribute('data-device-tag'), alias: (row.querySelector('.operational-alias')?.textContent || '').trim() })));
+      const rows = await page.$$eval(DEVICE_ROW, list => list.map(row => ({ tag: row.getAttribute('data-device-tag'), alias: (row.querySelector('.dv-strong')?.textContent || '').trim() })));
       const pick = (rx, preferred) => {
         const matches = rows.map(row => ({ ...row, m: row.alias.match(rx) })).filter(row => row.m);
         return matches.find(row => Number(row.m[1]) === preferred) || matches[0];
@@ -455,15 +462,16 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       if (plani) queries.push([`plani ${plani.m[1]}`, plani.tag], [`planificación ${plani.m[1]}`, plani.tag]);
       const missing = [];
       const results = [];
+      if (labelRow) queries.push([labelRow.tag.replace(/^D/i, 'D0'), labelRow.tag]);
       for (const [query, expected] of queries) {
-        await typeInto(page, 'input.compact-search', query);
+        await typeInto(page, DEVICE_SEARCH, query);
         await sleep(250);
         await showAll();
-        const visible = await page.$$eval('tr[data-device-tag]', list => list.map(row => row.getAttribute('data-device-tag')));
+        const visible = await page.$$eval(DEVICE_ROW, list => list.map(row => row.getAttribute('data-device-tag')));
         results.push(`"${query}"→${visible.length}`);
         if (!visible.includes(expected)) missing.push(`"${query}" no encontró ${expected}`);
       }
-      await typeInto(page, 'input.compact-search', '');
+      await typeInto(page, DEVICE_SEARCH, '');
       assert(queries.length, 'No hay equipos con alias Touch/Plani ni etiquetas en la copia.');
       assert(!missing.length, missing.join('; '));
       const skipped = [!touch && 'sin Touch', !plani && 'sin Plani'].filter(Boolean);
@@ -474,29 +482,36 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
     await test('d', 'Dispositivos', 'Borrar → Deshacer; borrar → papelera → restaurar', async () => {
       const tag = tagG;
       assert(tag, 'No hay equipo libre para borrar.');
+      // Borrar vive en la ficha (se abre debajo de la fila) con confirmación en línea.
       const deleteRow = async () => {
-        await typeInto(page, 'input.compact-search', tag);
-        const row = await page.waitForSelector(`tr[data-device-tag="${tag}"]`, { timeout: 15000 });
-        await (await row.$('.device-delete-btn')).click();
-        await clickButton(page, /^Borrar$/, { scope: '.modal' });
+        await typeInto(page, DEVICE_SEARCH, tag);
+        const row = await page.waitForSelector(`.dv-table [data-device-tag="${tag}"]`, { timeout: 15000 });
+        await row.click();
+        await page.waitForSelector('.dv-detail');
+        await clickButton(page, /^Borrar$/, { scope: '.dv-detail' });
+        await clickButton(page, /^Mover a la papelera$/, { scope: '.dv-detail .ui-confirm' });
         await until(async () => !(await api.device(tag)), { message: `${tag} oculto en la base` });
       };
       await gotoView(page, base, 'devices');
-      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      await page.waitForSelector(DEVICE_ROW, { timeout: 20000 });
       await deleteRow();
-      const toastText = await until(() => text(page, '.app-toast'), { message: 'el aviso con Deshacer' });
-      assert(toastText.includes(tag), `Aviso: "${toastText}"`);
-      await page.$eval('.app-toast-action', button => button.click());
+      const statusText = await until(() => text(page, '.dv-list > .ui-status'), { message: 'la línea de estado con Deshacer' });
+      assert(statusText.includes(tag), `Aviso: "${statusText}"`);
+      await clickButton(page, /^Deshacer/, { scope: '.dv-list > .ui-status' });
       await until(async () => Boolean(await api.device(tag)), { message: `${tag} restaurado por Deshacer` });
       await deleteRow();
-      await clickButton(page, /^Papelera$/);
-      const item = await until(() => page.evaluateHandle(etiqueta => [...document.querySelectorAll('.device-trash-list li')].find(li => li.textContent.includes(etiqueta)) || null, tag).then(h => h.asElement()), { message: `${tag} en la papelera` });
+      await typeInto(page, DEVICE_SEARCH, '');
+      await clickButton(page, /^Papelera/);
+      const item = await until(() => page.evaluateHandle(etiqueta => [...document.querySelectorAll('.dv-trash-list li')].find(li => li.textContent.includes(etiqueta)) || null, tag).then(h => h.asElement()), { message: `${tag} en la papelera` });
       await (await item.$('button')).click();
       await until(async () => Boolean(await api.device(tag)), { message: `${tag} restaurado desde la papelera` });
-      await until(async () => !(await page.evaluate(etiqueta => [...document.querySelectorAll('.device-trash-list li')].some(li => li.textContent.includes(etiqueta)), tag)), { message: 'que salga de la lista de la papelera' });
-      await page.keyboard.press('Escape');
+      await until(async () => !(await page.evaluate(etiqueta => [...document.querySelectorAll('.dv-trash-list li')].some(li => li.textContent.includes(etiqueta)), tag)), { message: 'que salga de la lista de la papelera' });
+      await page.$eval('.dv-panel button[aria-label="Cerrar papelera"]', button => button.click());
       return `${tag}: Deshacer y Restaurar OK`;
     });
+
+    // d2) Dispositivos e Historial (etapa 5a): selección, lotes, página del equipo, alias en Historial.
+    await devicesTests({ page, base, api, test, free: available.slice(9, 12) });
 
     // e) Tareas y tickets ─────────────────────────────────────────────────────
     await test('e', 'Tareas', 'Mover una tarea de columna (drag & drop)', async () => {
@@ -655,7 +670,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
   const reader = await openContext(browser, { base, token: consulta.token, releaseVersion });
   track(reader.page);
   try {
-    for (const [view, ready, label] of [['dashboard', 'tr[data-device-tag]', 'Inicio'], ['loans', DEVICE_STACK, 'Préstamos'], ['devices', 'tr[data-device-tag]', 'Dispositivos']]) {
+    for (const [view, ready, label] of [['dashboard', 'tr[data-device-tag]', 'Inicio'], ['loans', DEVICE_STACK, 'Préstamos'], ['devices', DEVICE_ROW, 'Dispositivos']]) {
       await test('g', 'Modo consulta', `${label}: ninguna acción de escritura habilitada`, async () => {
         await gotoView(reader.page, base, view);
         await reader.page.waitForSelector(ready, { timeout: 20000 });
@@ -759,7 +774,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       await nav.page.waitForSelector('.shell-pal-item.is-active');
       await nav.page.keyboard.press('Enter');
       await until(async () => (await pathname(nav.page)).endsWith('/devices'), { message: 'la URL de Dispositivos' });
-      await nav.page.waitForSelector(`tr[data-device-tag="${free}"].row-highlight`, { timeout: 8000 });
+      await nav.page.waitForSelector(`[data-device-tag="${free}"].row-highlight`, { timeout: 8000 });
       return `prestar ${free} → /loans; ${free} → fila resaltada en /devices`;
     });
 

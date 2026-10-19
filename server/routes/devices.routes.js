@@ -1,6 +1,6 @@
 ﻿import { Router } from 'express';
 import { addLocalMovement, getDb, nowIso, setAppSetting, setLocalState } from '../db.js';
-import { buildLocalInventory, getDeviceInventoryDiagnostics, getInventoryVersion, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
+import { buildLocalInventory, getDeviceInventoryDiagnostics, getInventoryVersion, getMergedDevices, invalidateDeviceInventoryCache, isLoanedState } from '../services/deviceInventory.service.js';
 import { parseDevicesCsv, toCsvExportUrl } from '../services/googleSheets.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 import { sendWithEtag } from '../services/etag.service.js';
@@ -415,6 +415,123 @@ devicesRouter.delete('/devices/:etiqueta', (req, res, next) => {
     invalidateDeviceInventoryCache('device-deleted', siteCode);
     addLocalMovement({ tipo: 'dispositivo borrado', descripcion: `${etiqueta} ocultado de la app`, operador: operator, origen: 'Local', etiqueta, siteCode });
     res.json({ ok: true, etiqueta });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* ── Lotes en un solo request ─────────────────────────────────────────────
+   Antes "Cambiar estado" y "Borrar" de la selección eran un request por equipo
+   en serie: con Supabase cada uno es un viaje sincrónico y no había atomicidad.
+   Ahora cada lote son 2-4 queries en una transacción, sin importar cuántos
+   equipos lleve, y el inventario cacheado se invalida una sola vez. */
+const BATCH_MAX = 300;
+const BATCH_STATES = new Set(['Disponible', 'Fuera de servicio', 'En reparación', 'No encontrada', 'Sin revisar']);
+
+function batchTagList(value) {
+  const list = Array.isArray(value) ? value : [];
+  return [...new Set(list.map(normalizeTag).filter(Boolean))].slice(0, BATCH_MAX);
+}
+
+function placeholders(count, width = 1) {
+  const row = `(${Array.from({ length: width }, () => '?').join(',')})`;
+  return width === 1 ? Array.from({ length: count }, () => '?').join(',') : Array.from({ length: count }, () => row).join(',');
+}
+
+function insertMovements(rows) {
+  if (!rows.length) return;
+  getDb().prepare(`INSERT INTO local_movements (timestamp, tipo, descripcion, operador, origen, etiqueta, site_code) VALUES ${placeholders(rows.length, 7)}`)
+    .run(...rows.flatMap(row => [row.timestamp, row.tipo, row.descripcion, row.operador || '', row.origen || 'Local', row.etiqueta || '', row.siteCode]));
+}
+
+// Cambiar el estado de varios equipos. Los prestados no se tocan (se borraría el
+// préstamo sin registrar la devolución): vuelven como error para avisar.
+devicesRouter.post('/devices/status-batch', (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const etiquetas = batchTagList(req.body?.etiquetas);
+    const estado = normalizeDeviceState(req.body?.estado || '');
+    if (!etiquetas.length) return res.status(400).json({ ok: false, error: 'No llegó ningún equipo.' });
+    if (!BATCH_STATES.has(estado)) return res.status(400).json({ ok: false, error: 'Estado inválido.' });
+    const byTag = new Map(buildLocalInventory(siteCode).map(item => [normalizeTag(item.etiqueta), item]));
+    const results = etiquetas.map(etiqueta => {
+      const device = byTag.get(etiqueta);
+      if (!device) return { etiqueta, ok: false, error: 'No existe en esta sede.' };
+      if (isLoanedState(device.estado)) return { etiqueta, ok: false, error: 'Está prestado: devolvelo primero.' };
+      return { etiqueta, ok: true, previous: device.estado || '' };
+    });
+    const done = results.filter(item => item.ok);
+    if (done.length) {
+      const ts = nowIso();
+      const operador = String(req.body?.operator || '');
+      const comentarios = String(req.body?.comentario || req.body?.comentarios || '');
+      const returnedAt = estado === 'Disponible' ? ts : '';
+      getDb().transaction(() => {
+        getDb().prepare(`
+          INSERT INTO local_states (etiqueta, site_code, estado, prestado_a, rol, ubicacion, ubicacion_detalle, curso, motivo, motivo_detalle, comentarios, loaned_at, returned_at, updated_at)
+          VALUES ${placeholders(done.length, 14)}
+          ON CONFLICT(site_code, etiqueta) DO UPDATE SET
+            estado=excluded.estado, prestado_a=excluded.prestado_a, rol=excluded.rol, ubicacion=excluded.ubicacion,
+            ubicacion_detalle=excluded.ubicacion_detalle, curso=excluded.curso, motivo=excluded.motivo,
+            motivo_detalle=excluded.motivo_detalle, comentarios=excluded.comentarios, loaned_at=excluded.loaned_at,
+            returned_at=excluded.returned_at, updated_at=excluded.updated_at
+        `).run(...done.flatMap(item => [item.etiqueta, siteCode, estado, '', '', '', '', '', '', '', comentarios, '', returnedAt, ts]));
+        insertMovements(done.map(item => ({ timestamp: ts, tipo: 'estado dispositivo', descripcion: `${item.etiqueta} -> ${estado}`, operador, etiqueta: item.etiqueta, siteCode })));
+      })();
+      invalidateDeviceInventoryCache('device-status-batch', siteCode);
+    }
+    res.json({ ok: true, estado, results, done: done.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Borrar (ocultar) varios equipos. Igual que el borrado suelto: el historial queda.
+devicesRouter.post('/devices/delete-batch', (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const etiquetas = batchTagList(req.body?.etiquetas);
+    if (!etiquetas.length) return res.status(400).json({ ok: false, error: 'No llegó ningún equipo.' });
+    const operador = String(req.body?.operator || '');
+    const ts = nowIso();
+    getDb().transaction(() => {
+      getDb().prepare(`
+        INSERT INTO hidden_devices (etiqueta, site_code, deleted_at, deleted_by, reason) VALUES ${placeholders(etiquetas.length, 5)}
+        ON CONFLICT(site_code, etiqueta) DO UPDATE SET deleted_at=excluded.deleted_at, deleted_by=excluded.deleted_by, reason=excluded.reason
+      `).run(...etiquetas.flatMap(etiqueta => [etiqueta, siteCode, ts, operador, 'Borrado desde Dispositivos']));
+      getDb().prepare(`UPDATE local_devices SET eliminado=1, deleted_at=?, deleted_by=? WHERE site_code=? AND etiqueta IN (${placeholders(etiquetas.length)})`)
+        .run(ts, operador, siteCode, ...etiquetas);
+      insertMovements(etiquetas.map(etiqueta => ({ timestamp: ts, tipo: 'dispositivo borrado', descripcion: `${etiqueta} ocultado de la app`, operador, etiqueta, siteCode })));
+    })();
+    invalidateDeviceInventoryCache('device-delete-batch', siteCode);
+    res.json({ ok: true, results: etiquetas.map(etiqueta => ({ etiqueta, ok: true })), done: etiquetas.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Restaurar varios desde la papelera (el "Deshacer" de borrar en lote).
+devicesRouter.post('/devices/restore-batch', (req, res, next) => {
+  try {
+    const siteCode = requireSite(req);
+    const etiquetas = batchTagList(req.body?.etiquetas);
+    if (!etiquetas.length) return res.status(400).json({ ok: false, error: 'No llegó ningún equipo.' });
+    const hidden = new Set(getDb().prepare(`SELECT etiqueta FROM hidden_devices WHERE site_code=? AND etiqueta IN (${placeholders(etiquetas.length)})`)
+      .all(siteCode, ...etiquetas).map(row => row.etiqueta));
+    const found = etiquetas.filter(etiqueta => hidden.has(etiqueta));
+    if (found.length) {
+      const ts = nowIso();
+      const operador = String(req.body?.operator || '');
+      getDb().transaction(() => {
+        getDb().prepare(`DELETE FROM hidden_devices WHERE site_code=? AND etiqueta IN (${placeholders(found.length)})`).run(siteCode, ...found);
+        getDb().prepare(`UPDATE local_devices SET eliminado=0, deleted_at='', deleted_by='', updated_at=? WHERE site_code=? AND etiqueta IN (${placeholders(found.length)})`)
+          .run(ts, siteCode, ...found);
+        insertMovements(found.map(etiqueta => ({ timestamp: ts, tipo: 'dispositivo restaurado', descripcion: `${etiqueta} restaurado desde la papelera`, operador, etiqueta, siteCode })));
+      })();
+      invalidateDeviceInventoryCache('device-restore-batch', siteCode);
+    }
+    const results = etiquetas.map(etiqueta => (hidden.has(etiqueta) ? { etiqueta, ok: true } : { etiqueta, ok: false, error: 'No está en la papelera.' }));
+    res.json({ ok: true, results, done: found.length });
   } catch (error) {
     next(error);
   }

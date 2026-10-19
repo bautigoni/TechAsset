@@ -28,6 +28,8 @@ export type Column<T> = {
   mono?: boolean;
   /** En tarjeta: 'title' (arriba, fuerte), 'meta' (a la derecha del título), 'row' (renglón con rótulo, default), 'hide'. */
   card?: 'title' | 'meta' | 'row' | 'hide';
+  /** Clase extra en el encabezado y en cada celda de la columna (estilos de la pantalla). */
+  className?: string;
 };
 
 export type TableSelection = {
@@ -138,7 +140,7 @@ export function Table<T>({ rows, columns, rowKey, caption, sort: sortProp, defau
                   key={column.key}
                   role="columnheader"
                   aria-sort={column.sortValue ? (active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none') : undefined}
-                  className={cx('ui-td', 'ui-th', column.align && `ui-td--${column.align}`)}
+                  className={cx('ui-td', 'ui-th', column.align && `ui-td--${column.align}`, column.className)}
                 >
                   {column.sortValue ? (
                     <button type="button" className={cx('ui-th-sort', active && 'is-active')} onClick={() => setSort(column.key)}>
@@ -190,7 +192,7 @@ export function Table<T>({ rows, columns, rowKey, caption, sort: sortProp, defau
                     <div
                       key={column.key}
                       role="cell"
-                      className={cx('ui-td', column.align && `ui-td--${column.align}`, column.mono && 'ui-mono', `ui-td--card-${column.card || 'row'}`)}
+                      className={cx('ui-td', column.align && `ui-td--${column.align}`, column.mono && 'ui-mono', `ui-td--card-${column.card || 'row'}`, column.className)}
                     >
                       {(column.card || 'row') === 'row' && (
                         <span className="ui-td-label" aria-hidden="true">{column.cardLabel || (typeof column.header === 'string' ? column.header : '')}</span>

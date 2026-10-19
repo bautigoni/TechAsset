@@ -120,6 +120,29 @@ try {
   const restored = await call('POST', '/api/devices/D9003/restore', {});
   check('restaurar', restored.json?.ok && Boolean(await estado('D9003')), restored.text.slice(0, 200));
 
+  // Lotes de Dispositivos (etapa 5a): estado, borrar y restaurar en un request.
+  await call('POST', '/api/loans/lend', { etiqueta: 'D9001', person: 'Ana', role: 'Alumno', location: 'DOE' });
+  const statusBatch = await call('POST', '/api/devices/status-batch', { etiquetas: ['D9002', 'D9003', 'D9001', 'D9998'], estado: 'En reparación' });
+  check('cambiar estado en lote (multi-fila ON CONFLICT)', statusBatch.json?.done === 2 && statusBatch.json.results.filter(item => !item.ok).length === 2, statusBatch.text.slice(0, 200));
+  check('lote no toca prestados', /prest/i.test(await estado('D9001') || '') && (await estado('D9002')) === 'En reparación');
+  const deleteBatch = await call('POST', '/api/devices/delete-batch', { etiquetas: ['D9002', 'D9003'] });
+  const afterDelete = (await call('GET', '/api/devices')).json.items.map(item => item.etiqueta);
+  check('borrar en lote (IN + multi-fila)', deleteBatch.json?.done === 2 && !afterDelete.includes('D9002') && !afterDelete.includes('D9003'), deleteBatch.text.slice(0, 200));
+  const restoreBatch = await call('POST', '/api/devices/restore-batch', { etiquetas: ['D9002', 'D9003', 'D9004'] });
+  check('restaurar en lote', restoreBatch.json?.done === 2 && Boolean(await estado('D9002')) && Boolean(await estado('D9003')), restoreBatch.text.slice(0, 200));
+  await call('POST', '/api/devices/status-batch', { etiquetas: ['D9002', 'D9003'], estado: 'Disponible' });
+  await call('POST', '/api/loans/return', { etiqueta: 'D9001' });
+
+  // Historial: alias sin espacio, etiquetas resueltas, CSV de todo y resumen del equipo.
+  const aliasCompact = await call('GET', '/api/history?kind=loans&q=touch1');
+  check('historial: alias sin espacio (replace/lower)', aliasCompact.status === 200 && aliasCompact.json.items.some(item => item.etiqueta === 'D9001'), aliasCompact.text.slice(0, 200));
+  const byTags = await call('GET', '/api/history?kind=all&q=xyz&tags=D9001');
+  check('historial: tags en movimientos (IN)', byTags.status === 200 && byTags.json.items.every(item => item.etiqueta === 'D9001') && byTags.json.items.length > 0, byTags.text.slice(0, 200));
+  const csv = await call('GET', '/api/history/export.csv?kind=loans&q=grupo');
+  check('historial: CSV de lo filtrado', csv.status === 200 && csv.text.includes('Fecha,Tipo,Etiqueta') && csv.text.split('\n').length >= 3, csv.text.slice(0, 200));
+  const summary = await call('GET', '/api/history/device-summary?etiqueta=D9001');
+  check('historial: resumen del equipo (COUNT/MAX)', summary.json?.loans >= 2 && Boolean(summary.json.lastLoan), summary.text.slice(0, 200));
+
   // Agenda (subconsulta del conteo), tareas, cierre del día, notificaciones.
   const agendaNew = await call('POST', '/api/agenda', { dia: 'Sábado', turno: 'Mañana', desde: '08:00', hasta: '09:00', curso: '5F', actividad: 'Prueba', tipoDispositivo: 'Touch', cantidad: 1, estado: 'Pendiente' });
   check('alta agenda', agendaNew.status === 200, agendaNew.text.slice(0, 200));

@@ -159,3 +159,22 @@ export const getDeletedDevices = () => apiGet<{ ok: true; items: DeletedDevice[]
 export function restoreDevice(etiqueta: string) {
   return apiSend<{ ok: true; etiqueta: string }>(`/api/devices/${encodeURIComponent(etiqueta)}/restore`, 'POST', {});
 }
+
+/* Lotes en un solo request (antes, un request por equipo en serie). */
+export type DeviceBatchResult = { etiqueta: string; ok: boolean; error?: string; previous?: string };
+export type DeviceBatchResponse = { ok: true; results: DeviceBatchResult[]; done: number; estado?: string };
+
+/** Cambia el estado de varios; los prestados vuelven con error (no se tocan). */
+export function updateDevicesStatusBatch(payload: { etiquetas: string[]; estado: string; operator: string }) {
+  return apiSend<DeviceBatchResponse>('/api/devices/status-batch', 'POST', payload);
+}
+
+/** Borra (oculta) varios: van a la papelera con su historial. */
+export function deleteDevicesBatch(etiquetas: string[], operator: string) {
+  return apiSend<DeviceBatchResponse>('/api/devices/delete-batch', 'POST', { etiquetas, operator });
+}
+
+/** Restaura varios desde la papelera (Deshacer de borrar). */
+export function restoreDevicesBatch(etiquetas: string[], operator = '') {
+  return apiSend<DeviceBatchResponse>('/api/devices/restore-batch', 'POST', { etiquetas, operator });
+}

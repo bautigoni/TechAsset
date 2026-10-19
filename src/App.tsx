@@ -53,8 +53,6 @@ const SettingsPage = lazyView('settings', () => import('./components/settings/Se
 const UiShowcase = lazyView('ui', () => import('./ui/Showcase'), 'Showcase');
 // Fuera del nav: modales y pantallas de auth. La landing solo la ve quien no
 // tiene sesión, así que no tiene por qué pesar en el bundle del que ya entró.
-const DeviceProfile = lazyView('device-profile', () => import('./components/devices/DeviceProfile'), 'DeviceProfile');
-const AddDeviceModal = lazyView('add-device', () => import('./components/devices/AddDeviceModal'), 'AddDeviceModal');
 const LoginPage = lazyView('login', () => import('./components/auth/LoginPage'), 'LoginPage');
 const LandingPage = lazyView('landing', () => import('./components/auth/LandingPage'), 'LandingPage');
 
@@ -68,8 +66,12 @@ export function App() {
   const [scanRequest, setScanRequest] = useState(0);
   const [assistantContext, setAssistantContext] = useState<AssistantContext | null>(null);
   const [consultationMode, setConsultationMode] = useState(false);
-  const [profile, setProfile] = useState<Device | null>(null);
-  const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+  // La ficha de un equipo ya no es un modal: es su página en Dispositivos
+  // (/sede/x/devices/D1436). `edit` la abre en modo edición.
+  const [devicePage, setDevicePage] = useState<{ tag: string; edit?: boolean } | null>(() => {
+    const tag = readDeviceTagFromUrl();
+    return tag ? { tag } : null;
+  });
   const [loanSeed, setLoanSeed] = useState('');
   // Lote elegido en Dispositivos para prestar: llega a la lista del formulario.
   const [loanBatchSeed, setLoanBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
@@ -181,25 +183,42 @@ export function App() {
   const viewRef = useRef(view);
   viewRef.current = view;
   const pushNext = useRef(false);
+  const devicePageRef = useRef(devicePage);
+  devicePageRef.current = devicePage;
   const navigate = useCallback((next: ViewKey) => {
-    if (next === viewRef.current) return;
+    if (next === viewRef.current) {
+      // "Dispositivos" estando en la página de un equipo vuelve a la lista.
+      if (next === 'devices' && devicePageRef.current) { pushNext.current = true; setDevicePage(null); }
+      return;
+    }
     pushNext.current = true;
+    setDevicePage(null);
     setView(next);
   }, []);
   const changeSite = useCallback((code: string) => {
     pushNext.current = true;
+    setDevicePage(null);
     setActiveSite(code);
   }, []);
+  const openDevicePage = useCallback((tag: string | null, edit = false) => {
+    pushNext.current = true;
+    setDevicePage(tag ? { tag, edit } : null);
+    setView('devices');
+  }, []);
+  // Mismos nombres que antes (los usan Inicio, Préstamos, Inventario, Historial,
+  // Ctrl K y el asistente): ahora llevan a la página del equipo.
+  const setProfile = useCallback((device: Device | null) => { if (device) openDevicePage(device.etiqueta); }, [openDevicePage]);
+  const setEditingDevice = useCallback((device: Device | null) => { if (device) openDevicePage(device.etiqueta, true); }, [openDevicePage]);
 
   useEffect(() => {
     if (!user || !activeSite) return;
-    const next = `/sede/${activeSite.toLowerCase()}/${view}`;
+    const next = `/sede/${activeSite.toLowerCase()}/${view}${view === 'devices' && devicePage ? `/${encodeURIComponent(devicePage.tag)}` : ''}`;
     const push = pushNext.current;
     pushNext.current = false;
     if (window.location.pathname === next) return;
     if (push) window.history.pushState({ techasset: true }, '', next);
     else window.history.replaceState(null, '', next);
-  }, [activeSite, view, user]);
+  }, [activeSite, view, user, devicePage]);
 
   useEffect(() => {
     if (!user) return;
@@ -215,6 +234,8 @@ export function App() {
       }
       pushNext.current = false;
       if (site && site.siteCode !== activeSite) setActiveSite(site.siteCode);
+      const tag = urlView === 'devices' ? readDeviceTagFromUrl() : '';
+      setDevicePage(current => (tag ? (current?.tag === tag ? current : { tag }) : null));
       setView(urlView);
     };
     window.addEventListener('popstate', onPopState);
@@ -490,7 +511,7 @@ export function App() {
   // Al hacer click el módulo ya está en memoria: cambio de vista instantáneo.
   useEffect(() => {
     if (!user || siteSettings === null) return;
-    prefetchViewsWhenIdle([...navKeys.split(',').filter(Boolean), 'device-profile', 'assistant']);
+    prefetchViewsWhenIdle([...navKeys.split(',').filter(Boolean), 'assistant']);
   }, [navKeys, siteSettings, user]);
 
   // Nada mientras se resuelve la sesión. El pedido tarda ~170 ms: cualquier
@@ -562,7 +583,7 @@ export function App() {
       <div key={view} className="view-enter">
       <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
       {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={navigate} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
-      {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} />}
+      {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} allDevices={devices} siteCode={activeSite} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} pageTag={devicePage?.tag} pageEdit={devicePage?.edit} onOpenPage={openDevicePage} onNavigate={navigate} />}
       {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onRefresh={() => Promise.all([refresh({ force: true, wait: true }), refreshMovements(true)])} siteCode={activeSite} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} scanRequest={scanRequest} />}
       {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
       {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
@@ -585,10 +606,6 @@ export function App() {
       {view === 'settings' && <SettingsPage key={activeSite} operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
       </Suspense>
       </div>
-      <Suspense fallback={null}>
-        {profile && <DeviceProfile device={profile} consultationMode={effectiveConsultation} onOpenDevice={setProfile} onClose={() => setProfile(null)} />}
-        {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}
-      </Suspense>
     </AppShell>
   );
 }
@@ -642,6 +659,13 @@ function readSiteFromUrl() {
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1];
   return isViewKey(view) ? view : null;
+}
+
+/** /sede/<sede>/devices/<etiqueta> → la etiqueta ('' si no hay). */
+function readDeviceTagFromUrl(): string {
+  const raw = window.location.pathname.match(/^\/sede\/[^/]+\/devices\/([^/]+)/i)?.[1];
+  if (!raw) return '';
+  try { return decodeURIComponent(raw).trim().toUpperCase().slice(0, 30); } catch { return ''; }
 }
 
 function readAuthModeFromUrl(): 'landing' | 'login' | 'register' {

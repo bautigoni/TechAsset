@@ -42,7 +42,7 @@ export function normalizeAlias(value: unknown): string {
 
 type AliasType = 'PLANI' | 'TOUCH' | 'TIC' | 'DELL' | 'TABLET' | 'NOTEBOOK' | 'CHROMEBOOK';
 
-function parseOperationalAlias(value: unknown): { type: AliasType; number: string } | null {
+export function parseOperationalAlias(value: unknown): { type: AliasType; number: string } | null {
   const text = normalizeText(value)
     .replace(/planificacion/g, 'plani')
     .replace(/\bplano\b/g, 'plani')
