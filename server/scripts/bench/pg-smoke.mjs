@@ -140,8 +140,9 @@ try {
   check('historial: tags en movimientos (IN)', byTags.status === 200 && byTags.json.items.every(item => item.etiqueta === 'D9001') && byTags.json.items.length > 0, byTags.text.slice(0, 200));
   const csv = await call('GET', '/api/history/export.csv?kind=loans&q=grupo');
   check('historial: CSV de lo filtrado', csv.status === 200 && csv.text.includes('Fecha,Tipo,Etiqueta') && csv.text.split('\n').length >= 3, csv.text.slice(0, 200));
+  // El primer préstamo de D9001 lo anula el Deshacer de /api/loans/undo (más arriba): queda el de los lotes.
   const summary = await call('GET', '/api/history/device-summary?etiqueta=D9001');
-  check('historial: resumen del equipo (COUNT/MAX)', summary.json?.loans >= 2 && Boolean(summary.json.lastLoan), summary.text.slice(0, 200));
+  check('historial: resumen del equipo (COUNT/MAX)', summary.json?.loans >= 1 && Boolean(summary.json.lastLoan), summary.text.slice(0, 200));
 
   // Agenda (subconsulta del conteo), tareas, cierre del día, notificaciones.
   const agendaNew = await call('POST', '/api/agenda', { dia: 'Sábado', turno: 'Mañana', desde: '08:00', hasta: '09:00', curso: '5F', actividad: 'Prueba', tipoDispositivo: 'Touch', cantidad: 1, estado: 'Pendiente' });
