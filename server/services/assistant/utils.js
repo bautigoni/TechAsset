@@ -1,4 +1,5 @@
-const TZ = 'America/Argentina/Buenos_Aires';
+// Fechas locales: util común del server (historial, cierre del día, notas).
+import { SITE_TZ as TZ, toLocalDate as localDate, todayLocal } from '../localTime.js';
 
 export function normalize(value) {
   return String(value || '')
@@ -25,14 +26,12 @@ export function dayName(date) {
 }
 
 export function toLocalDate(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
-  const get = type => parts.find(part => part.type === type)?.value || '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
+  if (!(date instanceof Date)) return '';
+  return localDate(date);
 }
 
 export function todayIso() {
-  return toLocalDate(new Date());
+  return todayLocal();
 }
 
 export function addDays(date, days) {

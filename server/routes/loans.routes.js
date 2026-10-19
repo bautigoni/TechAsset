@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { addLocalMovement, addLoanEvent, getDb, nowIso, setLocalState } from '../db.js';
-import { buildLocalInventory, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
+import { buildLocalInventory, invalidateDeviceInventoryCache, isLoanedState } from '../services/deviceInventory.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 
 export const loansRouter = Router();
@@ -349,11 +349,6 @@ function formatCourse(body) {
 function isPlaceholder(value, placeholder) {
   const clean = String(value || '').trim();
   return !clean || clean.toLowerCase() === placeholder.toLowerCase();
-}
-
-function isLoanedState(value) {
-  const state = normalizeState(value);
-  return state.includes('prest') || state.includes('retir');
 }
 
 // Misma regla que getLoanState en src/utils/deviceState.ts: si cambia una, cambiar la otra.

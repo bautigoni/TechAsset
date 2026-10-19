@@ -411,7 +411,8 @@ toolsRouter.post('/tools/credentials365/preview', async (req, res, next) => {
       total: rows.length,
       validos: valid.length,
       invalidos: invalid.length,
-      modoPrueba: config.smtp.modoPrueba,
+      // El modo prueba que vale es el guardado en la base (el mismo que usa /send), no el del .env.
+      modoPrueba: getMailSettings().modoPrueba,
       preview: rows.slice(0, 10),
       invalidPreview: invalid.slice(0, 10).map(r => ({
         'Nombre para mostrar': r['Nombre para mostrar'],

@@ -71,6 +71,12 @@ sitesRouter.post('/sites', (req, res) => {
   if (!isSuperadmin(req.user)) return res.status(403).json({ ok: false, error: 'Solo Superadmin puede administrar sedes.' });
   const siteCode = normalizeSiteCode(req.body?.siteCode || req.body?.site_code);
   if (!siteCode) return res.status(400).json({ ok: false, error: 'Falta site_code.' });
+  // Crear con un código que ya existe pisaba nombre, logo y color de esa sede sin
+  // avisar. Editar una sede es PATCH /sites/:siteCode.
+  const existing = getDb().prepare('SELECT site_code, nombre FROM sites WHERE site_code=?').get(siteCode);
+  if (existing) {
+    return res.status(409).json({ ok: false, error: `Ya existe una sede con el código ${siteCode}${existing.nombre && existing.nombre !== siteCode ? ` (${existing.nombre})` : ''}. Elegí otro código o editá la sede existente.` });
+  }
   const ts = nowIso();
   let logo = '';
   try { logo = resolveSiteLogo(siteCode, req.body || {}, ''); }

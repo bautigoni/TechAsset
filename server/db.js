@@ -1375,20 +1375,37 @@ function migrateLegacyQuickLinks(database) {
   database.prepare("INSERT INTO app_settings (key, value, updated_at) VALUES ('quicklinks.legacy_seeded','1',?) ON CONFLICT(key) DO UPDATE SET value='1', updated_at=excluded.updated_at").run(ts);
 }
 
+// Migraciones de módulos que corren UNA sola vez (marca en app_settings). Antes
+// corrían en cada arranque: lo que un admin prendía o apagaba en Configuración
+// se deshacía en el próximo reinicio (Recordatorios se apagaba solo; Horarios,
+// Caja chica y Sugerencias se volvían a prender).
+function runModuleMigrationOnce(database, flagKey, migrate) {
+  const done = database.prepare('SELECT value FROM app_settings WHERE key=?').get(flagKey);
+  if (done?.value === '1') return;
+  migrate();
+  database.prepare("INSERT INTO app_settings (key, value, updated_at) VALUES (?, '1', ?) ON CONFLICT(key) DO UPDATE SET value='1', updated_at=excluded.updated_at").run(flagKey, nowIso());
+}
+
 function migrateRetiredModules(database) {
-  const retired = new Set(['reminders', 'photopasses']);
-  const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
-  const update = database.prepare('UPDATE site_settings SET value_json=? WHERE site_code=? AND key=?');
-  for (const row of rows) {
-    let list;
-    try { list = JSON.parse(row.value_json || '[]'); } catch { continue; }
-    if (!Array.isArray(list)) continue;
-    const next = list.filter(item => !retired.has(String(item)));
-    if (next.length !== list.length) update.run(JSON.stringify(next), row.site_code, row.key);
-  }
+  runModuleMigrationOnce(database, 'modules.retired_migrated', () => {
+    const retired = new Set(['reminders', 'photopasses']);
+    const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
+    const update = database.prepare('UPDATE site_settings SET value_json=? WHERE site_code=? AND key=?');
+    for (const row of rows) {
+      let list;
+      try { list = JSON.parse(row.value_json || '[]'); } catch { continue; }
+      if (!Array.isArray(list)) continue;
+      const next = list.filter(item => !retired.has(String(item)));
+      if (next.length !== list.length) update.run(JSON.stringify(next), row.site_code, row.key);
+    }
+  });
 }
 
 function migrateNewModuleSettings(database) {
+  runModuleMigrationOnce(database, 'modules.added_migrated', () => addNewModuleSettings(database));
+}
+
+function addNewModuleSettings(database) {
   const added = ['schedules', 'pettycash', 'suggestions'];
   const rows = database.prepare("SELECT site_code, key, value_json FROM site_settings WHERE key IN ('modules.enabled','modules.order')").all();
   const update = database.prepare('UPDATE site_settings SET value_json=?, updated_at=? WHERE site_code=? AND key=?');

@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { getDb, nowIso, rowToAgenda } from '../db.js';
 import { normalizeSiteCode, requireSite } from '../services/siteContext.service.js';
+import { addDaysToLocalDate, localParts, todayLocal } from '../services/localTime.js';
 
 export const calendarRouter = Router();
 export const publicCalendarRouter = Router();
@@ -135,12 +136,9 @@ function resolveDateTime(item, timeValue) {
 function dateFromWeekday(dayName) {
   const wanted = weekdayIndex(dayName);
   if (!wanted) return '';
-  const today = new Date();
-  const current = today.getDay() || 7;
-  const diff = wanted - current;
-  const date = new Date(today);
-  date.setDate(today.getDate() + diff);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  // La semana se cuenta desde "hoy" en hora de la sede (el server puede estar en UTC).
+  const current = localParts(new Date()).weekday || 7;
+  return addDaysToLocalDate(todayLocal(), wanted - current);
 }
 
 function weekdayIndex(value) {

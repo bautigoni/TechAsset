@@ -3,12 +3,32 @@ import { getDb } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
 import { getMergedDevices } from '../services/deviceInventory.service.js';
 import { decorateDevicesWithLifecycle } from '../services/lifecycle.service.js';
+import { addDaysToLocalDate, localDayStartIso, localParts, toLocalDate, todayLocal } from '../services/localTime.js';
 
 export const analyticsRouter = Router();
 
 const DAY_MS = 86400000;
 
+// Fecha y hora de cada evento en hora de la sede: los timestamps son ISO UTC y
+// el server puede correr en UTC (getHours/getDate daban +3 h y corrían el día).
+function eventParts(value) {
+  return localParts(value);
+}
+
+function monthKey(parts) {
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}`;
+}
+
 function parseRange(query = {}) {
+  const isDay = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+  // Días YYYY-MM-DD: de 00:00 de "from" al final de "to", en hora de la sede.
+  if (isDay(query.from) || isDay(query.to)) {
+    const fromIso = isDay(query.from) ? localDayStartIso(query.from) : new Date(Date.now() - 365 * DAY_MS).toISOString();
+    const toIso = isDay(query.to)
+      ? new Date(Date.parse(localDayStartIso(addDaysToLocalDate(query.to, 1))) - 1).toISOString()
+      : new Date(Date.parse(localDayStartIso(addDaysToLocalDate(todayLocal(), 1))) - 1).toISOString();
+    return { from: fromIso, to: toIso };
+  }
   const now = new Date();
   let to = query.to ? new Date(query.to) : now;
   let from = query.from ? new Date(query.from) : new Date(now.getTime() - 365 * DAY_MS);
@@ -39,11 +59,9 @@ function buildSeries(events, from, to) {
   const monthly = spanDays > 92;
   const buckets = new Map();
   for (const ev of events) {
-    const d = new Date(ev.timestamp);
-    if (Number.isNaN(d.getTime())) continue;
-    const key = monthly
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const d = eventParts(ev.timestamp);
+    if (!d) continue;
+    const key = monthly ? monthKey(d) : `${monthKey(d)}-${String(d.day).padStart(2, '0')}`;
     buckets.set(key, (buckets.get(key) || 0) + 1);
   }
   return {
@@ -54,15 +72,15 @@ function buildSeries(events, from, to) {
 
 function buildAnnualTrend(events) {
   const buckets = new Map();
-  const now = new Date();
+  const now = eventParts(new Date());
   for (let i = 11; i >= 0; i -= 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    buckets.set(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, 0);
+    const d = new Date(Date.UTC(now.year, now.month - 1 - i, 1));
+    buckets.set(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`, 0);
   }
   for (const ev of events) {
-    const d = new Date(ev.timestamp);
-    if (Number.isNaN(d.getTime())) continue;
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const d = eventParts(ev.timestamp);
+    if (!d) continue;
+    const key = monthKey(d);
     if (buckets.has(key)) buckets.set(key, (buckets.get(key) || 0) + 1);
   }
   return [...buckets.entries()].map(([label, value]) => ({ label, value }));
@@ -72,9 +90,9 @@ function buildHourWeekday(events) {
   const days = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
   const map = new Map();
   for (const ev of events) {
-    const d = new Date(ev.timestamp);
-    if (Number.isNaN(d.getTime())) continue;
-    const key = `${days[d.getDay()]} ${String(d.getHours()).padStart(2, '0')}:00`;
+    const d = eventParts(ev.timestamp);
+    if (!d) continue;
+    const key = `${days[d.weekday]} ${String(d.hour).padStart(2, '0')}:00`;
     map.set(key, (map.get(key) || 0) + 1);
   }
   return rowsFromMap(map);
@@ -178,9 +196,9 @@ function buildTicketMetrics(siteCode, from, to) {
 function buildTicketMonthly(rows) {
   const buckets = new Map();
   for (const row of rows) {
-    const date = new Date(row.created_at);
-    if (Number.isNaN(date.getTime())) continue;
-    const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+    const date = eventParts(row.created_at);
+    if (!date) continue;
+    const key = monthKey(date);
     buckets.set(key,(buckets.get(key)||0)+1);
   }
   return [...buckets.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([label,value])=>({label,value}));
@@ -189,9 +207,9 @@ function buildTicketMonthly(rows) {
 function buildHourSeries(events) {
   const buckets = new Map(Array.from({ length: 12 }, (_, index) => [`${String(index + 7).padStart(2, '0')}:00`, 0]));
   for (const ev of events) {
-    const date = new Date(ev.timestamp);
-    if (Number.isNaN(date.getTime())) continue;
-    const hour = date.getHours();
+    const date = eventParts(ev.timestamp);
+    if (!date) continue;
+    const hour = date.hour;
     const label = `${String(hour).padStart(2, '0')}:00`;
     buckets.set(label, (buckets.get(label) || 0) + 1);
   }
@@ -204,9 +222,9 @@ function buildWeekdaySeries(events) {
   const labels = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
   const buckets = new Map(labels.map(label => [label, 0]));
   for (const ev of events) {
-    const date = new Date(ev.timestamp);
-    if (Number.isNaN(date.getTime())) continue;
-    const label = labels[date.getDay()];
+    const date = eventParts(ev.timestamp);
+    if (!date) continue;
+    const label = labels[date.weekday];
     buckets.set(label, (buckets.get(label) || 0) + 1);
   }
   return [...buckets.entries()]
@@ -322,8 +340,9 @@ analyticsRouter.get('/analytics', (req, res) => {
     WHERE site_code=?
     ORDER BY timestamp ASC
   `).all(siteCode);
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - DAY_MS).toISOString().slice(0, 10);
+  // Hoy y ayer en hora de la sede (antes, fecha UTC: después de las 21 h "hoy" era mañana).
+  const today = todayLocal();
+  const yesterday = addDaysToLocalDate(today, -1);
   const ticketsAbiertos = getDb().prepare("SELECT COUNT(*) AS total FROM tickets WHERE site_code=? AND activo=1 AND estado<>'Hecho'").get(siteCode).total;
   const tareasAbiertas = getDb().prepare("SELECT COUNT(*) AS total FROM tasks WHERE site_code=? AND eliminada=0 AND estado<>'Hecha'").get(siteCode).total;
   const byTaskType = getDb().prepare(`
@@ -337,8 +356,8 @@ analyticsRouter.get('/analytics', (req, res) => {
   const summary = {
     totalPrestamos: prestamos.length,
     totalDevoluciones: devoluciones.length,
-    prestamosHoy: allEvents.filter(r => r.tipo === 'prestamo' && String(r.timestamp || '').startsWith(today)).length,
-    prestamosAyer: allEvents.filter(r => r.tipo === 'prestamo' && String(r.timestamp || '').startsWith(yesterday)).length,
+    prestamosHoy: allEvents.filter(r => r.tipo === 'prestamo' && toLocalDate(r.timestamp || '') === today).length,
+    prestamosAyer: allEvents.filter(r => r.tipo === 'prestamo' && toLocalDate(r.timestamp || '') === yesterday).length,
     ticketsAbiertos: Number(ticketsAbiertos || 0),
     tareasAbiertas: Number(tareasAbiertas || 0),
     personasUnicas: new Set(prestamos.map(r => (r.persona || '').trim().toLowerCase()).filter(Boolean)).size,

@@ -187,6 +187,15 @@ function isAvailableState(value) {
   return ['Disponible', 'Devuelto', 'Sin revisar'].includes(String(value || '').trim());
 }
 
+/**
+ * ¿El estado es "prestado"? Regla única del server (Préstamos, cierre del día).
+ * Misma regla que isLoanedState en src/utils/deviceState.ts: si cambia una, cambiar la otra.
+ */
+export function isLoanedState(value) {
+  const state = String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+  return state.includes('prest') || state.includes('retir');
+}
+
 function getLastImport(siteCode) {
   const row = getDb().prepare('SELECT value FROM app_settings WHERE key=?').get(`devices.last_import.${normalizeSite(siteCode)}`);
   return row?.value || '';

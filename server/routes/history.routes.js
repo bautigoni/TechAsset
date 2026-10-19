@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { addDaysToLocalDate, localDayStartIso } from '../services/localTime.js';
 
 /**
  * Historial con filtros y paginado.
@@ -19,10 +20,13 @@ const MAX_LIMIT = 200;
 function parseFilters(query) {
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(query.limit) || 50));
   const day = value => (/^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '');
-  const from = day(query.from);
+  // Los días son de la sede (hora argentina) y los timestamps, ISO UTC: se
+  // compara contra el instante UTC en que empieza cada día local. Antes se
+  // comparaba contra la fecha UTC y un préstamo de las 22 h caía al día siguiente.
+  const from = localDayStartIso(day(query.from));
   const to = day(query.to);
-  // El "hasta" incluye el día entero: se compara contra el día siguiente.
-  const toExclusive = to ? new Date(Date.parse(`${to}T00:00:00Z`) + 86400000).toISOString().slice(0, 10) : '';
+  // El "hasta" incluye el día entero: se compara contra el inicio del día siguiente.
+  const toExclusive = to ? localDayStartIso(addDaysToLocalDate(to, 1)) : '';
   const q = String(query.q || '').trim().toLowerCase().slice(0, 80);
   const [beforeTs = '', beforeId = ''] = String(query.before || '').split('|');
   return { limit, from, toExclusive, q, beforeTs, beforeId: Number(beforeId) || 0, tipo: String(query.tipo || '').trim() };

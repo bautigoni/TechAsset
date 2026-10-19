@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { buildTaskContext, getDb, nowIso, rowToAgenda, rowToTask } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { getMergedDevices, isLoanedState } from '../services/deviceInventory.service.js';
+import { localDayRangeIso, localParts, toLocalDate, todayLocal } from '../services/localTime.js';
 
 export const operationsRouter = Router();
 
@@ -58,17 +60,27 @@ operationsRouter.get('/daily-closures', (_req, res) => {
   res.json({ ok: true, items: rows.map(rowToClosure) });
 });
 
-operationsRouter.get('/daily-closures/preview', (_req, res) => {
-  res.json({ ok: true, resumen: buildDailySummary(requireSite(_req)) });
+operationsRouter.get('/daily-closures/preview', async (req, res, next) => {
+  try {
+    res.json({ ok: true, resumen: await buildDailySummary(requireSite(req)) });
+  } catch (error) {
+    next(error);
+  }
 });
 
-operationsRouter.post('/daily-closures', (req, res) => {
-  const ts = nowIso();
-  const siteCode = requireSite(req);
-  const resumen = req.body?.resumen || buildDailySummary(siteCode);
-  const info = getDb().prepare('INSERT INTO daily_closures (site_code, fecha, operador, resumen_json, observaciones, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(siteCode, ts.slice(0, 10), req.body?.operator || req.body?.operador || '', JSON.stringify(resumen), req.body?.observaciones || '', ts);
-  res.json({ ok: true, item: rowToClosure(getDb().prepare('SELECT * FROM daily_closures WHERE id=?').get(info.lastInsertRowid)) });
+operationsRouter.post('/daily-closures', async (req, res, next) => {
+  try {
+    const ts = nowIso();
+    const siteCode = requireSite(req);
+    const resumen = req.body?.resumen || await buildDailySummary(siteCode);
+    // La fecha del cierre es el día de la sede, no el día UTC (después de las 21 h
+    // quedaba registrado como del día siguiente).
+    const info = getDb().prepare('INSERT INTO daily_closures (site_code, fecha, operador, resumen_json, observaciones, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(siteCode, toLocalDate(ts), req.body?.operator || req.body?.operador || '', JSON.stringify(resumen), req.body?.observaciones || '', ts);
+    res.json({ ok: true, item: rowToClosure(getDb().prepare('SELECT * FROM daily_closures WHERE id=?').get(info.lastInsertRowid)) });
+  } catch (error) {
+    next(error);
+  }
 });
 
 operationsRouter.get('/quick-links', (_req, res) => {
@@ -121,23 +133,32 @@ operationsRouter.patch('/settings/shifts', (req, res) => {
   res.json({ ok: true, settings: { morningOperator: morning, afternoonOperator: afternoon } });
 });
 
-function buildDailySummary(siteCode) {
+async function buildDailySummary(siteCode) {
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  // "Hoy" es el día de la sede; las columnas ISO UTC se filtran por su rango.
+  const today = todayLocal();
+  const todayRange = localDayRangeIso(today);
   // rowToTask con su contexto: .map(rowToTask) le pasaba el índice como ctx.
   const taskCtx = buildTaskContext(siteCode);
   const tasks = db.prepare('SELECT * FROM tasks WHERE eliminada=0 AND site_code=?').all(siteCode).map(row => rowToTask(row, taskCtx));
   const agenda = db.prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=?').all(siteCode).map(rowToAgenda);
-  const notes = db.prepare("SELECT * FROM internal_notes WHERE site_code=? AND COALESCE(visible,1)=1 AND importante=1 AND created_at LIKE ? ORDER BY id DESC").all(siteCode, `${today}%`).map(rowToNote);
+  const notes = db.prepare("SELECT * FROM internal_notes WHERE site_code=? AND COALESCE(visible,1)=1 AND importante=1 AND created_at >= ? AND created_at < ? ORDER BY id DESC").all(siteCode, todayRange.start, todayRange.end).map(rowToNote);
   const classrooms = db.prepare("SELECT room_key, nombre, piso, estado_general FROM classrooms WHERE site_code=? AND estado_general IN ('Con observaciones','Problema') ORDER BY piso, nombre").all(siteCode);
-  const prestamos = db.prepare("SELECT * FROM prestamos WHERE site_code=? AND estado='activo' ORDER BY created_at DESC").all(siteCode);
+  // Préstamos activos desde el inventario actual (local_states), con la misma
+  // regla que Préstamos. La tabla vieja `prestamos` ya no se escribe: daba 0.
+  // getMergedDevices usa la caché por sede, así que no suma queries si está fresca.
+  const { items: devices } = await getMergedDevices({ siteCode });
+  const prestados = devices.filter(device => isLoanedState(device.estado));
   return {
     fecha: today,
-    prestamosActivos: prestamos.length,
-    dispositivosNoDevueltos: prestamos.map(p => p.codigo_dispositivo).filter(Boolean),
+    prestamosActivos: prestados.length,
+    dispositivosNoDevueltos: prestados.map(device => {
+      const alias = String(device.aliasOperativo || '').trim();
+      return alias && alias.toUpperCase() !== device.etiqueta ? `${alias} (${device.etiqueta})` : device.etiqueta;
+    }).filter(Boolean),
     tareasPendientes: tasks.filter(t => t.estado === 'Pendiente').length,
     tareasEnProceso: tasks.filter(t => t.estado === 'En proceso').length,
-    tareasHechasHoy: tasks.filter(t => t.estado === 'Hecha' && String(t.ultimaModificacion || '').startsWith(today)).length,
+    tareasHechasHoy: tasks.filter(t => t.estado === 'Hecha' && toLocalDate(t.ultimaModificacion || '') === today).length,
     agendaDelDia: agenda.filter(a => a.fecha === today || matchesTodayName(a.dia)),
     actividadesCanceladas: agenda.filter(a => a.estado === 'Cancelado' && (a.fecha === today || matchesTodayName(a.dia))).length,
     actividadesConFaltantes: agenda.filter(a => a.estado === 'Faltaron equipos' && (a.fecha === today || matchesTodayName(a.dia))).length,
@@ -147,7 +168,10 @@ function buildDailySummary(siteCode) {
 }
 
 function rowToNote(row) {
-  return { id: row.id, texto: row.texto, operador: row.operador, categoria: row.categoria, importante: Boolean(row.importante), archivada: Boolean(row.archivada), visible: Boolean(row.visible ?? 1), deletedAt: row.deleted_at || '', deletedBy: row.deleted_by || '', createdAt: row.created_at, updatedAt: row.updated_at };
+  // localDate: día de la nota en hora de la sede (created_at es ISO UTC). El
+  // front filtra "hoy" con esto; comparar el ISO con la fecha local perdía las
+  // notas escritas después de las 21 h.
+  return { id: row.id, localDate: toLocalDate(row.created_at || ''), texto: row.texto, operador: row.operador, categoria: row.categoria, importante: Boolean(row.importante), archivada: Boolean(row.archivada), visible: Boolean(row.visible ?? 1), deletedAt: row.deleted_at || '', deletedBy: row.deleted_by || '', createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
 function rowToClosure(row) {
@@ -170,7 +194,7 @@ function isSafeUrl(value) {
 
 function matchesTodayName(day) {
   const names = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-  const today = names[new Date().getDay()];
+  const today = names[localParts(new Date()).weekday];
   return normalize(day) === today;
 }
 

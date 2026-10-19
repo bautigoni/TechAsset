@@ -217,7 +217,10 @@ const MODULE_BY_WRITE_PREFIX = [
   [/^\/inventory\b/, 'inventory'],
   [/^\/agenda\b/, 'agenda'],
   [/^\/(classrooms|classroom-categories)\b/, 'classrooms'],
-  [/^\/(internal-notes|tareas)\b/, 'tasks'],
+  // /tasks y /task-columns: tareas, subtareas, comentarios y columnas. Antes solo
+  // estaban /tareas (legacy) e /internal-notes y cualquier rol con algún permiso
+  // de edición podía crear, editar o borrar tareas.
+  [/^\/(internal-notes|tareas|tasks|task-columns)\b/, 'tasks'],
   [/^\/(teacher-schedules|recess-schedules)\b/, 'schedules'],
   [/^\/quick-links\b/, 'quickaccess'],
   [/^\/tools\b/, 'tools']

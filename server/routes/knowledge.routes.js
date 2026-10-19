@@ -6,7 +6,7 @@ import { config } from '../config.js';
 import { getDb, nowIso } from '../db.js';
 import { canEditModule, canViewModule, requireSite } from '../services/siteContext.service.js';
 import { notifySiteAdmins } from '../services/notifications.service.js';
-import { rowToKnowledgeArticle, sanitizeKnowledgeHtml, searchKnowledgeArticles } from '../services/knowledge.service.js';
+import { listKnowledgeArticles, rowToKnowledgeArticle, sanitizeKnowledgeHtml } from '../services/knowledge.service.js';
 
 export const knowledgeRouter = Router();
 const MIME_EXT = new Map([
@@ -22,7 +22,14 @@ const MIME_EXT = new Map([
 knowledgeRouter.get('/knowledge/articles', (req, res) => {
   const siteCode = requireSite(req);
   if (!canViewModule(req, 'knowledge', siteCode)) return forbidden(res);
-  res.json({ ok: true, items: searchKnowledgeArticles(siteCode, String(req.query.q || ''), Number(req.query.limit || 50)) });
+  // Paginado: ?limit= (50 por defecto, máx. 200) y ?cursor= (o ?offset=) con el
+  // nextCursor de la respuesta anterior. Antes cortaba en 20 artículos.
+  const page = listKnowledgeArticles(siteCode, {
+    q: String(req.query.q || ''),
+    limit: req.query.limit,
+    cursor: req.query.cursor ?? req.query.offset ?? ''
+  });
+  res.json({ ok: true, items: page.items, total: page.total, nextCursor: page.nextCursor });
 });
 
 knowledgeRouter.get('/knowledge/articles/:id', (req, res) => {

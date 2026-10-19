@@ -138,6 +138,19 @@ try {
   const confirm = await call('POST', '/api/auth/password/confirm', { token: 'x', password: 'abcdef' }, { cookie: '' });
   check('token inválido se rechaza', confirm.status === 400, confirm.text.slice(0, 200));
 
+  // Etapa 0 del rediseño: queries nuevas (COUNT(*) OVER, lower(email), ON CONFLICT).
+  for (let i = 0; i < 3; i += 1) await call('POST', '/api/knowledge/articles', { title: `Artículo ${i} configuración`, content: '<p>Canon</p>', category: 'General', tags: [] });
+  const knowledge = await call('GET', '/api/knowledge/articles?limit=2');
+  check('conocimiento paginado (total + nextCursor)', knowledge.status === 200 && knowledge.json.items.length === 2 && knowledge.json.total >= 3 && knowledge.json.nextCursor, knowledge.text.slice(0, 200));
+  const knowledgeQ = await call('GET', '/api/knowledge/articles?q=CONFIGURACION');
+  check('conocimiento: búsqueda sin acentos', knowledgeQ.status === 200 && knowledgeQ.json.items.length >= 3, knowledgeQ.text.slice(0, 200));
+  const prefs = await call('PATCH', '/api/user/prefs', { themeProfile: 'classic' });
+  check('preferencias por mail', prefs.status === 200 && (await call('GET', '/api/user/prefs')).status === 200, prefs.text.slice(0, 200));
+  const dupSite = await call('POST', '/api/sites', { siteCode: 'NFPT', nombre: 'Duplicada' });
+  check('crear sede existente da 409', dupSite.status === 409, dupSite.text.slice(0, 200));
+  const note = await call('POST', '/api/internal-notes', { texto: 'nota smoke', importante: false });
+  check('notas con localDate', note.status === 200 && /^\d{4}-\d{2}-\d{2}$/.test(note.json?.item?.localDate || ''), note.text.slice(0, 200));
+
   // Errores de SQL en el log del server.
   const sqlErrors = serverLog.split('\n').filter(line => /syntax error|does not exist|operator does not|invalid input|ERROR:/i.test(line));
   check('sin errores de SQL en el log', !sqlErrors.length, sqlErrors.slice(0, 5).join(' | '));
