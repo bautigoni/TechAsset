@@ -14,7 +14,7 @@ const [rounds = 7, throttle = 4] = (sep >= 0 ? args.slice(sep + 1) : []).map(Num
 const fixtures = path.resolve(process.env.PERF_FIXTURES || 'perf/.out/perf-fixtures.json');
 const VIEWS = ['Dispositivos', 'Préstamos', 'Inventario TIC', 'Analítica', 'Agenda TIC', 'Horarios', 'Tareas TIC', 'Estado aulas', 'Tickets', 'Configuración', 'Dashboard'];
 const BROWSERS = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'];
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2' };
 
 async function serve(dist) {
   const server = http.createServer((req, res) => {

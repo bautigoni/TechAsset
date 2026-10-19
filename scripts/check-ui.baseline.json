@@ -6,7 +6,7 @@
     "checkbox-radio-crudo": 18,
     "details": 7,
     "datalist": 4,
-    "hex-en-css": 354
+    "hex-en-css": 79
   },
   "entries": [
     {
@@ -282,102 +282,6 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ":root.theme-light .brand p { color: #4a6a9a; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ":root.theme-light .nav-btn.active .nav-icon { background: rgba(37, 99, 235, 0.18); color: #1d4ed8; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ":root.theme-light .nav-icon { background: rgba(37, 99, 235, 0.09); color: #1e40af; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ":root.theme-light .section-hero h3 { color: #1e3a6e; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ":root.theme-light .section-hero p { color: #4a6a9a; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".actions{display:flex;flex-wrap:wrap;gap:10px}.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}table{width:100%;border-collapse:colla",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".active-recess-banner{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:14px 18px;border-radius:14px;border:1px solid rgba(34,197,94,.38);backgrou",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-action-btn:hover { background: rgba(59,130,246,.15); border-color: var(--blue); color: #93c5fd; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-action-btn.danger  { background: rgba(239,68,68,.15); border-color: #ef4444; color: #fecaca; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-action-btn.loan    { background: rgba(245,158,11,.18); border-color: #f59e0b; color: #fcd34d; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-action-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-action-btn.success { background: #22c55e; border-color: #22c55e; color: #fff; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-activity-chip.glifing{color:#fdba74}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-activity-chip.matific{color:#93c5fd}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-activity-chip.programacion{color:#fde68a}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-activity-chip.tic{color:#86efac}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".agenda-card.estado-cancelado   { border-left-color: #6b7280; }",
       "count": 1
     },
@@ -390,49 +294,7 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ".agenda-card.estado-faltaron    { border-left-color: #f97316; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-card.estado-pendiente   { border-left-color: #3b82f6; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-card.estado-preparado   { border-left-color: #f59e0b; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-card.estado-realizado   { border-left-color: #22c55e; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".agenda-card.estado-reprogramado { border-left-color: #a855f7; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-card.time-en-curso { border-left-color: #3b82f6; box-shadow: 0 0 0 1px rgba(59,130,246,.3) inset; animation: pulse-card 2s ease-in-out infinite; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-card.time-proxima  { border-left-color: #f59e0b; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-card.time-vencida  { border-left-color: #ef4444; box-shadow: 0 0 0 1px rgba(239,68,68,.2) inset; }",
       "count": 1
     },
     {
@@ -444,49 +306,7 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ".agenda-kind-glifing{border-left-color:#f97316!important}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-kind-glifing{border-left-color:#f97316}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-kind-matific{border-left-color:#3b82f6!important}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-kind-matific{border-left-color:#3b82f6}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-kind-programacion{border-left-color:#22c55e}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".agenda-kind-programacion{border-left-color:#eab308!important}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-kind-ticgrupo,.agenda-kind-tic{border-left-color:#22c55e!important}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".agenda-kind-ticgrupo{border-left-color:#8b5cf6}",
       "count": 1
     },
     {
@@ -498,175 +318,7 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ".ahora-error  { background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(239,68,68,.2); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-info   { background: rgba(59,130,246,.1); color: #93c5fd; border: 1px solid rgba(59,130,246,.2); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-item-blue { border-color: #3b82f6; background: rgba(59,130,246,.07); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-item-blue{border-left-color:#3b82f6}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-item-red  { border-color: #ef4444; background: rgba(239,68,68,.07); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-item-red{border-left-color:#f97316;background:rgba(249,115,22,.08)}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-mine{border-left-color:#8b5cf6}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-next{border-left-color:#f59e0b}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-ok     { background: rgba(34,197,94,.1);  color: #86efac; border: 1px solid rgba(34,197,94,.2); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-ok-card{border-left-color:#22c55e;background:rgba(34,197,94,.08)}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ahora-warn   { background: rgba(245,158,11,.1); color: #fcd34d; border: 1px solid rgba(245,158,11,.2); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".app-switch{background:color-mix(in srgb,var(--muted) 28%,transparent);border:1px solid var(--border);border-radius:999px;display:block;flex:0 0 36px;height:21p",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".assignee-chip.is-on{background:rgba(56,130,246,.16);border-color:var(--blue);color:#cfe2ff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-cancelado   { background: rgba(107,114,128,.15);color:#d1d5db; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-en-curso    { background: rgba(59,130,246,.25); color:#60a5fa; border: 1px solid rgba(59,130,246,.4); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-entregado   { background: rgba(56,189,248,.15); color:#7dd3fc; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-faltaron    { background: rgba(249,115,22,.15); color:#fdba74; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-pendiente   { background: rgba(59,130,246,.15); color:#93c5fd; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-preparado   { background: rgba(245,158,11,.15); color:#fcd34d; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-proxima     { background: rgba(245,158,11,.15); color:#fde68a; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-realizado   { background: rgba(34,197,94,.15);  color:#86efac; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-reprogramado{ background: rgba(168,85,247,.15); color:#d8b4fe; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge-vencida     { background: rgba(239,68,68,.18);  color:#fca5a5; border: 1px solid rgba(239,68,68,.35); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge.lost{background:rgba(249,115,22,.18);color:#ffc099;border:1px solid rgba(249,115,22,.32)}.badge.out-service{background:rgba(139,92,246,.16);color:#ddd6fe",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700}.badge.available{background:rgba(34,197,94,.14",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".batch-remove:hover{border-color:var(--blue);color:#bfdbfe}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".brand p { color: #6288ae; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".btn-danger { background: var(--red); color: #fff; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".btn{border:none;border-radius:12px;padding:11px 14px;cursor:pointer;color:#fff}.btn-block{width:100%}.btn-primary{background:var(--blue)}.btn-success{backgroun",
       "count": 1
     },
     {
@@ -678,241 +330,13 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ".card-head h3 { color: #cfe2ff; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".chip-select-toggle.is-on{background:var(--blue);border-color:var(--blue);color:#fff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-coming-card span{color:#cfe2ff;font-size:15px;font-weight:750}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-coming-card strong{color:#7dd3fc;font-size:26px}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-general-badge.estado-con-observaciones{border-color:rgba(245,158,11,.5);color:#ffd27a}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-general-badge.estado-ok{border-color:rgba(34,197,94,.5);color:#7ce9a4}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-general-badge.estado-problema{border-color:rgba(239,68,68,.5);color:#ff9b9b}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-placeholder-hero h3{margin:0 0 6px;font-size:24px;color:#fff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-stat.bad strong{color:#ff9b9b}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-stat.ok strong{color:#7ce9a4}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".classroom-stat.warn strong{color:#ffd27a}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".delay-alert{background:rgba(239,68,68,.14);color:#ffb4b4}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".delay-critical{background:rgba(168,85,247,.16);color:#e9d5ff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".delay-normal{background:rgba(34,197,94,.12);color:#9df4be}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".delay-warn{background:rgba(245,158,11,.12);color:#ffd27a}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".equipment-option.active{background:rgba(59,130,246,.16);border-color:rgba(59,130,246,.45);color:#cfe2ff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:800;color:#7dd3fc}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".field-date-grid button.is-selected{background:var(--blue);color:#fff;font-weight:600;border-color:transparent}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".floor-btn.active{border-color:var(--blue);background:rgba(59,130,246,.18);color:#cfe2ff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.badge.subtle{background:#1e3457;color:#cfe2ff}.badge.off{background:#3b2a2a;color:#ffd6d6}label inp",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".infinite-board-shell.is-panning *{cursor:grabbing}.infinite-board{display:flex;align-items:flex-start;gap:14px;min-width:max-content;padding:4px 2px 10px}.infi",
       "count": 1
     },
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ".inventory-hero h3 { color: #f0f7ff; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".inventory-hero p { color: #7ca0c8; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".item-state-btn.tone-bad.active{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.5);color:#ff9b9b}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".item-state-btn.tone-neutral.active{background:rgba(59,130,246,.16);border-color:rgba(59,130,246,.5);color:#cfe2ff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".item-state-btn.tone-ok.active{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.5);color:#7ce9a4}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".item-state-btn.tone-special.active{background:rgba(139,92,246,.18);border-color:rgba(139,92,246,.5);color:#ddd6fe}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".item-state-btn.tone-warn.active{background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.5);color:#ffd27a}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".knowledge-page{display:grid;gap:14px}.knowledge-hero{padding:clamp(18px,2.4vw,30px);display:flex;justify-content:space-between;align-items:center;gap:20px}.kno",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".module-card-category{margin-top:5px;color:#93c5fd;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".nav-btn:hover .nav-icon { background: rgba(59, 130, 246, 0.15); color: #bfdbfe; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".nav-btn.active .nav-icon { background: rgba(59, 130, 246, 0.22); color: #bfdbfe; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".notif-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;fon",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".notif-pref-warn{color:#fca5a5!important}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".operational-alias{color:#dbeafe;font-weight:700}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".operator-chip-active { background: rgba(59,130,246,.18); border-color: var(--blue); color: #93c5fd; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".petty-balance{display:grid;min-width:260px;padding:18px;border-radius:16px;background:linear-gradient(135deg,rgba(34,197,94,.18),rgba(59,130,246,.12));border:1",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".release-modal-content{display:grid;gap:8px;margin-bottom:20px}.release-modal-content h3{margin:8px 0 0;font-size:14px}.release-modal-content>p{margin:0;color:v",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".release-modal-tag{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#7dd3fc;font-weight:700}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".scan-preview-meta{font-size:14px;color:#c8d5ec;margin-top:4px}",
       "count": 1
     },
     {
@@ -930,54 +354,6 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ".schedule-days{display:grid;gap:16px;margin-top:14px}.schedule-days section{display:grid;gap:7px}.schedule-days h4{margin:0;color:#93c5fd;font-size:12px;text-tr",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".schedule-now>span,.schedule-now small{display:block;color:var(--muted);font-size:12px}.schedule-now>span{color:#86efac;font-weight:800;text-transform:uppercase",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".setting-pill button,.option-row button{border:0;background:transparent;color:#fca5a5;cursor:pointer;font-size:11px}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".small-actions button:hover { background: rgba(59,130,246,0.18); border-color: var(--blue); color: #a8c8ff; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".stat-card strong { color: #eef5ff; letter-spacing: -0.03em; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".stat-card.active-filter{border-color:#60a5fa;background:rgba(59,130,246,.14);box-shadow:0 0 0 1px rgba(96,165,250,.2) inset}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".stat-card.clickable:hover{transform:translateY(-2px);border-color:#3b82f6;background:rgba(59,130,246,.08)}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".switch-knob{position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".switch-label input:checked + .switch-ui::after{transform:translateX(18px);background:#bfdbfe}",
       "count": 1
     },
@@ -990,145 +366,13 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ".sync-status.error{background:rgba(239,68,68,.12);color:#ffb4b4}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".sync-status.ok{background:rgba(34,197,94,.12);color:#9df4be}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".sync-status.pending{background:rgba(245,158,11,.12);color:#ffd27a}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".task-attachment-list > span, .task-card-attachments > a { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 5px 8px; border: 1px s",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tbadge-blocked    { background: rgba(239,68,68,.15);   color: #fca5a5; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tbadge-done       { background: rgba(34,197,94,.15);   color: #86efac; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tbadge-inprogress { background: rgba(245,158,11,.15);  color: #fcd34d; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tbadge-overdue    { background: rgba(239,68,68,.2);    color: #fca5a5; border: 1px solid rgba(239,68,68,.4); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tbadge-pendiente  { background: rgba(59,130,246,.15);  color: #93c5fd; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tbadge-reprog     { background: rgba(168,85,247,.15);  color: #d8b4fe; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".text-12{font-size:12px!important}.text-13{font-size:13px!important}.text-danger{color:#ff9b9b!important}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ticket-card-actions .btn-ghost-danger:hover{background:rgba(239,68,68,.16)!important;border-color:rgba(239,68,68,.55)!important;color:#fca5a5!important}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ticket-card-actions .btn-ghost-danger{background:rgba(239,68,68,.08)!important;border:1px solid rgba(239,68,68,.32)!important;color:#f87171!important;padding:8",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ticket-chip.is-active{background:var(--blue);border-color:var(--blue);color:#fff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".ticket-file iframe{display:block;width:100%;height:320px;border:0;background:#fff}",
       "count": 1
     },
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": ".ticket-file-chip-icon{display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:.04em;padding:3px 6px;border-",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": ".ticket-file-embed{display:block;width:100%;height:min(70vh,560px);border:0;border-radius:10px;background:#fff}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".ticket-tags{display:flex;gap:5px;flex-wrap:wrap}.ticket-tags>span{padding:3px 7px;border-radius:999px;background:color-mix(in srgb,var(--blue) 15%,transparent)",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tool-counters .bad strong{color:#ff9b9b}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tool-counters .ok strong{color:#7ce9a4}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tool-error{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#ffb4b4;font-size:13p",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tool-info{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.35);color:#cfe2ff;font-size:13",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tool-type-selector button.active{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.5);color:#cfe2ff;font-weight:600}",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": ".tool-warning{margin:8px 0;padding:10px 12px;border-radius:10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);color:#ffd27a;font-size:13p",
       "count": 1
     },
     {
@@ -1146,61 +390,7 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": "background: linear-gradient(135deg, #16a34a 0%, #166534 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background: linear-gradient(135deg, #22c55e, #059669);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background: linear-gradient(135deg, #2563eb, #1d4ed8);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background: linear-gradient(135deg, #2d6be4 0%, #1a4bbf 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background: linear-gradient(135deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": "background: linear-gradient(135deg, #60a5fa, #2563eb);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background: linear-gradient(185deg, #0d1d38 0%, #070f1f 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background: linear-gradient(185deg, #e8f1ff 0%, #f0f5ff 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background: linear-gradient(92deg, #1e40af 0%, #1d4ed8 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background: linear-gradient(92deg, #e0f2fe 0%, #bfdbfe 100%);",
       "count": 1
     },
     {
@@ -1212,25 +402,7 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": "background:#60a5fa;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background:#7dd3fc;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": "background:#94a3b8;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "background:#ef4444;",
       "count": 1
     },
     {
@@ -1266,169 +438,13 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": "box-shadow: inset 3px 0 0 #2563eb !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "box-shadow: inset 3px 0 0 #3b82f6, inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": "color: #047857;",
       "count": 1
     },
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": "color: #10203a;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #1d4ed8 !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #1e3a6e !important;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #1e3a6e;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #1e40af !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": "color: #1e40af;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #3b5a8a;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #6ee7b7;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #7db4f0;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #7dd3fc;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #86efac;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #88aad4;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #93c5fd !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #93c5fd;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #b6c7dc;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #bfdbfe !important;",
-      "count": 3
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #bfdbfe;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #c4b5fd;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #dbeafe !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #dbeafe;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #e8eefb;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #fb923c;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #fca5a5;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #fcd34d;",
-      "count": 3
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color: #fff;",
       "count": 1
     },
     {
@@ -1458,44 +474,14 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": "color:#cfe2ff;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color:#dbeafe;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": "color:#e5f0ff;",
       "count": 1
     },
     {
       "rule": "hex-en-css",
       "file": "src/styles/components.css",
-      "text": "color:#fed7aa;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "color:#ffb4b4;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
       "text": "color:#fff;",
       "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/components.css",
-      "text": "input[type=\"checkbox\"]::before{border-bottom:2px solid #fff;border-right:2px solid #fff;content:\"\";height:8px;opacity:0;transform:rotate(45deg) translate(-1px,-",
-      "count": 1
     },
     {
       "rule": "hex-en-css",
@@ -1512,61 +498,7 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/global.css",
-      "text": ":root[data-theme-profile^=\"smart\"] .chat-avatar { border-color: var(--navy-100, #E2DCD0); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/global.css",
-      "text": "background: #ef4444;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/global.css",
       "text": "background: #fff;",
-      "count": 3
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/global.css",
-      "text": "background: linear-gradient(135deg, #3b82f6, #2563eb);",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/global.css",
-      "text": "border-color: #ef4444;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/global.css",
-      "text": "border-color: var(--navy-100, #E2DCD0);",
-      "count": 4
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/global.css",
-      "text": "color: #fff;",
-      "count": 3
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "background: #16a34a !important;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "background: #2563eb !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "background: #2563eb;",
       "count": 1
     },
     {
@@ -1596,12 +528,6 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/layout.css",
-      "text": "background: #f59e0b !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
       "text": "background: color-mix(in srgb, var(--panel) 88%, #5b6f91);",
       "count": 1
     },
@@ -1609,36 +535,6 @@
       "rule": "hex-en-css",
       "file": "src/styles/layout.css",
       "text": "background: linear-gradient(90deg, #22c55e, #3b82f6);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "border-left-color: #22c55e !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "border-left-color: #22c55e;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "border-left-color: #3b82f6;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "border-left-color: #f59e0b;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "border-left-color: #f97316;",
       "count": 1
     },
     {
@@ -1662,85 +558,13 @@
     {
       "rule": "hex-en-css",
       "file": "src/styles/layout.css",
-      "text": "box-shadow: 10px 12px 0 color-mix(in srgb, var(--bar-color) 45%, #07111f), 0 20px 32px rgba(0, 0, 0, .24);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
       "text": "color: #111827 !important;",
       "count": 1
     },
     {
       "rule": "hex-en-css",
       "file": "src/styles/layout.css",
-      "text": "color: #93c5fd;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
       "text": "color: #bae6fd !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #bbf7d0 !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #bbf7d0;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #bfdbfe;",
-      "count": 4
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #cbd5e1;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #e5e7eb;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #f0fdf4 !important;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #fcd34d;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #fde68a;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #fecaca;",
-      "count": 4
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/layout.css",
-      "text": "color: #fed7aa !important;",
       "count": 1
     },
     {
@@ -1775,242 +599,8 @@
     },
     {
       "rule": "hex-en-css",
-      "file": "src/styles/motion.css",
-      "text": ".task-menu button.is-danger { color: #f87171; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ":root[data-theme-profile^=\"smart\"] .classroom-coming-card strong { color: #1d4ed8; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ":root[data-theme-profile^=\"smart\"] .sync-status.error { background: rgba(220, 38, 38, .1); color: #991b1b; border-color: rgba(220, 38, 38, .3); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ":root[data-theme-profile^=\"smart\"] .sync-status.ok { background: rgba(22, 163, 74, .12); color: #166534; border-color: rgba(22, 163, 74, .3); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ":root[data-theme-profile^=\"smart\"] .sync-status.pending { background: rgba(217, 119, 6, .12); color: #92400e; border-color: rgba(217, 119, 6, .3); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ".theme-preview .preview-content.dark { background: #121b2d; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ".theme-preview .preview-content.warm { background: #FBF8F3; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ".theme-preview .preview-sidebar.blue { background: #121b2d; border: 1px solid #2c3d5f; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ".theme-preview .preview-sidebar.cream { background: #FBF8F3; border: 1px solid #E2DCD0; box-shadow: 0 4px 10px rgba(44, 36, 32, .08); }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ".theme-preview.classic { background: #09101d; border: 1px solid #2c3d5f; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": ".theme-preview.smart { background: #F5F0E8; border: 1px solid #E2DCD0; }",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "background: #dbeafe;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "background: color-mix(in srgb, var(--accent, #3B82F6) 10%, white 40%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "background: linear-gradient(135deg, #3B82F6, #2563EB);",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "background: linear-gradient(135deg, var(--accent, #3B82F6), #1D4ED8);",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "background: linear-gradient(92deg, var(--accent, #2563EB) 0%, #1d4ed8 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "box-shadow: 0 8px 20px color-mix(in srgb, var(--accent, #3B82F6) 35%, transparent);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "box-shadow: inset 3px 0 0 var(--accent, #3B82F6), 0 8px 22px rgba(28, 25, 23, .10);",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "color: #15803d !important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "color: #15803d;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "color: #1d4ed8;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "color: #6b7280;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "color: #92400e;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "color: #991b1b;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "color: #fff;",
-      "count": 5
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "color: var(--accent, #3B82F6);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/nav-smart.css",
-      "text": "linear-gradient(180deg, #faf7f1 0%, var(--bg) 100%);",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "background:#86efac;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
       "file": "src/styles/responsive.css",
       "text": "background:#94a3b8;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color: #bbf7d0;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color: #bfdbfe;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color: #fde68a;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color: #fecaca;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color:#bbf7d0;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color:#cbd5e1;",
-      "count": 2
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color:#dcfce7!important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color:#fde68a;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color:#fecaca!important;",
-      "count": 1
-    },
-    {
-      "rule": "hex-en-css",
-      "file": "src/styles/responsive.css",
-      "text": "color:#fef3c7;",
       "count": 1
     },
     {

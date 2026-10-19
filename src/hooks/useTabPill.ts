@@ -63,7 +63,14 @@ export function useTabPill<T extends HTMLElement = HTMLDivElement>(activeKey: st
     if (!container || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => measure());
     observer.observe(container);
-    return () => observer.disconnect();
+    // Cuando llega Geist (font-display: swap) cambia el ancho de cada tab pero
+    // no necesariamente el del contenedor: se vuelve a medir.
+    const fonts = typeof document !== 'undefined' ? document.fonts : undefined;
+    fonts?.addEventListener?.('loadingdone', measure);
+    return () => {
+      observer.disconnect();
+      fonts?.removeEventListener?.('loadingdone', measure);
+    };
   }, [measure]);
 
   return { ref, style };

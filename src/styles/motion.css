@@ -494,7 +494,7 @@
 }
 .task-menu button:hover:not(:disabled) { background: var(--panel-2); }
 .task-menu button:disabled { opacity: .45; cursor: not-allowed; }
-.task-menu button.is-danger { color: #f87171; }
+.task-menu button.is-danger { color: var(--g-bad); }
 .task-menu button.is-danger:hover:not(:disabled) { background: rgba(239, 68, 68, .12); }
 .task-menu-count {
   margin-left: auto;
@@ -1139,18 +1139,9 @@
   background: color-mix(in srgb, var(--blue) 32%, transparent);
   color: var(--text);
 }
-:root { caret-color: var(--blue); scrollbar-color: var(--border) transparent; }
+:root { caret-color: var(--blue); }
 
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-  transition: background var(--m-in) var(--m-ease);
-}
-::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; }
+/* Barras de scroll: ocultas en toda la app (global.css). */
 
 /* Anillo de foco propio, sólo para teclado. Sin tocar border-radius: el
    outline ya sigue el radio propio del elemento, y forzarlo acá le cuadraba

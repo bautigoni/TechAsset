@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
@@ -8,7 +8,35 @@
     <link rel="shortcut icon" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0f1a2e" />
+    <meta name="theme-color" content="#0D0F12" />
+    <!--
+      Tema antes del primer pintado (sin flash): lo mínimo de src/utils/theme.ts
+      (que corre después, migra las claves viejas y escucha "Sistema"). Lee las
+      preferencias guardadas y pone data-theme / data-density / data-text-size,
+      la clase de compatibilidad .theme-light y el theme-color.
+    -->
+    <script>
+      (function () {
+        try {
+          var d = document.documentElement, s = window.localStorage;
+          var t = s.getItem('techasset_theme');
+          if (!t) {
+            var p = s.getItem('techasset_theme_profile') || '';
+            t = (s.getItem('techasset_nfpt_theme') === 'light' || p.indexOf('smart') === 0) ? 'light' : 'dark';
+          }
+          if (t === 'system') t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          t = t === 'light' ? 'light' : 'dark';
+          d.setAttribute('data-theme', t);
+          d.setAttribute('data-theme-profile', 'classic');
+          if (t === 'light') d.classList.add('theme-light');
+          var n = s.getItem('techasset_density');
+          if (n === 'compact') d.setAttribute('data-density', n);
+          var z = s.getItem('techasset_text_size');
+          if (z === 'large' || z === 'xlarge') d.setAttribute('data-text-size', z);
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'light' ? '#F6F7F9' : '#0D0F12');
+        } catch (e) { /* sin storage: queda el oscuro por defecto */ }
+      })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

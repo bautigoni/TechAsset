@@ -163,7 +163,7 @@
 
 .device-delete-btn{
   border-color:rgba(248,113,113,.35)!important;
-  color:#fecaca!important;
+  color:var(--g-bad)!important;
   background:rgba(127,29,29,.18)!important;
 }
 
@@ -180,9 +180,9 @@
   border:1px solid rgba(34,197,94,.42)!important;
   border-radius:10px;
   background:linear-gradient(180deg,rgba(34,197,94,.24),rgba(21,128,61,.18))!important;
-  color:#dcfce7!important;
+  color:var(--g-ok)!important;
   font-weight:700;
-  box-shadow:0 8px 20px rgba(22,163,74,.12);
+  box-shadow:none;
 }
 
 .checklist-confirm-btn:hover{
@@ -201,8 +201,8 @@
   border:1px solid rgba(148,163,184,.24);
   border-radius:999px;
   padding:8px 12px;
-  background:rgba(15,23,42,.66);
-  color:#cbd5e1;
+  background:var(--g-raised);
+  color:var(--g-text-2);
   font-weight:700;
   cursor:pointer;
   white-space:nowrap;
@@ -211,14 +211,14 @@
 
 .important-toggle:hover{
   border-color:rgba(245,158,11,.45);
-  color:#fde68a;
+  color:var(--g-warn);
   background:rgba(120,53,15,.20);
 }
 
 .important-toggle.active{
   border-color:rgba(245,158,11,.65);
   background:rgba(245,158,11,.18);
-  color:#fef3c7;
+  color:var(--g-warn);
 }
 
 .important-toggle:disabled{
@@ -235,7 +235,7 @@
   border:1px solid rgba(148,163,184,.22);
   border-radius:14px;
   padding:10px 12px;
-  background:rgba(15,23,42,.62);
+  background:var(--g-raised);
   color:var(--text);
   cursor:pointer;
   text-align:left;
@@ -244,13 +244,13 @@
 
 .toggle-row-button:hover{
   border-color:rgba(96,165,250,.42);
-  background:rgba(30,41,59,.72);
+  background:var(--g-raised);
 }
 
 .toggle-row-button.active{
   border-color:rgba(34,197,94,.52);
   background:linear-gradient(180deg,rgba(22,101,52,.28),rgba(15,23,42,.72));
-  box-shadow:0 10px 24px rgba(34,197,94,.10);
+  box-shadow:none;
 }
 
 .toggle-row-button strong{
@@ -259,12 +259,12 @@
 
 .toggle-row-button .muted{
   justify-self:end;
-  color:#cbd5e1;
+  color:var(--g-text-2);
   font-weight:700;
 }
 
 .toggle-row-button.active .muted{
-  color:#bbf7d0;
+  color:var(--g-ok);
 }
 
 .toggle-pill{
@@ -283,7 +283,7 @@
   height:18px;
   border-radius:999px;
   background:#94a3b8;
-  box-shadow:0 2px 8px rgba(0,0,0,.35);
+  box-shadow:none;
   transition:transform .22s ease,background .2s ease;
 }
 
@@ -294,7 +294,7 @@
 
 .toggle-row-button.active .toggle-pill span{
   transform:translateX(20px);
-  background:#86efac;
+  background:var(--g-ok);
 }
 
 .quick-access-card{
@@ -378,7 +378,7 @@ body.mobile-menu-open {
 .floor-btn:hover,
 .classroom-list-item:hover {
   border-color: var(--surface-border-strong);
-  box-shadow: 0 8px 22px rgba(37, 99, 235, .1);
+  box-shadow: none;
 }
 
 .floor-btn.active {
@@ -852,7 +852,7 @@ body.mobile-menu-open {
 @media (min-width: 981px) {
   .sidebar.is-collapsed {
     flex: 0 0 76px;
-    height: 100vh;
+    height: 100dvh;
     min-width: 76px;
     overflow: hidden;
     padding: 12px 10px;
@@ -871,7 +871,6 @@ body.mobile-menu-open {
     overflow-x: hidden;
     overflow-y: auto;
     padding-right: 0;
-    scrollbar-width: thin;
   }
 
   .sidebar.is-collapsed .sidebar-bottom-nav {
@@ -971,7 +970,7 @@ body.mobile-menu-open {
 
 .notif-type-card.is-on .notif-type-state {
   border-color: rgba(34, 197, 94, .45);
-  color: #bbf7d0;
+  color: var(--g-ok);
   background: rgba(34, 197, 94, .14);
 }
 
@@ -1086,6 +1085,11 @@ body.mobile-menu-open {
   color: var(--text);
 }
 
+/* La fecha va entera: partida a mitad de línea su caja pisaba al autor. */
+.ticket-creator-line span {
+  white-space: nowrap;
+}
+
 .ticket-source-control {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1184,7 +1188,7 @@ body.mobile-menu-open {
 }
 
 .agenda-live-items em {
-  color: #bfdbfe;
+  color: var(--g-text);
   font-size: 11px;
   font-style: normal;
   font-weight: 800;
@@ -1229,7 +1233,7 @@ body.mobile-menu-open {
 
 .risk-row.is-warning em {
   background: rgba(245, 158, 11, .2);
-  color: #fde68a;
+  color: var(--g-warn);
 }
 
 .risk-row.is-danger {
@@ -1239,7 +1243,7 @@ body.mobile-menu-open {
 
 .risk-row.is-danger em {
   background: rgba(239, 68, 68, .18);
-  color: #fecaca;
+  color: var(--g-bad);
 }
 
 .analytics-risk-empty {

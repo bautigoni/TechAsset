@@ -4,7 +4,7 @@ import { Sidebar, visibleNavItems } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
 import { MobileNav } from './components/layout/MobileNav';
 import { SkeletonView } from './components/layout/Skeleton';
-import { applyThemeProfile, isSmartProfile, profileForThemeAndStyle, readThemeProfile, saveThemeProfile, variantStyle, THEME_PROFILE_EVENT, type ThemeProfile } from './utils/themeProfile';
+import { applyServerAppearance } from './utils/theme';
 import { getUserPrefs } from './services/userPrefsApi';
 import { lazyView, prefetchView, prefetchViewsWhenIdle } from './utils/lazyView';
 import { Dashboard } from './components/dashboard/Dashboard';
@@ -49,6 +49,7 @@ const RemindersPage = lazyView('reminders', () => import('./components/reminders
 const TenantsDashboard = lazyView('tenants', () => import('./components/settings/TenantsDashboard'), 'TenantsDashboard');
 const UsersByTenantPage = lazyView('adminusers', () => import('./components/settings/UsersByTenantPage'), 'UsersByTenantPage');
 const SettingsPage = lazyView('settings', () => import('./components/settings/SettingsPage'), 'SettingsPage');
+const UiShowcase = lazyView('ui', () => import('./ui/Showcase'), 'Showcase');
 // Fuera del nav: modales y pantallas de auth. La landing solo la ve quien no
 // tiene sesión, así que no tiene por qué pesar en el bundle del que ya entró.
 const DeviceProfile = lazyView('device-profile', () => import('./components/devices/DeviceProfile'), 'DeviceProfile');
@@ -63,7 +64,6 @@ export function App() {
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('techasset_sidebar_collapsed') === '1');
-  const [themeProfile, setThemeProfile] = useState<ThemeProfile>(() => readThemeProfile());
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantContext, setAssistantContext] = useState<AssistantContext | null>(null);
   const [consultationMode, setConsultationMode] = useState(false);
@@ -131,12 +131,9 @@ export function App() {
           aplicarSesion(session.user, session.sites);
           writeSessionCache(session.user, session.sites);
           // Cargar preferencias del usuario (tema, etc.)
-          getUserPrefs().then(data => {
-            if (data.prefs?.themeProfile) {
-              const p = data.prefs.themeProfile as ThemeProfile;
-              saveThemeProfile(p);
-            }
-          }).catch(() => {});
+          // Lo del server pisa a lo local (tema, densidad, tamaño de texto;
+          // si solo tiene el perfil viejo, se traduce).
+          getUserPrefs().then(data => applyServerAppearance(data.prefs)).catch(() => {});
         } else {
           // La cookie ya no vale: se limpia lo que habíamos pintado de más.
           clearSessionCache();
@@ -221,6 +218,8 @@ export function App() {
     const role = activeSiteRole(user, sites, activeSite);
     const acc = roleAccess(siteSettings, role, isSuperadmin(user));
     if (!isViewEnabled(view, siteSettings) || !canViewModule(acc, view, TOGGLEABLE_KEYS)) setView('dashboard');
+    // La muestra de componentes (src/ui) es solo para superadmin.
+    if (view === 'ui' && !isSuperadmin(user)) setView('dashboard');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, siteSettings, user?.id, activeSite]);
 
@@ -237,30 +236,6 @@ export function App() {
       void tasks.refresh().catch(() => undefined);
     }
   }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 15));
-
-  useEffect(() => {
-    applyThemeProfile(themeProfile);
-  }, [themeProfile]);
-
-  // Sincroniza el perfil cuando se cambia desde Configuración > Apariencia.
-  useEffect(() => {
-    const onProfileChange = (event: Event) => {
-      const detail = (event as CustomEvent<ThemeProfile>).detail;
-      if (detail) setThemeProfile(detail);
-    };
-    window.addEventListener(THEME_PROFILE_EVENT, onProfileChange);
-    return () => window.removeEventListener(THEME_PROFILE_EVENT, onProfileChange);
-  }, []);
-
-  // Expande la sidebar cuando se selecciona un estilo variante.
-  useEffect(() => {
-    const onSidebarExpand = () => {
-      setSidebarCollapsed(false);
-      localStorage.removeItem('techasset_sidebar_collapsed');
-    };
-    window.addEventListener('techasset:sidebar-expand', onSidebarExpand);
-    return () => window.removeEventListener('techasset:sidebar-expand', onSidebarExpand);
-  }, []);
 
   useEffect(() => {
     document.body.classList.toggle('mobile-menu-open', menuOpen);
@@ -332,13 +307,6 @@ export function App() {
       if (scannerTimerRef.current !== null) window.clearTimeout(scannerTimerRef.current);
     };
   }, [user]);
-
-  const toggleTheme = () => {
-    const isSmart = isSmartProfile(themeProfile);
-    const style = variantStyle(themeProfile);
-    const next = profileForThemeAndStyle(!isSmart, style);
-    saveThemeProfile(next);
-  };
 
   const onAddDevice = async (device: Partial<Device>) => {
     await addDevice({ ...device, operator });
@@ -533,9 +501,9 @@ export function App() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
+      <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} impersonating={impersonating} />
       <main className="main main-content">
-        <Topbar consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} />
+        <Topbar consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} impersonating={impersonating} onExitImpersonation={exitImpersonation} />
         {/* El `key={view}` remonta este nodo en cada cambio de vista, y con eso
             se redispara la animación de entrada. Sólo hay entrada: sostener el
             árbol viejo para animar la salida agrega espera, y en una app de
@@ -562,11 +530,12 @@ export function App() {
         {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
+        {view === 'ui' && superadmin && <UiShowcase />}
         {view === 'settings' && <SettingsPage key={activeSite} operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
         </Suspense>
         </div>
       </main>
-      <MobileNav items={navItems} active={view} onNavigate={setView} onPrefetch={prefetchView} onMore={() => setMenuOpen(open => !open)} menuOpen={menuOpen} themeProfile={themeProfile} />
+      <MobileNav items={navItems} active={view} onNavigate={setView} onPrefetch={prefetchView} onMore={() => setMenuOpen(open => !open)} menuOpen={menuOpen} />
       <Suspense fallback={null}>
         <AssistantPanel
           onNavigate={next => setView(next as ViewKey)}
@@ -580,7 +549,6 @@ export function App() {
           context={assistantContext || { type: 'view', view, label: view }}
           open={assistantOpen}
           onOpenChange={setAssistantOpen}
-          themeProfile={themeProfile}
         />
         {profile && <DeviceProfile device={profile} consultationMode={effectiveConsultation} onOpenDevice={setProfile} onClose={() => setProfile(null)} />}
         {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}
@@ -637,7 +605,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'tenants', 'adminusers', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'tenants', 'adminusers', 'settings', 'ui'];
   return view && allowed.includes(view) ? view : null;
 }
 

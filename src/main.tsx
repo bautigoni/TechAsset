@@ -5,11 +5,12 @@ import { App } from './App';
 import { InstallBanner } from './components/common/InstallBanner';
 import { ReleaseNotesModal } from './components/common/ReleaseNotesModal';
 import { FeedbackHost } from './components/layout/Feedback';
-import { applyThemeProfile, readThemeProfile } from './utils/themeProfile';
+import { initAppearance } from './utils/theme';
 import { installMobileZoomLock } from './utils/mobileZoomLock';
 
-// Aplicar el perfil de tema guardado antes del primer render para evitar flash.
-applyThemeProfile(readThemeProfile());
+// Tema, densidad y tamaño de texto antes del primer render (sin flash). Migra
+// los perfiles viejos y escucha prefers-color-scheme si el tema es "Sistema".
+initAppearance();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

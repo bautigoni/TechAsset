@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Check, ChevronDown, Menu } from 'lucide-react';
 import type { AuthUser, SiteInfo, ViewKey } from '../../types';
-import { hasVariantNav, isSmartProfile, type ThemeProfile } from '../../utils/themeProfile';
+import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
+import { setAppearance, useAppearance, type ThemePref } from '../../utils/theme';
 import { NotificationBell } from './NotificationBell';
 import { QuickAccessPopover } from '../tools/QuickAccessPopover';
 import { TenantLogo } from './TenantLogo';
@@ -17,10 +18,15 @@ import { useMountTransition } from '../../hooks/useMountTransition';
  * accesos rápidos, notificaciones y la cuenta. El tema pasó adentro del menú de
  * la cuenta, que es donde se lo busca.
  */
-export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout, onNavigate, themeProfile = 'classic', impersonating = false, onExitImpersonation }: {
+const THEME_OPTIONS: Array<{ value: ThemePref; label: string }> = [
+  { value: 'dark', label: 'Oscuro' },
+  { value: 'light', label: 'Claro' },
+  { value: 'system', label: 'Sistema' }
+];
+
+export function Topbar({ consultationMode, onMenu, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout, onNavigate, themeProfile = 'classic', impersonating = false, onExitImpersonation }: {
   consultationMode: boolean;
   onMenu: () => void;
-  onToggleTheme: () => void;
   activeSite?: string;
   sites?: SiteInfo[];
   onSiteChange?: (siteCode: string) => void;
@@ -41,7 +47,7 @@ export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = '
   const initials = displayName.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
   const activeSiteInfo = sites.find(site => site.siteCode === activeSite);
   const canSwitchSites = user?.rolGlobal === 'Superadmin' && sites.length > 1;
-  const oscuro = !isSmartProfile(themeProfile);
+  const { theme } = useAppearance();
 
   useEffect(() => {
     if (!siteMenuOpen) return;
@@ -123,8 +129,9 @@ export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = '
       <div className="account-menu-theme">
         <span>Tema</span>
         <div className="account-theme-toggle" role="group" aria-label="Tema de la interfaz">
-          <button type="button" className={oscuro ? 'is-active' : ''} aria-pressed={oscuro} onClick={() => { if (!oscuro) onToggleTheme(); }}>Oscuro</button>
-          <button type="button" className={oscuro ? '' : 'is-active'} aria-pressed={!oscuro} onClick={() => { if (oscuro) onToggleTheme(); }}>Claro</button>
+          {THEME_OPTIONS.map(option => (
+            <button key={option.value} type="button" className={theme === option.value ? 'is-active' : ''} aria-pressed={theme === option.value} onClick={() => { if (theme !== option.value) setAppearance({ theme: option.value }); }}>{option.label}</button>
+          ))}
         </div>
       </div>
       <button type="button" className="account-menu-action" onClick={() => void onLogout?.()}>Cerrar sesión</button>

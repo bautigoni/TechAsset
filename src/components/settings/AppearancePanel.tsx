@@ -1,72 +1,100 @@
-import { useState } from 'react';
-import { hasVariantNav, isSmartProfile, readThemeProfile, saveThemeProfile, variantStyle, profileForThemeAndStyle, type ThemeProfile, type VariantStyle } from '../../utils/themeProfile';
+import { setAppearance, useAppearance, type Density, type TextSize, type ThemePref } from '../../utils/theme';
 
-const STYLE_OPTIONS: Array<{ value: VariantStyle; label: string; desc: string }> = [
-  { value: 'normal', label: 'Normal', desc: 'Sidebar tradicional' },
-  { value: 'stairs', label: 'Escalera', desc: 'Items escalonados' },
-  { value: 'centered', label: 'Centrada', desc: 'Sidebar tipo dock' },
-  { value: 'centered-peek', label: 'Centrada + peek', desc: 'Sidebar que asoma' }
+const THEME_OPTIONS: Array<{ value: ThemePref; label: string; desc: string }> = [
+  { value: 'dark', label: 'Oscuro', desc: 'Grafito' },
+  { value: 'light', label: 'Claro', desc: 'Fondo claro' },
+  { value: 'system', label: 'Sistema', desc: 'Sigue al dispositivo' }
 ];
 
+const DENSITY_OPTIONS: Array<{ value: Density; label: string; desc: string }> = [
+  { value: 'comfortable', label: 'Cómoda', desc: 'Más aire' },
+  { value: 'compact', label: 'Compacta', desc: 'Más filas por pantalla' }
+];
+
+const TEXT_SIZE_OPTIONS: Array<{ value: TextSize; label: string; desc: string }> = [
+  { value: 'normal', label: 'Normal', desc: '100 %' },
+  { value: 'large', label: 'Grande', desc: '110 %' },
+  { value: 'xlarge', label: 'Muy grande', desc: '120 %' }
+];
+
+/** Vista previa en miniatura con los colores reales del tema (clases g-theme-*). */
+function ThemePreview({ theme }: { theme: ThemePref }) {
+  if (theme === 'system') {
+    return (
+      <div className="theme-preview is-split" aria-hidden="true">
+        <span className="theme-preview-half g-theme-dark"><span className="preview-sidebar" /><span className="preview-content" /></span>
+        <span className="theme-preview-half g-theme-light"><span className="preview-sidebar" /><span className="preview-content" /></span>
+      </div>
+    );
+  }
+  return (
+    <div className={`theme-preview g-theme-${theme}`} aria-hidden="true">
+      <span className="preview-sidebar" />
+      <span className="preview-content" />
+    </div>
+  );
+}
+
+/**
+ * Configuración › Apariencia: Tema, Densidad y Tamaño de texto. Es una
+ * preferencia de cada usuario (localStorage + /api/user/prefs), no de la sede.
+ */
 export function AppearancePanel() {
-  const [profile, setProfile] = useState<ThemeProfile>(() => readThemeProfile());
-  const smart = isSmartProfile(profile);
-  const variant = hasVariantNav(profile);
-
-  const select = (next: ThemeProfile) => {
-    setProfile(next);
-    saveThemeProfile(next);
-  };
-
-  const changeStyle = (style: VariantStyle) => {
-    const next = profileForThemeAndStyle(smart, style);
-    select(next);
-    // Si se elige un estilo variante (no "Normal"), forzar expansión de la sidebar
-    // para que el cambio de 76→240px no comprima el contenido.
-    if (hasVariantNav(next)) {
-      localStorage.removeItem('techasset_sidebar_collapsed');
-      window.dispatchEvent(new CustomEvent('techasset:sidebar-expand'));
-    }
-  };
+  const { theme, density, textSize } = useAppearance();
 
   return (
     <section className="card settings-apariencia">
       <div className="card-head"><h3>Apariencia</h3></div>
-      <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>Tema visual</h3>
-      <div className="theme-option-grid">
-        <button type="button" className={`theme-card ${!smart ? 'selected' : ''}`} data-theme="classic" onClick={() => select('classic')}>
-          <div className="theme-preview classic">
-            <span className="preview-sidebar blue" />
-            <span className="preview-content dark" />
-          </div>
-          <strong>Clásico</strong>
-          <span>Azul oscuro original</span>
-        </button>
-        <button type="button" className={`theme-card ${smart ? 'selected' : ''}`} data-theme="smart" onClick={() => select('smart')}>
-          <div className="theme-preview smart">
-            <span className="preview-sidebar cream" />
-            <span className="preview-content warm" />
-          </div>
-          <strong>Tema claro</strong>
-          <span>Panel flotante, cálido</span>
-        </button>
-      </div>
 
-      <h3 style={{ margin: '16px 0 10px', fontSize: 14 }}>Estilo de navegación</h3>
-      <div className="style-chips">
-        {STYLE_OPTIONS.map(option => (
+      <h4 className="appearance-label" id="appearance-theme">Tema</h4>
+      <div className="theme-option-grid" role="group" aria-labelledby="appearance-theme">
+        {THEME_OPTIONS.map(option => (
           <button
             key={option.value}
             type="button"
-            className={`style-chip ${!variant && option.value === 'normal' || variantStyle(profile) === option.value ? 'active' : ''}`}
-            onClick={() => changeStyle(option.value)}
+            className={`theme-card ${theme === option.value ? 'selected' : ''}`}
+            aria-pressed={theme === option.value}
+            onClick={() => setAppearance({ theme: option.value })}
+          >
+            <ThemePreview theme={option.value} />
+            <strong>{option.label}</strong>
+            <span>{option.desc}</span>
+          </button>
+        ))}
+      </div>
+
+      <h4 className="appearance-label" id="appearance-density">Densidad</h4>
+      <div className="style-chips" role="group" aria-labelledby="appearance-density">
+        {DENSITY_OPTIONS.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            className={`style-chip ${density === option.value ? 'active' : ''}`}
+            aria-pressed={density === option.value}
+            onClick={() => setAppearance({ density: option.value })}
           >
             <span>{option.label}</span>
             <small>{option.desc}</small>
           </button>
         ))}
       </div>
-      <small className="muted">La sidebar cambia el acomodo de sus items en desktop; en mobile aparece la barra inferior.</small>
+
+      <h4 className="appearance-label" id="appearance-text-size">Tamaño de texto</h4>
+      <div className="style-chips" role="group" aria-labelledby="appearance-text-size">
+        {TEXT_SIZE_OPTIONS.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            className={`style-chip ${textSize === option.value ? 'active' : ''}`}
+            aria-pressed={textSize === option.value}
+            onClick={() => setAppearance({ textSize: option.value })}
+          >
+            <span>{option.label}</span>
+            <small>{option.desc}</small>
+          </button>
+        ))}
+      </div>
+      <small className="muted">Se guarda en tu cuenta: se aplica en cualquier equipo donde entres. Las pantallas que todavía no se rediseñaron toman la densidad y el tamaño de texto a medida que se migran.</small>
     </section>
   );
 }

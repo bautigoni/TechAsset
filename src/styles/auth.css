@@ -38,7 +38,7 @@
   width: 100%;
   background: var(--ink);
   color: var(--paper);
-  font-family: Inter, 'Segoe UI', Arial, sans-serif;
+  font-family: var(--g-font);
   display: flex;
   flex-direction: column;
   position: relative;

@@ -1,0 +1,234 @@
+/* ================================================================
+   tokens.css — design system Grafito (contrato: docs/redesign/TOKENS.md).
+   Fuente única de verdad de colores, tipografía, espacio y movimiento.
+   Todo CSS nuevo (src/ui/ y pantallas migradas) usa SOLO estos tokens.
+   Las variables viejas de variables.css apuntan acá (remapeo de la etapa 1).
+
+   Atributos en <html> (los pone src/utils/theme.ts antes de montar React):
+     data-theme       dark | light            (resuelto; "Sistema" lo decide JS)
+     data-density     comfortable | compact
+     data-text-size   normal | large | xlarge
+   ================================================================ */
+
+/* ---------- Fuentes (self-hosted, subset latino, peso variable) ----------
+   Solo `normal` (sin itálica). latin-ext se baja únicamente si aparece un
+   carácter fuera de latin (unicode-range). Geist latin va en preload (plugin
+   en vite.config.ts); Mono no se precarga: el browser la pide cuando pinta
+   texto mono. Las rutas apuntan a node_modules para que Vite emita los woff2
+   a /assets con hash (cache-first en el SW, immutable en Express). */
+@font-face {
+  font-family: 'Geist Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Geist Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../../node_modules/@fontsource-variable/geist/files/geist-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Geist Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Geist Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('../../node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Respaldo con métricas de Geist (medidas en Chrome: ascent 1005, descent 295,
+   line-gap 0 sobre 1000; ancho medio de texto en español vs. cada fuente local).
+   Mientras Geist llega (swap), el texto ocupa casi lo mismo y no salta el layout
+   (CLS). Uno por fuente local porque cada una necesita sus propios ajustes. */
+@font-face {
+  font-family: 'Geist Fallback';
+  src: local('Arial'), local('ArialMT'), local('Helvetica');
+  size-adjust: 100.96%;
+  ascent-override: 99.55%;
+  descent-override: 29.22%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Geist Fallback Roboto';
+  src: local('Roboto'), local('Roboto-Regular');
+  size-adjust: 102.17%;
+  ascent-override: 98.36%;
+  descent-override: 28.87%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Geist Mono Fallback';
+  src: local('Consolas');
+  size-adjust: 109.13%;
+  ascent-override: 92.09%;
+  descent-override: 27.03%;
+  line-gap-override: 0%;
+}
+
+/* ---------- Tokens que no dependen del tema ---------- */
+:root {
+  /* Tipografía */
+  --g-font: 'Geist Variable', 'Geist', 'Geist Fallback', 'Geist Fallback Roboto', system-ui, sans-serif;
+  --g-font-mono: 'Geist Mono Variable', 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
+  --g-fs-xs: .75rem;
+  --g-fs-sm: .8125rem;
+  --g-fs-base: .875rem;
+  --g-fs-md: 1rem;
+  --g-fs-lg: 1.25rem;
+  --g-fs-xl: 1.75rem;
+  --g-fs-2xl: 2.5rem;
+  --g-fw-regular: 400;
+  --g-fw-medium: 500;
+  --g-fw-semibold: 600;
+
+  /* Espacio */
+  --g-s-1: 4px;
+  --g-s-2: 8px;
+  --g-s-3: 12px;
+  --g-s-4: 16px;
+  --g-s-5: 24px;
+  --g-s-6: 32px;
+  --g-s-7: 48px;
+
+  /* Forma */
+  --g-radius-sm: 6px;
+  --g-radius: 10px;
+  --g-radius-pill: 999px;
+
+  /* Tamaños */
+  --g-control-h: 36px;
+  --g-row-h: 40px;
+  --g-topbar-h: 56px;
+  --g-sidebar-w: 232px;
+  --g-rail-w: 56px;
+
+  /* Movimiento */
+  --g-ease: cubic-bezier(.22, 1, .36, 1);
+  --g-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --g-dur-fast: 120ms;
+  --g-dur: 180ms;
+  --g-dur-slow: 260ms;
+}
+
+/* ---------- Oscuro (default: también sin atributo) ----------
+   .g-theme-dark / .g-theme-light fuerzan un tema en un subárbol (vistas
+   previas de Configuración › Apariencia). */
+:root,
+html[data-theme="dark"],
+.g-theme-dark {
+  color-scheme: dark;
+  --g-bg: #0D0F12;
+  --g-surface: #14171B;
+  --g-raised: #1B1F24;
+  --g-line: #262B32;
+  --g-line-strong: #353B44;
+  --g-text: #ECEEF1;
+  --g-text-2: #A7AEB8;
+  --g-text-3: #7C8592;
+  --g-accent: #5B9BFF;
+  --g-accent-hover: #8DBBFF;
+  --g-on-accent: #0D0F12;
+  --g-focus: #5B9BFF;
+  --g-ok: #5BD68A;
+  --g-warn: #F5C04E;
+  --g-bad: #FF6B6B;
+  --g-info: #4FD1C5;
+  --g-series-1: #5B9BFF;
+  --g-series-2: #4FD1C5;
+  --g-series-3: #FF9F5A;
+  --g-series-4: #B79CFF;
+  --g-series-5: #F28FD0;
+  --g-series-rest: #3A414B;
+  --g-check-bg: #ECEEF1;
+  --g-check-fg: #0D0F12;
+  --g-shadow-tooltip: 0 6px 20px rgba(0, 0, 0, .35);
+}
+
+/* ---------- Claro ---------- */
+html[data-theme="light"],
+.g-theme-light {
+  color-scheme: light;
+  --g-bg: #F6F7F9;
+  --g-surface: #FFFFFF;
+  --g-raised: #F0F2F5;
+  --g-line: #E3E6EB;
+  --g-line-strong: #CDD2D9;
+  --g-text: #14171B;
+  --g-text-2: #4A525E;
+  --g-text-3: #646C78;
+  --g-accent: #2F6FE0;
+  --g-accent-hover: #2560C8;
+  --g-on-accent: #FFFFFF;
+  --g-focus: #2F6FE0;
+  --g-ok: #16804A;
+  --g-warn: #A15C00;
+  --g-bad: #C93636;
+  --g-info: #0F8A80;
+  --g-series-1: #2F6FE0;
+  --g-series-2: #0F8A80;
+  --g-series-3: #C8641E;
+  --g-series-4: #7A5BD6;
+  --g-series-5: #C2489A;
+  --g-series-rest: #C9CED6;
+  --g-check-bg: #14171B;
+  --g-check-fg: #FFFFFF;
+  --g-shadow-tooltip: 0 6px 20px rgba(20, 23, 27, .12);
+}
+
+/* ---------- Densidad ---------- */
+html[data-density="compact"] {
+  --g-control-h: 32px;
+  --g-row-h: 34px;
+}
+/* En touch el control nunca baja de 44px (densidad incluida). */
+@media (pointer: coarse) {
+  :root,
+  html[data-density="compact"] {
+    --g-control-h: 44px;
+  }
+}
+
+/* ---------- Tamaño de texto (todo lo nuevo usa rem) ---------- */
+html[data-text-size="large"] { font-size: 17.5px; }
+html[data-text-size="xlarge"] { font-size: 19px; }
+
+/* ---------- Movimiento reducido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --g-dur-fast: 0ms;
+    --g-dur: 0ms;
+    --g-dur-slow: 0ms;
+  }
+}
+
+/* ---------- Base ---------- */
+html {
+  background: var(--g-bg);
+}
+
+/* Números tabulares. */
+.g-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Eyebrow: mono 11px, mayúsculas, tracking amplio, texto terciario. */
+.g-eyebrow {
+  font-family: var(--g-font-mono);
+  font-size: .6875rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--g-text-3);
+}

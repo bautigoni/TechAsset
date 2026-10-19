@@ -1,5 +1,5 @@
 /* TechAsset service worker - shell cache + estrategia por tipo de request. */
-const CACHE = 'techasset-shell-v3';
+const CACHE = 'techasset-shell-v4';
 const SHELL = ['/manifest.webmanifest', '/favicon.png', '/techasset-logo.svg'];
 
 self.addEventListener('install', (event) => {

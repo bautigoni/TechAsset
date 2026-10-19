@@ -23,7 +23,7 @@ const BROWSERS = [
 ];
 const VIEWS = ['Dispositivos', 'Préstamos', 'Inventario TIC', 'Analítica', 'Agenda TIC', 'Horarios', 'Tareas TIC', 'Estado aulas', 'Tickets', 'Configuración', 'Dashboard'];
 
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2' };
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent((req.url || '/').split('?')[0]);
   let file = url === '/perf-fixtures.json' ? fixtures : path.join(dist, url);

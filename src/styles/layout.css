@@ -56,7 +56,7 @@
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .03)),
     rgba(15, 23, 42, .72);
-  box-shadow: 0 32px 90px rgba(0, 0, 0, .38);
+  box-shadow: none;
   display: grid;
   grid-template-rows: auto 1fr;
   overflow: hidden;
@@ -92,7 +92,7 @@
 }
 
 .auth-nav button.primary {
-  background: #2563eb;
+  background: var(--g-accent);
   border-color: rgba(147, 197, 253, .45);
 }
 
@@ -103,7 +103,7 @@
 }
 
 .auth-hero-content span {
-  color: #93c5fd;
+  color: var(--g-accent);
   font-weight: 800;
   letter-spacing: .02em;
   text-transform: uppercase;
@@ -116,7 +116,7 @@
 }
 
 .auth-hero-content p {
-  color: #cbd5e1;
+  color: var(--g-text-2);
   font-size: clamp(17px, 2vw, 22px);
   max-width: 560px;
 }
@@ -144,7 +144,7 @@
     left: 0;
     top: 0;
     bottom: 0;
-    height: 100vh;
+    height: 100dvh;
     width: 230px;
     overflow-y: auto;
     z-index: 10;
@@ -226,7 +226,6 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: thin;
 }
 
 .nav-btn {
@@ -243,7 +242,7 @@
   height: 28px;
   border-radius: 9px;
   background: rgba(255,255,255,.04);
-  color: #bfdbfe;
+  color: var(--g-text);
   font-size: 11px;
   font-weight: 800;
 }
@@ -299,10 +298,10 @@
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: rgba(59,130,246,.22);
-  color: #bfdbfe;
+  background: var(--g-raised);
+  color: var(--g-text);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .account-name {
@@ -321,7 +320,7 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--panel);
-  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+  box-shadow: none;
   display: grid;
   gap: 8px;
   animation: accountMenuIn .16s ease;
@@ -332,7 +331,7 @@
   gap: 3px;
   padding: 8px;
   border-radius: 10px;
-  background: rgba(255,255,255,.03);
+  background: var(--g-raised);
   min-width: 0;
 }
 
@@ -389,11 +388,11 @@
 }
 
 .account-menu-action {
-  border: 1px solid rgba(248,113,113,.35);
+  border: 1px solid var(--g-line-strong);
   border-radius: 10px;
   padding: 9px 10px;
-  background: rgba(127,29,29,.18);
-  color: #fecaca;
+  background: transparent;
+  color: var(--g-bad);
   cursor: pointer;
   text-align: left;
 }
@@ -580,22 +579,22 @@
   border-radius: 999px;
   margin-top: 6px;
   background: rgba(255, 255, 255, .06);
-  color: #cbd5e1;
+  color: var(--g-text-2);
 }
 
 .task-state-pill-pendiente {
   background: rgba(59, 130, 246, .18);
-  color: #93c5fd;
+  color: var(--g-accent);
 }
 
 .task-state-pill-en-proceso {
   background: rgba(245, 158, 11, .18);
-  color: #fcd34d;
+  color: var(--g-warn);
 }
 
 .task-state-pill-hecha {
   background: rgba(34, 197, 94, .28);
-  color: #bbf7d0;
+  color: var(--g-ok);
 }
 
 .task-done-section {
@@ -785,19 +784,19 @@
 }
 
 .agenda-kind-glifing {
-  border-left-color: #f97316;
+  border-left-color: var(--g-warn);
 }
 
 .agenda-kind-matific {
-  border-left-color: #3b82f6;
+  border-left-color: var(--g-accent);
 }
 
 .agenda-kind-programacion {
-  border-left-color: #f59e0b;
+  border-left-color: var(--g-warn);
 }
 
 .agenda-kind-tic {
-  border-left-color: #22c55e;
+  border-left-color: var(--g-ok);
 }
 
 .toggle-row {
@@ -1047,9 +1046,9 @@ html {
 
 .loan-filter-chips span {
   background: rgba(59, 130, 246, .12);
-  border: 1px solid rgba(59, 130, 246, .25);
+  border: 1px solid var(--g-line);
   border-radius: 999px;
-  color: #bfdbfe;
+  color: var(--g-text);
   font-size: 12px;
   padding: 6px 9px;
 }
@@ -1087,7 +1086,7 @@ html {
   background: rgba(34, 197, 94, .16);
   border: 1px solid rgba(34, 197, 94, .3);
   border-radius: 999px;
-  color: #bbf7d0;
+  color: var(--g-ok);
   cursor: pointer;
   grid-column: 2;
   grid-row: 1 / span 2;
@@ -1119,14 +1118,14 @@ html {
 .loan-age-pill.loan-age-warning {
   border-color: rgba(245, 158, 11, .45);
   background: rgba(245, 158, 11, .12);
-  color: #fde68a;
+  color: var(--g-warn);
 }
 
 .loan-age-danger,
 .loan-age-pill.loan-age-danger {
   border-color: rgba(239, 68, 68, .55);
   background: rgba(127, 29, 29, .22);
-  color: #fecaca;
+  color: var(--g-bad);
 }
 
 .loaned-now-item.loan-age-warning {
@@ -1230,7 +1229,7 @@ html {
   align-self: end;
   animation: growUp .75s ease both;
   border-radius: 8px 8px 3px 3px;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, .18);
+  box-shadow: none;
   min-height: 8px;
   width: 100%;
 }
@@ -1359,7 +1358,7 @@ html {
   animation-delay: var(--delay);
   background: linear-gradient(135deg, color-mix(in srgb, var(--bar-color) 82%, white), var(--bar-color));
   border-radius: 8px 8px 4px 4px;
-  box-shadow: 10px 12px 0 color-mix(in srgb, var(--bar-color) 45%, #07111f), 0 20px 32px rgba(0, 0, 0, .24);
+  box-shadow: 10px 12px 0 color-mix(in srgb, var(--bar-color) 45%, var(--g-bg));
   height: var(--bar-height);
   min-height: 14px;
   transform: rotateX(10deg) rotateY(-18deg);
@@ -1383,7 +1382,7 @@ html {
     top: 0;
     left: 0;
     height: 100dvh;
-    box-shadow: 22px 0 60px rgba(0, 0, 0, .38);
+    box-shadow: none;
     transform: translateX(-110%);
     transition: transform .24s ease;
     z-index: 40;
@@ -1472,12 +1471,12 @@ html {
 }
 
 .task-done-btn {
-  background: #2563eb !important;
+  background: var(--g-accent) !important;
   border-color: rgba(147, 197, 253, .45) !important;
 }
 
 .task-delete-btn {
-  color: #fecaca;
+  color: var(--g-bad);
 }
 
 .task-note,
@@ -1495,13 +1494,13 @@ html {
 
 .agenda-status-entregado {
   background: rgba(245, 158, 11, .32) !important;
-  color: #fed7aa !important;
+  color: var(--g-warn) !important;
 }
 
 .agenda-card.agenda-retired-all {
   background: linear-gradient(180deg, rgba(34, 197, 94, .22), rgba(15, 23, 42, 0)), var(--panel) !important;
   box-shadow: inset 0 0 0 2px rgba(34, 197, 94, .55) !important;
-  border-left-color: #22c55e !important;
+  border-left-color: var(--g-ok) !important;
 }
 
 .agenda-card.agenda-retired-some {
@@ -1511,7 +1510,7 @@ html {
 
 .agenda-retired-badge.is-all {
   background: rgba(34, 197, 94, .32) !important;
-  color: #bbf7d0 !important;
+  color: var(--g-ok) !important;
 }
 
 .agenda-retired-badge.is-some {
@@ -1520,7 +1519,7 @@ html {
 }
 
 .agenda-delivered-btn {
-  background: #f59e0b !important;
+  background: var(--g-warn) !important;
   border-color: rgba(253, 186, 116, .42) !important;
   color: #111827 !important;
   font-weight: 500 !important;
@@ -1530,7 +1529,7 @@ html {
   background: rgba(239, 68, 68, .12);
   border: 1px solid rgba(239, 68, 68, .3);
   border-radius: 12px;
-  color: #fecaca;
+  color: var(--g-bad);
   padding: 10px 12px;
 }
 
@@ -1621,25 +1620,25 @@ html {
 }
 
 .agenda-turno-btn:hover {
-  color: #e5e7eb;
+  color: var(--g-text);
 }
 
 .agenda-turno-btn.active {
   background: rgba(59, 130, 246, .18);
-  color: #bfdbfe;
+  color: var(--g-text);
 }
 
 /* Delivered toggle */
 .agenda-delivered-btn.is-on {
-  background: #16a34a !important;
+  background: var(--g-ok) !important;
   border-color: rgba(134, 239, 172, .55) !important;
-  color: #f0fdf4 !important;
+  color: var(--g-text) !important;
 }
 
 .agenda-retired-btn.is-on {
-  background: #16a34a !important;
+  background: var(--g-ok) !important;
   border-color: rgba(134, 239, 172, .55) !important;
-  color: #f0fdf4 !important;
+  color: var(--g-text) !important;
   font-weight: 600 !important;
 }
 

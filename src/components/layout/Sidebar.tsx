@@ -13,6 +13,7 @@ import {
   Link2,
   Lightbulb,
   MonitorSmartphone,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Repeat2,
@@ -41,6 +42,8 @@ const NAV: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', Icon: Gauge },
   { key: 'tenants', label: 'Tenants', Icon: Building2, superadminOnly: true },
   { key: 'adminusers', label: 'Usuarios', Icon: Users, superadminOnly: true },
+  // Página de muestra de la librería src/ui (interna, etapa 1 del rediseño).
+  { key: 'ui', label: 'Componentes UI', Icon: Palette, superadminOnly: true },
   { key: 'devices', label: 'Dispositivos', Icon: MonitorSmartphone },
   { key: 'loans', label: 'Préstamos', Icon: Repeat2 },
   { key: 'history', label: 'Historial', Icon: History, requiresAny: ['loans', 'devices'] },
