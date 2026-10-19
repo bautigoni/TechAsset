@@ -1,231 +1,163 @@
-import type { ComponentType } from 'react';
-import {
-  BarChart3,
-  BellRing,
-  BookOpen,
-  Boxes,
-  Building2,
-  CalendarDays,
-  Clock3,
-  ClipboardCheck,
-  Gauge,
-  History,
-  Link2,
-  Lightbulb,
-  MonitorSmartphone,
-  Palette,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Repeat2,
-  School,
-  Shapes,
-  Settings,
-  Ticket,
-  Users,
-  Wrench,
-  WalletCards,
-  X
-} from 'lucide-react';
-import type { SiteInfo, ViewKey } from '../../types';
-import { isViewEnabled, moduleOrder, TOGGLEABLE_KEYS, type ModuleKey } from '../../utils/modules';
-import { canViewModule, type ModuleAccess } from '../../utils/permissions';
-import { hasVariantNav, variantStyle, type ThemeProfile } from '../../utils/themeProfile';
+import { useRef, useState, type FocusEvent, type MouseEvent } from 'react';
+import { ChevronsUpDown, Ellipsis, Search } from 'lucide-react';
+import type { AuthUser, SiteInfo, ViewKey } from '../../types';
+import { Tooltip } from '../../ui/Tooltip';
+import { groupNavItems, type NavItem } from './nav';
 import { TenantLogo } from './TenantLogo';
 
-type NavIcon = ComponentType<{ size?: number; strokeWidth?: number }>;
+export type NavCounts = Partial<Record<ViewKey, number>>;
 
-// requiresAny: vistas que no son un módulo propio y se ven si el rol puede ver
-// alguno de estos módulos (Historial = Préstamos o Dispositivos).
-export type NavItem = { key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: boolean; requiresAny?: ModuleKey[] };
-
-const NAV: NavItem[] = [
-  { key: 'dashboard', label: 'Dashboard', Icon: Gauge },
-  { key: 'tenants', label: 'Tenants', Icon: Building2, superadminOnly: true },
-  { key: 'adminusers', label: 'Usuarios', Icon: Users, superadminOnly: true },
-  // Página de muestra de la librería src/ui (interna, etapa 1 del rediseño).
-  { key: 'ui', label: 'Componentes UI', Icon: Palette, superadminOnly: true },
-  { key: 'devices', label: 'Dispositivos', Icon: MonitorSmartphone },
-  { key: 'loans', label: 'Préstamos', Icon: Repeat2 },
-  { key: 'history', label: 'Historial', Icon: History, requiresAny: ['loans', 'devices'] },
-  { key: 'inventory', label: 'Inventario TIC', Icon: Boxes },
-  { key: 'analytics', label: 'Analítica', Icon: BarChart3 },
-  { key: 'agenda', label: 'Agenda TIC', Icon: CalendarDays },
-  { key: 'schedules', label: 'Horarios', Icon: Clock3 },
-  { key: 'tasks', label: 'Tareas TIC', Icon: ClipboardCheck },
-  { key: 'reminders', label: 'Recordatorios', Icon: BellRing },
-  { key: 'canvas', label: 'Canvas', Icon: Shapes },
-  { key: 'pettycash', label: 'Caja chica', Icon: WalletCards },
-  { key: 'classrooms', label: 'Estado aulas', Icon: School },
-  { key: 'tickets', label: 'Tickets', Icon: Ticket },
-  { key: 'knowledge', label: 'Base de conocimiento', Icon: BookOpen },
-  { key: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
-  { key: 'tools', label: 'Herramientas auxiliares', Icon: Wrench },
-  { key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
-  { key: 'settings', label: 'Configuración', Icon: Settings }
-];
-
-const BOTTOM_NAV = new Set<ViewKey>(['settings']);
-
-// Lista de navegación visible según sede, rol y módulos habilitados.
-// La comparten Sidebar (ambos temas) y el bottom nav mobile del tema B.
-export function visibleNavItems(settings: Record<string, unknown> | null | undefined, isSuperadmin: boolean, access: ModuleAccess | null): NavItem[] {
-  return NAV.filter(item =>
-    (!item.superadminOnly || isSuperadmin) &&
-    isViewEnabled(item.key, settings) &&
-    (!access || canViewModule(access, item.key, TOGGLEABLE_KEYS)) &&
-    (!item.requiresAny || item.requiresAny.some(key => isViewEnabled(key, settings) && (!access || canViewModule(access, key, TOGGLEABLE_KEYS))))
-  ).sort((a, b) => navSort(a.key, b.key, settings));
-}
-
-// Indentación del estilo "stairs": los items se corren según su distancia al activo.
-export function getStairsMargin(index: number, activeIndex: number): number {
-  if (activeIndex < 0) return 5;
-  const distance = Math.abs(index - activeIndex);
-  if (distance === 0) return 0;
-  if (distance === 1) return 26;
-  if (distance === 2) return 19;
-  if (distance === 3) return 12;
-  return 5;
-}
-
-export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null, themeProfile = 'classic', impersonating = false }: {
+type SidebarProps = {
+  items: NavItem[];
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
   onPrefetch?: (view: ViewKey) => void;
-  open: boolean;
-  onClose: () => void;
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
+  counts: NavCounts;
   activeSite: string;
   sites: SiteInfo[];
-  settings?: Record<string, unknown> | null;
-  isSuperadmin?: boolean;
-  access?: ModuleAccess | null;
-  themeProfile?: ThemeProfile;
-  impersonating?: boolean;
-}) {
-  const siteInfo = sites.find(site => site.siteCode === activeSite);
-  const visibleNav = visibleNavItems(settings, isSuperadmin, access);
-  const navigate = (view: ViewKey) => {
-    onNavigate(view);
-    onClose();
-  };
-  // Hover/foco/touch = intención de click: pedimos el chunk de la vista antes del click.
-  const warm = (view: ViewKey) => ({
-    onMouseEnter: () => onPrefetch?.(view),
-    onFocus: () => onPrefetch?.(view),
-    onTouchStart: () => onPrefetch?.(view)
-  });
+  user: AuthUser;
+  roleLabel: string;
+  canSwitchSites: boolean;
+  /** Franja abierta en la barra superior (para aria-expanded). */
+  openStrip: string | null;
+  onToggleStrip: (strip: 'sites' | 'account' | 'palette', trigger: HTMLElement) => void;
+};
 
-  if (hasVariantNav(themeProfile)) {
-    const style = variantStyle(themeProfile);
-    const activeIndex = visibleNav.findIndex(item => item.key === active);
-    return (
-      <aside
-        className={`sidebar-rail style-${style} ${open ? 'open' : ''} ${impersonating ? 'has-impersonation' : ''}`}
-        onClick={onClose}
-      >
-        <div className="sidebar-box" onClick={event => event.stopPropagation()}>
-          <div className="sidebar-box-header">
-            <div className="sidebar-box-brand">
-              <TenantLogo site={siteInfo} />
-              <div>
-                <strong>TechAsset</strong>
-                <small>{siteInfo?.nombre || activeSite}</small>
-              </div>
-            </div>
-            <button className="sidebar-close-btn" type="button" aria-label="Cerrar menú" onClick={onClose}>
-              <X size={18} strokeWidth={1.7} />
-            </button>
-          </div>
-          <nav>
-            {visibleNav.map((item, index) => {
-              const Icon = item.Icon;
-              const isActive = active === item.key;
-              const stairs = style === 'stairs';
-              const peek = style === 'centered-peek';
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={`nav-item ${stairs ? 'stairs' : ''} ${peek ? 'peek' : ''} ${isActive ? 'active' : ''}`.replace(/\s+/g, ' ').trim()}
-                  style={stairs ? { marginLeft: getStairsMargin(index, activeIndex) } : undefined}
-                  onClick={() => navigate(item.key)}
-                  {...warm(item.key)}
-                  aria-label={item.label}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <Icon size={18} strokeWidth={1.7} />
-                  <span className="nav-item-label">{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </aside>
-    );
-  }
-
-  const mainNav = visibleNav.filter(item => !BOTTOM_NAV.has(item.key));
-  const bottomNav = visibleNav.filter(item => BOTTOM_NAV.has(item.key));
-
-  return (
-    <>
-      <div className={`mobile-overlay ${open ? '' : 'hidden'}`} onClick={onClose} />
-      <aside className={`sidebar ${open ? 'open mobile-open' : ''} ${collapsed ? 'is-collapsed' : ''}`}>
-        <div className="brand">
-          <div className="brand-lockup">
-            <TenantLogo className="brand-logo" site={siteInfo} />
-            <div className="brand-text">
-              <h1>TechAsset</h1>
-              <p>{siteInfo?.nombre || activeSite}</p>
-            </div>
-          </div>
-          <button className="sidebar-collapse-btn brand-collapse-btn" type="button" aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'} title={collapsed ? 'Expandir menú' : 'Contraer menú'} onClick={onToggleCollapsed}>
-            {collapsed ? <PanelLeftOpen size={18} strokeWidth={1.7} /> : <PanelLeftClose size={18} strokeWidth={1.7} />}
-          </button>
-        </div>
-
-        <nav className="nav nav-scrollable">
-          {mainNav.map(item => {
-            const Icon = item.Icon;
-            return (
-              <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} {...warm(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
-                <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={1.7} /></span>
-                <span className="nav-label">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-        <nav className="nav sidebar-bottom-nav">
-          {bottomNav.map(item => {
-            const Icon = item.Icon;
-            return (
-              <button key={item.key} className={`nav-btn ${active === item.key ? 'active' : ''}`} type="button" onClick={() => navigate(item.key)} {...warm(item.key)} title={item.label} data-tooltip={item.label} aria-label={item.label}>
-                <span className="nav-icon" aria-hidden="true"><Icon size={19} strokeWidth={1.7} /></span>
-                <span className="nav-label">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </aside>
-    </>
-  );
+export function initialsOf(text: string) {
+  return text.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
 }
 
-function navSort(a: ViewKey, b: ViewKey, settings?: Record<string, unknown> | null) {
-  const fixed: ViewKey[] = ['dashboard', 'tenants'];
-  const fixedA = fixed.indexOf(a);
-  const fixedB = fixed.indexOf(b);
-  if (fixedA !== -1 || fixedB !== -1) {
-    if (fixedA === -1) return 1;
-    if (fixedB === -1) return -1;
-    return fixedA - fixedB;
-  }
-  if (a === 'settings') return 1;
-  if (b === 'settings') return -1;
-  const order = moduleOrder(settings);
-  const indexA = order.indexOf(a as ModuleKey);
-  const indexB = order.indexOf(b as ModuleKey);
-  return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+/**
+ * Menú lateral agrupado (Menú A): selector de sede arriba, "Buscar o ir a…"
+ * (Ctrl K), grupos Operación / Gestión / Inventario y datos / Recursos (y
+ * Superadmin), Configuración y el usuario abajo. Contraído o bajo 1100 px es
+ * un rail de 56 px: los nombres quedan en aria-label y aparecen en un tooltip
+ * al pasar el mouse o con foco (el texto está "cortado": es la excepción de la
+ * única capa flotante permitida). Bajo 768 px no se dibuja: manda la barra
+ * inferior.
+ */
+export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeSite, sites, user, roleLabel, canSwitchSites, openStrip, onToggleStrip }: SidebarProps) {
+  const siteInfo = sites.find(site => site.siteCode === activeSite);
+  const groups = groupNavItems(items);
+  const settings = items.find(item => item.group === 'config');
+  const displayName = user.nombre || user.email || 'Usuario';
+  const [tip, setTip] = useState<{ anchor: HTMLElement; label: string } | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
+
+  // El tooltip del rail solo existe si el rail está a la vista (si no, el
+  // nombre ya se lee al lado del ícono).
+  const isRail = () => Boolean(navRef.current?.closest('.shell')?.matches('[data-nav="rail"]'));
+  const showTip = (anchor: HTMLElement, label: string) => { if (isRail()) setTip({ anchor, label }); };
+  const hideTip = () => setTip(null);
+
+  const itemProps = (item: NavItem) => ({
+    onMouseEnter: (event: MouseEvent<HTMLElement>) => { onPrefetch?.(item.key); showTip(event.currentTarget, item.label); },
+    onMouseLeave: hideTip,
+    onFocus: (event: FocusEvent<HTMLElement>) => { onPrefetch?.(item.key); if (event.currentTarget.matches(':focus-visible')) showTip(event.currentTarget, item.label); },
+    onBlur: hideTip,
+    onTouchStart: () => onPrefetch?.(item.key)
+  });
+
+  const renderItem = (item: NavItem) => {
+    const Icon = item.Icon;
+    const isActive = active === item.key;
+    const count = counts[item.key];
+    return (
+      <button
+        key={item.key}
+        type="button"
+        className={`shell-nav-item${isActive ? ' is-active' : ''}`}
+        aria-current={isActive ? 'page' : undefined}
+        aria-label={count ? `${item.label}, ${count}` : item.label}
+        data-view={item.key}
+        onClick={() => { hideTip(); onNavigate(item.key); }}
+        {...itemProps(item)}
+      >
+        <span className="shell-nav-icon" aria-hidden="true"><Icon size={16} strokeWidth={1.6} /></span>
+        <span className="shell-nav-label">{item.label}</span>
+        {count ? <span className="shell-nav-count g-num" aria-hidden="true">{count}</span> : null}
+      </button>
+    );
+  };
+
+  const siteHead = (
+    <>
+      <TenantLogo className="shell-site-logo" site={siteInfo} />
+      <span className="shell-site-text">
+        <span className="shell-site-name">{siteInfo?.nombre || activeSite}</span>
+        <span className="shell-site-code">{activeSite}</span>
+      </span>
+    </>
+  );
+
+  return (
+    <aside className="shell-nav" aria-label="Menú principal" ref={navRef}>
+      <div className="shell-nav-head">
+        {canSwitchSites ? (
+          <button
+            type="button"
+            className="shell-site"
+            aria-label={`Cambiar de sede: ${siteInfo?.nombre || activeSite}`}
+            aria-expanded={openStrip === 'sites'}
+            onClick={event => onToggleStrip('sites', event.currentTarget)}
+            onMouseEnter={event => showTip(event.currentTarget, `Sede: ${siteInfo?.nombre || activeSite}`)}
+            onMouseLeave={hideTip}
+          >
+            {siteHead}
+            <ChevronsUpDown className="shell-site-chevron" size={14} strokeWidth={1.6} aria-hidden="true" />
+          </button>
+        ) : (
+          <div className="shell-site is-static" aria-label={`Sede: ${siteInfo?.nombre || activeSite}`}>{siteHead}</div>
+        )}
+      </div>
+
+      <div className="shell-nav-search">
+        <button
+          type="button"
+          className="shell-search-btn"
+          aria-label="Buscar o ir a una sección (Ctrl K)"
+          aria-expanded={openStrip === 'palette'}
+          onClick={event => onToggleStrip('palette', event.currentTarget)}
+          onMouseEnter={event => showTip(event.currentTarget, 'Buscar o ir a… (Ctrl K)')}
+          onMouseLeave={hideTip}
+        >
+          <Search size={14} strokeWidth={1.6} aria-hidden="true" />
+          <span className="shell-search-label">Buscar o ir a…</span>
+          <kbd className="ui-kbd shell-search-kbd">Ctrl K</kbd>
+        </button>
+      </div>
+
+      <nav className="shell-nav-groups" aria-label="Secciones">
+        {groups.map(group => (
+          <div className="shell-nav-group" key={group.key} role="group" aria-label={group.label}>
+            <div className="shell-nav-group-label g-eyebrow" aria-hidden="true">{group.label}</div>
+            {group.items.map(renderItem)}
+          </div>
+        ))}
+      </nav>
+
+      <div className="shell-nav-foot">
+        {settings && renderItem(settings)}
+        <div className="shell-user">
+          <span className="shell-avatar" aria-hidden="true">{initialsOf(displayName)}</span>
+          <span className="shell-user-text">
+            <span className="shell-user-name">{displayName}</span>
+            <span className="shell-user-role">{roleLabel}</span>
+          </span>
+          <button
+            type="button"
+            className="shell-icon-btn shell-user-more"
+            aria-label="Opciones de cuenta"
+            aria-expanded={openStrip === 'account'}
+            onClick={event => onToggleStrip('account', event.currentTarget)}
+            onMouseEnter={event => showTip(event.currentTarget, displayName)}
+            onMouseLeave={hideTip}
+          >
+            <Ellipsis size={16} strokeWidth={1.6} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <Tooltip anchor={tip?.anchor || null} open={Boolean(tip)}>{tip?.label}</Tooltip>
+    </aside>
+  );
 }

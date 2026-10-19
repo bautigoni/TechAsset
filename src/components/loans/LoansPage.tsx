@@ -9,6 +9,7 @@ import { DeviceChipsPanel } from './DeviceChipsPanel';
 import { DailyClosurePanel } from '../dashboard/DailyClosurePanel';
 import { clickableProps } from '../../utils/a11y';
 import { getLoanState } from '../../utils/deviceState';
+import { scrollAppToTop } from '../../utils/scroll';
 
 function countBy(devices: Device[], getter: (device: Device) => string) {
   return Object.entries(devices.reduce<Record<string, number>>((acc, device) => {
@@ -20,7 +21,7 @@ function countBy(devices: Device[], getter: (device: Device) => string) {
 
 type LoanActionResult = { synced?: boolean; message?: string } | void;
 
-export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, onLendBatch, onReturnBatch, onProfile, initialCode = '', initialBatch }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; onReturnBatch: (etiquetas: string[]) => Promise<LoanBatchResponse>; onProfile?: (device:Device)=>void; initialCode?: string; initialBatch?: { etiquetas: string[]; nonce: number } }) {
+export function LoansPage({ devices, operator, consultationMode, onLend, onReturn, onLendBatch, onReturnBatch, onProfile, initialCode = '', initialBatch, scanRequest = 0 }: { devices: Device[]; movements: Movement[]; operator: string; consultationMode: boolean; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; onReturnBatch: (etiquetas: string[]) => Promise<LoanBatchResponse>; onProfile?: (device:Device)=>void; initialCode?: string; initialBatch?: { etiquetas: string[]; nonce: number }; scanRequest?: number }) {
   const [returnSeed, setReturnSeed] = useState(initialCode);
   // El lote puede venir de afuera (selección en Dispositivos) o de la grilla de acá.
   const [batchSeed, setBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>(initialBatch);
@@ -42,13 +43,13 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
   const seedLoanCode = useCallback((etiqueta: string) => {
     setReturnSeed('');
     window.setTimeout(() => setReturnSeed(etiqueta), 0);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollAppToTop(true);
   }, []);
 
   // Lote marcado en la grilla: va a la lista del escaneo continuo del formulario.
   const seedLoanBatch = useCallback((etiquetas: string[]) => {
     setBatchSeed(current => ({ etiquetas, nonce: (current?.nonce || 0) + 1 }));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollAppToTop(true);
   }, []);
 
   const loadPreviousLoans = useCallback(async (alive: () => boolean = () => true) => {
@@ -85,7 +86,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
             <h3>Préstamo / devolución</h3>
             <DailyClosurePanel operator={operator} consultationMode={consultationMode} />
           </div>
-          <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} initialCode={returnSeed || initialCode} batchSeed={batchSeed} />
+          <LoanForm devices={devices} consultationMode={consultationMode} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} initialCode={returnSeed || initialCode} batchSeed={batchSeed} scanRequest={scanRequest} />
           {/* Equipos y cartelitos van abajo del formulario, donde sobraba lugar,
               en vez de apretar la columna lateral. */}
           <DeviceChipsPanel devices={devices} consultationMode={consultationMode} onReturnBatch={onReturnBatch} onSeedCode={seedLoanCode} onBatchLend={seedLoanBatch} />

@@ -5,16 +5,17 @@ import { KnownDevices } from 'puppeteer-core';
 import { SITE } from '../lib/env.mjs';
 import { gotoView, openContext, pathname, sleep } from '../lib/browser.mjs';
 import { layoutProbe } from '../lib/layout-probe.mjs';
-import { NAV_LABELS } from './functional.mjs';
+import { NAV_ITEM } from './functional.mjs';
 
 export const WIDTHS = [360, 768, 1024, 1280, 1366, 1440];
 
 /** Vistas del menú del superadmin en la sede (las que la sede tiene prendidas). */
 async function mainViews(page, base) {
   await gotoView(page, base, 'dashboard');
-  await page.waitForSelector('.sidebar .nav-btn, .sidebar-rail .nav-item', { timeout: 20000 });
-  const labels = await page.$$eval('.sidebar .nav-btn, .sidebar-rail .nav-item', buttons => buttons.map(button => button.getAttribute('aria-label')));
-  return labels.map(label => NAV_LABELS[label]).filter(Boolean);
+  await page.waitForSelector(NAV_ITEM, { timeout: 20000 });
+  const keys = await page.$$eval(NAV_ITEM, buttons => buttons.map(button => button.getAttribute('data-view')));
+  // Misma lista que la línea base: sin la muestra interna de componentes (ui).
+  return keys.filter(key => key && key !== 'ui');
 }
 
 /** Espera a que la vista deje el skeleton y la red se calme un poco. */

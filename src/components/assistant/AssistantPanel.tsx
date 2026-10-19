@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { useMountTransition } from '../../hooks/useMountTransition';
-import { createPortal } from 'react-dom';
-import type { ThemeProfile } from '../../utils/themeProfile';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { ArrowLeft, Mic, Plus, Send, Square, Volume2, X } from 'lucide-react';
 import { sendAssistantMessage, transcribeAssistantAudio, type AssistantContext, type AssistantResponse } from '../../services/assistantApi';
+import { Spinner } from '../../ui/icons';
+import { TruncatedText } from '../../ui/Truncated';
+import './assistant.css';
 
 export const ASSISTANT_LOGO = '/assistant-logo.png';
 
@@ -60,27 +61,30 @@ function spanishVoice(): SpeechSynthesisVoice | undefined {
     || voices.find(voice => /^es-/i.test(voice.lang));
 }
 
-export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, open: openProp, onOpenChange, themeProfile = 'classic' }: {
+/**
+ * Asistente de IA como COLUMNA a la derecha que empuja el contenido (desktop)
+ * o como vista propia (mobile y anchos chicos). Nunca flota encima: se abre
+ * con el botón "Asistente" de la barra superior o desde Ctrl K. Se queda
+ * montado aunque se cierre, así la conversación sobrevive a cambios de vista
+ * (se pierde con F5 o al salir, como antes).
+ */
+export function AssistantPanel({ open, onClose, mode, backLabel, onNavigate, onOpenDevice, canEdit, context, question }: {
+  open: boolean;
+  onClose: () => void;
+  /** 'column' = al costado; 'view' = ocupa el lugar del contenido. */
+  mode: 'column' | 'view';
+  /** "Volver a Préstamos" en la vista propia. */
+  backLabel: string;
   onNavigate: (view: string) => void;
   onOpenDevice?: (deviceTag: string) => boolean;
   canEdit?: boolean;
   context?: AssistantContext | null;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  themeProfile?: ThemeProfile;
+  /** Pregunta que llega desde Ctrl K ("Preguntar al asistente"). */
+  question?: { text: string; nonce: number } | null;
 }) {
-  const [openState, setOpenState] = useState(false);
-  const open = openProp ?? openState;
-  const setOpen = (value: boolean) => {
-    setOpenState(value);
-    onOpenChange?.(value);
-  };
-  // Sostiene el panel montado durante la salida: antes desaparecía de golpe.
-  const panel = useMountTransition(open, 150); // --modal-close-dur
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
   const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing'>('idle');
   const [speakingMessage, setSpeakingMessage] = useState<number | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -88,18 +92,23 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
   const chunksRef = useRef<Blob[]>([]);
   const recordingTimeoutRef = useRef<number | null>(null);
   const cancelRecordingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const feedRef = useRef<HTMLDivElement | null>(null);
+  const lastQuestion = useRef(0);
 
+  const hasStarted = messages.length > 0;
   const suggestions = canEdit ? STAFF_SUGGESTIONS : VIEWER_SUGGESTIONS;
 
+  // Al abrir: foco en el campo (sin mover la página).
   useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (open) inputRef.current?.focus({ preventScroll: true });
   }, [open]);
+
+  // Siempre al último mensaje (scroll interno del historial, no de la página).
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  }, [messages, loading]);
 
   useEffect(() => () => {
     if (recordingTimeoutRef.current) window.clearTimeout(recordingTimeoutRef.current);
@@ -112,22 +121,21 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
     window.speechSynthesis?.cancel();
   }, []);
 
+  // Cerrar cancela una grabación en curso (sin enviarla) y corta la voz.
   useEffect(() => {
-    if (!open && recorderRef.current?.state === 'recording') {
+    if (open) return;
+    if (recorderRef.current?.state === 'recording') {
       cancelRecordingRef.current = true;
       recorderRef.current.stop();
     }
-    if (!open) {
-      window.speechSynthesis?.cancel();
-      setSpeakingMessage(null);
-    }
+    window.speechSynthesis?.cancel();
+    setSpeakingMessage(null);
   }, [open]);
 
   const send = async (text: string) => {
     const clean = text.trim();
     if (!clean || loading) return;
     setInput('');
-    setHasStarted(true);
     setLoading(true);
     const newMessages = [...messages, { role: 'user' as const, content: clean }];
     setMessages(newMessages);
@@ -137,7 +145,7 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
       );
       setMessages(prev => [...prev, { role: 'assistant', content: stripMarkdown(response.reply), response }]);
       if (response.suggestedDevice && onOpenDevice?.(response.suggestedDevice)) {
-        setOpen(false);
+        onClose();
       } else if (response.suggestedRoute) {
         onNavigate(response.suggestedRoute);
       }
@@ -148,9 +156,13 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
     }
   };
 
-  const handleBackdrop = (event: React.MouseEvent) => {
-    if (event.target === event.currentTarget) setOpen(false);
-  };
+  // Pregunta enviada desde Ctrl K.
+  useEffect(() => {
+    if (!question || question.nonce === lastQuestion.current) return;
+    lastQuestion.current = question.nonce;
+    void send(question.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question]);
 
   const stopRecording = () => {
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
@@ -163,7 +175,6 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setHasStarted(true);
       setMessages(prev => [...prev, { role: 'assistant', content: 'Este navegador no permite grabar audio. Podés escribirme el pedido.' }]);
       return;
     }
@@ -200,7 +211,6 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
           setVoiceState('idle');
           await send(transcript);
         } catch (error) {
-          setHasStarted(true);
           setMessages(prev => [...prev, {
             role: 'assistant',
             content: error instanceof Error ? error.message : 'No pude procesar el audio. Probá de nuevo.'
@@ -210,9 +220,9 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
       };
       recorder.start(250);
       setVoiceState('recording');
+      // Corte automático a los 60 s.
       recordingTimeoutRef.current = window.setTimeout(stopRecording, 60000);
     } catch {
-      setHasStarted(true);
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'No pude acceder al micrófono. Revisá el permiso del navegador y probá de nuevo.'
@@ -244,116 +254,113 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
     window.speechSynthesis.speak(utterance);
   };
 
-  const chatEl = (
-    <div className={`assistant-backdrop t-fade ${panel.stateClass}`.trim()} onClick={handleBackdrop}>
-    <section className="assistant-panel t-pop" aria-label="Asistente TechAsset">
-      <header className="assistant-panel-head">
-        <div className="assistant-panel-brand">
-          <img className="assistant-logo" src={ASSISTANT_LOGO} alt="" aria-hidden="true" />
-          <div>
-            <strong>Asistente TechAsset</strong>
-            <span>Datos de tu sede en tiempo real</span>
-          </div>
+  const newConversation = () => {
+    if (recorderRef.current?.state === 'recording') {
+      cancelRecordingRef.current = true;
+      recorderRef.current.stop();
+    }
+    window.speechSynthesis?.cancel();
+    setSpeakingMessage(null);
+    setMessages([]);
+    setInput('');
+    inputRef.current?.focus({ preventScroll: true });
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onClose();
+  };
+
+  return (
+    <aside
+      className={`asst asst--${mode}`}
+      aria-label="Asistente TechAsset"
+      hidden={!open}
+      data-scanner-ignore=""
+      onKeyDown={onKeyDown}
+    >
+      <header className="asst-head">
+        {mode === 'view' && (
+          <button type="button" className="shell-icon-btn" aria-label={backLabel} onClick={onClose}>
+            <ArrowLeft size={16} strokeWidth={1.6} aria-hidden="true" />
+          </button>
+        )}
+        <div className="asst-title">
+          <h2>Asistente</h2>
+          <span>Datos de tu sede en tiempo real</span>
         </div>
-        <button type="button" className="assistant-close" onClick={() => setOpen(false)} aria-label="Cerrar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+        {hasStarted && (
+          <button type="button" className="asst-text-btn" onClick={newConversation}>
+            <Plus size={14} strokeWidth={1.6} aria-hidden="true" />
+            <span>Nueva</span>
+          </button>
+        )}
+        {mode === 'column'
+          ? (
+            <button type="button" className="shell-icon-btn" aria-label="Cerrar asistente" onClick={onClose}>
+              <X size={16} strokeWidth={1.6} aria-hidden="true" />
+            </button>
+          )
+          : <button type="button" className="asst-text-btn" onClick={onClose}>{backLabel}</button>}
       </header>
-      <div className="assistant-feed">
+      <div className="asst-feed" ref={feedRef} aria-live="polite">
         {!hasStarted && (
-          <div className="assistant-welcome">
-            <img className="assistant-welcome-logo" src={ASSISTANT_LOGO} alt="" aria-hidden="true" />
-            <p>Decime qué necesitás hacer y lo ordenamos.</p>
-            <div className="assistant-suggestions">
+          <div className="asst-welcome">
+            <p>Preguntá sobre equipos, préstamos, agenda o tareas. Responde con lo que hay en la base{canEdit ? ' y puede registrar préstamos, devoluciones y tareas' : ''}.</p>
+            <ul className="asst-suggestions">
               {suggestions.map(s => (
-                <button key={s} type="button" className="assistant-suggestion-btn" onClick={() => send(s)}>{s}</button>
+                <li key={s}><button type="button" className="asst-suggestion" onClick={() => void send(s)}><TruncatedText>{s}</TruncatedText></button></li>
               ))}
-            </div>
+            </ul>
           </div>
         )}
         {messages.map((msg, i) => (
-          <div key={i} className={`chat-msg ${msg.role}`}>
+          <div key={i} className={`asst-msg asst-msg--${msg.role}`}>
+            <p>{msg.content}</p>
             {msg.role === 'assistant' && (
-              <div className="chat-avatar">
-                <img src={ASSISTANT_LOGO} alt="" aria-hidden="true" />
-              </div>
+              <button
+                type="button"
+                className={`asst-listen${speakingMessage === i ? ' is-speaking' : ''}`}
+                onClick={() => toggleSpeech(i, msg.content)}
+                aria-label={speakingMessage === i ? 'Detener audio' : 'Escuchar respuesta'}
+              >
+                {speakingMessage === i ? <Square size={12} strokeWidth={1.8} aria-hidden="true" /> : <Volume2 size={13} strokeWidth={1.6} aria-hidden="true" />}
+                <span>{speakingMessage === i ? 'Detener' : 'Escuchar'}</span>
+              </button>
             )}
-            <div className="chat-bubble">
-              <p>{msg.content}</p>
-              {msg.role === 'assistant' && (
-                <button
-                  type="button"
-                  className={`assistant-listen${speakingMessage === i ? ' is-speaking' : ''}`}
-                  onClick={() => toggleSpeech(i, msg.content)}
-                  aria-label={speakingMessage === i ? 'Detener audio' : 'Escuchar respuesta'}
-                >
-                  {speakingMessage === i ? (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 5a9 9 0 0 1 0 14"/></svg>
-                  )}
-                  <span>{speakingMessage === i ? 'Detener' : 'Escuchar'}</span>
-                </button>
-              )}
-            </div>
           </div>
         ))}
         {loading && (
-          <div className="chat-msg assistant">
-            <div className="chat-avatar">
-              <img src={ASSISTANT_LOGO} alt="" aria-hidden="true" />
-            </div>
-            <div className="chat-bubble">
-              <div className="chat-typing">
-                <span /><span /><span />
-              </div>
-            </div>
+          <div className="asst-msg asst-msg--assistant asst-typing" aria-label="El asistente está escribiendo">
+            <span /><span /><span />
           </div>
         )}
       </div>
-      <form className="assistant-input-form" onSubmit={e => { e.preventDefault(); send(input); }}>
+      <form className="asst-form" onSubmit={e => { e.preventDefault(); void send(input); }}>
         <input
-          className="assistant-input"
+          ref={inputRef}
+          className="asst-input"
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder={voiceState === 'recording' ? 'Te escucho…' : voiceState === 'transcribing' ? 'Transcribiendo audio…' : 'Escribí tu pedido…'}
+          aria-label="Pedido para el asistente"
           disabled={loading || voiceState !== 'idle'}
         />
         <button
           type="button"
-          className={`assistant-mic${voiceState === 'recording' ? ' is-recording' : ''}`}
+          className={`shell-icon-btn asst-mic${voiceState === 'recording' ? ' is-recording' : ''}`}
           onClick={startRecording}
           disabled={loading || voiceState === 'transcribing'}
           aria-label={voiceState === 'recording' ? 'Detener y enviar audio' : voiceState === 'transcribing' ? 'Transcribiendo audio' : 'Hablar con el asistente'}
-          title={voiceState === 'recording' ? 'Detener y enviar' : 'Hablar'}
         >
-          {voiceState === 'transcribing' ? (
-            <span className="assistant-mic-loader" aria-hidden="true" />
-          ) : voiceState === 'recording' ? (
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-          ) : (
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/><path d="M8 22h8"/></svg>
-          )}
+          {voiceState === 'transcribing' ? <Spinner size={16} /> : voiceState === 'recording' ? <Square size={14} strokeWidth={1.8} aria-hidden="true" /> : <Mic size={16} strokeWidth={1.6} aria-hidden="true" />}
         </button>
-        <button type="submit" className="assistant-send" disabled={loading || voiceState !== 'idle' || !input.trim()} aria-label="Enviar">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <button type="submit" className="asst-send" disabled={loading || voiceState !== 'idle' || !input.trim()} aria-label="Enviar">
+          <Send size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </form>
-    </section>
-    </div>
-  );
-
-  const showFab = true;
-
-  return (
-    <>
-      {showFab && (
-        <button className="assistant-trigger" type="button" onClick={() => setOpen(true)} aria-label="Abrir Asistente TechAsset">
-          <img className="assistant-logo" src={ASSISTANT_LOGO} alt="" aria-hidden="true" />
-          <span className="assistant-trigger-label">Asistente de IA</span>
-        </button>
-      )}
-      {panel.mounted && createPortal(chatEl, document.body)}
-    </>
+    </aside>
   );
 }

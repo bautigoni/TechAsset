@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+// Estilos de landing/login: viajan con estas pantallas (solo las ve quien no
+// tiene sesión), no en la primera carga de la app.
+import '../../styles/auth.css';
 import type { AuthUser, SiteInfo } from '../../types';
 import { confirmPasswordLink, getGoogleOAuthConfig, login, register, requestPasswordLink } from '../../services/authApi';
 import { ApiError } from '../../services/apiClient';

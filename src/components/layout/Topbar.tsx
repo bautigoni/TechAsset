@@ -1,196 +1,106 @@
-import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
-import { Check, ChevronDown, Menu } from 'lucide-react';
-import type { AuthUser, SiteInfo, ViewKey } from '../../types';
-import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
-import { setAppearance, useAppearance, type ThemePref } from '../../utils/theme';
-import { NotificationBell } from './NotificationBell';
-import { QuickAccessPopover } from '../tools/QuickAccessPopover';
-import { TenantLogo } from './TenantLogo';
-import { useMountTransition } from '../../hooks/useMountTransition';
+import { Bell, Bot, Lock, PanelLeftClose, PanelLeftOpen, Search, Zap } from 'lucide-react';
+import type { AuthUser } from '../../types';
+import { initialsOf } from './Sidebar';
+import { AnimatedNumber } from './AnimatedNumber';
+
+export type StripKey = 'quick' | 'notif' | 'account' | 'sites' | 'palette';
 
 /**
- * Barra superior mínima.
- *
- * Antes repetía el nombre de la app y de la sede —que ya están en el sidebar y
- * en el selector de sede— y juntaba cinco controles sueltos: recargar, cambiar
- * tema, el punto de sincronización y un buscador. Quedó lo que se usa: sede,
- * accesos rápidos, notificaciones y la cuenta. El tema pasó adentro del menú de
- * la cuenta, que es donde se lo busca.
+ * Barra superior (56 px): título de la vista y su contexto corto; a la
+ * derecha Asistente, accesos rápidos (rayo), campana con el contador en mono
+ * y la cuenta. Nada se abre flotando: cada botón abre una franja EN LÍNEA
+ * debajo de la barra que empuja el contenido (una a la vez; Esc o el mismo
+ * botón la cierran).
  */
-const THEME_OPTIONS: Array<{ value: ThemePref; label: string }> = [
-  { value: 'dark', label: 'Oscuro' },
-  { value: 'light', label: 'Claro' },
-  { value: 'system', label: 'Sistema' }
-];
-
-export function Topbar({ consultationMode, onMenu, activeSite = 'NFPT', sites = [], onSiteChange, user, onLogout, onNavigate, themeProfile = 'classic', impersonating = false, onExitImpersonation }: {
+export function Topbar({ title, context, consultationMode, user, unread, openStrip, onToggleStrip, assistantOpen, onToggleAssistant, collapsed, canCollapse, onToggleCollapsed }: {
+  title: string;
+  context?: string;
   consultationMode: boolean;
-  onMenu: () => void;
-  activeSite?: string;
-  sites?: SiteInfo[];
-  onSiteChange?: (siteCode: string) => void;
-  user?: AuthUser | null;
-  onLogout?: () => void | Promise<void>;
-  onNavigate?: (view: ViewKey) => void;
-  themeProfile?: ThemeProfile;
-  impersonating?: boolean;
-  onExitImpersonation?: () => void;
+  user: AuthUser;
+  unread: number;
+  openStrip: StripKey | null;
+  onToggleStrip: (strip: StripKey, trigger: HTMLElement) => void;
+  assistantOpen: boolean;
+  onToggleAssistant: () => void;
+  collapsed: boolean;
+  /** Bajo 1100 px (o con el asistente abierto en pantallas medianas) el rail es fijo. */
+  canCollapse: boolean;
+  onToggleCollapsed: () => void;
 }) {
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [siteMenuOpen, setSiteMenuOpen] = useState(false);
-  // Los dos menús se sostienen montados mientras corre la salida.
-  const accountMenuAnim = useMountTransition(accountOpen, 120); // --dropdown-close-dur
-  const siteMenu = useMountTransition(siteMenuOpen, 120);
-  const siteMenuRef = useRef<HTMLDivElement | null>(null);
-  const displayName = user?.nombre || user?.email || 'Usuario';
-  const initials = displayName.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
-  const activeSiteInfo = sites.find(site => site.siteCode === activeSite);
-  const canSwitchSites = user?.rolGlobal === 'Superadmin' && sites.length > 1;
-  const { theme } = useAppearance();
-
-  useEffect(() => {
-    if (!siteMenuOpen) return;
-    const onPointer = (event: MouseEvent) => {
-      if (!siteMenuRef.current?.contains(event.target as Node)) setSiteMenuOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSiteMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [siteMenuOpen]);
-
-  const siteSwitcher = canSwitchSites ? (
-    <div className="site-switcher" ref={siteMenuRef}>
-      <button
-        className="site-switcher-trigger"
-        type="button"
-        aria-expanded={siteMenuOpen}
-        aria-label="Seleccionar sede"
-        onClick={() => setSiteMenuOpen(open => !open)}
-        style={{ '--tenant-accent': activeSiteInfo?.themeColor || '#3b82f6' } as CSSProperties}
-      >
-        <TenantLogo className="site-switcher-logo" site={activeSiteInfo} />
-        <span className="site-switcher-text">
-          <strong>{activeSite}</strong>
-          <small>{activeSiteInfo?.nombre || 'Sede activa'}</small>
-        </span>
-        <ChevronDown size={16} strokeWidth={1.7} />
-      </button>
-      {siteMenu.mounted && (
-        <div className={`site-switcher-menu t-dropdown ${siteMenu.stateClass}`.trim()} data-origin="top-left" role="menu">
-          {sites.map(site => {
-            const selected = site.siteCode === activeSite;
-            return (
-              <button
-                key={site.siteCode}
-                type="button"
-                className={`site-switcher-option ${selected ? 'active' : ''}`}
-                role="menuitem"
-                onClick={() => {
-                  onSiteChange?.(site.siteCode);
-                  setSiteMenuOpen(false);
-                }}
-                style={{ '--tenant-accent': site.themeColor || '#3b82f6' } as CSSProperties}
-              >
-                <TenantLogo className="site-switcher-logo" site={site} />
-                <span className="site-switcher-text">
-                  <strong>{site.siteCode}</strong>
-                  <small>{site.nombre || site.subtitulo || 'Sede'}</small>
-                </span>
-                {selected && <Check size={16} strokeWidth={2.4} />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  ) : null;
-
-  // El menú de cuenta se monta en dos lugares (desktop y mobile), así que la
-  // fase la maneja el llamador y acá sólo se recibe la clase.
-  const accountMenu = (mounted: boolean, stateClass: string) => mounted ? (
-    <div className={`account-menu t-dropdown ${stateClass}`.trim()} data-origin="top-right">
-      <div className="account-menu-item">
-        <strong>{displayName}</strong>
-        <span>{user?.email || '-'}</span>
-      </div>
-      <div className="account-menu-item">
-        <strong>Sede activa</strong>
-        <span>{activeSiteInfo?.nombre ? `${activeSite} · ${activeSiteInfo.nombre}` : activeSite}</span>
-      </div>
-      {/* El tema vive acá y no como un botón suelto en la barra: se cambia una
-          vez cada tanto y es una preferencia de la cuenta, no una acción. */}
-      <div className="account-menu-theme">
-        <span>Tema</span>
-        <div className="account-theme-toggle" role="group" aria-label="Tema de la interfaz">
-          {THEME_OPTIONS.map(option => (
-            <button key={option.value} type="button" className={theme === option.value ? 'is-active' : ''} aria-pressed={theme === option.value} onClick={() => { if (theme !== option.value) setAppearance({ theme: option.value }); }}>{option.label}</button>
-          ))}
-        </div>
-      </div>
-      <button type="button" className="account-menu-action" onClick={() => void onLogout?.()}>Cerrar sesión</button>
-    </div>
-  ) : null;
-
-  if (hasVariantNav(themeProfile)) {
-    return (
-      <div className={`topbar-smart-block has-searchrow ${impersonating ? 'has-impersonation' : ''}`}>
-        {impersonating && (
-          <div className="impersonation-banner">
-            <span className="impersonation-dot" aria-hidden="true" />
-            <span>Modo superadmin · viendo {activeSiteInfo?.nombre || activeSite}</span>
-            <button className="impersonation-exit" type="button" onClick={onExitImpersonation}>Salir del modo</button>
-          </div>
-        )}
-        <header className="topbar-smart">
-          <div className="topbar-left">
-            <button className="topbar-icon-btn topbar-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
-              <Menu size={20} strokeWidth={1.7} />
-            </button>
-            {consultationMode && <span className="consulta-banner">Modo consulta</span>}
-          </div>
-          <div className="topbar-right">
-            {siteSwitcher}
-            <QuickAccessPopover key={activeSite} onOpenFull={() => onNavigate?.('quickaccess')} />
-            <NotificationBell enabled={!!user} onNavigate={onNavigate} />
-            <div className="account-menu-wrap">
-              <button className="topbar-icon-btn account-trigger" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
-                <span className="account-avatar">{initials}</span>
-              </button>
-              {accountMenu(accountMenuAnim.mounted, accountMenuAnim.stateClass)}
-            </div>
-          </div>
-        </header>
-      </div>
-    );
-  }
-
+  const displayName = user.nombre || user.email || 'Usuario';
+  const badge = unread > 9 ? '9+' : String(unread);
   return (
-    <header className="topbar topbar-min">
-      {/* Sólo el hamburguesa a la izquierda: en mobile el sidebar es un cajón y
-          sin esto no hay forma de abrirlo. En desktop no se dibuja. */}
-      <div className="topbar-title-wrap">
-        <button className="mobile-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
-          <span className="hamburger-icon" aria-hidden="true" />
-        </button>
-        {consultationMode && <span className="consulta-banner">Modo consulta</span>}
+    <header className="shell-topbar">
+      <button
+        type="button"
+        className="shell-icon-btn shell-collapse-btn"
+        aria-label={collapsed ? 'Expandir menú (Ctrl B)' : 'Contraer menú (Ctrl B)'}
+        aria-pressed={collapsed}
+        hidden={!canCollapse}
+        onClick={onToggleCollapsed}
+      >
+        {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.6} aria-hidden="true" /> : <PanelLeftClose size={16} strokeWidth={1.6} aria-hidden="true" />}
+      </button>
+      <div className="shell-title">
+        <h1 className="shell-title-main">{title}</h1>
+        {context && <span className="shell-title-sep" aria-hidden="true">/</span>}
+        {context && <span className="shell-title-context">{context}</span>}
       </div>
-      <div className="topbar-actions">
-        {siteSwitcher || <span className="operator-chip" title={activeSiteInfo?.nombre || user?.email || 'Sede'}>{activeSite}</span>}
-        <QuickAccessPopover key={activeSite} onOpenFull={() => onNavigate?.('quickaccess')} />
-        <NotificationBell enabled={!!user} onNavigate={onNavigate} />
-        <div className="account-menu-wrap">
-          <button className="account-chip" type="button" aria-label="Menú de cuenta" aria-expanded={accountOpen} onClick={() => setAccountOpen(open => !open)} title={user?.email || displayName}>
-            <span className="account-avatar">{initials}</span>
-          </button>
-          {accountMenu(accountMenuAnim.mounted, accountMenuAnim.stateClass)}
-        </div>
+      {consultationMode && (
+        <span className="shell-consulta" role="status">
+          <Lock size={14} strokeWidth={1.6} aria-hidden="true" />
+          <span className="shell-consulta-text">Modo consulta</span>
+          <span className="shell-consulta-short">Consulta</span>
+        </span>
+      )}
+      <div className="shell-actions">
+        <button
+          type="button"
+          className="shell-icon-btn shell-mobile-only"
+          aria-label="Buscar o ir a… (Ctrl K)"
+          aria-expanded={openStrip === 'palette'}
+          onClick={event => onToggleStrip('palette', event.currentTarget)}
+        >
+          <Search size={18} strokeWidth={1.6} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={`shell-assistant-btn${assistantOpen ? ' is-on' : ''}`}
+          aria-pressed={assistantOpen}
+          aria-label="Asistente"
+          onClick={onToggleAssistant}
+        >
+          <Bot size={16} strokeWidth={1.6} aria-hidden="true" />
+          <span className="shell-assistant-btn-label">Asistente</span>
+        </button>
+        <button
+          type="button"
+          className="shell-icon-btn shell-desktop-only"
+          aria-label="Ver accesos rápidos"
+          aria-expanded={openStrip === 'quick'}
+          onClick={event => onToggleStrip('quick', event.currentTarget)}
+        >
+          <Zap size={18} strokeWidth={1.6} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="shell-icon-btn shell-bell"
+          aria-label={unread ? `Notificaciones, ${unread} sin leer` : 'Notificaciones'}
+          aria-expanded={openStrip === 'notif'}
+          onClick={event => onToggleStrip('notif', event.currentTarget)}
+        >
+          <Bell size={18} strokeWidth={1.6} aria-hidden="true" />
+          {unread > 0 && <span className="shell-bell-count g-num" aria-hidden="true"><AnimatedNumber value={badge} /></span>}
+        </button>
+        <button
+          type="button"
+          className="shell-icon-btn shell-account-btn"
+          aria-label="Menú de cuenta"
+          aria-expanded={openStrip === 'account'}
+          onClick={event => onToggleStrip('account', event.currentTarget)}
+        >
+          <span className="shell-avatar" aria-hidden="true">{initialsOf(displayName)}</span>
+        </button>
       </div>
     </header>
   );

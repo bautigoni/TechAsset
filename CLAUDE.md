@@ -104,6 +104,14 @@ Ojo con el orden de rutas en Express: un `/:id` declarado antes tapa a las rutas
 - Papelera de dispositivos: `GET /api/devices/deleted` + `POST /api/devices/:etiqueta/restore`. Borrar = ocultar; al borrar sale un toast con "Deshacer".
 - `GET /api/agenda` omite por defecto las terminadas de más de 120 días (`?all=1` trae todo; la respuesta trae `olderHidden`).
 
+## Shell (etapa 2 del rediseño)
+
+- `src/components/layout/AppShell.tsx` arma todo: `Sidebar` (menú agrupado Operación / Gestión / Inventario y datos / Recursos / Superadmin, 232 px; rail de 56 px con Ctrl B o bajo 1100 px), `Topbar` (título + contexto, Asistente, accesos rápidos, campana, cuenta), `MobileNav` (bajo 768 px: Inicio, Préstamos, Escanear, Agenda, Más; "Más" es una vista en línea, `MoreView`) y la columna del asistente. Catálogo del menú, grupos y títulos: `layout/nav.ts`. La lista de vistas es una sola: `VIEW_KEYS` en `src/types.ts`.
+- La app ocupa la ventana (100dvh) y lo único que scrollea es `.shell-scroll` (franjas + contenido): para subir arriba usar `scrollAppToTop()` (`utils/scroll.ts`), no `window.scrollTo`.
+- Nada flota: accesos rápidos, notificaciones, sede, cuenta y **Ctrl K** (`CommandPalette.tsx`) se abren como una franja en línea bajo la barra (una a la vez; Esc o el mismo botón la cierran y devuelven el foco). Ctrl K, franjas, "Más" y la barra inferior viajan en el chunk `ShellPanels` (precargado en idle). El asistente es columna a la derecha (≥ 1024 px) o vista propia.
+- Navegación con historial: `navigate()` de App hace `pushState` (Atrás/Adelante recorren vistas); las correcciones automáticas (deep link inválido, módulo apagado, login) usan `replaceState`. La URL sigue siendo `/sede/<sede>/<vista>`.
+- Escáner USB global (`hooks/useGlobalScanner.ts`): exige ritmo de lector (≥ 4 caracteres, ≤ 50 ms de promedio entre teclas) e ignora campos editables, `form`, `.modal`, `[role=dialog]` y todo lo marcado con `[data-scanner-ignore]` (franjas, Ctrl K, asistente). Un formulario en línea nuevo que no sea `<form>` lleva `data-scanner-ignore`.
+
 ## UI compartida
 
 - `src/components/layout/Feedback.tsx`: `confirmDialog`, `promptDialog` (texto o `options`), `toast` (con acción "Deshacer"), `copyToClipboard`, `errorMessage`. **No usar `window.confirm/prompt/alert`** ni tragarse errores con `.catch(() => {})` en acciones del usuario.
@@ -141,7 +149,7 @@ Botón opcional en la pantalla de login al lado del tradicional por mail. Si las
 - `public/manifest.webmanifest` + `public/sw.js`: shell cache, network-first para `/api/*`, cache-first para assets estáticos, listener `push` y `notificationclick`.
 - Registro del SW en `src/main.tsx` (solo prod).
 - Banner de instalación: `src/components/common/InstallBanner.tsx`, montado como hermano de `<App />`. Solo aparece en mobile, si no está instalada y el browser disparó `beforeinstallprompt`.
-- Campana + popover + toasts: `src/components/layout/NotificationBell.tsx` + `src/hooks/useNotifications.ts` (polling 30s, dispara toast en nuevas).
+- Campana: botón de la barra superior + franja en línea (`ShellStrips.tsx` › `NotifStrip`) + `src/hooks/useNotifications.ts` (polling 30 s, pausado con la pestaña oculta). Una notificación nueva sale como línea de estado bajo la barra (`pushStatus` + `StatusOutlet`, "Ver", 6 s), no como toast.
 - Backend notificaciones: `server/services/notifications.service.js` (`notifyUser`, `notifySiteAdmins`, `broadcastRelease`, `sendPush` con fallback graceful).
 - Tablas: `notifications`, `push_subscriptions`, `release_notes` (todas en `server/db.js`, idempotentes con `CREATE TABLE IF NOT EXISTS`).
 - Hooks: `tasks.routes.js` y `tickets.routes.js` llaman `notifySiteAdmins` en POST (no bloqueante).

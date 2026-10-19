@@ -56,7 +56,7 @@ export async function openContext(browser, { base, token, releaseVersion = '', d
 /** Abre /sede/NFPT/<vista> con recarga completa y espera el shell. */
 export async function gotoView(page, base, view, { site = SITE } = {}) {
   await page.goto(`${base}/sede/${site}/${view}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.app-shell', { timeout: 20000 });
+  await page.waitForSelector('.shell', { timeout: 20000 });
   await page.waitForSelector('.view-enter section, .view-enter .view', { timeout: 20000 }).catch(() => {});
 }
 

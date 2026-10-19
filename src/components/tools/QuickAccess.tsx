@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { fetchToolsConfig } from '../../services/toolsApi';
+import { useQuickLinks, groupLinks } from './quickLinks';
 import type { QuickLink } from '../../types';
-import { createQuickLink, deleteQuickLink, fetchQuickLinks, updateQuickLink } from '../../services/operationsApi';
+import { createQuickLink, deleteQuickLink, updateQuickLink } from '../../services/operationsApi';
 import { Button } from '../layout/Button';
 import { Modal } from '../layout/Modal';
 import { confirmDialog, toast, errorMessage } from '../layout/Feedback';
@@ -15,27 +15,7 @@ const DOWNLOAD_LINKS: DownloadLink[] = [
   { name: 'Reinicio historial WIFI + limpieza DNS (.bat)', description: 'Liberar/renovar IP, flush DNS y reset Winsock/TCP-IP.', url: '/downloads/reinicio-historial-y-dns.bat', filename: 'reinicio-historial-y-dns.bat' }
 ];
 
-export function useQuickLinks() {
-  const [links, setLinks] = useState<QuickLink[]>([]);
-  const [handingUrl, setHandingUrl] = useState('');
-  const reload = () => fetchQuickLinks().then(r => { if (r.ok) setLinks(r.items); }).catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar los accesos rápidos.'), tone: 'error' }));
-  useEffect(() => {
-    void reload();
-    fetchToolsConfig().then(c => setHandingUrl(c.handingTicketUrl || '')).catch(() => {});
-  }, []);
-  return { links, handingUrl, reload };
-}
-
-// Agrupa por categoría para que la lista no sea un chorizo cuando crece.
-export function groupLinks(links: QuickLink[]) {
-  const map = new Map<string, QuickLink[]>();
-  for (const link of links) {
-    const key = String(link.categoria || '').trim() || 'Sin categoría';
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(link);
-  }
-  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], 'es'));
-}
+export { useQuickLinks, groupLinks } from './quickLinks';
 
 export function QuickLinkForm({ initial, operator, onDone, onCancel }: {
   initial: Partial<QuickLink>;

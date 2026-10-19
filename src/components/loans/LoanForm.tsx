@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Device } from '../../types';
 import { parseScannedCode, resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { getOperationalAlias, operationalTypeLabel } from '../../utils/classifyDevice';
@@ -39,7 +39,7 @@ const DEFAULT_GRADE_OPTIONS = [
 const SCHOOL_LEVEL_OPTIONS = ['EP', 'ES'];
 const DEFAULT_ACCESSORIES = ['Cargador', 'Mouse', 'Bolso', 'Cable HDMI', 'Adaptador', 'Lápiz óptico', 'Auriculares'];
 
-export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationMode, initialCode = '', batchSeed }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; consultationMode: boolean; initialCode?: string; batchSeed?: { etiquetas: string[]; nonce: number } }) {
+export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationMode, initialCode = '', batchSeed, scanRequest = 0 }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; consultationMode: boolean; initialCode?: string; batchSeed?: { etiquetas: string[]; nonce: number }; scanRequest?: number }) {
   const [code, setCode] = useState('');
   const [person, setPerson] = useState('');
   const [role, setRole] = useState('');
@@ -90,6 +90,15 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
     setCode(initialCode);
     window.setTimeout(() => codeInputRef.current?.focus(), 0);
   }, [initialCode]);
+
+  // "Escanear" de la barra inferior (mobile): en touch abre la cámara; con
+  // teclado/lector, deja el foco en el campo del código.
+  useEffect(() => {
+    if (!scanRequest) return;
+    if (!consultationMode && window.matchMedia?.('(pointer: coarse)').matches) void openCamera();
+    else window.setTimeout(() => codeInputRef.current?.focus(), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanRequest]);
 
   // Lote elegido en la grilla de equipos: entra a la lista del escaneo continuo,
   // así persona/rol/ubicación se cargan una sola vez para todos.

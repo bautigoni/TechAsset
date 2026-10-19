@@ -1,4 +1,13 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'history' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'reminders' | 'suggestions' | 'tools' | 'quickaccess' | 'tenants' | 'adminusers' | 'settings' | 'ui';
+/**
+ * La ÚNICA lista de vistas (App, URL, campana, menú, Ctrl K). La URL de cada
+ * una es `/sede/<sede>/<vista>` con estas claves tal cual: la generan mails,
+ * notificaciones y el login con Google, así que no se renombran.
+ */
+export const VIEW_KEYS = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'reminders', 'suggestions', 'tools', 'quickaccess', 'tenants', 'adminusers', 'settings', 'ui'] as const;
+export type ViewKey = (typeof VIEW_KEYS)[number];
+export function isViewKey(value: unknown): value is ViewKey {
+  return typeof value === 'string' && (VIEW_KEYS as readonly string[]).includes(value);
+}
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';

@@ -1,64 +1,57 @@
-import type { CSSProperties } from 'react';
-import { MoreHorizontal, X } from 'lucide-react';
+import { CalendarDays, House, LayoutGrid, Repeat2, ScanLine } from 'lucide-react';
 import type { ViewKey } from '../../types';
-import { hasVariantNav, type ThemeProfile } from '../../utils/themeProfile';
-import type { NavItem } from './Sidebar';
+import type { NavItem } from './nav';
+import type { NavCounts } from './Sidebar';
 
-const MAX_SLOTS = 4;
-
-// Bottom nav flotante del Tema B (solo mobile, ver nav-smart.css).
-// En el tema clásico no renderiza nada, igual que siempre.
-export function MobileNav({ items, active, onNavigate, onPrefetch, onMore, menuOpen = false, themeProfile = 'classic' }: {
+/**
+ * Barra inferior (solo < 768 px, donde no hay menú lateral): Inicio,
+ * Préstamos, Escanear (al centro), Agenda y Más. "Más" abre las demás
+ * secciones en una vista propia, en línea (no una hoja flotante). Se esconde
+ * con el teclado abierto (clase en <body>, ver AppShell).
+ */
+export function MobileNav({ items, active, moreOpen, onNavigate, onPrefetch, onScan, onToggleMore, counts }: {
   items: NavItem[];
   active: ViewKey;
+  moreOpen: boolean;
   onNavigate: (view: ViewKey) => void;
   onPrefetch?: (view: ViewKey) => void;
-  onMore: () => void;
-  menuOpen?: boolean;
-  themeProfile?: ThemeProfile;
+  onScan: () => void;
+  onToggleMore: () => void;
+  counts: NavCounts;
 }) {
-  if (!hasVariantNav(themeProfile) || items.length === 0) return null;
-
-  const hasMore = items.length > MAX_SLOTS;
-  const shown = hasMore ? items.slice(0, MAX_SLOTS - 1) : items;
-  const slots = shown.length + (hasMore ? 1 : 0);
-  const activeIndex = shown.findIndex(item => item.key === active);
-
+  const has = (key: ViewKey) => items.some(item => item.key === key);
+  const slot = (key: ViewKey, label: string, Icon: typeof House) => {
+    const isActive = !moreOpen && active === key;
+    const count = counts[key];
+    return (
+      <button
+        type="button"
+        className={`shell-tab${isActive ? ' is-active' : ''}`}
+        aria-current={isActive ? 'page' : undefined}
+        aria-label={count ? `${label}, ${count}` : label}
+        onClick={() => onNavigate(key)}
+        onTouchStart={() => onPrefetch?.(key)}
+      >
+        <Icon size={20} strokeWidth={1.6} aria-hidden={true} />
+        <span className="shell-tab-label">{label}{count ? <span className="shell-tab-count g-num" aria-hidden="true"> {count}</span> : null}</span>
+      </button>
+    );
+  };
   return (
-    <nav className="bottom-nav" aria-label="Navegación principal">
-      <div className="bottom-nav-container" style={{ '--bn-slots': slots } as CSSProperties}>
-        {activeIndex >= 0 && (
-          <span className="bottom-nav-pill" aria-hidden="true" style={{ transform: `translateX(${activeIndex * 100}%)` }} />
-        )}
-        {shown.map(item => {
-          const Icon = item.Icon;
-          const isActive = active === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              className={`bottom-nav-item ${isActive ? 'active' : ''}`}
-              aria-current={isActive ? 'page' : undefined}
-              onClick={() => onNavigate(item.key)}
-              onTouchStart={() => onPrefetch?.(item.key)}
-            >
-              <Icon size={22} strokeWidth={1.7} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-        {hasMore && (
-          <button type="button" className="bottom-nav-item more-btn" onClick={onMore} aria-label={menuOpen ? 'Cerrar menú' : 'Más secciones'} aria-expanded={menuOpen}>
-            {/* Los dos íconos apilados y cruzados con blur: el botón no cambia
-                de tamaño al pasar de "más" a "cerrar". */}
-            <span className="t-icon-swap" data-state={menuOpen ? 'b' : 'a'} aria-hidden="true">
-              <span className="t-icon" data-icon="a"><MoreHorizontal size={22} strokeWidth={1.7} /></span>
-              <span className="t-icon" data-icon="b"><X size={22} strokeWidth={1.7} /></span>
-            </span>
-            <span>{menuOpen ? 'Cerrar' : 'Más'}</span>
-          </button>
-        )}
-      </div>
+    <nav className="shell-tabbar" aria-label="Navegación principal">
+      {slot('dashboard', 'Inicio', House)}
+      {has('loans') ? slot('loans', 'Préstamos', Repeat2) : <span className="shell-tab is-empty" aria-hidden="true" />}
+      {has('loans') ? (
+        <button type="button" className="shell-tab shell-tab-scan" aria-label="Escanear un equipo" onClick={onScan} onTouchStart={() => onPrefetch?.('loans')}>
+          <span className="shell-tab-scan-icon"><ScanLine size={20} strokeWidth={1.6} aria-hidden="true" /></span>
+          <span className="shell-tab-label">Escanear</span>
+        </button>
+      ) : <span className="shell-tab is-empty" aria-hidden="true" />}
+      {has('agenda') ? slot('agenda', 'Agenda', CalendarDays) : <span className="shell-tab is-empty" aria-hidden="true" />}
+      <button type="button" className={`shell-tab${moreOpen ? ' is-active' : ''}`} aria-expanded={moreOpen} aria-controls="shell-more" onClick={onToggleMore}>
+        <LayoutGrid size={20} strokeWidth={1.6} aria-hidden="true" />
+        <span className="shell-tab-label">Más</span>
+      </button>
     </nav>
   );
 }

@@ -15,12 +15,16 @@ const exact = value => new RegExp(`^${escapeRx(value)}$`);
 
 // Mapa de la barra lateral (Sidebar.tsx): etiqueta → vista.
 export const NAV_LABELS = {
-  Dashboard: 'dashboard', Tenants: 'tenants', Usuarios: 'adminusers', Dispositivos: 'devices', 'Préstamos': 'loans',
+  Inicio: 'dashboard', Tenants: 'tenants', Usuarios: 'adminusers', Dispositivos: 'devices', 'Préstamos': 'loans',
   Historial: 'history', 'Inventario TIC': 'inventory', 'Analítica': 'analytics', 'Agenda TIC': 'agenda', Horarios: 'schedules',
   'Tareas TIC': 'tasks', Recordatorios: 'reminders', Canvas: 'canvas', 'Caja chica': 'pettycash', 'Estado aulas': 'classrooms',
-  Tickets: 'tickets', 'Base de conocimiento': 'knowledge', Sugerencias: 'suggestions', 'Herramientas auxiliares': 'tools',
+  Tickets: 'tickets', 'Base de conocimiento': 'knowledge', Sugerencias: 'suggestions', Herramientas: 'tools',
   'Accesos rápidos': 'quickaccess', 'Configuración': 'settings'
 };
+
+/** Ítems del menú lateral (etapa 2): data-view = clave de la vista; el activo lleva aria-current. */
+export const NAV_ITEM = '.shell-nav .shell-nav-item[data-view]';
+export const NAV_ACTIVE = '.shell-nav .shell-nav-item[aria-current="page"]';
 
 // ── Préstamos ────────────────────────────────────────────────────────────────
 
@@ -334,6 +338,36 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       return 'buscador y diálogo: sin navegar';
     });
 
+    await test('b', 'Escáner global', 'Tipeo humano fuera de campos, Ctrl K y el asistente no navegan', async () => {
+      await gotoView(page, base, 'dashboard');
+      await page.waitForSelector('tr[data-device-tag]', { timeout: 20000 });
+      await page.evaluate(() => { (document.activeElement instanceof HTMLElement) && document.activeElement.blur(); });
+      // Ritmo de persona (≈140 ms entre teclas): no es un lector.
+      await page.keyboard.type('D1436', { delay: 140 });
+      await page.keyboard.press('Enter');
+      await sleep(500);
+      assert((await pathname(page)).endsWith('/dashboard'), `El tipeo lento navegó a ${await pathname(page)}.`);
+      // Ctrl K: la franja es [data-scanner-ignore] y su campo es editable.
+      await page.keyboard.down('Control'); await page.keyboard.press('KeyK'); await page.keyboard.up('Control');
+      await page.waitForSelector('.shell-palette .shell-pal-input');
+      await page.keyboard.type('1436', { delay: 15 });
+      await sleep(500);
+      assert((await pathname(page)).endsWith('/dashboard'), `Tipear en Ctrl K navegó a ${await pathname(page)}.`);
+      await page.keyboard.press('Escape'); // vacía la búsqueda
+      await page.keyboard.press('Escape'); // cierra la franja
+      await until(async () => !(await page.$('.shell-palette')), { message: 'que Esc cierre Ctrl K' });
+      // Asistente (columna): tipear rápido en su campo tampoco navega.
+      await page.$eval('.shell-assistant-btn', button => button.click());
+      await page.waitForSelector('.asst:not([hidden]) .asst-input');
+      await page.$eval('.asst-input', input => input.focus());
+      await page.keyboard.type('D1436', { delay: 15 });
+      await sleep(500);
+      assert((await pathname(page)).endsWith('/dashboard'), `Tipear en el asistente navegó a ${await pathname(page)}.`);
+      await page.keyboard.press('Escape');
+      await until(async () => Boolean(await page.$('.asst[hidden]')), { message: 'que Esc cierre el asistente' });
+      return 'tipeo lento, Ctrl K y asistente: sin navegar; Esc cierra';
+    });
+
     // c) Búsqueda flexible ────────────────────────────────────────────────────
     await test('c', 'Dispositivos', 'Búsqueda flexible (touch 34, touch34, 34touch, D1436, 1436, plani 5, planificación 5)', async () => {
       await gotoView(page, base, 'devices');
@@ -511,7 +545,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
         }
         await sleep(300);
         const found = await writeControls(reader.page);
-        const banner = await reader.page.$('.consulta-banner');
+        const banner = await reader.page.$('.shell-consulta');
         const problems = [
           found.buttons.length && `botones habilitados: ${found.buttons.join(', ')}`,
           found.chips && `${found.chips} chips habilitados`,
@@ -537,9 +571,10 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
   try {
     const views = await (async () => {
       await gotoView(nav.page, base, 'dashboard');
-      await nav.page.waitForSelector('.sidebar .nav-btn, .sidebar-rail .nav-item', { timeout: 20000 });
-      const labels = await nav.page.$$eval('.sidebar .nav-btn, .sidebar-rail .nav-item', buttons => buttons.map(button => button.getAttribute('aria-label')));
-      return labels.map(label => [NAV_LABELS[label], label]).filter(([key]) => key);
+      await nav.page.waitForSelector(NAV_ITEM, { timeout: 20000 });
+      const keys = await nav.page.$$eval(NAV_ITEM, buttons => buttons.map(button => button.getAttribute('data-view')));
+      // 'ui' (Componentes UI, solo superadmin) no estaba en el menú de la línea base.
+      return keys.filter(key => key && key !== 'ui').map(key => [key, key]);
     })();
     await test('h', 'Navegación', `/sede/${SITE}/<vista> abre la vista correcta (${views.length} vistas)`, async () => {
       const wrong = [];
@@ -547,11 +582,11 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
         await gotoView(nav.page, base, view);
         try {
           await until(async () => {
-            const active = await nav.page.$eval('.sidebar .nav-btn.active, .sidebar-rail .nav-item.active', button => button.getAttribute('aria-label')).catch(() => '');
+            const active = await nav.page.$eval(NAV_ACTIVE, button => button.getAttribute('data-view')).catch(() => '');
             return active === label && (await pathname(nav.page)) === `/sede/${SITE.toLowerCase()}/${view}`;
           }, { timeout: 6000 });
         } catch {
-          const active = await nav.page.$eval('.sidebar .nav-btn.active, .sidebar-rail .nav-item.active', button => button.getAttribute('aria-label')).catch(() => '(ninguna)');
+          const active = await nav.page.$eval(NAV_ACTIVE, button => button.getAttribute('data-view')).catch(() => '(ninguna)');
           wrong.push(`${view}: activa "${active}", URL ${await pathname(nav.page)}`);
         }
       }
@@ -559,14 +594,59 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
       return views.map(([view]) => view).join(', ');
     });
 
+    await test('h', 'Navegación', 'Atrás y Adelante del navegador recorren las vistas (misma URL /sede/<sede>/<vista>)', async () => {
+      await gotoView(nav.page, base, 'dashboard');
+      await nav.page.waitForSelector(NAV_ITEM, { timeout: 20000 });
+      const go = async view => {
+        await nav.page.$eval(`.shell-nav .shell-nav-item[data-view="${view}"]`, button => button.click());
+        await until(async () => (await pathname(nav.page)) === `/sede/${SITE.toLowerCase()}/${view}`, { message: `la URL de ${view}` });
+      };
+      const at = async view => until(async () => {
+        const active = await nav.page.$eval(NAV_ACTIVE, button => button.getAttribute('data-view')).catch(() => '');
+        return active === view && (await pathname(nav.page)) === `/sede/${SITE.toLowerCase()}/${view}`;
+      }, { message: `volver a ${view}` });
+      await go('devices');
+      await go('loans');
+      await nav.page.goBack(); await at('devices');
+      await nav.page.goBack(); await at('dashboard');
+      await nav.page.goForward(); await at('devices');
+      return 'dashboard → devices → loans, Atrás ×2, Adelante ×1';
+    });
+
+    await test('h', 'Navegación', 'Ctrl K: "prestar <etiqueta>" lleva a Préstamos con la etiqueta; un equipo salta a su fila', async () => {
+      const free = (await api.devices()).find(device => loanState(device.estado) === 'available')?.etiqueta;
+      assert(free, 'No hay equipos libres en la copia.');
+      await gotoView(nav.page, base, 'dashboard');
+      await nav.page.waitForSelector(NAV_ITEM, { timeout: 20000 });
+      const openPalette = async () => {
+        await nav.page.keyboard.down('Control'); await nav.page.keyboard.press('KeyK'); await nav.page.keyboard.up('Control');
+        await nav.page.waitForSelector('.shell-palette .shell-pal-input');
+      };
+      await openPalette();
+      await nav.page.keyboard.type(`prestar ${free}`, { delay: 10 });
+      await nav.page.waitForSelector('.shell-pal-item.is-active');
+      await nav.page.keyboard.press('Enter');
+      await until(async () => (await pathname(nav.page)).endsWith('/loans'), { message: 'la URL de Préstamos' });
+      const value = await until(() => nav.page.$eval(CODE_INPUT, input => input.value).catch(() => ''), { message: 'la etiqueta en el formulario' });
+      assert(value.toUpperCase() === free.toUpperCase(), `El formulario tiene "${value}" (esperaba ${free}).`);
+      // Un equipo (sin verbo) → Dispositivos filtrado, con la fila resaltada.
+      await openPalette();
+      await nav.page.keyboard.type(free, { delay: 10 });
+      await nav.page.waitForSelector('.shell-pal-item.is-active');
+      await nav.page.keyboard.press('Enter');
+      await until(async () => (await pathname(nav.page)).endsWith('/devices'), { message: 'la URL de Dispositivos' });
+      await nav.page.waitForSelector(`tr[data-device-tag="${free}"].row-highlight`, { timeout: 8000 });
+      return `prestar ${free} → /loans; ${free} → fila resaltada en /devices`;
+    });
+
     await test('h', 'Navegación', 'Una respuesta 401 vuelve al login', async () => {
       await gotoView(nav.page, base, 'dashboard');
-      await nav.page.waitForSelector('.sidebar .nav-btn[aria-label="Historial"], .sidebar-rail .nav-item[aria-label="Historial"]', { timeout: 20000 });
+      await nav.page.waitForSelector('.shell-nav .shell-nav-item[data-view="history"]', { timeout: 20000 });
       // Sesión inválida a partir de ahora (como si la hubieran cerrado en otro lado).
       const bogus = { name: 'techasset_session', value: 'sesion-invalida-e2e', domain: '127.0.0.1', path: '/', httpOnly: true, sameSite: 'Lax' };
       if (typeof nav.context.setCookie === 'function') await nav.context.setCookie(bogus);
       else await nav.page.setCookie(bogus);
-      await nav.page.$eval('.sidebar .nav-btn[aria-label="Historial"], .sidebar-rail .nav-item[aria-label="Historial"]', button => button.click());
+      await nav.page.$eval('.shell-nav .shell-nav-item[data-view="history"]', button => button.click());
       const where = await until(async () => { const p = await pathname(nav.page); return p.startsWith('/login') && p; }, { timeout: 10000, message: 'la pantalla de login' });
       return where;
     });

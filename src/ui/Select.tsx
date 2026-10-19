@@ -235,7 +235,7 @@ export function Select({ id: idProp, value, options, onChange, disabled, placeho
 
   return (
     <FieldShell id={id} helpId={helpId} label={label} hint={hint} error={error} success={success} required={required} reserveHelp={reserveHelp} className={className}>
-      <div className={cx('ui-select', open && 'is-open')} ref={rootRef} onBlur={onRootBlur}>
+      <div className={cx('ui-select', open && 'is-open')} ref={rootRef} onBlur={onRootBlur} data-scanner-ignore="">
         <button
           ref={triggerRef}
           id={id}

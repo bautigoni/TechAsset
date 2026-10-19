@@ -205,7 +205,7 @@ export function DatePicker({ id: idProp, value, onChange, min, max, isDateDisabl
 
   return (
     <FieldShell id={id} helpId={helpId} label={label} hint={hint} error={shownError} success={success} required={required} reserveHelp={reserveHelp} className={className}>
-      <div className={cx('ui-date', open && 'is-open')} ref={rootRef} onBlur={onRootBlur}>
+      <div className={cx('ui-date', open && 'is-open')} ref={rootRef} onBlur={onRootBlur} data-scanner-ignore="">
         {textInput ? (
           <div className={cx('ui-control', 'ui-input', invalid && 'is-error', !invalid && success && 'is-success', disabled && 'is-disabled')}>
             <input

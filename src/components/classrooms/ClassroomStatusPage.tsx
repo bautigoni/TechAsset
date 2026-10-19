@@ -19,6 +19,7 @@ import {
   NdPrimerPisoModel,
   NdSegundoPisoModel
 } from './models/NordeltaModels.jsx';
+import { scrollAppToTop } from '../../utils/scroll';
 
 type FloorKey = 'inicial' | 'planta' | 'primero' | 'segundo' | 'artes';
 type RoomList = Array<{ roomKey: string; nombre: string; sector: string }>;
@@ -113,7 +114,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite }: 
   }, [floorItems, floorRooms]);
 
   const handleRoomClick = (roomKey: string, nombre: string) => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollAppToTop(true);
     setMessage('');
     setSelectedKey(roomKey);
     setSelectedNombre(nombre);

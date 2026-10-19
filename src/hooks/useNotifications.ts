@@ -30,7 +30,9 @@ export function useNotifications(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     void refresh();
-    const t = setInterval(() => void refresh(), POLL_MS);
+    // Con la pestaña oculta no se pollea (como el resto de la app); al volver,
+    // el próximo tick la pone al día.
+    const t = setInterval(() => { if (!document.hidden) void refresh(); }, POLL_MS);
     return () => clearInterval(t);
   }, [enabled, refresh]);
 

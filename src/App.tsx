@@ -1,9 +1,11 @@
-import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { AuthUser, Device, Movement, SiteInfo, TaskState, ViewKey } from './types';
-import { Sidebar, visibleNavItems } from './components/layout/Sidebar';
-import { Topbar } from './components/layout/Topbar';
-import { MobileNav } from './components/layout/MobileNav';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { isViewKey, type AuthUser, type Device, type Movement, type SiteInfo, type TaskState, type ViewKey } from './types';
+import { AppShell } from './components/layout/AppShell';
+import { navItem, visibleNavItems } from './components/layout/nav';
 import { SkeletonView } from './components/layout/Skeleton';
+import { useGlobalScanner } from './hooks/useGlobalScanner';
+import { clearStatus, pushStatus } from './ui/Status';
+import { getOperationalAlias } from './utils/classifyDevice';
 import { applyServerAppearance } from './utils/theme';
 import { getUserPrefs } from './services/userPrefsApi';
 import { lazyView, prefetchView, prefetchViewsWhenIdle } from './utils/lazyView';
@@ -20,9 +22,8 @@ import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
 import { setActiveSiteCode } from './services/activeSite';
 import { clearApiCache, SESSION_EXPIRED_EVENT } from './services/apiClient';
-import { activeSiteRole, canViewModule, isSuperadmin, roleAccess } from './utils/permissions';
-import { isViewEnabled, TOGGLEABLE_KEYS } from './utils/modules';
-import { parseScannedCode, resolveDeviceMatches } from './utils/normalizeSearch';
+import { activeSiteRole, isSuperadmin, roleAccess } from './utils/permissions';
+import { resolveDeviceMatches } from './utils/normalizeSearch';
 import type { AssistantContext } from './services/assistantApi';
 
 // Cada vista viaja en su propio chunk: el bundle inicial baja de ~570 kB a lo que
@@ -54,7 +55,6 @@ const UiShowcase = lazyView('ui', () => import('./ui/Showcase'), 'Showcase');
 // tiene sesión, así que no tiene por qué pesar en el bundle del que ya entró.
 const DeviceProfile = lazyView('device-profile', () => import('./components/devices/DeviceProfile'), 'DeviceProfile');
 const AddDeviceModal = lazyView('add-device', () => import('./components/devices/AddDeviceModal'), 'AddDeviceModal');
-const AssistantPanel = lazyView('assistant', () => import('./components/assistant/AssistantPanel'), 'AssistantPanel');
 const LoginPage = lazyView('login', () => import('./components/auth/LoginPage'), 'LoginPage');
 const LandingPage = lazyView('landing', () => import('./components/auth/LandingPage'), 'LandingPage');
 
@@ -62,9 +62,10 @@ export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
   const [authMode, setAuthMode] = useState<'landing' | 'login' | 'register'>(() => readAuthModeFromUrl());
   const [search, setSearch] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(localStorage.getItem('techasset_sidebar_collapsed') === '1');
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  // Etiqueta a resaltar (Ctrl K → "ir a la fila"); el nonce repite el salto.
+  const [highlight, setHighlight] = useState<{ tag: string; nonce: number } | null>(null);
+  // "Escanear" de la barra inferior: abre Préstamos con la cámara / el foco.
+  const [scanRequest, setScanRequest] = useState(0);
   const [assistantContext, setAssistantContext] = useState<AssistantContext | null>(null);
   const [consultationMode, setConsultationMode] = useState(false);
   const [profile, setProfile] = useState<Device | null>(null);
@@ -78,8 +79,6 @@ export function App() {
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [activeSite, setActiveSite] = useState('');
   const [siteSettings, setSiteSettings] = useState<Record<string, unknown> | null>(null);
-  const scannerBufferRef = useRef('');
-  const scannerTimerRef = useRef<number | null>(null);
   const { operator, setOperator } = useOperator();
   const { devices, filteredDevices, counts, sync, refresh, patchLocal, removeLocal } = useDevices(search, activeSite);
   const agenda = useAgenda(operator);
@@ -173,12 +172,54 @@ export function App() {
     return promise;
   }, []);
 
-  // La URL sí sigue a la vista (deep link + refresh del browser).
+  /* ── Navegación con historial ─────────────────────────────────────────────
+     La URL sigue siendo /sede/<sede>/<vista> (la usan mails, notificaciones y
+     el login con Google). Lo que hace el usuario (menú, Ctrl K, campana,
+     escáner, cambiar de sede) entra al historial con pushState, así Atrás y
+     Adelante del navegador recorren las vistas; lo que corrige la app sola
+     (deep link inválido, módulo apagado, login) reemplaza la entrada. */
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const pushNext = useRef(false);
+  const navigate = useCallback((next: ViewKey) => {
+    if (next === viewRef.current) return;
+    pushNext.current = true;
+    setView(next);
+  }, []);
+  const changeSite = useCallback((code: string) => {
+    pushNext.current = true;
+    setActiveSite(code);
+  }, []);
+
   useEffect(() => {
     if (!user || !activeSite) return;
     const next = `/sede/${activeSite.toLowerCase()}/${view}`;
-    if (window.location.pathname !== next) window.history.replaceState(null, '', next);
+    const push = pushNext.current;
+    pushNext.current = false;
+    if (window.location.pathname === next) return;
+    if (push) window.history.pushState({ techasset: true }, '', next);
+    else window.history.replaceState(null, '', next);
   }, [activeSite, view, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const onPopState = () => {
+      const urlView = readViewFromUrl();
+      const urlSite = readSiteFromUrl();
+      const site = urlSite ? sites.find(item => item.siteCode.toLowerCase() === urlSite.toLowerCase()) : null;
+      if (!urlView || (urlSite && !site)) {
+        // Atrás hasta algo que no es una vista (o una sede ajena): se queda
+        // donde estaba, sin sumar otra entrada.
+        window.history.replaceState(null, '', `/sede/${activeSite.toLowerCase()}/${viewRef.current}`);
+        return;
+      }
+      pushNext.current = false;
+      if (site && site.siteCode !== activeSite) setActiveSite(site.siteCode);
+      setView(urlView);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [user, sites, activeSite]);
 
   // La sede de los requests se fija en layout effect: corre antes que los
   // useEffect de los hijos, así ninguna vista pide datos con la sede anterior.
@@ -213,13 +254,14 @@ export function App() {
 
   // Si el módulo de la vista actual está apagado para la sede o el rol no puede verlo,
   // volver al dashboard.
+  // Misma regla que el menú: módulo de la sede, permiso del rol, `requiresAny`
+  // (Historial) y solo-superadmin (Tenants, Usuarios, Componentes UI).
   useEffect(() => {
     if (!user || siteSettings === null) return;
     const role = activeSiteRole(user, sites, activeSite);
-    const acc = roleAccess(siteSettings, role, isSuperadmin(user));
-    if (!isViewEnabled(view, siteSettings) || !canViewModule(acc, view, TOGGLEABLE_KEYS)) setView('dashboard');
-    // La muestra de componentes (src/ui) es solo para superadmin.
-    if (view === 'ui' && !isSuperadmin(user)) setView('dashboard');
+    const superUser = isSuperadmin(user);
+    const acc = roleAccess(siteSettings, role, superUser);
+    if (!visibleNavItems(siteSettings, superUser, acc).some(item => item.key === view)) setView('dashboard');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, siteSettings, user?.id, activeSite]);
 
@@ -237,76 +279,46 @@ export function App() {
     }
   }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 15));
 
-  useEffect(() => {
-    document.body.classList.toggle('mobile-menu-open', menuOpen);
-    return () => document.body.classList.remove('mobile-menu-open');
-  }, [menuOpen]);
-
   // (El refetch de movimientos por cambio de devices/agenda/tasks se sacó: era
   // redundante con el auto-refresh y con el refresh que hace cada mutación.)
 
+  // Ctrl K → "ir a la fila": espera a que la fila exista (la vista puede estar
+  // bajando su chunk), la centra y la resalta 1,6 s.
   useEffect(() => {
-    const code = search.trim().match(/\bD\s*0*\d{1,5}\b/i)?.[0]?.replace(/\s+/g, '').toUpperCase();
-    if (!code || !['dashboard', 'devices'].includes(view)) return;
-    const timer = window.setTimeout(() => {
-      const row = document.querySelector<HTMLElement>(`[data-device-tag="${code}"]`);
-      row?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      row?.classList.add('row-highlight');
-      window.setTimeout(() => row?.classList.remove('row-highlight'), 1600);
-    }, 180);
-    return () => window.clearTimeout(timer);
-  }, [search, view, filteredDevices.length]);
+    if (!highlight) return;
+    let tries = 0;
+    let removeTimer = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      const row = document.querySelector<HTMLElement>(`[data-device-tag="${CSS.escape(highlight.tag)}"]`);
+      if (!row && tries < 30) return;
+      window.clearInterval(timer);
+      if (!row) return;
+      const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      row.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+      row.classList.add('row-highlight');
+      removeTimer = window.setTimeout(() => row.classList.remove('row-highlight'), 1600);
+    }, 100);
+    return () => { window.clearInterval(timer); window.clearTimeout(removeTimer); };
+  }, [highlight]);
 
+  // El filtro de Ctrl K vale para la vista a la que llevó: al irse, se suelta.
+  const searchStatus = useRef<number | null>(null);
+  const clearSearch = useCallback(() => {
+    setSearch('');
+    if (searchStatus.current !== null) clearStatus(searchStatus.current);
+    searchStatus.current = null;
+  }, []);
   useEffect(() => {
-    const text = search.trim();
-    if (!/(prestar|prestamo|prestamos|pr[eé]stamo|pr[eé]stamos)/i.test(text)) return;
-    const code = text.match(/\bD?\s*0*\d{1,5}\b/i)?.[0]?.replace(/\s+/g, '').toUpperCase();
-    if (!code) return;
-    const timer = window.setTimeout(() => {
-      openLoanFlow(code);
-      setSearch('');
-    }, 250);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+    if (search && view !== 'devices') clearSearch();
+  }, [view, search, clearSearch]);
 
-  useEffect(() => {
-    if (!user) return;
-    const flushScan = () => {
-      const raw = scannerBufferRef.current;
-      scannerBufferRef.current = '';
-      const parsed = parseScannedCode(raw).trim();
-      if (!parsed || parsed.length < 2 || !/\d/.test(parsed)) return;
-      setLoanSeed('');
-      window.setTimeout(() => setLoanSeed(parsed), 0);
-      setView('loans');
-      setMenuOpen(false);
-    };
-    const scheduleFlush = () => {
-      if (scannerTimerRef.current !== null) window.clearTimeout(scannerTimerRef.current);
-      scannerTimerRef.current = window.setTimeout(flushScan, 120);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
-      const target = event.target as HTMLElement | null;
-      if (isTypingTarget(target) || target?.closest('.modal')) return;
-      if (event.key === 'Enter') {
-        if (scannerBufferRef.current) {
-          event.preventDefault();
-          flushScan();
-        }
-        return;
-      }
-      if (event.key.length !== 1) return;
-      scannerBufferRef.current += event.key;
-      scheduleFlush();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      if (scannerTimerRef.current !== null) window.clearTimeout(scannerTimerRef.current);
-    };
-  }, [user]);
+  // Escáner USB global: con ritmo de lector, fuera de campos y diálogos.
+  useGlobalScanner(Boolean(user), code => {
+    setLoanSeed('');
+    window.setTimeout(() => setLoanSeed(code), 0);
+    navigate('loans');
+  });
 
   const onAddDevice = async (device: Partial<Device>) => {
     await addDevice({ ...device, operator });
@@ -371,7 +383,7 @@ export function App() {
   const createTaskFromAgenda = async (item: { id: string; curso: string; actividad: string }) => {
     await createTask({ titulo: `Revisar ${item.curso} - ${item.actividad}`, responsable: operator, prioridad: 'Media', agendaId: item.id, operator });
     await tasks.refresh();
-    setView('tasks');
+    navigate('tasks');
   };
 
   const refreshSessionSites = async () => {
@@ -409,23 +421,15 @@ export function App() {
     setActiveSite('');
     setView('dashboard');
     setAuthMode('landing');
-    setSearch('');
+    clearSearch();
     window.history.replaceState(null, '', '/');
-  };
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed(value => {
-      const next = !value;
-      localStorage.setItem('techasset_sidebar_collapsed', next ? '1' : '0');
-      return next;
-    });
   };
 
   const openLoanFlow = (deviceOrCode: Device | string) => {
     const next = typeof deviceOrCode === 'string' ? deviceOrCode : deviceOrCode.etiqueta;
     setLoanSeed('');
     window.setTimeout(() => setLoanSeed(next), 0);
-    setView('loans');
+    navigate('loans');
   };
 
   // Lo que se mandó a Préstamos se usa una vez: al salir de la vista se olvida,
@@ -438,7 +442,7 @@ export function App() {
 
   const openLoanBatch = (etiquetas: string[]) => {
     setLoanBatchSeed(current => ({ etiquetas, nonce: (current?.nonce || 0) + 1 }));
-    setView('loans');
+    navigate('loans');
   };
 
   // Rol real en la sede activa → permisos efectivos de roles.config. Un rol
@@ -454,10 +458,32 @@ export function App() {
   const impersonating = superadmin && sites.length > 1 && !!activeSiteInfo && !activeSiteInfo.isDefault;
   const exitImpersonation = () => {
     const home = sites.find(site => site.isDefault) || sites[0];
-    if (home) setActiveSite(home.siteCode);
+    if (home) changeSite(home.siteCode);
   };
   const navItems = visibleNavItems(siteSettings, superadmin, access);
   const navKeys = navItems.map(item => item.key).join(',');
+  // Contadores en mono del menú: préstamos activos y tareas abiertas.
+  const openTasks = useMemo(() => tasks.items.filter(item => item.estado !== 'Hecha' && !item.done).length, [tasks.items]);
+  const navCounts = { loans: counts.loaned || 0, tasks: openTasks };
+
+  // Ctrl K → equipo: si la fila está en la pantalla, se resalta ahí; si no,
+  // se va a Dispositivos filtrando por esa etiqueta (con "Quitar filtro").
+  const jumpToDevice = (device: Device) => {
+    const tag = device.etiqueta;
+    const onScreen = (view === 'dashboard' || view === 'devices') && document.querySelector(`[data-device-tag="${CSS.escape(tag)}"]`);
+    if (!onScreen && navItems.some(item => item.key === 'devices')) {
+      setSearch(tag);
+      navigate('devices');
+      if (searchStatus.current !== null) clearStatus(searchStatus.current);
+      searchStatus.current = pushStatus({
+        tone: 'info',
+        message: `Dispositivos filtrado por ${getOperationalAlias(device) || tag}`,
+        action: { label: 'Quitar filtro', onClick: clearSearch },
+        autoHideMs: 0
+      });
+    }
+    setHighlight(current => ({ tag, nonce: (current?.nonce || 0) + 1 }));
+  };
 
   // Con la sesión y los módulos resueltos, bajamos en idle los chunks de las
   // vistas que este rol puede abrir + los modales que se usan en todas.
@@ -500,60 +526,70 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} impersonating={impersonating} />
-      <main className="main main-content">
-        <Topbar consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} impersonating={impersonating} onExitImpersonation={exitImpersonation} />
-        {/* El `key={view}` remonta este nodo en cada cambio de vista, y con eso
-            se redispara la animación de entrada. Sólo hay entrada: sostener el
-            árbol viejo para animar la salida agrega espera, y en una app de
-            trabajo la espera se siente como lentitud. */}
-        <div key={view} className="view-enter">
-        <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
-        {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
-        {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} />}
-        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} />}
-        {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
-        {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
-        {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
-        {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} olderHidden={agenda.olderHidden} onLoadOlder={agenda.loadOlder} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
-        {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState, columnId?: number | null) => tasks.move(id, state, columnId)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
-        {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
-        {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
-        {view === 'tools' && <ToolsPage key={activeSite} operator={operator} />}
-        {view === 'quickaccess' && <QuickAccessPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} />}
-        {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
-        {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
-        {view === 'ui' && superadmin && <UiShowcase />}
-        {view === 'settings' && <SettingsPage key={activeSite} operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
-        </Suspense>
-        </div>
-      </main>
-      <MobileNav items={navItems} active={view} onNavigate={setView} onPrefetch={prefetchView} onMore={() => setMenuOpen(open => !open)} menuOpen={menuOpen} />
+    <AppShell
+      view={view}
+      onNavigate={navigate}
+      onPrefetch={prefetchView}
+      navItems={navItems}
+      counts={navCounts}
+      user={user}
+      sites={sites}
+      activeSite={activeSite}
+      onSiteChange={changeSite}
+      roleLabel={currentRole}
+      consultationMode={effectiveConsultation}
+      impersonating={impersonating}
+      onExitImpersonation={exitImpersonation}
+      onLogout={handleLogout}
+      devices={devices}
+      onJumpToDevice={jumpToDevice}
+      onLoan={openLoanFlow}
+      onProfile={setProfile}
+      onScan={() => { setScanRequest(value => value + 1); navigate('loans'); }}
+      assistantContext={assistantContext || { type: 'view', view, label: navItem(view)?.label || view }}
+      assistantCanEdit={!effectiveConsultation}
+      onAssistantOpenDevice={deviceTag => {
+        const match = resolveDeviceMatches(devices, deviceTag)[0];
+        if (!match) return false;
+        setProfile(match);
+        return true;
+      }}
+    >
+      {/* El `key={view}` remonta este nodo en cada cambio de vista, y con eso
+          se redispara la animación de entrada. Sólo hay entrada: sostener el
+          árbol viejo para animar la salida agrega espera, y en una app de
+          trabajo la espera se siente como lentitud. */}
+      <div key={view} className="view-enter">
+      <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
+      {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={navigate} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
+      {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} />}
+      {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} scanRequest={scanRequest} />}
+      {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
+      {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
+      {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
+      {view === 'agenda' && <AgendaPage key={activeSite} items={agenda.items} olderHidden={agenda.olderHidden} onLoadOlder={agenda.loadOlder} consultationMode={effectiveConsultation} onSave={agenda.save} onDelete={agenda.remove} onTask={createTaskFromAgenda} onRefresh={agenda.refresh} />}
+      {view === 'schedules' && <SchedulesPage key={activeSite} consultationMode={effectiveConsultation} />}
+      {view === 'tasks' && <TasksPage key={activeSite} tasks={tasks.items} kpis={tasks.kpis} operator={operator} consultationMode={effectiveConsultation} onSave={tasks.save} onMove={(id: string, state: TaskState, columnId?: number | null) => tasks.move(id, state, columnId)} onDelete={tasks.remove} onRefresh={tasks.refresh} />}
+      {view === 'pettycash' && <PettyCashPage key={activeSite} consultationMode={effectiveConsultation} />}
+      {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
+      {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} />}
+      {view === 'tools' && <ToolsPage key={activeSite} operator={operator} />}
+      {view === 'quickaccess' && <QuickAccessPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} />}
+      {view === 'tickets' && <TicketsPage key={activeSite} consultationMode={effectiveConsultation} />}
+      {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
+      {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
+      {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
+      {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={changeSite} onChanged={refreshSessionSites} />}
+      {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
+      {view === 'ui' && superadmin && <UiShowcase />}
+      {view === 'settings' && <SettingsPage key={activeSite} operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
+      </Suspense>
+      </div>
       <Suspense fallback={null}>
-        <AssistantPanel
-          onNavigate={next => setView(next as ViewKey)}
-          onOpenDevice={deviceTag => {
-            const match = resolveDeviceMatches(devices, deviceTag)[0];
-            if (!match) return false;
-            setProfile(match);
-            return true;
-          }}
-          canEdit={!effectiveConsultation}
-          context={assistantContext || { type: 'view', view, label: view }}
-          open={assistantOpen}
-          onOpenChange={setAssistantOpen}
-        />
         {profile && <DeviceProfile device={profile} consultationMode={effectiveConsultation} onOpenDevice={setProfile} onClose={() => setProfile(null)} />}
         {editingDevice && <AddDeviceModal title={`Editar ${editingDevice.etiqueta}`} initialDevice={editingDevice} onClose={() => setEditingDevice(null)} onSave={onAddDevice} />}
       </Suspense>
-    </div>
+    </AppShell>
   );
 }
 
@@ -604,9 +640,8 @@ function readSiteFromUrl() {
 }
 
 function readViewFromUrl(): ViewKey | null {
-  const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'tenants', 'adminusers', 'settings', 'ui'];
-  return view && allowed.includes(view) ? view : null;
+  const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1];
+  return isViewKey(view) ? view : null;
 }
 
 function readAuthModeFromUrl(): 'landing' | 'login' | 'register' {
@@ -614,10 +649,4 @@ function readAuthModeFromUrl(): 'landing' | 'login' | 'register' {
   if (path === '/login') return 'login';
   if (path === '/register') return 'register';
   return 'landing';
-}
-
-function isTypingTarget(target: HTMLElement | null) {
-  if (!target) return false;
-  const tag = target.tagName.toLowerCase();
-  return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
 }

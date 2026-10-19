@@ -7,6 +7,7 @@ import { RelatedReminders } from '../reminders/RelatedReminders';
 import { useCloseChoreography } from '../../hooks/useMountTransition';
 import { DATE_TIME, formatDate, DATE_ONLY } from '../../utils/formatters';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
+import { scrollAppToTop } from '../../utils/scroll';
 
 // Igual que en Modal.tsx: tiene que coincidir con --modal-close-dur.
 const MODAL_CLOSE_MS = 150;
@@ -90,7 +91,7 @@ export function ClassroomInfoPanel({ roomKey, nombre, piso, operator, consultati
   const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
-    if (!loadAttempt) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!loadAttempt) scrollAppToTop(true);
     let cancelled = false;
     setLoadError('');
     fetchClassroom(roomKey, nombre, piso).then(r => {
