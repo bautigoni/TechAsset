@@ -303,6 +303,10 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
       await until(async () => (await get())?.remindAt !== before, { message: 'fecha nueva' });
       const postponed = (await get()).remindAt;
       assert(new Date(postponed).getTime() > Date.now() + 3600000, 'No se pospuso a mañana.');
+      // Pospuesto a mañana, la fila cambia de grupo y se vuelve a montar: se
+      // espera a que el panel se cierre y quede la fila nueva (si no, el
+      // "Editar" de la fila vieja se desprende del documento antes del click).
+      await until(() => page2.evaluate(sel => Boolean(document.querySelector(sel)) && !document.querySelector('.rem-inline'), ROW), { message: 'la fila pospuesta, sin el panel' });
       await clickButton(page2, /^Editar$/, { scope: ROW });
       await page2.waitForSelector(settled('.rem-inline'));
       const newTitle = `${seed.data.item.title} (editado)`;
