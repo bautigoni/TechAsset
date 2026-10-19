@@ -444,6 +444,8 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
           const steps = stepsOf(now.content || {});
           steps.splice(Math.min(index, steps.length), 0, removed);
           patchItem(item.id, { content: { ...(now.content || {}), items: steps } });
+          // Reemplaza el aviso: un segundo Deshacer duplicaría el paso.
+          status.show({ tone: 'ok', message: `Volvió el paso «${removed.text || index + 1}».` });
         }
       }
     });
