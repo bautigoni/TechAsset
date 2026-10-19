@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Analítica v2 — desktop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input{font-family:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.nv:hover,.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.b2,.b3{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:6px;font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;box-sizing:border-box;flex:none;text-decoration:none}
+.b2{background:#1B1F24;color:#ECEEF1;border:1px solid #353B44}.b2:hover{border-color:#4A525D}
+.b3{background:transparent;color:#A7AEB8;border:1px solid transparent}.b3:hover{background:#1B1F24;color:#ECEEF1}
+.sm{height:30px;padding:0 10px;font-size:13px}
+[aria-disabled="true"]{opacity:.45;cursor:default}
+.eb{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;background:#0D0F12;border:1px solid #262B32;border-radius:6px;min-width:0}
+.sg{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:4px;font-size:13px;white-space:nowrap;cursor:pointer;background:transparent;color:#A7AEB8;transition:background-color .16s ease,color .16s ease}
+.sg:hover{color:#ECEEF1}
+@media (prefers-reduced-motion: reduce){.sg,.bar,.hc{transition:none !important}}
+
+/* Shell */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}.sb-head{justify-content:center}.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}.sb-grpt{display:none}.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}.sb-user{padding:0;justify-content:center}.sb-hide{display:none !important}
+}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+@media (max-width:1023px){.tb-ctx{display:none !important}}
+
+/* Página */
+.phead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;padding:20px 32px 16px}
+.idx{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:2px;height:44px;padding:0 22px;background:#0D0F12;border-top:1px solid #262B32;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.idx a{position:relative;flex:none;display:flex;align-items:center;gap:8px;height:42px;padding:0 10px;font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap}
+.idx a:hover{color:#ECEEF1 !important}
+.body{container-type:inline-size;container-name:body;display:flex;flex-direction:column;padding:0 32px 48px;min-width:0}
+.sec{scroll-margin-top:52px;display:flex;flex-direction:column;gap:16px;padding:32px 0}
+.sec + .sec{border-top:1px solid #262B32}
+.st{margin:4px 0 0;font-size:20px;line-height:28px;font-weight:600}
+.ct{margin:2px 0 0;font-size:16px;line-height:22px;font-weight:600}
+.cp{padding:20px;display:flex;flex-direction:column;gap:14px}
+.ch{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px 16px}
+.ch > div:first-child{min-width:0;flex:1 1 260px}
+.g12{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.s3{grid-column:span 3}.s4{grid-column:span 4}.s5{grid-column:span 5}.s6{grid-column:span 6}.s7{grid-column:span 7}.s8{grid-column:span 8}.s12{grid-column:span 12}
+.ro{margin:0;min-height:20px;font-size:13px;line-height:20px;color:#A7AEB8}
+.note{margin:0;font-size:12px;line-height:18px;color:#7C8592}
+.tag{font-size:12px;color:#7C8592;white-space:nowrap}
+.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));overflow:hidden}
+.kc{padding:16px 20px;display:flex;flex-direction:column;gap:4px;min-width:0;box-shadow:1px 0 0 #262B32,0 1px 0 #262B32}
+.kl{font-size:12px;font-weight:500;color:#A7AEB8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;font-size:28px;line-height:34px;font-weight:500;white-space:nowrap}
+.kh{font-size:12px;line-height:16px;color:#7C8592;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Mapa de calor */
+.heatwrap{display:grid;grid-template-columns:minmax(0,1fr) 280px}
+.hm-aside{border-left:1px solid #262B32;padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.hrow{display:grid;grid-template-columns:84px minmax(0,1fr) 48px;gap:12px;align-items:center}
+.hcols{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;min-width:0}
+.hc{display:flex;align-items:center;justify-content:center;min-width:0;padding:0;border:1px solid transparent;border-radius:4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;font-weight:500;cursor:pointer;box-sizing:border-box;transition:opacity .16s ease}
+.slot{display:grid;grid-template-columns:20px minmax(0,1fr) 48px 36px;align-items:center;gap:8px;width:100%;height:36px;padding:0 6px;background:transparent;border:0;border-bottom:1px solid #1B1F24;border-radius:4px;color:#ECEEF1;font-size:13px;text-align:left;cursor:pointer;box-sizing:border-box}
+.slot:hover{background:#1B1F24}
+
+/* Columnas */
+.colb{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;background:transparent;border:0;padding:0;cursor:pointer;border-radius:4px 4px 0 0;color:inherit}
+.colb:hover{background:#171A1F}
+.bar{display:block;width:60%;max-width:28px;border-radius:3px 3px 0 0;transition:background-color .16s ease,opacity .16s ease}
+.cv{font-size:11px;line-height:14px;color:#A7AEB8;white-space:nowrap}
+.sm3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.lg{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#A7AEB8;white-space:nowrap}
+
+/* Línea */
+.ytl{position:absolute;right:0;transform:translateY(-50%);font-size:11px;color:#7C8592;white-space:nowrap}
+.xh{position:absolute;top:0;bottom:0;width:1px;background:#353B44;pointer-events:none}
+.dot{position:absolute;width:8px;height:8px;margin:-6px 0 0 -6px;border-radius:50%;background:#5B9BFF;border:2px solid #14171B;pointer-events:none}
+.hits{position:absolute;inset:0;display:grid}
+.hit{min-width:0;background:transparent;border:0;padding:0;cursor:crosshair}
+.hit:focus-visible{outline-offset:-2px}
+.xl{display:grid;min-width:0}
+.xlab{display:flex;justify-content:center;white-space:nowrap;font-size:11px;line-height:16px;color:#7C8592;min-width:0}
+
+/* Tablas */
+.th,.tr{display:grid;align-items:center;gap:12px;padding:0 8px;box-sizing:border-box}
+.th{height:32px;border-bottom:1px solid #262B32;font-size:12px;font-weight:500;color:#7C8592}
+.tr{height:36px;border-bottom:1px solid #1B1F24;font-size:13px}
+.tr:hover{background:#171A1F}
+.num{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.bk{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:8px 10px;background:transparent;border:1px solid #262B32;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.bk:hover{background:#1B1F24}
+.lgb{display:grid;grid-template-columns:12px minmax(0,1fr) 40px 44px;align-items:center;gap:10px;width:100%;height:34px;padding:0 8px;background:transparent;border:0;border-radius:4px;color:#ECEEF1;font-size:13px;text-align:left;cursor:pointer}
+.lgb:hover{background:#1B1F24}
+.ghost{flex:1 1 auto;min-height:72px;border:1px dashed #262B32;border-radius:6px;display:flex;align-items:center;justify-content:center;padding:8px;font-size:12px;color:#7C8592;text-align:center}
+.grp{height:100%;min-width:0;display:flex;align-items:flex-end;justify-content:center;gap:6px;background:transparent;border:0;padding:0;cursor:pointer;border-radius:4px 4px 0 0;color:inherit}
+.grp:hover{background:#171A1F}
+.gcol{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;width:32px;height:100%}
+
+@container body (max-width:1000px){
+.s3,.s4,.s5,.s6,.s7,.s8{grid-column:span 12}
+.heatwrap{grid-template-columns:minmax(0,1fr)}
+.hm-aside{border-left:0;border-top:1px solid #262B32}
+}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 5300px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="ib sb-sede" aria-label="Cambiar de sede: Northfield Puertos">
+        <span class="mono" style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #ECEEF1; box-sizing: border-box;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Northfield Puertos</span>
+          <span class="mono" style="font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide ell" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide nw mono" style="font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <div class="sb-grp">
+        <div class="sb-grpt">Operación</div>
+        <sc-for list="{{navOps}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.aria}}"><span style="{{n.bar}}"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg><span class="sb-txt sb-hide">{{n.label}}</span><span class="sb-cnt sb-hide">{{n.count}}</span></a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Gestión</div>
+        <sc-for list="{{navMgmt}}" as="n" hint-placeholder-count="4">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.aria}}"><span style="{{n.bar}}"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg><span class="sb-txt sb-hide">{{n.label}}</span><span class="sb-cnt sb-hide">{{n.count}}</span></a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Inventario y datos</div>
+        <sc-for list="{{navData}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.aria}}"><span style="{{n.bar}}"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg><span class="sb-txt sb-hide">{{n.label}}</span><span class="sb-cnt sb-hide">{{n.count}}</span></a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Recursos</div>
+        <sc-for list="{{navRes}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.aria}}"><span style="{{n.bar}}"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg><span class="sb-txt sb-hide">{{n.label}}</span><span class="sb-cnt sb-hide">{{n.count}}</span></a>
+        </sc-for>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nv nvi" aria-label="Configuración" style="color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div class="sb-user">
+        <span aria-label="Bauti G., Jefe TIC" style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #ECEEF1; box-sizing: border-box;">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;"><span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span><span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span></span>
+        <button type="button" class="ib sb-hide" aria-label="Opciones de cuenta" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="tb">
+      <button type="button" class="ib" aria-label="Contraer menú (Ctrl B)" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg></button>
+      <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Analítica</h1>
+      <span class="tb-ctx" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-ctx ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">NFPT · solo lectura</span>
+      <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+      <button type="button" class="b3" aria-label="Abrir el asistente" style="color: #ECEEF1;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5"></path></svg>Asistente</button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg><span class="mono" style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-size: 10px; line-height: 16px; text-align: center;">[N]</span></button>
+      <button type="button" class="ib" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg></button>
+    </header>
+
+    <!-- Encabezado: período como segmented chico + Recargar (recarga también el parque) -->
+    <div class="phead">
+      <div style="flex: 1 1 320px; min-width: 0;">
+        <div class="eb">Inventario y datos · NFPT</div>
+        <h2 style="margin: 4px 0 0; font-size: 20px; line-height: 28px; font-weight: 600;">Analítica</h2>
+        <p class="ell" aria-live="polite" style="margin: 4px 0 0; font-size: 13px; line-height: 20px; color: #A7AEB8;"><span class="mono" style="color: #ECEEF1;">{{perRange}}</span> · {{headLine}}</p>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+        <div class="seg" role="group" aria-label="Período">
+          <sc-for list="{{periods}}" as="p" hint-placeholder-count="5">
+            <button type="button" class="sg" aria-pressed="{{p.pressed}}" onClick="{{p.onClick}}" style="{{p.style}}">{{p.label}}</button>
+          </sc-for>
+        </div>
+        <button type="button" class="b2 sm" aria-disabled="{{reloadDis}}" onClick="{{onReload}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>{{reloadLbl}}</button>
+      </div>
+    </div>
+
+    <!-- Índice fijo: siempre sabés dónde estás -->
+    <nav class="idx" aria-label="Índice de Analítica">
+      <sc-for list="{{idx}}" as="x" hint-placeholder-count="5">
+        <a href="{{x.href}}" aria-current="{{x.current}}" onClick="{{x.onClick}}" style="{{x.style}}"><span class="mono" style="{{x.numStyle}}">{{x.n}}</span>{{x.label}}<span aria-hidden="true" style="{{x.bar}}"></span></a>
+      </sc-for>
+      <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+      <span class="ell" style="flex: 0 1 auto; font-size: 12px; color: #7C8592;">{{perLong}} · <span class="mono" style="color: #A7AEB8;">{{perLoans}}</span> préstamos</span>
+    </nav>
+
+    <div class="body">
+
+      <!-- ============ 01 DEMANDA ============ -->
+      <section id="an-dem" class="sec" aria-labelledby="h-dem" style="padding-top: 20px;">
+        <div>
+          <div class="eb">01 · Demanda · según el período</div>
+          <h3 id="h-dem" class="st">La primera hora se lleva el 29% de los préstamos; el pico es el viernes de 8 a 9</h3>
+        </div>
+
+        <div class="card heatwrap">
+          <div class="cp" style="min-width: 0;">
+            <div class="ch">
+              <div><div class="eb">Hora × día de la semana</div><h4 class="ct">Préstamos por franja horaria</h4></div>
+              <div class="seg" role="group" aria-label="Cómo ver la demanda por franja">
+                <button type="button" class="sg" aria-pressed="{{heatV.chartP}}" onClick="{{heatV.onChart}}" style="{{heatV.chartS}}">Gráfico</button>
+                <button type="button" class="sg" aria-pressed="{{heatV.tblP}}" onClick="{{heatV.onTbl}}" style="{{heatV.tblS}}">Tabla</button>
+              </div>
+            </div>
+
+            <sc-if value="{{heatV.chart}}" hint-placeholder-val="{{ true }}">
+              <div role="group" aria-label="Mapa de calor del porcentaje de préstamos por hora y día. Cada celda es un botón con su valor." onMouseLeave="{{onHeatLeave}}" style="display: flex; flex-direction: column; gap: 4px;">
+                <div class="hrow" aria-hidden="true">
+                  <span></span>
+                  <div class="hcols"><sc-for list="{{hrs}}" as="h" hint-placeholder-count="9"><span class="mono" style="text-align: center; font-size: 12px; color: #A7AEB8;">{{h}}</span></sc-for></div>
+                  <span style="font-size: 12px; color: #7C8592; text-align: right;">Total</span>
+                </div>
+                <sc-for list="{{heat}}" as="r" hint-placeholder-count="7">
+                  <div class="hrow">
+                    <span class="ell" style="font-size: 13px; color: #ECEEF1;">{{r.day}}</span>
+                    <div class="hcols">
+                      <sc-for list="{{r.cells}}" as="c" hint-placeholder-count="9"><button type="button" class="hc" aria-label="{{c.aria}}" style="{{c.style}}" onMouseEnter="{{c.on}}" onFocus="{{c.on}}" onClick="{{c.on}}">{{c.text}}</button></sc-for>
+                    </div>
+                    <span class="mono" style="{{r.totStyle}}">{{r.total}}</span>
+                  </div>
+                </sc-for>
+                <div class="hrow" style="align-items: end; margin-top: 8px; padding-top: 8px; border-top: 1px solid #262B32;">
+                  <span style="font-size: 12px; color: #7C8592; padding-bottom: 2px;">Total por hora</span>
+                  <div class="hcols" style="height: 64px; align-items: stretch;">
+                    <sc-for list="{{hours}}" as="h" hint-placeholder-count="9">
+                      <button type="button" class="colb" aria-label="{{h.aria}}" onMouseEnter="{{h.on}}" onFocus="{{h.on}}" onClick="{{h.on}}"><span class="mono cv">{{h.val}}</span><span class="bar" style="{{h.bar}}"></span></button>
+                    </sc-for>
+                  </div>
+                  <span></span>
+                </div>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 24px;">
+                <p class="ro" aria-live="polite" style="flex: 1 1 360px;">{{roHeat}}</p>
+                <div aria-hidden="true" style="display: flex; align-items: flex-end; gap: 8px; flex: none;">
+                  <span class="nw" style="font-size: 12px; color: #7C8592; padding-bottom: 2px;">% del período</span>
+                  <span class="mono" style="display: flex; gap: 3px; font-size: 11px; color: #7C8592;">
+                    <span style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span style="width: 22px; height: 8px; border-radius: 2px; background: #1F2D44;"></span>1</span>
+                    <span style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span style="width: 22px; height: 8px; border-radius: 2px; background: #25395A;"></span>3</span>
+                    <span style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span style="width: 22px; height: 8px; border-radius: 2px; background: #2C4670;"></span>4</span>
+                    <span style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span style="width: 22px; height: 8px; border-radius: 2px; background: #345487;"></span>6</span>
+                    <span style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span style="width: 22px; height: 8px; border-radius: 2px; background: #3F68A8;"></span>7</span>
+                    <span style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span style="width: 22px; height: 8px; border-radius: 2px; background: #4C80D2;"></span>9</span>
+                    <span style="display: flex; flex-direction: column; align-items: center; gap: 2px;"><span style="width: 22px; height: 8px; border-radius: 2px; background: #5B9BFF;"></span>10</span>
+                  </span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{heatV.tbl}}" hint-placeholder-val="{{ false }}">
+              <div role="table" aria-label="Porcentaje de préstamos por día y hora" style="display: flex; flex-direction: column;">
+                <div role="row" class="th" style="grid-template-columns: 84px repeat(9, minmax(0, 1fr)) 48px;"><span role="columnheader">Día</span><sc-for list="{{hrs}}" as="h" hint-placeholder-count="9"><span role="columnheader" class="num">{{h}}</span></sc-for><span role="columnheader" class="num">Total</span></div>
+                <sc-for list="{{heatRows}}" as="r" hint-placeholder-count="7">
+                  <div role="row" class="tr" style="grid-template-columns: 84px repeat(9, minmax(0, 1fr)) 48px;"><span role="rowheader" class="ell">{{r.day}}</span><sc-for list="{{r.vals}}" as="v" hint-placeholder-count="9"><span role="cell" class="num" style="{{v.s}}">{{v.t}}</span></sc-for><span role="cell" class="num">{{r.total}}</span></div>
+                </sc-for>
+              </div>
+              <p class="note">Porcentaje sobre el total de préstamos del período. “—” = ningún préstamo en esa franja.</p>
+            </sc-if>
+          </div>
+
+          <aside class="hm-aside" aria-labelledby="h-fr">
+            <div><div class="eb">Franjas críticas</div><h4 id="h-fr" class="ct">Dónde tener equipos cargados</h4></div>
+            <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;">
+              <sc-for list="{{slots}}" as="x" hint-placeholder-count="7">
+                <li><button type="button" class="slot" aria-label="{{x.aria}}" style="{{x.style}}" onMouseEnter="{{x.on}}" onFocus="{{x.on}}" onClick="{{x.on}}"><span class="mono" style="font-size: 11px; color: #7C8592;">{{x.rank}}</span><span class="ell">{{x.day}}</span><span class="mono" style="color: #A7AEB8;">{{x.time}}</span><span class="num">{{x.val}}</span></button></li>
+              </sc-for>
+            </ol>
+            <p class="note" style="margin-top: auto; padding-top: 12px; border-top: 1px solid #262B32; color: #A7AEB8;">El martes es el día más tranquilo (6% de los préstamos): buen momento para revisar los 56 activos sin condición cargada.</p>
+          </aside>
+        </div>
+
+        <div class="g12">
+          <section class="card cp s7" aria-labelledby="h-ty">
+            <div><div class="eb">Demanda por tipo de equipo · por hora</div><h4 id="h-ty" class="ct">TIC: 4 equipos cubren el 30% de los préstamos, y más de la mitad sale a las 8</h4></div>
+            <div class="sm3" role="group" aria-label="Tres gráficos de columnas con la misma escala: porcentaje de préstamos por hora para Touch, Plani y TIC." onMouseLeave="{{onTyLeave}}">
+              <sc-for list="{{types}}" as="t" hint-placeholder-count="3">
+                <div style="min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+                  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;"><span class="ell" style="font-size: 14px; font-weight: 600;">{{t.name}}</span><span class="mono nw" style="font-size: 13px;">{{t.share}}</span></div>
+                  <span class="ell" style="font-size: 12px; color: #7C8592;">{{t.fleet}}</span>
+                  <div style="display: flex; align-items: stretch; gap: 2px; height: 112px; margin-top: 4px; border-bottom: 1px solid #353B44;">
+                    <sc-for list="{{t.cols}}" as="c" hint-placeholder-count="9"><button type="button" class="colb" aria-label="{{c.aria}}" onMouseEnter="{{c.on}}" onFocus="{{c.on}}" onClick="{{c.on}}"><span class="mono cv" style="{{c.vStyle}}">{{c.v}}</span><span class="bar" style="{{c.bar}}"></span></button></sc-for>
+                  </div>
+                  <div aria-hidden="true" style="display: flex; gap: 2px;"><sc-for list="{{t.cols}}" as="c" hint-placeholder-count="9"><span class="mono" style="flex: 1 1 0; min-width: 0; display: flex; justify-content: center; font-size: 11px; color: #7C8592; white-space: nowrap;">{{c.label}}</span></sc-for></div>
+                </div>
+              </sc-for>
+            </div>
+            <p class="ro" aria-live="polite">{{roTy}}</p>
+            <p class="note">Porcentaje sobre todos los préstamos del período, misma escala en los tres. Dell (7 equipos) no tuvo préstamos; los 14 equipos sin tipo cargado no aparecen.</p>
+          </section>
+
+          <section class="card cp s5" aria-labelledby="h-cmp">
+            <div><div class="eb">Préstamos vs. agenda TIC</div><h4 id="h-cmp" class="ct">El jueves tiene más préstamos (30%) y la mitad de agenda</h4></div>
+            <div role="group" aria-label="Dos gráficos de columnas alineados por día: porcentaje de préstamos y actividades en la agenda TIC." onMouseLeave="{{onCmpLeave}}" style="display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 6px 12px; align-items: end;">
+              <span style="display: flex; flex-direction: column; padding-bottom: 2px;"><span class="nw" style="font-size: 12px; font-weight: 500; color: #ECEEF1;">Préstamos</span><span class="nw" style="font-size: 12px; color: #7C8592;">% del período</span></span>
+              <div style="display: flex; align-items: stretch; height: 104px; border-bottom: 1px solid #353B44;">
+                <sc-for list="{{cmp}}" as="d" hint-placeholder-count="5"><button type="button" class="colb" aria-label="{{d.aria}}" onMouseEnter="{{d.on}}" onFocus="{{d.on}}" onClick="{{d.on}}"><span class="mono cv">{{d.lv}}</span><span class="bar" style="{{d.lb}}"></span></button></sc-for>
+              </div>
+              <span style="display: flex; flex-direction: column; padding-bottom: 2px;"><span class="nw" style="font-size: 12px; font-weight: 500; color: #ECEEF1;">Agenda TIC</span><span class="nw" style="font-size: 12px; color: #7C8592;">actividades</span></span>
+              <div style="display: flex; align-items: stretch; height: 84px; border-bottom: 1px solid #353B44;">
+                <sc-for list="{{cmp}}" as="d" hint-placeholder-count="5"><button type="button" class="colb" aria-label="{{d.aria}}" onMouseEnter="{{d.on}}" onFocus="{{d.on}}" onClick="{{d.on}}"><span class="mono cv">{{d.av}}</span><span class="bar" style="{{d.ab}}"></span></button></sc-for>
+              </div>
+              <span></span>
+              <div aria-hidden="true" style="display: flex;"><sc-for list="{{cmp}}" as="d" hint-placeholder-count="5"><span style="flex: 1 1 0; min-width: 0; text-align: center; font-size: 12px; color: #A7AEB8;">{{d.short}}</span></sc-for></div>
+            </div>
+            <p class="ro" aria-live="polite">{{roCmp}}</p>
+            <p class="note">La agenda es una foto actual (pendientes y entregadas, sin canceladas ni realizadas) y no cambia con el período. Domingo: 3% de los préstamos; sábado: ninguno.</p>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============ 02 PRÉSTAMOS ============ -->
+      <section id="an-pre" class="sec" aria-labelledby="h-pre">
+        <div>
+          <div class="eb">02 · Préstamos · según el período</div>
+          <h3 id="h-pre" class="st">{{preTitle}}</h3>
+        </div>
+
+        <div class="card kp">
+          <div class="kc"><span class="kl">Préstamos</span><span class="kv" style="{{k.loansS}}">{{k.loans}}</span><span class="kh"><span class="mono">{{k.dev}}</span> devoluciones</span></div>
+          <div class="kc"><span class="kl">Personas distintas</span><span class="kv" style="{{k.perS}}">{{k.per}}</span><span class="kh">pidieron al menos un equipo</span></div>
+          <div class="kc"><span class="kl">Equipos distintos</span><span class="kv" style="{{k.eqS}}">{{k.eq}}</span><span class="kh">salieron al menos una vez</span></div>
+          <div class="kc"><span class="kl">Duración mediana</span><span class="kv">2,8 h</span><span class="kh">todo el historial · máx. por equipo: Touch 14, <span class="mono">47,4 h</span></span></div>
+        </div>
+
+        <div class="g12">
+          <section class="card cp s8" aria-labelledby="h-evo">
+            <div class="ch">
+              <div><div class="eb">Evolución · por {{evo.gran}}</div><h4 id="h-evo" class="ct">{{evo.title}}</h4></div>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;">
+                <span class="lg"><svg width="16" height="8" aria-hidden="true"><path d="M0 4h16" stroke="#5B9BFF" stroke-width="2"></path></svg>Este período</span>
+                <span class="lg"><svg width="16" height="8" aria-hidden="true"><path d="M0 4h16" stroke="#7C8592" stroke-width="2" stroke-dasharray="4 3"></path></svg>Período anterior</span>
+                <div class="seg" role="group" aria-label="Cómo ver la evolución">
+                  <button type="button" class="sg" aria-pressed="{{evoV.chartP}}" onClick="{{evoV.onChart}}" style="{{evoV.chartS}}">Gráfico</button>
+                  <button type="button" class="sg" aria-pressed="{{evoV.tblP}}" onClick="{{evoV.onTbl}}" style="{{evoV.tblS}}">Tabla</button>
+                </div>
+              </div>
+            </div>
+            <sc-if value="{{evoV.chart}}" hint-placeholder-val="{{ true }}">
+              <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 6px 10px;">
+                <div aria-hidden="true" style="position: relative; height: 200px;"><sc-for list="{{evo.yt}}" as="y" hint-placeholder-count="4"><span class="mono ytl" style="{{y.style}}">{{y.t}}</span></sc-for></div>
+                <div role="group" aria-label="{{evo.aria}}" onMouseLeave="{{onEvoLeave}}" style="position: relative; height: 200px; min-width: 0;">
+                  <svg viewBox="{{evo.vb}}" preserveAspectRatio="none" width="100%" height="200" aria-hidden="true" style="display: block; overflow: visible;">
+                    <path d="{{evo.grid}}" fill="none" stroke="#262B32" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+                    <path d="{{evo.area}}" fill="#5B9BFF" fill-opacity="0.10" stroke="none"></path>
+                    <path d="{{evo.base}}" fill="none" stroke="#353B44" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+                    <path d="{{evo.prev}}" fill="none" stroke="#7C8592" stroke-width="2" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"></path>
+                    <path d="{{evo.line}}" fill="none" stroke="#5B9BFF" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+                  </svg>
+                  <span class="xh" style="{{evo.cross}}"></span>
+                  <sc-for list="{{evo.pts}}" as="p" hint-placeholder-count="13"><span class="dot" style="{{p.dot}}"></span></sc-for>
+                  <div class="hits" style="{{evo.cols}}"><sc-for list="{{evo.pts}}" as="p" hint-placeholder-count="13"><button type="button" class="hit" aria-label="{{p.aria}}" onMouseEnter="{{p.on}}" onFocus="{{p.on}}" onClick="{{p.on}}"></button></sc-for></div>
+                </div>
+                <span></span>
+                <div class="xl mono" aria-hidden="true" style="{{evo.cols}}"><sc-for list="{{evo.pts}}" as="p" hint-placeholder-count="13"><span class="xlab">{{p.tick}}</span></sc-for></div>
+              </div>
+              <p class="ro" aria-live="polite">{{roEvo}}</p>
+            </sc-if>
+            <sc-if value="{{evoV.tbl}}" hint-placeholder-val="{{ false }}">
+              <div role="table" aria-label="{{evo.tblAria}}" style="display: flex; flex-direction: column;">
+                <div role="row" class="th" style="grid-template-columns: minmax(0, 1fr) 120px 120px;"><span role="columnheader">{{evo.colLabel}}</span><span role="columnheader" class="num">Este período</span><span role="columnheader" class="num">Período anterior</span></div>
+                <sc-for list="{{evo.rows}}" as="r" hint-placeholder-count="7">
+                  <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 120px 120px;"><span role="rowheader" class="ell">{{r.l}}</span><span role="cell" class="num">{{r.v}}</span><span role="cell" class="num" style="color: #7C8592;">0</span></div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </section>
+
+          <section class="card cp s4" aria-labelledby="h-ann">
+            <div><div class="eb">Tendencia anual · fija</div><h4 id="h-ann" class="ct">Últimos 12 meses contra los 12 anteriores</h4></div>
+            <div style="display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 6px 8px;">
+              <div aria-hidden="true" style="position: relative; height: 128px;"><sc-for list="{{ann.yt}}" as="y" hint-placeholder-count="4"><span class="mono ytl" style="{{y.style}}">{{y.t}}</span></sc-for></div>
+              <div role="group" aria-label="{{ann.aria}}" onMouseLeave="{{onAnnLeave}}" style="position: relative; height: 128px; min-width: 0;">
+                <svg viewBox="{{ann.vb}}" preserveAspectRatio="none" width="100%" height="128" aria-hidden="true" style="display: block; overflow: visible;">
+                  <path d="{{ann.grid}}" fill="none" stroke="#262B32" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+                  <path d="{{ann.area}}" fill="#5B9BFF" fill-opacity="0.10" stroke="none"></path>
+                  <path d="{{ann.base}}" fill="none" stroke="#353B44" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+                  <path d="{{ann.prev}}" fill="none" stroke="#7C8592" stroke-width="2" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"></path>
+                  <path d="{{ann.line}}" fill="none" stroke="#5B9BFF" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>
+                </svg>
+                <span class="xh" style="{{ann.cross}}"></span>
+                <sc-for list="{{ann.pts}}" as="p" hint-placeholder-count="12"><span class="dot" style="{{p.dot}}"></span></sc-for>
+                <div class="hits" style="{{ann.cols}}"><sc-for list="{{ann.pts}}" as="p" hint-placeholder-count="12"><button type="button" class="hit" aria-label="{{p.aria}}" onMouseEnter="{{p.on}}" onFocus="{{p.on}}" onClick="{{p.on}}"></button></sc-for></div>
+              </div>
+              <span></span>
+              <div class="xl mono" aria-hidden="true" style="{{ann.cols}}"><sc-for list="{{ann.pts}}" as="p" hint-placeholder-count="12"><span class="xlab">{{p.tick}}</span></sc-for></div>
+            </div>
+            <p class="ro" aria-live="polite">{{roAnn}}</p>
+            <p class="note" style="margin-top: auto;">No cambia con el período: siempre los últimos 12 meses.</p>
+          </section>
+        </div>
+
+        <div class="g12">
+          <section class="card cp s7" aria-labelledby="h-dur">
+            <div><div class="eb">Duración de los préstamos · todo el historial</div><h4 id="h-dur" class="ct">La mitad vuelve en menos de 2,8 h; 1 de cada 7 no vuelve en el día</h4></div>
+            <div role="group" aria-label="Duración de cada préstamo devuelto" onMouseLeave="{{onDurLeave}}" style="display: flex; flex-direction: column; gap: 12px;">
+              <svg viewBox="0 0 600 146" width="100%" role="img" aria-label="Diagrama de puntos: 63 préstamos devueltos según cuántas horas estuvieron afuera, en escala de raíz cuadrada de 0 a 48 horas. Mediana 2,8 horas; la mitad central va de 1,0 a 5,8 horas; 9 préstamos pasaron más de 12 horas." style="display: block; height: auto;">
+                <path d="M100 22H213.8" stroke="#A7AEB8" stroke-width="3" stroke-linecap="round"></path>
+                <path d="M155.5 14V30" stroke="#ECEEF1" stroke-width="2" stroke-linecap="round"></path>
+                <text x="224" y="26" font-family="Geist, sans-serif" font-size="12" fill="#A7AEB8">mediana <tspan font-family="Geist Mono, monospace" fill="#ECEEF1">2,8 h</tspan> · mitad central <tspan font-family="Geist Mono, monospace" fill="#ECEEF1">1,0–5,8 h</tspan></text>
+                <path d="{{durOff}}" fill="#3A414B"></path>
+                <path d="{{durOn}}" fill="#5B9BFF"></path>
+                <path d="M20 114H580" stroke="#353B44" stroke-width="1"></path>
+                <path d="M20 114v4M100.8 114v4M160 114v4M218 114v4M300 114v4M416 114v4M580 114v4" stroke="#353B44" stroke-width="1"></path>
+                <g font-family="Geist Mono, monospace" font-size="11" fill="#7C8592" text-anchor="middle">
+                  <text x="20" y="134">0</text><text x="100.8" y="134">1 h</text><text x="160" y="134">3 h</text><text x="218" y="134">6 h</text><text x="300" y="134">12 h</text><text x="416" y="134">24 h</text><text x="576" y="134" text-anchor="end">48 h</text>
+                </g>
+              </svg>
+              <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px;">
+                <sc-for list="{{buckets}}" as="b" hint-placeholder-count="6">
+                  <button type="button" class="bk" aria-label="{{b.aria}}" aria-pressed="{{b.pressed}}" style="{{b.style}}" onMouseEnter="{{b.on}}" onFocus="{{b.on}}" onClick="{{b.on}}"><span class="ell" style="max-width: 100%; font-size: 12px; color: #A7AEB8;">{{b.label}}</span><span class="mono" style="font-size: 16px; line-height: 20px;">{{b.n}}</span><span class="mono" style="font-size: 11px; color: #7C8592;">{{b.p}}</span></button>
+                </sc-for>
+              </div>
+            </div>
+            <p class="ro" aria-live="polite">{{roDur}}</p>
+            <p class="note">63 préstamos con devolución registrada (3 siguen afuera). Eje en raíz cuadrada para que se lean las horas cortas sin aplastar las largas.</p>
+          </section>
+
+          <section class="card cp s5" aria-labelledby="h-eqs">
+            <div class="ch">
+              <div><div class="eb">Equipos · ranking</div><h4 id="h-eqs" class="ct">Los TIC encabezan los préstamos</h4></div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+              <div class="seg" role="group" aria-label="Ordenar equipos">
+                <sc-for list="{{sortSeg}}" as="o" hint-placeholder-count="2"><button type="button" class="sg" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button></sc-for>
+              </div>
+              <div class="seg" role="group" aria-label="Cuántos equipos mostrar">
+                <sc-for list="{{topSegE}}" as="o" hint-placeholder-count="4"><button type="button" class="sg mono" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button></sc-for>
+              </div>
+            </div>
+            <div role="table" aria-label="Equipos más prestados" style="display: flex; flex-direction: column;">
+              <div role="row" class="th" style="grid-template-columns: 20px minmax(0, 1fr) 48px 72px 80px;"><span role="columnheader" class="num">#</span><span role="columnheader">Equipo</span><span role="columnheader">Tipo</span><span role="columnheader" class="num">Préstamos</span><span role="columnheader" class="num">Prom. afuera</span></div>
+              <sc-for list="{{eqRows}}" as="r" hint-placeholder-count="10">
+                <div role="row" class="tr" style="grid-template-columns: 20px minmax(0, 1fr) 48px 72px 80px;"><span role="cell" class="num" style="font-size: 12px; color: #7C8592;">{{r.rank}}</span><span role="cell" class="ell">{{r.alias}} <span class="mono" style="font-size: 12px; color: #7C8592;">{{r.et}}</span></span><span role="cell" class="ell" style="color: #A7AEB8;">{{r.tipo}}</span><span role="cell" class="num">{{r.n}}</span><span role="cell" class="num" style="{{r.hS}}">{{r.h}}</span></div>
+              </sc-for>
+            </div>
+            <p class="note" style="margin-top: auto;">{{eqNote}}</p>
+          </section>
+        </div>
+
+        <div class="g12">
+          <section class="card cp s6" aria-labelledby="h-per">
+            <div class="ch">
+              <div><div class="eb">Personas · ranking</div><h4 id="h-per" class="ct">Personas que más pidieron</h4></div>
+              <div class="seg" role="group" aria-label="Cuántas personas mostrar">
+                <sc-for list="{{topSegP}}" as="o" hint-placeholder-count="4"><button type="button" class="sg mono" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button></sc-for>
+              </div>
+            </div>
+            <div role="table" aria-label="Personas que más pidieron equipos" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px;">
+              <sc-for list="{{perCols}}" as="col" hint-placeholder-count="2">
+                <div role="rowgroup" style="display: flex; flex-direction: column; min-width: 0;">
+                  <div role="row" class="th" style="grid-template-columns: 24px minmax(0, 1fr) 40px 40px;"><span role="columnheader" class="num">#</span><span role="columnheader">Persona</span><span role="columnheader" class="num">Pidió</span><span role="columnheader" class="num">%</span></div>
+                  <sc-for list="{{col.rows}}" as="r" hint-placeholder-count="5">
+                    <div role="row" class="tr" style="grid-template-columns: 24px minmax(0, 1fr) 40px 40px;"><span role="cell" class="num" style="font-size: 12px; color: #7C8592;">{{r.rank}}</span><span role="cell" class="ell">{{r.name}}</span><span role="cell" class="num">{{r.n}}</span><span role="cell" class="num" style="color: #A7AEB8;">{{r.p}}</span></div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <p class="note" style="margin-top: auto;">{{perNote}}</p>
+          </section>
+
+          <section class="card cp s6" aria-labelledby="h-dat">
+            <div><div class="eb">Ubicaciones · Motivos · Cursos</div><h4 id="h-dat" class="ct">Ubicación, motivo y curso no se están cargando</h4></div>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; flex: 1 1 auto;">
+              <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+                <span class="ell" style="font-size: 13px; font-weight: 600;">Ubicaciones</span>
+                <span class="ell" style="font-size: 12px; color: #7C8592;">columnas por lugar</span>
+                <div class="ghost">Sin datos en el período</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+                <span class="ell" style="font-size: 13px; font-weight: 600;">Motivos de préstamo</span>
+                <span class="ell" style="font-size: 12px; color: #7C8592;">anillo, partes de un todo</span>
+                <div class="ghost" style="border: 0; flex-direction: column; gap: 6px;"><svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="22" fill="none" stroke="#262B32" stroke-width="6"></circle></svg>Sin datos en el período</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+                <span class="ell" style="font-size: 13px; font-weight: 600;">Top cursos</span>
+                <span class="ell" style="font-size: 12px; color: #7C8592;">columnas de 1.º a 6.º</span>
+                <div class="ghost">Sin datos en el período</div>
+              </div>
+            </div>
+            <p class="note" style="color: #A7AEB8;">Ningún préstamo del período tiene ubicación, motivo ni curso. Se pueden pedir al prestar desde <a href="#">Configuración › Opciones de préstamo</a>.</p>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============ 03 PARQUE ============ -->
+      <section id="an-par" class="sec" aria-labelledby="h-par">
+        <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px;">
+          <div style="min-width: 0; flex: 1 1 420px;">
+            <div class="eb">03 · Parque y vida útil · foto actual</div>
+            <h3 id="h-par" class="st">34 activos en estado regular o malo, y 56 todavía sin revisar</h3>
+          </div>
+          <span class="tag">Estado actual, sin filtro de período</span>
+        </div>
+
+        <div class="card kp">
+          <div class="kc"><span class="kl">Equipos regular o malo</span><span class="kv" style="color: #F5C04E;">32</span><span class="kh">de equipos con condición</span></div>
+          <div class="kc"><span class="kl">Recursos regular o malo</span><span class="kv" style="color: #F5C04E;">2</span><span class="kh">proyectores, audio y otros</span></div>
+          <div class="kc"><span class="kl">Vida útil vencida</span><span class="kv">0</span><span class="kh">activos pasados de su vida útil</span></div>
+          <div class="kc"><span class="kl">A renovar en 12 meses</span><span class="kv">0</span><span class="kh">vencen antes de mayo de 2027</span></div>
+          <div class="kc"><span class="kl">Bajo stock</span><span class="kv" style="color: #F5C04E;">16</span><span class="kh">ítems en el mínimo o debajo</span></div>
+          <div class="kc"><span class="kl">Revisado</span><span style="display: flex; align-items: center; gap: 10px;"><svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true" style="flex: none;"><circle cx="18" cy="18" r="15" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="#A7AEB8" stroke-width="3" stroke-linecap="round" stroke-dasharray="57.49 94.25" transform="rotate(-90 18 18)"></circle></svg><span class="kv">61%</span></span><span class="kh">con condición cargada</span></div>
+        </div>
+
+        <div class="g12">
+          <section class="card cp s5" aria-labelledby="h-cond">
+            <div><div class="eb">Condición del parque</div><h4 id="h-cond" class="ct">1 de cada 4 activos está regular o malo</h4></div>
+            <div role="group" aria-label="Anillo de condición de 142 activos. Cada fila de la leyenda es un botón con su valor." onMouseLeave="{{onCondLeave}}" style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px;">
+              <svg width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="Excelente 48, Bueno 4, Regular 22, Malo 12, Sin revisar 56; total 142 activos." style="flex: none;">
+                <circle cx="80" cy="80" r="64" fill="none" stroke="#5BD68A" stroke-width="{{cond.c0.sw}}" stroke-opacity="{{cond.c0.op}}" stroke-dasharray="{{cond.c0.da}}" stroke-dashoffset="{{cond.c0.off}}" transform="rotate(-90 80 80)"></circle>
+                <circle cx="80" cy="80" r="64" fill="none" stroke="#4FD1C5" stroke-width="{{cond.c1.sw}}" stroke-opacity="{{cond.c1.op}}" stroke-dasharray="{{cond.c1.da}}" stroke-dashoffset="{{cond.c1.off}}" transform="rotate(-90 80 80)"></circle>
+                <circle cx="80" cy="80" r="64" fill="none" stroke="#F5C04E" stroke-width="{{cond.c2.sw}}" stroke-opacity="{{cond.c2.op}}" stroke-dasharray="{{cond.c2.da}}" stroke-dashoffset="{{cond.c2.off}}" transform="rotate(-90 80 80)"></circle>
+                <circle cx="80" cy="80" r="64" fill="none" stroke="#FF6B6B" stroke-width="{{cond.c3.sw}}" stroke-opacity="{{cond.c3.op}}" stroke-dasharray="{{cond.c3.da}}" stroke-dashoffset="{{cond.c3.off}}" transform="rotate(-90 80 80)"></circle>
+                <circle cx="80" cy="80" r="64" fill="none" stroke="#3A414B" stroke-width="{{cond.c4.sw}}" stroke-opacity="{{cond.c4.op}}" stroke-dasharray="{{cond.c4.da}}" stroke-dashoffset="{{cond.c4.off}}" transform="rotate(-90 80 80)"></circle>
+                <text x="80" y="80" text-anchor="middle" font-family="Geist Mono, monospace" font-size="28" fill="#ECEEF1">{{cond.center}}</text>
+                <text x="80" y="100" text-anchor="middle" font-family="Geist, sans-serif" font-size="12" fill="#7C8592">{{cond.centerL}}</text>
+              </svg>
+              <div style="flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column;">
+                <sc-for list="{{condRows}}" as="c" hint-placeholder-count="5">
+                  <button type="button" class="lgb" aria-label="{{c.aria}}" style="{{c.style}}" onMouseEnter="{{c.on}}" onFocus="{{c.on}}" onClick="{{c.on}}"><span aria-hidden="true" style="{{c.sw}}"></span><span class="ell">{{c.label}}</span><span class="num" style="{{c.nS}}">{{c.n}}</span><span class="num" style="color: #7C8592;">{{c.p}}</span></button>
+                </sc-for>
+              </div>
+            </div>
+            <p class="ro" aria-live="polite">{{roCond}}</p>
+          </section>
+
+          <section class="card cp s4" aria-labelledby="h-ren">
+            <div><div class="eb">Renovaciones por año</div><h4 id="h-ren" class="ct">Hasta 2029 no vence nada; en 2030, 69 activos</h4></div>
+            <div role="group" aria-label="Columnas: activos a renovar por año, de 2026 a 2031." onMouseLeave="{{onRenLeave}}" style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: stretch; height: 150px; border-bottom: 1px solid #353B44;">
+                <sc-for list="{{ren}}" as="c" hint-placeholder-count="6"><button type="button" class="colb" aria-label="{{c.aria}}" onMouseEnter="{{c.on}}" onFocus="{{c.on}}" onClick="{{c.on}}"><span class="mono cv">{{c.v}}</span><span class="bar" style="{{c.bar}}"></span></button></sc-for>
+              </div>
+              <div aria-hidden="true" style="display: flex;"><sc-for list="{{ren}}" as="c" hint-placeholder-count="6"><span class="mono" style="flex: 1 1 0; min-width: 0; text-align: center; font-size: 11px; color: #7C8592;">{{c.label}}</span></sc-for></div>
+            </div>
+            <p class="ro" aria-live="polite">{{roRen}}</p>
+          </section>
+
+          <section class="card cp s3" aria-labelledby="h-vida">
+            <div><div class="eb">Vida útil consumida</div><h4 id="h-vida" class="ct">Todo el parque está en la primera mitad</h4></div>
+            <div role="group" aria-label="Columnas en orden: porcentaje de equipos por tramo de vida útil consumida." onMouseLeave="{{onVidaLeave}}" style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: stretch; height: 150px; border-bottom: 1px solid #353B44;">
+                <sc-for list="{{vida}}" as="c" hint-placeholder-count="4"><button type="button" class="colb" aria-label="{{c.aria}}" onMouseEnter="{{c.on}}" onFocus="{{c.on}}" onClick="{{c.on}}"><span class="mono cv">{{c.v}}</span><span class="bar" style="{{c.bar}}"></span></button></sc-for>
+              </div>
+              <div aria-hidden="true" style="display: flex;"><sc-for list="{{vida}}" as="c" hint-placeholder-count="4"><span class="mono" style="flex: 1 1 0; min-width: 0; text-align: center; font-size: 11px; color: #7C8592; white-space: nowrap;">{{c.label}}</span></sc-for></div>
+            </div>
+            <p class="ro" aria-live="polite">{{roVida}}</p>
+          </section>
+        </div>
+
+        <div class="g12">
+          <section class="card cp s4" aria-labelledby="h-cls">
+            <div><div class="eb">Clases con más deterioro</div><h4 id="h-cls" class="ct">Regular y malo por clase de activo</h4></div>
+            <div role="table" aria-label="Activos en estado regular o malo por clase" style="display: flex; flex-direction: column;">
+              <div role="row" class="th" style="grid-template-columns: minmax(0, 1fr) 56px 48px 72px;"><span role="columnheader">Clase</span><span role="columnheader" class="num">Regular</span><span role="columnheader" class="num">Malo</span><span role="columnheader" class="num">Sin revisar</span></div>
+              <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 56px 48px 72px;"><span role="rowheader" class="ell">Chromebook</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span></div>
+              <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 56px 48px 72px;"><span role="rowheader" class="ell">Tablet</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span></div>
+              <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 56px 48px 72px;"><span role="rowheader" class="ell">Notebook</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span></div>
+              <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 56px 48px 72px;"><span role="rowheader" class="ell">Otras clases</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span><span role="cell" class="num" style="color: #A7AEB8;">[N]</span></div>
+              <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 56px 48px 72px; border-bottom: 0; font-weight: 600;"><span role="rowheader">Total</span><span role="cell" class="num" style="color: #F5C04E;">22</span><span role="cell" class="num" style="color: #FF6B6B;">12</span><span role="cell" class="num">56</span></div>
+            </div>
+            <p class="note" style="margin-top: auto;">Ordenada por regular + malo, de mayor a menor.</p>
+          </section>
+
+          <section class="card cp s8" aria-labelledby="h-ar">
+            <div class="ch">
+              <div><div class="eb">A renovar · próximos 12 meses</div><h4 id="h-ar" class="ct">Ningún equipo vence en los próximos 12 meses</h4></div>
+              <button type="button" class="b2 sm" aria-disabled="true" aria-describedby="ar-why"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 10l5 5 5-5M5 21h14"></path></svg>Exportar CSV</button>
+            </div>
+            <div role="table" aria-label="Equipos a renovar" style="display: flex; flex-direction: column;">
+              <div role="row" class="th" style="grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 96px minmax(0, 1fr) 80px;"><span role="columnheader">Equipo</span><span role="columnheader">Clase</span><span role="columnheader">Condición</span><span role="columnheader">Renovación</span><span role="columnheader" class="num">Restan</span></div>
+              <div role="row" style="display: flex; align-items: center; justify-content: center; height: 96px; font-size: 13px; color: #7C8592; text-align: center;"><span role="cell">Ningún equipo vence en los próximos 12 meses.</span></div>
+            </div>
+            <p id="ar-why" class="note">Nada para exportar. Cuando haya equipos, el CSV sale con etiqueta, alias, clase, condición, alta, renovación, meses restantes y si la fecha es estimada (hasta 100 filas).</p>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============ 04 TICKETS ============ -->
+      <section id="an-tic" class="sec" aria-labelledby="h-tic">
+        <div>
+          <div class="eb">04 · Tickets · según el período</div>
+          <h3 id="h-tic" class="st">Sin tickets en el período</h3>
+        </div>
+
+        <div class="card kp">
+          <div class="kc"><span class="kl">Tickets abiertos</span><span class="kv">0</span><span class="kh">foto actual</span></div>
+          <div class="kc"><span class="kl">Tickets creados</span><span class="kv">0</span><span class="kh"><span class="mono">0</span> resueltos en el período</span></div>
+          <div class="kc"><span class="kl">Resolución promedio</span><span class="kv" style="color: #7C8592;">—</span><span class="kh">horas, en el período</span></div>
+          <div class="kc"><span class="kl">Primera respuesta</span><span class="kv" style="color: #7C8592;">—</span><span class="kh">horas, en el período</span></div>
+          <div class="kc"><span class="kl">Respuesta histórica</span><span class="kv" style="color: #7C8592;">—</span><span class="kh">días, todos los tickets hechos</span></div>
+        </div>
+
+        <div class="g12">
+          <div class="card cp s8" style="gap: 10px;"><div><div class="eb">Línea mensual · vs. período anterior</div><h4 class="ct">Tendencia mensual de tickets</h4></div><div class="ghost" style="min-height: 120px;">Sin tickets en el período</div></div>
+          <div class="card cp s4" style="gap: 10px;">
+            <div><div class="eb">Anillos finos</div><h4 class="ct">Abiertos vs. cerrados</h4></div>
+            <div style="flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-around; gap: 16px;">
+              <span style="display: flex; align-items: center; gap: 10px;"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="#262B32" stroke-width="3"></circle></svg><span style="display: flex; flex-direction: column;"><span class="mono" style="font-size: 20px; line-height: 24px;">0</span><span style="font-size: 12px; color: #7C8592;">Abiertos</span></span></span>
+              <span style="display: flex; align-items: center; gap: 10px;"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="#262B32" stroke-width="3"></circle></svg><span style="display: flex; flex-direction: column;"><span class="mono" style="font-size: 20px; line-height: 24px;">0</span><span style="font-size: 12px; color: #7C8592;">Cerrados</span></span></span>
+            </div>
+          </div>
+          <div class="card cp s3" style="gap: 10px;"><div><div class="eb">Columnas en orden</div><h4 class="ct">Por prioridad</h4></div><div class="ghost">Sin tickets en el período</div></div>
+          <div class="card cp s3" style="gap: 10px;"><div><div class="eb">Columnas</div><h4 class="ct">Por técnico</h4></div><div class="ghost">Sin tickets en el período</div></div>
+          <div class="card cp s3" style="gap: 10px;"><div><div class="eb">Columnas</div><h4 class="ct">Por escuela</h4></div><div class="ghost">Sin tickets en el período</div></div>
+          <div class="card cp s3" style="gap: 10px;"><div><div class="eb">Tabla · ranking</div><h4 class="ct">Por categoría</h4></div><div class="ghost">Sin tickets en el período</div></div>
+          <div class="card cp s4" style="gap: 10px;"><div><div class="eb">Tabla · ranking</div><h4 class="ct">Por aula</h4></div><div class="ghost">Sin tickets en el período</div></div>
+          <div class="card cp s4" style="gap: 10px;"><div><div class="eb">Tabla · más de una vez</div><h4 class="ct">Incidentes recurrentes</h4></div><div class="ghost">Sin tickets en el período</div></div>
+          <div class="card cp s4" style="gap: 10px;"><div><div class="eb">Tabla · foto actual</div><h4 class="ct">Equipos con más fallas</h4></div><div class="ghost">Ningún ticket activo menciona un equipo (D…)</div></div>
+        </div>
+      </section>
+
+      <!-- ============ 05 EQUIPO TIC ============ -->
+      <section id="an-eq" class="sec" aria-labelledby="h-eq">
+        <div>
+          <div class="eb">05 · Equipo TIC · según el período</div>
+          <h3 id="h-eq" class="st">Bauti registró 6 de cada 10 movimientos; Equi hace más devoluciones que préstamos</h3>
+        </div>
+        <div class="g12">
+          <section class="card cp s8" aria-labelledby="h-act">
+            <div class="ch">
+              <div><div class="eb">Actividad TIC</div><h4 id="h-act" class="ct">Quién registró los préstamos y las devoluciones</h4></div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px 16px;">
+                <span class="lg"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: #5B9BFF;"></span>Préstamos</span>
+                <span class="lg"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 2px; background: #4FD1C5;"></span>Devoluciones</span>
+              </div>
+            </div>
+            <div role="group" aria-label="Columnas agrupadas por operador: porcentaje de los préstamos y de las devoluciones que registró cada uno." onMouseLeave="{{onOpLeave}}" style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; height: 184px; border-bottom: 1px solid #353B44;">
+                <sc-for list="{{opsTic}}" as="o" hint-placeholder-count="4">
+                  <button type="button" class="grp" aria-label="{{o.aria}}" style="{{o.style}}" onMouseEnter="{{o.on}}" onFocus="{{o.on}}" onClick="{{o.on}}">
+                    <span class="gcol"><span class="mono cv">{{o.pv}}</span><span class="bar" style="{{o.pb}}"></span></span>
+                    <span class="gcol"><span class="mono cv">{{o.dv}}</span><span class="bar" style="{{o.db}}"></span></span>
+                  </button>
+                </sc-for>
+              </div>
+              <div aria-hidden="true" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;"><sc-for list="{{opsTic}}" as="o" hint-placeholder-count="4"><span class="ell" style="text-align: center; font-size: 13px; color: #A7AEB8;">{{o.name}}</span></sc-for></div>
+            </div>
+            <p class="ro" aria-live="polite">{{roOps}}</p>
+            <p class="note">Porcentaje de todos los préstamos y de todas las devoluciones del período. “Equi” y “equi” se cuentan juntos.</p>
+          </section>
+
+          <section class="card cp s4" aria-labelledby="h-tar">
+            <div><div class="eb">Tareas · foto actual</div><h4 id="h-tar" class="ct">Tareas abiertas</h4></div>
+            <span class="kv" style="font-size: 40px; line-height: 44px;">2</span>
+            <div role="table" aria-label="Tareas por tipo" style="display: flex; flex-direction: column;">
+              <div role="row" class="th" style="grid-template-columns: minmax(0, 1fr) 56px;"><span role="columnheader">Tipo de tarea</span><span role="columnheader" class="num">Tareas</span></div>
+              <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 56px;"><span role="rowheader" class="ell">Soporte</span><span role="cell" class="num">2</span></div>
+              <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 56px;"><span role="rowheader" class="ell">Encontrar</span><span role="cell" class="num">1</span></div>
+              <div role="row" class="tr" style="grid-template-columns: minmax(0, 1fr) 56px; border-bottom: 0;"><span role="rowheader" class="ell">Aula</span><span role="cell" class="num">1</span></div>
+            </div>
+            <a href="#" style="margin-top: auto; font-size: 13px; text-decoration: none;">Ir a Tareas TIC</a>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":5300}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+data() {
+  // Base local (solo lectura), NFPT. "Hoy" del mockup = mar 12/05/2026, último día con préstamos en la copia local (igual que Historial).
+  return {
+    // byHourWeekday → [día, abreviatura, préstamos de 08 a 16]
+    DAYS: [['Lunes', 'Lun', [6, 2, 1, 2, 0, 3, 2, 0, 1]], ['Martes', 'Mar', [3, 1, 0, 0, 0, 0, 0, 0, 0]], ['Miércoles', 'Mié', [0, 5, 3, 0, 1, 4, 0, 0, 0]], ['Jueves', 'Jue', [4, 1, 6, 2, 1, 4, 2, 1, 0]], ['Viernes', 'Vie', [7, 0, 1, 0, 1, 1, 0, 0, 2]], ['Sábado', 'Sáb', [0, 0, 0, 0, 0, 0, 0, 0, 0]], ['Domingo', 'Dom', [0, 0, 0, 0, 0, 0, 0, 2, 0]]],
+    // loan_events × local_devices.filtro, por hora: [tipo, préstamos 08..16, equipos activos del tipo]
+    TYPES: [['Touch', [3, 1, 5, 4, 3, 4, 1, 1, 2], 40], ['Plani', [5, 4, 3, 0, 0, 7, 2, 2, 1], 11], ['TIC', [12, 4, 3, 0, 0, 1, 1, 0, 0], 4]],
+    // préstamos por día de la semana vs agendaOccupation (foto actual)
+    CMP: [['Lunes', 17, 6], ['Martes', 4, 6], ['Miércoles', 13, 6], ['Jueves', 21, 3], ['Viernes', 12, 6]],
+    // préstamos por día (hora de la sede)
+    DAYV: { '2026-05-06': 13, '2026-05-07': 21, '2026-05-08': 12, '2026-05-10': 2, '2026-05-11': 17, '2026-05-12': 4 },
+    // horas afuera de cada préstamo devuelto (préstamo → siguiente devolución del mismo equipo)
+    DUR: [0.00, 0.01, 0.01, 0.02, 0.02, 0.03, 0.04, 0.10, 0.28, 0.35, 0.37, 0.37, 0.65, 0.66, 0.81, 0.92, 1.05, 1.29, 1.33, 1.33, 1.49, 1.52, 1.52, 1.67, 1.91, 2.03, 2.21, 2.50, 2.60, 2.65, 2.73, 2.81, 2.86, 3.02, 3.03, 3.06, 3.31, 3.43, 3.70, 3.88, 4.05, 4.65, 5.16, 5.36, 5.59, 5.69, 5.75, 5.80, 6.29, 7.03, 7.03, 7.19, 7.28, 8.52, 17.94, 18.81, 20.87, 21.19, 23.23, 28.09, 39.36, 41.34, 47.40],
+    // equipos agrupados por etiqueta: [etiqueta, alias, tipo, préstamos, horas promedio afuera]
+    EQ: [['D1337', 'TIC 4', 'TIC', 6, 10.4], ['D1388', 'TIC 1', 'TIC', 6, 11.1], ['D1338', 'TIC 3', 'TIC', 5, 5.1], ['D0112', 'Plani 1', 'Plani', 4, 9.8], ['D0179', 'Touch 12', 'Touch', 4, 6.8], ['D1391', 'TIC 2', 'TIC', 4, 11.1], ['D0111', 'Plani 6', 'Plani', 3, 6.8], ['D0117', 'Plani 10', 'Plani', 3, 0.9], ['D0164', 'Touch 8', 'Touch', 3, 8.9], ['D0184', 'Touch 1', 'Touch', 3, 3.0], ['D1546', 'Plani 2', 'Plani', 3, 3.3], ['D1547', 'Plani 4', 'Plani', 3, 7.7], ['D0110', 'Plani 5', 'Plani', 2, 4.3], ['D0116', 'Plani 3', 'Plani', 2, 0.4], ['D0172', 'Touch 7', 'Touch', 2, 2.9], ['D0178', 'Touch 17', 'Touch', 2, 1.6], ['D0189', 'Plani 8', 'Plani', 2, 2.3], ['D0694', 'Touch 24', 'Touch', 2, 4.8], ['D0109', 'Plani 9', 'Plani', 1, 1.9], ['D0160', 'Touch 14', 'Touch', 1, 47.4], ['D0182', 'Touch 15', 'Touch', 1, 4.6], ['D0248', 'Plani 11', 'Plani', 1, 0.9], ['D0689', 'Touch 22', 'Touch', 1, 3.7], ['D0695', 'Touch 28', 'Touch', 1, 1.0], ['D0697', 'Touch 25', 'Touch', 1, 0.8], ['D1435', 'Touch 33', 'Touch', 1, 0], ['D1436', 'Touch 34', 'Touch', 1, 2.9], ['D1441', 'Touch 39', 'Touch', 1, 0.3]],
+    // byPerson agrupado sin distinguir mayúsculas, nombre + inicial
+    PER: [['Alex C.', 7], ['Akane', 4], ['Máximo M.', 3], ['Delfi', 3], ['Ame W.', 2], ['Alex', 2], ['Cami', 2], ['Delfi M.', 2], ['Edu', 2], ['Edu M.', 2], ['Felipe M.', 2], ['Iara', 2], ['Lu P.', 2], ['Mili', 2], ['Sammy', 2], ['Wanda', 2], ['A.', 1], ['Akana', 1], ['Ani O.', 1], ['Ani O.', 1], ['Bauiti', 1], ['Bauti', 1], ['Catalina L.', 1], ['Catalina L.', 1], ['Flor', 1], ['Franco C.', 1], ['Juana', 1], ['Juani', 1], ['Juani V.', 1], ['Lola F.', 1], ['Lola F.', 1], ['Máximo N.', 1], ['Mile', 1], ['Moira', 1], ['Montini', 1], ['Montini F.', 1], ['Pablo P.', 1], ['Sonia', 1], ['Tati', 1], ['Tomi A.', 1]],
+    // byOperator separado en préstamos y devoluciones (loan_events)
+    OPS: [['Bauti', 47, 49], ['Equi', 16, 31], ['admin', 4, 3], ['Eze M.', 2, 1]],
+    // producción (captura del dueño)
+    COND: [['Excelente', 48, '#5BD68A'], ['Bueno', 4, '#4FD1C5'], ['Regular', 22, '#F5C04E'], ['Malo', 12, '#FF6B6B'], ['Sin revisar', 56, '#3A414B']],
+    REN: [['2026', 0], ['2027', 0], ['2028', 0], ['2029', 0], ['2030', 69], ['2031', 17]],
+    VIDA: [['0–50%', 100], ['50–80%', 0], ['80–100%', 0], ['Vencida', 0]]
+  };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const set = p => self.setState(p);
+  const I = this.icons();
+  const D = this.data();
+  const BLUE = '#5B9BFF', HOV = '#8DBBFF', REST = '#3A414B', TURQ = '#4FD1C5';
+  const NLOC = 69;
+  const pc = v => Math.round(v / NLOC * 100);
+  const dec = n => String(n).replace('.', ',');
+  const p2 = n => (n < 10 ? '0' : '') + n;
+  const num = (v, d) => (v === undefined || v === null || v === '' ? d : v);
+  const segStyle = on => (on ? 'background: #1B1F24; color: #ECEEF1; box-shadow: inset 0 0 0 1px #353B44;' : '');
+  const PH = v => (v === '[N]' ? 'color: #A7AEB8;' : '');
+
+  // ---------- Período ----------
+  const period = s.period || 'ano';
+  const PER = {
+    sem: { label: 'Semana', long: 'Última semana', range: '06/05/2026 – 12/05/2026', loans: '69', dev: '84', per: '40', eq: '28', inP: 'en la última semana' },
+    mes: { label: 'Mes', long: 'Último mes', range: '13/04/2026 – 12/05/2026', loans: '69', dev: '84', per: '40', eq: '28', inP: 'en el último mes' },
+    tri: { label: '3 meses', long: 'Últimos 3 meses', range: '10/02/2026 – 12/05/2026', loans: '69', dev: '84', per: '40', eq: '28', inP: 'en los últimos 3 meses' },
+    ano: { label: 'Año', long: 'Último año', range: '12/05/2025 – 12/05/2026', loans: '1.019', dev: '[N]', per: '[N]', eq: '[N]', inP: 'en el último año' },
+    todo: { label: 'Todo', long: 'Todo el historial', range: 'Desde el primer registro', loans: '[N]', dev: '[N]', per: '[N]', eq: '[N]', inP: '' }
+  };
+  const per = PER[period];
+  const periods = ['sem', 'mes', 'tri', 'ano', 'todo'].map(k => ({ label: PER[k].label, pressed: k === period ? 'true' : 'false', style: segStyle(k === period), onClick: () => set({ period: k, he: -1 }) }));
+  const loading = !!s.loading;
+  const onReload = () => { if (loading) return; set({ loading: true }); setTimeout(() => self.setState({ loading: false }), 700); };
+  const headLine = loading ? 'Actualizando préstamos, tickets y parque…' : (per.loans === '[N]' ? '[N] préstamos y [N] devoluciones' : per.loans + ' préstamos y ' + per.dev + ' devoluciones');
+
+  // ---------- Índice ----------
+  const sec = s.sec || 'dem';
+  const idx = [['dem', '01', 'Demanda'], ['pre', '02', 'Préstamos'], ['par', '03', 'Parque'], ['tic', '04', 'Tickets'], ['eq', '05', 'Equipo TIC']].map(x => {
+    const on = x[0] === sec;
+    return { href: '#an-' + x[0], n: x[1], label: x[2], current: on ? 'true' : 'false', style: 'color: ' + (on ? '#ECEEF1' : '#A7AEB8') + ';', numStyle: 'font-size: 11px; color: ' + (on ? BLUE : '#7C8592') + ';',
+      bar: on ? 'position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; background: #5B9BFF;' : 'display: none;', onClick: () => set({ sec: x[0] }) };
+  });
+
+  // ---------- Vista gráfico / tabla ----------
+  const view = (key) => {
+    const tbl = !!s[key];
+    return { chart: !tbl, tbl: tbl, chartP: tbl ? 'false' : 'true', tblP: tbl ? 'true' : 'false', chartS: segStyle(!tbl), tblS: segStyle(tbl),
+      onChart: () => { const o = {}; o[key] = false; set(o); }, onTbl: () => { const o = {}; o[key] = true; set(o); } };
+  };
+
+  // ---------- 01 Mapa de calor ----------
+  const HRS = ['08', '09', '10', '11', '12', '13', '14', '15', '16'];
+  const nx = h => p2(+h + 1);
+  const HEAT = ['', '#1F2D44', '#25395A', '#2C4670', '#345487', '#3F68A8', '#4C80D2', '#5B9BFF'];
+  const allV = [];
+  D.DAYS.forEach(d => d[2].forEach(v => { if (v) allV.push(v); }));
+  const rank = v => 1 + allV.filter(x => x > v).length;
+  const hc = s.hc || '';
+  const hh = num(s.hh, -1);
+  const heat = D.DAYS.map((d, di) => {
+    const tot = d[2].reduce((a, b) => a + b, 0);
+    const wk = di >= 5;
+    return {
+      day: d[0], total: pc(tot) + '%',
+      totStyle: 'font-size: 13px; text-align: right; color: ' + (tot === 21 ? '#ECEEF1' : '#A7AEB8') + ';',
+      cells: d[2].map((v, hi) => {
+        const key = di + '-' + hi, on = hc === key, dim = hh >= 0 && hh !== hi;
+        return {
+          text: v ? pc(v) + '%' : '',
+          aria: d[0] + ' de ' + HRS[hi] + ':00 a ' + HRS[hi] + ':59: ' + (v ? pc(v) + '% de los préstamos' : 'sin préstamos'),
+          style: 'height: ' + (wk ? 28 : 44) + 'px; background: ' + (v ? HEAT[v] : 'transparent') + '; border-color: ' + (v ? HEAT[v] : '#1B1F24') + '; color: ' + (v >= 6 ? '#0D0F12' : '#ECEEF1') + ';' + (on ? ' outline: 2px solid #ECEEF1; outline-offset: 1px;' : '') + (dim ? ' opacity: .3;' : ''),
+          on: () => set({ hc: key, hh: -1 })
+        };
+      })
+    };
+  });
+  const HT = HRS.map((h, hi) => D.DAYS.reduce((a, d) => a + d[2][hi], 0));
+  const hours = HRS.map((h, hi) => ({
+    val: pc(HT[hi]) + '%', aria: 'De ' + h + ':00 a ' + h + ':59, todos los días: ' + pc(HT[hi]) + '% de los préstamos',
+    bar: 'height: ' + Math.max(2, Math.round(HT[hi] / 20 * 44)) + 'px; background: ' + (hh === hi ? HOV : ((hi === 0 || hi === 5) ? BLUE : REST)) + ';',
+    on: () => set({ hh: hi, hc: '' })
+  }));
+  let roHeat = 'Pico: viernes de 08:00 a 08:59, con el 10% de los préstamos. Pasá el mouse o el foco por una celda para ver su valor exacto.';
+  if (hc) {
+    const di = +hc.split('-')[0], hi = +hc.split('-')[1], v = D.DAYS[di][2][hi];
+    roHeat = D.DAYS[di][0] + ' de ' + HRS[hi] + ':00 a ' + HRS[hi] + ':59 · ' + (v ? pc(v) + '% de los préstamos del período · puesto ' + rank(v) + ' de ' + allV.length + ' franjas con préstamos' : 'sin préstamos en el período');
+  } else if (hh >= 0) {
+    roHeat = 'De ' + HRS[hh] + ':00 a ' + HRS[hh] + ':59, todos los días · ' + pc(HT[hh]) + '% de los préstamos del período' + (hh === 0 ? ' · la franja más pedida' : '');
+  }
+  const sl = [];
+  D.DAYS.forEach((d, di) => d[2].forEach((v, hi) => { if (v) sl.push({ di: di, hi: hi, v: v }); }));
+  sl.sort((a, b) => b.v - a.v || a.hi - b.hi || a.di - b.di);
+  const slots = sl.slice(0, 7).map(x => {
+    const key = x.di + '-' + x.hi;
+    return { rank: String(rank(x.v)), day: D.DAYS[x.di][0], time: HRS[x.hi] + '–' + nx(HRS[x.hi]), val: pc(x.v) + '%',
+      aria: D.DAYS[x.di][0] + ' de ' + HRS[x.hi] + ' a ' + nx(HRS[x.hi]) + ': ' + pc(x.v) + '%. Marca la celda en el mapa',
+      style: hc === key ? 'background: #1B1F24;' : '', on: () => set({ hc: key, hh: -1 }) };
+  });
+  const heatRows = D.DAYS.map(d => ({ day: d[0], total: pc(d[2].reduce((a, b) => a + b, 0)) + '%', vals: d[2].map(v => ({ t: v ? pc(v) + '%' : '—', s: v ? '' : 'color: #7C8592;' })) }));
+
+  // ---------- 01 Tipos (small multiples, misma escala) ----------
+  const ht = s.ht || '';
+  const fleet = D.TYPES.reduce((a, t) => a + t[2], 0);
+  const types = D.TYPES.map((t, ti) => {
+    const tot = t[1].reduce((a, b) => a + b, 0), mx = Math.max.apply(null, t[1]);
+    return {
+      name: t[0], share: pc(tot) + '%', fleet: t[2] + ' equipos · ' + Math.round(t[2] / fleet * 100) + '% del parque prestable',
+      cols: t[1].map((v, hi) => {
+        const on = ht === ti + '-' + hi;
+        return {
+          label: hi % 2 === 0 ? HRS[hi] : '', v: pc(v) + '%', vStyle: (v === mx || on) && v ? '' : 'visibility: hidden;',
+          bar: 'height: ' + (v ? Math.max(3, Math.round(v / 12 * 84)) : 0) + 'px; background: ' + (on ? HOV : BLUE) + ';',
+          aria: t[0] + ' de ' + HRS[hi] + ':00 a ' + HRS[hi] + ':59: ' + pc(v) + '% de todos los préstamos',
+          on: () => set({ ht: ti + '-' + hi })
+        };
+      })
+    };
+  });
+  let roTy = 'TIC concentra el 57% de sus préstamos de 08:00 a 08:59; Plani tiene su pico a las 13 y Touch se reparte entre las 10 y las 13.';
+  if (ht) {
+    const ti = +ht.split('-')[0], hi = +ht.split('-')[1], t = D.TYPES[ti], v = t[1][hi], tot = t[1].reduce((a, b) => a + b, 0);
+    roTy = t[0] + ' de ' + HRS[hi] + ':00 a ' + HRS[hi] + ':59 · ' + pc(v) + '% de todos los préstamos · ' + Math.round(v / tot * 100) + '% de los préstamos de ' + t[0];
+  }
+
+  // ---------- 01 Préstamos vs agenda ----------
+  const hd = num(s.hd, -1);
+  const cmp = D.CMP.map((d, i) => ({
+    short: d[0].slice(0, 3), lv: pc(d[1]) + '%', av: String(d[2]),
+    lb: 'height: ' + Math.round(d[1] / 21 * 76) + 'px; background: ' + (hd === i ? HOV : BLUE) + ';',
+    ab: 'height: ' + Math.round(d[2] / 6 * 56) + 'px; background: ' + (hd === i ? '#8FE3DA' : TURQ) + ';',
+    aria: d[0] + ': ' + pc(d[1]) + '% de los préstamos y ' + d[2] + ' actividades en la agenda TIC',
+    on: () => set({ hd: i })
+  }));
+  const roCmp = hd >= 0 ? D.CMP[hd][0] + ' · ' + pc(D.CMP[hd][1]) + '% de los préstamos del período · ' + D.CMP[hd][2] + ' actividades en la agenda TIC'
+    : 'El jueves tiene el 30% de los préstamos y solo 3 actividades en la agenda; el martes es el día más tranquilo (6%).';
+
+  // ---------- 02 KPIs ----------
+  const k = { loans: per.loans, loansS: PH(per.loans), dev: per.dev, per: per.per, perS: PH(per.per), eq: per.eq, eqS: PH(per.eq) };
+  const preTitle = per.loans === '[N]' ? 'La mitad de los préstamos vuelve en menos de 3 horas' : per.loans + ' préstamos ' + per.inP + '; la mitad vuelve en menos de 3 horas';
+
+  // ---------- 02 Líneas ----------
+  const WD = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const dkey = d => d.getUTCFullYear() + '-' + p2(d.getUTCMonth() + 1) + '-' + p2(d.getUTCDate());
+  const dayPts = (y, m, d, n, every) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const dt = new Date(Date.UTC(y, m, d + i)), dm = p2(dt.getUTCDate()) + '/' + p2(dt.getUTCMonth() + 1);
+      out.push({ long: WD[dt.getUTCDay()] + ' ' + dm, tick: i % every === 0 ? (every === 1 ? WD[dt.getUTCDay()] + ' ' + p2(dt.getUTCDate()) : dm) : '', v: D.DAYV[dkey(dt)] || 0 });
+    }
+    return out;
+  };
+  const weekPts = () => {
+    const out = [];
+    for (let i = 0; i < 14; i++) {
+      const dt = new Date(Date.UTC(2026, 1, 9 + 7 * i)), dm = p2(dt.getUTCDate()) + '/' + p2(dt.getUTCMonth() + 1);
+      let v = 0;
+      for (let j = 0; j < 7; j++) v += D.DAYV[dkey(new Date(Date.UTC(2026, 1, 9 + 7 * i + j)))] || 0;
+      out.push({ long: 'Semana del ' + dm, tick: i % 2 === 0 ? dm : '', v: v });
+    }
+    return out;
+  };
+  const monthPts = (y, m, n, every) => {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const dt = new Date(Date.UTC(y, m + i, 1)), mm = dt.getUTCMonth(), yy = dt.getUTCFullYear();
+      out.push({ long: MESL[mm] + ' ' + yy, tick: i % every === 0 ? MES[mm] + (mm === 0 || i === 0 ? ' ' + String(yy).slice(2) : '') : '', v: yy === 2026 && mm === 4 ? 69 : 0 });
+    }
+    return out;
+  };
+  const lineChart = (pts, H, hov, onIdx) => {
+    const n = pts.length, max = Math.max.apply(null, pts.map(p => p.v));
+    const step = max <= 30 ? 10 : 25;
+    const ymax = Math.max(step, Math.ceil(max * 1.1 / step) * step);
+    const X = i => (i + 0.5) * 1000 / n;
+    const Y = v => (H - 1) - v / ymax * (H - 12);
+    let line = '', prev = '';
+    pts.forEach((p, i) => { line += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1); prev += (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(0).toFixed(1); });
+    const area = line + 'L' + X(n - 1).toFixed(1) + ' ' + (H - 1) + 'L' + X(0).toFixed(1) + ' ' + (H - 1) + 'Z';
+    const ticks = [];
+    for (let t = 0; t <= ymax; t += step) ticks.push(t);
+    let mi = 0;
+    pts.forEach((p, i) => { if (p.v > pts[mi].v) mi = i; });
+    return {
+      line: line, area: area, prev: prev, vb: '0 0 1000 ' + H, base: 'M0 ' + (H - 1) + 'H1000',
+      grid: ticks.filter(t => t > 0).map(t => 'M0 ' + Y(t).toFixed(1) + 'H1000').join(''),
+      yt: ticks.map(t => ({ t: String(t), style: 'top: ' + (Y(t) / H * 100).toFixed(2) + '%;' })),
+      cols: 'grid-template-columns: repeat(' + n + ', minmax(0, 1fr));',
+      pts: pts.map((p, i) => ({
+        tick: p.tick, aria: p.long + ': ' + p.v + ' préstamos; período anterior: 0',
+        dot: (i === hov || (hov < 0 && i === mi && p.v > 0)) ? 'display: block; left: ' + (X(i) / 10).toFixed(2) + '%; top: ' + (Y(p.v) / H * 100).toFixed(2) + '%;' : 'display: none;',
+        on: () => onIdx(i)
+      })),
+      cross: hov >= 0 ? 'display: block; left: ' + (X(hov) / 10).toFixed(2) + '%;' : 'display: none;',
+      rows: pts.map(p => ({ l: p.long, v: String(p.v) })),
+      mi: mi, max: max
+    };
+  };
+  const he = num(s.he, -1);
+  const SER = {
+    sem: [dayPts(2026, 4, 6, 7, 1), 'día', 'Préstamos por día', 'Día'],
+    mes: [dayPts(2026, 3, 13, 30, 7), 'día', 'Préstamos por día', 'Día'],
+    tri: [weekPts(), 'semana', 'Préstamos por semana', 'Semana'],
+    ano: [monthPts(2025, 4, 13, 1), 'mes', 'Préstamos por mes', 'Mes'],
+    todo: [monthPts(2025, 4, 13, 1), 'mes', 'Préstamos por mes, todo el historial', 'Mes']
+  };
+  const ser = SER[period];
+  const evo = lineChart(ser[0], 200, he, i => set({ he: i }));
+  evo.gran = ser[1]; evo.title = ser[2]; evo.colLabel = ser[3]; evo.tblAria = 'Préstamos por ' + ser[1] + ', este período y el anterior';
+  evo.aria = 'Gráfico de línea: ' + ser[2].toLowerCase() + ' en el período, con el período anterior en gris. Cada punto es un botón con su valor.';
+  const pe = ser[0];
+  const roEvo = he >= 0 && pe[he] ? pe[he].long + ' · ' + pe[he].v + ' préstamos · período anterior: 0'
+    : 'Máximo: ' + pe[evo.mi].long + ', con ' + evo.max + ' préstamos. El período anterior no tiene registros: los préstamos se registran desde el 06/05/2026.';
+  const ha = num(s.ha, -1);
+  const annPts = monthPts(2025, 5, 12, 2);
+  const ann = lineChart(annPts, 128, ha, i => set({ ha: i }));
+  ann.aria = 'Gráfico de línea: préstamos por mes en los últimos 12 meses, con los 12 anteriores en gris.';
+  const roAnn = ha >= 0 ? annPts[ha].long + ' · ' + annPts[ha].v + ' préstamos · un año antes: 0' : 'Mayo 2026 es el único mes con préstamos registrados (69).';
+
+  // ---------- 02 Duración ----------
+  const XD = h => 20 + Math.sqrt(Math.min(h, 48) / 48) * 560;
+  const BK = [['Menos de 1 h', 0, 1], ['1 a 3 h', 1, 3], ['3 a 6 h', 3, 6], ['6 a 12 h', 6, 12], ['12 a 24 h', 12, 24], ['Más de 24 h', 24, 1e9]];
+  const hb = num(s.hb, -1);
+  const bOf = h => BK.findIndex(b => h >= b[1] && h < b[2]);
+  const placed = [];
+  let durOn = '', durOff = '';
+  D.DUR.forEach(h => {
+    const x = XD(h);
+    let y = 0;
+    for (let kk = 0; kk < 80; kk++) {
+      const c = (kk % 2 ? 1 : -1) * Math.ceil(kk / 2) * 8.6;
+      if (placed.every(p => (p.x - x) * (p.x - x) + (p.y - c) * (p.y - c) >= 73.9)) { y = c; break; }
+    }
+    placed.push({ x: x, y: y });
+    const dd = 'M' + (x - 4).toFixed(1) + ' ' + (70 + y).toFixed(1) + 'a4 4 0 1 0 8 0a4 4 0 1 0 -8 0';
+    if (hb < 0 || hb === bOf(h)) durOn += dd; else durOff += dd;
+  });
+  const bN = BK.map((b, i) => D.DUR.filter(h => bOf(h) === i).length);
+  const buckets = BK.map((b, i) => ({
+    label: b[0], n: String(bN[i]), p: Math.round(bN[i] / D.DUR.length * 100) + '%', pressed: hb === i ? 'true' : 'false',
+    style: hb === i ? 'background: #1B1F24; border-color: #353B44;' : '',
+    aria: b[0] + ': ' + bN[i] + ' préstamos, ' + Math.round(bN[i] / D.DUR.length * 100) + '%. Resalta sus puntos',
+    on: () => set({ hb: i })
+  }));
+  const roDur = hb >= 0 ? BK[hb][0] + ' afuera · ' + bN[hb] + ' préstamos (' + Math.round(bN[hb] / D.DUR.length * 100) + '% de los devueltos)' + (hb === 0 ? ' · 8 volvieron en menos de 10 minutos: probablemente correcciones' : '') + (hb >= 4 ? ' · conviene contarlos como no disponibles al día siguiente' : '')
+    : 'Mediana 2,8 h · la mitad central va de 1,0 a 5,8 h · 9 de 63 préstamos (14%) pasaron más de 12 h afuera.';
+
+  // ---------- 02 Rankings ----------
+  const topSeg = (cur, key) => [10, 15, 25, 50].map(n => ({ label: String(n), pressed: n === cur ? 'true' : 'false', style: segStyle(n === cur), onClick: () => { const o = {}; o[key] = n; set(o); } }));
+  const sortE = s.sortE || 'n', topE = s.topE || 10, topP = s.topP || 10;
+  const sortSeg = [['n', 'Más prestados'], ['h', 'Más horas afuera']].map(o => ({ label: o[1], pressed: sortE === o[0] ? 'true' : 'false', style: segStyle(sortE === o[0]), onClick: () => set({ sortE: o[0] }) }));
+  const eqSorted = D.EQ.slice().sort((a, b) => (sortE === 'n' ? (b[3] - a[3] || b[4] - a[4]) : (b[4] - a[4] || b[3] - a[3])));
+  const eqRows = eqSorted.slice(0, topE).map((r, i) => ({ rank: String(i + 1), alias: r[1], et: r[0], tipo: r[2], n: String(r[3]), h: dec(r[4].toFixed(1)) + ' h', hS: r[4] > 24 ? 'color: #F5C04E;' : '' }));
+  const eqNote = 'Mostrando ' + Math.min(topE, D.EQ.length) + ' de ' + D.EQ.length + ' equipos. Se agrupan por etiqueta aunque el alias haya cambiado. En ámbar: más de 24 h afuera en promedio.';
+  const perRows = D.PER.slice(0, topP).map((r, i) => ({ rank: String(i + 1), name: r[0], n: String(r[1]), p: pc(r[1]) + '%' }));
+  const half = Math.ceil(perRows.length / 2);
+  const perCols = [{ rows: perRows.slice(0, half) }, { rows: perRows.slice(half) }];
+  const perNote = 'Mostrando ' + Math.min(topP, D.PER.length) + ' de ' + D.PER.length + ' personas. 4 préstamos sin persona cargada no entran. Los nombres se agrupan sin distinguir mayúsculas; los errores de tipeo cuentan aparte.';
+
+  // ---------- 03 Parque ----------
+  const hcd = num(s.hcd, -1);
+  const TOT = D.COND.reduce((a, c) => a + c[1], 0);
+  const CIR = 2 * Math.PI * 64;
+  let acc = 0;
+  const cond = {};
+  D.COND.forEach((c, i) => {
+    const len = c[1] / TOT * CIR;
+    cond['c' + i] = { da: Math.max(0.6, len - 2).toFixed(2) + ' ' + CIR.toFixed(2), off: (-acc).toFixed(2), sw: hcd === i ? '18' : '12', op: hcd >= 0 && hcd !== i ? '0.35' : '1' };
+    acc += len;
+  });
+  cond.center = hcd >= 0 ? String(D.COND[hcd][1]) : String(TOT);
+  cond.centerL = hcd >= 0 ? D.COND[hcd][0].toLowerCase() : 'activos';
+  const condRows = D.COND.map((c, i) => ({
+    label: c[0], n: String(c[1]), p: Math.round(c[1] / TOT * 100) + '%',
+    nS: c[0] === 'Regular' ? 'color: #F5C04E;' : (c[0] === 'Malo' ? 'color: #FF6B6B;' : ''),
+    sw: 'width: 10px; height: 10px; border-radius: 2px; background: ' + c[2] + ';' + (c[0] === 'Sin revisar' ? ' box-shadow: inset 0 0 0 1px #4A525D;' : ''),
+    style: hcd === i ? 'background: #1B1F24;' : '',
+    aria: c[0] + ': ' + c[1] + ' activos, ' + Math.round(c[1] / TOT * 100) + '%', on: () => set({ hcd: i })
+  }));
+  const roCond = hcd >= 0 ? D.COND[hcd][0] + ' · ' + D.COND[hcd][1] + ' activos · ' + Math.round(D.COND[hcd][1] / TOT * 100) + '% de los 142' : '34 activos regular o malo (24%) y 56 sin revisar (39%) sobre 142 activos.';
+  const hr = num(s.hr, -1);
+  const ren = D.REN.map((r, i) => ({
+    label: r[0], v: String(r[1]), aria: r[0] + ': ' + r[1] + ' activos a renovar',
+    bar: 'height: ' + (r[1] ? Math.max(3, Math.round(r[1] / 69 * 118)) : 0) + 'px; background: ' + (hr === i ? HOV : BLUE) + ';',
+    on: () => set({ hr: i })
+  }));
+  const roRen = hr >= 0 ? D.REN[hr][0] + ' · ' + D.REN[hr][1] + ' activos a renovar' + (D.REN[hr][1] ? ' · ' + Math.round(D.REN[hr][1] / TOT * 100) + '% del parque' : '') : '86 de 142 activos tienen fecha de renovación: 69 en 2030 y 17 en 2031.';
+  const hv = num(s.hv, -1);
+  const VC = [BLUE, BLUE, '#F5C04E', '#FF6B6B'];
+  const vida = D.VIDA.map((r, i) => ({
+    label: r[0], v: r[1] + '%', aria: r[0] + ' de vida útil consumida: ' + r[1] + '% de los equipos',
+    bar: 'height: ' + (r[1] ? Math.max(3, Math.round(r[1] / 100 * 118)) : 0) + 'px; background: ' + (hv === i ? HOV : VC[i]) + ';',
+    on: () => set({ hv: i })
+  }));
+  const roVida = hv >= 0 ? D.VIDA[hv][0] + ' de vida útil consumida · ' + D.VIDA[hv][1] + '% de los equipos' : 'Ningún equipo pasó la mitad de su vida útil.';
+
+  // ---------- 05 Equipo TIC ----------
+  const hop = num(s.hop, -1);
+  const NDEV = 84;
+  const opsTic = D.OPS.map((o, i) => {
+    const pp = pc(o[1]), dp = Math.round(o[2] / NDEV * 100);
+    return {
+      name: o[0], pv: pp + '%', dv: dp + '%',
+      pb: 'width: 28px; height: ' + Math.max(2, Math.round(pp / 70 * 148)) + 'px; background: ' + (hop === i ? HOV : BLUE) + ';',
+      db: 'width: 28px; height: ' + Math.max(2, Math.round(dp / 70 * 148)) + 'px; background: ' + (hop === i ? '#8FE3DA' : TURQ) + ';',
+      style: hop === i ? 'background: #171A1F;' : '',
+      aria: o[0] + ': ' + pp + '% de los préstamos y ' + dp + '% de las devoluciones',
+      on: () => set({ hop: i })
+    };
+  });
+  const roOps = hop >= 0 ? D.OPS[hop][0] + ' · ' + pc(D.OPS[hop][1]) + '% de los préstamos y ' + Math.round(D.OPS[hop][2] / NDEV * 100) + '% de las devoluciones del período'
+    : 'Bauti registró el 68% de los préstamos y el 58% de las devoluciones; Equi, el 23% y el 37%.';
+
+  // ---------- Menú lateral ----------
+  const barOn = 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;';
+  const mk = (key, label, count) => {
+    const on = key === 'analytics';
+    return { label: label, d: I[key], count: count || '', current: on ? 'page' : 'false', aria: label + (count ? ', ' + count : ''),
+      style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;', bar: on ? barOn : 'display: none;' };
+  };
+
+  return {
+    navOps: [mk('home', 'Inicio'), mk('loans', 'Préstamos', '3'), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC'), mk('rooms', 'Estado aulas')],
+    navMgmt: [mk('tasks', 'Tareas TIC'), mk('tickets', 'Tickets'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')],
+    navData: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')],
+    navRes: [mk('knowledge', 'Base de conocimiento'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')],
+    periods: periods, perRange: per.range, perLong: per.long, perLoans: per.loans, headLine: headLine,
+    reloadLbl: loading ? 'Actualizando…' : 'Recargar', reloadDis: loading ? 'true' : 'false', onReload: onReload,
+    idx: idx,
+    heatV: view('tblHeat'), hrs: HRS, heat: heat, hours: hours, roHeat: roHeat, slots: slots, heatRows: heatRows,
+    onHeatLeave: () => set({ hc: '', hh: -1 }),
+    types: types, roTy: roTy, onTyLeave: () => set({ ht: '' }),
+    cmp: cmp, roCmp: roCmp, onCmpLeave: () => set({ hd: -1 }),
+    preTitle: preTitle, k: k,
+    evoV: view('tblEvo'), evo: evo, roEvo: roEvo, onEvoLeave: () => set({ he: -1 }),
+    ann: ann, roAnn: roAnn, onAnnLeave: () => set({ ha: -1 }),
+    durOn: durOn, durOff: durOff, buckets: buckets, roDur: roDur, onDurLeave: () => set({ hb: -1 }),
+    sortSeg: sortSeg, topSegE: topSeg(topE, 'topE'), eqRows: eqRows, eqNote: eqNote,
+    topSegP: topSeg(topP, 'topP'), perCols: perCols, perNote: perNote,
+    cond: cond, condRows: condRows, roCond: roCond, onCondLeave: () => set({ hcd: -1 }),
+    ren: ren, roRen: roRen, onRenLeave: () => set({ hr: -1 }),
+    vida: vida, roVida: roVida, onVidaLeave: () => set({ hv: -1 }),
+    opsTic: opsTic, roOps: roOps, onOpLeave: () => set({ hop: -1 })
+  };
+}
+}
+</script>
+</body>
+</html>

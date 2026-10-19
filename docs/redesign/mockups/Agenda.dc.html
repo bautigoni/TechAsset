@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Agenda TIC</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+input::placeholder,textarea::placeholder{color:#7C8592}
+.nv:hover,.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.rw:hover{background:#1B1F24}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.ey{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;min-width:0;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none;max-width:100%}
+.bp{background:#5B9BFF;color:#0D0F12;border:0;font-weight:600}.bp:hover{background:#8DBBFF}
+.bs{background:#1B1F24;color:#ECEEF1;border:1px solid #353B44}.bs:hover{border-color:#7C8592}
+.bg{background:transparent;color:#A7AEB8;border:0}.bg:hover{background:#1B1F24;color:#ECEEF1}
+.bd{background:transparent;color:#FF6B6B;border:0}.bd:hover{background:#1B1F24}
+.bsm{height:32px;padding:0 10px;font-size:13px}
+.bx[disabled]{opacity:.45;cursor:not-allowed}
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;background:#14171B;border:1px solid #262B32;border-radius:6px;flex:none;max-width:100%;box-sizing:border-box}
+.sg{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:4px;font-size:13px;cursor:pointer;white-space:nowrap;box-sizing:border-box}
+.chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none}
+.fl{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:500;color:#A7AEB8;min-width:0}
+.inp{height:36px;padding:0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:14px;box-sizing:border-box;width:100%;min-width:0}
+.inp:focus{outline:2px solid #5B9BFF;outline-offset:0}
+.ta{display:block;width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:14px;line-height:20px;resize:none;scrollbar-width:none}
+.ta::-webkit-scrollbar{display:none}
+
+/* Shell (Menu-A) */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}.sb-head{justify-content:center}.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}.sb-grpt{display:none}.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}.sb-user{padding:0;justify-content:center}.sb-hide{display:none !important}
+}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.pad{flex:1;display:flex;flex-direction:column;gap:20px;min-width:0;padding:24px 32px 32px;box-sizing:border-box}
+@media (max-width:1023px){.tb-upd{display:none !important}}
+@media (max-width:767px){.sb{display:none}.tb{padding:0 16px}.pad{padding:16px}.tb-t{display:none !important}}
+
+/* Encabezado y controles */
+.hd{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}
+.hd-l{flex:1 1 320px;min-width:0}
+.hd-r{display:flex;flex-wrap:wrap;gap:8px;flex:0 1 auto;min-width:0}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
+.kp{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+
+/* Cuerpo: dos columnas que bajan */
+.body{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.col-l{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.col-r{flex:1 1 300px;min-width:0;max-width:100%;display:flex;flex-direction:column;gap:16px}
+
+/* Lista de actividades (filas -> filas-tarjeta si el contenedor es angosto) */
+.agl{container-type:inline-size;container-name:agl}
+.ch{min-height:52px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:8px 8px 8px 16px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.colh{display:grid;grid-template-columns:minmax(0,1fr) 188px;height:32px;align-items:center;border-bottom:1px solid #262B32;font-size:12px;font-weight:500;color:#7C8592}
+.colh-m{display:grid;grid-template-columns:104px minmax(0,1fr) 88px 128px 24px;gap:12px;padding-left:16px}
+.grp{display:flex;align-items:center;gap:8px;height:32px;padding:0 16px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.ag-row{display:grid;grid-template-columns:minmax(0,1fr) 188px;align-items:center;border-bottom:1px solid #262B32}
+.ag-main{display:grid;grid-template-columns:104px minmax(0,1fr) 88px 128px 24px;align-items:center;gap:12px;min-height:56px;padding:0 0 0 16px;background:transparent;border:0;color:#ECEEF1;text-align:left;cursor:pointer;font-size:14px;width:100%;min-width:0;box-sizing:border-box}
+.c-time,.c-what,.c-eq,.c-st{min-width:0;display:flex;flex-direction:column;gap:2px}
+.ag-act{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:0 12px 0 8px}
+.det{padding:16px 16px 16px 16px;background:#1B1F24;border-bottom:1px solid #262B32;display:flex;flex-direction:column;gap:16px}
+.det-g{display:flex;flex-wrap:wrap;gap:16px 24px}
+.det-dl{flex:3 1 360px;min-width:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px}
+.det-n{flex:2 1 240px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.det-a{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+@container agl (max-width:640px){
+.colh{display:none}
+.ag-row{grid-template-columns:minmax(0,1fr)}
+.ag-main{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"time st" "what what" "eq eq";row-gap:4px;padding:12px 16px}
+.c-time{grid-area:time}.c-what{grid-area:what}.c-eq{grid-area:eq}.c-st{grid-area:st;align-items:flex-end;text-align:right}.c-chev{display:none}
+.ag-act{justify-content:flex-start;padding:0 16px 12px}
+.det-dl{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Semana */
+.wk{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media (max-width:1180px){.wk{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.wk-c{display:flex;flex-direction:column;gap:8px;min-width:0}
+.wk-i{display:flex;flex-direction:column;gap:4px;width:100%;min-width:0;padding:10px 12px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#ECEEF1;text-align:left;cursor:pointer;box-sizing:border-box}
+.wk-i:hover{border-color:#353B44}
+
+/* Mes */
+.mg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.mc{display:flex;flex-direction:column;justify-content:space-between;height:60px;padding:6px 8px;border-radius:6px;cursor:pointer;box-sizing:border-box;text-align:left;min-width:0}
+
+/* Formulario en línea */
+.frm{display:flex;flex-direction:column;gap:16px;padding:16px}
+.fr{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-end}
+.pk{display:flex;flex-direction:column;gap:10px;padding:12px;background:#0D0F12;border:1px solid #262B32;border-radius:6px}
+.pk-r{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cal{display:grid;grid-template-columns:repeat(7,36px);gap:4px}
+.hm{width:44px;padding:0}
+.cal-b{width:36px;height:32px;border-radius:6px;font-size:13px;cursor:pointer;box-sizing:border-box}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1040px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- MENÚ LATERAL (Menu-A, Agenda TIC activo, sin Traspaso) -->
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="ib sb-sede" aria-label="Cambiar de sede: Northfield Puertos">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; box-sizing: border-box;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Northfield Puertos</span>
+          <span class="mono" style="font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide ell" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide nw mono" style="font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <div class="sb-grp">
+        <div class="sb-grpt">Operación</div>
+        <sc-for list="{{ops}}" as="n" hint-placeholder-count="6">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Gestión</div>
+        <sc-for list="{{mgmt}}" as="n" hint-placeholder-count="4">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Inventario y datos</div>
+        <sc-for list="{{data}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Recursos</div>
+        <sc-for list="{{res}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nv nvi" aria-label="Configuración" style="color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div class="sb-user">
+        <span aria-label="Bauti G., Jefe TIC" style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; box-sizing: border-box;">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- TOPBAR -->
+    <header class="tb">
+      <button type="button" class="ib" aria-label="Contraer menú (Ctrl B)" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Agenda TIC</h1>
+      <span class="tb-t" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-t ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">Viernes 16 de octubre · 09:20</span>
+      <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+      <span class="tb-upd nw" role="status" style="flex: none; font-size: 12px; color: #7C8592;">{{updText}}</span>
+      <button type="button" class="btn bs" aria-label="Abrir el Asistente" style="height: 36px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2M20 14h2M15 13v2M9 13v2"></path></svg>
+        <span class="tb-t">Asistente</span>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span class="mono" style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <div class="pad">
+      <!-- ENCABEZADO -->
+      <div class="hd">
+        <div class="hd-l">
+          <div class="ey">Semana del 12 al 16 de octubre</div>
+          <h2 class="ell" style="margin: 4px 0 0; font-size: 20px; line-height: 28px; font-weight: 600;">{{headTitle}}</h2>
+          <p class="nw" style="margin: 2px 0 0; font-size: 13px; line-height: 20px; color: #A7AEB8;"><span class="mono" style="color: #ECEEF1;">{{subHoy}}</span> hoy · <span class="mono" style="color: #ECEEF1;">{{subVis}}</span> visibles · <span class="mono" style="color: #ECEEF1;">{{subPend}}</span> pendientes</p>
+        </div>
+        <div class="hd-r">
+          <button type="button" class="btn bg" onClick="{{onRefresh}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"></path></svg>
+            Actualizar
+          </button>
+          <button type="button" class="btn bs" onClick="{{onSync}}" aria-expanded="{{syncExp}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg>
+            Sincronizar
+          </button>
+          <button type="button" class="btn bp" onClick="{{onForm}}" aria-expanded="{{formExp}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+            Nueva actividad
+          </button>
+        </div>
+      </div>
+
+      <!-- SINCRONIZAR CALENDARIO (en línea, empuja) -->
+      <sc-if value="{{syncOpen}}" hint-placeholder-val="{{ false }}">
+        <section class="card" aria-label="Sincronizar calendario">
+          <div class="ch">
+            <h3 style="margin: 0; flex: 1 1 auto; font-size: 14px; font-weight: 600;">Sincronizar calendario</h3>
+            <button type="button" class="btn bg bsm" onClick="{{onSync}}">Cerrar</button>
+          </div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+            <p style="margin: 0; font-size: 13px; line-height: 20px; color: #A7AEB8;">Enlace personal para suscribirte desde Google Calendar, Outlook o el calendario del iPhone. Es de solo lectura, respeta la sede activa y no incluye las canceladas. Las actividades semanales aparecen en la semana en curso.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <label for="ics" class="vh" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);">Enlace ICS</label>
+              <input id="ics" class="inp mono" readonly="readonly" value="{{feedUrl}}" style="flex: 1 1 360px; width: auto; font-size: 13px; text-overflow: ellipsis;">
+              <button type="button" class="btn bp" onClick="{{onCopyFeed}}">Copiar enlace</button>
+              <button type="button" class="btn bs" onClick="{{onOpenG}}">
+                Abrir Google Calendar
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+              </button>
+              <button type="button" class="btn bg" onClick="{{onRotAsk}}">Regenerar</button>
+            </div>
+            <sc-if value="{{rotAsk}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 44px; padding: 4px 4px 4px 12px; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                <span style="flex: 1 1 280px; min-width: 0; font-size: 13px; color: #F5C04E;">El enlace actual deja de funcionar en todos los calendarios suscriptos.</span>
+                <button type="button" class="btn bs bsm" onClick="{{onRotYes}}">Regenerar enlace</button>
+                <button type="button" class="btn bg bsm" onClick="{{onRotNo}}">No</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{feedMsgShow}}" hint-placeholder-val="{{ false }}">
+              <p role="status" style="margin: 0; font-size: 13px; color: #5BD68A;">{{feedMsg}}</p>
+            </sc-if>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; padding-top: 4px; border-top: 1px solid #262B32;">
+              <div style="padding-top: 12px;">
+                <div class="ey">Google Calendar</div>
+                <ol style="margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 20px; color: #A7AEB8;"><li>Copiá el enlace.</li><li>Abrí “Agregar calendario por URL”.</li><li>Pegá el enlace y guardá.</li></ol>
+              </div>
+              <div style="padding-top: 12px;">
+                <div class="ey">iPhone</div>
+                <ol style="margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 20px; color: #A7AEB8;"><li>Copiá el enlace.</li><li>Ajustes › Calendario › Cuentas.</li><li>Añadir cuenta › Otra › Calendario suscrito.</li></ol>
+              </div>
+              <div style="padding-top: 12px;">
+                <div class="ey">Outlook</div>
+                <ol style="margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 20px; color: #A7AEB8;"><li>Copiá el enlace.</li><li>Agregar calendario › Suscribirse desde la web.</li><li>Pegá el enlace y guardá.</li></ol>
+              </div>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- NUEVA ACTIVIDAD (formulario en línea, empuja) -->
+      <sc-if value="{{formOpen}}" hint-placeholder-val="{{ false }}">
+        <section class="card" aria-label="Nueva actividad">
+          <div class="ch">
+            <h3 style="margin: 0; flex: 1 1 auto; font-size: 14px; font-weight: 600;">Nueva actividad</h3>
+            <button type="button" class="btn bg bsm" onClick="{{onForm}}">Cancelar</button>
+          </div>
+          <div class="frm">
+            <!-- Cuándo -->
+            <div class="fr">
+              <div class="fl">
+                <span>Se repite</span>
+                <div class="seg" role="group" aria-label="Repetición">
+                  <button type="button" class="sg" style="{{fm.repWeekStyle}}" aria-pressed="{{fm.repWeekPr}}" onClick="{{fm.onRepWeek}}">Todas las semanas</button>
+                  <button type="button" class="sg" style="{{fm.repDateStyle}}" aria-pressed="{{fm.repDatePr}}" onClick="{{fm.onRepDate}}">Una sola fecha</button>
+                </div>
+              </div>
+              <sc-if value="{{fm.isWeekly}}" hint-placeholder-val="{{ true }}">
+                <div class="fl">
+                  <span>Día</span>
+                  <div class="seg" role="group" aria-label="Día de la semana">
+                    <sc-for list="{{fm.days}}" as="d" hint-placeholder-count="5">
+                      <button type="button" class="sg" style="{{d.style}}" aria-pressed="{{d.pr}}" onClick="{{d.on}}">{{d.label}}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{fm.isDated}}" hint-placeholder-val="{{ false }}">
+                <div class="fl">
+                  <span>Fecha</span>
+                  <button type="button" class="btn bs" style="justify-content: space-between; min-width: 200px;" aria-expanded="{{fm.dateExp}}" onClick="{{fm.onPickDate}}">
+                    <span class="nw">{{fm.dateLabel}}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                  </button>
+                </div>
+              </sc-if>
+              <div class="fl">
+                <span>Turno</span>
+                <div class="seg" role="group" aria-label="Turno">
+                  <button type="button" class="sg" style="{{fm.tmStyle}}" aria-pressed="{{fm.tmPr}}" onClick="{{fm.onTm}}">Mañana</button>
+                  <button type="button" class="sg" style="{{fm.ttStyle}}" aria-pressed="{{fm.ttPr}}" onClick="{{fm.onTt}}">Tarde</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Calendario propio (en línea) -->
+            <sc-if value="{{fm.pickDate}}" hint-placeholder-val="{{ false }}">
+              <div class="pk" style="align-self: flex-start;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button type="button" class="btn bg bsm" aria-label="Mes anterior" onClick="{{fm.onCalPrev}}" style="width: 32px; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                  <span class="nw" style="flex: 1; text-align: center; font-size: 14px; font-weight: 600;">{{fm.calLabel}}</span>
+                  <button type="button" class="btn bg bsm" aria-label="Mes siguiente" onClick="{{fm.onCalNext}}" style="width: 32px; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button>
+                </div>
+                <div class="cal" role="grid" aria-label="{{fm.calLabel}}">
+                  <span class="mono" style="font-size: 11px; color: #7C8592; text-align: center;">L</span><span class="mono" style="font-size: 11px; color: #7C8592; text-align: center;">M</span><span class="mono" style="font-size: 11px; color: #7C8592; text-align: center;">M</span><span class="mono" style="font-size: 11px; color: #7C8592; text-align: center;">J</span><span class="mono" style="font-size: 11px; color: #7C8592; text-align: center;">V</span><span class="mono" style="font-size: 11px; color: #7C8592; text-align: center;">S</span><span class="mono" style="font-size: 11px; color: #7C8592; text-align: center;">D</span>
+                  <sc-for list="{{fm.cal}}" as="c" hint-placeholder-count="35">
+                    <button type="button" class="cal-b mono" style="{{c.style}}" aria-label="{{c.aria}}" aria-pressed="{{c.pr}}" onClick="{{c.on}}">{{c.n}}</button>
+                  </sc-for>
+                </div>
+                <span style="font-size: 12px; color: #7C8592;">Sábados y domingos no se agendan.</span>
+              </div>
+            </sc-if>
+
+            <!-- Horario -->
+            <div class="fr">
+              <div class="fl" style="flex: 1 1 100%;">
+                <span>Módulo</span>
+                <div class="pk-r">
+                  <sc-for list="{{fm.mods}}" as="m" hint-placeholder-count="7">
+                    <button type="button" class="chip mono" style="{{m.style}}" aria-pressed="{{m.pr}}" onClick="{{m.on}}">{{m.label}}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div class="fl">
+                <span>Desde</span>
+                <button type="button" class="btn bs mono" style="{{fm.desdeBtn}}" aria-expanded="{{fm.desdeExp}}" onClick="{{fm.onPickDesde}}">{{fm.desde}}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></button>
+              </div>
+              <div class="fl">
+                <span>Hasta</span>
+                <button type="button" class="btn bs mono" style="{{fm.hastaBtn}}" aria-expanded="{{fm.hastaExp}}" onClick="{{fm.onPickHasta}}">{{fm.hasta}}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></button>
+              </div>
+              <sc-if value="{{fm.timeErr}}" hint-placeholder-val="{{ false }}">
+                <span role="alert" style="align-self: center; font-size: 13px; color: #FF6B6B;">Hasta tiene que ser después de Desde.</span>
+              </sc-if>
+            </div>
+
+            <!-- Selector de hora propio (en línea) -->
+            <sc-if value="{{fm.pickTime}}" hint-placeholder-val="{{ false }}">
+              <div class="pk" role="group" aria-label="{{fm.pickLabel}}">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="flex: 1; font-size: 13px; font-weight: 500; color: #ECEEF1;">{{fm.pickLabel}} <span class="mono" style="color: #A7AEB8;">{{fm.pickValue}}</span></span>
+                  <button type="button" class="btn bs bsm" onClick="{{fm.onPickDone}}">Listo</button>
+                </div>
+                <div class="pk-r">
+                  <span style="width: 64px; font-size: 12px; color: #7C8592;">Hora</span>
+                  <sc-for list="{{fm.hours}}" as="h" hint-placeholder-count="11">
+                    <button type="button" class="chip mono hm" style="{{h.style}}" aria-pressed="{{h.pr}}" onClick="{{h.on}}">{{h.v}}</button>
+                  </sc-for>
+                </div>
+                <div class="pk-r">
+                  <span style="width: 64px; font-size: 12px; color: #7C8592;">Minutos</span>
+                  <sc-for list="{{fm.mins}}" as="h" hint-placeholder-count="12">
+                    <button type="button" class="chip mono hm" style="{{h.style}}" aria-pressed="{{h.pr}}" onClick="{{h.on}}">{{h.v}}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- Qué -->
+            <div class="fr">
+              <label class="fl" style="flex: 1 1 160px;">
+                <span>Curso <span style="color: #7C8592;">(obligatorio)</span></span>
+                <input class="inp" type="text" value="{{fm.curso}}" onInput="{{fm.onCurso}}" onChange="{{fm.onCurso}}" placeholder="Ej. 3N" autocomplete="off">
+              </label>
+              <label class="fl" style="flex: 2 1 220px;">
+                <span>Actividad</span>
+                <input class="inp" type="text" value="{{fm.actividad}}" onInput="{{fm.onAct}}" onChange="{{fm.onAct}}" autocomplete="off">
+              </label>
+              <label class="fl" style="flex: 2 1 220px;">
+                <span>Ubicación</span>
+                <input class="inp" type="text" value="{{fm.ubic}}" onInput="{{fm.onUbic}}" onChange="{{fm.onUbic}}" placeholder="Ej. Aula, Aula TIC" autocomplete="off">
+              </label>
+            </div>
+            <div class="pk-r" aria-label="Actividades frecuentes">
+              <span style="font-size: 12px; color: #7C8592; margin-right: 4px;">Frecuentes</span>
+              <sc-for list="{{fm.sugg}}" as="g" hint-placeholder-count="5">
+                <button type="button" class="chip" style="{{g.style}}" onClick="{{g.on}}">{{g.label}}</button>
+              </sc-for>
+            </div>
+
+            <!-- Equipos y disponibilidad -->
+            <div class="fr" style="align-items: stretch;">
+              <div class="fl">
+                <span>Tipo de equipo</span>
+                <div class="seg" role="group" aria-label="Tipo de equipo">
+                  <sc-for list="{{fm.tipos}}" as="t" hint-placeholder-count="4">
+                    <button type="button" class="sg" style="{{t.style}}" aria-pressed="{{t.pr}}" onClick="{{t.on}}">{{t.label}}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div class="fl">
+                <span>Cantidad <span class="mono" style="color: #7C8592;">máx {{fm.max}}</span></span>
+                <div style="display: inline-flex; align-items: center; height: 36px; border: 1px solid #353B44; border-radius: 6px; background: #0D0F12; box-sizing: border-box;">
+                  <button type="button" class="ib" aria-label="Uno menos" onClick="{{fm.onMinus}}" style="width: 36px; height: 34px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px 0 0 6px; color: #A7AEB8; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+                  <span class="mono" role="status" aria-label="Cantidad" style="min-width: 40px; text-align: center; font-size: 15px;">{{fm.cantidad}}</span>
+                  <button type="button" class="ib" aria-label="Uno más" onClick="{{fm.onPlus}}" style="width: 36px; height: 34px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 0 6px 6px 0; color: #A7AEB8; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button>
+                </div>
+              </div>
+              <div role="status" style="flex: 1 1 320px; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                <svg width="36" height="36" viewBox="0 0 36 36" role="img" aria-label="{{fm.cap.aria}}" style="flex: none;"><circle cx="18" cy="18" r="15" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="{{fm.cap.color}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{fm.cap.dash}}" transform="rotate(-90 18 18)" style="{{fm.cap.arcStyle}}"></circle></svg>
+                <span class="mono" style="{{fm.cap.numStyle}}">{{fm.cap.libres}}</span>
+                <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                  <span class="ell" style="font-size: 13px; color: #ECEEF1;">{{fm.cap.line1}}</span>
+                  <span class="ell" style="{{fm.cap.line2Style}}">{{fm.cap.line2}}</span>
+                </span>
+              </div>
+            </div>
+
+            <label class="fl">
+              <span>Nota</span>
+              <textarea class="ta" rows="2" value="{{fm.nota}}" onInput="{{fm.onNota}}" onChange="{{fm.onNota}}" placeholder="Algo que el equipo TIC tenga que saber (cargadores, auriculares, docente a cargo…)"></textarea>
+            </label>
+
+            <sc-if value="{{fm.errShow}}" hint-placeholder-val="{{ false }}">
+              <p role="alert" style="margin: 0; font-size: 13px; color: #FF6B6B;">{{fm.err}}</p>
+            </sc-if>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px; border-top: 1px solid #262B32;">
+              <span style="flex: 1 1 240px; min-width: 0; padding-top: 12px; font-size: 12px; color: #7C8592;">{{fm.summary}}</span>
+              <sc-if value="{{fm.canSave}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="btn bp" onClick="{{fm.onSave}}" style="margin-top: 12px;">Guardar actividad</button>
+              </sc-if>
+              <sc-if value="{{fm.blocked}}" hint-placeholder-val="{{ false }}">
+                <button type="button" class="btn bp bx" disabled="disabled" style="margin-top: 12px;">Guardar actividad</button>
+              </sc-if>
+              <button type="button" class="btn bg" onClick="{{onForm}}" style="margin-top: 12px;">Cancelar</button>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- VISTA, DÍA Y TURNO -->
+      <div class="ctl">
+        <div class="seg" role="group" aria-label="Vista">
+          <sc-for list="{{views}}" as="v" hint-placeholder-count="4">
+            <button type="button" class="sg" style="{{v.style}}" aria-pressed="{{v.pr}}" onClick="{{v.on}}">{{v.label}}</button>
+          </sc-for>
+        </div>
+        <div class="seg" role="group" aria-label="Día">
+          <sc-for list="{{dayBtns}}" as="v" hint-placeholder-count="6">
+            <button type="button" class="sg" style="{{v.style}}" aria-pressed="{{v.pr}}" onClick="{{v.on}}">{{v.label}}</button>
+          </sc-for>
+        </div>
+        <div class="seg" role="group" aria-label="Turno">
+          <sc-for list="{{turnos}}" as="v" hint-placeholder-count="3">
+            <button type="button" class="sg" style="{{v.style}}" aria-pressed="{{v.pr}}" onClick="{{v.on}}">{{v.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- CONTEOS QUE FILTRAN -->
+      <div class="kp" role="group" aria-label="Contar y filtrar">
+        <sc-for list="{{kpis}}" as="k" hint-placeholder-count="7">
+          <button type="button" class="chip" style="{{k.style}}" aria-pressed="{{k.pr}}" onClick="{{k.on}}">{{k.label}} <span class="mono" style="{{k.numStyle}}">{{k.n}}</span></button>
+        </sc-for>
+        <sc-if value="{{kpiOn}}" hint-placeholder-val="{{ false }}">
+          <span class="nw" style="margin-left: 4px; font-size: 13px; color: #A7AEB8;">Filtrando por <span style="color: #ECEEF1;">{{kpiLabel}}</span></span>
+          <button type="button" class="btn bg bsm" onClick="{{onKpiClear}}" style="color: #5B9BFF;">Limpiar</button>
+        </sc-if>
+      </div>
+
+      <div class="body">
+        <div class="col-l" style="{{colLStyle}}">
+
+          <!-- MES: grilla -->
+          <sc-if value="{{isMes}}" hint-placeholder-val="{{ false }}">
+            <section class="card" aria-label="Mes">
+              <div class="ch">
+                <h3 class="nw" style="margin: 0; font-size: 14px; font-weight: 600;">{{monthLabel}}</h3>
+                <button type="button" class="btn bg bsm" aria-label="Mes anterior" onClick="{{onMPrev}}" style="width: 32px; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                <button type="button" class="btn bg bsm" aria-label="Mes siguiente" onClick="{{onMNext}}" style="width: 32px; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button>
+                <span style="flex: 1 1 auto;"></span>
+                <button type="button" class="btn bs bsm" onClick="{{onMToday}}">Hoy</button>
+              </div>
+              <div style="padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 6px;">
+                <div class="mg" aria-hidden="true">
+                  <span class="ey" style="padding-left: 8px;">Lun</span><span class="ey" style="padding-left: 8px;">Mar</span><span class="ey" style="padding-left: 8px;">Mié</span><span class="ey" style="padding-left: 8px;">Jue</span><span class="ey" style="padding-left: 8px;">Vie</span><span class="ey" style="padding-left: 8px;">Sáb</span><span class="ey" style="padding-left: 8px;">Dom</span>
+                </div>
+                <div class="mg" role="grid" aria-label="{{monthLabel}}">
+                  <sc-for list="{{month}}" as="c" hint-placeholder-count="42">
+                    <button type="button" class="mc" style="{{c.style}}" aria-label="{{c.aria}}" aria-pressed="{{c.pr}}" onClick="{{c.on}}">
+                      <span class="mono" style="{{c.numStyle}}">{{c.n}}</span>
+                      <span class="mono" style="font-size: 12px; color: #A7AEB8; align-self: flex-end;">{{c.count}}</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #7C8592;">Las actividades semanales se muestran en la semana en curso.</p>
+              </div>
+            </section>
+          </sc-if>
+
+          <!-- DÍA / MES: lista de actividades -->
+          <sc-if value="{{showList}}" hint-placeholder-val="{{ true }}">
+            <section class="card agl" aria-label="Actividades">
+              <div class="ch">
+                <div style="flex: 1 1 220px; min-width: 0; display: flex; align-items: baseline; gap: 10px;">
+                  <h3 class="ell" style="margin: 0; font-size: 16px; font-weight: 600;">{{listTitle}}</h3>
+                  <span class="nw" style="font-size: 13px; color: #7C8592;">{{listSub}}</span>
+                </div>
+                <button type="button" class="btn bg bsm" onClick="{{onCopy}}">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path></svg>
+                  Copiar resumen
+                </button>
+                <button type="button" class="btn bg bsm" onClick="{{onCsv}}">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5"></path></svg>
+                  Exportar CSV
+                </button>
+              </div>
+              <sc-if value="{{statusShow}}" hint-placeholder-val="{{ false }}">
+                <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 44px; padding: 4px 8px 4px 16px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD68A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M20 6 9 17l-5-5"></path></svg>
+                  <span style="flex: 1 1 240px; min-width: 0; font-size: 13px; color: #ECEEF1;">{{statusText}}</span>
+                  <sc-if value="{{statusUndo}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="btn bg bsm" onClick="{{onUndo}}" style="color: #5B9BFF;">Deshacer</button>
+                  </sc-if>
+                  <button type="button" class="btn bg bsm" aria-label="Ocultar aviso" onClick="{{onStatusX}}" style="width: 32px; padding: 0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+                </div>
+              </sc-if>
+              <div class="colh" aria-hidden="true">
+                <div class="colh-m"><span>Horario</span><span>Curso y actividad</span><span>Equipos</span><span>Estado</span><span></span></div>
+                <span style="padding-right: 12px; text-align: right;">Acciones</span>
+              </div>
+              <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+                <div class="grp">
+                  <span class="ey">{{g.label}}</span>
+                  <span class="mono" style="font-size: 12px; color: #7C8592;">{{g.count}}</span>
+                </div>
+                <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="3">
+                  <div class="ag-row">
+                    <button type="button" class="ag-main rw" aria-expanded="{{r.exp}}" aria-label="{{r.aria}}" onClick="{{r.onToggle}}">
+                      <span class="c-time">
+                        <span class="mono nw" style="font-size: 13px; color: #ECEEF1;">{{r.time}}</span>
+                        <span class="nw" style="{{r.subTimeStyle}}">{{r.subTime}}</span>
+                      </span>
+                      <span class="c-what">
+                        <span class="ell" style="{{r.cursoStyle}}">{{r.curso}}</span>
+                        <span class="ell" style="font-size: 12px; color: #A7AEB8;">{{r.what}}</span>
+                      </span>
+                      <span class="c-eq">
+                        <span class="mono nw" style="font-size: 13px; color: #ECEEF1;">{{r.qty}}</span>
+                      </span>
+                      <span class="c-st">
+                        <span class="nw" style="{{r.stStyle}}">{{r.st}}</span>
+                        <span class="nw" style="{{r.retStyle}}">{{r.ret}}</span>
+                      </span>
+                      <svg class="c-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{r.chevStyle}}"><path d="m6 9 6 6 6-6"></path></svg>
+                    </button>
+                    <div class="ag-act">
+                      <sc-if value="{{r.canRet}}" hint-placeholder-val="{{ false }}">
+                        <button type="button" class="btn bs bsm" aria-pressed="{{r.retPr}}" onClick="{{r.onRet}}">{{r.retBtn}}</button>
+                      </sc-if>
+                      <button type="button" class="btn bsm" style="{{r.delStyle}}" aria-pressed="{{r.delPr}}" onClick="{{r.onDeliver}}">
+                        <sc-if value="{{r.isDel}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if>
+                        {{r.delBtn}}
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Detalle en línea: empuja las filas de abajo -->
+                  <sc-if value="{{r.open}}" hint-placeholder-val="{{ false }}">
+                    <div class="det" role="region" aria-label="{{r.detAria}}">
+                      <div class="det-g">
+                        <dl class="det-dl">
+                          <sc-for list="{{r.fields}}" as="f" hint-placeholder-count="6">
+                            <div style="min-width: 0;">
+                              <dt style="font-size: 12px; line-height: 16px; color: #7C8592;">{{f.k}}</dt>
+                              <dd class="ell" style="{{f.style}}">{{f.v}}</dd>
+                            </div>
+                          </sc-for>
+                        </dl>
+                        <div class="det-n">
+                          <label for="{{r.notaId}}" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Nota</label>
+                          <textarea id="{{r.notaId}}" class="ta" rows="3" value="{{r.nota}}" onInput="{{r.onNota}}" onChange="{{r.onNota}}" placeholder="Sin nota. Escribí algo para el equipo TIC."></textarea>
+                          <div style="display: flex; align-items: center; gap: 8px;">
+                            <sc-if value="{{r.notaDirty}}" hint-placeholder-val="{{ false }}">
+                              <button type="button" class="btn bs bsm" onClick="{{r.onNotaSave}}">Guardar nota</button>
+                              <button type="button" class="btn bg bsm" onClick="{{r.onNotaReset}}">Descartar</button>
+                            </sc-if>
+                          </div>
+                        </div>
+                      </div>
+                      <sc-if value="{{r.showActs}}" hint-placeholder-val="{{ true }}">
+                        <div class="det-a">
+                          <button type="button" class="btn bp bsm" onClick="{{r.onDeliver}}">{{r.detDeliver}}</button>
+                          <button type="button" class="btn bs bsm" onClick="{{r.onRet}}">{{r.detRet}}</button>
+                          <button type="button" class="btn bs bsm" onClick="{{r.onTask}}">Crear tarea</button>
+                          <span aria-hidden="true" style="width: 1px; height: 20px; background: #262B32; margin: 0 4px;"></span>
+                          <button type="button" class="btn bg bsm" onClick="{{r.onDone}}">Marcar realizada</button>
+                          <button type="button" class="btn bg bsm" onClick="{{r.onMissing}}">Faltaron equipos</button>
+                          <span style="flex: 1 1 auto;"></span>
+                          <button type="button" class="btn bg bsm" onClick="{{r.onCancelAsk}}">Cancelar evento</button>
+                          <button type="button" class="btn bd bsm" onClick="{{r.onDelAsk}}">Borrar</button>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{r.askCancel}}" hint-placeholder-val="{{ false }}">
+                        <div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 44px; padding: 4px 4px 4px 12px; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                          <span style="flex: 1 1 260px; min-width: 0; font-size: 13px; color: #ECEEF1;">¿Cancelar {{r.short}}? Queda en el historial y sale del calendario sincronizado.</span>
+                          <button type="button" class="btn bs bsm" onClick="{{r.onCancelYes}}">Sí, cancelar</button>
+                          <button type="button" class="btn bg bsm" onClick="{{r.onNo}}">No</button>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{r.askDel}}" hint-placeholder-val="{{ false }}">
+                        <div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 44px; padding: 4px 4px 4px 12px; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                          <span style="flex: 1 1 260px; min-width: 0; font-size: 13px; color: #FF6B6B;">¿Borrar {{r.short}} de la agenda?</span>
+                          <button type="button" class="btn bs bsm" onClick="{{r.onDelYes}}" style="color: #FF6B6B;">Borrar</button>
+                          <button type="button" class="btn bg bsm" onClick="{{r.onNo}}">No</button>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </sc-for>
+              <sc-if value="{{listEmpty}}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0; padding: 32px 16px; font-size: 14px; color: #A7AEB8; text-align: center;">{{emptyText}}</p>
+              </sc-if>
+            </section>
+          </sc-if>
+
+          <!-- SEMANA -->
+          <sc-if value="{{isSemana}}" hint-placeholder-val="{{ false }}">
+            <section aria-label="Semana" style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                <span style="flex: 1 1 auto; font-size: 13px; color: #A7AEB8;">Lunes a viernes, agrupado por día. Tocá una actividad para ver el detalle.</span>
+                <button type="button" class="btn bg bsm" onClick="{{onCopy}}">Copiar resumen</button>
+                <button type="button" class="btn bg bsm" onClick="{{onCsv}}">Exportar CSV</button>
+              </div>
+              <sc-if value="{{statusShow}}" hint-placeholder-val="{{ false }}">
+                <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 44px; padding: 4px 8px 4px 12px; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                  <span style="flex: 1 1 240px; min-width: 0; font-size: 13px;">{{statusText}}</span>
+                  <sc-if value="{{statusUndo}}" hint-placeholder-val="{{ false }}"><button type="button" class="btn bg bsm" onClick="{{onUndo}}" style="color: #5B9BFF;">Deshacer</button></sc-if>
+                  <button type="button" class="btn bg bsm" onClick="{{onStatusX}}">Ocultar</button>
+                </div>
+              </sc-if>
+              <div class="wk">
+                <sc-for list="{{week}}" as="w" hint-placeholder-count="5">
+                  <div class="wk-c">
+                    <div style="display: flex; align-items: baseline; gap: 8px; height: 28px; border-bottom: 1px solid #262B32;">
+                      <span class="nw" style="{{w.headStyle}}">{{w.label}}</span>
+                      <span class="mono" style="font-size: 12px; color: #7C8592;">{{w.date}}</span>
+                      <span style="flex: 1;"></span>
+                      <span class="mono" style="font-size: 12px; color: #7C8592;">{{w.count}}</span>
+                    </div>
+                    <sc-for list="{{w.items}}" as="r" hint-placeholder-count="5">
+                      <button type="button" class="wk-i" style="{{r.wkStyle}}" aria-expanded="{{r.exp}}" aria-label="{{r.aria}}" onClick="{{r.onToggle}}">
+                        <span style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                          <span class="mono nw" style="font-size: 12px; color: #A7AEB8;">{{r.time}}</span>
+                          <span style="flex: 1;"></span>
+                          <span class="nw" style="{{r.stStyle}}">{{r.stShort}}</span>
+                        </span>
+                        <span class="ell" style="{{r.cursoStyle}}">{{r.curso}}</span>
+                        <span class="ell" style="font-size: 12px; color: #A7AEB8;">{{r.what2}}</span>
+                      </button>
+                      <sc-if value="{{r.open}}" hint-placeholder-val="{{ false }}">
+                        <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px;">
+                          <span style="font-size: 12px; color: #A7AEB8;">{{r.ubicLine}}</span>
+                          <span class="nw" style="{{r.retStyle}}">{{r.ret}}</span>
+                          <span style="font-size: 12px; color: #A7AEB8;">{{r.notaLine}}</span>
+                          <button type="button" class="btn bp bsm" onClick="{{r.onDeliver}}" style="width: 100%;">{{r.detDeliver}}</button>
+                          <button type="button" class="btn bs bsm" onClick="{{r.onRet}}" style="width: 100%;">{{r.detRet}}</button>
+                          <button type="button" class="btn bg bsm" onClick="{{r.onOpenDay}}" style="width: 100%;">Abrir en el día</button>
+                        </div>
+                      </sc-if>
+                    </sc-for>
+                    <sc-if value="{{w.empty}}" hint-placeholder-val="{{ false }}">
+                      <span style="padding: 12px 0; font-size: 13px; color: #7C8592;">Sin actividades</span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+          </sc-if>
+
+          <!-- HISTORIAL -->
+          <sc-if value="{{isHist}}" hint-placeholder-val="{{ false }}">
+            <section class="card" aria-label="Terminadas">
+              <div class="ch">
+                <h3 style="margin: 0; flex: 1 1 auto; font-size: 16px; font-weight: 600;">Realizadas y canceladas</h3>
+                <span class="nw" style="font-size: 13px; color: #7C8592;">más recientes primero</span>
+              </div>
+              <sc-for list="{{done}}" as="r" hint-placeholder-count="0">
+                <div style="display: grid; grid-template-columns: 104px minmax(0, 1fr) 88px 128px; gap: 12px; align-items: center; min-height: 52px; padding: 0 16px; border-bottom: 1px solid #262B32;">
+                  <span class="mono nw" style="font-size: 13px;">{{r.time}}</span>
+                  <span style="min-width: 0; display: flex; flex-direction: column; gap: 2px;"><span class="ell" style="font-size: 14px; font-weight: 500;">{{r.curso}}</span><span class="ell" style="font-size: 12px; color: #A7AEB8;">{{r.what}}</span></span>
+                  <span class="mono nw" style="font-size: 13px;">{{r.qty}}</span>
+                  <span class="nw" style="{{r.stStyle}}">{{r.st}}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{doneEmpty}}" hint-placeholder-val="{{ true }}">
+                <p style="margin: 0; padding: 24px 16px; font-size: 14px; color: #A7AEB8; text-align: center; border-bottom: 1px solid #262B32;">Aún no hay actividades realizadas o canceladas.</p>
+              </sc-if>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 52px; padding: 8px 8px 8px 16px; box-sizing: border-box;">
+                <span style="flex: 1 1 280px; min-width: 0; font-size: 13px; color: #A7AEB8;">{{olderText}}</span>
+                <sc-if value="{{olderBtn}}" hint-placeholder-val="{{ true }}">
+                  <button type="button" class="btn bs bsm" onClick="{{onOlder}}">Ver anteriores</button>
+                </sc-if>
+              </div>
+            </section>
+            <section class="card" aria-label="Registro de cambios">
+              <div class="ch">
+                <h3 style="margin: 0; flex: 1 1 auto; font-size: 14px; font-weight: 600;">Registro de cambios</h3>
+                <span class="nw" style="font-size: 13px; color: #7C8592;"><span class="mono">30</span> cambios en la sede</span>
+              </div>
+              <ol style="margin: 0; padding: 0; list-style: none;">
+                <sc-for list="{{log}}" as="l" hint-placeholder-count="6">
+                  <li style="display: grid; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 200px) 72px; gap: 12px; align-items: center; min-height: 44px; padding: 0 16px; border-bottom: 1px solid #262B32; font-size: 13px;">
+                    <span class="mono nw" style="color: #A7AEB8;">{{l.t}}</span>
+                    <span class="ell">{{l.what}}</span>
+                    <span class="ell" style="{{l.chStyle}}">{{l.ch}}</span>
+                    <span class="ell" style="color: #A7AEB8;">{{l.op}}</span>
+                  </li>
+                </sc-for>
+              </ol>
+              <sc-if value="{{logMore}}" hint-placeholder-val="{{ true }}">
+                <div style="padding: 8px;"><button type="button" class="btn bg bsm" onClick="{{onLogMore}}" style="width: 100%;">Ver más cambios</button></div>
+              </sc-if>
+            </section>
+          </sc-if>
+        </div>
+
+        <!-- COLUMNA DERECHA -->
+        <aside class="col-r" aria-label="Hoy y disponibilidad">
+          <section class="card" aria-label="Próximas de hoy">
+            <div class="ch" style="min-height: 48px;">
+              <h3 style="margin: 0; flex: 1 1 auto; font-size: 14px; font-weight: 600;">Próximas de hoy</h3>
+              <span class="nw" style="font-size: 12px; color: #7C8592;">pendientes y entregadas</span>
+            </div>
+            <sc-for list="{{next}}" as="x" hint-placeholder-count="4">
+              <button type="button" class="rw" onClick="{{x.on}}" style="display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; min-height: 48px; padding: 0 16px; background: transparent; border: 0; border-bottom: 1px solid #262B32; color: #ECEEF1; text-align: left; cursor: pointer; box-sizing: border-box;">
+                <span class="mono nw" style="font-size: 13px;">{{x.time}}</span>
+                <span class="ell" style="font-size: 13px;">{{x.label}}</span>
+                <span class="nw" style="{{x.stStyle}}">{{x.st}}</span>
+              </button>
+            </sc-for>
+            <sc-if value="{{nextEmpty}}" hint-placeholder-val="{{ false }}">
+              <p style="margin: 0; padding: 16px; font-size: 13px; color: #A7AEB8;">No hay actividades pendientes o entregadas para hoy.</p>
+            </sc-if>
+          </section>
+
+          <section class="card" aria-label="Touch por franja">
+            <div class="ch" style="min-height: 56px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;">
+              <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Touch por franja · {{capDay}}</h3>
+              <span style="font-size: 12px; color: #7C8592;">Tope 25 sumando las actividades que se superponen</span>
+            </div>
+            <sc-for list="{{capRows}}" as="c" hint-placeholder-count="3">
+              <div style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px; border-bottom: 1px solid #262B32;">
+                <svg width="32" height="32" viewBox="0 0 36 36" role="img" aria-label="{{c.aria}}" style="flex: none;"><circle cx="18" cy="18" r="15" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="{{c.color}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{c.dash}}" transform="rotate(-90 18 18)" style="{{c.arcStyle}}"></circle></svg>
+                <span class="mono" style="{{c.numStyle}}">{{c.libres}}</span>
+                <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                  <span class="mono nw" style="font-size: 13px;">{{c.time}}</span>
+                  <span class="ell" style="font-size: 12px; color: #A7AEB8;">{{c.who}}</span>
+                </span>
+              </div>
+            </sc-for>
+            <sc-if value="{{capEmpty}}" hint-placeholder-val="{{ false }}">
+              <p style="margin: 0; padding: 16px; font-size: 13px; color: #A7AEB8;">Ese día no hay Touch reservadas.</p>
+            </sc-if>
+            <p style="margin: 0; padding: 12px 16px; font-size: 12px; line-height: 18px; color: #7C8592;">El número es cuántas quedan libres. TIC, Plani y Dell tienen tope 99. Al crear una actividad se avisa antes de guardar si no hay lugar.</p>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    schedules: C(12, 12, 10) + 'M12 6v6l4 2',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+seed() {
+  // Tabla agenda de la base local (NFPT, 27 actividades semanales sin fecha). id, dia, turno, desde, hasta, curso, actividad, tipo, cantidad, ubicacion, estado, retiradas, operador.
+  return [
+    ['AG001','Lunes','Mañana','08:15','09:05','2N','Glifing','Touch',25,'Aula','Entregado',25,'Bauti'],
+    ['AG002','Lunes','Mañana','09:05','09:55','2N','Glifing','Touch',25,'Aula','Entregado',25,'Bauti'],
+    ['AG003','Lunes','Mañana','10:10','11:00','2N','Glifing','Touch',25,'Aula','Entregado',25,'equi'],
+    ['AG016','Lunes','Tarde','13:30','14:15','2N','Reserva Touch','Touch',14,'Aula','Entregado',14,'equi'],
+    ['AG017','Lunes','Tarde','14:35','15:25','3N','Reserva Touch','Touch',14,'Aula','Pendiente',0,''],
+    ['AG018','Lunes','Tarde','15:25','16:20','2S','Reserva Touch','Touch',14,'Aula','Pendiente',0,''],
+    ['AG004','Martes','Mañana','09:05','09:55','4N','Programación','Touch',25,'Aula','Pendiente',0,'admin'],
+    ['AG005','Martes','Mañana','10:10','11:00','4S','Programación','Touch',25,'Aula','Pendiente',0,''],
+    ['AG006','Martes','Mañana','11:00','11:45','4F','Programación','Touch',25,'Aula','Pendiente',0,''],
+    ['AG019','Martes','Tarde','13:30','14:15','1S','Reserva Touch','Touch',14,'Aula','Pendiente',0,''],
+    ['AG020','Martes','Tarde','14:35','15:25','1N','Reserva Touch','Touch',14,'Aula','Pendiente',0,''],
+    ['AG021','Martes','Tarde','15:25','16:20','1F','Reserva Touch','Touch',14,'Aula','Pendiente',0,''],
+    ['AG007','Miércoles','Mañana','08:15','09:05','1F','Glifing','Touch',25,'Aula','Pendiente',0,'admin'],
+    ['AG008','Miércoles','Mañana','09:05','09:55','1N','Glifing','Touch',25,'Aula','Pendiente',0,'admin'],
+    ['AG009','Miércoles','Mañana','10:10','11:00','1S','Glifing','Touch',25,'Aula','Pendiente',0,'admin'],
+    ['AG022','Miércoles','Tarde','13:30','14:15','2F','Reserva Touch','Touch',14,'Aula','Pendiente',0,''],
+    ['AG023','Miércoles','Tarde','14:35','15:25','3S','Reserva Touch','Touch',14,'Aula','Pendiente',0,''],
+    ['AG024','Miércoles','Tarde','15:25','16:20','3F','Reserva Touch','Touch',14,'Aula','Pendiente',0,''],
+    ['AG010','Jueves','Mañana','09:05','09:55','1N','Glifing','Touch',14,'Aula','Pendiente',0,''],
+    ['AG011','Jueves','Mañana','10:10','11:00','1N','Glifing','Touch',14,'Aula','Pendiente',0,''],
+    ['AG012','Jueves','Mañana','11:00','11:45','1N','Glifing','Touch',14,'Aula','Pendiente',0,''],
+    ['AG013','Viernes','Mañana','08:15','09:05','Matific grupo total','Matific','Touch',25,'Aula','Pendiente',0,''],
+    ['AG014','Viernes','Mañana','09:05','09:55','Matific grupo total','Matific','Touch',25,'Aula','Pendiente',0,''],
+    ['AG015','Viernes','Mañana','10:10','11:00','Matific grupo total','Matific','Touch',25,'Aula','Pendiente',0,''],
+    ['AG025','Viernes','Tarde','13:30','14:15','4N','TIC Grupo completo','TIC',3,'Aula TIC','Pendiente',0,''],
+    ['AG026','Viernes','Tarde','14:35','15:25','4S','TIC Grupo completo','TIC',3,'Aula TIC','Pendiente',0,''],
+    ['AG027','Viernes','Tarde','15:25','16:20','4F','TIC Grupo completo','TIC',3,'Aula TIC','Pendiente',0,'']
+  ];
+}
+logSeed() {
+  // agenda_history (últimos 12, hora Argentina). id, cuándo, actividad, antes, después, operador.
+  return [
+    ['11/05 16:21','AG016','Entregado','Entregado','Equi'],
+    ['11/05 16:21','AG016','Pendiente','Entregado','Equi'],
+    ['11/05 16:21','AG003','Entregado','Entregado','Equi'],
+    ['11/05 16:21','AG003','Pendiente','Entregado','Equi'],
+    ['11/05 16:21','AG003','Entregado','Pendiente','Equi'],
+    ['11/05 11:32','AG003','Pendiente','Entregado','Bauti G.'],
+    ['11/05 11:32','AG001','Entregado','Entregado','Bauti G.'],
+    ['11/05 11:32','AG002','Entregado','Entregado','Bauti G.'],
+    ['11/05 11:32','AG002','Pendiente','Entregado','Bauti G.'],
+    ['11/05 11:32','AG003','Entregado','Pendiente','Bauti G.'],
+    ['11/05 11:32','AG002','Entregado','Pendiente','Bauti G.'],
+    ['11/05 11:32','AG003','Pendiente','Entregado','Bauti G.']
+  ];
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const I = this.icons();
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const NOW = 9 * 60 + 20;
+  const TODAY = 'Viernes';
+  const TODAY_ISO = '2026-10-16';
+  const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+  const SHORT = { 'Lunes': 'Lun', 'Martes': 'Mar', 'Miércoles': 'Mié', 'Jueves': 'Jue', 'Viernes': 'Vie' };
+  const WEEK = { 'Lunes': '2026-10-12', 'Martes': '2026-10-13', 'Miércoles': '2026-10-14', 'Jueves': '2026-10-15', 'Viernes': '2026-10-16' };
+  const CAP = { touch: 25, tic: 99, plani: 99, dell: 99 };
+  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const WD = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const OPS = { 'Bauti': 'Bauti G.', 'equi': 'Equi', 'admin': 'admin' };
+  const toMin = t => { const p = String(t).split(':'); return (+p[0]) * 60 + (+p[1]); };
+  const pad = n => (n < 10 ? '0' : '') + n;
+  const isoOf = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const dOf = iso => { const p = iso.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); };
+  const longOf = iso => { const d = dOf(iso); return WD[d.getDay()] + ' ' + d.getDate() + ' de ' + MONTHS[d.getMonth()]; };
+  const cap1 = t => t.charAt(0).toUpperCase() + t.slice(1);
+  const overlaps = (a, b) => toMin(a.desde) < toMin(b.hasta) && toMin(b.desde) < toMin(a.hasta);
+
+  const segOn = 'background: #1B1F24; color: #ECEEF1; border: 1px solid #353B44;';
+  const segOff = 'background: transparent; color: #A7AEB8; border: 1px solid transparent;';
+  const chipOn = 'background: #1B1F24; color: #ECEEF1; border: 1px solid #353B44;';
+  const chipOff = 'background: transparent; color: #A7AEB8; border: 1px solid #262B32;';
+
+  // ---- estado de la pantalla
+  const view = s.view || 'dia';
+  const day = s.day || 'Hoy';
+  const turno = s.turno || 'Completo';
+  const kpi = s.kpi || '';
+  const ov = s.ov || {};
+  const added = s.added || [];
+  const openId = s.openId === undefined ? 'AG014' : s.openId;
+  const confirm = s.confirm || null;
+  const drafts = s.drafts || {};
+
+  const base = this.seed().map(a => ({ id: a[0], dia: a[1], turno: a[2], desde: a[3], hasta: a[4], curso: a[5], actividad: a[6], tipo: a[7], cant: a[8], ubic: a[9], estado: a[10], ret: a[11], op: OPS[a[12]] || '', um: '15/10 09:28', fecha: '', nota: '' }));
+  const all = base.concat(added).map(it => Object.assign({}, it, ov[it.id] || {})).filter(it => !it.del);
+  const dateOf = it => it.fecha || WEEK[it.dia];
+  const isToday = it => (it.fecha ? it.fecha === TODAY_ISO : it.dia === TODAY);
+  const vencida = it => it.estado === 'Pendiente' && !!it.fecha && (it.fecha < TODAY_ISO || (it.fecha === TODAY_ISO && toMin(it.hasta) < NOW));
+  const sortF = (a, b) => (a.desde + a.curso).localeCompare(b.desde + b.curso);
+
+  const visible = all.filter(it => turno === 'Completo' || it.turno === turno);
+  const todayItems = visible.filter(isToday).sort(sortF);
+  const dayName = day === 'Hoy' ? TODAY : day;
+
+  const kpiDefs = [
+    ['', 'Actividades', () => true],
+    ['pend', 'Pendientes', it => it.estado === 'Pendiente'],
+    ['ent', 'Entregadas', it => it.estado === 'Entregado'],
+    ['real', 'Realizadas', it => it.estado === 'Realizado'],
+    ['venc', 'Vencidas', vencida],
+    ['plani', 'Plani requeridas', it => /plani/i.test(it.tipo)],
+    ['tic', 'TIC requeridas', it => /tic/i.test(it.tipo)]
+  ];
+  const kpiBase = view === 'dia' ? todayItems : visible;
+  const kpiPass = it => { const d = kpiDefs.find(k => k[0] === kpi); return d ? d[2](it) : true; };
+  const kpis = kpiDefs.map(k => {
+    const list = kpiBase.filter(k[2]);
+    const n = (k[0] === 'plani' || k[0] === 'tic') ? list.reduce((t, it) => t + (+it.cant || 0), 0) : list.length;
+    const on = kpi === k[0];
+    return {
+      label: k[1], n: n, pr: on ? 'true' : 'false',
+      style: on ? chipOn : chipOff,
+      numStyle: 'font-size: 13px; color: ' + (k[0] === 'venc' && n > 0 ? '#FF6B6B' : (on ? '#A7AEB8' : '#7C8592')) + ';',
+      on: () => set({ kpi: (k[0] === '' || kpi === k[0]) ? '' : k[0] })
+    };
+  });
+  const kpiDef = kpiDefs.find(k => k[0] === kpi);
+
+  // ---- fila de actividad (compartida por Día, Mes y Semana)
+  const patch = (id, p, status) => {
+    const st = self.state || {};
+    const cur = st.ov || {};
+    const nx = Object.assign({}, cur);
+    nx[id] = Object.assign({}, cur[id] || {}, p);
+    const upd = { ov: nx, confirm: null };
+    if (status !== undefined) upd.status = status;
+    set(upd);
+  };
+  const stOf = it => {
+    if (vencida(it)) return ['Vencida', '#FF6B6B'];
+    if (it.estado === 'Entregado') return ['Entregado', '#4FD1C5'];
+    if (it.estado === 'Faltaron equipos') return ['Faltaron equipos', '#F5C04E'];
+    if (it.estado === 'Realizado') return ['Realizada', '#7C8592'];
+    if (it.estado === 'Cancelado') return ['Cancelada', '#7C8592'];
+    return ['Pendiente', '#A7AEB8'];
+  };
+  const rowOf = it => {
+    const open = openId === it.id;
+    const st = stOf(it);
+    const today = isToday(it);
+    const enCurso = today && NOW >= toMin(it.desde) && NOW < toMin(it.hasta) && it.estado !== 'Cancelado';
+    const short = it.curso + ' · ' + it.actividad + ' (' + SHORT[it.dia] + ' ' + it.desde + ')';
+    const entregado = it.estado === 'Entregado';
+    const canRet = it.estado === 'Entregado' || it.estado === 'Realizado';
+    const draft = drafts[it.id];
+    const nota = draft !== undefined ? draft : (it.nota || '');
+    const snapshot = Object.assign({}, ov);
+    const retTxt = it.ret > 0 ? ('Retiradas ' + it.ret + '/' + it.cant) : (canRet ? 'Sin retirar' : '');
+    const retCol = it.ret > 0 && it.ret < it.cant ? '#F5C04E' : (it.ret > 0 ? '#A7AEB8' : '#7C8592');
+    const cancelled = it.estado === 'Cancelado';
+    return {
+      id: it.id, open: open, exp: open ? 'true' : 'false',
+      aria: it.curso + ', ' + it.actividad + ', ' + it.desde + ' a ' + it.hasta + ', ' + st[0] + '. ' + (open ? 'Ocultar detalle' : 'Ver detalle'),
+      detAria: 'Detalle de ' + it.curso + ' · ' + it.actividad,
+      time: it.desde + '–' + it.hasta,
+      subTime: enCurso ? 'en curso' : (it.fecha ? 'una vez' : it.turno),
+      subTimeStyle: 'font-size: 12px; color: ' + (enCurso ? '#4FD1C5' : '#7C8592') + ';',
+      curso: it.curso,
+      cursoStyle: 'font-size: 14px; font-weight: 500; color: ' + (cancelled ? '#7C8592' : '#ECEEF1') + ';' + (cancelled ? ' text-decoration: line-through;' : ''),
+      what: it.actividad + ' · ' + (it.ubic || 'sin ubicación'),
+      what2: it.actividad + ' · ' + it.cant + ' ' + it.tipo,
+      qty: it.cant + ' ' + it.tipo,
+      st: st[0], stShort: st[0],
+      stStyle: 'font-size: 13px; color: ' + st[1] + ';',
+      ret: retTxt, retStyle: 'font-size: 12px; color: ' + retCol + ';',
+      chevStyle: 'transition: transform .15s; transform: rotate(' + (open ? '180' : '0') + 'deg);',
+      wkStyle: open ? 'border-color: #353B44; background: #1B1F24;' : '',
+      canRet: canRet, retPr: it.ret > 0 ? 'true' : 'false', retBtn: it.ret > 0 ? 'Retiradas' : 'Retirar',
+      isDel: entregado, delPr: entregado ? 'true' : 'false', delBtn: entregado ? 'Entregado' : 'Entregar',
+      delStyle: entregado ? 'background: transparent; color: #4FD1C5; border: 1px solid #353B44; width: 104px;' : 'background: #1B1F24; color: #ECEEF1; border: 1px solid #353B44; width: 104px;',
+      detDeliver: entregado ? 'Volver a pendiente' : 'Marcar entregado',
+      detRet: it.ret > 0 ? 'Desmarcar retirada' : 'Marcar retirada',
+      fields: [
+        { k: 'Horario', v: it.dia + ' · ' + it.desde + '–' + it.hasta + ' · ' + it.turno, style: 'margin: 2px 0 0; font-size: 14px; line-height: 20px; color: #ECEEF1;' },
+        { k: 'Entrega', v: it.cant + ' ' + it.tipo + ' · ' + (it.ubic || 'sin ubicación'), style: 'margin: 2px 0 0; font-size: 14px; line-height: 20px; color: #ECEEF1;' },
+        { k: 'Estado', v: st[0], style: 'margin: 2px 0 0; font-size: 14px; line-height: 20px; color: ' + st[1] + ';' },
+        { k: 'Retiradas', v: it.ret + ' de ' + it.cant, style: 'margin: 2px 0 0; font-size: 14px; line-height: 20px; color: #ECEEF1; font-family: \'Geist Mono\', ui-monospace, monospace;' },
+        { k: 'Se repite', v: it.fecha ? ('Solo el ' + longOf(it.fecha)) : 'Todas las semanas', style: 'margin: 2px 0 0; font-size: 14px; line-height: 20px; color: #ECEEF1;' },
+        { k: 'Último cambio', v: it.um + ' · ' + (it.op || 'sin operador'), style: 'margin: 2px 0 0; font-size: 14px; line-height: 20px; color: #A7AEB8;' }
+      ],
+      notaId: 'nota-' + it.id,
+      nota: nota,
+      notaDirty: draft !== undefined && draft !== (it.nota || ''),
+      notaLine: it.nota ? ('Nota: ' + it.nota) : 'Sin nota',
+      ubicLine: (it.ubic || 'Sin ubicación') + ' · ' + it.turno,
+      short: short,
+      showActs: !(confirm && confirm.id === it.id),
+      askCancel: !!(confirm && confirm.id === it.id && confirm.kind === 'cancel'),
+      askDel: !!(confirm && confirm.id === it.id && confirm.kind === 'del'),
+      onToggle: () => set({ openId: open ? '' : it.id, confirm: null }),
+      onOpenDay: () => set({ view: 'dia', day: it.dia === TODAY ? 'Hoy' : it.dia, openId: it.id }),
+      onDeliver: () => patch(it.id, { estado: entregado ? 'Pendiente' : 'Entregado' }, null),
+      onRet: () => patch(it.id, { ret: it.ret > 0 ? 0 : it.cant }, null),
+      onDone: () => patch(it.id, { estado: 'Realizado' }, { text: short + ' quedó como realizada.', undo: snapshot }),
+      onMissing: () => patch(it.id, { estado: 'Faltaron equipos' }, { text: short + ': faltaron equipos.', undo: snapshot }),
+      onTask: () => set({ status: { text: 'Tarea creada: “Revisar ' + it.curso + ' - ' + it.actividad + '”. Abriendo Tareas TIC…', undo: null } }),
+      onCancelAsk: () => set({ confirm: { id: it.id, kind: 'cancel' } }),
+      onDelAsk: () => set({ confirm: { id: it.id, kind: 'del' } }),
+      onNo: () => set({ confirm: null }),
+      onCancelYes: () => patch(it.id, { estado: 'Cancelado' }, { text: short + ' cancelada.', undo: snapshot }),
+      onDelYes: () => { patch(it.id, { del: true }, { text: short + ' borrada de la agenda.', undo: snapshot }); set({ openId: '' }); },
+      onNota: e => { const d = Object.assign({}, (self.state || {}).drafts || {}); d[it.id] = val(e); set({ drafts: d }); },
+      onNotaSave: () => { const d = Object.assign({}, (self.state || {}).drafts || {}); const v = d[it.id]; delete d[it.id]; set({ drafts: d }); patch(it.id, { nota: v }, { text: 'Nota guardada en ' + short + '.', undo: snapshot }); },
+      onNotaReset: () => { const d = Object.assign({}, (self.state || {}).drafts || {}); delete d[it.id]; set({ drafts: d }); }
+    };
+  };
+  const groupsOf = items => ['Mañana', 'Tarde'].map(t => {
+    const rows = items.filter(it => it.turno === t).sort(sortF).map(rowOf);
+    return { label: t, count: rows.length, rows: rows };
+  }).filter(g => g.rows.length);
+
+  // ---- Día
+  const dayItems = (day === 'Hoy' ? todayItems : visible.filter(it => it.dia === dayName).sort(sortF)).filter(kpiPass);
+
+  // ---- Mes
+  const mOff = s.mOff || 0;
+  const mSel = s.mSel || TODAY_ISO;
+  const mFirst = new Date(2026, 9 + mOff, 1);
+  const mY = mFirst.getFullYear(), mM = mFirst.getMonth();
+  const lead = (mFirst.getDay() + 6) % 7;
+  const month = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(mY, mM, 1 - lead + i);
+    const iso = isoOf(d);
+    const inM = d.getMonth() === mM;
+    const n = visible.filter(it => dateOf(it) === iso).filter(kpiPass).length;
+    const isT = iso === TODAY_ISO, isS = iso === mSel;
+    month.push({
+      n: d.getDate(), count: n ? n : '',
+      pr: isS ? 'true' : 'false',
+      aria: longOf(iso) + (n ? ', ' + n + ' actividades' : ', sin actividades') + (isT ? ', hoy' : ''),
+      style: (isS ? 'background: #1B1F24; border: 1px solid #353B44;' : 'background: transparent; border: 1px solid #262B32;') + ' color: #ECEEF1;',
+      numStyle: 'font-size: 13px; ' + (isT ? 'color: #5B9BFF; font-weight: 500; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px;' : (inM ? 'color: #ECEEF1;' : 'color: #7C8592;')),
+      on: () => set({ mSel: iso })
+    });
+  }
+  const mesItems = visible.filter(it => dateOf(it) === mSel).filter(kpiPass);
+
+  // ---- Semana
+  const week = DAYS.map(d => {
+    const items = visible.filter(it => it.dia === d).filter(kpiPass).sort(sortF);
+    const isT = d === TODAY;
+    return {
+      label: d + (isT ? ' · hoy' : ''), date: WEEK[d].slice(8) + '/10', count: items.length,
+      headStyle: 'font-size: 14px; font-weight: 600; color: ' + (isT ? '#5B9BFF' : '#ECEEF1') + ';',
+      items: items.map(rowOf), empty: items.length === 0
+    };
+  });
+
+  // ---- Historial
+  const doneList = visible.filter(it => it.estado === 'Realizado' || it.estado === 'Cancelado').map(rowOf);
+  const showAll = !!s.all;
+  const logAll = this.logSeed().map(l => {
+    const it = base.find(b => b.id === l[1]);
+    const same = l[2] === l[3];
+    return {
+      t: l[0], what: it.curso + ' · ' + it.actividad + ' · ' + SHORT[it.dia] + ' ' + it.desde, op: l[4],
+      ch: same ? 'Retiradas o nota' : (l[2] + ' → ' + l[3]),
+      chStyle: 'color: ' + (same ? '#A7AEB8' : (l[3] === 'Entregado' ? '#4FD1C5' : '#ECEEF1')) + ';'
+    };
+  });
+
+  // ---- Próximas de hoy y capacidad
+  const next = todayItems.filter(it => it.estado === 'Pendiente' || it.estado === 'Entregado').slice(0, 4).map(it => {
+    const st = stOf(it);
+    return { time: it.desde + '–' + it.hasta, label: it.curso + ' · ' + it.actividad, st: st[0], stStyle: 'font-size: 12px; color: ' + st[1] + ';', on: () => set({ view: 'dia', day: 'Hoy', openId: it.id, kpi: '' }) };
+  });
+  const ring = (libres, max) => {
+    const C = 2 * Math.PI * 15;
+    const f = Math.max(0, Math.min(1, libres / max));
+    const color = libres <= 0 ? '#FF6B6B' : (f <= 0.2 ? '#F5C04E' : '#A7AEB8');
+    return {
+      dash: (C * f).toFixed(1) + ' ' + C.toFixed(1), color: color,
+      arcStyle: libres <= 0 ? 'display: none;' : '',
+      numStyle: 'font-size: 16px; min-width: 22px; color: ' + (libres <= 0 ? '#FF6B6B' : (f <= 0.2 ? '#F5C04E' : '#ECEEF1')) + ';'
+    };
+  };
+  const capDayName = view === 'dia' ? dayName : TODAY;
+  const touchDay = all.filter(it => it.dia === capDayName && /touch/i.test(it.tipo));
+  const seen = {};
+  const capRows = [];
+  touchDay.slice().sort(sortF).forEach(it => {
+    const key = it.desde + '–' + it.hasta;
+    if (seen[key]) return; seen[key] = 1;
+    const users = touchDay.filter(o => overlaps(o, it));
+    const used = users.reduce((t, o) => t + (+o.cant || 0), 0);
+    const libres = 25 - used;
+    capRows.push(Object.assign({ time: key, libres: Math.max(0, libres), who: users.map(o => o.curso + ' ' + o.cant).join(' · '), aria: Math.max(0, libres) + ' de 25 Touch libres de ' + key }, ring(libres, 25)));
+  });
+
+  // ---- formulario de alta
+  const F0 = { rep: 'semanal', dia: 'Lunes', fecha: '', turno: 'Mañana', desde: '09:05', hasta: '09:55', curso: '', actividad: 'Glifing', tipo: 'Touch', cantidad: 1, ubic: '', nota: '' };
+  const f = Object.assign({}, F0, s.f || {});
+  const setF = p => set({ f: Object.assign({}, F0, (self.state || {}).f || {}, p), fErr: '' });
+  const picker = s.picker || '';
+  const fMax = CAP[f.tipo.toLowerCase()] || 99;
+  const fDia = f.rep === 'fecha' && f.fecha ? cap1(WD[dOf(f.fecha).getDay()]) : f.dia;
+  const fakeNew = { desde: f.desde, hasta: f.hasta };
+  const timeOk = toMin(f.desde) < toMin(f.hasta);
+  const users = timeOk ? all.filter(it => it.dia === fDia && it.tipo.toLowerCase() === f.tipo.toLowerCase() && overlaps(it, fakeNew)) : [];
+  const used = users.reduce((t, o) => t + (+o.cant || 0), 0);
+  const libres = fMax - used;
+  const conflict = used + f.cantidad > fMax;
+  const capR = ring(libres, fMax);
+  const fCap = Object.assign({}, capR, {
+    libres: Math.max(0, libres),
+    aria: Math.max(0, libres) + ' de ' + fMax + ' ' + f.tipo + ' libres',
+    line1: 'de ' + fMax + ' ' + f.tipo + ' libres el ' + SHORT[fDia] + ' de ' + f.desde + ' a ' + f.hasta,
+    line2: conflict ? ('Conflicto de disponibilidad: ' + f.tipo + ' supera ' + fMax + ' en ese horario' + (users.length ? ' (' + users.map(o => o.curso + ' · ' + o.actividad + ' ' + o.cant).join(', ') + ').' : '.')) : (users.length ? 'Ya reservado: ' + users.map(o => o.curso + ' ' + o.cant).join(', ') : 'Nadie más pidió ' + f.tipo + ' en esa franja.'),
+    line2Style: 'font-size: 12px; color: ' + (conflict ? '#FF6B6B' : '#A7AEB8') + ';'
+  });
+  const mods = [['08:15', '09:05'], ['09:05', '09:55'], ['10:10', '11:00'], ['11:00', '11:45'], ['13:30', '14:15'], ['14:35', '15:25'], ['15:25', '16:20']];
+  const pickVal = picker === 'desde' ? f.desde : f.hasta;
+  const setTime = (part, v) => {
+    const cur = (picker === 'desde' ? f.desde : f.hasta).split(':');
+    const nv = part === 'h' ? (v + ':' + cur[1]) : (cur[0] + ':' + v);
+    const p = {}; p[picker] = nv;
+    if (picker === 'desde') p.turno = toMin(nv) >= 13 * 60 ? 'Tarde' : 'Mañana';
+    setF(p);
+  };
+  const hrs = []; for (let h = 7; h <= 17; h++) hrs.push(pad(h));
+  const mns = []; for (let m = 0; m < 60; m += 5) mns.push(pad(m));
+  const cOff = s.cOff || 0;
+  const cFirst = new Date(2026, 9 + cOff, 1);
+  const cLead = (cFirst.getDay() + 6) % 7;
+  const cDays = new Date(cFirst.getFullYear(), cFirst.getMonth() + 1, 0).getDate();
+  const cal = [];
+  for (let i = 0; i < cLead; i++) cal.push({ n: '', aria: 'vacío', pr: 'false', style: 'visibility: hidden;', on: () => {} });
+  for (let d = 1; d <= cDays; d++) {
+    const dt = new Date(cFirst.getFullYear(), cFirst.getMonth(), d);
+    const iso = isoOf(dt);
+    const wkend = dt.getDay() === 0 || dt.getDay() === 6;
+    const past = iso < TODAY_ISO;
+    const sel = iso === f.fecha;
+    const off = wkend || past;
+    cal.push({
+      n: d, pr: sel ? 'true' : 'false',
+      aria: longOf(iso) + (off ? ', no disponible' : ''),
+      style: sel ? 'background: #5B9BFF; color: #0D0F12; border: 0;' : (off ? 'background: transparent; color: #7C8592; border: 0; cursor: default; text-decoration: line-through;' : 'background: transparent; color: #ECEEF1; border: 1px solid #262B32;') + (iso === TODAY_ISO && !sel ? ' color: #5B9BFF;' : ''),
+      on: () => { if (!off) { set({ f: Object.assign({}, f, { fecha: iso }), picker: '' }); } }
+    });
+  }
+  const errText = s.fErr || '';
+  const fm = {
+    isWeekly: f.rep === 'semanal', isDated: f.rep === 'fecha',
+    repWeekStyle: f.rep === 'semanal' ? segOn : segOff, repWeekPr: f.rep === 'semanal' ? 'true' : 'false',
+    repDateStyle: f.rep === 'fecha' ? segOn : segOff, repDatePr: f.rep === 'fecha' ? 'true' : 'false',
+    onRepWeek: () => { setF({ rep: 'semanal' }); set({ picker: '' }); },
+    onRepDate: () => { set({ f: Object.assign({}, f, { rep: 'fecha', fecha: f.fecha || '2026-10-19' }), picker: 'fecha' }); },
+    days: DAYS.map(d => ({ label: SHORT[d], pr: f.dia === d ? 'true' : 'false', style: f.dia === d ? segOn : segOff, on: () => setF({ dia: d }) })),
+    dateLabel: f.fecha ? cap1(longOf(f.fecha)) : 'Elegí una fecha',
+    dateExp: picker === 'fecha' ? 'true' : 'false',
+    onPickDate: () => set({ picker: picker === 'fecha' ? '' : 'fecha' }),
+    pickDate: picker === 'fecha' && f.rep === 'fecha',
+    calLabel: cap1(MONTHS[cFirst.getMonth()]) + ' ' + cFirst.getFullYear(),
+    onCalPrev: () => set({ cOff: Math.max(0, cOff - 1) }),
+    onCalNext: () => set({ cOff: Math.min(8, cOff + 1) }),
+    cal: cal,
+    tmStyle: f.turno === 'Mañana' ? segOn : segOff, tmPr: f.turno === 'Mañana' ? 'true' : 'false', onTm: () => setF({ turno: 'Mañana' }),
+    ttStyle: f.turno === 'Tarde' ? segOn : segOff, ttPr: f.turno === 'Tarde' ? 'true' : 'false', onTt: () => setF({ turno: 'Tarde' }),
+    mods: mods.map(m => { const on = f.desde === m[0] && f.hasta === m[1]; return { label: m[0] + '–' + m[1], pr: on ? 'true' : 'false', style: on ? chipOn : chipOff, on: () => { setF({ desde: m[0], hasta: m[1], turno: toMin(m[0]) >= 13 * 60 ? 'Tarde' : 'Mañana' }); set({ picker: '' }); } }; }),
+    desde: f.desde, hasta: f.hasta,
+    desdeExp: picker === 'desde' ? 'true' : 'false', hastaExp: picker === 'hasta' ? 'true' : 'false',
+    desdeBtn: 'font-size: 15px; gap: 10px;' + (picker === 'desde' ? ' border-color: #5B9BFF;' : ''),
+    hastaBtn: 'font-size: 15px; gap: 10px;' + (picker === 'hasta' ? ' border-color: #5B9BFF;' : '') + (timeOk ? '' : ' color: #FF6B6B;'),
+    onPickDesde: () => set({ picker: picker === 'desde' ? '' : 'desde' }),
+    onPickHasta: () => set({ picker: picker === 'hasta' ? '' : 'hasta' }),
+    pickTime: picker === 'desde' || picker === 'hasta',
+    pickLabel: picker === 'desde' ? 'Desde' : 'Hasta',
+    pickValue: pickVal,
+    onPickDone: () => set({ picker: '' }),
+    hours: hrs.map(h => { const on = pickVal.split(':')[0] === h; return { v: h, pr: on ? 'true' : 'false', style: (on ? chipOn : chipOff) + ' justify-content: center;', on: () => setTime('h', h) }; }),
+    mins: mns.map(m => { const on = pickVal.split(':')[1] === m; return { v: m, pr: on ? 'true' : 'false', style: (on ? chipOn : chipOff) + ' justify-content: center;', on: () => setTime('m', m) }; }),
+    timeErr: !timeOk,
+    curso: f.curso, actividad: f.actividad, ubic: f.ubic, nota: f.nota,
+    onCurso: e => setF({ curso: val(e) }), onAct: e => setF({ actividad: val(e) }), onUbic: e => setF({ ubic: val(e) }), onNota: e => setF({ nota: val(e) }),
+    sugg: ['Glifing', 'Matific', 'Programación', 'Reserva Touch', 'TIC Grupo completo'].map(g => ({ label: g, style: (f.actividad === g ? chipOn : chipOff), on: () => setF({ actividad: g }) })),
+    tipos: ['Touch', 'Plani', 'TIC', 'Dell'].map(t => ({ label: t, pr: f.tipo === t ? 'true' : 'false', style: f.tipo === t ? segOn : segOff, on: () => setF({ tipo: t, cantidad: Math.min(f.cantidad, CAP[t.toLowerCase()]) }) })),
+    max: fMax, cantidad: f.cantidad,
+    onMinus: () => setF({ cantidad: Math.max(1, f.cantidad - 1) }),
+    onPlus: () => setF({ cantidad: Math.min(fMax, f.cantidad + 1) }),
+    cap: fCap,
+    errShow: !!errText, err: errText,
+    canSave: !conflict && timeOk, blocked: conflict || !timeOk,
+    summary: (f.rep === 'fecha' && f.fecha ? cap1(longOf(f.fecha)) : 'Todos los ' + fDia.toLowerCase()) + ' · ' + f.desde + '–' + f.hasta + ' · ' + f.cantidad + ' ' + f.tipo + (f.curso ? ' para ' + f.curso : ''),
+    onSave: () => {
+      if (!f.curso.trim()) { set({ fErr: 'Escribí el curso para guardar la actividad.' }); return; }
+      const id = 'AGN' + (added.length + 1);
+      const it = { id: id, dia: fDia, turno: f.turno, desde: f.desde, hasta: f.hasta, curso: f.curso.trim(), actividad: f.actividad || 'Actividad', tipo: f.tipo, cant: f.cantidad, ubic: f.ubic, estado: 'Pendiente', ret: 0, op: 'Bauti G.', um: '16/10 09:20', fecha: f.rep === 'fecha' ? f.fecha : '', nota: f.nota };
+      set({ added: added.concat([it]), form: false, picker: '', f: null, fErr: '', view: 'dia', day: (fDia === TODAY ? 'Hoy' : fDia), openId: id, status: { text: 'Actividad creada: ' + it.curso + ' · ' + it.actividad + ' · ' + SHORT[fDia] + ' ' + it.desde + '–' + it.hasta + '.', undo: null } });
+    }
+  };
+
+  // ---- menú
+  const mk = (k, label, count) => {
+    const on = k === 'agenda';
+    return { label: label, d: I[k], count: count || '', current: on ? 'page' : 'false', style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;', bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;' };
+  };
+
+  const listItems = view === 'mes' ? mesItems : dayItems;
+  const groups = groupsOf(listItems);
+  const st = s.status || null;
+  const feedTok = s.rotated ? '7c1e…b04a' : '[token]';
+  return {
+    ops: [mk('home', 'Inicio'), mk('loans', 'Préstamos', '[N]'), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC', String(todayItems.length)), mk('schedules', 'Horarios'), mk('rooms', 'Estado aulas')],
+    mgmt: [mk('tasks', 'Tareas TIC', '[N]'), mk('tickets', 'Tickets'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')],
+    data: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')],
+    res: [mk('knowledge', 'Base de conocimiento'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')],
+    updText: s.upd ? 'Actualizado recién' : 'Actualizado hace 12 s',
+    headTitle: view === 'dia' ? (day === 'Hoy' ? 'Hoy, viernes 16' : dayName + ' (todas las semanas)') : (view === 'semana' ? 'Semana de lunes a viernes' : (view === 'mes' ? 'Mes de ' + MONTHS[mM] : 'Historial')),
+    subHoy: todayItems.length, subVis: visible.length, subPend: todayItems.filter(it => it.estado === 'Pendiente').length,
+    onRefresh: () => set({ upd: 1 }),
+    syncOpen: !!s.sync, syncExp: s.sync ? 'true' : 'false',
+    onSync: () => set({ sync: !s.sync, rotAsk: false, feedMsg: '' }),
+    formOpen: !!s.form, formExp: s.form ? 'true' : 'false',
+    onForm: () => set({ form: !s.form, picker: '', fErr: '' }),
+    feedUrl: 'https://techasset.bauhub.online/calendar/' + feedTok + '.ics',
+    onCopyFeed: () => set({ feedMsg: 'Enlace copiado. Pegalo en tu calendario.' }),
+    onOpenG: () => set({ feedMsg: 'Se abrió Google Calendar en otra pestaña.' }),
+    onRotAsk: () => set({ rotAsk: true, feedMsg: '' }),
+    onRotYes: () => set({ rotAsk: false, rotated: true, feedMsg: 'Enlace nuevo generado. El anterior ya no funciona.' }),
+    onRotNo: () => set({ rotAsk: false }),
+    rotAsk: !!s.rotAsk,
+    feedMsgShow: !!s.feedMsg, feedMsg: s.feedMsg || '',
+    fm: fm,
+    views: [['dia', 'Día'], ['semana', 'Semana'], ['mes', 'Mes'], ['hist', 'Historial']].map(v => ({ label: v[1], pr: view === v[0] ? 'true' : 'false', style: view === v[0] ? segOn : segOff, on: () => set({ view: v[0], confirm: null }) })),
+    dayBtns: ['Hoy'].concat(DAYS).map(d => { const on = view === 'dia' && day === d; return { label: d === 'Hoy' ? 'Hoy' : SHORT[d], pr: on ? 'true' : 'false', style: on ? segOn : segOff, on: () => set({ day: d, view: 'dia', confirm: null }) }; }),
+    turnos: ['Completo', 'Mañana', 'Tarde'].map(t => ({ label: t, pr: turno === t ? 'true' : 'false', style: turno === t ? segOn : segOff, on: () => set({ turno: t }) })),
+    filtOpen: !!s.filt, filtExp: s.filt ? 'true' : 'false', onFilt: () => set({ filt: !s.filt }),
+    filtSummary: 'Turno ' + turno.toLowerCase() + ' · ' + (kpiDef && kpi ? kpiDef[1] : 'todas las actividades'),
+    kpis: kpis, kpiOn: !!kpi, kpiLabel: kpiDef ? kpiDef[1] : '', onKpiClear: () => set({ kpi: '' }),
+    colLStyle: view === 'semana' ? 'flex-basis: 100%;' : '',
+    isMes: view === 'mes', isSemana: view === 'semana', isHist: view === 'hist',
+    showList: view === 'dia' || view === 'mes',
+    monthLabel: cap1(MONTHS[mM]) + ' ' + mY,
+    month: month,
+    onMPrev: () => set({ mOff: mOff - 1 }), onMNext: () => set({ mOff: mOff + 1 }), onMToday: () => set({ mOff: 0, mSel: TODAY_ISO }),
+    listTitle: view === 'mes' ? cap1(longOf(mSel)) : (day === 'Hoy' ? 'Hoy · viernes 16 de octubre' : dayName),
+    listSub: listItems.length + (listItems.length === 1 ? ' actividad' : ' actividades') + (view === 'dia' && day !== 'Hoy' ? ' · todas las semanas' : ''),
+    groups: groups, listEmpty: groups.length === 0,
+    emptyText: view === 'mes' ? 'Sin actividades para este día.' : 'Sin actividades en el filtro actual.',
+    statusShow: !!st, statusText: st ? st.text : '', statusUndo: !!(st && st.undo),
+    onUndo: () => { const cur = (self.state || {}).status; if (cur && cur.undo) set({ ov: cur.undo, status: null, confirm: null }); },
+    onStatusX: () => set({ status: null }),
+    onCopy: () => { const n = (listItems.length || all.length); set({ status: { text: 'Resumen copiado: ' + n + ' líneas (día, horario, curso, actividad, equipos y estado).', undo: null } }); },
+    onCsv: () => { const n = view === 'semana' ? visible.filter(kpiPass).length : (listItems.length || all.length); set({ status: { text: 'Se descargó agenda-tic.csv con ' + n + ' filas.', undo: null } }); },
+    week: week,
+    done: doneList, doneEmpty: doneList.length === 0,
+    olderText: showAll ? 'Mostrando también las terminadas de hace más de 4 meses.' : 'Hay [N] actividades terminadas de hace más de 4 meses.',
+    olderBtn: !showAll,
+    onOlder: () => set({ all: true }),
+    log: s.logMore ? logAll : logAll.slice(0, 6),
+    logMore: !s.logMore,
+    onLogMore: () => set({ logMore: true }),
+    next: next, nextEmpty: next.length === 0,
+    capDay: capDayName.toLowerCase(),
+    capRows: capRows, capEmpty: capRows.length === 0
+  };
+}
+}
+</script>
+</body>
+</html>

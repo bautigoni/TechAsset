@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Accesos rápidos</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input{font-family:inherit}
+.nv:hover,.ib:hover,.gh:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.sec:hover{border-color:#4A515C !important}
+.pri:hover{background:#8DBBFF !important}
+.fld:focus-within{border-color:#5B9BFF !important}
+input::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.fld input:focus-visible{outline:none}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+
+/* Menú lateral (Menu-A): 232px; rail de 56px bajo 1100px; oculto bajo 768px */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}.sb-head{justify-content:center}.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}.sb-grpt{display:none}.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}.sb-user{padding:0;justify-content:center}.sb-hide{display:none !important}
+}
+
+/* Contenido y barra superior */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.pad{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0;padding:24px 32px 32px;box-sizing:border-box}
+.bnav{display:none}
+@media (max-width:1023px){.tb-ctx{display:none !important}}
+@media (max-width:767px){
+.sb{display:none}.tb{padding:0 8px 0 16px}.tb-collapse{display:none !important}.tb-btn-t{display:none !important}
+.pad{padding:16px 16px 24px}.pal{padding:12px 16px !important}
+.bnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:sticky;bottom:0;height:64px;border-top:1px solid #262B32;background:#0D0F12}
+}
+
+/* Accesos: lista agrupada + columna lateral que baja cuando no entra */
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.ac{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.ac-main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.ac-side{flex:1 1 300px;max-width:340px;min-width:0;display:flex;flex-direction:column;gap:16px}
+@media (max-width:1179px) and (min-width:1100px),(max-width:1003px){.ac-side{max-width:none;flex-basis:100%}}
+.grp{container-type:inline-size;container-name:grp;overflow:hidden}
+.lrow{display:flex;align-items:center;gap:4px;min-height:56px;padding:0 8px 0 16px;border-top:1px solid #262B32;box-sizing:border-box}
+.lrow:hover{background:#1B1F24}
+.l-a{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:12px;min-height:56px;text-decoration:none;color:#ECEEF1}
+.l-a:hover{color:#ECEEF1}
+.l-dom{flex:0 1 230px;min-width:0}
+.l-act{flex:none;display:flex;gap:2px}
+@container grp (max-width:619px){.l-dom{display:none}}
+@container grp (max-width:459px){.l-act-t{display:none}}
+.frm{display:flex;flex-wrap:wrap;gap:12px 16px}
+.frm > .f-col{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.pal-cols{display:flex;flex-wrap:wrap;gap:16px 32px}
+.pal-col{flex:1 1 320px;min-width:0}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 900px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- MENÚ LATERAL (Menu-A, Accesos rápidos activo) -->
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="ib sb-sede" aria-label="Cambiar de sede: Northfield Puertos">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; color: #ECEEF1; box-sizing: border-box;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Northfield Puertos</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)" aria-expanded="{{palAria}}" onClick="{{onTogglePal}}" style="{{sbSearchStyle}}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide ell" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <sc-for list="{{navGroups}}" as="ng" hint-placeholder-count="4">
+        <div class="sb-grp">
+          <div class="sb-grpt">{{ng.title}}</div>
+          <sc-for list="{{ng.items}}" as="n" hint-placeholder-count="4">
+            <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+              <span style="{{n.bar}}"></span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+              <span class="sb-txt sb-hide">{{n.label}}</span>
+              <span class="sb-cnt sb-hide">{{n.count}}</span>
+            </a>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nv nvi" aria-label="Configuración" style="color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div class="sb-user">
+        <span aria-label="Bauti G., Jefe TIC" style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #ECEEF1; box-sizing: border-box;">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+        <button type="button" class="ib sb-hide" aria-label="Opciones de cuenta" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- BARRA SUPERIOR (sin el botón del rayo: los accesos se abren desde Ctrl K) -->
+    <header class="tb">
+      <button type="button" class="ib tb-collapse" aria-label="Contraer menú (Ctrl B)" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <h1 class="ell" style="margin: 0; flex: 0 1 auto; font-size: 16px; line-height: 24px; font-weight: 600;">Accesos rápidos</h1>
+      <span class="tb-ctx" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-ctx ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">Links de NFPT · se abren en una pestaña nueva</span>
+      <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+      <button type="button" class="sec nw" aria-label="Abrir el Asistente" style="flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5"></path></svg>
+        <span class="tb-btn-t">Asistente</span>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <!-- CTRL K: banda en línea bajo la barra superior que empuja la página (reemplaza al popover del rayo) -->
+    <sc-if value="{{palOpen}}" hint-placeholder-val="{{ false }}">
+      <section class="pal" role="search" aria-label="Buscar o ir a" style="padding: 16px 32px 12px; background: #14171B; border-bottom: 1px solid #262B32;">
+        <div class="fld" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 6px 0 14px; background: #0D0F12; border: 1px solid #5B9BFF; border-radius: 6px; box-sizing: border-box; color: #A7AEB8;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <span class="vh">Buscar sección o acceso rápido</span>
+          <input type="text" value="{{pq}}" onInput="{{onPq}}" onKeyDown="{{onPalKey}}" placeholder="Escribí una sección o un acceso: listas, drive, tickets…" role="combobox" aria-expanded="true" aria-controls="pal-res" style="flex: 1; min-width: 0; height: 42px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 16px; text-overflow: ellipsis;">
+          <button type="button" class="ib nw" onClick="{{onClosePal}}" aria-label="Cerrar (Esc)" style="flex: none; height: 32px; padding: 0 8px; display: flex; align-items: center; gap: 6px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Esc</span>
+          </button>
+        </div>
+        <div id="pal-res" class="pal-cols" role="listbox" aria-label="Resultados" style="margin-top: 12px;">
+          <div class="pal-col">
+            <div style="padding: 4px 10px 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Accesos rápidos · {{palLinksN}}</div>
+            <sc-for list="{{palLinks}}" as="p" hint-placeholder-count="5">
+              <a href="#" role="option" aria-selected="{{p.sel}}" onClick="{{p.onClick}}" style="{{p.style}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: #A7AEB8;"><path d="{{p.d}}"></path></svg>
+                <span class="ell" style="flex: 1 1 auto; font-size: 14px; color: #ECEEF1;">{{p.t}}</span>
+                <span class="ell" style="flex: 0 1 180px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{p.dom}}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: #7C8592;"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+              </a>
+            </sc-for>
+            <sc-if value="{{palNoLinks}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 8px 10px; font-size: 13px; color: #7C8592;">Ningún acceso coincide.</div>
+            </sc-if>
+          </div>
+          <div class="pal-col">
+            <div style="padding: 4px 10px 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Ir a</div>
+            <sc-for list="{{palViews}}" as="v" hint-placeholder-count="4">
+              <a href="#" role="option" aria-selected="{{v.sel}}" style="{{v.style}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: #A7AEB8;"><path d="{{v.d}}"></path></svg>
+                <span class="ell" style="flex: 1 1 auto; font-size: 14px; color: #ECEEF1;">{{v.t}}</span>
+                <span class="nw" style="flex: none; font-size: 12px; color: #7C8592;">{{v.grp}}</span>
+              </a>
+            </sc-for>
+            <sc-if value="{{palNoViews}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 8px 10px; font-size: 13px; color: #7C8592;">Ninguna sección coincide.</div>
+            </sc-if>
+          </div>
+        </div>
+        <div class="wrap" style="gap: 4px 16px; margin-top: 10px; padding: 8px 10px 0; border-top: 1px solid #262B32; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #7C8592;">
+          <span class="nw">↑ ↓ moverse</span>
+          <span class="nw">Enter abrir</span>
+          <span class="nw">Esc cerrar</span>
+          <span style="flex: 1 1 auto;"></span>
+          <a href="#" class="nw" style="font-family: Geist, system-ui, sans-serif; font-size: 12px; text-decoration: none;">Administrar accesos</a>
+        </div>
+      </section>
+    </sc-if>
+
+    <div class="pad">
+      <div class="ac">
+
+        <!-- ============ LISTA AGRUPADA ============ -->
+        <div class="ac-main">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+            <label class="fld" style="flex: 1 1 260px; max-width: 380px; min-width: 0; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 6px 0 10px; background: #14171B; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box; color: #A7AEB8;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+              <span class="vh">Filtrar accesos</span>
+              <input type="search" value="{{q}}" onInput="{{onQ}}" placeholder="Filtrar por nombre, descripción o link" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px; text-overflow: ellipsis;">
+            </label>
+            <span class="nw" style="flex: 1 1 auto; font-size: 13px; color: #7C8592;">{{countLabel}}</span>
+            <button type="button" class="pri nw" onClick="{{onNew}}" aria-expanded="{{newAria}}" style="flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+              Nuevo acceso
+            </button>
+          </div>
+
+          <sc-if value="{{savedStatus}}" hint-placeholder-val="{{ false }}">
+            <div role="status" class="card" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 44px; padding: 6px 6px 6px 16px; font-size: 13px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD68A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M20 6 9 17l-5-5"></path></svg>
+              <span style="flex: 1 1 200px; min-width: 0;">{{savedText}}</span>
+              <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{onCloseStatus}}" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+              </button>
+            </div>
+          </sc-if>
+
+          <!-- Alta en línea (empuja la lista) -->
+          <sc-if value="{{newOpen}}" hint-placeholder-val="{{ false }}">
+            <section class="card" aria-label="Nuevo acceso rápido" style="padding: 16px;">
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px;">
+                <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Nuevo acceso</h2>
+                <span style="font-size: 12px; color: #7C8592;">Enter guarda · Esc cancela</span>
+              </div>
+              <div class="frm">
+                <div class="f-col">
+                  <label for="qa-n-t" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Nombre</label>
+                  <div class="fld" style="{{form.tStyle}}">
+                    <input id="qa-n-t" type="text" value="{{form.t}}" onInput="{{form.onT}}" onKeyDown="{{form.onKey}}" placeholder="Ej.: Listas EP" aria-invalid="{{form.tInvalid}}" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px;">
+                  </div>
+                  <sc-if value="{{form.hasErrT}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #FF6B6B;">Poné un nombre.</span></sc-if>
+                </div>
+                <div class="f-col" style="flex-grow: 2;">
+                  <label for="qa-n-u" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Link</label>
+                  <div class="fld" style="{{form.uStyle}}">
+                    <input id="qa-n-u" type="text" inputmode="url" value="{{form.u}}" onInput="{{form.onU}}" onKeyDown="{{form.onKey}}" placeholder="https://…" aria-invalid="{{form.uInvalid}}" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; text-overflow: ellipsis;">
+                  </div>
+                  <sc-if value="{{form.hasErrU}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #FF6B6B;">{{form.errU}}</span></sc-if>
+                  <sc-if value="{{form.hasSuggest}}" hint-placeholder-val="{{ false }}">
+                    <span class="wrap" style="gap: 4px 8px; font-size: 12px; color: #A7AEB8;">
+                      <span class="ell">¿Querés decir {{form.suggest}}?</span>
+                      <button type="button" class="gh nw" onClick="{{form.onSuggest}}" style="height: 24px; padding: 0 8px; background: transparent; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 12px; cursor: pointer;">Usar</button>
+                    </span>
+                  </sc-if>
+                </div>
+                <div class="f-col">
+                  <label for="qa-n-d" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Descripción <span style="color: #7C8592; font-weight: 400;">(opcional)</span></label>
+                  <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                    <input id="qa-n-d" type="text" value="{{form.d}}" onInput="{{form.onD}}" onKeyDown="{{form.onKey}}" placeholder="Para qué sirve" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px;">
+                  </div>
+                </div>
+                <div class="f-col">
+                  <span id="qa-n-c" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Categoría</span>
+                  <button type="button" aria-labelledby="qa-n-c" aria-expanded="{{form.catAria}}" onClick="{{form.onToggleCat}}" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box; color: #ECEEF1; font-size: 14px; cursor: pointer; text-align: left;">
+                    <span class="ell" style="flex: 1;">{{form.c}}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{form.catChevron}}"><path d="m6 9 6 6 6-6"></path></svg>
+                  </button>
+                  <sc-if value="{{form.catOpen}}" hint-placeholder-val="{{ false }}">
+                    <div role="listbox" aria-labelledby="qa-n-c" style="display: flex; flex-direction: column; gap: 2px; padding: 4px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px;">
+                      <sc-for list="{{form.catOpts}}" as="o" hint-placeholder-count="2">
+                        <button type="button" role="option" aria-selected="{{o.sel}}" onClick="{{o.onClick}}" style="{{o.style}}"><span class="ell" style="flex: 1;">{{o.label}}</span></button>
+                      </sc-for>
+                      <div class="fld" style="display: flex; align-items: center; height: 34px; margin-top: 2px; padding: 0 10px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                        <span class="vh">Nueva categoría</span>
+                        <input type="text" value="{{form.newCat}}" onInput="{{form.onNewCat}}" onKeyDown="{{form.onNewCatKey}}" placeholder="Nueva categoría y Enter" style="flex: 1; min-width: 0; height: 30px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 13px;">
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+              <div class="wrap" style="justify-content: flex-end; margin-top: 14px;">
+                <button type="button" class="gh nw" onClick="{{form.onCancel}}" style="height: 36px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; font-weight: 500; cursor: pointer;">Cancelar</button>
+                <button type="button" class="pri nw" onClick="{{form.onSave}}" style="height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Guardar acceso</button>
+              </div>
+            </section>
+          </sc-if>
+
+          <!-- Grupos por categoría -->
+          <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+            <section class="card grp" aria-label="{{g.name}}">
+              <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 48px; padding: 14px 16px 10px; box-sizing: border-box;">
+                <h2 class="ell" style="margin: 0; font-size: 14px; font-weight: 600;">{{g.name}}</h2>
+                <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{g.n}}</span>
+                <span class="ell" style="flex: 1 1 160px; font-size: 12px; color: #7C8592; text-align: right;">{{g.note}}</span>
+              </div>
+              <ul style="margin: 0; padding: 0; list-style: none;">
+                <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
+                  <li>
+                    <!-- Vista -->
+                    <sc-if value="{{r.isView}}" hint-placeholder-val="{{ true }}">
+                      <div class="lrow">
+                        <a href="#" target="_blank" rel="noreferrer" class="l-a" aria-label="{{r.aria}}">
+                          <span style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: #1B1F24; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box; color: #A7AEB8;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.d}}"></path></svg>
+                          </span>
+                          <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
+                            <span class="ell" style="font-size: 14px; font-weight: 500; line-height: 20px;">{{r.t}}</span>
+                            <span class="ell" style="font-size: 13px; line-height: 18px; color: #A7AEB8;">{{r.desc}}</span>
+                          </span>
+                          <span class="l-dom ell" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{r.dom}}</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-right: 8px;"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+                        </a>
+                        <div class="l-act">
+                          <button type="button" class="gh nw" onClick="{{r.onEdit}}" aria-label="{{r.editAria}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg>
+                            <span class="l-act-t">Editar</span>
+                          </button>
+                          <button type="button" class="gh nw" onClick="{{r.onAskDel}}" aria-label="{{r.delAria}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2"></path></svg>
+                            <span class="l-act-t">Borrar</span>
+                          </button>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <!-- Confirmación de borrado en la fila -->
+                    <sc-if value="{{r.isConfirm}}" hint-placeholder-val="{{ false }}">
+                      <div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-height: 56px; padding: 8px 8px 8px 16px; border-top: 1px solid #262B32; background: #1B1F24; box-sizing: border-box;">
+                        <span style="flex: 1 1 260px; min-width: 0; font-size: 14px;">¿Borrar “{{r.t}}”? <span style="color: #A7AEB8;">Deja de verse para toda la sede.</span></span>
+                        <div class="wrap" style="flex: none; gap: 4px;">
+                          <button type="button" class="sec nw" onClick="{{r.onDel}}" style="height: 32px; padding: 0 12px; background: #14171B; border: 1px solid #353B44; border-radius: 6px; color: #FF6B6B; font-size: 13px; font-weight: 600; cursor: pointer;">Borrar</button>
+                          <button type="button" class="gh nw" onClick="{{r.onCancelDel}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer;">Cancelar</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <!-- Línea de estado con Deshacer, donde estaba la fila -->
+                    <sc-if value="{{r.isUndo}}" hint-placeholder-val="{{ false }}">
+                      <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-height: 56px; padding: 8px 8px 8px 16px; border-top: 1px solid #262B32; box-sizing: border-box; font-size: 14px; color: #A7AEB8;">
+                        <span style="flex: 1 1 220px; min-width: 0;">Borraste “{{r.t}}”.</span>
+                        <button type="button" class="gh nw" onClick="{{r.onUndo}}" style="height: 32px; padding: 0 12px; background: transparent; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer;">Deshacer</button>
+                      </div>
+                    </sc-if>
+                    <!-- Edición en la fila -->
+                    <sc-if value="{{r.isEdit}}" hint-placeholder-val="{{ false }}">
+                      <div style="padding: 14px 16px 16px; border-top: 1px solid #262B32; background: #0D0F12;">
+                        <div class="frm">
+                          <div class="f-col">
+                            <label for="qa-e-t" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Nombre</label>
+                            <div class="fld" style="{{r.form.tStyle}}">
+                              <input id="qa-e-t" type="text" value="{{r.form.t}}" onInput="{{r.form.onT}}" onKeyDown="{{r.form.onKey}}" aria-invalid="{{r.form.tInvalid}}" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px;">
+                            </div>
+                            <sc-if value="{{r.form.hasErrT}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #FF6B6B;">Poné un nombre.</span></sc-if>
+                          </div>
+                          <div class="f-col" style="flex-grow: 2;">
+                            <label for="qa-e-u" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Link</label>
+                            <div class="fld" style="{{r.form.uStyle}}">
+                              <input id="qa-e-u" type="text" inputmode="url" value="{{r.form.u}}" onInput="{{r.form.onU}}" onKeyDown="{{r.form.onKey}}" aria-invalid="{{r.form.uInvalid}}" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; text-overflow: ellipsis;">
+                            </div>
+                            <sc-if value="{{r.form.hasErrU}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #FF6B6B;">{{r.form.errU}}</span></sc-if>
+                          </div>
+                          <div class="f-col">
+                            <label for="qa-e-d" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Descripción</label>
+                            <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #14171B; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                              <input id="qa-e-d" type="text" value="{{r.form.d}}" onInput="{{r.form.onD}}" onKeyDown="{{r.form.onKey}}" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px; text-overflow: ellipsis;">
+                            </div>
+                          </div>
+                          <div class="f-col">
+                            <span id="qa-e-c" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Categoría</span>
+                            <button type="button" aria-labelledby="qa-e-c" aria-expanded="{{r.form.catAria}}" onClick="{{r.form.onToggleCat}}" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; background: #14171B; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box; color: #ECEEF1; font-size: 14px; cursor: pointer; text-align: left;">
+                              <span class="ell" style="flex: 1;">{{r.form.c}}</span>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{r.form.catChevron}}"><path d="m6 9 6 6 6-6"></path></svg>
+                            </button>
+                            <sc-if value="{{r.form.catOpen}}" hint-placeholder-val="{{ false }}">
+                              <div role="listbox" aria-labelledby="qa-e-c" style="display: flex; flex-direction: column; gap: 2px; padding: 4px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px;">
+                                <sc-for list="{{r.form.catOpts}}" as="eo" hint-placeholder-count="2">
+                                  <button type="button" role="option" aria-selected="{{eo.sel}}" onClick="{{eo.onClick}}" style="{{eo.style}}"><span class="ell" style="flex: 1;">{{eo.label}}</span></button>
+                                </sc-for>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </div>
+                        <div class="wrap" style="justify-content: flex-end; margin-top: 14px;">
+                          <span style="flex: 1 1 auto; font-size: 12px; color: #7C8592;">Enter guarda · Esc cancela</span>
+                          <button type="button" class="gh nw" onClick="{{r.form.onCancel}}" style="height: 36px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; font-weight: 500; cursor: pointer;">Cancelar</button>
+                          <button type="button" class="pri nw" onClick="{{r.form.onSave}}" style="height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Guardar cambios</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </li>
+                </sc-for>
+              </ul>
+            </section>
+          </sc-for>
+
+          <sc-if value="{{noResults}}" hint-placeholder-val="{{ false }}">
+            <div class="card" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 20px 16px;">
+              <span style="flex: 1 1 240px; min-width: 0; font-size: 14px; color: #A7AEB8;">{{noResultsText}}</span>
+              <button type="button" class="sec nw" onClick="{{onClearQ}}" style="height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer;">Limpiar filtro</button>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- ============ COLUMNA LATERAL ============ -->
+        <aside class="ac-side" aria-label="Más sobre accesos">
+          <section class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Desde cualquier pantalla</div>
+            <h2 style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Abrilos con Ctrl K</h2>
+            <p style="margin: 0; font-size: 13px; line-height: 19px; color: #A7AEB8;">Escribí parte del nombre y apretá Enter: se abre en una pestaña nueva. Reemplaza al botón del rayo de la barra superior.</p>
+            <div class="wrap" style="gap: 8px;">
+              <button type="button" class="sec nw" onClick="{{onTogglePal}}" aria-expanded="{{palAria}}" style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">
+                {{palBtnLabel}}
+                <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+              </button>
+            </div>
+          </section>
+
+          <sc-if value="{{showHanding}}" hint-placeholder-val="{{ true }}">
+            <section class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+              <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Handing está configurado</h2>
+              <p style="margin: 0; font-size: 13px; line-height: 19px; color: #A7AEB8;">La sede tiene un formulario de mantenimiento en Handing. Si lo querés acá, agregalo como acceso.</p>
+              <span class="ell" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">northfield-puertos.handing.co/formulario/solicitar-mantenimiento</span>
+              <div>
+                <button type="button" class="sec nw" onClick="{{onAddHanding}}" style="height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer;">Agregar como acceso</button>
+              </div>
+            </section>
+          </sc-if>
+
+          <section class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Scripts .bat</h2>
+            <p style="margin: 0; font-size: 13px; line-height: 19px; color: #A7AEB8;">Activación de Windows / Office y reinicio de WiFi + DNS se descargan desde Herramientas.</p>
+            <a href="#" class="nw" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; text-decoration: none;">
+              Ir a Herramientas › Descargas
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+            </a>
+          </section>
+        </aside>
+      </div>
+    </div>
+
+    <nav class="bnav" aria-label="Navegación principal">
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 12px;"><span class="nw">Inicio</span></a>
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 12px;"><span class="nw">Préstamos</span></a>
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 12px;"><span class="nw">Escanear</span></a>
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 12px;"><span class="nw">Agenda</span></a>
+      <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ECEEF1; text-decoration: none; font-size: 12px;"><span class="nw">Más</span></a>
+    </nav>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
+    sheet: 'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4M8 13h2M14 13h2M8 17h2M14 17h2',
+    folder: 'M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z',
+    globe: C(12, 12, 10) + 'M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20'
+  };
+}
+seed() {
+  // quick_links activos de NFPT en la base local (orden: categoría y título).
+  return [
+    { id: 1, t: 'UC - Hoja Equipamientos', u: 'https://docs.google.com/spreadsheets/d/1o38QJvERlXDPk8ZerIAsX956vJnGkJgKUTIcQq97HCs/edit?gid=986970667#gid=986970667', d: 'UC - Hoja equipamiento NorthField y CDF', c: 'Hoja UC', by: 'Bauti' },
+    { id: 2, t: 'Listas EP', u: 'https://docs.google.com/spreadsheets/d/1ppF2IBLxlLUTZ5HS35_C8SOy07VsjtI2WC9JGlqec7U/edit?gid=1611662790#gid=1611662790', d: 'Planilla de listas de Escuela Primaria', c: 'Institucionales', by: 'Sistema' },
+    { id: 3, t: 'Listas ES', u: 'https://docs.google.com/spreadsheets/d/1uVsdBk3McaT8WQI7Svv3e2wRvx6i5XpV52GlEasVJ0w/edit?gid=1617997660#gid=1617997660', d: 'Planilla de listas de Escuela Secundaria', c: 'Institucionales', by: 'Sistema' },
+    { id: 4, t: 'Hosking', u: 'https://northfield.hosking.ar/', d: 'Portal Northfield Hosking', c: 'Institucionales', by: 'Sistema' },
+    { id: 5, t: 'Tiknology / InvGate', u: 'https://tikno.sd.cloud.invgate.net/incident/create', d: 'Crear incidente en mesa de ayuda', c: 'Institucionales', by: 'Sistema' },
+    { id: 6, t: 'Drive TIC', u: 'https://drive.google.com/drive/folders/0AGIDB9iIjXK4Uk9PVA', d: 'Carpeta general del equipo TIC', c: 'Institucionales', by: 'Sistema' },
+    { id: 7, t: 'Drive recursos presentaciones/pantalla', u: 'https://drive.google.com/drive/folders/1uhfmwUrYrrWAEtTUGxjCO4xLoGVlGUEV', d: 'Logos, imágenes y recursos visuales institucionales', c: 'Institucionales', by: 'Sistema' }
+  ];
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const set = p => self.setState(p);
+  const I = this.icons();
+  const val = e => (e && e.target ? e.target.value : '');
+  const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const HANDING = 'https://northfield-puertos.handing.co/formulario/solicitar-mantenimiento';
+
+  // ---------- Menú lateral ----------
+  const mk = (k, label, count) => {
+    const on = k === 'links';
+    return {
+      key: k, label: label, d: I[k], count: count || '', current: on ? 'page' : 'false',
+      style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;',
+      bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;'
+    };
+  };
+  const navGroups = [
+    { title: 'Operación', items: [mk('home', 'Inicio'), mk('loans', 'Préstamos', '[N]'), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC'), mk('rooms', 'Estado aulas')] },
+    { title: 'Gestión', items: [mk('tasks', 'Tareas TIC', '[N]'), mk('tickets', 'Tickets'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')] },
+    { title: 'Inventario y datos', items: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')] },
+    { title: 'Recursos', items: [mk('knowledge', 'Base de conocimiento'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')] }
+  ];
+
+  // ---------- Datos ----------
+  const links = s.links || this.seed();
+  const removed = s.removed || [];
+  const status = s.status || null;
+  const q = s.q || '';
+  const nq = norm(q).trim();
+  const domain = u => String(u).replace(/^https?:\/\//, '').split(/[/?#]/)[0];
+  const kind = u => (/docs\.google\.com\/spreadsheets/.test(u) ? I.sheet : /drive\.google\.com/.test(u) ? I.folder : I.globe);
+  const match = l => !nq || norm(l.t + ' ' + l.d + ' ' + l.u + ' ' + l.c).indexOf(nq) >= 0;
+  const live = links.filter(l => removed.indexOf(l.id) < 0);
+  const cats = [];
+  live.forEach(l => { if (cats.indexOf(l.c) < 0) cats.push(l.c); });
+
+  // ---------- Formulario (alta o edición; uno abierto a la vez) ----------
+  const f = s.f || { t: '', u: '', d: '', c: 'Institucionales' };
+  const errs = s.errs || {};
+  const isUrl = u => /^https?:\/\/\S+\.\S+/i.test(String(u).trim());
+  const bad = u => /^\s*(javascript|data|vbscript):/i.test(u);
+  const looksDomain = u => !!u && !/^https?:\/\//i.test(u) && !bad(u) && /^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(u.trim());
+  const closeForm = () => set({ newOpen: false, editId: null, f: null, errs: {}, catOpen: false, newCat: '' });
+  const save = () => {
+    const t = String(f.t || '').trim();
+    const u = String(f.u || '').trim();
+    const e = {};
+    if (!t) e.t = true;
+    if (!isUrl(u)) e.u = bad(u) ? 'Ese tipo de link no se permite: solo http:// o https://.' : 'Solo se permiten links que empiecen con http:// o https://.';
+    if (e.t || e.u) { set({ errs: e }); return; }
+    const c = String(f.c || '').trim() || 'Sin categoría';
+    if (s.editId) {
+      set({ links: links.map(l => (l.id === s.editId ? Object.assign({}, l, { t: t, u: u, d: f.d || '', c: c }) : l)), status: { kind: 'saved', text: 'Guardaste “' + t + '”.' }, newOpen: false, editId: null, f: null, errs: {}, catOpen: false });
+    } else {
+      const id = 100 + links.length;
+      set({ links: links.concat([{ id: id, t: t, u: u, d: f.d || '', c: c, by: 'Bauti' }]), status: { kind: 'saved', text: 'Agregaste “' + t + '” a ' + c + '.' }, newOpen: false, f: null, errs: {}, catOpen: false, q: '' });
+    }
+  };
+  const patch = p => set({ f: Object.assign({}, f, p), errs: Object.assign({}, errs, p.t !== undefined ? { t: false } : {}, p.u !== undefined ? { u: '' } : {}) });
+  const choices = cats.indexOf(f.c) < 0 && f.c ? cats.concat([f.c]) : cats;
+  const fieldStyle = (err, bg) => 'display: flex; align-items: center; height: 36px; padding: 0 10px; background: ' + bg + '; border: 1px solid ' + (err ? '#FF6B6B' : '#353B44') + '; border-radius: 6px; box-sizing: border-box;';
+  const formVals = bg => ({
+    t: f.t || '', u: f.u || '', d: f.d || '', c: f.c || 'Sin categoría',
+    tStyle: fieldStyle(errs.t, bg), uStyle: fieldStyle(errs.u, bg),
+    hasErrT: !!errs.t, tInvalid: errs.t ? 'true' : 'false',
+    hasErrU: !!errs.u, errU: errs.u || '', uInvalid: errs.u ? 'true' : 'false',
+    hasSuggest: !errs.u && looksDomain(f.u || ''), suggest: 'https://' + String(f.u || '').trim(),
+    onSuggest: () => patch({ u: 'https://' + String(f.u || '').trim() }),
+    onT: e => patch({ t: val(e) }), onU: e => patch({ u: val(e) }), onD: e => patch({ d: val(e) }),
+    onKey: e => { if (!e) return; if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); save(); } else if (e.key === 'Escape') closeForm(); },
+    catOpen: !!s.catOpen, catAria: s.catOpen ? 'true' : 'false',
+    catChevron: 'flex: none; transform: rotate(' + (s.catOpen ? '180' : '0') + 'deg);',
+    onToggleCat: () => set({ catOpen: !s.catOpen }),
+    catOpts: choices.map(c => ({
+      label: c, sel: c === f.c ? 'true' : 'false',
+      style: 'display: flex; align-items: center; height: 32px; padding: 0 10px; border: 0; border-radius: 4px; font-size: 14px; text-align: left; cursor: pointer; ' + (c === f.c ? 'background: #262B32; color: #ECEEF1;' : 'background: transparent; color: #A7AEB8;'),
+      onClick: () => set({ f: Object.assign({}, f, { c: c }), catOpen: false })
+    })),
+    newCat: s.newCat || '',
+    onNewCat: e => set({ newCat: val(e) }),
+    onNewCatKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); const c = String(s.newCat || '').trim(); if (c) set({ f: Object.assign({}, f, { c: c }), newCat: '', catOpen: false }); } },
+    onSave: save, onCancel: closeForm
+  });
+  const form = formVals('#0D0F12');
+  const editForm = formVals('#14171B');
+
+  // ---------- Grupos ----------
+  const shown = links.filter(l => match(l) && (removed.indexOf(l.id) < 0 || (status && status.kind === 'deleted' && status.id === l.id)));
+  const gNames = [];
+  shown.forEach(l => { if (gNames.indexOf(l.c) < 0) gNames.push(l.c); });
+  gNames.sort((a, b) => a.localeCompare(b, 'es'));
+  const groups = gNames.map(name => {
+    const ls = shown.filter(l => l.c === name).sort((a, b) => a.t.localeCompare(b.t, 'es'));
+    const liveN = ls.filter(l => removed.indexOf(l.id) < 0).length;
+    const sys = ls.every(l => l.by === 'Sistema');
+    const owners = [];
+    ls.forEach(l => { if (l.by !== 'Sistema' && owners.indexOf(l.by) < 0) owners.push(l.by); });
+    return {
+      name: name, n: String(liveN),
+      note: sys ? 'Cargados al crear la sede' : 'Agregados por ' + owners.join(', '),
+      rows: ls.map(l => {
+        const gone = removed.indexOf(l.id) >= 0;
+        const editing = s.editId === l.id;
+        const confirming = s.delId === l.id && !gone;
+        return {
+          isView: !gone && !editing && !confirming, isEdit: editing, isConfirm: confirming, isUndo: gone,
+          t: l.t, desc: l.d || l.u, dom: domain(l.u), d: kind(l.u),
+          aria: l.t + ', se abre en una pestaña nueva',
+          editAria: 'Editar ' + l.t, delAria: 'Borrar ' + l.t,
+          form: editForm,
+          onEdit: () => set({ editId: l.id, newOpen: false, delId: null, f: { t: l.t, u: l.u, d: l.d, c: l.c }, errs: {}, catOpen: false }),
+          onAskDel: () => set({ delId: l.id, editId: null }),
+          onCancelDel: () => set({ delId: null }),
+          onDel: () => set({ removed: removed.concat([l.id]), delId: null, status: { kind: 'deleted', id: l.id } }),
+          onUndo: () => set({ removed: removed.filter(x => x !== l.id), status: null })
+        };
+      })
+    };
+  });
+
+  // ---------- Ctrl K ----------
+  const pal = !!s.pal;
+  const pq = s.pq || '';
+  const npq = norm(pq).trim();
+  const pi = s.pi || 0;
+  const pLinks = live.filter(l => !npq || norm(l.t + ' ' + l.d + ' ' + l.c).indexOf(npq) >= 0).slice(0, 7);
+  const allViews = [];
+  navGroups.forEach(g => g.items.forEach(n => allViews.push({ t: n.label, d: n.d, grp: g.title })));
+  allViews.push({ t: 'Configuración', d: I.tools, grp: 'Cuenta' });
+  const pViews = allViews.filter(v => (npq ? norm(v.t).indexOf(npq) >= 0 : ['Préstamos', 'Dispositivos', 'Agenda TIC', 'Tickets'].indexOf(v.t) >= 0)).slice(0, 6);
+  const optStyle = on => 'display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; border-radius: 6px; text-decoration: none; ' + (on ? 'background: #1B1F24;' : 'background: transparent;');
+  const totalOpts = pLinks.length + pViews.length;
+
+  return {
+    navGroups: navGroups,
+    palAria: pal ? 'true' : 'false',
+    sbSearchStyle: pal ? 'border-color: #5B9BFF; color: #ECEEF1;' : '',
+    onTogglePal: () => set({ pal: !pal, pq: '', pi: 0 }),
+    palBtnLabel: pal ? 'Cerrar Ctrl K' : 'Probar Ctrl K',
+    palOpen: pal,
+    pq: pq,
+    onPq: e => set({ pq: val(e), pi: 0 }),
+    onPalKey: e => {
+      if (!e) return;
+      if (e.key === 'Escape') set({ pal: false });
+      else if (e.key === 'ArrowDown') { if (e.preventDefault) e.preventDefault(); set({ pi: Math.min(totalOpts - 1, pi + 1) }); }
+      else if (e.key === 'ArrowUp') { if (e.preventDefault) e.preventDefault(); set({ pi: Math.max(0, pi - 1) }); }
+      else if (e.key === 'Enter') set({ pal: false });
+    },
+    onClosePal: () => set({ pal: false }),
+    palLinksN: String(pLinks.length),
+    palLinks: pLinks.map((l, i) => ({ t: l.t, dom: domain(l.u), d: kind(l.u), sel: i === pi ? 'true' : 'false', style: optStyle(i === pi), onClick: () => set({ pal: false }) })),
+    palNoLinks: pLinks.length === 0,
+    palViews: pViews.map((v, i) => ({ t: v.t, d: v.d, grp: v.grp, sel: i + pLinks.length === pi ? 'true' : 'false', style: optStyle(i + pLinks.length === pi) })),
+    palNoViews: pViews.length === 0,
+
+    q: q,
+    onQ: e => set({ q: val(e) }),
+    onClearQ: () => set({ q: '' }),
+    countLabel: live.length + ' accesos en ' + cats.length + (cats.length === 1 ? ' categoría' : ' categorías'),
+    newOpen: !!s.newOpen,
+    newAria: s.newOpen ? 'true' : 'false',
+    onNew: () => set({ newOpen: !s.newOpen, editId: null, delId: null, f: { t: '', u: '', d: '', c: 'Institucionales' }, errs: {}, catOpen: false }),
+    form: form,
+    savedStatus: !!(status && status.kind === 'saved'),
+    savedText: status && status.kind === 'saved' ? status.text : '',
+    onCloseStatus: () => set({ status: null }),
+    groups: groups,
+    noResults: groups.length === 0,
+    noResultsText: nq ? 'Ningún acceso coincide con “' + q.trim() + '”.' : 'Todavía no hay accesos cargados. Agregá el primero con Nuevo acceso.',
+    showHanding: !live.some(l => l.u === HANDING),
+    onAddHanding: () => set({ newOpen: true, editId: null, delId: null, f: { t: 'Handing', u: HANDING, d: '', c: 'Institucionales' }, errs: {}, catOpen: false })
+  };
+}
+}
+</script>
+</body>
+</html>

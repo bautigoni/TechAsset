@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Lenguaje visual Grafito</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+</style>
+</helmet>
+<div style="min-height: 1100px; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; box-sizing: border-box; padding: 56px 64px; display: flex; flex-direction: column; gap: 40px">
+
+  <header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; border-bottom: 1px solid #262B32; padding-bottom: 32px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592">TechAsset · rediseño</span>
+      <h1 style="margin: 0; font-size: 56px; font-weight: 600; letter-spacing: -0.02em">Grafito</h1>
+      <p style="margin: 0; font-size: 16px; color: #A7AEB8; max-width: 620px; line-height: 1.5">Fondo grafito neutro, un solo acento azul y números en mono. Menos cajas y más jerarquía: lo importante se ve primero y cada sección dice qué significa su dato.</p>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap">
+      <button type="button" style="height: 36px; padding: 0 16px; border-radius: 6px; border: 0; background: #5B9BFF; color: #0D0F12; font: 600 14px Geist, sans-serif">Nuevo préstamo</button>
+      <button type="button" style="height: 36px; padding: 0 16px; border-radius: 6px; border: 1px solid #353B44; background: #1B1F24; color: #ECEEF1; font: 500 14px Geist, sans-serif">Exportar CSV</button>
+      <button type="button" style="height: 36px; padding: 0 12px; border-radius: 6px; border: 0; background: transparent; color: #A7AEB8; font: 500 14px Geist, sans-serif">Cancelar</button>
+    </div>
+  </header>
+
+  <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+    <sc-for list="{{principles}}" as="p" hint-placeholder-count="4">
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #5B9BFF">{{p.n}}</span>
+        <strong style="font-size: 16px; font-weight: 600">{{p.title}}</strong>
+        <span style="font-size: 13px; color: #A7AEB8; line-height: 1.5">{{p.text}}</span>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px">
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592">Color</span>
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600">Superficies, acento y datos</h2>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{surfaces}}" as="c" hint-placeholder-count="5">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div style="{{c.swatch}}"></div>
+            <span style="font-size: 12px; color: #ECEEF1">{{c.name}}</span>
+            <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #7C8592">{{c.hex}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{series}}" as="c" hint-placeholder-count="6">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div style="{{c.swatch}}"></div>
+            <span style="font-size: 12px; color: #ECEEF1">{{c.name}}</span>
+            <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #7C8592">{{c.hex}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(91,214,138,.12); color: #5BD68A; font-size: 12px; font-weight: 500"><i style="width: 6px; height: 6px; border-radius: 99px; background: #5BD68A"></i>Disponible</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(108,168,255,.12); color: #4FD1C5; font-size: 12px; font-weight: 500"><i style="width: 6px; height: 6px; border-radius: 99px; background: #4FD1C5"></i>Prestado</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(245,192,78,.12); color: #F5C04E; font-size: 12px; font-weight: 500"><i style="width: 6px; height: 6px; border-radius: 99px; background: #F5C04E"></i>Vence hoy</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(255,107,107,.12); color: #FF6B6B; font-size: 12px; font-weight: 500"><i style="width: 6px; height: 6px; border-radius: 99px; background: #FF6B6B"></i>Fuera de servicio</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; background: #1B1F24; color: #A7AEB8; font-size: 12px; font-weight: 500"><i style="width: 6px; height: 6px; border-radius: 99px; background: #7C8592"></i>Sin revisar</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592">Tipografía</span>
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600">Geist para leer, Geist Mono para contar</h2>
+      </div>
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 56px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #7C8592">40 / 600</span><span style="font-family: 'Geist Mono', monospace; font-size: 40px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -0.02em">1019</span><span style="font-size: 13px; color: #A7AEB8">préstamos en el último año</span></div>
+        <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 56px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #7C8592">28 / 600</span><span style="font-size: 28px; font-weight: 600; letter-spacing: -0.01em">Analítica</span></div>
+        <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 56px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #7C8592">20 / 600</span><span style="font-size: 20px; font-weight: 600">El parque está 61% revisado</span></div>
+        <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 56px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #7C8592">14 / 400</span><span style="font-size: 14px; color: #A7AEB8">Quedan 56 equipos sin condición cargada. Revisalos desde Inventario.</span></div>
+        <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 56px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #7C8592">13 mono</span><span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #ECEEF1">Touch 34 · D1436 · 10:40</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592">Componentes</span>
+      <h2 style="margin: 0; font-size: 20px; font-weight: 600">Piezas que se repiten en todas las pantallas</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <span style="font-size: 12px; color: #7C8592">Menú · item activo y contador</span>
+        <div style="display: flex; flex-direction: column; gap: 2px; background: #0D0F12; border: 1px solid #262B32; border-radius: 8px; padding: 8px">
+          <span style="font-size: 11px; color: #7C8592; padding: 6px 10px 4px; font-weight: 500">Operación</span>
+          <a href="#" style="position: relative; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; color: #A7AEB8; text-decoration: none; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>Inicio</a>
+          <a href="#" style="position: relative; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; color: #ECEEF1; background: #1B1F24; text-decoration: none; font-size: 14px; box-shadow: inset 2px 0 0 #5B9BFF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg><span style="flex: 1">Préstamos</span><span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #A7AEB8">23</span></a>
+          <a href="#" style="position: relative; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; color: #A7AEB8; text-decoration: none; font-size: 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8"></path></svg>Dispositivos</a>
+        </div>
+      </div>
+
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <span style="font-size: 12px; color: #7C8592">Período · segmented control (reemplaza los 5 botones gigantes)</span>
+        <div role="group" aria-label="Período" style="display: inline-flex; align-self: flex-start; background: #0D0F12; border: 1px solid #262B32; border-radius: 8px; padding: 3px; gap: 2px">
+          <button type="button" style="height: 28px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: #A7AEB8; font: 500 13px Geist, sans-serif">Semana</button>
+          <button type="button" style="height: 28px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: #A7AEB8; font: 500 13px Geist, sans-serif">Mes</button>
+          <button type="button" style="height: 28px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: #A7AEB8; font: 500 13px Geist, sans-serif">3 meses</button>
+          <button type="button" aria-pressed="true" style="height: 28px; padding: 0 12px; border: 0; border-radius: 5px; background: #262B32; color: #ECEEF1; font: 500 13px Geist, sans-serif">Año</button>
+          <button type="button" style="height: 28px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: #A7AEB8; font: 500 13px Geist, sans-serif">Todo</button>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #A7AEB8">Buscar equipo
+          <input type="text" value="touch 34" style="height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid #353B44; background: #1B1F24; color: #ECEEF1; font: 400 14px Geist, sans-serif; outline: none"></input>
+        </label>
+      </div>
+
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+        <span style="font-size: 12px; color: #7C8592">KPI · número, contexto y tendencia</span>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 13px; color: #A7AEB8">Préstamos · último año</span>
+            <span style="font-family: 'Geist Mono', monospace; font-size: 40px; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums">1019</span>
+            <span style="font-size: 12px; color: #A7AEB8">vs año anterior: <span style="font-family: 'Geist Mono', monospace">[ant.]</span></span>
+          </div>
+          <svg width="120" height="44" viewBox="0 0 120 44" role="img" aria-label="Tendencia de préstamos de ejemplo"><polyline points="{{spark}}" fill="none" stroke="#5B9BFF" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; border-top: 1px solid #262B32; padding-top: 32px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592">Se va</span>
+      <sc-for list="{{out}}" as="t" hint-placeholder-count="5">
+        <div style="display: flex; gap: 10px; font-size: 14px; color: #A7AEB8"><span style="color: #FF6B6B; font-family: 'Geist Mono', monospace">−</span>{{t}}</div>
+      </sc-for>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592">Entra</span>
+      <sc-for list="{{ins}}" as="t" hint-placeholder-count="5">
+        <div style="display: flex; gap: 10px; font-size: 14px; color: #ECEEF1"><span style="color: #5B9BFF; font-family: 'Geist Mono', monospace">+</span>{{t}}</div>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sw = hex => 'height: 56px; border-radius: 8px; border: 1px solid #353B44; background: ' + hex;
+    const surfaces = [
+      { name: 'Fondo', hex: '#0D0F12' }, { name: 'Superficie', hex: '#14171B' }, { name: 'Elevada', hex: '#1B1F24' },
+      { name: 'Línea', hex: '#262B32' }, { name: 'Texto', hex: '#ECEEF1' }
+    ].map(c => ({ ...c, swatch: sw(c.hex) }));
+    const series = [
+      { name: 'Acento', hex: '#5B9BFF' }, { name: 'Turquesa', hex: '#4FD1C5' }, { name: 'Naranja', hex: '#FF9F5A' },
+      { name: 'Violeta', hex: '#B79CFF' }, { name: 'Rosa', hex: '#F28FD0' }, { name: 'Resto', hex: '#3A414B' }
+    ].map(c => ({ ...c, swatch: sw(c.hex) }));
+    const vals = [12, 18, 15, 22, 30, 26, 34, 29, 38, 33, 41, 36];
+    const max = Math.max(...vals);
+    const spark = vals.map((v, i) => (i * (118 / (vals.length - 1)) + 1).toFixed(1) + ',' + (42 - (v / max) * 38).toFixed(1)).join(' ');
+    return {
+      principles: [
+        { n: '01', title: 'Un solo acento', text: 'azul solo para lo activo, lo primario y la serie principal. El resto es gris con jerarquía.' },
+        { n: '02', title: 'El dato dice algo', text: 'Cada sección se titula con su conclusión, no con el nombre del gráfico.' },
+        { n: '03', title: 'Denso pero aireado', text: 'Filas de 40px, números en mono alineados, grupos separados por espacio y no por cajas.' },
+        { n: '04', title: 'Orientarse al scrollear', text: 'Índices y encabezados fijos: siempre sabés en qué sección estás.' }
+      ],
+      surfaces, series, spark,
+      out: ['Fondo azul marino y bordes azules brillantes', 'Botones gigantes para elegir el período', 'Menú de 20 items sueltos con íconos en cajitas', 'Cards todas iguales apiladas sin jerarquía', 'Selectores “Top 10 / Vertical” en cada gráfico'],
+      ins: ['Grafito neutro con un acento azul', 'Segmented control chico y fijo arriba', 'Menú agrupado por área, con buscador Ctrl K', 'Secciones con título-conclusión y tamaños según importancia', 'Gráficos ya elegidos para cada dato, sin configurar']
+    };
+  }
+}
+</script>
+</body>
+</html>

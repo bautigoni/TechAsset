@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Base de conocimiento mobile</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+a:focus-visible,button:focus-visible,input:focus-visible,[contenteditable]:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.fld input:focus-visible{outline:none}
+.fld:focus-within{border-color:#5B9BFF !important}
+input::placeholder{color:#7C8592}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.art h3{margin:20px 0 8px;font-size:16px;line-height:24px;font-weight:600;color:#ECEEF1}
+.art h3:first-child{margin-top:0}
+.art p{margin:0 0 12px;font-size:15px;line-height:24px;color:#ECEEF1}
+.art ul{margin:0 0 12px;padding-left:20px;font-size:15px;line-height:24px;color:#ECEEF1}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1040px; display: flex; flex-direction: column; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- BARRA SUPERIOR MOBILE: volver a Más, título, Asistente (ícono), campana -->
+  <header style="height: 56px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 4px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+    <button type="button" aria-label="{{backAria}}" onClick="{{onBack}}" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+    </button>
+    <h1 class="ell" style="flex: 1 1 auto; margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">{{topTitle}}</h1>
+    <button type="button" aria-label="Abrir el Asistente" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5"></path></svg>
+    </button>
+    <button type="button" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+      <span style="position: absolute; top: 4px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+    </button>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+
+    <!-- ================= LISTA ================= -->
+    <sc-if value="{{isList}}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px 16px 8px;">
+        <label class="fld" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 4px 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box; color: #A7AEB8;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <span class="vh">Buscar en la base de conocimiento</span>
+          <input type="search" value="{{q}}" onInput="{{onQ}}" placeholder="Buscar procedimiento, WiFi…" style="flex: 1; min-width: 0; height: 42px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 16px; text-overflow: ellipsis;">
+          <sc-if value="{{hasQ}}" hint-placeholder-val="{{ false }}">
+            <button type="button" aria-label="Limpiar búsqueda" onClick="{{onClearQ}}" style="width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          </sc-if>
+        </label>
+        <div class="wrap" role="group" aria-label="Filtrar por categoría" style="gap: 6px;">
+          <sc-for list="{{catBtns}}" as="c" hint-placeholder-count="4">
+            <button type="button" class="nw" aria-pressed="{{c.pressed}}" onClick="{{c.onClick}}" style="{{c.style}}">
+              <span class="ell">{{c.label}}</span>
+              <span style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{c.n}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 44px;">
+          <span style="flex: 1 1 auto; min-width: 0; font-size: 13px; color: #A7AEB8;">{{countLabel}}</span>
+          <button type="button" onClick="{{onNew}}" class="nw" style="flex: none; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 16px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+            Nuevo artículo
+          </button>
+        </div>
+      </div>
+
+      <sc-if value="{{listStatus}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="display: flex; align-items: center; gap: 12px; min-height: 56px; margin: 0 16px 8px; padding: 6px 6px 6px 14px; background: #14171B; border: 1px solid #262B32; border-radius: 10px; box-sizing: border-box; font-size: 14px; color: #ECEEF1;">
+          <span style="flex: 1 1 auto; min-width: 0;">{{listStatusText}}</span>
+          <button type="button" class="nw" onClick="{{onUndo}}" style="flex: none; height: 44px; padding: 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">Deshacer</button>
+        </div>
+      </sc-if>
+
+      <ul style="margin: 0; padding: 0; list-style: none; border-top: 1px solid #262B32;">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+          <li style="border-bottom: 1px solid #262B32;">
+            <button type="button" onClick="{{r.onClick}}" style="width: 100%; display: flex; flex-direction: column; gap: 4px; min-height: 64px; padding: 14px 16px; background: transparent; border: 0; text-align: left; color: #ECEEF1; cursor: pointer; box-sizing: border-box;">
+              <span style="display: flex; align-items: baseline; gap: 12px; min-width: 0;">
+                <span class="ell" style="flex: 1 1 auto; font-size: 15px; line-height: 22px; font-weight: 500;">{{r.t}}</span>
+                <span class="nw" style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{r.d}}</span>
+              </span>
+              <span class="clamp2" style="font-size: 14px; line-height: 20px; color: #A7AEB8;">{{r.ex}}</span>
+              <span style="display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 12px; color: #7C8592;">
+                <span class="ell" style="flex: 0 1 auto;">{{r.c}}</span>
+                <span class="ell" style="flex: 1 1 auto; font-family: 'Geist Mono', ui-monospace, monospace;">{{r.tags}}</span>
+                <sc-if value="{{r.hasAtt}}" hint-placeholder-val="{{ true }}">
+                  <span class="nw" style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace;">{{r.attLabel}}</span>
+                </sc-if>
+              </span>
+            </button>
+          </li>
+        </sc-for>
+      </ul>
+      <sc-if value="{{noResults}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 24px 16px;">
+          <span style="font-size: 15px; color: #ECEEF1;">{{noResultsText}}</span>
+          <span style="font-size: 14px; line-height: 20px; color: #A7AEB8;">La búsqueda mira título, categoría, tags y texto, sin importar tildes.</span>
+          <button type="button" class="nw" onClick="{{onClearAll}}" style="height: 44px; padding: 0 16px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">Limpiar filtros</button>
+        </div>
+      </sc-if>
+      <div style="padding: 12px 16px 20px; font-size: 13px; color: #7C8592;">{{footLabel}}</div>
+    </sc-if>
+
+    <!-- ================= LECTURA (vista propia) ================= -->
+    <sc-if value="{{isRead}}" hint-placeholder-val="{{ false }}">
+      <article style="display: flex; flex-direction: column;">
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 16px; border-bottom: 1px solid #262B32;">
+          <div class="wrap" style="gap: 4px 8px; font-size: 12px; color: #7C8592;">
+            <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; font-size: 11px;">{{cur.c}}</span>
+            <span aria-hidden="true">·</span>
+            <span class="nw">Editado por {{cur.by}}</span>
+            <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace;">{{cur.d}}</span>
+          </div>
+          <h2 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600;">{{cur.t}}</h2>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #7C8592;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5"></path></svg>
+            <span class="ell">El Asistente lo toma como contexto.</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" onClick="{{onEdit}}" class="nw" style="flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 15px; font-weight: 500; cursor: pointer;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path></svg>
+              Editar
+            </button>
+            <button type="button" onClick="{{onAskDelete}}" aria-expanded="{{confirmDelAria}}" class="nw" style="flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 12px; background: transparent; border: 1px solid #262B32; border-radius: 6px; color: #A7AEB8; font-size: 15px; font-weight: 500; cursor: pointer;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2"></path></svg>
+              Eliminar
+            </button>
+          </div>
+          <sc-if value="{{confirmDel}}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #14171B; border: 1px solid #353B44; border-radius: 10px;">
+              <span style="font-size: 15px; font-weight: 500;">¿Eliminar este artículo?</span>
+              <span style="font-size: 14px; line-height: 20px; color: #A7AEB8;">Deja de verse y el Asistente no lo consulta más. Podés deshacerlo enseguida.</span>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" onClick="{{onDelete}}" class="nw" style="flex: 1 1 0; min-width: 0; height: 44px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #FF6B6B; font-size: 15px; font-weight: 600; cursor: pointer;">Eliminar</button>
+                <button type="button" onClick="{{onCancelDelete}}" class="nw" style="flex: 1 1 0; min-width: 0; height: 44px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 15px; font-weight: 500; cursor: pointer;">Cancelar</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+        <div class="art" style="padding: 20px 16px 8px;">
+          <h3>[Título de sección]</h3>
+          <p>[Párrafo del artículo, con la tipografía y los colores de la app.]</p>
+          <ul>
+            <li>[Paso 1]</li>
+            <li>[Paso 2, con <strong>negrita</strong> si el texto la tiene]</li>
+            <li>[Paso 3]</li>
+          </ul>
+          <p>[Párrafo del artículo.]</p>
+        </div>
+        <sc-if value="{{cur.hasTags}}" hint-placeholder-val="{{ true }}">
+          <div class="wrap" style="gap: 6px; padding: 4px 16px 16px;">
+            <sc-for list="{{cur.tagBtns}}" as="tg" hint-placeholder-count="2">
+              <button type="button" class="nw" onClick="{{tg.onClick}}" aria-label="{{tg.aria}}" style="height: 44px; padding: 0 12px; background: transparent; border: 1px solid #262B32; border-radius: 6px; color: #A7AEB8; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; cursor: pointer;">#{{tg.t}}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{cur.hasAtt}}" hint-placeholder-val="{{ true }}">
+          <section aria-label="Adjuntos" style="border-top: 1px solid #262B32; padding: 12px 0 16px;">
+            <div style="display: flex; align-items: baseline; gap: 8px; padding: 0 16px 4px;">
+              <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Adjuntos</h3>
+              <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{cur.attN}}</span>
+            </div>
+            <ul style="margin: 0; padding: 0; list-style: none;">
+              <sc-for list="{{cur.att}}" as="f" hint-placeholder-count="2">
+                <li>
+                  <a href="#" aria-label="{{f.aria}}" style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; text-decoration: none; color: #ECEEF1;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4"></path></svg>
+                    <span class="ell" style="flex: 1 1 auto; font-size: 15px;">{{f.n}}</span>
+                    <span class="nw" style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{f.k}}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B9BFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+                  </a>
+                </li>
+              </sc-for>
+            </ul>
+          </section>
+        </sc-if>
+      </article>
+    </sc-if>
+
+    <!-- ================= EDITOR (vista propia) ================= -->
+    <sc-if value="{{isEdit}}" hint-placeholder-val="{{ false }}">
+      <form onSubmit="{{onSubmit}}" style="display: flex; flex-direction: column; gap: 16px; padding: 16px;">
+        <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">{{editEyebrow}}</div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="kbm-t" style="font-size: 14px; font-weight: 500; color: #A7AEB8;">Título</label>
+          <div class="fld" style="{{titleFieldStyle}}">
+            <input id="kbm-t" type="text" value="{{draftT}}" onInput="{{onDraftT}}" placeholder="[título del procedimiento]" aria-invalid="{{titleInvalid}}" style="flex: 1; min-width: 0; height: 42px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 16px; text-overflow: ellipsis;">
+          </div>
+          <sc-if value="{{titleErr}}" hint-placeholder-val="{{ false }}">
+            <span style="font-size: 14px; color: #FF6B6B;">Falta el título.</span>
+          </sc-if>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span id="kbm-c" style="font-size: 14px; font-weight: 500; color: #A7AEB8;">Categoría</span>
+          <button type="button" aria-labelledby="kbm-c" aria-expanded="{{catOpenAria}}" onClick="{{onToggleCat}}" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box; color: #ECEEF1; font-size: 16px; cursor: pointer; text-align: left;">
+            <span class="ell" style="flex: 1;">{{draftC}}</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{catChevron}}"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          <sc-if value="{{catOpen}}" hint-placeholder-val="{{ false }}">
+            <div role="listbox" aria-labelledby="kbm-c" style="display: flex; flex-direction: column; gap: 2px; padding: 4px; background: #14171B; border: 1px solid #353B44; border-radius: 6px;">
+              <sc-for list="{{catOpts}}" as="o" hint-placeholder-count="3">
+                <button type="button" role="option" aria-selected="{{o.sel}}" onClick="{{o.onClick}}" style="{{o.style}}">
+                  <span class="ell" style="flex: 1;">{{o.label}}</span>
+                  <sc-if value="{{o.on}}" hint-placeholder-val="{{ false }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M20 6 9 17l-5-5"></path></svg>
+                  </sc-if>
+                </button>
+              </sc-for>
+              <div class="fld" style="display: flex; align-items: center; height: 44px; margin-top: 2px; padding: 0 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                <span class="vh">Nueva categoría</span>
+                <input type="text" value="{{newCat}}" onInput="{{onNewCat}}" onKeyDown="{{onNewCatKey}}" placeholder="Nueva categoría y Enter" style="flex: 1; min-width: 0; height: 40px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 16px;">
+              </div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="kbm-tag" style="font-size: 14px; font-weight: 500; color: #A7AEB8;">Tags</label>
+          <div class="fld" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 44px; padding: 5px 8px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+            <sc-for list="{{draftTags}}" as="dt" hint-placeholder-count="2">
+              <span class="nw" style="display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 0 0 10px; background: #14171B; border: 1px solid #353B44; border-radius: 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #ECEEF1; box-sizing: border-box;">
+                {{dt.t}}
+                <button type="button" aria-label="{{dt.aria}}" onClick="{{dt.onRemove}}" style="width: 32px; height: 30px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 4px; color: #A7AEB8; cursor: pointer;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+              </span>
+            </sc-for>
+            <input id="kbm-tag" type="text" value="{{tagInput}}" onInput="{{onTagInput}}" onKeyDown="{{onTagKey}}" placeholder="Agregar tag" style="flex: 1 1 100px; min-width: 0; height: 32px; padding: 0 4px; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 16px;">
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span id="kbm-body" style="font-size: 14px; font-weight: 500; color: #A7AEB8;">Contenido</span>
+          <div style="border: 1px solid #353B44; border-radius: 6px; background: #0D0F12; overflow: hidden;">
+            <div role="toolbar" aria-label="Formato" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 4px; border-bottom: 1px solid #262B32; background: #14171B;">
+              <sc-for list="{{fmtBtns}}" as="b" hint-placeholder-count="4">
+                <button type="button" aria-pressed="{{b.pressed}}" aria-label="{{b.label}}" onClick="{{b.onClick}}" style="{{b.style}}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{b.d}}"></path></svg>
+                  <span class="ell" style="font-size: 12px;">{{b.label}}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div class="art" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="kbm-body" style="min-height: 200px; padding: 14px; outline: none;">
+              <h3>[Título de sección]</h3>
+              <p>[Texto del artículo.]</p>
+              <ul>
+                <li><strong>[Paso 1]</strong></li>
+                <li>[Paso 2]</li>
+              </ul>
+            </div>
+          </div>
+          <span style="font-size: 13px; line-height: 19px; color: #7C8592;">Podés pegar desde Docs o Word. Al guardar se quitan scripts, estilos e iframes.</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <span style="font-size: 14px; font-weight: 500; color: #A7AEB8;">Adjuntos</span>
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{draftAttN}}</span>
+          </div>
+          <sc-if value="{{hasDraftAtt}}" hint-placeholder-val="{{ true }}">
+            <ul style="margin: 0; padding: 0; list-style: none; border: 1px solid #262B32; border-radius: 6px;">
+              <sc-for list="{{draftAtt}}" as="df" hint-placeholder-count="2">
+                <li style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-height: 52px; padding: 4px 4px 4px 12px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+                  <span style="flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <span class="ell" style="font-size: 15px; color: #ECEEF1;">{{df.n}}</span>
+                    <span class="ell" style="{{df.metaStyle}}">{{df.meta}}</span>
+                  </span>
+                  <sc-if value="{{df.failed}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="nw" onClick="{{df.onRetry}}" style="height: 44px; padding: 0 12px; background: transparent; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">Reintentar</button>
+                  </sc-if>
+                  <button type="button" aria-label="{{df.aria}}" onClick="{{df.onRemove}}" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                  </button>
+                </li>
+              </sc-for>
+            </ul>
+          </sc-if>
+          <button type="button" onClick="{{onAttach}}" class="nw" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 16px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 15px; font-weight: 500; cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+            Adjuntar archivo o foto
+          </button>
+          <span style="font-size: 13px; line-height: 19px; color: #7C8592;">PNG, JPG, WEBP, PDF, TXT, DOCX o XLSX, hasta 7 MB.</span>
+        </div>
+        <div style="display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid #262B32;">
+          <button type="button" onClick="{{onCancelEdit}}" class="nw" style="flex: 1 1 0; min-width: 0; height: 44px; margin-top: 8px; background: transparent; border: 1px solid #262B32; border-radius: 6px; color: #A7AEB8; font-size: 15px; font-weight: 500; cursor: pointer;">Cancelar</button>
+          <button type="submit" class="nw" style="flex: 2 1 0; min-width: 0; height: 44px; margin-top: 8px; background: #5B9BFF; border: 0; border-radius: 6px; color: #0D0F12; font-size: 15px; font-weight: 600; cursor: pointer;">Guardar artículo</button>
+        </div>
+      </form>
+    </sc-if>
+  </main>
+
+  <!-- BARRA INFERIOR (Más activo: Base de conocimiento vive en Más) -->
+  <nav aria-label="Navegación principal" style="position: sticky; bottom: 0; flex: none; height: 76px; padding: 0 4px 16px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #0D0F12; border-top: 1px solid #262B32;">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #A7AEB8; font-size: 12px; font-weight: 500; white-space: nowrap;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+      Inicio
+    </a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #A7AEB8; font-size: 12px; font-weight: 500; white-space: nowrap;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg>
+      Préstamos
+    </a>
+    <button type="button" aria-label="Escanear equipo con la cámara" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: transparent; border: 0; padding: 0; color: #ECEEF1; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap;">
+      <span style="width: 52px; height: 36px; display: flex; align-items: center; justify-content: center; background: #5B9BFF; color: #0D0F12; border-radius: 6px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"></path></svg>
+      </span>
+      Escanear
+    </button>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #A7AEB8; font-size: 12px; font-weight: 500; white-space: nowrap;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      Agenda
+    </a>
+    <a href="#" aria-current="page" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #ECEEF1; font-size: 12px; font-weight: 500; white-space: nowrap;">
+      <span style="position: absolute; top: -1px; left: 50%; width: 24px; margin-left: -12px; height: 2px; border-radius: 2px; background: #5B9BFF;"></span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+      Más
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1040}}'>
+class Component extends DCLogic {
+seed() {
+  // La base local no tiene artículos (knowledge_articles = 0): todo el contenido es placeholder.
+  return [
+    { id: 1, t: '[Artículo sobre WiFi]', c: 'General', tags: ['wifi', '[tag]'], d: '[DD/MM/AAAA]', by: 'Bauti', ex: '[Extracto: las primeras líneas del artículo en texto plano, hasta dos renglones antes de cortar.]', att: [{ n: '[captura-de-pantalla].png', k: 'PNG', s: '[N] KB' }, { n: '[instructivo].pdf', k: 'PDF', s: '[N] KB' }] },
+    { id: 2, t: '[Artículo sobre proyector]', c: 'General', tags: ['proyector'], d: '[DD/MM/AAAA]', by: '[Nombre]', ex: '[Extracto del artículo.]', att: [] },
+    { id: 3, t: '[Procedimiento]', c: '[Categoría A]', tags: ['[tag]'], d: '[DD/MM/AAAA]', by: 'Bauti', ex: '[Extracto del artículo: texto plano de los primeros renglones.]', att: [{ n: '[planilla].xlsx', k: 'XLSX', s: '[N] KB' }] },
+    { id: 4, t: '[Artículo sobre un equipo]', c: '[Categoría A]', tags: ['touch', '[tag]'], d: '[DD/MM/AAAA]', by: '[Nombre]', ex: '[Extracto del artículo.]', att: [] },
+    { id: 5, t: '[Artículo]', c: 'General', tags: [], d: '[DD/MM/AAAA]', by: '[Nombre]', ex: '[Extracto del artículo.]', att: [] },
+    { id: 6, t: '[Artículo]', c: '[Categoría B]', tags: ['[tag]'], d: '[DD/MM/AAAA]', by: 'Bauti', ex: '[Extracto del artículo.]', att: [] }
+  ];
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const D = {
+    bold: 'M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8',
+    italic: 'M19 4h-9M14 20H5M15 4 9 20',
+    heading: 'M6 12h12M6 20V4M18 20V4',
+    list: 'M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13'
+  };
+
+  const arts = s.arts || this.seed();
+  const deleted = s.deleted || [];
+  const live = arts.filter(a => deleted.indexOf(a.id) < 0);
+  const view = s.view || 'list';
+  const q = s.q || '';
+  const nq = norm(q).trim();
+  const cat = s.cat || 'Todas';
+  const byQ = live.filter(a => !nq || norm(a.t + ' ' + a.c + ' ' + a.tags.join(' ') + ' ' + a.ex).indexOf(nq) >= 0);
+  const visible = byQ.filter(a => cat === 'Todas' || a.c === cat);
+  const catsAll = [];
+  live.forEach(a => { if (catsAll.indexOf(a.c) < 0) catsAll.push(a.c); });
+  catsAll.sort((a, b) => (a === 'General' ? -1 : b === 'General' ? 1 : a.localeCompare(b, 'es')));
+  const catBtns = ['Todas'].concat(catsAll).map(c => {
+    const on = c === cat;
+    const n = c === 'Todas' ? byQ.length : byQ.filter(a => a.c === c).length;
+    return {
+      label: c, n: String(n), pressed: on ? 'true' : 'false',
+      style: 'display: inline-flex; align-items: center; gap: 6px; height: 44px; max-width: 100%; padding: 0 12px; border-radius: 6px; font-size: 14px; cursor: pointer; box-sizing: border-box; ' + (on ? 'background: #1B1F24; border: 1px solid #353B44; color: #ECEEF1; font-weight: 500;' : 'background: transparent; border: 1px solid #262B32; color: #A7AEB8;'),
+      onClick: () => set({ cat: c })
+    };
+  });
+  const cur = live.find(a => a.id === s.sel) || null;
+  const rows = visible.map(a => ({
+    t: a.t, d: a.d, ex: a.ex, c: a.c, tags: a.tags.map(x => '#' + x).join(' '),
+    hasAtt: a.att.length > 0, attLabel: a.att.length + (a.att.length === 1 ? ' adjunto' : ' adjuntos'),
+    onClick: () => set({ sel: a.id, view: 'read', confirmDel: false })
+  }));
+
+  const draft = s.draft || { id: null, t: '', c: 'General', tags: [], att: [] };
+  const patchDraft = p => set({ draft: Object.assign({}, draft, p) });
+  const startEdit = a => set({
+    view: 'edit', titleErr: false, catOpen: false, tagInput: '', newCat: '', confirmDel: false, from: a ? 'read' : 'list',
+    draft: a ? { id: a.id, t: a.t, c: a.c, tags: a.tags.slice(), att: a.att.map(f => ({ n: f.n, k: f.k, s: f.s, st: 'ok' })) } : { id: null, t: '', c: 'General', tags: [], att: [] }
+  });
+  const catChoices = catsAll.indexOf(draft.c) < 0 ? catsAll.concat([draft.c]) : catsAll;
+  const catOpts = catChoices.map(c => {
+    const on = c === draft.c;
+    return {
+      label: c, on: on, sel: on ? 'true' : 'false',
+      style: 'display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border: 0; border-radius: 4px; font-size: 16px; text-align: left; cursor: pointer; ' + (on ? 'background: #262B32; color: #ECEEF1;' : 'background: transparent; color: #A7AEB8;'),
+      onClick: () => set({ draft: Object.assign({}, draft, { c: c }), catOpen: false })
+    };
+  });
+  const fmt = s.fmt || { b: true };
+  const fmtBtns = [['b', 'Negrita', 'bold'], ['i', 'Cursiva', 'italic'], ['h', 'Título', 'heading'], ['l', 'Lista', 'list']].map(f => {
+    const on = !!fmt[f[0]];
+    return {
+      label: f[1], d: D[f[2]], pressed: on ? 'true' : 'false',
+      style: 'min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 48px; padding: 0 4px; border-radius: 4px; cursor: pointer; box-sizing: border-box; ' + (on ? 'background: #262B32; border: 1px solid #353B44; color: #ECEEF1;' : 'background: transparent; border: 1px solid transparent; color: #A7AEB8;'),
+      onClick: () => { const n = Object.assign({}, fmt); n[f[0]] = !on; set({ fmt: n }); }
+    };
+  });
+  const attList = draft.att || [];
+  const draftAtt = attList.map((f, i) => {
+    const up = f.st === 'up', bad = f.st === 'err';
+    return {
+      n: f.n, failed: bad,
+      meta: up ? 'Subiendo…' : bad ? 'No se pudo subir: supera 7 MB' : f.k + ' · ' + f.s,
+      metaStyle: 'font-size: 13px; ' + (bad ? 'color: #FF6B6B;' : up ? 'color: #A7AEB8;' : "color: #7C8592; font-family: 'Geist Mono', ui-monospace, monospace;"),
+      aria: 'Quitar ' + f.n,
+      onRemove: () => patchDraft({ att: attList.filter((x, j) => j !== i) }),
+      onRetry: () => patchDraft({ att: attList.map((x, j) => (j === i ? { n: x.n, k: 'PDF', s: '[N] KB', st: 'ok' } : x)) })
+    };
+  });
+  const onAttach = () => {
+    const n = (s.upCount || 0) + 1;
+    const fail = n % 2 === 0;
+    const name = fail ? '[archivo-pesado].pdf' : '[foto].jpg';
+    set({ upCount: n, draft: Object.assign({}, draft, { att: attList.concat([{ n: name, k: fail ? 'PDF' : 'JPG', s: '[N] KB', st: 'up' }]) }) });
+    setTimeout(() => {
+      const d = (self.state || {}).draft;
+      if (!d) return;
+      self.setState({ draft: Object.assign({}, d, { att: d.att.map(x => (x.n === name && x.st === 'up' ? Object.assign({}, x, { st: fail ? 'err' : 'ok' }) : x)) }) });
+    }, 1200);
+  };
+  const save = () => {
+    const t = String(draft.t || '').trim();
+    if (!t) { set({ titleErr: true }); return; }
+    const clean = { t: t, c: draft.c || 'General', tags: draft.tags || [], att: attList.filter(f => f.st === 'ok').map(f => ({ n: f.n, k: f.k, s: f.s })) };
+    if (draft.id) set({ arts: arts.map(a => (a.id === draft.id ? Object.assign({}, a, clean, { by: 'Bauti', d: '16/10/2026' }) : a)), view: 'read', sel: draft.id, draft: null });
+    else { const id = 100 + arts.length; set({ arts: [Object.assign({ id: id, by: 'Bauti', d: '16/10/2026', ex: '[Extracto del artículo nuevo.]' }, clean)].concat(arts), view: 'read', sel: id, draft: null, q: '', cat: 'Todas' }); }
+  };
+  const addTag = () => {
+    const t = String(s.tagInput || '').trim().replace(/^#/, '');
+    if (!t) return;
+    const tags = draft.tags || [];
+    set({ tagInput: '', draft: Object.assign({}, draft, { tags: tags.indexOf(t) < 0 ? tags.concat([t]) : tags }) });
+  };
+  const status = s.status || null;
+  const isRead = view === 'read' && !!cur;
+  const isEdit = view === 'edit';
+
+  return {
+    topTitle: isEdit ? (draft.id ? 'Editar artículo' : 'Nuevo artículo') : isRead ? 'Artículo' : 'Base de conocimiento',
+    backAria: isEdit ? 'Cancelar y volver' : isRead ? 'Volver a los artículos' : 'Volver a Más',
+    onBack: () => { if (isEdit) set({ view: s.from === 'read' ? 'read' : 'list', draft: null }); else if (isRead) set({ view: 'list', confirmDel: false }); },
+
+    isList: !isRead && !isEdit,
+    q: q, hasQ: q.length > 0,
+    onQ: e => set({ q: val(e) }),
+    onClearQ: () => set({ q: '' }),
+    onClearAll: () => set({ q: '', cat: 'Todas' }),
+    catBtns: catBtns,
+    countLabel: visible.length + (visible.length === 1 ? ' artículo' : ' artículos'),
+    onNew: () => startEdit(null),
+    rows: rows,
+    noResults: visible.length === 0,
+    noResultsText: nq ? 'Ningún artículo coincide con “' + q.trim() + '”.' : 'No hay artículos en esta categoría.',
+    footLabel: 'Mostrando ' + visible.length + ' de ' + live.length + ' · se cargan de a 20',
+    listStatus: !!status,
+    listStatusText: status ? status.text : '',
+    onUndo: () => set({ deleted: deleted.filter(id => id !== status.id), status: null }),
+
+    isRead: isRead,
+    cur: cur ? {
+      t: cur.t, c: cur.c, d: cur.d, by: cur.by,
+      hasTags: cur.tags.length > 0,
+      tagBtns: cur.tags.map(t => ({ t: t, aria: 'Buscar artículos con el tag ' + t, onClick: () => set({ q: t, cat: 'Todas', view: 'list' }) })),
+      hasAtt: cur.att.length > 0, attN: String(cur.att.length),
+      att: cur.att.map(f => ({ n: f.n, k: f.k, aria: 'Abrir ' + f.n + ' en una pestaña nueva' }))
+    } : { t: '', c: '', d: '', by: '', hasTags: false, tagBtns: [], hasAtt: false, attN: '0', att: [] },
+    confirmDel: !!s.confirmDel,
+    confirmDelAria: s.confirmDel ? 'true' : 'false',
+    onEdit: () => startEdit(cur),
+    onAskDelete: () => set({ confirmDel: !s.confirmDel }),
+    onCancelDelete: () => set({ confirmDel: false }),
+    onDelete: () => set({ deleted: deleted.concat([cur.id]), confirmDel: false, view: 'list', sel: null, status: { id: cur.id, text: 'Eliminaste “' + cur.t + '”.' } }),
+
+    isEdit: isEdit,
+    editEyebrow: draft.id ? 'Editando' : 'Nuevo artículo',
+    draftT: draft.t || '',
+    onDraftT: e => set({ draft: Object.assign({}, draft, { t: val(e) }), titleErr: false }),
+    titleErr: !!s.titleErr,
+    titleInvalid: s.titleErr ? 'true' : 'false',
+    titleFieldStyle: 'display: flex; align-items: center; height: 44px; padding: 0 12px; background: #1B1F24; border: 1px solid ' + (s.titleErr ? '#FF6B6B' : '#353B44') + '; border-radius: 6px; box-sizing: border-box;',
+    draftC: draft.c || 'General',
+    catOpen: !!s.catOpen,
+    catOpenAria: s.catOpen ? 'true' : 'false',
+    catChevron: 'flex: none; transform: rotate(' + (s.catOpen ? '180' : '0') + 'deg);',
+    onToggleCat: () => set({ catOpen: !s.catOpen }),
+    catOpts: catOpts,
+    newCat: s.newCat || '',
+    onNewCat: e => set({ newCat: val(e) }),
+    onNewCatKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); const c = String(s.newCat || '').trim(); if (c) set({ newCat: '', catOpen: false, draft: Object.assign({}, draft, { c: c }) }); } },
+    draftTags: (draft.tags || []).map((t, i) => ({ t: t, aria: 'Quitar tag ' + t, onRemove: () => patchDraft({ tags: draft.tags.filter((x, j) => j !== i) }) })),
+    tagInput: s.tagInput || '',
+    onTagInput: e => set({ tagInput: val(e) }),
+    onTagKey: e => { if (e && (e.key === 'Enter' || e.key === ',')) { if (e.preventDefault) e.preventDefault(); addTag(); } },
+    fmtBtns: fmtBtns,
+    draftAtt: draftAtt,
+    hasDraftAtt: draftAtt.length > 0,
+    draftAttN: String(draftAtt.length),
+    onAttach: onAttach,
+    onSubmit: e => { if (e && e.preventDefault) e.preventDefault(); save(); },
+    onCancelEdit: () => set({ view: s.from === 'read' ? 'read' : 'list', draft: null, titleErr: false })
+  };
+}
+}
+</script>
+</body>
+</html>

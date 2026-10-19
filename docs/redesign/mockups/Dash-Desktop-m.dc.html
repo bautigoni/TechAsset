@@ -1,0 +1,1287 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Inicio — Mostrador (mobile)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input{font-family:inherit}
+.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.fld:focus-within{border-color:#5B9BFF !important}
+input::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:4px;padding:0 8px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.ib44{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;gap:4px;background:transparent;border:0;border-radius:6px;color:#A7AEB8;cursor:pointer;padding:0}
+.pad{flex:1;display:flex;flex-direction:column;min-width:0;padding:16px 16px 24px;box-sizing:border-box}
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.ch{min-height:48px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 16px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.btn{height:44px;padding:0 16px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box}
+.btn-p{background:#5B9BFF;border:0;color:#0D0F12;font-weight:600}
+.btn-s{background:#1B1F24;border:1px solid #353B44;color:#ECEEF1}
+.btn-g{background:transparent;border:0;color:#A7AEB8}
+.wrap-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-width:0}
+.abar{display:flex;flex-direction:column;gap:8px;padding:12px;background:#14171B;border:1px solid #262B32;border-radius:10px}
+.abar-row{display:flex;gap:8px;min-width:0}
+.abar-fld{flex:1 1 auto;min-width:0;height:48px;display:flex;align-items:center;gap:8px;padding:0 4px 0 12px;box-sizing:border-box;background:#0D0F12;border:1px solid #353B44;border-radius:6px}
+.res{margin-top:8px;box-sizing:border-box;background:#14171B;border:1px solid #353B44;border-radius:10px}
+.lf{display:flex;flex-direction:column;gap:10px}
+.lf-l{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:500;color:#A7AEB8;min-width:0}
+.lf-l input{width:100%;min-width:0;height:44px;padding:0 12px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:16px;box-sizing:border-box}
+.kv{margin:0;display:flex;flex-wrap:wrap;gap:8px 20px}
+.kv > div{min-width:0;max-width:100%}
+.kv dt{font-size:12px;line-height:16px;color:#7C8592}
+.kv dd{margin:0;font-size:14px;line-height:20px;color:#ECEEF1;overflow-wrap:anywhere}
+.status{margin-top:8px;min-height:44px;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:4px 4px 4px 12px;border:1px solid #262B32;border-radius:6px;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:72px;padding:10px 12px;box-sizing:border-box;text-align:left;cursor:pointer;color:#ECEEF1;border-radius:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{flex:1 1 104px;min-width:0;display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 8px 6px 6px;box-sizing:border-box;border-radius:6px;text-align:left}
+.seg{display:flex;gap:2px;padding:2px;background:#0D0F12;border:1px solid #262B32;border-radius:6px;min-width:0}
+.seg > button{overflow:hidden;flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 6px;border-radius:4px;font-size:14px;cursor:pointer;white-space:nowrap}
+.hit{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:0;padding:0;cursor:pointer}
+.cbv{width:16px;height:16px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border-radius:4px;border:1px solid #353B44;background:transparent}
+.hit[aria-checked="true"] .cbv{background:#ECEEF1;border-color:#ECEEF1}
+.mrw{border-bottom:1px solid #262B32}
+.mrw-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;padding:8px 0;background:transparent;border:0;color:#ECEEF1;text-align:left;cursor:pointer}
+.mv-li{min-height:44px;display:grid;grid-template-columns:auto 16px minmax(0,1fr) auto;align-items:center;gap:10px;border-top:1px solid #262B32;box-sizing:border-box;padding:4px 0}
+.bnav{display:flex;position:sticky;bottom:0;z-index:5;height:64px;flex:none;border-top:1px solid #262B32;background:#0D0F12}
+@media (max-width:379px){.segc{display:none}}
+.bnav a{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;font-size:11px}
+</style>
+</helmet>
+<div class="app" style="width: 100%; min-height: 2236px; display: flex; flex-direction: column; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <header class="tb">
+    <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Inicio</h1>
+    <span class="ell" style="flex: 1 1 auto; margin-left: 8px; font-size: 13px; color: #A7AEB8;">Vie 16 oct · mañana</span>
+    <button type="button" class="ib ib44" aria-label="Asistente de IA" aria-pressed="{{asst.pressed}}" onClick="{{asst.onToggle}}" style="{{asst.iconStyle}}">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path></svg>
+    </button>
+    <button type="button" class="ib ib44" aria-label="Notificaciones, [N] sin leer" style="width: auto; padding: 0 8px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #ECEEF1;">[N]</span>
+    </button>
+  </header>
+
+  <!-- Asistente: en mobile es una vista propia (reemplaza el contenido, nunca encima) -->
+  <sc-if value="{{asst.open}}" hint-placeholder-val="{{ false }}">
+    <section aria-label="Asistente de IA" style="flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0;">
+      <div style="min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 16px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+        <h2 class="ell" style="margin: 0; flex: 1 1 auto; font-size: 16px; font-weight: 600;">Asistente</h2>
+        <button type="button" class="btn btn-g" onClick="{{asst.onToggle}}">Volver a Inicio</button>
+      </div>
+      <div aria-live="polite" style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; padding: 16px; min-width: 0;">
+        <p style="margin: 0; font-size: 14px; line-height: 20px; color: #A7AEB8;">Preguntá sobre equipos, préstamos, agenda o tareas de NFPT. Responde con lo que hay en la base.</p>
+        <sc-for list="{{asst.sugs}}" as="g" hint-placeholder-count="3">
+          <button type="button" class="ell" onClick="{{g.onPick}}" style="align-self: stretch; min-height: 44px; padding: 8px 12px; background: transparent; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; line-height: 20px; text-align: left; cursor: pointer; box-sizing: border-box;">{{g.label}}</button>
+        </sc-for>
+        <sc-for list="{{asst.msgs}}" as="m" hint-placeholder-count="0">
+          <div style="{{m.style}}">{{m.text}}</div>
+        </sc-for>
+      </div>
+      <div style="flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid #262B32;">
+        <label for="asst-in" class="vh">Preguntale al asistente</label>
+        <input id="asst-in" type="text" autocomplete="off" value="{{asst.draft}}" onInput="{{asst.onDraft}}" onChange="{{asst.onDraft}}" onKeyDown="{{asst.onKey}}" placeholder="Preguntá algo…" style="flex: 1 1 auto; min-width: 0; width: 100%; height: 44px; padding: 0 12px; background: #14171B; border: 1px solid #262B32; border-radius: 6px; color: #ECEEF1; font-size: 16px; box-sizing: border-box; text-overflow: ellipsis;">
+        <button type="button" class="btn btn-p" onClick="{{asst.onSend}}">Enviar</button>
+      </div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{asst.closed}}" hint-placeholder-val="{{ true }}">
+    <div class="pad">
+
+      <!-- 1. BARRA DE ACCIÓN -->
+      <section aria-label="Prestar o devolver" style="flex: none;">
+        <div class="abar">
+          <div class="abar-row">
+            <div class="abar-fld fld" style="{{barFieldBorder}}">
+              <label for="dash-scan" class="vh">Escaneá o escribí un equipo</label>
+              <input id="dash-scan" type="text" autocomplete="off" spellcheck="false" aria-controls="dash-res" value="{{q}}" onInput="{{onBarInput}}" onChange="{{onBarInput}}" onKeyDown="{{onBarKey}}" placeholder="touch 34, D1436, plani 5…" style="flex: 1 1 auto; min-width: 0; width: 100%; height: 44px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 16px; text-overflow: ellipsis;">
+              <sc-if value="{{hasQ}}" hint-placeholder-val="{{ false }}">
+                <button type="button" class="ib ib44" aria-label="Limpiar" onClick="{{onBarClear}}" style="width: 40px; height: 40px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+              </sc-if>
+            </div>
+            <button type="button" class="ib44" aria-label="Escanear QR con la cámara" onClick="{{onCam}}" style="width: 48px; height: 48px; background: #1B1F24; border: 1px solid #353B44; color: #ECEEF1;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+            </button>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn nw" aria-pressed="{{batchLend.pressed}}" onClick="{{batchLend.onClick}}" style="{{batchLend.mStyle}}">Prestar varios</button>
+            <button type="button" class="btn nw" aria-pressed="{{batchRet.pressed}}" onClick="{{batchRet.onClick}}" style="{{batchRet.mStyle}}">Devolver varios</button>
+          </div>
+        </div>
+
+        <sc-if value="{{pop.show}}" hint-placeholder-val="{{ false }}">
+          <div id="dash-res" class="res" role="region" aria-label="Resultado">
+            <sc-if value="{{pop.batch}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 12px 16px; border-bottom: 1px solid #262B32; display: flex; flex-direction: column; gap: 10px;">
+                <div class="wrap-row">
+                  <span class="nw" style="flex: 1 1 auto; font-size: 15px; font-weight: 600;">{{pop.batchTitle}}</span>
+                  <button type="button" class="btn btn-g" onClick="{{pop.onBatchCancel}}">Cancelar</button>
+                </div>
+                <span style="font-size: 13px; line-height: 18px; color: #7C8592;">Escaneá uno tras otro: cada Enter suma a la cola y confirmás una sola vez.</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  <sc-for list="{{pop.queue}}" as="c" hint-placeholder-count="2">
+                    <span class="nw" style="display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 0 0 12px; border: 1px solid #353B44; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                      {{c.label}}
+                      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{c.et}}</span>
+                      <button type="button" class="ib44" aria-label="{{c.removeLabel}}" onClick="{{c.onRemove}}" style="width: 40px; height: 40px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                      </button>
+                    </span>
+                  </sc-for>
+                  <sc-if value="{{pop.queueEmpty}}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size: 13px; color: #7C8592;">Cola vacía. Escaneá el primero.</span>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{pop.found}}" hint-placeholder-val="{{ true }}">
+              <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="min-width: 0;">
+                  <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;">
+                    <span class="nw" style="font-size: 20px; line-height: 28px; font-weight: 600;">{{pop.alias}}</span>
+                    <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #A7AEB8;">{{pop.et}}</span>
+                    <span style="{{pop.stStyle}}">{{pop.stText}}</span>
+                  </div>
+                  <div style="margin-top: 4px; font-size: 14px; line-height: 20px; color: #A7AEB8;">{{pop.detail}}</div>
+                  <sc-if value="{{pop.hasWarn}}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top: 4px; font-size: 13px; color: #F5C04E;">{{pop.warn}}</div>
+                  </sc-if>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <sc-if value="{{pop.canReturn}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="btn btn-p" onClick="{{pop.onReturn}}" style="flex: 1 1 auto;">Devolver</button>
+                  </sc-if>
+                  <sc-if value="{{pop.canLend}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="btn btn-p" onClick="{{pop.onLend}}" style="flex: 1 1 auto;">Prestar</button>
+                  </sc-if>
+                  <sc-if value="{{pop.canAdd}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="btn btn-p" onClick="{{pop.onAdd}}" style="flex: 1 1 auto;">Agregar a la cola</button>
+                  </sc-if>
+                  <button type="button" class="btn btn-s" aria-expanded="{{pop.fichaExpanded}}" onClick="{{pop.onFicha}}" style="flex: none;">{{pop.fichaLabel}}</button>
+                </div>
+                <sc-if value="{{pop.showFicha}}" hint-placeholder-val="{{ false }}">
+                  <dl class="kv">
+                    <sc-for list="{{pop.fields}}" as="f" hint-placeholder-count="4">
+                      <div><dt>{{f.k}}</dt><dd>{{f.v}}</dd></div>
+                    </sc-for>
+                  </dl>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{pop.multi}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 12px 8px 8px;">
+                <div style="padding: 0 8px 6px; font-size: 13px; color: #7C8592;">{{pop.multiTitle}}</div>
+                <sc-for list="{{pop.list}}" as="m" hint-placeholder-count="4">
+                  <button type="button" class="ib" onClick="{{m.onPick}}" style="display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; height: 44px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; font-size: 14px; text-align: left; cursor: pointer; box-sizing: border-box;">
+                    <span class="ell" style="flex: 1 1 auto; font-weight: 500;">{{m.alias}}</span>
+                    <span class="nw" style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{m.et}}</span>
+                    <span style="{{m.stStyle}}">{{m.stText}}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{pop.none}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                <div style="font-size: 14px;"><span class="nw" style="font-weight: 600;">{{pop.noneLabel}}</span> <span style="color: #A7AEB8;">· no está en NFPT.</span></div>
+                <sc-if value="{{pop.hasSug}}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size: 13px; color: #A7AEB8;">¿Quisiste decir…?</span>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <sc-for list="{{pop.sug}}" as="g" hint-placeholder-count="3">
+                      <button type="button" class="btn btn-s" onClick="{{g.onPick}}">{{g.label}}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{pop.idle}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 14px 16px; font-size: 14px; color: #7C8592;">Esperando el próximo equipo…</div>
+            </sc-if>
+
+            <sc-if value="{{pop.lend}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 16px; border-top: 1px solid #262B32; display: flex; flex-direction: column; gap: 12px;">
+                <span style="font-size: 15px; font-weight: 600;">{{pop.lendTitle}}</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  <sc-for list="{{pop.lendChips}}" as="c" hint-placeholder-count="0">
+                    <span class="nw" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 1px solid #353B44; border-radius: 6px; font-size: 13px; box-sizing: border-box;">{{c.label}}<span style="font-family: 'Geist Mono', ui-monospace, monospace; color: #7C8592;">{{c.et}}</span></span>
+                  </sc-for>
+                </div>
+                <div class="lf">
+                  <label class="lf-l">Persona<input type="text" autocomplete="off" value="{{lendP}}" onInput="{{onLendP}}" onChange="{{onLendP}}" onKeyDown="{{onLendKey}}" placeholder="Nombre"></label>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <sc-for list="{{pop.people}}" as="p" hint-placeholder-count="4">
+                      <button type="button" class="nw" onClick="{{p.onPick}}" aria-pressed="{{p.pressed}}" style="{{p.mStyle}}">{{p.label}}</button>
+                    </sc-for>
+                  </div>
+                  <label class="lf-l">Ubicación<input type="text" autocomplete="off" value="{{lendU}}" onInput="{{onLendU}}" onChange="{{onLendU}}" onKeyDown="{{onLendKey}}" placeholder="Aula · curso, DOE…"></label>
+                  <label class="lf-l">Motivo<input type="text" autocomplete="off" value="{{lendM}}" onInput="{{onLendM}}" onChange="{{onLendM}}" onKeyDown="{{onLendKey}}" placeholder="Préstamo autorizado…"></label>
+                </div>
+                <sc-if value="{{pop.hasLendErr}}" hint-placeholder-val="{{ false }}">
+                  <span role="alert" style="font-size: 14px; color: #FF6B6B;">{{pop.lendErr}}</span>
+                </sc-if>
+                <div style="display: flex; gap: 8px;">
+                  <button type="button" class="btn btn-p" onClick="{{pop.onLendConfirm}}" style="flex: 1 1 auto;">{{pop.lendCta}}</button>
+                  <button type="button" class="btn btn-g" onClick="{{pop.onLendCancel}}" style="flex: none;">Cancelar</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{pop.retFoot}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 12px 16px; border-top: 1px solid #262B32; display: flex; flex-direction: column; gap: 8px;">
+                <span style="font-size: 14px; color: #A7AEB8;">{{pop.retSummary}}</span>
+                <button type="button" class="btn" onClick="{{pop.onRetConfirm}}" aria-disabled="{{pop.retDisabled}}" style="{{pop.retStyle}}">{{pop.retCta}}</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{toast.show}}" hint-placeholder-val="{{ false }}">
+          <div class="status" role="status">
+            <span style="flex: 1 1 180px; min-width: 0;">{{toast.text}}</span>
+            <sc-if value="{{toast.hasUndo}}" hint-placeholder-val="{{ true }}">
+              <button type="button" class="btn nw" onClick="{{toast.onUndo}}" style="flex: none; padding: 0 10px; background: transparent; border: 0; color: #5B9BFF; font-weight: 600;">Deshacer <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 400; color: #7C8592;">{{toast.left}}</span></button>
+            </sc-if>
+            <button type="button" class="ib ib44" aria-label="Cerrar aviso" onClick="{{toast.onClose}}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          </div>
+        </sc-if>
+      </section>
+
+      <!-- 2. ESTADO: 3 tiles + tipos con anillo -->
+      <section aria-label="Estado de los equipos ahora" style="margin-top: 12px; flex: none; display: flex; flex-direction: column; gap: 8px;">
+        <div class="tiles">
+          <sc-for list="{{tiles}}" as="t" hint-placeholder-count="3">
+            <button type="button" class="tile" aria-pressed="{{t.pressed}}" aria-label="{{t.aria}}" onClick="{{t.onClick}}" style="{{t.style}}">
+              <span class="nw" style="{{t.numStyle}}">{{t.num}}</span>
+              <span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #A7AEB8;">{{t.label}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <span class="nw" style="{{typesLabelStyle}}">Disponibles por tipo</span>
+        <div class="chips" role="group" aria-label="Disponibles por tipo">
+          <sc-for list="{{types}}" as="c" hint-placeholder-count="7">
+            <button type="button" class="chip" aria-pressed="{{c.pressed}}" aria-disabled="{{c.disabled}}" aria-label="{{c.aria}}" onClick="{{c.onClick}}" style="{{c.style}}">
+              <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" style="flex: none;">
+                <circle cx="16" cy="16" r="14.5" fill="none" stroke="#262B32" stroke-width="3"></circle>
+                <circle cx="16" cy="16" r="14.5" fill="none" stroke="{{c.arc}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{c.dash}}" transform="rotate(-90 16 16)"></circle>
+              </svg>
+              <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+                <span class="ell" style="font-size: 12px; color: #A7AEB8;">{{c.label}}</span>
+                <span class="nw"><span style="{{c.numStyle}}">{{c.free}}</span><span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{c.of}}</span></span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <!-- 3. AFUERA AHORA (tarjetas) -->
+      <section class="card" aria-labelledby="afuera-titulo" style="margin-top: 16px; flex: none;">
+        <div style="padding: 12px 16px; border-bottom: 1px solid #262B32; display: flex; flex-direction: column; gap: 10px;">
+          <sc-if value="{{selBar.off}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; align-items: baseline; gap: 8px; min-width: 0;">
+              <h2 id="afuera-titulo" class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Afuera ahora</h2>
+              <span class="ell" style="flex: 1 1 auto; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{showingText}}</span>
+            </div>
+            <div class="seg" role="group" aria-label="Filtrar lista">
+              <sc-for list="{{tabs}}" as="b" hint-placeholder-count="3">
+                <button type="button" aria-pressed="{{b.pressed}}" onClick="{{b.onClick}}" style="{{b.style}}">{{b.label}}<span class="segc" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #7C8592;">{{b.count}}</span></button>
+              </sc-for>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <sc-for list="{{activeChips}}" as="c" hint-placeholder-count="0">
+                <span class="nw" style="display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 0 0 12px; border: 1px solid #353B44; border-radius: 6px; font-size: 13px; font-weight: 500; box-sizing: border-box;">
+                  {{c.label}}
+                  <button type="button" class="ib44" aria-label="{{c.clearLabel}}" onClick="{{c.onClear}}" style="width: 40px; height: 40px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                  </button>
+                </span>
+              </sc-for>
+            </div>
+            <div class="fld" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box; color: #7C8592;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+              <input type="text" aria-label="Filtrar la lista por equipo o persona" autocomplete="off" value="{{tq}}" onInput="{{onTq}}" onChange="{{onTq}}" placeholder="Filtrar: touch34, Alex…" style="flex: 1 1 auto; min-width: 0; width: 100%; height: 40px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 16px; text-overflow: ellipsis;">
+            </div>
+          </sc-if>
+          <sc-if value="{{selBar.normal}}" hint-placeholder-val="{{ false }}">
+            <div class="wrap-row" style="justify-content: space-between;">
+              <span class="nw" role="status" style="font-size: 15px; font-weight: 600;">{{selBar.label}}</span>
+              <button type="button" class="btn btn-g" onClick="{{selBar.onClear}}">Limpiar</button>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <sc-if value="{{selBar.hasRet}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="btn btn-p" onClick="{{selBar.onReturn}}" style="flex: 1 1 140px;">{{selBar.retLabel}}</button>
+              </sc-if>
+              <sc-if value="{{selBar.hasLend}}" hint-placeholder-val="{{ false }}">
+                <button type="button" class="btn btn-s" onClick="{{selBar.onLend}}" style="flex: 1 1 140px;">{{selBar.lendLabel}}</button>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{selBar.confirm}}" hint-placeholder-val="{{ false }}">
+            <span style="font-size: 15px; font-weight: 600;">{{selBar.confirmLabel}}</span>
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 18px; color: #A7AEB8; overflow-wrap: anywhere;">{{selBar.retTags}}</span>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-p" onClick="{{selBar.onConfirm}}" style="flex: 1 1 auto;">Confirmar</button>
+              <button type="button" class="btn btn-g" onClick="{{selBar.onCancel}}" style="flex: none;">Cancelar</button>
+            </div>
+          </sc-if>
+        </div>
+
+        <div role="list">
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+            <div class="mrw" role="listitem" style="{{r.style}}">
+              <div style="display: flex; align-items: center; gap: 4px; padding: 0 12px 0 0; min-width: 0;">
+                <button type="button" class="hit" role="checkbox" aria-checked="{{r.checked}}" aria-label="{{r.checkLabel}}" onClick="{{r.onCheck}}" style="align-self: flex-start; margin-top: 4px;">
+                  <span class="cbv"><sc-if value="{{r.sel}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0F12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></sc-if></span>
+                </button>
+                <button type="button" class="mrw-main" aria-expanded="{{r.expanded}}" aria-label="{{r.openLabel}}" onClick="{{r.onOpen}}">
+                  <span style="display: flex; align-items: baseline; gap: 8px; min-width: 0;">
+                    <span class="ell" style="flex: 0 1 auto; font-size: 15px; line-height: 22px; font-weight: 600;">{{r.alias}}</span>
+                    <span class="nw" style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{r.et}}</span>
+                    <span style="flex: 1 1 0;"></span>
+                    <span style="{{r.sinceStyle}}">{{r.sinceText}}</span>
+                  </span>
+                  <span class="ell" style="{{r.whoStyle}}">{{r.whoLine}}</span>
+                  <span class="ell" style="font-size: 13px; line-height: 18px; color: #7C8592;">{{r.whereLine}}</span>
+                </button>
+                <sc-if value="{{r.loaned}}" hint-placeholder-val="{{ true }}">
+                  <button type="button" class="btn btn-s" onClick="{{r.onReturn}}" aria-label="{{r.returnLabel}}" style="flex: none; padding: 0 12px;">Devolver</button>
+                </sc-if>
+                <sc-if value="{{r.avail}}" hint-placeholder-val="{{ false }}">
+                  <button type="button" class="btn" onClick="{{r.onLend}}" aria-label="{{r.lendLabel}}" style="flex: none; padding: 0 12px; background: transparent; border: 1px solid #262B32; color: #A7AEB8;">Prestar</button>
+                </sc-if>
+              </div>
+              <sc-if value="{{r.open}}" hint-placeholder-val="{{ false }}">
+                <div role="region" aria-label="{{r.fichaLabel}}" style="padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 12px;">
+                  <dl class="kv">
+                    <sc-for list="{{r.fields}}" as="f" hint-placeholder-count="5">
+                      <div><dt>{{f.k}}</dt><dd>{{f.v}}</dd></div>
+                    </sc-for>
+                  </dl>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <button type="button" class="btn btn-s" onClick="{{r.onEdit}}" style="flex: 1 1 120px;">Editar</button>
+                    <button type="button" class="btn btn-s" onClick="{{r.onCopy}}" style="flex: 1 1 120px;">Copiar etiqueta</button>
+                    <button type="button" class="btn btn-g" onClick="{{r.onClose}}" style="flex: 1 1 100%;">Cerrar ficha</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{emptyRows}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 40px 16px; text-align: center; font-size: 14px; color: #A7AEB8;">{{emptyText}}</div>
+          </sc-if>
+        </div>
+        <sc-if value="{{hasMore}}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 12px 16px;">
+            <button type="button" class="btn btn-s" onClick="{{onMore}}" style="width: 100%;">{{moreLabel}}</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <!-- 4. AHORA: pestañas Agenda / Tareas / Notas -->
+      <section class="card" aria-label="Ahora" style="margin-top: 16px; flex: none; overflow: hidden;">
+        <div style="padding: 12px 16px; border-bottom: 1px solid #262B32;">
+          <div class="seg" role="tablist" aria-label="Ahora">
+            <sc-for list="{{ahoraTabs}}" as="b" hint-placeholder-count="3">
+              <button type="button" role="tab" aria-selected="{{b.selected}}" onClick="{{b.onClick}}" style="{{b.style}}">{{b.label}}<span class="segc" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #7C8592;">{{b.count}}</span></button>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{ahora.agenda}}" hint-placeholder-val="{{ true }}">
+          <div role="tabpanel" aria-label="Agenda de hoy">
+            <div style="padding: 14px 16px; border-bottom: 1px solid #262B32; display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">En curso</span>
+                <span class="ell" style="{{ag.stStyle}}">{{ag.st}}</span>
+                <span style="flex: 1 1 0;"></span>
+                <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">09:05–09:55</span>
+              </div>
+              <div style="margin-top: 6px; font-size: 16px; line-height: 22px; font-weight: 600;">Matific grupo total</div>
+              <div style="font-size: 14px; line-height: 20px; color: #A7AEB8;">Matific · Aula · <span style="font-family: 'Geist Mono', ui-monospace, monospace; color: #ECEEF1;">25</span> Touch</div>
+              <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                <svg width="28" height="28" viewBox="0 0 28 28" role="img" aria-label="Avance de la actividad: 30%" style="flex: none;">
+                  <circle cx="14" cy="14" r="12.5" fill="none" stroke="#262B32" stroke-width="3"></circle>
+                  <circle cx="14" cy="14" r="12.5" fill="none" stroke="#A7AEB8" stroke-width="3" stroke-linecap="round" stroke-dasharray="23.56 78.54" transform="rotate(-90 14 14)"></circle>
+                </svg>
+                <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #A7AEB8;">faltan 35 min</span>
+                <span style="flex: 1 1 0;"></span>
+                <span class="nw" style="font-size: 12px; color: #A7AEB8;">Recreo <span style="font-family: 'Geist Mono', ui-monospace, monospace;">09:55</span></span>
+              </div>
+              <div style="margin-top: 12px; display: flex; gap: 8px;">
+                <sc-if value="{{ag.canDeliver}}" hint-placeholder-val="{{ true }}">
+                  <button type="button" class="btn btn-p" onClick="{{ag.onDeliver}}" style="flex: 1 1 0;">Entregar</button>
+                </sc-if>
+                <sc-if value="{{ag.canDone}}" hint-placeholder-val="{{ true }}">
+                  <button type="button" class="btn" onClick="{{ag.onDone}}" style="{{ag.mDoneStyle}}">Marcar realizada</button>
+                </sc-if>
+              </div>
+            </div>
+            <sc-for list="{{agNext}}" as="a" hint-placeholder-count="2">
+              <div style="min-height: 48px; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+                <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #A7AEB8;">{{a.from}}</span>
+                <span style="min-width: 0; display: flex; flex-direction: column; line-height: 18px;"><span class="ell" style="font-size: 14px;">{{a.curso}}</span><span class="ell" style="font-size: 12px; color: #7C8592;">{{a.act}}</span></span>
+                <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{a.qty}}</span>
+              </div>
+            </sc-for>
+            <a href="#" style="display: flex; align-items: center; height: 48px; padding: 0 16px; font-size: 14px; text-decoration: none;">Ver agenda</a>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ahora.tareas}}" hint-placeholder-val="{{ false }}">
+          <div role="tabpanel" aria-label="Tus tareas">
+            <a href="#" style="min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid #262B32; box-sizing: border-box; color: #ECEEF1; text-decoration: none;">
+              <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 20px;">
+                <span class="ell" style="font-size: 15px;">Arreglar puerta</span>
+                <span class="ell" style="font-size: 13px; color: #7C8592;"><span style="color: #FF6B6B; font-weight: 500;">Urgente</span> · todo el día</span>
+              </span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="m9 18 6-6-6-6"></path></svg>
+            </a>
+            <a href="#" style="min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid #262B32; box-sizing: border-box; color: #ECEEF1; text-decoration: none;">
+              <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 20px;">
+                <span class="ell" style="font-size: 15px;">Probar audio 5to F</span>
+                <span class="ell" style="font-size: 13px; color: #7C8592;">Media · <span style="color: #FF6B6B;">venció el 12/05</span></span>
+              </span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="m9 18 6-6-6-6"></path></svg>
+            </a>
+            <a href="#" style="display: flex; align-items: center; height: 48px; padding: 0 16px; font-size: 14px; text-decoration: none;">Ver tareas (5 abiertas)</a>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ahora.notas}}" hint-placeholder-val="{{ false }}">
+          <div role="tabpanel" aria-label="Notas" aria-live="polite">
+            <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px 16px;">
+              <sc-if value="{{notesMore}}" hint-placeholder-val="{{ false }}">
+                <button type="button" class="btn btn-s" onClick="{{onNotesMore}}" style="align-self: center;">{{notesMoreLabel}}</button>
+              </sc-if>
+              <sc-for list="{{noteRows}}" as="n" hint-placeholder-count="2">
+                <div style="{{n.wrapStyle}}">
+                  <div style="{{n.bubbleStyle}}">{{n.text}}</div>
+                  <div style="display: flex; align-items: center; gap: 2px;">
+                    <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592; margin-right: 4px;">{{n.meta}}</span>
+                    <button type="button" class="ib ib44" aria-pressed="{{n.starPressed}}" aria-label="{{n.starLabel}}" onClick="{{n.onStar}}" style="{{n.mStarStyle}}">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="{{n.starFill}}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>
+                      <sc-if value="{{n.imp}}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px;">Importante</span></sc-if>
+                    </button>
+                    <button type="button" class="ib ib44" aria-label="Borrar nota" onClick="{{n.onDel}}" style="color: #7C8592;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    </button>
+                  </div>
+                </div>
+              </sc-for>
+              <sc-if value="{{noNotes}}" hint-placeholder-val="{{ false }}">
+                <div style="padding: 16px 0; text-align: center; font-size: 14px; color: #7C8592;">Nadie dejó notas hoy.</div>
+              </sc-if>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid #262B32;">
+              <label for="nota-m" class="vh">Escribir una nota</label>
+              <input id="nota-m" type="text" autocomplete="off" value="{{draft}}" onInput="{{onDraft}}" onChange="{{onDraft}}" onKeyDown="{{onDraftKey}}" placeholder="Escribí una nota…" style="flex: 1 1 auto; min-width: 0; width: 100%; height: 44px; padding: 0 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; color: #ECEEF1; font-size: 16px; box-sizing: border-box; text-overflow: ellipsis;">
+              <button type="button" class="btn btn-s" onClick="{{onSend}}" style="flex: none;">Enviar</button>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+
+      <!-- 5. ÚLTIMOS MOVIMIENTOS -->
+      <section class="card" aria-labelledby="mov-titulo" style="margin-top: 16px; flex: none;">
+        <div style="min-height: 52px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 4px 8px 4px 4px; box-sizing: border-box;">
+          <h2 id="mov-titulo" style="margin: 0; flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 600;">
+            <button type="button" class="ib nw" aria-expanded="{{mov.expanded}}" aria-controls="mov-lista" onClick="{{mov.onToggle}}" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; font-size: 15px; font-weight: 600; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{mov.chevStyle}}"><path d="m6 9 6 6 6-6"></path></svg>
+              Últimos movimientos
+            </button>
+          </h2>
+          <a href="#" class="nw" style="flex: none; display: flex; align-items: center; height: 44px; padding: 0 8px; font-size: 14px; text-decoration: none;">Historial</a>
+        </div>
+        <sc-if value="{{mov.open}}" hint-placeholder-val="{{ true }}">
+          <ol id="mov-lista" style="margin: 0; padding: 0 16px; list-style: none;">
+            <sc-for list="{{mov.rows}}" as="m" hint-placeholder-count="5">
+              <li class="mv-li">
+                <span class="nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{m.time}}</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="{{m.tipo}}" style="flex: none;"><path d="{{m.icon}}"></path></svg>
+                <span tabindex="0" onClick="{{m.tip.tap}}" style="{{m.tip.style}}">{{m.desc}}</span>
+                <span class="nw" style="font-size: 12px; color: #7C8592; text-align: right;">{{m.op}}</span>
+              </li>
+            </sc-for>
+          </ol>
+          <div style="padding: 8px 16px 12px;">
+            <button type="button" class="btn btn-s" onClick="{{mov.onAll}}" style="width: 100%;">{{mov.allLabel}}</button>
+          </div>
+        </sc-if>
+      </section>
+    </div>
+  </sc-if>
+
+  <!-- Barra inferior -->
+  <nav class="bnav" aria-label="Navegación principal">
+    <a href="#" aria-current="page" style="color: #5B9BFF;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+      <span class="nw">Inicio</span>
+    </a>
+    <a href="#" style="color: #A7AEB8;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg>
+      <span class="ell" style="max-width: 100%;">Préstamos <span style="font-family: 'Geist Mono', ui-monospace, monospace;">{{loanedCount}}</span></span>
+    </a>
+    <a href="#" style="color: #ECEEF1;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg>
+      <span class="nw">Escanear</span>
+    </a>
+    <a href="#" style="color: #A7AEB8;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      <span class="nw">Agenda</span>
+    </a>
+    <a href="#" style="color: #A7AEB8;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      <span class="nw">Más</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2236}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+seed() {
+  // Equipos activos de NFPT en la base local (local_devices): etiqueta, alias, tipo, estado, modelo.
+  const RAW = [["D0109","Plani 9","Plani","Disponible","Samsung XE500C12"],["D0110","Plani 5","Plani","Disponible","Samsung XE500C12"],["D0111","Plani 6","Plani","Disponible","Samsung XE500C12"],["D0112","Plani 1","Plani","Disponible","Samsung XE500C12"],["D0116","Plani 3","Plani","Disponible","Samsung XE500C12"],["D0117","Plani 10","Plani","Disponible","Samsung XE500C12"],["D0118","Plani 7","Plani","Disponible","Samsung XE500C12"],["D0159","Touch 9","Touch","Disponible","Lenovo Chromebook C340-11"],["D0160","Touch 14","Touch","Disponible","Lenovo Chromebook C340-11"],["D0161","Touch 11","Touch","Disponible","Lenovo Chromebook C340-11"],["D0162","Touch 20","Touch","Fuera de servicio","Lenovo Chromebook C340-11"],["D0163","Touch 16","Touch","Disponible","Lenovo Chromebook C340-11"],["D0164","Touch 8","Touch","Disponible","Lenovo Chromebook C340-11"],["D0165","Touch 18","Touch","Fuera de servicio","Lenovo Chromebook C340-11"],["D0166","Touch 5","Touch","Disponible","Lenovo Chromebook C340-11"],["D0168","Touch 3","Touch","Disponible","Lenovo Chromebook C340-11"],["D0169","Touch 6","Touch","Disponible","Lenovo Chromebook C340-11"],["D0172","Touch 7","Touch","Disponible","Lenovo Chromebook C340-11"],["D0173","Touch 4","Touch","Disponible","Lenovo Chromebook C340-11"],["D0174","Touch 2","Touch","Disponible","Lenovo Chromebook C340-11"],["D0175","Touch 21","Touch","Fuera de servicio","Lenovo Chromebook C340-11"],["D0176","Touch 13","Touch","Disponible","Lenovo Chromebook C340-11"],["D0178","Touch 17","Touch","Disponible","Lenovo Chromebook C340-11"],["D0179","Touch 12","Touch","Disponible","Lenovo Chromebook C340-11"],["D0180","Touch 19","Touch","Fuera de servicio","Lenovo Chromebook C340-11"],["D0182","Touch 15","Touch","Disponible","Lenovo Chromebook C340-11"],["D0184","Touch 1","Touch","Disponible","Lenovo Chromebook C340-11"],["D0185","Touch 10","Touch","Disponible","Lenovo Chromebook C340-11"],["D0189","Plani 8","Plani","Disponible","Samsung XE500C12"],["D0248","Plani 11","Plani","Disponible","Samsung XE500C12"],["D0689","Touch 22","Touch","Disponible","Samsung XE520QAB'K04US"],["D0690","Touch 27","Touch","Disponible","Samsung XE520QAB'K04US"],["D0691","Touch 30","Touch","Fuera de servicio","Samsung XE520QAB'K04US"],["D0692","Touch 23","Touch","Disponible","Samsung XE520QAB'K04US"],["D0693","Touch 29","Touch","Disponible","Samsung XE520QAB'K04US"],["D0694","Touch 24","Touch","Disponible","Samsung XE520QAB'K04US"],["D0695","Touch 28","Touch","Disponible","Samsung XE520QAB'K04US"],["D0696","Touch 26","Touch","Disponible","Samsung XE520QAB'K04US"],["D0697","Touch 25","Touch","Disponible","Samsung XE520QAB'K04US"],["D0750","Dell 7","Dell","Disponible","Dell Vostro 14 3405"],["D0753","Dell 1","Dell","Disponible","Dell Vostro 14 3405"],["D0754","Dell 6","Dell","Disponible","Dell Vostro 14 3405"],["D0755","Dell 4","Dell","Disponible","Dell Vostro 14 3405"],["D0756","Dell 5","Dell","Disponible","Dell Vostro 14 3405"],["D0757","Dell 2","Dell","Disponible","Dell Vostro 14 3405"],["D0828","Dell 3","Dell","Disponible","Dell Vostro 14 3405"],["D0847","Tablet 8","Tablet","Disponible",""],["D0848","Tablet 14","Tablet","Disponible",""],["D0849","Tablet 7","Tablet","Disponible",""],["D0851","Tablet 12","Tablet","Disponible",""],["D0852","Tablet 5","Tablet","Disponible",""],["D0853","Tablet 9","Tablet","Disponible",""],["D0854","Tablet 2","Tablet","Disponible",""],["D0855","Tablet 6","Tablet","Disponible",""],["D0856","Tablet 10","Tablet","Disponible",""],["D1257","Tablet 3","Tablet","Disponible",""],["D1258","Tablet 1","Tablet","Disponible",""],["D1259","Tablet 13","Tablet","Disponible",""],["D1265","Tablet 11","Tablet","Disponible",""],["D1266","Tablet 4","Tablet","Disponible",""],["D1337","TIC 4","TIC","Disponible","Acer Chromebook CB315-3H"],["D1338","TIC 3","TIC","Disponible","Acer Chromebook CB315-3H"],["D1388","TIC 1","TIC","Disponible","Acer Chromebook CB315-3H"],["D1391","TIC 2","TIC","Disponible","Acer Chromebook CB315-3H"],["D1433","Touch 31","Touch","Disponible","Acer R841T"],["D1434","Touch 32","Touch","Disponible","Acer R841T"],["D1435","Touch 33","Touch","Disponible","Acer R841T"],["D1436","Touch 34","Touch","Disponible","Acer R841T"],["D1437","Touch 35","Touch","Disponible","Acer R841T"],["D1438","Touch 36","Touch","Disponible","Acer R841T"],["D1439","Touch 37","Touch","Disponible","Acer R841T"],["D1440","Touch 38","Touch","Disponible","Acer R841T"],["D1441","Touch 39","Touch","Disponible","Acer R841T"],["D1442","Touch 40","Touch","No encontrada","Acer R841T"],["D1546","Plani 2","Plani","Disponible","Samsung XE500C12"],["D1547","Plani 4","Plani","Disponible","Samsung XE500C12"]];
+  // Préstamos de la mañana (personas, roles, ubicaciones y motivos tomados de local_states / local_movements).
+  const A = 'Préstamo autorizado';
+  const LOANS = {
+    D0164: { p: 'Máximo M.', rol: 'Alumno', donde: '4N · Aula', motivo: A, t: '08:10', d: 4, since: 'lun 12/10' },
+    D0116: { p: 'Wanda', rol: 'Maestra', donde: 'Planificación móvil', motivo: 'Planificación', t: '09:43', d: 2, since: 'mié 14/10' },
+    D1338: { p: 'Lu P.', rol: 'DOE', donde: 'DOE', motivo: '', t: '11:32', d: 1, since: 'jue 15/10' },
+    D1546: { p: 'Juani V.', rol: 'Maestra', donde: 'Planificación móvil', motivo: 'Planificación', t: '07:40', d: 0 },
+    D1436: { p: 'Alex C.', rol: 'Alumno', donde: '2F · Aula', motivo: A, t: '07:48', d: 0 },
+    D0112: { p: 'Alex C.', rol: 'Alumno', donde: '2F · Aula', motivo: A, t: '07:48', d: 0 },
+    D1337: { p: 'Delfi M.', rol: 'Alumno', donde: '4N · Aula', motivo: A, t: '08:05', d: 0 },
+    D0179: { p: 'Ame W.', rol: 'Alumno', donde: '4S · Aula', motivo: A, t: '08:20', d: 0 },
+    D0182: { p: 'Edu M.', rol: 'Alumno', donde: '4S · Aula', motivo: A, t: '08:20', d: 0 },
+    D0689: { p: 'Felipe M.', rol: 'Alumno', donde: '1N · Aula', motivo: A, t: '08:31', d: 0 },
+    D1433: { p: 'Lola F.', rol: 'Alumno', donde: '3N · Aula', motivo: A, t: '08:50', d: 0 },
+    D0110: { p: 'Mili', rol: 'Maestra', donde: 'Planificación móvil', motivo: 'Planificación', t: '08:55', d: 0 },
+    D0753: { p: 'Tomi A.', rol: 'Profesor', donde: '1S · Aula', motivo: A, t: '09:02', d: 0 },
+    D1258: { p: 'Cami', rol: 'Alumno', donde: '1F · Aula', motivo: A, t: '09:10', d: 0 }
+  };
+  const M = (day, t, tipo, desc, op) => ({ day: day, t: t, tipo: tipo, desc: desc, op: op });
+  const MOVS = [
+    M('', '09:10', 'préstamo', 'D1258 · Tablet 1 prestada a Cami', 'Equi'),
+    M('', '09:02', 'préstamo', 'D0753 · Dell 1 prestada a Tomi A.', 'Bauti'),
+    M('', '08:55', 'préstamo', 'D0110 · Plani 5 prestada a Mili', 'Equi'),
+    M('', '08:50', 'préstamo', 'D1433 · Touch 31 prestada a Lola F.', 'Equi'),
+    M('', '08:31', 'préstamo', 'D0689 · Touch 22 prestada a Felipe M.', 'Bauti'),
+    M('', '08:26', 'devolución', 'D0111 · Plani 6 devuelta', 'Bauti'),
+    M('', '08:20', 'préstamo', 'D0182 · Touch 15 prestada a Edu M.', 'Bauti'),
+    M('', '08:20', 'préstamo', 'D0179 · Touch 12 prestada a Ame W.', 'Bauti'),
+    M('', '08:05', 'préstamo', 'D1337 · TIC 4 prestada a Delfi M.', 'Equi'),
+    M('', '07:48', 'préstamo', 'D0112 · Plani 1 prestada a Alex C.', 'Bauti'),
+    M('', '07:48', 'préstamo', 'D1436 · Touch 34 prestada a Alex C.', 'Bauti'),
+    M('', '07:40', 'préstamo', 'D1546 · Plani 2 prestada a Juani V.', 'Equi'),
+    M('', '07:32', 'devolución', 'D1391 · TIC 2 devuelta', 'Equi'),
+    M('Ayer', '16:22', 'devolución', 'D0109 · Plani 9 devuelta', 'Equi'),
+    M('Ayer', '16:19', 'devolución', 'D1546 · Plani 2 devuelta', 'Equi'),
+    M('Ayer', '15:03', 'devolución', 'D0689 · Touch 22 devuelta', 'Equi'),
+    M('Ayer', '14:50', 'devolución', 'D0110 · Plani 5 devuelta', 'Equi'),
+    M('Ayer', '11:32', 'préstamo', 'D1338 · TIC 3 prestada a Lu P.', 'Bauti'),
+    M('Ayer', '10:12', 'edición', 'D0165 · Touch 18 pasó a Fuera de servicio', 'Bauti'),
+    M('Ayer', '09:40', 'devolución', 'D1547 · Plani 4 devuelta', 'Bauti')
+  ];
+  // Notas reales de internal_notes (Bauti, ambas importantes).
+  const NOTES = [
+    { id: 1, text: 'La unica compu que no encontre es la touch 8', op: 'Bauti', t: '08:41', imp: true, mine: true },
+    { id: 2, text: 'Encontre los microfonos corbateros', op: 'Bauti', t: '08:42', imp: true, mine: true }
+  ];
+  const PEOPLE = [
+    { p: 'Alex C.', rol: 'Alumno', u: '2F · Aula', m: A },
+    { p: 'Máximo M.', rol: 'Alumno', u: '4N · Aula', m: A },
+    { p: 'Wanda', rol: 'Maestra', u: 'Planificación móvil', m: 'Planificación' },
+    { p: 'Lu P.', rol: 'DOE', u: 'DOE', m: A },
+    { p: 'Juani V.', rol: 'Maestra', u: 'Planificación móvil', m: 'Planificación' }
+  ];
+  return { RAW: RAW, LOANS: LOANS, MOVS: MOVS, NOTES: NOTES, PEOPLE: PEOPLE };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const B = this.seed();
+  const I = this.icons();
+  const MONO = "'Geist Mono', ui-monospace, monospace";
+  const NOW = 9 * 60 + 20; // viernes 16/10, 09:20
+  const set = p => self.setState(p);
+  const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+  const toMin = t => { const p = String(t).split(':'); return (+p[0]) * 60 + (+p[1]); };
+  const hace = t => {
+    const m = NOW - toMin(t);
+    if (m < 1) return 'recién';
+    const h = Math.floor(m / 60), mm = m % 60;
+    return 'hace ' + (h ? h + ' h' : '') + (h && mm ? ' ' : '') + (mm ? mm + ' min' : '');
+  };
+
+  // ---------- Estado vivo ----------
+  const loans = s.loans || B.LOANS;
+  const movs = s.movs || B.MOVS;
+  const notes = s.notes || B.NOTES;
+  const sel = s.sel || [];
+  const q = s.q || '';
+  const batch = s.batch || '';
+  const queue = s.queue || [];
+  const lendList = s.lendList || [];
+
+  const GROUPS = ['Touch', 'TIC', 'Plani', 'Dell', 'Tablet'];
+  const devs = B.RAW.map(r => {
+    const mm = r[1].match(/(\d+)\s*$/);
+    const L = loans[r[0]] || null;
+    const base = r[3] === 'Fuera de servicio' ? 'out' : (r[3] === 'No encontrada' ? 'missing' : 'available');
+    return { et: r[0], alias: r[1], g: r[2], model: r[4], num: mm ? mm[1] : '', L: L, st: L ? 'loaned' : base };
+  });
+  // Tipos presentes en los datos (los conocidos primero, después cualquier otro)
+  const TYPES = GROUPS.slice();
+  devs.forEach(d => { if (TYPES.indexOf(d.g) < 0) TYPES.push(d.g); });
+  devs.sort((a, b) => (TYPES.indexOf(a.g) - TYPES.indexOf(b.g)) || ((+a.num) - (+b.num)));
+  const byEt = {};
+  devs.forEach(d => { byEt[d.et] = d; });
+
+  // Estado como texto plano: lo normal en texto 2; solo lo que pide atención va coloreado (sin fondo ni punto)
+  const AMBER = '#F5C04E', RED = '#FF6B6B', T2 = '#A7AEB8';
+  const status = d => {
+    if (d.st === 'loaned') {
+      if (d.L.d >= 3) return ['Prestado · ' + d.L.d + ' días', RED];
+      if (d.L.d >= 1) return ['Prestado · hace ' + d.L.d + (d.L.d === 1 ? ' día' : ' días'), AMBER];
+      return ['Prestado', T2];
+    }
+    if (d.st === 'available') return ['Disponible', T2];
+    if (d.st === 'out') return ['Fuera de servicio', RED];
+    return ['No encontrado', RED];
+  };
+  const stStyle = c => 'font-size: 13px; font-weight: 500; white-space: nowrap; color: ' + c + ';';
+  const ageColor = days => (days >= 3 ? RED : (days >= 1 ? AMBER : '#ECEEF1'));
+
+  // Tooltip de texto truncado (hover/foco) + despliegue en línea al tocar (touch)
+  const tipFor = (key, rowOpen, baseStyle) => {
+    const open = s.tipOpen === key;
+    return {
+      show: s.tip === key && !open,
+      style: 'pointer-events: auto; display: block; min-width: 0; outline-offset: 1px; ' + baseStyle + (open ? ' white-space: normal; overflow-wrap: anywhere;' : ' white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'),
+      on: e => { const el = e && (e.currentTarget || e.target); if (el && el.scrollWidth > el.clientWidth + 1) set({ tip: key }); },
+      off: () => { if ((self.state || {}).tip === key) set({ tip: '' }); },
+      tap: e => {
+        const pt = e && e.nativeEvent && e.nativeEvent.pointerType;
+        if (pt === 'touch' || pt === 'pen' || !rowOpen) set({ tipOpen: s.tipOpen === key ? '' : key, tip: '' });
+        else if (rowOpen) rowOpen(e);
+      }
+    };
+  };
+
+  // ---------- Búsqueda flexible (touch 34 / touch34 / 34touch / D1436 / 1436 / plani 5 / planificación 5) ----------
+  const groupOf = w => {
+    if (!w) return '';
+    if (w.indexOf('plan') === 0) return 'Plani';
+    for (let i = 0; i < TYPES.length; i++) {
+      const k = TYPES[i].toLowerCase();
+      if (k.indexOf(w) === 0 || w.indexOf(k) === 0) return TYPES[i];
+    }
+    return null;
+  };
+  const parseQ = n => {
+    const m = n.match(/^([a-z]*)(\d+)([a-z]*)$/);
+    if (!m) return null;
+    const w = m[1] || m[3];
+    return { w: w, g: groupOf(w), num: String(parseInt(m[2], 10)) };
+  };
+  const looseMatch = (d, text) => {
+    const n = norm(text);
+    if (!n) return true;
+    if (norm(d.et).indexOf(n) >= 0 || norm(d.alias).indexOf(n) >= 0) return true;
+    if (d.L && norm(d.L.p).indexOf(n) >= 0) return true;
+    const p = parseQ(n);
+    return !!(p && p.g && p.g === d.g && p.num === d.num);
+  };
+  const search = text => {
+    const n = norm(text);
+    if (!n) return null;
+    let d = devs.find(x => norm(x.et) === n);
+    if (!d && /^\d{3,4}$/.test(n)) d = byEt['D' + ('0000' + n).slice(-4)];
+    if (d) return { kind: 'found', d: d };
+    if (/^d\d{3,4}$/.test(n)) {
+      const pre = n.slice(0, 3);
+      return { kind: 'none', label: n.toUpperCase(), sug: devs.filter(x => norm(x.et).indexOf(pre) === 0).slice(0, 4) };
+    }
+    const p = parseQ(n);
+    if (p && p.g) {
+      d = devs.find(x => x.g === p.g && x.num === p.num);
+      if (d) return { kind: 'found', d: d };
+      const sug = devs.filter(x => x.g === p.g).sort((a, b) => Math.abs(a.num - p.num) - Math.abs(b.num - p.num)).slice(0, 4);
+      return { kind: 'none', label: p.g + ' ' + p.num, sug: sug };
+    }
+    if (p && !p.w) {
+      const l = devs.filter(x => x.num === p.num);
+      if (l.length === 1) return { kind: 'found', d: l[0] };
+      if (l.length) return { kind: 'multi', list: l, total: l.length };
+    }
+    const list = devs.filter(x => looseMatch(x, text));
+    if (list.length === 1) return { kind: 'found', d: list[0] };
+    if (list.length) return { kind: 'multi', list: list.slice(0, 6), total: list.length };
+    const sug = devs.filter(x => norm(x.et).indexOf(n.slice(0, 3)) === 0).slice(0, 4);
+    return { kind: 'none', label: text.trim(), sug: sug };
+  };
+
+  // ---------- Acciones ----------
+  // Línea de estado en línea con cuenta regresiva de 8 s
+  const toast = (text, undo, extra) => {
+    const id = Date.now() + Math.random();
+    self.setState(Object.assign({ toast: { text: text, undo: undo }, toastId: id, toastLeft: 8 }, extra || {}));
+    const tick = () => {
+      const st = self.state || {};
+      if (st.toastId !== id) return;
+      const left = (st.toastLeft || 0) - 1;
+      if (left <= 0) self.setState({ toast: null, toastId: 0 });
+      else { self.setState({ toastLeft: left }); setTimeout(tick, 1000); }
+    };
+    setTimeout(tick, 1000);
+  };
+  const doReturn = list => {
+    const ok = list.filter(et => loans[et]);
+    if (!ok.length) return;
+    const next = Object.assign({}, loans);
+    ok.forEach(et => { delete next[et]; });
+    const added = ok.map(et => ({ day: '', t: '09:20', tipo: 'devolución', desc: et + ' · ' + byEt[et].alias + ' devuelta', op: 'Bauti' }));
+    const text = ok.length === 1 ? byEt[ok[0]].alias + ' devuelto · ' + loans[ok[0]].p : ok.length + ' devueltos · ' + ok.map(et => byEt[et].alias).join(', ');
+    toast(text, { loans: loans, movs: movs }, {
+      loans: next, movs: added.concat(movs), q: '', sel: sel.filter(et => ok.indexOf(et) < 0),
+      selConfirm: false, queue: [], batch: '', lendList: [], lendErr: '', popFicha: false
+    });
+  };
+  const openLend = (list, extra) => {
+    set(Object.assign({
+      lendList: list, q: list.length === 1 ? byEt[list[0]].alias : '', batch: '', queue: [],
+      lendP: '', lendU: '', lendM: '', lendRol: '', lendErr: '', selConfirm: false, ficha: '', popFicha: false
+    }, extra || {}));
+  };
+  const doLend = list => {
+    const p = (s.lendP || '').trim();
+    const ok = list.filter(et => byEt[et] && byEt[et].st === 'available');
+    if (!ok.length) { set({ lendErr: 'Agregá al menos un equipo disponible.' }); return; }
+    if (!p) { set({ lendErr: 'Completá la persona para prestar.' }); return; }
+    const next = Object.assign({}, loans);
+    ok.forEach(et => { next[et] = { p: p, rol: s.lendRol || '', donde: (s.lendU || '').trim() || '—', motivo: (s.lendM || '').trim(), t: '09:20', d: 0 }; });
+    const added = ok.map(et => ({ day: '', t: '09:20', tipo: 'préstamo', desc: et + ' · ' + byEt[et].alias + ' prestada a ' + p, op: 'Bauti' }));
+    const text = ok.length === 1 ? byEt[ok[0]].alias + ' prestado · ' + p : ok.length + ' prestados · ' + p;
+    toast(text, { loans: loans, movs: movs }, {
+      loans: next, movs: added.concat(movs), q: '', lendList: [], lendP: '', lendU: '', lendM: '', lendRol: '',
+      lendErr: '', batch: '', queue: [], sel: sel.filter(et => ok.indexOf(et) < 0)
+    });
+  };
+  const addToQueue = () => {
+    const r = search(q);
+    if (!r || r.kind !== 'found') return;
+    const want = batch === 'return' ? 'loaned' : 'available';
+    if (r.d.st !== want) return;
+    if (queue.indexOf(r.d.et) >= 0) { set({ q: '' }); return; }
+    set({ queue: queue.concat([r.d.et]), q: '' });
+  };
+  const primary = () => {
+    if (batch) { addToQueue(); return; }
+    if (lendList.length) { doLend(lendList); return; }
+    const r = search(q);
+    if (r && r.kind === 'found') {
+      if (r.d.st === 'loaned') doReturn([r.d.et]);
+      else if (r.d.st === 'available') openLend([r.d.et]);
+    }
+  };
+  const clearBar = () => set({ q: '', lendList: [], batch: '', queue: [], lendErr: '', popFicha: false });
+  const toggleSel = et => set({ sel: sel.indexOf(et) >= 0 ? sel.filter(x => x !== et) : sel.concat([et]), selConfirm: false });
+  const val = e => (e && e.target ? e.target.value : '');
+  const fieldsOf = d => {
+    const F = [['Tipo', d.g], ['Modelo', d.model || '—'], ['Estado', status(d)[0]]];
+    if (d.L) {
+      F.push(['Prestado a', d.L.p + (d.L.rol ? ' · ' + d.L.rol : '')]);
+      F.push(['Dónde', d.L.donde || '—']);
+      F.push(['Motivo', d.L.motivo || '—']);
+      F.push(['Desde', d.L.d ? d.L.since + ' · ' + d.L.d + (d.L.d === 1 ? ' día' : ' días') : d.L.t + ' · ' + hace(d.L.t)]);
+    }
+    return F.map(f => ({ k: f[0], v: f[1] }));
+  };
+
+  // ---------- Menú lateral (Menu-A, Inicio activo) ----------
+  const nLoaned = devs.filter(d => d.st === 'loaned').length;
+  const barOn = 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;';
+  const mk = (k, label, count) => {
+    const on = k === 'home';
+    return {
+      label: label, d: I[k], count: count || '', current: on ? 'page' : 'false',
+      aria: label + (count ? ', ' + count : ''),
+      style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;',
+      bar: on ? barOn : 'display: none;'
+    };
+  };
+
+  // ---------- Conteos ----------
+  const nAvail = devs.filter(d => d.st === 'available').length;
+  const overdue = devs.filter(d => d.st === 'loaned' && d.L.d >= 1);
+  const total = devs.length;
+  const people = {};
+  devs.forEach(d => { if (d.L) people[d.L.p] = (people[d.L.p] || 0) + 1; });
+  const nPeople = Object.keys(people).length;
+
+  const filter = s.filter || 'loaned';
+  const cat = s.cat || '';
+  const tileDefs = [
+    ['available', 'Disponibles', nAvail, 'de ' + total + ' activos · elegí el tipo abajo', ''],
+    ['loaned', 'Prestados', nLoaned, nPeople + (nPeople === 1 ? ' persona' : ' personas'), ''],
+    ['overdue', 'Más de 1 día afuera', overdue.length, overdue.length ? 'devolver o reclamar' : 'nada atrasado', 'warn']
+  ];
+  const tiles = tileDefs.map(t => {
+    const on = filter === t[0] && (t[0] === 'available' || !cat);
+    const warn = t[4] === 'warn' && t[2] > 0;
+    return {
+      label: t[1], num: t[2], detail: t[3], aria: t[1] + ': ' + t[2] + ', ' + t[3], pressed: on ? 'true' : 'false',
+      style: 'background: ' + (on ? '#1B1F24' : '#14171B') + '; border: 1px solid ' + (on ? '#5B9BFF' : '#262B32') + ';',
+      numStyle: 'flex: none; min-width: 36px; font-family: ' + MONO + '; font-size: 24px; line-height: 28px; font-weight: 500; color: ' + (warn ? AMBER : '#ECEEF1') + ';',
+      detailStyle: 'font-size: 12px; line-height: 16px; color: ' + (warn ? AMBER : '#7C8592') + ';',
+      onClick: () => set({ filter: t[0], cat: '', more: 0 })
+    };
+  });
+
+  // Selector de tipos (Disponibles): anillo fino libres/total; ámbar si quedan ≤20%, rojo si 0
+  const RING_C = 2 * Math.PI * 14.5;
+  const ringOf = (free, all) => {
+    const frac = all ? free / all : 0;
+    const color = free === 0 ? RED : (frac <= 0.2 ? AMBER : T2);
+    return { arc: free === 0 || !all ? 'none' : color, dash: (frac * RING_C).toFixed(2) + ' ' + RING_C.toFixed(2), numColor: free === 0 ? RED : (frac <= 0.2 ? AMBER : '#ECEEF1') };
+  };
+  const onAvail = filter === 'available';
+  const chipStyle = (on, off) => off
+    ? 'background: transparent; border: 1px dashed #262B32; color: #7C8592; cursor: default;'
+    : 'cursor: pointer; color: #ECEEF1; background: ' + (on ? '#1B1F24' : '#14171B') + '; border: 1px solid ' + (on ? '#5B9BFF' : '#262B32') + ';';
+  const numStyle = c => 'font-family: ' + MONO + '; font-size: 16px; line-height: 18px; font-weight: 500; color: ' + c + ';';
+  const types = [];
+  const allRing = ringOf(nAvail, total);
+  types.push({
+    label: 'Todos', free: String(nAvail), of: '/' + total, pressed: onAvail && !cat ? 'true' : 'false', disabled: 'false',
+    aria: 'Todos los tipos: ' + nAvail + ' libres de ' + total,
+    style: chipStyle(onAvail && !cat, false), arc: allRing.arc, dash: allRing.dash, numStyle: numStyle(allRing.numColor),
+    onClick: () => set({ filter: 'available', cat: '', more: 0 })
+  });
+  TYPES.forEach(g => {
+    const all = devs.filter(d => d.g === g);
+    const free = all.filter(d => d.st === 'available').length;
+    const off = free === 0;
+    const on = onAvail && cat === g;
+    const rg = ringOf(free, all.length);
+    types.push({
+      label: g, free: String(free), of: '/' + all.length, pressed: on ? 'true' : 'false', disabled: off ? 'true' : 'false',
+      aria: g + ': ' + free + ' libres de ' + all.length + (off ? ', ninguno libre' : ''),
+      style: chipStyle(on, off), arc: rg.arc, dash: rg.dash, numStyle: numStyle(rg.numColor),
+      onClick: () => { if (!off) set({ filter: 'available', cat: g, more: 0 }); }
+    });
+  });
+  types.push({
+    label: 'Cartelitos', free: '[N]', of: '/[N]', pressed: onAvail && cat === 'Cartelitos' ? 'true' : 'false', disabled: 'false',
+    aria: 'Cartelitos: [N] libres de [N]',
+    style: chipStyle(onAvail && cat === 'Cartelitos', false), arc: 'none', dash: '0 ' + RING_C.toFixed(2), numStyle: numStyle('#ECEEF1'),
+    onClick: () => set({ filter: 'available', cat: 'Cartelitos', more: 0 })
+  });
+
+  // ---------- Tabla "Afuera ahora" ----------
+  const tq = s.tq || '';
+  let list = devs.filter(d => {
+    if (filter === 'loaned') return d.st === 'loaned';
+    if (filter === 'available') return d.st === 'available';
+    if (filter === 'overdue') return d.st === 'loaned' && d.L.d >= 1;
+    return true;
+  });
+  if (cat) list = list.filter(d => d.g === cat);
+  if (tq) list = list.filter(d => looseMatch(d, tq));
+  if (filter === 'loaned' || filter === 'overdue') list.sort((a, b) => (b.L.d - a.L.d) || (toMin(a.L.t) - toMin(b.L.t)));
+  const shown = 8 + (s.more || 0);
+  const visible = list.slice(0, shown);
+  const remaining = list.length - visible.length;
+
+  const checkStyle = on => '';
+  const rows = visible.map(d => {
+    const L = d.L;
+    const on = sel.indexOf(d.et) >= 0;
+    const open = s.ficha === d.et;
+    let sinceText = '—', sinceStyle = 'font-size: 13px; color: #7C8592;', sinceSub = '';
+    if (L) {
+      sinceText = L.d === 0 ? L.t : (L.d === 1 ? '1 día' : L.d + ' días');
+      sinceStyle = 'font-family: ' + MONO + '; font-size: 13px; font-weight: 500; white-space: nowrap; color: ' + ageColor(L.d) + ';';
+      sinceSub = L.d === 0 ? hace(L.t) : 'desde ' + L.since;
+    }
+    const many = L && people[L.p] > 1 ? ' · ' + people[L.p] + ' equipos' : '';
+    const st = status(d);
+    const rowOpen = e => {
+      if (e && (e.ctrlKey || e.metaKey || e.shiftKey)) { if (e.preventDefault) e.preventDefault(); toggleSel(d.et); }
+      else set({ ficha: open ? '' : d.et });
+    };
+    return {
+      et: d.et, alias: d.alias,
+      whoLine: L ? L.p + ' · ' + (L.rol || '—') + many : st[0],
+      whoStyle: L ? 'font-size: 14px; line-height: 18px; color: #ECEEF1;' : 'font-size: 14px; line-height: 18px; font-weight: 500; color: ' + st[1] + ';',
+      whereLine: L ? (L.donde || '—') + ' · ' + sinceSub : (d.model || '—'),
+      loaned: d.st === 'loaned', notLoaned: d.st !== 'loaned', avail: d.st === 'available',
+      person: L ? L.p : '', initial: L ? L.p.charAt(0).toUpperCase() : '', rolLine: L ? (L.rol || '—') + many : '',
+      donde: L ? (L.donde || '—') : (d.model || '—'),
+      stText: st[0], stStyle: stStyle(st[1]),
+      sinceText: sinceText, sinceStyle: sinceStyle, sinceSub: sinceSub,
+      sel: on, checked: on ? 'true' : 'false', checkStyle: checkStyle(on),
+      checkLabel: (on ? 'Desmarcar ' : 'Marcar ') + d.alias,
+      openLabel: (open ? 'Cerrar la ficha de ' : 'Abrir la ficha de ') + d.alias + ' (' + d.et + ')',
+      expanded: open ? 'true' : 'false', open: open, fichaLabel: 'Ficha de ' + d.alias,
+      fields: open ? fieldsOf(d) : [],
+      chevStyle: 'flex: none; transition: transform .15s ease; transform: rotate(' + (open ? '180' : '0') + 'deg);',
+      returnLabel: 'Devolver ' + d.alias, lendLabel: 'Prestar ' + d.alias,
+      style: on || open ? 'background: #1B1F24;' : '',
+      tipP: tipFor(d.et + ':p', rowOpen, 'font-size: 14px;'),
+      tipD: tipFor(d.et + ':d', rowOpen, 'font-size: 13px; color: #A7AEB8;'),
+      onOpen: rowOpen,
+      onCheck: () => toggleSel(d.et),
+      onReturn: () => doReturn([d.et]),
+      onLend: () => openLend([d.et]),
+      onClose: () => set({ ficha: '' }),
+      onEdit: () => toast('Editar ' + d.alias + ' abre el formulario de edición en esta misma ficha', null),
+      onCopy: () => toast(d.et + ' copiada al portapapeles', null)
+    };
+  });
+  const allSel = visible.length > 0 && visible.every(d => sel.indexOf(d.et) >= 0);
+  const activeChips = [];
+  if (filter === 'overdue') activeChips.push({ label: 'Más de 1 día afuera', clearLabel: 'Quitar filtro Más de 1 día afuera', onClear: () => set({ filter: 'loaned', more: 0 }) });
+  if (cat) activeChips.push({ label: 'Tipo: ' + cat, clearLabel: 'Quitar filtro ' + cat, onClear: () => set({ cat: '', more: 0 }) });
+  const tabDefs = [['loaned', 'Prestados', nLoaned], ['available', 'Disponibles', nAvail], ['all', 'Todos', total]];
+  const tabs = tabDefs.map(t => {
+    const on = filter === t[0];
+    return {
+      label: t[1], count: String(t[2]), pressed: on ? 'true' : 'false',
+      style: 'border: 1px solid ' + (on ? '#353B44' : 'transparent') + '; background: ' + (on ? '#1B1F24' : 'transparent') + '; color: ' + (on ? '#ECEEF1' : '#A7AEB8') + '; font-weight: ' + (on ? '500' : '400') + ';',
+      onClick: () => set({ filter: t[0], more: 0 })
+    };
+  });
+  let emptyText = 'No hay equipos para este filtro.';
+  if (filter === 'loaned' && !cat && !tq) emptyText = 'Todo en casa: no hay equipos prestados.';
+  if (filter === 'overdue' && !cat && !tq) emptyText = 'Nada atrasado: todo lo prestado salió hoy.';
+  if (cat === 'Cartelitos') emptyText = 'Cartelitos: [N] libres de [N]. Se entregan y devuelven desde Préstamos.';
+
+  // Selección: reemplaza el encabezado de la tabla; confirmación de lote en el mismo lugar
+  const selDevs = sel.map(et => byEt[et]).filter(Boolean);
+  const selRet = selDevs.filter(d => d.st === 'loaned');
+  const selLend = selDevs.filter(d => d.st === 'available');
+  const selOn = selDevs.length > 0;
+  const selBar = {
+    off: !selOn, normal: selOn && !s.selConfirm, confirm: selOn && !!s.selConfirm,
+    label: selDevs.length + (selDevs.length === 1 ? ' seleccionado' : ' seleccionados'),
+    hasRet: selRet.length > 0, hasLend: selLend.length > 0,
+    retLabel: 'Devolver ' + selRet.length, lendLabel: 'Prestar ' + selLend.length,
+    confirmLabel: '¿Devolver ' + selRet.length + ' equipos?',
+    retTags: selRet.map(d => d.alias + ' ' + d.et).join(' · '),
+    onReturn: () => { if (selRet.length > 1) set({ selConfirm: true }); else doReturn(selRet.map(d => d.et)); },
+    onConfirm: () => doReturn(selRet.map(d => d.et)),
+    onCancel: () => set({ selConfirm: false }),
+    onLend: () => openLend(selLend.map(d => d.et), { sel: sel.filter(et => !selLend.some(d => d.et === et)) }),
+    onClear: () => set({ sel: [], selConfirm: false })
+  };
+
+  // ---------- Resultado de la barra (en línea) ----------
+  const res = search(q);
+  const lendOpen = lendList.length > 0 || batch === 'lend';
+  const pop = { show: !!(q.trim() || batch || lendList.length), list: [], sug: [], fields: [], alias: '', et: '', stText: '', stStyle: '', detail: '', warn: '', hasWarn: false, canReturn: false, canLend: false, canAdd: false, showFicha: false, fichaExpanded: 'false', fichaLabel: 'Ficha', multiTitle: '', noneLabel: '', hasSug: false, onReturn: () => {}, onLend: () => {}, onAdd: () => {}, onFicha: () => {} };
+  pop.found = !!(res && res.kind === 'found');
+  pop.multi = !!(res && res.kind === 'multi');
+  pop.none = !!(res && res.kind === 'none');
+  pop.idle = !!batch && !q.trim();
+  pop.enterHint = '';
+  if (pop.found) {
+    const d = res.d;
+    const want = batch === 'return' ? 'loaned' : 'available';
+    const st = status(d);
+    pop.alias = d.alias; pop.et = d.et; pop.stText = st[0]; pop.stStyle = stStyle(st[1]);
+    if (d.L) pop.detail = [d.L.p, d.L.rol, d.L.donde].filter(Boolean).join(' · ') + ' · ' + (d.L.d ? 'afuera desde ' + d.L.since : 'desde ' + d.L.t + ', ' + hace(d.L.t));
+    else if (d.st === 'available') pop.detail = (d.model ? d.model + ' · ' : '') + 'en el mostrador, listo para prestar';
+    else if (d.st === 'out') pop.detail = 'No se puede prestar: está fuera de servicio.';
+    else pop.detail = 'No se puede prestar: figura como no encontrado.';
+    pop.canReturn = !batch && d.st === 'loaned';
+    pop.canLend = !batch && d.st === 'available' && !lendOpen;
+    pop.canAdd = !!batch && d.st === want && queue.indexOf(d.et) < 0;
+    pop.warn = !batch ? '' : (queue.indexOf(d.et) >= 0 ? 'Ya está en la cola.' : (d.st !== want ? (batch === 'return' ? 'No está prestado: no se puede devolver.' : 'No está disponible: no se puede prestar.') : ''));
+    pop.hasWarn = !!pop.warn;
+    pop.onReturn = () => doReturn([d.et]);
+    pop.onLend = () => openLend([d.et]);
+    pop.onAdd = addToQueue;
+    pop.showFicha = !!s.popFicha;
+    pop.fichaExpanded = s.popFicha ? 'true' : 'false';
+    pop.fichaLabel = s.popFicha ? 'Ocultar ficha' : 'Ficha';
+    pop.fields = s.popFicha ? fieldsOf(d) : [];
+    pop.onFicha = () => set({ popFicha: !s.popFicha });
+    pop.enterHint = pop.canReturn ? 'devuelve' : (pop.canLend ? 'abre el préstamo' : (pop.canAdd ? 'suma a la cola' : ''));
+  }
+  if (pop.multi) {
+    pop.multiTitle = res.total + ' coincidencias' + (res.total > res.list.length ? ' · mostrando ' + res.list.length + ', seguí escribiendo' : '');
+    pop.list = res.list.map(d => {
+      const st = status(d);
+      return { alias: d.alias, et: d.et, stText: st[0], stStyle: stStyle(st[1]) + ' flex: none;', who: d.L ? d.L.p + ' · ' + d.L.donde : '', onPick: () => set({ q: d.alias, lendList: [] }) };
+    });
+  }
+  if (pop.none) {
+    pop.noneLabel = res.label;
+    pop.sug = res.sug.map(d => ({ label: d.alias, onPick: () => set({ q: d.alias, lendList: [] }) }));
+    pop.hasSug = res.sug.length > 0;
+  }
+  pop.batch = !!batch;
+  pop.batchTitle = batch === 'return' ? 'Devolver varios' : 'Prestar varios';
+  pop.queue = queue.map(et => ({ label: byEt[et].alias, et: et, removeLabel: 'Sacar ' + byEt[et].alias + ' de la cola', onRemove: () => set({ queue: queue.filter(x => x !== et) }) }));
+  pop.queueEmpty = queue.length === 0;
+  pop.onBatchCancel = clearBar;
+  pop.retFoot = batch === 'return';
+  pop.retSummary = queue.length ? queue.length + (queue.length === 1 ? ' equipo en la cola' : ' equipos en la cola') : 'Sumá equipos con Enter.';
+  pop.retCta = 'Devolver ' + queue.length;
+  pop.retDisabled = queue.length ? 'false' : 'true';
+  pop.retStyle = 'width: 100%; height: 44px; padding: 0 14px; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; background: ' + (queue.length ? '#5B9BFF' : '#262B32') + '; color: ' + (queue.length ? '#0D0F12' : '#7C8592') + ';';
+  pop.onRetConfirm = () => { if (queue.length) doReturn(queue); };
+  pop.lend = lendOpen;
+  pop.lendTitle = batch === 'lend' ? 'Datos del préstamo (uno para toda la cola)' : (lendList.length === 1 ? 'Prestar ' + (byEt[lendList[0]] || {}).alias : 'Prestar ' + lendList.length + ' equipos');
+  pop.lendChips = !batch && lendList.length > 1 ? lendList.map(et => ({ label: byEt[et].alias, et: et })) : [];
+  pop.lendCta = batch === 'lend' ? 'Prestar ' + queue.length : (lendList.length > 1 ? 'Prestar ' + lendList.length : 'Confirmar');
+  pop.onLendConfirm = () => doLend(batch === 'lend' ? queue : lendList);
+  pop.onLendCancel = () => (batch ? clearBar() : set({ lendList: [], lendErr: '' }));
+  pop.lendErr = s.lendErr || '';
+  pop.hasLendErr = !!s.lendErr;
+  const pn = norm(s.lendP);
+  pop.people = B.PEOPLE.filter(x => !pn || norm(x.p).indexOf(pn) >= 0).map(x => {
+    const on = norm(x.p) === pn && pn !== '';
+    return {
+      label: x.p, hint: x.rol + ' · ' + x.u, pressed: on ? 'true' : 'false',
+      mStyle: 'height: 44px; padding: 0 14px; border-radius: 6px; font-size: 14px; cursor: pointer; color: #ECEEF1; background: transparent; border: 1px solid ' + (on ? '#5B9BFF' : '#353B44') + ';',
+      style: 'display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; cursor: pointer; color: #ECEEF1; background: transparent; border: 1px solid ' + (on ? '#5B9BFF' : '#353B44') + ';',
+      onPick: () => set({ lendP: x.p, lendU: x.u, lendM: x.m, lendRol: x.rol, lendErr: '' })
+    };
+  });
+  if (lendOpen && !pop.enterHint) pop.enterHint = 'confirma el préstamo';
+  if (batch && !pop.enterHint) pop.enterHint = 'suma a la cola';
+  if (!pop.enterHint) pop.enterHint = 'acción principal';
+
+  const batchBtn = kind => {
+    const on = batch === kind;
+    return {
+      pressed: on ? 'true' : 'false',
+      mStyle: 'flex: 1 1 0; min-width: 0; padding: 0 8px; background: #1B1F24; color: #ECEEF1; border: 1px solid ' + (on ? '#5B9BFF' : '#353B44') + ';',
+      style: 'display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; color: #ECEEF1; background: #1B1F24; border: 1px solid ' + (on ? '#5B9BFF' : '#353B44') + ';',
+      onClick: () => set({ batch: on ? '' : kind, queue: [], q: '', lendList: [], lendErr: '', lendP: '', lendU: '', lendM: '', lendRol: '', popFicha: false })
+    };
+  };
+
+  // ---------- Agenda ----------
+  const ag = s.ag || 'Pendiente';
+  const AGC = { Pendiente: AMBER, Entregado: T2, Realizado: '#7C8592' };
+  const agenda = {
+    st: ag === 'Pendiente' ? '· pendiente de entregar' : '· ' + ag.toLowerCase(), stStyle: stStyle(AGC[ag]),
+    canDeliver: ag === 'Pendiente', canDone: ag !== 'Realizado',
+    mDoneStyle: 'flex: 1 1 0; ' + (ag === 'Entregado' ? 'background: #5B9BFF; border: 0; color: #0D0F12; font-weight: 600;' : 'background: #1B1F24; border: 1px solid #353B44; color: #ECEEF1;'),
+    doneStyle: ag === 'Entregado'
+      ? 'height: 32px; padding: 0 12px; background: #5B9BFF; border: 0; border-radius: 6px; color: #0D0F12; font-size: 13px; font-weight: 600; cursor: pointer;'
+      : 'height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer;',
+    onDeliver: () => toast('Matific grupo total · entregado', { ag: ag }, { ag: 'Entregado' }),
+    onDone: () => toast('Matific grupo total · realizada', { ag: ag }, { ag: 'Realizado' })
+  };
+  const agNext = [
+    { from: '10:10', curso: 'Matific grupo total', act: 'Matific · Aula', qty: '25 Touch' },
+    { from: '13:30', curso: '4N', act: 'TIC Grupo completo · Aula TIC', qty: '3 TIC' }
+  ];
+
+  // ---------- Notas: sin scroll, últimas 4 + "Ver anteriores (N)" ----------
+  const NOTE_MAX = 4;
+  const notesAll = !!s.notesAll;
+  const hiddenN = Math.max(0, notes.length - NOTE_MAX);
+  const visNotes = notesAll ? notes : notes.slice(-NOTE_MAX);
+  const nImp = notes.filter(n => n.imp).length;
+  const noteRows = visNotes.map(n => ({
+    text: n.text, meta: n.op + ' · ' + n.t, imp: !!n.imp,
+    starPressed: n.imp ? 'true' : 'false',
+    starLabel: n.imp ? 'Quitar la marca de importante' : 'Marcar como importante',
+    starFill: n.imp ? AMBER : 'none',
+    mStarStyle: 'width: auto; padding: 0 10px; color: ' + (n.imp ? AMBER : '#7C8592') + ';',
+    starStyle: 'height: 22px; flex: none; padding: 0 4px; display: inline-flex; align-items: center; gap: 4px; background: transparent; border: 0; border-radius: 4px; cursor: pointer; color: ' + (n.imp ? AMBER : '#7C8592') + ';',
+    wrapStyle: 'display: flex; flex-direction: column; align-items: ' + (n.mine ? 'flex-end' : 'flex-start') + '; gap: 2px; min-width: 0;',
+    bubbleStyle: 'max-width: 88%; padding: 8px 10px; border-radius: 10px; font-size: 13px; line-height: 18px; box-sizing: border-box; overflow-wrap: anywhere; border: 1px solid #262B32; background: ' + (n.mine ? '#1B1F24' : 'transparent') + ';',
+    onStar: () => set({ notes: notes.map(x => (x.id === n.id ? Object.assign({}, x, { imp: !x.imp }) : x)) }),
+    onDel: () => toast('Nota borrada', { notes: notes }, { notes: notes.filter(x => x.id !== n.id) })
+  }));
+  const sendNote = () => {
+    const t = (s.draft || '').trim();
+    if (!t) return;
+    set({ notes: notes.concat([{ id: Date.now(), text: t, op: 'Bauti', t: '09:20', imp: false, mine: true }]), draft: '' });
+  };
+
+  // ---------- Movimientos ----------
+  const movOpen = s.movOpen !== false;
+  const movAll = !!s.movAll;
+  const mlist = movs.slice(0, movAll ? 20 : 5);
+  const TIPO = {
+    'préstamo': ['Préstamo', 'M7 7h10v10M7 17 17 7'],
+    'devolución': ['Devolución', 'M17 7 7 17M17 17H7V7'],
+    'edición': ['Edición', 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z']
+  };
+  const mov = {
+    open: movOpen, expanded: movOpen ? 'true' : 'false',
+    count: Math.min(movs.length, 20) + ' de hoy y ayer',
+    chevStyle: 'flex: none; transition: transform .15s ease; transform: rotate(' + (movOpen ? '0' : '-90') + 'deg);',
+    allLabel: movAll ? 'Ver menos' : 'Ver los 20',
+    gridStyle: 'grid-template-rows: repeat(' + Math.max(1, Math.ceil(mlist.length / 2)) + ', 36px);',
+    rows: mlist.map((m, i) => ({
+      time: (m.day ? m.day + ' ' : '') + m.t, tipo: TIPO[m.tipo][0], icon: TIPO[m.tipo][1], desc: m.desc, op: m.op,
+      tip: tipFor('mv' + i, null, 'font-size: 13px;')
+    })),
+    onToggle: () => set({ movOpen: !movOpen }),
+    onAll: () => set({ movAll: !movAll })
+  };
+
+  // ---------- Línea de estado ----------
+  const tst = s.toast || null;
+  const toastVals = {
+    show: !!tst, text: tst ? tst.text : '', hasUndo: !!(tst && tst.undo),
+    left: (s.toastLeft || 0) + ' s',
+    onUndo: () => { const st = self.state || {}; if (st.toast && st.toast.undo) self.setState(Object.assign({}, st.toast.undo, { toast: null, toastId: 0 })); },
+    onClose: () => set({ toast: null, toastId: 0 })
+  };
+
+  // ---------- Asistente (columna que empuja; sin respuesta real en el mockup) ----------
+  const asstOpen = !!s.asst;
+  const amsgs = s.amsgs || [];
+  const askA = text => {
+    const t = String(text || '').trim();
+    if (!t) return;
+    set({ amsgs: amsgs.concat([{ me: true, text: t }, { me: false, text: '[Respuesta del asistente]' }]), adraft: '' });
+  };
+  const asst = {
+    open: asstOpen, closed: !asstOpen, pressed: asstOpen ? 'true' : 'false',
+    iconStyle: asstOpen ? 'color: #ECEEF1; background: #1B1F24;' : '',
+    btnStyle: 'flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid ' + (asstOpen ? '#5B9BFF' : '#353B44') + '; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;',
+    onToggle: () => set({ asst: !asstOpen }),
+    sugs: amsgs.length ? [] : ['¿Qué está afuera hace más de un día?', '¿Quién tiene la Touch 8?', '¿Qué hay en la agenda de la tarde?'].map(x => ({ label: x, onPick: () => askA(x) })),
+    msgs: amsgs.map(m => ({ text: m.text, style: 'max-width: 90%; padding: 8px 10px; border-radius: 10px; font-size: 13px; line-height: 18px; overflow-wrap: anywhere; box-sizing: border-box; border: 1px solid #262B32; align-self: ' + (m.me ? 'flex-end; background: #1B1F24; color: #ECEEF1;' : 'flex-start; background: transparent; color: #A7AEB8;') })),
+    draft: s.adraft || '',
+    onDraft: e => set({ adraft: val(e) }),
+    onKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); askA(s.adraft); } },
+    onSend: () => askA(s.adraft)
+  };
+
+  // Pestañas de "Ahora" (mobile)
+  const ahoraK = s.ahora || 'agenda';
+  const ahoraTabs = [['agenda', 'Agenda', String(1 + agNext.length)], ['tareas', 'Tareas', '2'], ['notas', 'Notas', String(notes.length)]].map(t => ({
+    label: t[1], count: t[2], selected: ahoraK === t[0] ? 'true' : 'false',
+    style: 'border: 1px solid ' + (ahoraK === t[0] ? '#353B44' : 'transparent') + '; background: ' + (ahoraK === t[0] ? '#1B1F24' : 'transparent') + '; color: ' + (ahoraK === t[0] ? '#ECEEF1' : '#A7AEB8') + '; font-weight: ' + (ahoraK === t[0] ? '500' : '400') + ';',
+    onClick: () => set({ ahora: t[0] })
+  }));
+
+  return {
+    ahoraTabs: ahoraTabs,
+    ahora: { agenda: ahoraK === 'agenda', tareas: ahoraK === 'tareas', notas: ahoraK === 'notas' },
+    loanedCount: String(nLoaned),
+    onCam: () => toast('La cámara se abre en esta misma vista para leer el QR del equipo', null),
+    asst: asst,
+    ops: [mk('home', 'Inicio'), mk('loans', 'Préstamos', String(nLoaned)), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC'), mk('rooms', 'Estado aulas')],
+    mgmt: [mk('tasks', 'Tareas TIC', '5'), mk('tickets', 'Tickets'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')],
+    data: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')],
+    res: [mk('knowledge', 'Base de conocimiento'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')],
+
+    q: q, hasQ: !!q,
+    barFieldBorder: pop.show ? 'border-color: #5B9BFF;' : '',
+    onBarInput: e => { const v = val(e); if (v === (self.state || {}).q) return; set({ q: v, lendList: batch ? lendList : [], lendErr: '', popFicha: false }); },
+    onBarKey: e => {
+      if (!e) return;
+      if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); primary(); }
+      else if (e.key === 'Escape') clearBar();
+    },
+    onBarClear: clearBar,
+    batchLend: batchBtn('lend'),
+    batchRet: batchBtn('return'),
+    pop: pop,
+    lendP: s.lendP || '', lendU: s.lendU || '', lendM: s.lendM || '',
+    onLendP: e => set({ lendP: val(e), lendErr: '' }),
+    onLendU: e => set({ lendU: val(e) }),
+    onLendM: e => set({ lendM: val(e) }),
+    onLendKey: e => {
+      if (!e) return;
+      if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); doLend(batch === 'lend' ? queue : lendList); }
+      else if (e.key === 'Escape') clearBar();
+    },
+    toast: toastVals,
+
+    tiles: tiles,
+    types: types,
+    typesLabelStyle: 'font-family: ' + MONO + '; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-right: 4px; color: ' + (onAvail ? '#ECEEF1' : '#7C8592') + ';',
+
+    tabs: tabs,
+    activeChips: activeChips,
+    tq: tq,
+    onTq: e => set({ tq: val(e), more: 0 }),
+    rows: rows,
+    emptyRows: rows.length === 0,
+    emptyText: emptyText,
+    allSel: allSel, allChecked: allSel ? 'true' : 'false', allCheckStyle: checkStyle(allSel),
+    onCheckAll: () => {
+      const ets = visible.map(d => d.et);
+      set({ sel: allSel ? sel.filter(et => ets.indexOf(et) < 0) : sel.concat(ets.filter(et => sel.indexOf(et) < 0)), selConfirm: false });
+    },
+    showingText: visible.length + ' de ' + list.length,
+    hasMore: remaining > 0,
+    moreLabel: 'Ver ' + Math.min(20, remaining) + ' más',
+    onMore: () => set({ more: (s.more || 0) + 20 }),
+    selBar: selBar,
+
+    ag: agenda,
+    agNext: agNext,
+
+    notesCount: notes.length ? notes.length + (notes.length === 1 ? ' nota' : ' notas') + (nImp ? ' · ' + nImp + (nImp === 1 ? ' importante' : ' importantes') : '') : 'Sin notas',
+    noteRows: noteRows,
+    noNotes: notes.length === 0,
+    notesMore: hiddenN > 0,
+    notesMoreLabel: notesAll ? 'Ver solo las últimas ' + NOTE_MAX : 'Ver anteriores (' + hiddenN + ')',
+    onNotesMore: () => set({ notesAll: !notesAll }),
+    draft: s.draft || '',
+    onDraft: e => set({ draft: val(e) }),
+    onDraftKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); sendNote(); } },
+    onSend: sendNote,
+
+    mov: mov
+  };
+}
+}
+</script>
+</body>
+</html>
+

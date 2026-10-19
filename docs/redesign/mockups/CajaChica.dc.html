@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Caja chica</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+.nv:hover,.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+input::placeholder,textarea::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.fld:focus-within{border-color:#5B9BFF !important}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.eyb{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592}
+
+.btn,.btnp,.btng{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none;max-width:100%;text-decoration:none}
+.btn{background:#1B1F24;border:1px solid #353B44;color:#ECEEF1}
+.btn:hover{background:#22272E}
+.btnp{background:#5B9BFF;border:1px solid #5B9BFF;color:#0D0F12;font-weight:600}
+.btnp:hover{background:#8DBBFF;border-color:#8DBBFF;color:#0D0F12}
+.btng{background:transparent;border:1px solid transparent;color:#A7AEB8}
+.btng:hover{background:#1B1F24;color:#ECEEF1}
+.sm{height:30px;padding:0 10px;font-size:13px}
+[aria-disabled="true"]{opacity:.45;cursor:not-allowed !important}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid #262B32;border-radius:6px;background:transparent;color:#A7AEB8;font-size:13px;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none}
+.chip:hover{border-color:#353B44;color:#ECEEF1}
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.inp{height:36px;width:100%;min-width:0;padding:0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:14px;box-sizing:border-box;outline:none}
+.inp:focus{border-color:#5B9BFF}
+.ta{height:auto;min-height:64px;padding:8px 10px;line-height:20px;resize:vertical}
+.money{display:flex;align-items:center;gap:6px;height:36px;padding:0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;min-width:0;color:#7C8592}
+.money input{flex:1 1 auto;min-width:0;width:100%;height:34px;padding:0;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:14px;font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.lbl{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;font-weight:500;color:#A7AEB8}
+.fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px 16px}
+.full{grid-column:1 / -1}
+.stl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-height:40px;padding:4px 4px 4px 12px;border:1px solid #262B32;border-radius:6px;font-size:13px;color:#A7AEB8;box-sizing:border-box;background:#0D0F12}
+.frm{padding:16px 20px 20px;display:flex;flex-direction:column;gap:16px}
+.sw{position:relative;width:36px;height:20px;flex:none;padding:0;border-radius:999px;border:1px solid #353B44;cursor:pointer;box-sizing:border-box}
+
+/* Menú lateral (Menu-A) */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}
+.sb-head{justify-content:center}
+.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}
+.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}
+.sb-grpt{display:none}
+.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}
+.sb-user{padding:0;justify-content:center}
+.sb-hide{display:none !important}
+}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.pad{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0;padding:24px 32px 32px;box-sizing:border-box}
+.sum{padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+.sum-r{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 32px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.cols{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.c-g{flex:3 1 520px;min-width:0}
+.c-r{flex:2 1 360px;min-width:0}
+.ch{min-height:52px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 16px;border-bottom:1px solid #262B32;box-sizing:border-box}
+@media (max-width:767px){.sb{display:none}.tb{padding:0 16px}.tb-collapse{display:none !important}.pad{padding:16px}}
+@media (max-width:899px){.tb-ctx{display:none !important}}
+@media (max-width:639px){.tb-btn-t{display:none !important}}
+
+/* Gastos: tabla densa → filas apiladas en contenedor angosto */
+.gw{container-type:inline-size;container-name:gw;overflow:hidden}
+.gh,.gr{display:grid;grid-template-columns:96px minmax(0,1fr) 128px 116px;align-items:center;gap:12px;padding:0 16px;box-sizing:border-box}
+.gh{height:36px;font-size:12px;font-weight:500;color:#7C8592;border-bottom:1px solid #262B32}
+.gr{min-height:60px;padding-top:10px;padding-bottom:10px;border-bottom:1px solid #262B32}
+.g-i{text-align:right}
+@container gw (max-width:519px){
+.gh{display:none}
+.gr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"f i" "d d" "c c";row-gap:4px}
+.g-f{grid-area:f}.g-i{grid-area:i}.g-d{grid-area:d}.g-c{grid-area:c}
+}
+.rq{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-bottom:1px solid #262B32}
+.cal{max-width:308px;padding:10px;background:#0D0F12;border:1px solid #262B32;border-radius:10px;box-sizing:border-box}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.cd{height:36px;min-width:0;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid transparent;background:transparent;color:#ECEEF1;font-size:13px;cursor:pointer;font-family:'Geist Mono',ui-monospace,monospace;padding:0}
+.cd:hover{background:#1B1F24}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 900px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- MENÚ LATERAL (Menu-A, Caja chica activo) -->
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="ib sb-sede" aria-label="Cambiar de sede: Northfield Puertos">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; color: #ECEEF1; box-sizing: border-box;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Northfield Puertos</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide ell" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <div class="sb-grp">
+        <div class="sb-grpt">Operación</div>
+        <sc-for list="{{ops}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Gestión</div>
+        <sc-for list="{{mgmt}}" as="n" hint-placeholder-count="4">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Inventario y datos</div>
+        <sc-for list="{{data}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Recursos</div>
+        <sc-for list="{{res}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nv nvi" aria-label="Configuración" style="color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div class="sb-user">
+        <span aria-label="Bauti G., Jefe TIC" style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #ECEEF1; box-sizing: border-box;">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+        <button type="button" class="ib sb-hide" aria-label="Opciones de cuenta" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- TOPBAR: título + contexto; Asistente, campana, ayuda -->
+    <header class="tb">
+      <button type="button" class="ib tb-collapse" aria-label="Contraer menú (Ctrl B)" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Caja chica</h1>
+      <span class="tb-ctx" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-ctx ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">NFPT · fondo fijo, gastos y solicitudes de compra</span>
+      <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+      <button type="button" class="btn" aria-label="Asistente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2M20 14h2M15 13v2M9 13v2"></path></svg>
+        <span class="tb-btn-t">Asistente</span>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <div class="pad">
+
+      <!-- Error de carga: se ve y se puede reintentar (hoy queda el esqueleto para siempre) -->
+      <sc-if value="{{loadErr}}" hint-placeholder-val="{{ false }}">
+        <div class="card" role="alert" style="padding: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;">
+          <div style="flex: 1 1 320px; min-width: 0;">
+            <div style="font-size: 16px; font-weight: 600;">No se pudo cargar la caja chica</div>
+            <div style="margin-top: 4px; font-size: 13px; line-height: 20px; color: #A7AEB8;">El servidor no respondió. No mostramos un saldo viejo para no confundir: reintentá en un momento.</div>
+          </div>
+          <button type="button" class="btnp" onClick="{{onRetry}}">Reintentar</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{loaded}}" hint-placeholder-val="{{ true }}">
+
+        <sc-if value="{{ro}}" hint-placeholder-val="{{ false }}">
+          <div class="stl" role="status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><rect width="14" height="10" x="5" y="11" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            <span style="flex: 1 1 260px; min-width: 0;">Modo consulta: podés ver saldo, gastos y solicitudes. Registrar, solicitar y resolver quedan deshabilitados.</span>
+          </div>
+        </sc-if>
+
+        <!-- SALDO + ACCIONES -->
+        <section class="card sum" aria-label="Saldo de la caja chica">
+          <div class="sum-r">
+            <div style="flex: 1 1 280px; min-width: 0;">
+              <div class="eyb">Fondo fijo · NFPT</div>
+              <div style="margin-top: 8px; font-size: 13px; font-weight: 500; color: #A7AEB8;">Saldo disponible</div>
+              <div class="mono ell" style="{{sum.saldoStyle}}">{{sum.saldo}}</div>
+              <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: #A7AEB8;">
+                <span class="nw">Fondo <span class="mono" style="color: #ECEEF1;">{{sum.fondo}}</span></span>
+                <span class="nw">Gastado <span class="mono" style="color: #ECEEF1;">{{sum.spent}}</span></span>
+              </div>
+              <sc-if value="{{sum.hasHint}}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top: 6px; font-size: 13px; color: #F5C04E;">{{sum.hint}}</div>
+              </sc-if>
+            </div>
+            <sc-if value="{{sum.hasRing}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; align-items: center; gap: 10px; flex: none;">
+                <svg width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="{{sum.ringAria}}" style="flex: none;"><circle cx="20" cy="20" r="18.5" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="20" cy="20" r="18.5" fill="none" stroke="{{sum.ringColor}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{sum.ringDash}}" stroke-opacity="{{sum.ringOp}}" transform="rotate(-90 20 20)"></circle></svg>
+                <span style="display: flex; flex-direction: column; line-height: 18px;"><span class="mono nw" style="{{sum.pctStyle}}">{{sum.pct}}</span><span class="nw" style="font-size: 12px; color: #7C8592;">del fondo disponible</span></span>
+              </div>
+            </sc-if>
+            <div class="acts">
+              <sc-if value="{{perm.manager}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="btn" aria-disabled="{{roStr}}" aria-expanded="{{fe.expanded}}" onClick="{{fe.onToggle}}">Editar fondo</button>
+                <button type="button" class="btn" aria-disabled="{{roStr}}" aria-expanded="{{gf.expanded}}" onClick="{{gf.onOpen}}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+                  Registrar gasto
+                </button>
+              </sc-if>
+              <sc-if value="{{perm.canRequest}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="btnp" aria-disabled="{{roStr}}" aria-expanded="{{sf.expanded}}" onClick="{{sf.onOpen}}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+                  Solicitar compra
+                </button>
+              </sc-if>
+            </div>
+          </div>
+
+          <!-- Editar fondo: en línea dentro del resumen -->
+          <sc-if value="{{fe.show}}" hint-placeholder-val="{{ false }}">
+            <div onKeyDown="{{fe.onKey}}" style="border-top: 1px solid #262B32; padding-top: 16px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px;">
+              <label class="lbl" style="flex: 0 1 240px;">Fondo inicial
+                <span class="money fld"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" autocomplete="off" aria-label="Fondo inicial en pesos" value="{{fe.draft}}" onInput="{{fe.onDraft}}" onChange="{{fe.onDraft}}" placeholder="0,00"></span>
+              </label>
+              <button type="button" class="btnp" onClick="{{fe.onSave}}">Guardar fondo</button>
+              <button type="button" class="btng" onClick="{{fe.onCancel}}">Cancelar</button>
+              <span style="flex: 1 1 240px; min-width: 0; font-size: 12px; line-height: 18px; color: #7C8592;">El saldo se recalcula: fondo menos lo gastado. Solo el Jefe TIC puede cambiarlo.</span>
+              <sc-if value="{{fe.hasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="flex: 1 1 100%; font-size: 13px; color: #FF6B6B;">{{fe.err}}</div></sc-if>
+            </div>
+          </sc-if>
+        </section>
+
+        <sc-if value="{{topMsg.show}}" hint-placeholder-val="{{ false }}">
+          <div class="stl" role="status">
+            <span style="flex: 1 1 260px; min-width: 0;">{{topMsg.text}}</span>
+            <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{topMsg.onClose}}" style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 4px; color: #7C8592; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+          </div>
+        </sc-if>
+
+        <!-- REGISTRAR GASTO (en línea) -->
+        <sc-if value="{{gf.show}}" hint-placeholder-val="{{ false }}">
+          <section class="card frm" aria-label="Registrar gasto" onKeyDown="{{gf.onKey}}">
+            <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;">
+              <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Registrar gasto</h3>
+              <span style="flex: 1 1 auto; font-size: 12px; color: #7C8592;">Enter registra · Esc cancela</span>
+              <span class="nw" style="font-size: 13px; color: #A7AEB8;">Saldo disponible <span class="mono" style="color: #ECEEF1;">{{sum.saldo}}</span></span>
+            </div>
+            <div class="fg">
+              <div class="lbl">
+                <label for="cc-fecha">Fecha</label>
+                <div style="display: flex; gap: 6px; min-width: 0;">
+                  <input id="cc-fecha" class="inp mono" type="text" inputmode="numeric" autocomplete="off" value="{{gf.fecha}}" onInput="{{gf.onFecha}}" onChange="{{gf.onFecha}}" placeholder="DD/MM/AAAA">
+                  <button type="button" class="btn" aria-label="Elegir en el calendario" aria-expanded="{{gf.calExpanded}}" onClick="{{gf.onCal}}" style="width: 36px; padding: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></button>
+                </div>
+                <div style="display: flex; gap: 6px;"><button type="button" class="chip" onClick="{{gf.onHoy}}">Hoy</button><button type="button" class="chip" onClick="{{gf.onAyer}}">Ayer</button></div>
+              </div>
+              <label class="lbl">Importe *
+                <span class="money fld"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" autocomplete="off" aria-label="Importe en pesos" value="{{gf.imp}}" onInput="{{gf.onImp}}" onChange="{{gf.onImp}}" placeholder="0,00"></span>
+              </label>
+              <sc-if value="{{gf.cal}}" hint-placeholder-val="{{ false }}">
+                <div class="full">
+                  <div class="cal" role="group" aria-label="Calendario">
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                      <button type="button" class="ib" aria-label="Mes anterior" onClick="{{gf.onPrevM}}" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+                      <span class="nw" style="flex: 1 1 auto; text-align: center; font-size: 13px; font-weight: 500;">{{gf.calTitle}}</span>
+                      <button type="button" class="ib" aria-label="Mes siguiente" onClick="{{gf.onNextM}}" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+                    </div>
+                    <div class="cal-g" aria-hidden="true" style="margin-bottom: 2px;">
+                      <span class="cd" style="height: 24px; cursor: default; color: #7C8592; font-size: 11px;">L</span><span class="cd" style="height: 24px; cursor: default; color: #7C8592; font-size: 11px;">M</span><span class="cd" style="height: 24px; cursor: default; color: #7C8592; font-size: 11px;">M</span><span class="cd" style="height: 24px; cursor: default; color: #7C8592; font-size: 11px;">J</span><span class="cd" style="height: 24px; cursor: default; color: #7C8592; font-size: 11px;">V</span><span class="cd" style="height: 24px; cursor: default; color: #7C8592; font-size: 11px;">S</span><span class="cd" style="height: 24px; cursor: default; color: #7C8592; font-size: 11px;">D</span>
+                    </div>
+                    <div class="cal-g">
+                      <sc-for list="{{gf.days}}" as="d" hint-placeholder-count="35">
+                        <button type="button" class="cd" tabindex="{{d.tab}}" aria-hidden="{{d.hidden}}" aria-pressed="{{d.pressed}}" aria-label="{{d.aria}}" onClick="{{d.onClick}}" style="{{d.style}}">{{d.label}}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+              <label class="lbl full">Descripción *<input class="inp" type="text" autocomplete="off" value="{{gf.desc}}" onInput="{{gf.onDesc}}" onChange="{{gf.onDesc}}" placeholder="Qué se compró"></label>
+              <label class="lbl">Proveedor<input class="inp" type="text" autocomplete="off" value="{{gf.prov}}" onInput="{{gf.onProv}}" onChange="{{gf.onProv}}" placeholder="Opcional"></label>
+              <label class="lbl">Categoría<input class="inp" type="text" autocomplete="off" value="{{gf.cat}}" onInput="{{gf.onCatIn}}" onChange="{{gf.onCatIn}}" placeholder="General"></label>
+              <div class="lbl full">
+                <span>Comprobante <span style="font-weight: 400; color: #7C8592;">(opcional)</span></span>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0;">
+                  <sc-if value="{{gf.noComp}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="btn sm" onClick="{{gf.onComp}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>Adjuntar</button>
+                    <span style="font-size: 12px; color: #7C8592;">PNG, JPG, WEBP o PDF. Se sube apenas lo elegís.</span>
+                  </sc-if>
+                  <sc-if value="{{gf.comp}}" hint-placeholder-val="{{ false }}">
+                    <span class="mono ell" style="font-size: 13px; color: #ECEEF1;">[archivo].pdf</span>
+                    <span class="nw" style="font-size: 12px; color: #A7AEB8;">Subido</span>
+                    <button type="button" class="btng sm" onClick="{{gf.onCompRemove}}">Quitar</button>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+            <sc-if value="{{gf.hasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size: 13px; color: #FF6B6B;">{{gf.err}}</div></sc-if>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <button type="button" class="btnp" onClick="{{gf.onSave}}">Registrar gasto</button>
+              <button type="button" class="btng" onClick="{{gf.onCancel}}">Cancelar</button>
+            </div>
+          </section>
+        </sc-if>
+
+        <!-- SOLICITAR COMPRA (en línea) -->
+        <sc-if value="{{sf.show}}" hint-placeholder-val="{{ false }}">
+          <section class="card frm" aria-label="Solicitar compra" onKeyDown="{{sf.onKey}}">
+            <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;">
+              <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Solicitar compra</h3>
+              <span style="flex: 1 1 auto; font-size: 12px; color: #7C8592;">Le llega al responsable de caja chica para aprobarla o rechazarla.</span>
+            </div>
+            <div class="fg">
+              <label class="lbl full">Qué necesitás comprar *<input class="inp" type="text" autocomplete="off" value="{{sf.desc}}" onInput="{{sf.onDesc}}" onChange="{{sf.onDesc}}" placeholder="Ej. cables HDMI para el aula"></label>
+              <label class="lbl">Categoría<input class="inp" type="text" autocomplete="off" value="{{sf.cat}}" onInput="{{sf.onCat}}" onChange="{{sf.onCat}}" placeholder="General"></label>
+              <label class="lbl">Importe estimado
+                <span class="money fld"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" autocomplete="off" aria-label="Importe estimado en pesos" value="{{sf.est}}" onInput="{{sf.onEst}}" onChange="{{sf.onEst}}" placeholder="0,00"></span>
+              </label>
+              <label class="lbl">Proveedor sugerido<input class="inp" type="text" autocomplete="off" value="{{sf.prov}}" onInput="{{sf.onProv}}" onChange="{{sf.onProv}}" placeholder="Opcional"></label>
+              <label class="lbl full">Justificación<textarea class="inp ta" rows="3" value="{{sf.just}}" onInput="{{sf.onJust}}" onChange="{{sf.onJust}}" placeholder="Para qué se necesita"></textarea></label>
+              <div class="lbl full">
+                <span>Comprobante o presupuesto <span style="font-weight: 400; color: #7C8592;">(opcional)</span></span>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0;">
+                  <sc-if value="{{sf.noComp}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="btn sm" onClick="{{sf.onComp}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>Adjuntar</button>
+                    <span style="font-size: 12px; color: #7C8592;">PNG, JPG, WEBP o PDF. Si se aprueba, pasa al gasto.</span>
+                  </sc-if>
+                  <sc-if value="{{sf.comp}}" hint-placeholder-val="{{ false }}">
+                    <span class="mono ell" style="font-size: 13px; color: #ECEEF1;">[archivo].pdf</span>
+                    <span class="nw" style="font-size: 12px; color: #A7AEB8;">Subido</span>
+                    <button type="button" class="btng sm" onClick="{{sf.onCompRemove}}">Quitar</button>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+            <sc-if value="{{sf.hasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size: 13px; color: #FF6B6B;">{{sf.err}}</div></sc-if>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <button type="button" class="btnp" onClick="{{sf.onSave}}">Enviar solicitud</button>
+              <button type="button" class="btng" onClick="{{sf.onCancel}}">Cancelar</button>
+            </div>
+          </section>
+        </sc-if>
+
+        <div class="cols">
+          <!-- GASTOS -->
+          <section class="card gw c-g" aria-label="Historial de gastos">
+            <div class="ch">
+              <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Gastos</h2>
+              <span class="mono" style="font-size: 12px; color: #7C8592;">{{gastosCount}}</span>
+              <span aria-hidden="true" style="flex: 1 1 0;"></span>
+              <span class="nw" style="font-size: 12px; color: #7C8592;">Más nuevos primero</span>
+            </div>
+            <sc-if value="{{hasGastos}}" hint-placeholder-val="{{ true }}">
+              <div class="gh" aria-hidden="true"><span>Fecha</span><span>Descripción</span><span style="text-align: right;">Importe</span><span>Comprobante</span></div>
+              <sc-for list="{{gastos}}" as="r" hint-placeholder-count="3">
+                <div class="gr">
+                  <span class="g-f mono nw" style="font-size: 13px; color: #A7AEB8;">{{r.fecha}}</span>
+                  <span class="g-d" style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <span class="ell" style="font-weight: 500;">{{r.desc}}</span>
+                    <span style="display: flex; flex-wrap: wrap; gap: 0 10px; min-width: 0; font-size: 12px; color: #7C8592;"><span class="ell">{{r.sub}}</span><sc-if value="{{r.hasInv}}" hint-placeholder-val="{{ false }}"><a href="#" class="nw" style="font-size: 12px; text-decoration: none;">{{r.inv}}</a></sc-if></span>
+                  </span>
+                  <span class="g-i mono nw" style="font-size: 14px;">{{r.imp}}</span>
+                  <span class="g-c nw" style="font-size: 13px;">
+                    <sc-if value="{{r.comp}}" hint-placeholder-val="{{ true }}"><a href="#" target="_blank" rel="noopener" style="text-decoration: none;">Comprobante</a></sc-if>
+                    <sc-if value="{{r.noComp}}" hint-placeholder-val="{{ false }}"><span style="color: #7C8592;">Sin comprobante</span></sc-if>
+                  </span>
+                </div>
+              </sc-for>
+            </sc-if>
+            <sc-if value="{{noGastos}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 40px 20px; text-align: center;">
+                <div style="font-size: 14px; font-weight: 500;">Todavía no hay gastos</div>
+                <div style="margin-top: 4px; font-size: 13px; color: #7C8592;">Cuando registres uno aparecerá en este historial.</div>
+              </div>
+            </sc-if>
+          </section>
+
+          <!-- SOLICITUDES DE COMPRA -->
+          <section class="card c-r" aria-label="Solicitudes de compra">
+            <div class="ch">
+              <h2 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Solicitudes de compra</h2>
+              <span aria-hidden="true" style="flex: 1 1 0;"></span>
+              <span class="nw" style="{{pendStyle}}">{{pendTxt}}</span>
+            </div>
+            <sc-for list="{{reqs}}" as="r" hint-placeholder-count="3">
+              <div class="rq" aria-label="{{r.aria}}">
+                <div style="display: flex; align-items: baseline; gap: 12px; min-width: 0;">
+                  <span class="ell" style="{{r.descStyle}}">{{r.desc}}</span>
+                  <span class="nw" style="{{r.statusStyle}}">{{r.status}}</span>
+                </div>
+                <span class="ell" style="font-size: 12px; color: #7C8592;"><span class="mono">{{r.num}}</span> · {{r.by}} · <span class="mono">{{r.fecha}}</span></span>
+                <span style="{{r.justStyle}}">{{r.just}}</span>
+                <span style="display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 13px; color: #A7AEB8;">
+                  <span class="nw">Estimado <span class="mono" style="{{r.estStyle}}">{{r.est}}</span></span>
+                  <span class="ell">{{r.prov}}</span>
+                </span>
+                <sc-if value="{{r.hasFinal}}" hint-placeholder-val="{{ false }}">
+                  <span class="ell" style="font-size: 13px; color: #A7AEB8;">{{r.finalTxt}}</span>
+                </sc-if>
+                <sc-if value="{{r.hasComp}}" hint-placeholder-val="{{ false }}">
+                  <a href="#" target="_blank" rel="noopener" class="nw" style="align-self: flex-start; font-size: 13px; text-decoration: none;">Comprobante adjunto</a>
+                </sc-if>
+                <sc-if value="{{r.canResolve}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                    <button type="button" class="btnp sm" aria-disabled="{{r.dis}}" aria-expanded="{{r.resolveExpanded}}" onClick="{{r.onResolve}}">Resolver</button>
+                    <button type="button" class="btng sm" aria-disabled="{{r.dis}}" aria-expanded="{{r.rejectExpanded}}" onClick="{{r.onReject}}">Rechazar</button>
+                  </div>
+                </sc-if>
+
+                <!-- Aprobar: formulario en línea debajo de la solicitud -->
+                <sc-if value="{{r.resolving}}" hint-placeholder-val="{{ false }}">
+                  <div onKeyDown="{{r.rf.onKey}}" style="margin-top: 8px; padding: 14px; background: #0D0F12; border: 1px solid #262B32; border-radius: 10px; display: flex; flex-direction: column; gap: 12px;">
+                    <div>
+                      <div style="font-size: 14px; font-weight: 600;">Aprobar solicitud <span class="mono">{{r.num}}</span></div>
+                      <div style="margin-top: 2px; font-size: 12px; line-height: 18px; color: #A7AEB8;">Al aprobar se crea el gasto y se notifica a {{r.by}}. Saldo disponible <span class="mono" style="color: #ECEEF1;">{{r.saldo}}</span></div>
+                    </div>
+                    <div class="fg" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+                      <label class="lbl">Costo final *
+                        <span class="money fld"><span aria-hidden="true">$</span><input type="text" inputmode="decimal" autocomplete="off" aria-label="Costo final en pesos" value="{{r.rf.costo}}" onInput="{{r.rf.onCosto}}" onChange="{{r.rf.onCosto}}" placeholder="0,00"></span>
+                      </label>
+                      <label class="lbl">Proveedor *<input class="inp" type="text" autocomplete="off" value="{{r.rf.prov}}" onInput="{{r.rf.onProv}}" onChange="{{r.rf.onProv}}"></label>
+                      <label class="lbl full">Nota de resolución<textarea class="inp ta" rows="2" value="{{r.rf.nota}}" onInput="{{r.rf.onNota}}" onChange="{{r.rf.onNota}}" placeholder="Opcional" style="min-height: 52px;"></textarea></label>
+                      <div class="full" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+                        <button type="button" class="sw" role="switch" aria-checked="{{r.rf.invStr}}" aria-labelledby="cc-sw-inv" onClick="{{r.rf.onInv}}" style="{{r.rf.swStyle}}"><span aria-hidden="true" style="{{r.rf.knobStyle}}"></span></button>
+                        <span id="cc-sw-inv" style="flex: 1 1 180px; min-width: 0; font-size: 13px; color: #ECEEF1;">Registrar también en Inventario TIC</span>
+                      </div>
+                      <sc-if value="{{r.rf.inv}}" hint-placeholder-val="{{ false }}">
+                        <label class="lbl">Cantidad<input class="inp mono" type="text" inputmode="numeric" autocomplete="off" value="{{r.rf.cant}}" onInput="{{r.rf.onCant}}" onChange="{{r.rf.onCant}}"></label>
+                        <span style="align-self: end; font-size: 12px; line-height: 18px; color: #7C8592;">Se crea como recurso nuevo, en “unidades”, con observación de la compra.</span>
+                      </sc-if>
+                    </div>
+                    <sc-if value="{{r.rf.hasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size: 13px; color: #FF6B6B;">{{r.rf.err}}</div></sc-if>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                      <button type="button" class="btnp sm" onClick="{{r.rf.onSave}}">Aprobar y descontar</button>
+                      <button type="button" class="btng sm" onClick="{{r.rf.onCancel}}">Cancelar</button>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <!-- Rechazar: confirmación en línea con nota -->
+                <sc-if value="{{r.rejecting}}" hint-placeholder-val="{{ false }}">
+                  <div onKeyDown="{{r.rj.onKey}}" style="margin-top: 8px; padding: 14px; background: #0D0F12; border: 1px solid #262B32; border-radius: 10px; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="font-size: 13px; line-height: 20px; color: #ECEEF1;">¿Rechazar la solicitud? Se le avisa a {{r.by}} con esta nota.</div>
+                    <input class="inp" type="text" autocomplete="off" aria-label="Nota de rechazo" value="{{r.rj.nota}}" onInput="{{r.rj.onNota}}" onChange="{{r.rj.onNota}}">
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                      <button type="button" class="btn sm" onClick="{{r.rj.onConfirm}}" style="color: #FF6B6B;">Rechazar</button>
+                      <button type="button" class="btng sm" onClick="{{r.rj.onCancel}}">Cancelar</button>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{r.hasMsg}}" hint-placeholder-val="{{ false }}">
+                  <div class="stl" role="status" style="margin-top: 6px;"><span style="flex: 1 1 200px; min-width: 0;">{{r.msg}}</span></div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{noReqs}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 40px 20px; text-align: center;">
+                <div style="font-size: 14px; font-weight: 500;">No hay solicitudes</div>
+                <div style="margin-top: 4px; font-size: 13px; color: #7C8592;">Las solicitudes del equipo se mostrarán acá.</div>
+              </div>
+            </sc-if>
+          </section>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900},"estado":{"editor":"enum","options":["Jefe TIC","Asistente","consulta","vacío (hoy en la base)","error de carga"],"default":"Jefe TIC"}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const P = this.props || {};
+  const estado = String(P.estado || 'Jefe TIC');
+  const ro = estado === 'consulta';
+  const roStr = ro ? 'true' : 'false';
+  const empty = estado === 'vacío (hoy en la base)';
+  const perm = { manager: estado !== 'Asistente', canRequest: true };
+  const loadErr = estado === 'error de carga' && !s.retried;
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const I = this.icons();
+  const T1 = '#ECEEF1', T2 = '#A7AEB8', T3 = '#7C8592', WARN = '#F5C04E', BAD = '#FF6B6B', OK = '#5BD68A';
+  const HOY = '16/10/2026', AYER = '15/10/2026', ME = 'Bauti G.';
+  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+  // La base local no tiene caja chica cargada (fondo $0, sin gastos ni solicitudes).
+  // Las filas de ejemplo muestran el diseño con placeholders [N]; lo que cargues acá usa tus valores.
+  const PH_G = [
+    { id: 'g1', fecha: null, desc: null, prov: null, cat: null, imp: null, comp: true, inv: '[N]' },
+    { id: 'g2', fecha: null, desc: null, prov: null, cat: null, imp: null, comp: true, inv: null },
+    { id: 'g3', fecha: null, desc: null, prov: null, cat: null, imp: null, comp: false, inv: null }
+  ];
+  const PH_R = [
+    { id: 'r1', status: 'Pendiente', desc: null, by: null, fecha: null, just: null, est: null, prov: null, comp: true },
+    { id: 'r2', status: 'Aprobada', desc: null, by: null, fecha: null, just: null, est: null, prov: '', comp: false, finalProv: null, finalCost: null, nota: '' },
+    { id: 'r3', status: 'Rechazada', desc: null, by: null, fecha: null, just: '', est: null, prov: null, comp: false, nota: 'Rechazada desde caja chica' }
+  ];
+  const fondo = s.fondo !== undefined ? s.fondo : (empty ? 0 : null);
+  const gastos = s.gastos || (empty ? [] : PH_G);
+  const reqs = s.reqs || (empty ? [] : PH_R);
+  const known = fondo !== null && fondo !== undefined;
+  const spent = gastos.reduce((a, g) => a + (typeof g.imp === 'number' ? g.imp : 0), 0);
+  const saldo = known ? fondo - spent : null;
+
+  const fmt = n => (n === null || n === undefined) ? '$ [N]' : '$ ' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const parseMoney = v => {
+    let t = String(v || '').replace(/[$\s]/g, '');
+    if (!t) return NaN;
+    if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+    const n = Number(t);
+    return isFinite(n) ? n : NaN;
+  };
+  const validDate = v => {
+    const m = String(v || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return false;
+    const d = +m[1], mo = +m[2], y = +m[3];
+    const dt = new Date(y, mo - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+  };
+  const ph = (v, p) => (v === null || v === undefined ? p : v);
+  const dot = x => (/[.]$/.test(x) ? x : x + '.');
+  const NOOP = () => {};
+
+  // ---------- Menú ----------
+  const nav = (k, label, count) => {
+    const on = k === 'cash';
+    return { label: label, d: I[k], count: count || '', current: on ? 'page' : 'false', style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;', bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;' };
+  };
+
+  // ---------- Resumen ----------
+  const pctN = known && fondo > 0 ? Math.max(0, Math.round(saldo / fondo * 100)) : 0;
+  const r40 = 18.5, c40 = 2 * Math.PI * r40;
+  const sum = {
+    saldo: fmt(saldo), fondo: fmt(fondo), spent: known ? fmt(spent) : '$ [N]',
+    saldoStyle: 'margin-top: 2px; font-size: 40px; line-height: 48px; font-weight: 500; color: ' + (known && saldo <= 0 ? BAD : T1) + ';',
+    hasHint: known && fondo === 0 && perm.manager,
+    hint: 'Todavía no hay fondo cargado. Editá el fondo para empezar a registrar gastos.',
+    hasRing: known && fondo > 0,
+    pct: pctN + ' %', pctStyle: 'font-size: 14px; color: ' + (pctN <= 0 ? BAD : pctN <= 20 ? WARN : T1) + ';',
+    ringDash: (c40 * Math.min(100, pctN) / 100).toFixed(1) + ' ' + c40.toFixed(1),
+    ringColor: pctN <= 0 ? BAD : pctN <= 20 ? WARN : T2, ringOp: pctN > 0 ? '1' : '0',
+    ringAria: pctN + ' % del fondo disponible'
+  };
+
+  // ---------- Editar fondo ----------
+  const fe0 = s.fe || null;
+  const feSave = () => {
+    const n = parseMoney(fe0.draft);
+    if (!isFinite(n) || n < 0) return set({ fe: Object.assign({}, fe0, { err: 'Ingresá un importe válido, igual o mayor a cero.' }) });
+    set({ fondo: n, fe: null, topMsg: 'Fondo actualizado.' });
+  };
+  const fe = {
+    show: !!fe0, expanded: fe0 ? 'true' : 'false',
+    draft: fe0 ? fe0.draft : '', hasErr: !!(fe0 && fe0.err), err: fe0 ? fe0.err : '',
+    onToggle: () => { if (ro) return; set({ fe: fe0 ? null : { draft: known ? String(fondo).replace('.', ',') : '', err: '' } }); },
+    onDraft: e => set({ fe: Object.assign({}, fe0, { draft: val(e), err: '' }) }),
+    onSave: feSave, onCancel: () => set({ fe: null }),
+    onKey: e => { if (!e) return; if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { if (e.preventDefault) e.preventDefault(); feSave(); } else if (e.key === 'Escape') set({ fe: null }); }
+  };
+
+  // ---------- Registrar gasto ----------
+  const g0 = s.gf || null;
+  let gf = { show: false, expanded: 'false' };
+  const openG = () => { if (ro) return; set({ gf: g0 ? null : { fecha: HOY, desc: '', prov: '', cat: 'General', imp: '', comp: false, err: '', cal: false, y: 2026, m: 9 }, sf: null, topMsg: '' }); };
+  if (g0) {
+    const upd = p => set({ gf: Object.assign({}, g0, p, { err: '' }) });
+    const saveG = () => {
+      const bad = msg => set({ gf: Object.assign({}, g0, { err: msg }) });
+      if (!validDate(g0.fecha)) return bad('Ingresá una fecha válida con formato DD/MM/AAAA.');
+      if (!String(g0.desc || '').trim()) return bad('Escribí qué se compró.');
+      const imp = parseMoney(g0.imp);
+      if (!isFinite(imp) || imp <= 0) return bad('Ingresá un importe mayor a cero.');
+      if (known && imp > saldo) return bad('No alcanza el saldo. Hay ' + fmt(saldo) + ' disponibles y el gasto es de ' + fmt(imp) + '.');
+      const ng = { id: 'u' + Date.now(), fecha: g0.fecha.trim(), desc: g0.desc.trim(), prov: g0.prov.trim(), cat: g0.cat.trim() || 'General', imp: imp, comp: !!g0.comp, inv: null };
+      set({ gastos: [ng].concat(gastos), gf: null, topMsg: 'Gasto registrado.' });
+    };
+    // calendario propio, en línea
+    const y = g0.y, m = g0.m;
+    const first = new Date(y, m, 1);
+    const lead = (first.getDay() + 6) % 7;
+    const nDays = new Date(y, m + 1, 0).getDate();
+    const days = [];
+    for (let i = 0; i < lead; i++) days.push(null);
+    for (let d = 1; d <= nDays; d++) days.push(d);
+    while (days.length % 7) days.push(null);
+    const pad2 = n => (n < 10 ? '0' : '') + n;
+    gf = {
+      show: true, expanded: 'true',
+      fecha: g0.fecha, desc: g0.desc, prov: g0.prov, cat: g0.cat, imp: g0.imp,
+      comp: !!g0.comp, noComp: !g0.comp,
+      onFecha: e => upd({ fecha: val(e) }), onDesc: e => upd({ desc: val(e) }), onProv: e => upd({ prov: val(e) }),
+      onCatIn: e => upd({ cat: val(e) }), onImp: e => upd({ imp: val(e) }),
+      onHoy: () => upd({ fecha: HOY, cal: false }), onAyer: () => upd({ fecha: AYER, cal: false }),
+      onComp: () => upd({ comp: true }), onCompRemove: () => upd({ comp: false }),
+      cal: !!g0.cal, calExpanded: g0.cal ? 'true' : 'false', onCal: () => upd({ cal: !g0.cal }),
+      calTitle: MONTHS[m] + ' ' + y,
+      onPrevM: () => upd({ m: m === 0 ? 11 : m - 1, y: m === 0 ? y - 1 : y }),
+      onNextM: () => upd({ m: m === 11 ? 0 : m + 1, y: m === 11 ? y + 1 : y }),
+      days: days.map(d => {
+        if (!d) return { label: '', tab: '-1', hidden: 'true', pressed: 'false', aria: '', onClick: () => {}, style: 'visibility: hidden;' };
+        const str = pad2(d) + '/' + pad2(m + 1) + '/' + y;
+        const sel = String(g0.fecha).trim() === str, today = str === HOY;
+        return {
+          label: String(d), tab: '0', hidden: 'false', pressed: sel ? 'true' : 'false', aria: d + ' de ' + MONTHS[m] + (today ? ', hoy' : ''),
+          style: sel ? 'background: #ECEEF1; color: #0D0F12; border-color: #ECEEF1;' : today ? 'border-color: #353B44;' : '',
+          onClick: () => upd({ fecha: str, cal: false })
+        };
+      }),
+      hasErr: !!g0.err, err: g0.err,
+      onSave: saveG, onCancel: () => set({ gf: null }),
+      onKey: e => { if (!e) return; if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { if (e.preventDefault) e.preventDefault(); saveG(); } else if (e.key === 'Escape') set({ gf: null }); }
+    };
+  }
+  gf.onOpen = openG;
+
+  // ---------- Solicitar compra ----------
+  const s0 = s.sf || null;
+  let sf = { show: false, expanded: 'false' };
+  const openS = () => { if (ro) return; set({ sf: s0 ? null : { desc: '', cat: 'General', est: '', prov: '', just: '', comp: false, err: '' }, gf: null, topMsg: '' }); };
+  if (s0) {
+    const upd = p => set({ sf: Object.assign({}, s0, p, { err: '' }) });
+    const saveS = () => {
+      if (!String(s0.desc || '').trim()) return set({ sf: Object.assign({}, s0, { err: 'Escribí qué necesitás comprar.' }) });
+      const est = parseMoney(s0.est);
+      if (String(s0.est || '').trim() && (!isFinite(est) || est < 0)) return set({ sf: Object.assign({}, s0, { err: 'El importe estimado no es válido.' }) });
+      const nr = { id: 'u' + Date.now(), status: 'Pendiente', desc: s0.desc.trim(), by: ME, fecha: HOY, just: s0.just.trim(), est: isFinite(est) ? est : 0, prov: s0.prov.trim(), cat: s0.cat.trim() || 'General', comp: !!s0.comp };
+      set({ reqs: [nr].concat(reqs), sf: null, topMsg: 'Solicitud enviada al responsable de caja chica.' });
+    };
+    sf = {
+      show: true, expanded: 'true',
+      desc: s0.desc, cat: s0.cat, est: s0.est, prov: s0.prov, just: s0.just, comp: !!s0.comp, noComp: !s0.comp,
+      onDesc: e => upd({ desc: val(e) }), onCat: e => upd({ cat: val(e) }), onEst: e => upd({ est: val(e) }), onProv: e => upd({ prov: val(e) }), onJust: e => upd({ just: val(e) }),
+      onComp: () => upd({ comp: true }), onCompRemove: () => upd({ comp: false }),
+      hasErr: !!s0.err, err: s0.err,
+      onSave: saveS, onCancel: () => set({ sf: null }),
+      onKey: e => { if (!e) return; if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { if (e.preventDefault) e.preventDefault(); saveS(); } else if (e.key === 'Escape') set({ sf: null }); }
+    };
+  }
+  sf.onOpen = openS;
+
+  // ---------- Gastos ----------
+  const gRows = gastos.map(g => ({
+    fecha: ph(g.fecha, '[dd/mm/aaaa]'),
+    desc: ph(g.desc, '[Descripción del gasto]'),
+    sub: (g.prov === null ? '[Proveedor]' : (g.prov || 'Sin proveedor')) + ' · ' + ph(g.cat, '[Categoría]'),
+    imp: fmt(g.imp),
+    comp: !!g.comp, noComp: !g.comp,
+    hasInv: !!g.inv, inv: g.inv ? 'Inventario #' + g.inv : ''
+  }));
+
+  // ---------- Solicitudes (pendientes primero) ----------
+  const order = { Pendiente: 0, Aprobada: 1, Rechazada: 1 };
+  const sorted = reqs.slice().sort((a, b) => order[a.status] - order[b.status]);
+  const pend = reqs.filter(r => r.status === 'Pendiente').length;
+  const resolveId = s.resolveId || '';
+  const rejectId = s.rejectId || '';
+  const reqMsg = s.reqMsg || null;
+  const reqRows = sorted.map(r => {
+    const isP = r.status === 'Pendiente', isA = r.status === 'Aprobada', isR = r.status === 'Rechazada';
+    const by = ph(r.by, '[Nombre I.]');
+    const desc = ph(r.desc, '[Qué se pidió comprar]');
+    const row = {
+      dis: roStr, saldo: fmt(saldo),
+      aria: 'Solicitud ' + desc + ', ' + r.status,
+      desc: desc, descStyle: 'flex: 1 1 auto; font-weight: 500; color: ' + (isR ? T2 : T1) + ';',
+      status: r.status, statusStyle: 'flex: none; font-size: 13px; font-weight: 500; color: ' + (isP ? WARN : isA ? OK : T3) + ';',
+      num: '#[N]', by: by, fecha: ph(r.fecha, '[dd/mm/aaaa]'),
+      just: r.just === null ? '[Justificación]' : (r.just || 'Sin justificación adicional.'),
+      justStyle: 'font-size: 13px; line-height: 20px; color: ' + (r.just ? T2 : r.just === null ? T2 : T3) + ';',
+      est: fmt(r.est), estStyle: 'color: ' + (isR ? T2 : T1) + ';',
+      prov: r.prov === null ? '[Proveedor sugerido]' : (r.prov || 'Proveedor a definir'),
+      hasFinal: isA || isR,
+      finalTxt: isA ? 'Final: ' + ph(r.finalProv, '[Proveedor final]') + ' · ' + fmt(r.finalCost) + (r.nota ? ' · ' + r.nota : '') : isR ? 'Nota: ' + (r.nota || 'Rechazada desde caja chica') : '',
+      hasComp: !!r.comp,
+      canResolve: isP && perm.manager,
+      resolving: isP && resolveId === r.id, rejecting: isP && rejectId === r.id,
+      resolveExpanded: resolveId === r.id ? 'true' : 'false', rejectExpanded: rejectId === r.id ? 'true' : 'false',
+      onResolve: () => { if (ro) return; set({ resolveId: resolveId === r.id ? '' : r.id, rejectId: '', reqMsg: null, rf: { costo: r.est === null || r.est === undefined ? '' : String(r.est).replace('.', ','), prov: r.prov || '', nota: '', inv: false, cant: '1', err: '' } }); },
+      onReject: () => { if (ro) return; set({ rejectId: rejectId === r.id ? '' : r.id, resolveId: '', reqMsg: null, rjNota: 'Rechazada desde caja chica' }); },
+      hasMsg: !!(reqMsg && reqMsg.id === r.id), msg: reqMsg && reqMsg.id === r.id ? reqMsg.text : '',
+      rf: { costo: '', prov: '', nota: '', cant: '', inv: false, invStr: 'false', swStyle: '', knobStyle: '', hasErr: false, err: '', onCosto: NOOP, onProv: NOOP, onNota: NOOP, onCant: NOOP, onInv: NOOP, onSave: NOOP, onCancel: NOOP, onKey: NOOP },
+      rj: { nota: '', onNota: NOOP, onConfirm: NOOP, onCancel: NOOP, onKey: NOOP }
+    };
+    if (row.resolving) {
+      const f0 = s.rf || { costo: '', prov: '', nota: '', inv: false, cant: '1', err: '' };
+      const upd = p => set({ rf: Object.assign({}, f0, p, { err: '' }) });
+      const approve = () => {
+        const bad = msg => set({ rf: Object.assign({}, f0, { err: msg }) });
+        const costo = parseMoney(f0.costo);
+        if (!isFinite(costo) || costo <= 0) return bad('Ingresá el costo final, mayor a cero.');
+        if (!String(f0.prov || '').trim()) return bad('Completá el proveedor.');
+        if (known && costo > saldo) return bad('No alcanza el saldo para aprobarla. Disponible: ' + fmt(saldo) + '.');
+        const cant = Math.max(1, parseInt(f0.cant, 10) || 1);
+        const nr = reqs.map(x => (x.id === r.id ? Object.assign({}, x, { status: 'Aprobada', finalProv: f0.prov.trim(), finalCost: costo, nota: f0.nota.trim() }) : x));
+        const ng = { id: 'u' + Date.now(), fecha: HOY, desc: desc, prov: f0.prov.trim(), cat: r.cat || ph(r.cat, '[Categoría]'), imp: costo, comp: !!r.comp, inv: f0.inv ? '[N]' : null };
+        set({ reqs: nr, gastos: [ng].concat(gastos), resolveId: '', rf: null, reqMsg: { id: r.id, text: 'Compra aprobada y descontada del saldo.' + (f0.inv ? ' Se sumó a Inventario TIC como recurso nuevo (' + cant + ' unidades).' : '') + ' ' + dot('Se avisó a ' + by) } });
+      };
+      row.rf = {
+        costo: f0.costo, prov: f0.prov, nota: f0.nota, cant: f0.cant, inv: !!f0.inv, invStr: f0.inv ? 'true' : 'false',
+        swStyle: 'background: ' + (f0.inv ? T1 : 'transparent') + '; border-color: ' + (f0.inv ? T1 : '#353B44') + ';',
+        knobStyle: 'position: absolute; top: 2px; left: ' + (f0.inv ? 18 : 2) + 'px; width: 14px; height: 14px; border-radius: 999px; background: ' + (f0.inv ? '#0D0F12' : T3) + '; transition: left .15s ease;',
+        onCosto: e => upd({ costo: val(e) }), onProv: e => upd({ prov: val(e) }), onNota: e => upd({ nota: val(e) }), onCant: e => upd({ cant: val(e).replace(/[^0-9]/g, '') }),
+        onInv: () => upd({ inv: !f0.inv }),
+        hasErr: !!f0.err, err: f0.err,
+        onSave: approve, onCancel: () => set({ resolveId: '', rf: null }),
+        onKey: e => { if (!e) return; if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { if (e.preventDefault) e.preventDefault(); approve(); } else if (e.key === 'Escape') set({ resolveId: '', rf: null }); }
+      };
+    }
+    if (row.rejecting) {
+      const nota = s.rjNota !== undefined ? s.rjNota : 'Rechazada desde caja chica';
+      const confirm = () => {
+        const nr = reqs.map(x => (x.id === r.id ? Object.assign({}, x, { status: 'Rechazada', nota: String(nota).trim() || 'Rechazada desde caja chica' }) : x));
+        set({ reqs: nr, rejectId: '', reqMsg: { id: r.id, text: 'Solicitud rechazada. ' + dot('Se avisó a ' + by) } });
+      };
+      row.rj = {
+        nota: nota, onNota: e => set({ rjNota: val(e) }),
+        onConfirm: confirm, onCancel: () => set({ rejectId: '' }),
+        onKey: e => { if (!e) return; if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { if (e.preventDefault) e.preventDefault(); confirm(); } else if (e.key === 'Escape') set({ rejectId: '' }); }
+      };
+    }
+    return row;
+  });
+
+  const __out = {
+    ops: [nav('home', 'Inicio'), nav('loans', 'Préstamos', '[N]'), nav('devices', 'Dispositivos'), nav('agenda', 'Agenda TIC'), nav('rooms', 'Estado aulas')],
+    mgmt: [nav('tasks', 'Tareas TIC', '2'), nav('tickets', 'Tickets'), nav('reminders', 'Recordatorios'), nav('history', 'Historial')],
+    data: [nav('inventory', 'Inventario TIC'), nav('analytics', 'Analítica'), nav('cash', 'Caja chica')],
+    res: [nav('knowledge', 'Base de conocimiento'), nav('tools', 'Herramientas'), nav('links', 'Accesos rápidos')],
+    loadErr: loadErr, loaded: !loadErr,
+    onRetry: () => set({ retried: true }),
+    ro: ro, roStr: roStr, perm: perm,
+    sum: sum, fe: fe, gf: gf, sf: sf,
+    topMsg: { show: !!s.topMsg, text: s.topMsg || '', onClose: () => set({ topMsg: '' }) },
+    gastos: gRows, gastosCount: gRows.length, hasGastos: gRows.length > 0, noGastos: gRows.length === 0,
+    reqs: reqRows, noReqs: reqRows.length === 0,
+    pendTxt: pend ? pend + (pend === 1 ? ' pendiente' : ' pendientes') : 'Sin pendientes',
+    pendStyle: 'font-size: 13px; color: ' + (pend ? WARN : T3) + ';'
+  };
+  /*__fill__*/
+  const __REQ = ["ops","mgmt","data","res","loadErr","onRetry","loaded","ro","sum.saldoStyle","sum.saldo","sum.fondo","sum.spent","sum.hasHint","sum.hint","sum.hasRing","sum.ringAria","sum.ringColor","sum.ringDash","sum.ringOp","sum.pctStyle","sum.pct","perm.manager","roStr","fe.expanded","fe.onToggle","gf.expanded","gf.onOpen","perm.canRequest","sf.expanded","sf.onOpen","fe.show","fe.onKey","fe.draft","fe.onDraft","fe.onSave","fe.onCancel","fe.hasErr","fe.err","topMsg.show","topMsg.text","topMsg.onClose","gf.show","gf.onKey","gf.fecha","gf.onFecha","gf.calExpanded","gf.onCal","gf.onHoy","gf.onAyer","gf.imp","gf.onImp","gf.cal","gf.onPrevM","gf.calTitle","gf.onNextM","gf.days","gf.desc","gf.onDesc","gf.prov","gf.onProv","gf.cat","gf.onCatIn","gf.noComp","gf.onComp","gf.comp","gf.onCompRemove","gf.hasErr","gf.err","gf.onSave","gf.onCancel","sf.show","sf.onKey","sf.desc","sf.onDesc","sf.cat","sf.onCat","sf.est","sf.onEst","sf.prov","sf.onProv","sf.just","sf.onJust","sf.noComp","sf.onComp","sf.comp","sf.onCompRemove","sf.hasErr","sf.err","sf.onSave","sf.onCancel","gastosCount","hasGastos","gastos","noGastos","pendStyle","pendTxt","reqs","noReqs"];
+  const __LISTS = ["ops","mgmt","data","res","gf.days","gastos","reqs"];
+  __REQ.forEach(p => { const parts = p.split('.'); let o = __out; for (let i = 0; i < parts.length - 1; i++) { if (o[parts[i]] === null || typeof o[parts[i]] !== 'object') o[parts[i]] = {}; o = o[parts[i]]; } const k = parts[parts.length - 1]; if (o[k] === undefined || o[k] === null) o[k] = __LISTS.indexOf(p) >= 0 ? [] : ''; });
+  return __out;
+/*__end__*/
+}
+}
+</script>
+</body>
+</html>

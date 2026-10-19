@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Recordatorios — Mobile</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+.ib:hover,.gh:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.sg:hover{color:#ECEEF1 !important}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.fld:focus-within{border-color:#5B9BFF !important}
+input::placeholder,textarea::placeholder{color:#7C8592}
+input,textarea{font-size:16px !important}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.bnav{position:sticky;bottom:0;z-index:5;display:flex;height:64px;border-top:1px solid #262B32;background:#0D0F12}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 3300px; display: flex; flex-direction: column; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; overflow-x: hidden;">
+
+  <header style="height: 56px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 16px; border-bottom: 1px solid #262B32; box-sizing: border-box; min-width: 0;">
+    <h1 class="ell" style="margin: 0; flex: 1 1 auto; font-size: 16px; line-height: 24px; font-weight: 600;">Recordatorios</h1>
+    <button type="button" class="ib" aria-label="Abrir el Asistente" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path><path d="M8 12h.01M12 12h.01M16 12h.01"></path></svg>
+    </button>
+    <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+      <span class="mono" style="position: absolute; top: 6px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+    </button>
+  </header>
+
+  <main style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 12px; padding: 16px 16px 24px; min-width: 0; box-sizing: border-box;">
+    <div style="min-width: 0;">
+      <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Gestión · NFPT · vie 16/10 11:52</div>
+      <p style="margin: 4px 0 0; font-size: 14px; color: #A7AEB8;"><span class="mono" style="color: #ECEEF1;">{{hd.pend}}</span> pendientes · <span class="mono" style="{{hd.overStyle}}">{{hd.over}}</span><span style="{{hd.overStyle}}">{{hd.overLabel}}</span></p>
+    </div>
+    <button type="button" aria-expanded="{{form.openStr}}" onClick="{{form.onToggle}}" style="height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #5B9BFF; border: 0; border-radius: 6px; color: #0D0F12; font-size: 15px; font-weight: 600; cursor: pointer;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+      <span class="nw">{{form.btn}}</span>
+    </button>
+
+    <!-- ALTA EN LÍNEA -->
+    <sc-if value="{{form.open}}" hint-placeholder-val="{{ true }}">
+      <section aria-label="Nuevo recordatorio" style="min-width: 0; background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 16px 12px; display: flex; flex-direction: column; gap: 16px;">
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="rmm-title" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Qué hay que recordar</label>
+          <div class="fld" style="height: 44px; display: flex; align-items: center; padding: 0 12px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+            <input id="rmm-title" type="text" value="{{form.title}}" onInput="{{form.onTitle}}" placeholder="Ej. Retirar las Touch de 3F" style="flex: 1; min-width: 0; height: 42px; background: transparent; border: 0; outline: none; color: #ECEEF1;">
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="rmm-desc" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Detalle <span style="color: #7C8592; font-weight: 400;">opcional</span></label>
+          <div class="fld" style="background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; padding: 10px 12px; box-sizing: border-box;">
+            <textarea id="rmm-desc" rows="2" placeholder="Lo que haga falta para no preguntar" style="display: block; width: 100%; resize: vertical; background: transparent; border: 0; outline: none; color: #ECEEF1; line-height: 22px; box-sizing: border-box; padding: 0; scrollbar-width: none;"></textarea>
+          </div>
+        </div>
+
+        <!-- FECHA Y HORA: picker propio en línea; en iPhone no abre la rueda nativa ni depende de parsear texto -->
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span id="rmm-when-l" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Fecha y hora</span>
+          <button type="button" aria-labelledby="rmm-when-l rmm-when-v" aria-expanded="{{pk.openStr}}" onClick="{{pk.onToggle}}" style="{{pk.fieldStyle}}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+            <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; line-height: 18px;">
+              <span id="rmm-when-v" class="ell" style="max-width: 100%; color: #ECEEF1; font-size: 15px;">{{pk.label}}</span>
+              <span class="ell" style="max-width: 100%; font-size: 12px; color: #7C8592;">{{pk.rel}}</span>
+            </span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{pk.chev}}"><path d="M6 9l6 6 6-6"></path></svg>
+          </button>
+          <sc-if value="{{pk.open}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 12px; padding: 12px 6px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px;">
+              <div role="radiogroup" aria-label="Atajos" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;">
+                <sc-for list="{{pk.quick}}" as="o" hint-placeholder-count="4">
+                  <button type="button" role="radio" class="sg" aria-checked="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}"><span class="ell" style="max-width: 100%;">{{o.l}}</span><span class="mono ell" style="max-width: 100%; font-size: 12px; color: #7C8592;">{{o.sub}}</span></button>
+                </sc-for>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span class="ell" style="flex: 1 1 auto; font-size: 15px; font-weight: 600; padding-left: 4px;">{{pk.monthLabel}}</span>
+                <button type="button" class="ib" aria-label="Mes anterior" onClick="{{pk.onPrev}}" style="{{pk.prevStyle}}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+                </button>
+                <button type="button" class="ib" aria-label="Mes siguiente" onClick="{{pk.onNext}}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+                </button>
+              </div>
+              <div role="grid" aria-label="{{pk.monthLabel}}" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;">
+                <sc-for list="{{pk.wd}}" as="w" hint-placeholder-count="7">
+                  <span class="mono" aria-hidden="true" style="height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #7C8592;">{{w.l}}</span>
+                </sc-for>
+                <sc-for list="{{pk.days}}" as="d" hint-placeholder-count="35">
+                  <button type="button" class="mono" aria-label="{{d.aria}}" aria-pressed="{{d.pressed}}" aria-disabled="{{d.off}}" aria-current="{{d.cur}}" onClick="{{d.onClick}}" style="{{d.style}}">{{d.n}}</button>
+                </sc-for>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <span style="font-size: 12px; font-weight: 500; color: #7C8592;">Hora</span>
+                <div role="radiogroup" aria-label="Hora" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px;">
+                  <sc-for list="{{pk.hours}}" as="h" hint-placeholder-count="14">
+                    <button type="button" role="radio" class="mono" aria-checked="{{h.pressed}}" aria-disabled="{{h.off}}" onClick="{{h.onClick}}" style="{{h.style}}">{{h.l}}</button>
+                  </sc-for>
+                </div>
+                <span style="font-size: 12px; font-weight: 500; color: #7C8592; padding-top: 6px;">Minutos</span>
+                <div role="radiogroup" aria-label="Minutos" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px;">
+                  <sc-for list="{{pk.mins}}" as="m" hint-placeholder-count="12">
+                    <button type="button" role="radio" class="mono" aria-checked="{{m.pressed}}" aria-disabled="{{m.off}}" onClick="{{m.onClick}}" style="{{m.style}}">{{m.l}}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="flex: 1 1 auto; min-width: 0; font-size: 12px; line-height: 16px; color: #7C8592;">Hora de Argentina</span>
+                <button type="button" class="nw" onClick="{{pk.onToggle}}" style="height: 44px; padding: 0 16px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">Listo</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span id="rmm-prio" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Prioridad</span>
+          <div role="radiogroup" aria-labelledby="rmm-prio" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 3px; background: #0D0F12; border: 1px solid #262B32; border-radius: 8px;">
+            <sc-for list="{{form.prio}}" as="o" hint-placeholder-count="4">
+              <button type="button" role="radio" class="sg nw" aria-checked="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.l}}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span id="rmm-who" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Para quién</span>
+          <div role="radiogroup" aria-labelledby="rmm-who" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <sc-for list="{{form.who}}" as="o" hint-placeholder-count="5">
+              <button type="button" role="radio" class="sg nw" aria-checked="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.l}}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{form.otherMail}}" hint-placeholder-val="{{ false }}">
+            <label for="rmm-mail" class="vh">Mail del responsable</label>
+            <div class="fld" style="height: 44px; display: flex; align-items: center; padding: 0 12px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+              <input id="rmm-mail" type="text" inputmode="email" autocomplete="off" placeholder="nombre@northfield.edu.ar" style="flex: 1; min-width: 0; height: 42px; background: transparent; border: 0; outline: none; color: #ECEEF1;">
+            </div>
+          </sc-if>
+          <span style="font-size: 12px; line-height: 18px; color: #7C8592;">Si es para otra persona, le avisamos que se lo asignaste.</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span id="rmm-rel" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Relacionado con</span>
+          <div role="radiogroup" aria-labelledby="rmm-rel" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <sc-for list="{{form.rel}}" as="o" hint-placeholder-count="10">
+              <button type="button" role="radio" class="sg nw" aria-checked="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.l}}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{form.hasRel}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px;">
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="rmm-relid" style="font-size: 12px; color: #7C8592;">Identificador</label>
+                <div class="fld" style="height: 44px; display: flex; align-items: center; padding: 0 12px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                  <input id="rmm-relid" type="text" value="{{form.relId}}" placeholder="{{form.relPh}}" class="mono" style="flex: 1; min-width: 0; height: 42px; background: transparent; border: 0; outline: none; color: #ECEEF1;">
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="rmm-relname" style="font-size: 12px; color: #7C8592;">Nombre para mostrar</label>
+                <div class="fld" style="height: 44px; display: flex; align-items: center; padding: 0 12px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                  <input id="rmm-relname" type="text" value="{{form.relName}}" style="flex: 1; min-width: 0; height: 42px; background: transparent; border: 0; outline: none; color: #ECEEF1;">
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #262B32; border-radius: 6px;">
+          <span style="font-size: 14px; font-weight: 500;">Cómo te avisa</span>
+          <span style="font-size: 13px; line-height: 18px; color: #A7AEB8;">A la hora elegida: en la campana, con notificación push y por mail si lo tenés activo.</span>
+          <span style="{{push.style}}">{{push.text}}</span>
+          <button type="button" class="nw" onClick="{{push.onClick}}" style="align-self: flex-start; height: 44px; padding: 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">{{push.btn}}</button>
+          <span style="font-size: 12px; line-height: 18px; color: #7C8592;">En iPhone: Compartir › Agregar a inicio, abrí TechAsset desde ese ícono y activá las notificaciones (iOS 16.4 o más).</span>
+        </div>
+
+        <sc-if value="{{form.err}}" hint-placeholder-val="{{ false }}">
+          <span role="alert" style="font-size: 13px; color: #FF6B6B;">{{form.errText}}</span>
+        </sc-if>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+          <button type="button" class="nw" onClick="{{form.onToggle}}" style="height: 44px; background: transparent; border: 1px solid #353B44; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">Cancelar</button>
+          <button type="button" class="nw" aria-disabled="{{form.cantSave}}" onClick="{{form.onSave}}" style="{{form.saveStyle}}">Guardar</button>
+        </div>
+        <span style="margin-top: -8px; font-size: 12px; line-height: 18px; color: #7C8592;">Cancelar cierra el formulario y guarda el borrador.</span>
+      </section>
+    </sc-if>
+
+    <!-- FILTROS -->
+    <div role="group" aria-label="Mostrar" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 3px; background: #14171B; border: 1px solid #262B32; border-radius: 8px; min-width: 0;">
+      <sc-for list="{{filters}}" as="o" hint-placeholder-count="4">
+        <button type="button" class="sg nw" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.l}}<span class="mono" style="font-size: 12px; color: #7C8592;">{{o.n}}</span></button>
+      </sc-for>
+    </div>
+    <button type="button" role="checkbox" aria-checked="{{mine.checked}}" onClick="{{mine.onClick}}" class="nw" style="align-self: flex-start; height: 44px; display: inline-flex; align-items: center; gap: 10px; padding: 0 8px; margin-left: -8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; font-size: 14px; cursor: pointer;">
+      <span aria-hidden="true" style="{{mine.box}}">
+        <sc-if value="{{mine.on}}" hint-placeholder-val="{{ false }}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0F12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+        </sc-if>
+      </span>
+      Solo los míos
+    </button>
+
+    <sc-if value="{{status.show}}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 4px 4px 4px 12px; background: #14171B; border: 1px solid #262B32; border-radius: 10px; font-size: 13px;">
+        <span style="flex: 1 1 180px; min-width: 0; line-height: 18px; color: #A7AEB8;">{{status.text}}</span>
+        <button type="button" class="nw" onClick="{{status.onUndo}}" style="height: 44px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #5B9BFF; font-size: 14px; font-weight: 500; cursor: pointer;">Deshacer</button>
+      </div>
+    </sc-if>
+
+    <!-- LISTA -->
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+      <section aria-label="{{g.t}}" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; min-width: 0;">
+        <div style="display: flex; align-items: baseline; gap: 8px; padding: 12px 16px 8px;">
+          <h2 class="nw" style="{{g.titleStyle}}">{{g.t}}</h2>
+          <span class="mono" style="font-size: 12px; color: #7C8592;">{{g.n}}</span>
+        </div>
+        <div role="list">
+          <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+            <div role="listitem" style="border-top: 1px solid #262B32; min-width: 0;">
+              <div style="display: flex; align-items: flex-start; gap: 4px; padding: 8px 12px 4px 4px; min-width: 0;">
+                <button type="button" role="checkbox" aria-checked="{{r.checked}}" aria-label="{{r.checkLabel}}" onClick="{{r.onCheck}}" style="width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; cursor: pointer;">
+                  <span aria-hidden="true" style="{{r.box}}">
+                    <sc-if value="{{r.done}}" hint-placeholder-val="{{ false }}">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0F12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                    </sc-if>
+                  </span>
+                </button>
+                <div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-top: 11px;">
+                  <span style="{{r.tStyle}}">{{r.t}}</span>
+                  <sc-if value="{{r.hasDesc}}" hint-placeholder-val="{{ true }}">
+                    <span style="font-size: 13px; line-height: 18px; color: #A7AEB8;">{{r.desc}}</span>
+                  </sc-if>
+                  <span style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding-top: 2px; min-width: 0;">
+                    <span class="mono nw" style="font-size: 13px; color: #ECEEF1;">{{r.when}}</span>
+                    <span class="nw" style="{{r.relStyle}}">{{r.relTime}}</span>
+                  </span>
+                  <span style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 12px; line-height: 18px; color: #7C8592; min-width: 0;">
+                    <span class="nw" style="{{r.prioStyle}}">{{r.prio}}</span>
+                    <sc-if value="{{r.hasRel}}" hint-placeholder-val="{{ true }}">
+                      <a href="#" class="nw" style="font-size: 12px;">{{r.rel}}</a>
+                    </sc-if>
+                    <span class="nw">{{r.who}}</span>
+                    <span class="nw">{{r.sent}}</span>
+                  </span>
+                </div>
+              </div>
+              <sc-if value="{{r.pending}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; gap: 4px; padding: 0 8px 8px 48px;">
+                  <button type="button" class="gh nw" aria-expanded="{{r.posOpenStr}}" onClick="{{r.onPos}}" style="height: 44px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">Posponer</button>
+                  <button type="button" class="gh nw" aria-label="{{r.delLabel}}" onClick="{{r.onDel}}" style="height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    Borrar
+                  </button>
+                </div>
+              </sc-if>
+              <sc-if value="{{r.posOpen}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 8px; margin: 0 12px 12px; padding: 10px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px;">
+                  <span style="font-size: 13px; color: #A7AEB8;">Posponer a</span>
+                  <div role="radiogroup" aria-label="Nueva fecha" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;">
+                    <sc-for list="{{r.posOpts}}" as="o" hint-placeholder-count="4">
+                      <button type="button" role="radio" class="sg" aria-checked="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}"><span class="ell" style="max-width: 100%;">{{o.l}}</span><span class="mono ell" style="max-width: 100%; font-size: 12px; color: #7C8592;">{{o.sub}}</span></button>
+                    </sc-for>
+                  </div>
+                  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+                    <button type="button" class="nw" onClick="{{r.onPos}}" style="height: 44px; background: transparent; border: 1px solid #353B44; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">Cancelar</button>
+                    <button type="button" class="nw" onClick="{{r.onPosSave}}" style="height: 44px; background: #5B9BFF; border: 0; border-radius: 6px; color: #0D0F12; font-size: 14px; font-weight: 600; cursor: pointer;">Posponer</button>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{r.delOpen}}" hint-placeholder-val="{{ false }}">
+                <div role="alert" style="display: flex; flex-direction: column; gap: 8px; margin: 0 12px 12px; padding: 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px;">
+                  <span style="font-size: 14px; line-height: 20px; color: #ECEEF1;">¿Borrar «{{r.t}}»? Deja de avisar.</span>
+                  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+                    <button type="button" class="nw" onClick="{{r.onDel}}" style="height: 44px; background: transparent; border: 1px solid #353B44; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">Cancelar</button>
+                    <button type="button" class="nw" onClick="{{r.onDelOk}}" style="height: 44px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #FF6B6B; font-size: 14px; font-weight: 600; cursor: pointer;">Borrar</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+    <sc-if value="{{empty}}" hint-placeholder-val="{{ false }}">
+      <div style="padding: 24px 16px; background: #14171B; border: 1px solid #262B32; border-radius: 10px; text-align: center;">
+        <p style="margin: 0; font-size: 14px;">No hay recordatorios acá.</p>
+        <p style="margin: 4px 0 0; font-size: 13px; line-height: 18px; color: #A7AEB8;">Creá uno y te avisamos a la hora que elijas.</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{moreDone.show}}" hint-placeholder-val="{{ true }}">
+      <button type="button" class="gh nw" onClick="{{moreDone.onClick}}" style="align-self: flex-start; height: 44px; padding: 0 12px; margin-left: -12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">Ver completados <span class="mono" style="color: #7C8592;">{{moreDone.n}}</span></button>
+    </sc-if>
+  </main>
+
+  <nav class="bnav" aria-label="Navegación principal">
+    <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+      <span class="nw">Inicio</span>
+    </a>
+    <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg>
+      <span class="nw">Préstamos</span>
+    </a>
+    <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ECEEF1; text-decoration: none; font-size: 11px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg>
+      <span class="nw">Escanear</span>
+    </a>
+    <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      <span class="nw">Agenda</span>
+    </a>
+    <a href="#" aria-current="page" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #5B9BFF; text-decoration: none; font-size: 11px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      <span class="nw">Más</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":3300}}'>
+class Component extends DCLogic {
+// La tabla reminders está vacía en la base local. Filas armadas con objetos reales de la base
+// (aula pp_6F con NUC en reparación, agenda AG025 4N, tarea "Probar audio 5to F", equipo D1442 No encontrada,
+// tarea "Inventario", tareas hechas "Teclado 3N" y micrófonos). Las fechas son ilustrativas.
+seed() {
+  return [
+    { id: 'r1', t: 'Revisar NUC de 6F', desc: 'Quedó en reparación desde el 10/05.', rel: 'Aula · 6F', who: 'Bauti G.', prio: 'Alta', at: [2026, 9, 16, 10, 30], sent: 'avisado 10:30', done: false },
+    { id: 'r2', t: 'Retirar las TIC de 4N', desc: 'Agenda: 4N, TIC grupo completo, 13:30–14:15, 3 equipos.', rel: '', who: 'Equi', prio: 'Media', at: [2026, 9, 16, 14, 15], done: false },
+    { id: 'r3', t: 'Probar audio 5to F', desc: '', rel: 'Aula · 5to F', who: 'Bauti G.', prio: 'Media', at: [2026, 9, 19, 8, 0], done: false },
+    { id: 'r4', t: 'Buscar Touch 40', desc: 'Figura como No encontrada.', rel: 'Dispositivo · D1442', who: 'Bauti G.', prio: 'Urgente', at: [2026, 9, 20, 9, 0], done: false },
+    { id: 'r5', t: 'Cerrar el inventario', desc: '', rel: 'Tarea · Inventario', who: 'Vanina G.', prio: 'Baja', at: [2026, 9, 23, 16, 0], done: false },
+    { id: 'r6', t: 'Teclado 3N', desc: '', rel: 'Aula · 3N', who: 'Bauti G.', prio: 'Media', at: [2026, 9, 15, 10, 0], done: true, doneAt: 'jue 15/10 10:05 · Bauti G.' },
+    { id: 'r7', t: 'Encontrar los micrófonos corbateros', desc: '', rel: '', who: 'Equi', prio: 'Urgente', at: [2026, 9, 14, 16, 0], done: true, doneAt: 'mié 14/10 16:40 · Equi' }
+  ];
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const set = p => self.setState(p);
+  const NOW = new Date(2026, 9, 16, 11, 52);
+  const DOW = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  const DOWL = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const MON = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const p2 = n => (n < 10 ? '0' : '') + n;
+  // Siempre new Date(año, mes, día, hora, min): nada de parsear 'AAAA-MM-DD HH:mm' (Safari/iPhone da Invalid Date).
+  const mk = a => new Date(a[0], a[1], a[2], a[3], a[4]);
+  const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const fmtWhen = d => (sameDay(d, NOW) ? 'hoy' : DOW[d.getDay()] + ' ' + p2(d.getDate()) + '/' + p2(d.getMonth() + 1)) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+  const relTime = d => {
+    const m = Math.round((d - NOW) / 60000);
+    const span = x => { const h = Math.floor(x / 60), mm = x % 60; return h ? h + ' h' + (mm ? ' ' + mm + ' min' : '') : mm + ' min'; };
+    if (m < 0) return { t: 'venció hace ' + span(-m), c: '#FF6B6B' };
+    if (sameDay(d, NOW)) return { t: 'en ' + span(m), c: m <= 180 ? '#F5C04E' : '#A7AEB8' };
+    const days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate())) / 86400000);
+    return { t: days === 1 ? 'mañana' : 'en ' + days + ' días', c: '#7C8592' };
+  };
+  const segStyle = (on, extra) => 'display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 6px; font-size: 14px; cursor: pointer; box-sizing: border-box; min-width: 0; ' +
+    (on ? 'background: #1B1F24; border: 1px solid #353B44; color: #ECEEF1; font-weight: 500;' : 'background: transparent; border: 1px solid #262B32; color: #A7AEB8;') + (extra || '');
+  const segIn = on => segStyle(on).replace('border: 1px solid #262B32', 'border: 1px solid transparent');
+  const stack = on => segStyle(on, ' height: auto; min-height: 52px; padding: 6px 10px; flex-direction: column; gap: 0; line-height: 18px;');
+  const cbBox = on => 'width: 18px; height: 18px; flex: none; box-sizing: border-box; border-radius: 4px; display: flex; align-items: center; justify-content: center; ' + (on ? 'background: #ECEEF1; border: 1px solid #ECEEF1;' : 'background: transparent; border: 1px solid #353B44;');
+
+  const rows0 = s.rows || this.seed();
+  const filter = s.filter || 'pend';
+  const mine = !!s.mine;
+  const vis = rows0.filter(r => !mine || r.who === 'Bauti G.');
+  const isOver = r => !r.done && mk(r.at) < NOW;
+  const isToday = r => !r.done && !isOver(r) && sameDay(mk(r.at), NOW);
+  const nPend = vis.filter(r => !r.done).length, nOver = vis.filter(isOver).length, nDone = vis.filter(r => r.done).length;
+  const filters = [['pend', 'Pendientes', nPend], ['over', 'Vencidos', nOver], ['done', 'Completados', nDone], ['all', 'Todos', vis.length]].map(f => ({
+    l: f[1], n: String(f[2]), pressed: filter === f[0] ? 'true' : 'false', style: segIn(filter === f[0]).replace('height: 44px', 'height: 40px'), onClick: () => set({ filter: f[0] })
+  }));
+  const PRIO_C = { Urgente: '#FF6B6B', Alta: '#F5C04E', Media: '#7C8592', Baja: '#7C8592' };
+  const updRow = (id, patch) => rows0.map(r => r.id === id ? Object.assign({}, r, patch) : r);
+  const posSel = s.posSel || 'h1';
+  const POS = { h1: ['En 1 hora', 'hoy 12:52', [2026, 9, 16, 12, 52]], tm: ['Mañana', 'sáb 08:00', [2026, 9, 17, 8, 0]], lu: ['Lunes', '19/10 08:00', [2026, 9, 19, 8, 0]], pk: ['Elegir fecha', 'calendario', null] };
+  const rowVm = r => {
+    const d = mk(r.at);
+    const rt = r.done ? { t: 'completado', c: '#7C8592' } : relTime(d);
+    const posOpen = s.posOpen === r.id;
+    return {
+      t: r.t, desc: r.desc, hasDesc: !!r.desc, rel: r.rel, hasRel: !!r.rel,
+      who: r.who === 'Bauti G.' ? 'para vos' : 'para ' + r.who,
+      sent: r.done ? r.doneAt : (r.sent || ''),
+      prio: r.prio, prioStyle: 'font-size: 12px; color: ' + (r.done ? '#7C8592' : PRIO_C[r.prio]) + ';' + (r.prio === 'Urgente' && !r.done ? ' font-weight: 500;' : ''),
+      when: fmtWhen(d), relTime: rt.t, relStyle: 'font-size: 12px; line-height: 18px; color: ' + rt.c + ';',
+      done: r.done, pending: !r.done, checked: r.done ? 'true' : 'false',
+      checkLabel: (r.done ? 'Volver a pendiente: ' : 'Completar: ') + r.t,
+      box: cbBox(r.done),
+      tStyle: 'font-size: 15px; line-height: 22px; font-weight: 500; overflow-wrap: anywhere; color: ' + (r.done ? '#7C8592' : '#ECEEF1') + ';' + (r.done ? ' text-decoration: line-through;' : ''),
+      onCheck: () => set({ rows: updRow(r.id, { done: !r.done, doneAt: 'hoy 11:52 · Bauti G.' }), status: { text: '«' + r.t + '» ' + (r.done ? 'volvió a pendientes.' : 'completado.'), undo: rows0 }, posOpen: null, delOpen: null }),
+      posOpen: posOpen && !r.done, posOpenStr: posOpen ? 'true' : 'false',
+      onPos: () => set({ posOpen: posOpen ? null : r.id, delOpen: null }),
+      posOpts: Object.keys(POS).map(k => ({ l: POS[k][0], sub: POS[k][1], pressed: posSel === k ? 'true' : 'false', style: stack(posSel === k), onClick: () => set({ posSel: k }) })),
+      onPosSave: () => { const a = POS[posSel][2] || [2026, 9, 19, 8, 0]; set({ rows: updRow(r.id, { at: a, sent: '' }), posOpen: null, status: { text: '«' + r.t + '» pospuesto a ' + fmtWhen(mk(a)) + '. Vuelve a avisar.', undo: rows0 } }); },
+      delOpen: s.delOpen === r.id, delLabel: 'Borrar recordatorio ' + r.t,
+      onDel: () => set({ delOpen: s.delOpen === r.id ? null : r.id, posOpen: null }),
+      onDelOk: () => set({ rows: rows0.filter(x => x.id !== r.id), delOpen: null, status: { text: '«' + r.t + '» borrado.', undo: rows0 } })
+    };
+  };
+  const byDate = (a, b) => mk(a.at) - mk(b.at);
+  const G = [];
+  const grp = (t, list, c) => { if (list.length) G.push({ t: t, n: String(list.length), titleStyle: 'margin: 0; font-size: 15px; font-weight: 600; color: ' + (c || '#ECEEF1') + ';', rows: list.map(rowVm) }); };
+  const showDone = filter === 'done' || filter === 'all' || !!s.showDone;
+  if (filter !== 'done') {
+    grp('Vencidos', vis.filter(isOver).sort(byDate), '#FF6B6B');
+    if (filter !== 'over') {
+      grp('Hoy', vis.filter(isToday).sort(byDate));
+      grp('Próximos', vis.filter(r => !r.done && !isOver(r) && !isToday(r)).sort(byDate));
+    }
+  }
+  if (showDone && filter !== 'over') grp('Completados', vis.filter(r => r.done).sort((a, b) => byDate(b, a)), '#A7AEB8');
+
+  // ---- Picker propio ----
+  const formOpen = s.formOpen === undefined ? true : s.formOpen;
+  const pkOpen = s.pkOpen === undefined ? true : s.pkOpen;
+  const vy = s.vy || 2026, vm = s.vm === undefined ? 9 : s.vm;
+  const sel = s.sel || [2026, 9, 19, 8, 0];
+  const selD = mk(sel);
+  const todayMid = new Date(2026, 9, 16);
+  const lead = (new Date(vy, vm, 1).getDay() + 6) % 7;
+  const dim = new Date(vy, vm + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < lead; i += 1) cells.push({ n: '', aria: '', pressed: 'false', off: 'true', cur: 'false', onClick: () => {}, style: 'height: 44px; border: 0; background: transparent; visibility: hidden;' });
+  for (let d = 1; d <= dim; d += 1) {
+    const day = new Date(vy, vm, d);
+    const past = day < todayMid;
+    const on = sel[0] === vy && sel[1] === vm && sel[2] === d;
+    const today = sameDay(day, NOW);
+    cells.push({
+      n: String(d), aria: DOWL[day.getDay()] + ' ' + d + ' de ' + MON[vm] + (today ? ', hoy' : '') + (past ? ', ya pasó' : ''),
+      pressed: on ? 'true' : 'false', off: past ? 'true' : 'false', cur: today ? 'date' : 'false',
+      onClick: () => { if (!past) set({ sel: [vy, vm, d, sel[3], sel[4]] }); },
+      style: 'height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 15px; box-sizing: border-box; cursor: ' + (past ? 'default' : 'pointer') + '; ' +
+        (on ? 'background: #5B9BFF; border: 1px solid #5B9BFF; color: #0D0F12; font-weight: 500;' : today ? 'background: transparent; border: 1px solid #353B44; color: #ECEEF1;' : past ? 'background: transparent; border: 1px solid transparent; color: #7C8592; text-decoration: line-through;' : 'background: transparent; border: 1px solid transparent; color: #ECEEF1;')
+    });
+  }
+  const selIsToday = sameDay(selD, NOW);
+  const tStyle = (on, off) => 'height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 14px; box-sizing: border-box; cursor: ' + (off ? 'default' : 'pointer') + '; ' +
+    (on ? 'background: #5B9BFF; border: 1px solid #5B9BFF; color: #0D0F12; font-weight: 500;' : off ? 'background: transparent; border: 1px solid transparent; color: #7C8592; text-decoration: line-through;' : 'background: transparent; border: 1px solid #262B32; color: #ECEEF1;');
+  const hours = [];
+  for (let h = 7; h <= 20; h += 1) {
+    const off = selIsToday && h < 12;
+    hours.push({ l: p2(h), pressed: sel[3] === h ? 'true' : 'false', off: off ? 'true' : 'false', style: tStyle(sel[3] === h, off), onClick: () => { if (!off) set({ sel: [sel[0], sel[1], sel[2], h, sel[4]] }); } });
+  }
+  const mins = [];
+  for (let m = 0; m < 60; m += 5) {
+    const off = selIsToday && sel[3] === 12 && m <= 52;
+    mins.push({ l: p2(m), pressed: sel[4] === m ? 'true' : 'false', off: off ? 'true' : 'false', style: tStyle(sel[4] === m, off), onClick: () => { if (!off) set({ sel: [sel[0], sel[1], sel[2], sel[3], m] }); } });
+  }
+  const QK = [['En 1 hora', 'hoy 12:55', [2026, 9, 16, 12, 55]], ['Hoy a la tarde', '16:00', [2026, 9, 16, 16, 0]], ['Mañana', 'sáb 08:00', [2026, 9, 17, 8, 0]], ['Lunes', '19/10 08:00', [2026, 9, 19, 8, 0]]];
+  const quick = QK.map(q => {
+    const on = q[2].join() === sel.join();
+    return { l: q[0], sub: q[1], pressed: on ? 'true' : 'false', style: stack(on), onClick: () => set({ sel: q[2], vy: q[2][0], vm: q[2][1] }) };
+  });
+  const isCurMonth = vy === 2026 && vm === 9;
+  const pk = {
+    open: pkOpen, openStr: pkOpen ? 'true' : 'false', onToggle: () => set({ pkOpen: !pkOpen }),
+    label: DOWL[selD.getDay()].replace(/^./, c => c.toUpperCase()) + ' ' + selD.getDate() + ' de ' + MON[selD.getMonth()] + ' · ' + p2(sel[3]) + ':' + p2(sel[4]),
+    rel: relTime(selD).t,
+    fieldStyle: 'min-height: 52px; display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: #0D0F12; border: 1px solid ' + (pkOpen ? '#5B9BFF' : '#353B44') + '; border-radius: 6px; color: #ECEEF1; cursor: pointer; box-sizing: border-box; width: 100%; min-width: 0; text-align: left;',
+    chev: 'flex: none; transform: rotate(' + (pkOpen ? '180' : '0') + 'deg);',
+    quick: quick,
+    monthLabel: MON[vm].replace(/^./, c => c.toUpperCase()) + ' ' + vy,
+    prevStyle: 'width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: ' + (isCurMonth ? '#353B44' : '#A7AEB8') + '; cursor: ' + (isCurMonth ? 'default' : 'pointer') + ';',
+    onPrev: () => { if (isCurMonth) return; set(vm === 0 ? { vm: 11, vy: vy - 1 } : { vm: vm - 1 }); },
+    onNext: () => set(vm === 11 ? { vm: 0, vy: vy + 1 } : { vm: vm + 1 }),
+    wd: ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(x => ({ l: x })),
+    days: cells, hours: hours, mins: mins
+  };
+
+  const prioSel = s.prio || 'Media';
+  const whoSel = s.who || 'yo';
+  const relSel = s.rel === undefined ? 'classroom' : s.rel;
+  const REL = [['', 'Nada'], ['device', 'Dispositivo'], ['classroom', 'Aula'], ['ticket', 'Ticket'], ['loan', 'Préstamo'], ['task', 'Tarea'], ['purchase', 'Compra'], ['suggestion', 'Sugerencia'], ['group', 'Grupo de equipos'], ['knowledge', 'Artículo']];
+  const PH = { device: 'D1436', classroom: 'pp_6F', ticket: '1520', loan: 'D1436', task: '[id]', purchase: '[id]', suggestion: '[id]', group: '[id]', knowledge: '[id]' };
+  const title = s.title === undefined ? 'Llevar el proyector de repuesto a 6F' : s.title;
+  const cantSave = !title.trim();
+  const form = {
+    open: formOpen, openStr: formOpen ? 'true' : 'false', btn: formOpen ? 'Cerrar formulario' : 'Nuevo recordatorio', onToggle: () => set({ formOpen: !formOpen }),
+    title: title, onTitle: ev => set({ title: ev && ev.target ? ev.target.value : '' }),
+    prio: ['Baja', 'Media', 'Alta', 'Urgente'].map(p => ({ l: p, pressed: p === prioSel ? 'true' : 'false', style: segIn(p === prioSel).replace('height: 44px', 'height: 40px') + (p === prioSel && (p === 'Urgente' || p === 'Alta') ? ' color: ' + PRIO_C[p] + ';' : ''), onClick: () => set({ prio: p }) })),
+    who: [['yo', 'Vos'], ['equi', 'Equi'], ['vanina', 'Vanina G.'], ['eze', 'Eze M.'], ['otro', 'Otro mail']].map(w => ({ l: w[1], pressed: whoSel === w[0] ? 'true' : 'false', style: segStyle(whoSel === w[0]), onClick: () => set({ who: w[0] }) })),
+    otherMail: whoSel === 'otro',
+    rel: REL.map(r => ({ l: r[1], pressed: relSel === r[0] ? 'true' : 'false', style: segStyle(relSel === r[0]), onClick: () => set({ rel: r[0] }) })),
+    hasRel: !!relSel, relId: relSel === 'classroom' ? 'pp_6F' : '', relName: relSel === 'classroom' ? '6F' : '', relPh: PH[relSel] || '',
+    err: cantSave, errText: 'Escribí qué hay que recordar.',
+    cantSave: cantSave ? 'true' : 'false',
+    saveStyle: 'height: 44px; background: #5B9BFF; border: 0; border-radius: 6px; color: #0D0F12; font-size: 14px; font-weight: 600; cursor: ' + (cantSave ? 'default' : 'pointer') + ';' + (cantSave ? ' opacity: .45;' : ''),
+    onSave: () => {
+      if (cantSave) return;
+      const nr = { id: 'n' + rows0.length, t: title, desc: '', rel: relSel === 'classroom' ? 'Aula · 6F' : '', who: { yo: 'Bauti G.', equi: 'Equi', vanina: 'Vanina G.', eze: 'Eze M.', otro: '[mail]' }[whoSel], prio: prioSel, at: sel, done: false };
+      set({ rows: rows0.concat([nr]), formOpen: false, title: '', filter: 'pend', status: { text: 'Recordatorio guardado para ' + fmtWhen(selD) + '.', undo: rows0 } });
+    }
+  };
+  const pushOn = !!s.push;
+  const push = {
+    text: pushOn ? 'Push activado en este iPhone.' : 'Este iPhone todavía no recibe push.',
+    style: 'font-size: 13px; line-height: 18px; color: ' + (pushOn ? '#A7AEB8' : '#F5C04E') + ';',
+    btn: pushOn ? 'Probar aviso' : 'Activar push', onClick: () => set({ push: true })
+  };
+
+  return {
+    hd: { pend: String(nPend), over: String(nOver), overLabel: nOver === 1 ? ' vencido' : ' vencidos', overStyle: 'color: ' + (nOver ? '#FF6B6B' : '#A7AEB8') + ';' },
+    filters: filters,
+    mine: { on: mine, checked: mine ? 'true' : 'false', box: cbBox(mine), onClick: () => set({ mine: !mine }) },
+    status: { show: !!s.status, text: s.status ? s.status.text : '', onUndo: () => set({ rows: s.status ? s.status.undo : rows0, status: null }) },
+    groups: G, empty: G.length === 0,
+    moreDone: { show: !showDone && nDone > 0 && filter === 'pend', n: String(nDone), onClick: () => set({ showDone: true }) },
+    form: form, pk: pk, push: push
+  };
+}
+}
+</script>
+</body>
+</html>

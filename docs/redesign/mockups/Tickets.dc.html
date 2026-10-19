@@ -1,0 +1,1544 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tickets — maestro y detalle</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+.nv:hover,.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+input::placeholder,textarea::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.eb{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.cnt{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592;font-variant-numeric:tabular-nums}
+.noscroll{scrollbar-width:none}.noscroll::-webkit-scrollbar{display:none}
+
+/* Menú lateral 232 / rail 56 bajo 1100 / barra inferior bajo 768 */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}.sb-head{justify-content:center}.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}.sb-grpt{display:none}.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}.sb-user{padding:0;justify-content:center}.sb-hide{display:none !important}
+}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.body{flex:1;display:flex;min-width:0;align-items:flex-start}
+.pad{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:20px 24px 32px;box-sizing:border-box}
+.asst{width:320px;flex:none;align-self:stretch;border-left:1px solid #262B32;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:16px;background:#0D0F12}
+.bnav{display:none}
+@media (max-width:767px){
+.sb{display:none}.tb{padding:0 8px 0 16px}.tb-collapse{display:none !important}.pad{padding:16px 16px 24px}
+.asst{display:none}
+.bnav{display:flex;position:sticky;bottom:0;z-index:5;height:64px;border-top:1px solid #262B32;background:#0D0F12}
+}
+@media (max-width:639px){.tb-ctx{display:none !important}.tb-asst-t{display:none !important}}
+
+/* Componentes */
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none;max-width:100%;text-decoration:none}
+.bp{background:#5B9BFF;color:#0D0F12;border:0;font-weight:600}.bp:hover{background:#8DBBFF;color:#0D0F12}
+.bs{background:#1B1F24;color:#ECEEF1;border:1px solid #353B44}.bs:hover{border-color:#7C8592;color:#ECEEF1}
+.bg{background:transparent;color:#A7AEB8;border:0}.bg:hover{background:#1B1F24;color:#ECEEF1}
+.bd{background:transparent;color:#FF6B6B;border:1px solid #353B44}.bd:hover{border-color:#FF6B6B}
+.bsm{height:30px;padding:0 10px;font-size:13px;gap:6px}
+.icb{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:6px;color:#A7AEB8;cursor:pointer;flex:none;text-decoration:none}
+.icb:hover{background:#1B1F24;color:#ECEEF1}
+.btn[disabled],.icb[disabled]{opacity:.45;cursor:not-allowed}
+.seg{display:flex;flex-wrap:wrap;gap:2px;padding:2px;background:#0D0F12;border:1px solid #262B32;border-radius:6px;min-width:0;box-sizing:border-box}
+.sg{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:4px;font-size:13px;cursor:pointer;white-space:nowrap;background:transparent;color:#A7AEB8;min-width:0}
+.sg:hover{color:#ECEEF1}
+.sg[aria-pressed="true"]{background:#1B1F24;color:#ECEEF1;font-weight:500}
+.fld{display:flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;color:#7C8592;min-width:0}
+.fld:focus-within,.inp:focus,.chipin:focus-within{outline:2px solid #5B9BFF;outline-offset:1px}
+.fld input{flex:1;min-width:0;height:32px;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:14px;text-overflow:ellipsis}
+.inp{width:100%;min-width:0;height:36px;padding:0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:14px;box-sizing:border-box;outline:none;text-overflow:ellipsis}
+textarea.inp{height:auto;padding:8px 10px;line-height:20px;resize:none;overflow:hidden}
+.lbl{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;font-weight:500;color:#A7AEB8}
+.hint{font-size:12px;line-height:16px;color:#7C8592;font-weight:400}
+.err{font-size:12px;line-height:16px;color:#FF6B6B;font-weight:500}
+.chip{display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border:1px solid #353B44;border-radius:6px;font-size:12px;color:#A7AEB8;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.chipx{display:inline-flex;align-items:center;gap:2px;height:26px;padding:0 2px 0 8px;border:1px solid #353B44;border-radius:6px;background:#1B1F24;font-size:13px;color:#ECEEF1;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.chipx button{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:4px;color:#A7AEB8;cursor:pointer;padding:0}
+.chipx button:hover{color:#ECEEF1;background:#262B32}
+.chipin{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:36px;padding:4px 6px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;min-width:0}
+.chipin input{flex:1 1 120px;min-width:80px;height:26px;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:14px;padding:0 4px}
+.opt{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#ECEEF1;font-size:13px;cursor:pointer;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.opt:hover{border-color:#353B44;background:#1B1F24}
+.opt[aria-pressed="true"]{border-color:#ECEEF1;background:#1B1F24}
+.cb{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:6px;cursor:pointer;flex:none;padding:0}
+.cbx{width:16px;height:16px;box-sizing:border-box;border:1px solid #353B44;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#0D0F12}
+.cbx svg{display:none}
+.cb[aria-checked="true"] .cbx,.cb[aria-checked="mixed"] .cbx{background:#ECEEF1;border-color:#ECEEF1}
+.cb[aria-checked="true"] .ck-c{display:block}.cb[aria-checked="mixed"] .ck-m{display:block}
+.cb:focus-visible{outline:none}.cb:focus-visible .cbx{outline:2px solid #5B9BFF;outline-offset:2px}
+.cb[disabled]{cursor:not-allowed;opacity:.45}
+.sl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;min-height:40px;padding:4px 4px 4px 12px;border:1px solid #353B44;border-radius:6px;background:#1B1F24;font-size:13px;color:#ECEEF1;box-sizing:border-box}
+.lk{display:inline-flex;align-items:center;height:30px;padding:0 8px;background:transparent;border:0;border-radius:4px;color:#5B9BFF;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.lk:hover{color:#8DBBFF;background:#262B32}
+.tt{position:relative;min-width:0}
+.tip{display:none;position:absolute;left:0;top:calc(100% + 4px);z-index:20;max-width:340px;width:max-content;padding:6px 8px;background:#1B1F24;border:1px solid #353B44;border-radius:6px;font-size:13px;line-height:18px;font-weight:400;color:#ECEEF1;white-space:normal;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.tt:hover .tip,.tt:focus-within .tip{display:block}
+.drop{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:16px;border:1px dashed #353B44;border-radius:10px;box-sizing:border-box;min-width:0}
+
+/* Tickets: maestro + detalle */
+.tkw{container-type:inline-size;container-name:tkw;display:flex;gap:16px;align-items:flex-start;min-width:0}
+.tk-list{flex:0 0 380px;min-width:0;display:flex;flex-direction:column}
+.tk-pane{flex:1 1 0;min-width:0;container-type:inline-size;container-name:pane}
+.tk-back{display:none}
+@container tkw (max-width:879px){
+.tk-list{flex:1 1 100%}.tk-pane{flex:1 1 100%}
+.tkw-pane .tk-list{display:none}.tkw-list .tk-pane{display:none}
+.tk-back{display:inline-flex}
+}
+.tr{display:flex;align-items:flex-start;gap:2px;padding:8px 8px 8px 6px;border-bottom:1px solid #262B32;min-width:0;box-sizing:border-box}
+.tr:hover{background:#1B1F24}
+.tr-open{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;padding:4px 4px;background:transparent;border:0;border-radius:4px;color:#ECEEF1;text-align:left;cursor:pointer;font-size:14px}
+.dgi{display:grid;grid-template-columns:minmax(0,1fr) 248px;gap:20px;align-items:start}
+@container pane (max-width:639px){.dgi{grid-template-columns:minmax(0,1fr)}}
+.fg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.fg .full{grid-column:1 / -1}
+@container pane (max-width:559px){.fg{grid-template-columns:minmax(0,1fr)}}
+.sec{display:flex;flex-direction:column;gap:10px;min-width:0}
+.sech{display:flex;align-items:center;gap:8px;min-width:0;min-height:30px}
+.sech h3{margin:0;font-size:14px;line-height:20px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prop{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px;align-items:start;padding:8px 0;border-top:1px solid #262B32;font-size:13px;line-height:20px}
+.prop > span:first-child{color:#7C8592}
+.step{display:flex;align-items:center;gap:4px;min-height:36px;border-bottom:1px solid #262B32;min-width:0}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1300px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- MENÚ LATERAL (Menu-A, Tickets activo; sin Traspaso) -->
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="ib sb-sede" aria-label="Cambiar de sede: Northfield Puertos">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Northfield Puertos</span>
+          <span class="mono" style="font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide ell" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide mono nw" style="font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <div class="sb-grp">
+        <div class="sb-grpt">Operación</div>
+        <sc-for list="{{nav.ops}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Gestión</div>
+        <sc-for list="{{nav.mgmt}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Inventario y datos</div>
+        <sc-for list="{{nav.data}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Recursos</div>
+        <sc-for list="{{nav.res}}" as="n" hint-placeholder-count="4">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nv nvi" aria-label="Configuración" style="color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div class="sb-user">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;" aria-label="Bauti G., Jefe TIC">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+        <button type="button" class="ib sb-hide icb" aria-label="Opciones de cuenta">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- TOPBAR -->
+    <header class="tb">
+      <button type="button" class="ib icb tb-collapse" aria-label="Contraer menú (Ctrl B)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Tickets</h1>
+      <span class="tb-ctx" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-ctx ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">Registro local de Tiknology / InVgate y Handing</span>
+      <span style="flex: 1;"></span>
+      <button type="button" class="btn bs" aria-pressed="{{asstPressed}}" aria-label="Asistente" onClick="{{toggleAsst}}" style="{{asstBtnStyle}}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.bot}}"></path></svg>
+        <span class="tb-asst-t">Asistente</span>
+      </button>
+      <button type="button" class="ib icb" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span class="mono" style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib icb" aria-label="Ayuda" style="width: 36px; height: 36px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <div class="body">
+    <div class="pad">
+
+      <!-- BARRA: buscador + acciones -->
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0;">
+        <label class="fld" style="flex: 1 1 320px; max-width: 560px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <span class="vh" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);">Buscar tickets</span>
+          <input type="search" value="{{q}}" onInput="{{onQ}}" onChange="{{onQ}}" placeholder="Buscar número, título, descripción, categoría, quién lo cargó o responsable" autocomplete="off">
+          <sc-if value="{{hasQ}}" hint-placeholder-val="{{ false }}">
+            <button type="button" class="icb" aria-label="Limpiar búsqueda" onClick="{{clearQ}}" style="width: 28px; height: 28px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          </sc-if>
+        </label>
+        <span style="flex: 1 1 0;"></span>
+        <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; min-width: 0;">
+            <button type="button" class="btn bs" onClick="{{openTpl}}" aria-pressed="{{tplPressed}}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.tpl}}"></path></svg>
+              Plantillas
+            </button>
+            <button type="button" class="btn bp" onClick="{{openNew}}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+              Cargar ticket
+            </button>
+          </div>
+        </sc-if>
+        <sc-if value="{{consulta}}" hint-placeholder-val="{{ false }}">
+          <span class="nw" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #A7AEB8;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            Modo consulta: solo lectura
+          </span>
+        </sc-if>
+      </div>
+
+      <!-- FILTROS: estado + origen (segmented, conteo en mono) -->
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0;">
+        <div class="seg" role="group" aria-label="Filtrar por estado">
+          <sc-for list="{{fEstados}}" as="f" hint-placeholder-count="4">
+            <button type="button" class="sg" aria-pressed="{{f.pressed}}" onClick="{{f.onClick}}">{{f.label}} <span class="cnt">{{f.count}}</span></button>
+          </sc-for>
+        </div>
+        <div class="seg" role="group" aria-label="Filtrar por origen">
+          <sc-for list="{{fOrigenes}}" as="f" hint-placeholder-count="3">
+            <button type="button" class="sg" aria-pressed="{{f.pressed}}" onClick="{{f.onClick}}">{{f.label}} <span class="cnt">{{f.count}}</span></button>
+          </sc-for>
+        </div>
+        <span class="nw" role="status" style="margin-left: auto; font-size: 13px; color: #7C8592;">{{resLabel}}</span>
+      </div>
+
+      <div class="{{wrapClass}}">
+
+        <!-- ===== LISTA ===== -->
+        <section class="card tk-list" aria-label="Lista de tickets">
+          <sc-if value="{{selMode}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 8px 6px; border-bottom: 1px solid #262B32; background: #1B1F24; border-radius: 10px 10px 0 0;">
+              <div style="display: flex; align-items: center; gap: 4px; min-width: 0;">
+                <button type="button" class="cb" role="checkbox" aria-checked="{{selAllState}}" aria-label="Seleccionar todos los visibles" onClick="{{onSelAll}}">
+                  <span class="cbx"><svg class="ck-c" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><svg class="ck-m" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"></path></svg></span>
+                </button>
+                <span class="ell" style="flex: 1; font-size: 14px; font-weight: 600;">{{selLabel}}</span>
+                <button type="button" class="btn bg bsm" onClick="{{clearSel}}">Cancelar</button>
+              </div>
+              <sc-if value="{{selAsk}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 4px 2px 6px;">
+                  <div style="font-size: 13px; line-height: 18px; color: #ECEEF1;">{{selAskText}}</div>
+                  <div class="ell" style="font-size: 12px; color: #A7AEB8;">{{selAskList}}</div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <button type="button" class="btn bd bsm" onClick="{{bulkDelYes}}">{{selAskBtn}}</button>
+                    <button type="button" class="btn bg bsm" onClick="{{bulkDelNo}}">No borrar</button>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{selNoAsk}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-left: 6px;">
+                  <span class="nw" style="font-size: 12px; color: #7C8592; margin-right: 2px;">Pasar a</span>
+                  <sc-for list="{{bulkStates}}" as="b" hint-placeholder-count="3">
+                    <button type="button" class="btn bs bsm" onClick="{{b.onClick}}">{{b.label}}</button>
+                  </sc-for>
+                  <span style="flex: 1;"></span>
+                  <button type="button" class="btn bd bsm" onClick="{{bulkDelAsk}}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>
+                    Borrar
+                  </button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{notSelMode}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; align-items: center; gap: 4px; height: 48px; padding: 0 12px 0 6px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+              <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="cb" role="checkbox" aria-checked="false" aria-label="Seleccionar todos los visibles" onClick="{{onSelAll}}">
+                  <span class="cbx"></span>
+                </button>
+              </sc-if>
+              <span class="eb" style="flex: 1; padding-left: 4px;">Pendientes primero</span>
+              <span class="nw" style="font-size: 12px; color: #7C8592;">No hecho · En proceso · Hecho</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{listStatus.show}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 8px; border-bottom: 1px solid #262B32;">
+              <div class="sl" role="status">
+                <span style="flex: 1 1 160px; min-width: 0;">{{listStatus.text}}</span>
+                <sc-if value="{{listStatus.canUndo}}" hint-placeholder-val="{{ true }}">
+                  <button type="button" class="lk" onClick="{{listStatus.onUndo}}">Deshacer</button>
+                </sc-if>
+                <button type="button" class="icb" aria-label="Cerrar aviso" onClick="{{listStatus.onClose}}" style="width: 30px; height: 30px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+            <div class="tr" style="{{r.rowStyle}}">
+              <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="cb" role="checkbox" aria-checked="{{r.checked}}" aria-label="{{r.chkLabel}}" onClick="{{r.onCheck}}" style="margin-top: 2px;">
+                  <span class="cbx"><svg class="ck-c" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+                </button>
+              </sc-if>
+              <button type="button" class="tr-open" aria-current="{{r.current}}" onClick="{{r.onOpen}}">
+                <span style="display: flex; align-items: baseline; gap: 8px; min-width: 0; width: 100%;">
+                  <span class="mono nw" style="flex: none; font-size: 12px; color: #A7AEB8;">{{r.num}}</span>
+                  <span class="nw" style="flex: none; font-size: 12px; color: #7C8592;">{{r.origen}}</span>
+                  <span style="flex: 1;"></span>
+                  <sc-if value="{{r.hasPrio}}" hint-placeholder-val="{{ false }}">
+                    <span class="nw" style="{{r.prioStyle}}">{{r.prio}}</span>
+                  </sc-if>
+                  <span class="nw" style="{{r.estStyle}}">{{r.estado}}</span>
+                </span>
+                <span class="tt" style="display: block; width: 100%;">
+                  <span class="ell" style="display: block; font-size: 14px; line-height: 20px; font-weight: 500;">{{r.titulo}}</span>
+                  <sc-if value="{{r.long}}" hint-placeholder-val="{{ false }}">
+                    <span class="tip" role="tooltip">{{r.titulo}}</span>
+                  </sc-if>
+                </span>
+                <span class="ell" style="display: block; width: 100%; font-size: 12px; line-height: 16px; color: #7C8592;">{{r.meta}}</span>
+              </button>
+              <a href="#" class="icb" aria-label="{{r.extLabel}}" style="margin-top: 2px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+              </a>
+            </div>
+          </sc-for>
+          <sc-if value="{{listEmpty}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 24px 16px;">
+              <div style="font-size: 14px; font-weight: 500;">No hay tickets en este filtro.</div>
+              <button type="button" class="btn bs bsm" onClick="{{clearFilters}}">Limpiar filtros y búsqueda</button>
+            </div>
+          </sc-if>
+          <div style="display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; font-size: 12px; color: #7C8592;">
+            <span style="flex: 1; min-width: 0;">Clic en un ticket para ver el detalle. El ícono de la derecha abre el sistema externo.</span>
+          </div>
+        </section>
+
+        <!-- ===== PANEL DERECHO (detalle / formulario / plantillas) — en línea, nunca encima ===== -->
+        <section class="card tk-pane" aria-label="{{paneLabel}}" style="padding: 20px; display: flex; flex-direction: column; gap: 20px;">
+          <button type="button" class="btn bg bsm tk-back" onClick="{{backToList}}" style="align-self: flex-start; margin: -8px 0 -8px -8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19l-7-7 7-7M19 12H5"></path></svg>
+            Volver a la lista
+          </button>
+
+          <!-- ===== DETALLE ===== -->
+          <sc-if value="{{showDetail}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">
+              <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0;">
+                  <span class="eb ell" style="flex: 1 1 200px;">{{d.origenLine}}</span>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <a href="#" class="btn bs bsm">
+                      {{d.extLabel}}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+                    </a>
+                    <button type="button" class="btn bs bsm" onClick="{{openEdit}}" disabled="{{consulta}}">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.pencil}}"></path></svg>
+                      Editar
+                    </button>
+                    <button type="button" class="btn bg bsm" onClick="{{askDel}}" disabled="{{consulta}}" style="color: #FF6B6B;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>
+                      Borrar
+                    </button>
+                  </div>
+                </div>
+                <h2 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; overflow-wrap: anywhere;">{{d.titulo}}</h2>
+                <div style="font-size: 13px; color: #7C8592;">{{d.meta}}</div>
+              </div>
+
+              <sc-if value="{{delAsk}}" hint-placeholder-val="{{ false }}">
+                <div class="sl" role="alert" style="align-items: center;">
+                  <span style="flex: 1 1 240px; min-width: 0; line-height: 18px; padding: 6px 0;">{{d.delText}}</span>
+                  <button type="button" class="btn bd bsm" onClick="{{delYes}}">Borrar ticket</button>
+                  <button type="button" class="btn bg bsm" onClick="{{delNo}}">Cancelar</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{dStatus.show}}" hint-placeholder-val="{{ false }}">
+                <div class="sl" role="status">
+                  <span style="flex: 1 1 200px; min-width: 0;">{{dStatus.text}}</span>
+                  <sc-if value="{{dStatus.canUndo}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="lk" onClick="{{dStatus.onUndo}}">Deshacer</button>
+                  </sc-if>
+                  <button type="button" class="icb" aria-label="Cerrar aviso" onClick="{{dStatus.onClose}}" style="width: 30px; height: 30px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+              </sc-if>
+
+              <div class="dgi">
+                <!-- Columna principal -->
+                <div style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">
+
+                  <section class="sec" aria-label="Resumen IA" style="padding: 14px 16px; background: #1B1F24; border: 1px solid #262B32; border-radius: 10px;">
+                    <div class="sech">
+                      <h3>Resumen IA <span style="font-weight: 400; color: #7C8592;">· lectura rápida</span></h3>
+                      <button type="button" class="btn bg bsm" onClick="{{refreshSum}}" disabled="{{sumDisabled}}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"></path></svg>
+                        {{d.sumBtn}}
+                      </button>
+                    </div>
+                    <p style="margin: 0; font-size: 14px; line-height: 22px; color: #ECEEF1;">{{d.summary}}</p>
+                    <div style="font-size: 12px; color: #7C8592;">{{d.sumWhen}}</div>
+                  </section>
+
+                  <section class="sec" aria-label="Descripción">
+                    <div class="sech"><h3>Descripción</h3></div>
+                    <p style="margin: 0; font-size: 14px; line-height: 22px; color: #A7AEB8; white-space: pre-wrap; overflow-wrap: anywhere;">{{d.descText}}</p>
+                    <sc-if value="{{d.descLong}}" hint-placeholder-val="{{ true }}">
+                      <button type="button" class="lk" aria-expanded="{{d.descExpanded}}" onClick="{{toggleDesc}}" style="align-self: flex-start; margin-left: -8px;">{{d.descBtn}}</button>
+                    </sc-if>
+                  </section>
+
+                  <sc-if value="{{d.hasFile}}" hint-placeholder-val="{{ true }}">
+                    <section class="sec" aria-label="Ticket exportado">
+                      <div class="sech"><h3>Ticket exportado</h3></div>
+                      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border: 1px solid #262B32; border-radius: 6px; min-width: 0;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{d.fileIcon}}"></path></svg>
+                        <span style="flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column;">
+                          <span class="ell" style="font-size: 14px;">{{d.fileName}}</span>
+                          <span class="mono" style="font-size: 12px; color: #7C8592;">{{d.fileMeta}}</span>
+                        </span>
+                        <button type="button" class="btn bs bsm" aria-expanded="{{d.pdfExpanded}}" onClick="{{togglePdf}}">{{d.pdfBtn}}</button>
+                        <a href="#" class="btn bg bsm">Abrir en pestaña ↗</a>
+                      </div>
+                      <sc-if value="{{d.pdfOpen}}" hint-placeholder-val="{{ false }}">
+                        <div role="img" aria-label="{{d.pdfAria}}" style="height: 360px; border: 1px solid #262B32; border-radius: 6px; background: #0D0F12; display: flex; align-items: flex-start; justify-content: center; padding: 16px; box-sizing: border-box; overflow: hidden;">
+                          <div style="width: 100%; max-width: 280px; height: 100%; background: #1B1F24; border: 1px solid #353B44; border-radius: 4px; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="height: 10px; width: 55%; background: #353B44; border-radius: 2px;"></div>
+                            <div style="height: 6px; width: 90%; background: #262B32; border-radius: 2px;"></div>
+                            <div style="height: 6px; width: 80%; background: #262B32; border-radius: 2px;"></div>
+                            <div style="height: 6px; width: 86%; background: #262B32; border-radius: 2px;"></div>
+                            <div style="height: 48px; width: 100%; border: 1px solid #262B32; border-radius: 2px;"></div>
+                            <div style="height: 6px; width: 70%; background: #262B32; border-radius: 2px;"></div>
+                            <div style="margin-top: auto; font-size: 12px; color: #7C8592;">{{d.fileKindLabel}} embebido, sin barra del visor</div>
+                          </div>
+                        </div>
+                      </sc-if>
+                    </section>
+                  </sc-if>
+
+                  <section class="sec" aria-label="Checklist">
+                    <div class="sech">
+                      <h3>Checklist</h3>
+                      <span class="cnt">{{d.stepsCount}}</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; border-top: 1px solid #262B32;">
+                      <sc-for list="{{d.steps}}" as="st" hint-placeholder-count="3">
+                        <div class="step">
+                          <button type="button" class="cb" role="checkbox" aria-checked="{{st.checked}}" aria-label="{{st.aria}}" onClick="{{st.onToggle}}" disabled="{{consulta}}">
+                            <span class="cbx"><svg class="ck-c" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+                          </button>
+                          <span class="ell" style="{{st.textStyle}}">{{st.t}}</span>
+                          <button type="button" class="icb" aria-label="{{st.delAria}}" onClick="{{st.onDel}}" disabled="{{consulta}}" style="width: 30px; height: 30px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                          </button>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+                      <div style="display: flex; gap: 8px; min-width: 0;">
+                        <input class="inp" type="text" aria-label="Agregar paso" placeholder="Agregar paso y Enter" value="{{stepDraft}}" onInput="{{onStepDraft}}" onChange="{{onStepDraft}}" onKeyDown="{{onStepKey}}" style="flex: 1;">
+                        <button type="button" class="btn bs" onClick="{{addStep}}" aria-label="Agregar paso">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+                        </button>
+                      </div>
+                    </sc-if>
+                  </section>
+
+                  <section class="sec" aria-label="Comentarios y actividad">
+                    <div class="seg" role="tablist" aria-label="Comentarios o actividad" style="align-self: flex-start;">
+                      <button type="button" class="sg" role="tab" aria-pressed="{{tabCom}}" aria-selected="{{tabCom}}" onClick="{{showCom}}">Comentarios <span class="cnt">{{d.comCount}}</span></button>
+                      <button type="button" class="sg" role="tab" aria-pressed="{{tabAct}}" aria-selected="{{tabAct}}" onClick="{{showAct}}">Actividad <span class="cnt">{{d.actCount}}</span></button>
+                    </div>
+                    <sc-if value="{{tabComB}}" hint-placeholder-val="{{ true }}">
+                      <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <sc-for list="{{d.com}}" as="c" hint-placeholder-count="1">
+                          <div style="display: flex; gap: 10px; min-width: 0;">
+                            <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;" aria-hidden="true">{{c.ini}}</span>
+                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                              <div style="display: flex; gap: 8px; align-items: baseline; min-width: 0;"><span class="ell" style="font-size: 13px; font-weight: 600;">{{c.who}}</span><span class="nw" style="font-size: 12px; color: #7C8592;">{{c.when}}</span></div>
+                              <p style="margin: 0; font-size: 14px; line-height: 21px; color: #A7AEB8; white-space: pre-wrap; overflow-wrap: anywhere;">{{c.body}}</p>
+                            </div>
+                          </div>
+                        </sc-for>
+                        <sc-if value="{{d.noCom}}" hint-placeholder-val="{{ false }}">
+                          <div style="font-size: 13px; color: #7C8592;">Todavía no hay comentarios.</div>
+                        </sc-if>
+                        <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+                          <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <textarea class="inp noscroll" rows="3" aria-label="Registrar avance o respuesta" placeholder="Registrar avance o respuesta" value="{{comDraft}}" onInput="{{onComDraft}}" onChange="{{onComDraft}}" onKeyDown="{{onComKey}}"></textarea>
+                            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                              <span class="hint" style="flex: 1 1 200px;">Ctrl Enter para comentar. El primer comentario marca la primera respuesta.</span>
+                              <button type="button" class="btn bs" onClick="{{addCom}}" disabled="{{comEmpty}}">Comentar</button>
+                            </div>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{tabActB}}" hint-placeholder-val="{{ false }}">
+                      <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;">
+                        <sc-for list="{{d.act}}" as="a" hint-placeholder-count="4">
+                          <li style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 8px 0; border-top: 1px solid #262B32; font-size: 13px; line-height: 18px;">
+                            <span class="mono nw" style="font-size: 12px; color: #7C8592;">{{a.when}}</span>
+                            <span style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                              <span style="color: #ECEEF1;">{{a.a}}</span>
+                              <span class="ell" style="color: #A7AEB8;">{{a.d}}</span>
+                              <span style="font-size: 12px; color: #7C8592;">{{a.who}}</span>
+                            </span>
+                          </li>
+                        </sc-for>
+                      </ol>
+                    </sc-if>
+                  </section>
+                </div>
+
+                <!-- Columna lateral: propiedades y relaciones -->
+                <div style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">
+                  <section class="sec" aria-label="Propiedades">
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                      <span class="eb">Estado</span>
+                      <div class="seg" role="group" aria-label="Cambiar estado">
+                        <sc-for list="{{d.estados}}" as="e" hint-placeholder-count="3">
+                          <button type="button" class="sg" aria-pressed="{{e.pressed}}" onClick="{{e.onClick}}" disabled="{{consulta}}" style="{{e.style}}">{{e.label}}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column;">
+                      <div class="prop"><span>Prioridad</span><span style="{{d.prioStyle}}">{{d.prio}}</span></div>
+                      <div class="prop"><span>Responsables</span><span style="overflow-wrap: anywhere;">{{d.resp}}</span></div>
+                      <div class="prop"><span>Aula</span><span style="min-width: 0;"><a href="#" style="text-decoration: none;">{{d.aula}}</a> <span style="color: #7C8592;">{{d.piso}}</span></span></div>
+                      <div class="prop"><span>Escuela</span><span class="ell">{{d.escuela}}</span></div>
+                      <div class="prop"><span>Categoría</span><span class="ell">{{d.cat}}</span></div>
+                      <div class="prop"><span>Tags</span>
+                        <span style="display: flex; flex-wrap: wrap; gap: 4px; min-width: 0;">
+                          <sc-for list="{{d.tags}}" as="tg" hint-placeholder-count="2"><span class="chip">{{tg.label}}</span></sc-for>
+                          <sc-if value="{{d.noTags}}" hint-placeholder-val="{{ false }}"><span style="color: #7C8592;">Sin tags</span></sc-if>
+                        </span>
+                      </div>
+                      <div class="prop" style="border-bottom: 1px solid #262B32;"><span>1.ª respuesta</span><span style="color: #A7AEB8;">{{d.firstResp}}</span></div>
+                    </div>
+                  </section>
+
+                  <section class="sec" aria-label="Tickets relacionados">
+                    <div class="sech"><h3>Relacionados</h3><span class="cnt">{{d.relCount}}</span></div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                      <sc-for list="{{d.rel}}" as="rl" hint-placeholder-count="1">
+                        <div style="display: flex; align-items: center; gap: 2px; min-width: 0; border: 1px solid #262B32; border-radius: 6px;">
+                          <button type="button" onClick="{{rl.onGo}}" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; background: transparent; border: 0; color: #ECEEF1; text-align: left; cursor: pointer; border-radius: 6px;">
+                            <span class="ell" style="font-size: 12px; color: #7C8592;">{{rl.kind}}</span>
+                            <span class="ell" style="font-size: 13px;">{{rl.titulo}}</span>
+                          </button>
+                          <button type="button" class="icb" aria-label="{{rl.delAria}}" onClick="{{rl.onDel}}" disabled="{{consulta}}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                          </button>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{d.noRel}}" hint-placeholder-val="{{ false }}">
+                        <div style="font-size: 13px; color: #7C8592;">Sin tickets vinculados.</div>
+                      </sc-if>
+                    </div>
+                    <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+                      <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px;">
+                        <span class="eb">Vincular ticket</span>
+                        <button type="button" class="inp" aria-expanded="{{relOpenS}}" onClick="{{toggleRel}}" style="display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer;">
+                          <span class="ell" style="{{relPickStyle}}">{{relPickLabel}}</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-left: auto;"><path d="{{relChevron}}"></path></svg>
+                        </button>
+                        <sc-if value="{{relOpen}}" hint-placeholder-val="{{ false }}">
+                          <div role="listbox" aria-label="Tickets para vincular" style="display: flex; flex-direction: column; border: 1px solid #353B44; border-radius: 6px; background: #0D0F12;">
+                            <sc-for list="{{relOptions}}" as="o" hint-placeholder-count="3">
+                              <button type="button" role="option" aria-selected="{{o.sel}}" onClick="{{o.onPick}}" style="{{o.style}}">
+                                <span class="mono nw" style="font-size: 12px; color: #7C8592;">{{o.num}}</span>
+                                <span class="ell" style="flex: 1;">{{o.titulo}}</span>
+                              </button>
+                            </sc-for>
+                            <sc-if value="{{relNoOptions}}" hint-placeholder-val="{{ false }}">
+                              <div style="padding: 10px; font-size: 13px; color: #7C8592;">No quedan tickets para vincular.</div>
+                            </sc-if>
+                          </div>
+                        </sc-if>
+                        <div class="seg" role="group" aria-label="Tipo de relación">
+                          <button type="button" class="sg" aria-pressed="{{relTypeRel}}" onClick="{{setRelRel}}">Relacionado</button>
+                          <button type="button" class="sg" aria-pressed="{{relTypePar}}" onClick="{{setRelPar}}">Es su padre</button>
+                        </div>
+                        <button type="button" class="btn bs" onClick="{{doLink}}" disabled="{{relNoPick}}" style="align-self: flex-start;">Vincular</button>
+                      </div>
+                    </sc-if>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{showNone}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 40px 8px;">
+              <div style="font-size: 16px; font-weight: 600;">Elegí un ticket de la lista</div>
+              <div style="font-size: 13px; color: #A7AEB8;">El detalle se abre acá, al lado de la lista.</div>
+            </div>
+          </sc-if>
+
+          <!-- ===== FORMULARIO (cargar / editar) ===== -->
+          <sc-if value="{{showForm}}" hint-placeholder-val="{{ false }}">
+            <form onSubmit="{{onSubmit}}" style="display: flex; flex-direction: column; gap: 20px; min-width: 0;">
+              <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px;">
+                <div style="flex: 1 1 220px; min-width: 0;">
+                  <div class="eb">{{F.eyebrow}}</div>
+                  <h2 class="ell" style="margin: 4px 0 0; font-size: 20px; line-height: 28px; font-weight: 600;">{{F.heading}}</h2>
+                </div>
+                <button type="button" class="btn bg bsm" onClick="{{cancelForm}}">Cancelar</button>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <span class="eb">Origen</span>
+                <div role="group" aria-label="Origen del ticket" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+                  <sc-for list="{{F.origenes}}" as="o" hint-placeholder-count="2">
+                    <button type="button" class="opt" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="height: auto; min-height: 52px; padding: 8px 12px; flex-direction: column; align-items: flex-start; gap: 2px; white-space: normal;">
+                      <span style="font-size: 14px; font-weight: 600;">{{o.label}}</span>
+                      <span style="font-size: 12px; color: #7C8592;">{{o.sub}}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+
+              <sc-if value="{{F.showTpl}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <span class="eb">Usar plantilla</span>
+                  <button type="button" class="inp" aria-expanded="{{F.tplOpenS}}" onClick="{{F.toggleTpl}}" style="display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer;">
+                    <span class="ell">{{F.tplLabel}}</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-left: auto;"><path d="{{F.tplChevron}}"></path></svg>
+                  </button>
+                  <sc-if value="{{F.tplOpen}}" hint-placeholder-val="{{ false }}">
+                    <div role="listbox" aria-label="Plantillas" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; border: 1px solid #353B44; border-radius: 6px; background: #0D0F12;">
+                      <sc-for list="{{F.tpls}}" as="t" hint-placeholder-count="4">
+                        <button type="button" role="option" class="opt" aria-pressed="{{t.pressed}}" aria-selected="{{t.pressed}}" onClick="{{t.onPick}}" style="height: auto; min-height: 44px; padding: 6px 10px; flex-direction: column; align-items: flex-start; gap: 0; flex: 1 1 180px; min-width: 0; white-space: normal;">
+                          <span class="ell" style="max-width: 100%; font-size: 13px; font-weight: 500;">{{t.title}}</span>
+                          <span class="ell" style="max-width: 100%; font-size: 12px; color: #7C8592;">{{t.sub}}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{F.tplStatus}}" hint-placeholder-val="{{ false }}">
+                    <div class="sl" role="status">
+                      <span style="flex: 1 1 200px; min-width: 0; line-height: 18px; padding: 4px 0;">{{F.tplStatusText}}</span>
+                      <button type="button" class="lk" onClick="{{F.undoTpl}}">Deshacer</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <div class="fg">
+                <label class="lbl">
+                  {{F.numLabel}}
+                  <input class="inp mono" type="text" inputmode="{{F.numMode}}" value="{{F.num}}" onInput="{{F.onNum}}" onChange="{{F.onNum}}" placeholder="{{F.numPh}}" aria-invalid="{{F.numInvalid}}" style="{{F.numStyle}}">
+                  <sc-if value="{{F.numErr}}" hint-placeholder-val="{{ false }}"><span class="err" role="alert">Falta el número de ticket de InVgate.</span></sc-if>
+                  <span class="hint">{{F.numHint}}</span>
+                </label>
+                <div class="lbl">
+                  <span>Probar link</span>
+                  <sc-if value="{{F.hasNum}}" hint-placeholder-val="{{ false }}">
+                    <a href="#" class="btn bs" style="align-self: flex-start;">{{F.testLabel}} ↗</a>
+                  </sc-if>
+                  <sc-if value="{{F.noNum}}" hint-placeholder-val="{{ true }}">
+                    <span class="hint" style="min-height: 36px; display: flex; align-items: center;">Cargá la referencia para probar el link al sistema externo.</span>
+                  </sc-if>
+                </div>
+                <div class="lbl">
+                  <span>Estado</span>
+                  <div class="seg" role="group" aria-label="Estado" style="align-self: flex-start;">
+                    <sc-for list="{{F.estados}}" as="e" hint-placeholder-count="3">
+                      <button type="button" class="sg" aria-pressed="{{e.pressed}}" onClick="{{e.onClick}}">{{e.label}}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <div class="lbl">
+                  <span>Prioridad</span>
+                  <div class="seg" role="group" aria-label="Prioridad" style="align-self: flex-start;">
+                    <sc-for list="{{F.prios}}" as="e" hint-placeholder-count="4">
+                      <button type="button" class="sg" aria-pressed="{{e.pressed}}" onClick="{{e.onClick}}">{{e.label}}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <label class="lbl full">
+                  Título
+                  <input class="inp" type="text" value="{{F.titulo}}" onInput="{{F.onTitulo}}" onChange="{{F.onTitulo}}" placeholder="Ej. Proyector sin imagen">
+                </label>
+                <div class="lbl">
+                  <label for="tk-cat">Categoría</label>
+                  <input id="tk-cat" class="inp" type="text" value="{{F.cat}}" onInput="{{F.onCat}}" onChange="{{F.onCat}}" placeholder="Hardware, cuenta, conectividad…">
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <sc-for list="{{F.catSug}}" as="c" hint-placeholder-count="4">
+                      <button type="button" class="opt" onClick="{{c.onPick}}" style="height: 26px; font-size: 12px;">{{c.label}}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <label class="lbl">
+                  Escuela
+                  <input class="inp" type="text" value="{{F.escuela}}" onInput="{{F.onEscuela}}" onChange="{{F.onEscuela}}" placeholder="Sede o escuela">
+                </label>
+                <label class="lbl full">
+                  Descripción
+                  <textarea class="inp noscroll" rows="3" value="{{F.desc}}" onInput="{{F.onDesc}}" onChange="{{F.onDesc}}" placeholder="Detalle breve del problema o pedido"></textarea>
+                </label>
+
+                <div class="lbl full">
+                  <span id="tk-resp-l">Responsables</span>
+                  <div class="chipin" role="group" aria-labelledby="tk-resp-l">
+                    <sc-for list="{{F.resp.items}}" as="c" hint-placeholder-count="1">
+                      <span class="chipx">{{c.label}}<button type="button" aria-label="{{c.aria}}" onClick="{{c.onRemove}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></span>
+                    </sc-for>
+                    <input type="text" aria-label="Agregar responsable" value="{{F.resp.draft}}" onInput="{{F.resp.onInput}}" onChange="{{F.resp.onInput}}" onKeyDown="{{F.resp.onKey}}" placeholder="{{F.resp.ph}}">
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+                    <span class="hint">Sugeridos</span>
+                    <sc-for list="{{F.respSug}}" as="c" hint-placeholder-count="3">
+                      <button type="button" class="opt" onClick="{{c.onPick}}" style="height: 26px; font-size: 12px;">+ {{c.label}}</button>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div class="lbl full">
+                  <span>Aula (opcional)</span>
+                  <button type="button" class="inp" aria-expanded="{{F.aulaOpenS}}" onClick="{{F.toggleAula}}" style="display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer;">
+                    <span class="ell" style="{{F.aulaStyle}}">{{F.aulaLabel}}</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-left: auto;"><path d="{{F.aulaChevron}}"></path></svg>
+                  </button>
+                  <sc-if value="{{F.aulaOld}}" hint-placeholder-val="{{ false }}">
+                    <span class="hint">Dato anterior: {{F.aulaOldText}} (texto libre, sin aula vinculada)</span>
+                  </sc-if>
+                  <sc-if value="{{F.aulaOpen}}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; flex-direction: column; gap: 10px; padding: 10px; border: 1px solid #353B44; border-radius: 6px; background: #0D0F12;">
+                      <label class="fld" style="background: #14171B;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+                        <input type="text" aria-label="Buscar aula" value="{{F.aulaQ}}" onInput="{{F.onAulaQ}}" onChange="{{F.onAulaQ}}" placeholder="Buscar aula: 6F, LAB, 3ero N…">
+                      </label>
+                      <sc-for list="{{F.pisos}}" as="p" hint-placeholder-count="3">
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                          <span class="eb">{{p.piso}}</span>
+                          <div role="listbox" aria-label="{{p.piso}}" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                            <sc-for list="{{p.aulas}}" as="a" hint-placeholder-count="8">
+                              <button type="button" role="option" class="opt" aria-pressed="{{a.pressed}}" aria-selected="{{a.pressed}}" onClick="{{a.onPick}}" style="height: 30px;">{{a.label}}</button>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{F.aulaNone}}" hint-placeholder-val="{{ false }}"><span class="hint">Ningún aula coincide.</span></sc-if>
+                      <button type="button" class="btn bg bsm" onClick="{{F.clearAula}}" style="align-self: flex-start;">Sin aula</button>
+                    </div>
+                  </sc-if>
+                </div>
+
+                <div class="lbl full">
+                  <span id="tk-tags-l">Tags</span>
+                  <div class="chipin" role="group" aria-labelledby="tk-tags-l">
+                    <sc-for list="{{F.tags.items}}" as="c" hint-placeholder-count="2">
+                      <span class="chipx">{{c.label}}<button type="button" aria-label="{{c.aria}}" onClick="{{c.onRemove}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></span>
+                    </sc-for>
+                    <input type="text" aria-label="Agregar tag" value="{{F.tags.draft}}" onInput="{{F.tags.onInput}}" onChange="{{F.tags.onInput}}" onKeyDown="{{F.tags.onKey}}" placeholder="{{F.tags.ph}}">
+                  </div>
+                  <span class="hint">Escribí de corrido: coma o Enter cierra el tag, Borrar sobre el campo vacío quita el último.</span>
+                </div>
+
+                <sc-if value="{{F.isNew}}" hint-placeholder-val="{{ true }}">
+                  <div class="lbl full">
+                    <span>Checklist inicial</span>
+                    <div style="display: flex; flex-direction: column; border-top: 1px solid #262B32;">
+                      <sc-for list="{{F.steps}}" as="st" hint-placeholder-count="2">
+                        <div class="step">
+                          <span class="mono" style="width: 28px; flex: none; text-align: center; font-size: 12px; color: #7C8592;">{{st.n}}</span>
+                          <span class="ell" style="flex: 1; font-size: 14px; color: #ECEEF1; font-weight: 400;">{{st.t}}</span>
+                          <button type="button" class="icb" aria-label="{{st.aria}}" onClick="{{st.onDel}}" style="width: 30px; height: 30px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                          </button>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <input class="inp" type="text" aria-label="Agregar paso al checklist inicial" value="{{F.stepDraft}}" onInput="{{F.onStepDraft}}" onChange="{{F.onStepDraft}}" onKeyDown="{{F.onStepKey}}" placeholder="Escribí un paso y Enter (el campo queda listo para el siguiente)">
+                  </div>
+                </sc-if>
+
+                <div class="lbl full">
+                  <span>Ticket exportado (PDF o foto)</span>
+                  <sc-if value="{{F.noFile}}" hint-placeholder-val="{{ true }}">
+                    <div class="drop" aria-label="Zona para soltar el archivo del ticket">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path></svg>
+                      <span style="flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                        <span style="font-size: 14px; font-weight: 400; color: #ECEEF1;">Arrastrá el PDF o la foto acá, o pegala con Ctrl V</span>
+                        <span class="hint">PDF, PNG, JPG o WEBP · hasta 7,5 MB</span>
+                      </span>
+                      <button type="button" class="btn bs" onClick="{{F.pickFile}}" disabled="{{F.uploading}}">{{F.pickLabel}}</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{F.hasFile}}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border: 1px solid #353B44; border-radius: 10px; min-width: 0;">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{ic.file}}"></path></svg>
+                      <span style="flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column;">
+                        <span class="ell" style="font-size: 14px; font-weight: 400; color: #ECEEF1;">{{F.fileName}}</span>
+                        <span class="mono" style="font-size: 12px; font-weight: 400; color: #7C8592;">{{F.fileMeta}}</span>
+                      </span>
+                      <a href="#" class="btn bg bsm">Abrir ↗</a>
+                      <button type="button" class="btn bs bsm" onClick="{{F.pickFile}}">Reemplazar</button>
+                      <button type="button" class="btn bg bsm" onClick="{{F.removeFile}}">Quitar</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+
+              <sc-if value="{{F.err}}" hint-placeholder-val="{{ false }}">
+                <div role="alert" style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #353B44; border-radius: 6px; font-size: 13px; color: #FF6B6B;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+                  <span style="min-width: 0;">{{F.errText}}</span>
+                </div>
+              </sc-if>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; border-top: 1px solid #262B32; padding-top: 16px;">
+                <button type="submit" class="btn bp" disabled="{{F.uploading}}">Guardar ticket</button>
+                <button type="button" class="btn bg" onClick="{{cancelForm}}">Cancelar</button>
+              </div>
+            </form>
+          </sc-if>
+
+          <!-- ===== PLANTILLAS ===== -->
+          <sc-if value="{{showTpl}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+              <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px;">
+                <div style="flex: 1 1 220px; min-width: 0;">
+                  <div class="eb">Incidentes frecuentes</div>
+                  <h2 style="margin: 4px 0 0; font-size: 20px; line-height: 28px; font-weight: 600;">Plantillas</h2>
+                </div>
+                <sc-if value="{{tplCanNew}}" hint-placeholder-val="{{ true }}">
+                  <button type="button" class="btn bs bsm" onClick="{{tplNew}}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+                    Nueva plantilla
+                  </button>
+                </sc-if>
+                <button type="button" class="btn bg bsm" onClick="{{closeTpl}}">Volver al ticket</button>
+              </div>
+              <sc-if value="{{tStatus.show}}" hint-placeholder-val="{{ false }}">
+                <div class="sl" role="status">
+                  <span style="flex: 1 1 200px; min-width: 0;">{{tStatus.text}}</span>
+                  <sc-if value="{{tStatus.canUndo}}" hint-placeholder-val="{{ true }}"><button type="button" class="lk" onClick="{{tStatus.onUndo}}">Deshacer</button></sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{tplNewOpen}}" hint-placeholder-val="{{ false }}">
+                <div style="padding: 16px; border: 1px solid #353B44; border-radius: 10px; display: flex; flex-direction: column; gap: 12px;">
+                  <div style="font-size: 14px; font-weight: 600;">Nueva plantilla</div>
+                  <div class="fg">
+                    <label class="lbl">Título<input class="inp" type="text" value="{{TD.title}}" onInput="{{TD.onTitle}}" onChange="{{TD.onTitle}}" placeholder="Ej. Proyector sin imagen"></label>
+                    <label class="lbl">Categoría<input class="inp" type="text" value="{{TD.cat}}" onInput="{{TD.onCat}}" onChange="{{TD.onCat}}" placeholder="Hardware"></label>
+                    <label class="lbl full">Descripción<textarea class="inp noscroll" rows="2" value="{{TD.desc}}" onInput="{{TD.onDesc}}" onChange="{{TD.onDesc}}"></textarea></label>
+                    <div class="lbl"><span>Prioridad</span><div class="seg" role="group" aria-label="Prioridad" style="align-self: flex-start;"><sc-for list="{{TD.prios}}" as="e" hint-placeholder-count="4"><button type="button" class="sg" aria-pressed="{{e.pressed}}" onClick="{{e.onClick}}">{{e.label}}</button></sc-for></div></div>
+                    <label class="lbl">Responsable sugerido<input class="inp" type="text" value="{{TD.resp}}" onInput="{{TD.onResp}}" onChange="{{TD.onResp}}" placeholder="Ej. Bauti G."></label>
+                    <div class="lbl full"><span>Checklist</span>
+                      <div class="chipin" role="group" aria-label="Pasos de la plantilla">
+                        <sc-for list="{{TD.steps.items}}" as="c" hint-placeholder-count="1"><span class="chipx">{{c.label}}<button type="button" aria-label="{{c.aria}}" onClick="{{c.onRemove}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></span></sc-for>
+                        <input type="text" aria-label="Agregar paso" value="{{TD.steps.draft}}" onInput="{{TD.steps.onInputLine}}" onChange="{{TD.steps.onInputLine}}" onKeyDown="{{TD.steps.onKey}}" placeholder="Paso y Enter">
+                      </div>
+                    </div>
+                    <div class="lbl full"><span>Tags</span>
+                      <div class="chipin" role="group" aria-label="Tags de la plantilla">
+                        <sc-for list="{{TD.tags.items}}" as="c" hint-placeholder-count="1"><span class="chipx">{{c.label}}<button type="button" aria-label="{{c.aria}}" onClick="{{c.onRemove}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></span></sc-for>
+                        <input type="text" aria-label="Agregar tag" value="{{TD.tags.draft}}" onInput="{{TD.tags.onInput}}" onChange="{{TD.tags.onInput}}" onKeyDown="{{TD.tags.onKey}}" placeholder="tag, tag…">
+                      </div>
+                    </div>
+                  </div>
+                  <sc-if value="{{TD.err}}" hint-placeholder-val="{{ false }}"><span class="err" role="alert">Poné un título para guardar la plantilla.</span></sc-if>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <button type="button" class="btn bp bsm" onClick="{{tplSave}}">Guardar plantilla</button>
+                    <button type="button" class="btn bg bsm" onClick="{{tplCancel}}">Cancelar</button>
+                  </div>
+                </div>
+              </sc-if>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{tpls}}" as="t" hint-placeholder-count="3">
+                  <div style="border: 1px solid #262B32; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0;">
+                      <span class="ell" style="flex: 1 1 160px; font-size: 14px; font-weight: 600;">{{t.title}}</span>
+                      <button type="button" class="btn bg bsm" onClick="{{t.onEdit}}" aria-expanded="{{t.editingS}}">Editar</button>
+                      <button type="button" class="btn bg bsm" onClick="{{t.onAskDel}}" style="color: #FF6B6B;">Eliminar</button>
+                    </div>
+                    <div style="font-size: 12px; color: #7C8592;">{{t.sub}}</div>
+                    <div style="font-size: 13px; line-height: 19px; color: #A7AEB8;">{{t.desc}}</div>
+                    <div class="ell" style="font-size: 12px; color: #A7AEB8;">{{t.steps}}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px;"><sc-for list="{{t.tags}}" as="tg" hint-placeholder-count="2"><span class="chip">{{tg.label}}</span></sc-for></div>
+                    <sc-if value="{{t.asking}}" hint-placeholder-val="{{ false }}">
+                      <div class="sl" role="alert">
+                        <span style="flex: 1 1 200px; min-width: 0;">¿Eliminar la plantilla “{{t.title}}”? Los tickets ya cargados no cambian.</span>
+                        <button type="button" class="btn bd bsm" onClick="{{t.onDel}}">Eliminar</button>
+                        <button type="button" class="btn bg bsm" onClick="{{t.onNoDel}}">Cancelar</button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{t.editing}}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-top: 6px; padding-top: 12px; border-top: 1px solid #262B32; display: flex; flex-direction: column; gap: 12px;">
+                        <div class="fg">
+                          <label class="lbl">Título<input class="inp" type="text" value="{{TD.title}}" onInput="{{TD.onTitle}}" onChange="{{TD.onTitle}}"></label>
+                          <label class="lbl">Categoría<input class="inp" type="text" value="{{TD.cat}}" onInput="{{TD.onCat}}" onChange="{{TD.onCat}}"></label>
+                          <label class="lbl full">Descripción<textarea class="inp noscroll" rows="2" value="{{TD.desc}}" onInput="{{TD.onDesc}}" onChange="{{TD.onDesc}}"></textarea></label>
+                          <div class="lbl"><span>Prioridad</span><div class="seg" role="group" aria-label="Prioridad" style="align-self: flex-start;"><sc-for list="{{TD.prios}}" as="e" hint-placeholder-count="4"><button type="button" class="sg" aria-pressed="{{e.pressed}}" onClick="{{e.onClick}}">{{e.label}}</button></sc-for></div></div>
+                          <label class="lbl">Responsable sugerido<input class="inp" type="text" value="{{TD.resp}}" onInput="{{TD.onResp}}" onChange="{{TD.onResp}}"></label>
+                          <div class="lbl full"><span>Checklist</span>
+                            <div class="chipin" role="group" aria-label="Pasos de la plantilla">
+                              <sc-for list="{{TD.steps.items}}" as="c" hint-placeholder-count="2"><span class="chipx">{{c.label}}<button type="button" aria-label="{{c.aria}}" onClick="{{c.onRemove}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></span></sc-for>
+                              <input type="text" aria-label="Agregar paso" value="{{TD.steps.draft}}" onInput="{{TD.steps.onInputLine}}" onChange="{{TD.steps.onInputLine}}" onKeyDown="{{TD.steps.onKey}}" placeholder="Paso y Enter">
+                            </div>
+                          </div>
+                          <div class="lbl full"><span>Tags</span>
+                            <div class="chipin" role="group" aria-label="Tags de la plantilla">
+                              <sc-for list="{{TD.tags.items}}" as="c" hint-placeholder-count="2"><span class="chipx">{{c.label}}<button type="button" aria-label="{{c.aria}}" onClick="{{c.onRemove}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></span></sc-for>
+                              <input type="text" aria-label="Agregar tag" value="{{TD.tags.draft}}" onInput="{{TD.tags.onInput}}" onChange="{{TD.tags.onInput}}" onKeyDown="{{TD.tags.onKey}}" placeholder="tag, tag…">
+                            </div>
+                          </div>
+                        </div>
+                        <sc-if value="{{TD.err}}" hint-placeholder-val="{{ false }}"><span class="err" role="alert">Poné un título para guardar la plantilla.</span></sc-if>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                          <button type="button" class="btn bp bsm" onClick="{{tplSave}}">Guardar cambios</button>
+                          <button type="button" class="btn bg bsm" onClick="{{tplCancel}}">Cancelar</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </section>
+      </div>
+    </div>
+
+    <!-- ASISTENTE: columna que empuja el contenido, nunca encima -->
+    <sc-if value="{{asstOpen}}" hint-placeholder-val="{{ false }}">
+      <aside class="asst" aria-label="Asistente">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex: 1; font-size: 14px; font-weight: 600;">Asistente</span>
+          <button type="button" class="icb" aria-label="Cerrar asistente" onClick="{{toggleAsst}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="padding: 10px 12px; border: 1px solid #262B32; border-radius: 6px; font-size: 13px; line-height: 18px;">
+          <div class="eb">Contexto</div>
+          <div class="ell" style="margin-top: 4px; color: #ECEEF1;">{{asstCtx}}</div>
+          <div class="ell" style="color: #7C8592;">{{asstCtx2}}</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button type="button" class="opt" style="justify-content: flex-start;">Resumime este ticket</button>
+          <button type="button" class="opt" style="justify-content: flex-start;">¿Qué paso sigue en el checklist?</button>
+          <button type="button" class="opt" style="justify-content: flex-start;">Buscá en la base de conocimiento</button>
+        </div>
+        <span style="flex: 1;"></span>
+        <label class="fld">
+          <input type="text" aria-label="Preguntale al asistente" placeholder="Preguntale al asistente…">
+        </label>
+      </aside>
+    </sc-if>
+    </div>
+
+    <!-- BARRA INFERIOR (solo bajo 768px) -->
+    <nav class="bnav" aria-label="Navegación principal">
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span class="nw">Inicio</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg><span class="nw">Préstamos</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ECEEF1; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg><span class="nw">Escanear</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg><span class="nw">Agenda</span></a>
+      <a href="#" aria-current="page" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #5B9BFF; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg><span class="nw">Más</span></a>
+    </nav>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300},"consulta":{"editor":"boolean","default":false}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    ideas: 'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    canvas: 'M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z' + R(3, 14, 7, 7, 1) + C(17.5, 17.5, 3.5),
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
+    bot: 'M12 8V4H8' + R(4, 8, 16, 12, 2) + 'M2 14h2M20 14h2M15 13v2M9 13v2',
+    tpl: R(3, 3, 18, 7, 1) + R(3, 14, 7, 7, 1) + R(14, 14, 7, 7, 1),
+    pencil: 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4',
+    trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+    file: 'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7zM14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8',
+    image: R(3, 3, 18, 18, 2) + C(9, 9, 2) + 'M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21',
+    down: 'M6 9l6 6 6-6',
+    up: 'M18 15l-6-6-6 6'
+  };
+}
+nav(I, active) {
+  const base = 'display: flex; align-items: center; gap: 10px; height: 32px; border-radius: 6px; position: relative; text-decoration: none; font-size: 14px; line-height: 20px;';
+  const mk = (k, label, count) => {
+    const on = k === active;
+    return {
+      label: label, d: I[k], count: count || '', current: on ? 'page' : 'false',
+      style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;',
+      bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;'
+    };
+  };
+  return {
+    ops: [mk('home', 'Inicio'), mk('loans', 'Préstamos', '[N]'), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC'), mk('rooms', 'Estado aulas')],
+    mgmt: [mk('tasks', 'Tareas TIC', '2'), mk('tickets', 'Tickets'), mk('ideas', 'Sugerencias'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')],
+    data: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')],
+    res: [mk('knowledge', 'Base de conocimiento'), mk('canvas', 'Canvas'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')]
+  };
+}
+seed() {
+  const N = '[N]';
+  // La base local no tiene tickets cargados: ejemplos armados con aulas, tareas y personas reales de NFPT. Números de ticket y tamaños = [N].
+  const T = [
+    { id: 1, origen: 'tik', num: N, titulo: 'Proyector sin imagen en 6F', estado: 'No hecho', prio: 'Alta', resp: ['Bauti G.'], cat: 'Hardware', aula: '6F', piso: 'Primer piso', aulaOld: '', escuela: 'Northfield Puertos', tags: ['proyector', 'hdmi'], creado: 'Vanina G.', fecha: 'hoy 08:12', upd: 'hace 40 min', firstResp: 'hoy 08:40',
+      desc: 'El proyector del 6F enciende pero no muestra imagen desde la NUC. Se probó con otro cable HDMI y sigue igual. En Estado de aulas el 6F figura con problema. La docente necesita el proyector para la clase de las 11:00; mientras tanto puede usar una Touch del carro.',
+      summary: 'Proyector del 6F sin imagen desde la NUC. El cable ya se descartó; falta revisar la entrada del proyector y la salida de video de la NUC. Hay clase con proyector a las 11:00.', sumWhen: 'Actualizado hoy 08:41',
+      file: { kind: 'pdf', name: 'invgate-ticket.pdf', size: N + ' KB' },
+      steps: [{ id: 11, t: 'Probar con otro cable HDMI', d: true }, { id: 12, t: 'Revisar la entrada del proyector', d: false }, { id: 13, t: 'Probar la NUC con un monitor', d: false }],
+      rel: [{ to: 4, type: 'Relacionado' }],
+      com: [{ who: 'Bauti G.', when: 'hoy 08:40', body: 'Cambié el cable y sigue sin imagen. Paso a las 10:15 con un monitor para descartar la NUC.' }],
+      act: [{ a: 'Comentario', d: 'Registró un avance', when: 'hoy 08:40', who: 'Bauti G.' }, { a: 'Checklist completado', d: 'Probar con otro cable HDMI', when: 'hoy 08:38', who: 'Bauti G.' }, { a: 'Resumen IA actualizado', d: 'Lectura rápida regenerada', when: 'hoy 08:13', who: 'Sistema' }, { a: 'Ticket creado', d: 'Tiknology / InVgate · #' + N, when: 'hoy 08:12', who: 'Vanina G.' }] },
+    { id: 2, origen: 'handing', num: 'AUD-' + N, titulo: 'Probar audio 5to F', estado: 'En proceso', prio: 'Media', resp: ['Bauti G.'], cat: 'Audio', aula: '5to F', piso: 'Planta baja', aulaOld: '', escuela: 'Northfield Puertos', tags: ['audio', 'parlantes'], creado: 'Bauti G.', fecha: 'ayer 14:05', upd: 'ayer', firstResp: 'ayer 14:30',
+      desc: 'Los parlantes del 5to F no suenan con la NUC.', summary: 'Sin audio en el 5to F desde la NUC. Se está probando la salida de audio.', sumWhen: 'Actualizado ayer 14:31',
+      file: { kind: 'img', name: 'captura-handing.png', size: N + ' KB' },
+      steps: [{ id: 21, t: 'Revisar volumen y salida en la NUC', d: true }, { id: 22, t: 'Probar parlantes con otro equipo', d: false }],
+      rel: [], com: [{ who: 'Bauti G.', when: 'ayer 14:30', body: 'La salida estaba en HDMI. Falta probar los parlantes.' }],
+      act: [{ a: 'Estado cambiado', d: 'No hecho → En proceso', when: 'ayer 14:30', who: 'Bauti G.' }, { a: 'Ticket creado', d: 'Handing · AUD-' + N, when: 'ayer 14:05', who: 'Bauti G.' }] },
+    { id: 4, origen: 'tik', num: N, titulo: 'Revisar el equipamiento del DOE y de la sala TIC, que figuran sin revisar en Estado de aulas', estado: 'No hecho', prio: 'Media', resp: ['Equi F.', 'Bauti G.'], cat: 'Aula', aula: 'DOE', piso: 'Primer piso', aulaOld: '', escuela: 'Northfield Puertos', tags: ['revisión'], creado: 'Laura B.', fecha: '13/10 09:02', upd: '13/10', firstResp: 'Sin respuesta',
+      desc: 'DOE y TIC figuran como “Sin revisar” en Estado de aulas.', summary: 'Revisión pendiente de DOE y sala TIC.', sumWhen: 'Actualizado 13/10 09:03', file: null,
+      steps: [], rel: [{ to: 1, type: 'Relacionado' }], com: [], act: [{ a: 'Ticket creado', d: 'Tiknology / InVgate · #' + N, when: '13/10 09:02', who: 'Laura B.' }] },
+    { id: 3, origen: 'tik', num: N, titulo: 'Teclado del 3N no responde', estado: 'Hecho', prio: 'Baja', resp: ['Equi F.'], cat: 'Periféricos', aula: '3N', piso: 'Primer piso', aulaOld: '', escuela: 'Northfield Puertos', tags: ['teclado'], creado: 'Equi F.', fecha: '14/10 10:31', upd: '14/10', firstResp: '14/10 10:50',
+      desc: 'El teclado inalámbrico del 3N no responde.', summary: 'Teclado del 3N reemplazado por uno de repuesto.', sumWhen: 'Actualizado 14/10 11:02', file: null,
+      steps: [{ id: 31, t: 'Cambiar pilas o puerto USB', d: true }, { id: 32, t: 'Probar con uno de repuesto', d: true }],
+      rel: [], com: [{ who: 'Equi F.', when: '14/10 10:50', body: 'Cambiado por el de repuesto.' }], act: [{ a: 'Estado cambiado', d: 'En proceso → Hecho', when: '14/10 11:00', who: 'Equi F.' }, { a: 'Ticket creado', d: 'Tiknology / InVgate · #' + N, when: '14/10 10:31', who: 'Equi F.' }] },
+    { id: 5, origen: 'tik', num: N, titulo: 'Micrófonos corbateros para el acto', estado: 'Hecho', prio: 'Urgente', resp: ['Bauti G.', 'Equi F.'], cat: 'Audio', aula: '', piso: '', aulaOld: '', escuela: 'Northfield Puertos', tags: ['acto', 'micrófonos'], creado: 'Vanina G.', fecha: '12/10 08:00', upd: '12/10', firstResp: '12/10 08:05',
+      desc: 'Encontrar los micrófonos corbateros para el acto.', summary: 'Micrófonos encontrados y probados antes del acto.', sumWhen: 'Actualizado 12/10 09:10', file: null,
+      steps: [], rel: [], com: [], act: [{ a: 'Ticket creado', d: 'Tiknology / InVgate · #' + N, when: '12/10 08:00', who: 'Vanina G.' }] },
+    { id: 6, origen: 'handing', num: 'ZAP-' + N, titulo: 'Zapatilla eléctrica en 6to S', estado: 'Hecho', prio: 'Media', resp: ['Bauti G.'], cat: 'Electricidad', aula: '', piso: '', aulaOld: '6to S', escuela: 'Northfield Puertos', tags: [], creado: 'Eze M.', fecha: '09/10 12:20', upd: '09/10', firstResp: '09/10 12:40',
+      desc: 'Falta una zapatilla en el 6to S.', summary: 'Zapatilla entregada en el 6to S.', sumWhen: 'Actualizado 09/10 12:41', file: null,
+      steps: [], rel: [], com: [], act: [{ a: 'Ticket creado', d: 'Handing · ZAP-' + N, when: '09/10 12:20', who: 'Eze M.' }] }
+  ];
+  const TPL = [
+    { id: 1, title: 'Proyector sin imagen', cat: 'Hardware', prio: 'Alta', resp: 'Bauti G.', desc: 'El proyector enciende pero no muestra imagen.', steps: ['Probar con otro cable HDMI', 'Revisar la entrada del proyector', 'Probar la NUC con un monitor'], tags: ['proyector', 'hdmi'] },
+    { id: 2, title: 'Audio del aula', cat: 'Audio', prio: 'Media', resp: 'Bauti G.', desc: 'No se escucha el audio de la NUC en los parlantes.', steps: ['Revisar volumen y salida en la NUC', 'Probar parlantes con otro equipo'], tags: ['audio'] },
+    { id: 3, title: 'Teclado o mouse', cat: 'Periféricos', prio: 'Baja', resp: 'Equi F.', desc: 'Teclado o mouse del aula no responde.', steps: ['Cambiar pilas o puerto USB', 'Probar con uno de repuesto'], tags: ['periféricos'] }
+  ];
+  // Aulas reales de NFPT (classrooms), sin duplicados de nombre
+  const AULAS = [
+    { piso: 'Planta baja', list: ['1ero F', '1ero N', '1ero S', '2do F', '2do N', '2do S', '3ero F', '3ero N', '3ero S', '4to F', '4to N', '4to S', '5to F', '5to N', '5to S', 'Arte', 'Zoom'] },
+    { piso: 'Primer piso', list: ['1F', '1N', '1S', '2F', '2N', '2S', '3F', '3N', '5F', '5S', '6F', '6N', '6S', 'LAB', 'MAKER', 'DOE', 'Dirección', 'PRECEP', 'SALA PROFES', 'TIC'] },
+    { piso: 'Segundo piso', list: ['3S', '4F', '4N', '4S', 'Pasillo / precep'] }
+  ];
+  const PEOPLE = ['Bauti G.', 'Equi F.', 'Vanina G.', 'Laura B.'];
+  return { T: T, TPL: TPL, AULAS: AULAS, PEOPLE: PEOPLE };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const B = this.seed();
+  const I = this.icons();
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const consulta = !!(this.props && this.props.consulta);
+  const canEdit = !consulta;
+  const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const ESTADOS = ['No hecho', 'En proceso', 'Hecho'];
+  const PRIOS = ['Baja', 'Media', 'Alta', 'Urgente'];
+  const EST_C = { 'No hecho': '#F5C04E', 'En proceso': '#4FD1C5', 'Hecho': '#7C8592' };
+  const PRIO_C = { Urgente: '#FF6B6B', Alta: '#F5C04E', Media: '#A7AEB8', Baja: '#A7AEB8' };
+  const ORDER = { 'No hecho': 0, 'En proceso': 1, 'Hecho': 2 };
+  const ini = n => String(n || '').split(/\s+/).map(w => w.charAt(0)).join('').slice(0, 2).toUpperCase();
+
+  const T = s.T || B.T;
+  const TPL = s.TPL || B.TPL;
+  const byId = {};
+  T.forEach(t => { byId[t.id] = t; });
+  const curId = s.cur !== undefined ? s.cur : 1;
+  const cur = byId[curId] || null;
+  const pane = s.pane || 'detail';
+  const q = s.q || '';
+  const fE = s.fE || 'all';
+  const fO = s.fO || 'all';
+  const sel = (s.sel || []).filter(id => byId[id]);
+  const numLabel = t => (t.origen === 'tik' ? '#' + t.num : t.num);
+  const updT = (id, fn) => T.map(t => (t.id === id ? fn(Object.assign({}, t)) : t));
+
+  // ---------- Filtros ----------
+  const matchQ = t => {
+    const n = norm(q).trim();
+    if (!n) return true;
+    const hay = norm([t.num, t.titulo, t.desc, t.cat, t.creado, (t.resp || []).join(' ')].join(' '));
+    return hay.indexOf(n) >= 0;
+  };
+  const baseO = T.filter(t => matchQ(t) && (fO === 'all' || t.origen === fO));
+  const baseE = T.filter(t => matchQ(t) && (fE === 'all' || t.estado === fE));
+  const visible = baseO.filter(t => fE === 'all' || t.estado === fE).slice().sort((a, b) => ORDER[a.estado] - ORDER[b.estado]);
+  const fEstados = [['all', 'Todos']].concat(ESTADOS.map(e => [e, e])).map(p => ({
+    label: p[1], count: p[0] === 'all' ? baseO.length : baseO.filter(t => t.estado === p[0]).length,
+    pressed: String(fE === p[0]), onClick: () => set({ fE: p[0] })
+  }));
+  const fOrigenes = [['all', 'Todos los orígenes'], ['tik', 'Tiknology'], ['handing', 'Handing']].map(p => ({
+    label: p[1], count: p[0] === 'all' ? baseE.length : baseE.filter(t => t.origen === p[0]).length,
+    pressed: String(fO === p[0]), onClick: () => set({ fO: p[0] })
+  }));
+
+  // ---------- Avisos en línea (con Deshacer) ----------
+  const statusVals = (key, extraClose) => {
+    const st = s[key];
+    return {
+      show: !!st, text: st ? st.text : '', canUndo: !!(st && st.undo),
+      onUndo: () => { const x = (self.state || {})[key]; if (x && x.undo) self.setState(Object.assign({}, x.undo, { [key]: null })); },
+      onClose: () => set({ [key]: null })
+    };
+  };
+
+  // ---------- Abrir / selección ----------
+  const open = id => set({ cur: id, pane: 'detail', mpage: 'pane', delAsk: false, pdfOpen: false, descOpen: false, relOpen: false, relPick: null, dStatus: null, stepDraft: '', comDraft: '', tab: 'com' });
+  const toggleSel = id => set({ sel: sel.indexOf(id) >= 0 ? sel.filter(x => x !== id) : sel.concat([id]), selAsk: false });
+  const visIds = visible.map(t => t.id);
+  const allVisSel = visIds.length > 0 && visIds.every(id => sel.indexOf(id) >= 0);
+  const someSel = sel.length > 0;
+  const onSelAll = () => set({ sel: allVisSel ? [] : visIds.slice(), selAsk: false });
+
+  const rows = visible.map(t => ({
+    num: numLabel(t), origen: t.origen === 'tik' ? 'Tiknology' : 'Handing',
+    titulo: t.titulo, long: t.titulo.length > 40,
+    estado: t.estado, estStyle: 'font-size: 12px; font-weight: 500; color: ' + EST_C[t.estado] + ';',
+    hasPrio: t.prio === 'Alta' || t.prio === 'Urgente', prio: t.prio, prioStyle: 'font-size: 12px; color: ' + PRIO_C[t.prio] + ';',
+    meta: [t.aula || t.aulaOld, (t.resp || []).length ? t.resp.join(', ') : 'Sin responsable', t.upd].filter(Boolean).join(' · '),
+    rowStyle: (cur && t.id === cur.id && (pane === 'detail')) ? 'background: #1B1F24;' : '',
+    current: String(!!(cur && t.id === cur.id)),
+    checked: String(sel.indexOf(t.id) >= 0), chkLabel: 'Seleccionar ' + numLabel(t) + ' ' + t.titulo,
+    extLabel: (t.origen === 'tik' ? 'Abrir en InVgate ' : 'Abrir en Handing ') + numLabel(t),
+    onCheck: () => toggleSel(t.id), onOpen: () => open(t.id)
+  }));
+
+  const bulkStates = ESTADOS.map(e => ({
+    label: e,
+    onClick: () => {
+      const n = sel.filter(id => byId[id].estado !== e).length;
+      set({ T: T.map(t => (sel.indexOf(t.id) >= 0 ? Object.assign({}, t, { estado: e }) : t)), sel: [], selAsk: false,
+        listStatus: { text: n + (n === 1 ? ' ticket ahora está “' : ' tickets ahora están “') + e + '”.', undo: { T: T, sel: sel } } });
+    }
+  }));
+  const selTitles = sel.map(id => numLabel(byId[id]) + ' ' + byId[id].titulo);
+  const bulkDelYes = () => {
+    const rest = T.filter(t => sel.indexOf(t.id) < 0);
+    const n = sel.length;
+    const nextCur = sel.indexOf(curId) >= 0 ? (rest[0] ? rest[0].id : null) : curId;
+    set({ T: rest, sel: [], selAsk: false, cur: nextCur,
+      listStatus: { text: n + (n === 1 ? ' ticket borrado.' : ' tickets borrados.'), undo: { T: T, cur: curId, sel: sel } } });
+  };
+
+  // ---------- Detalle ----------
+  const dStatusSet = (text, undo) => set({ dStatus: { text: text, undo: undo } });
+  let d = {};
+  if (cur) {
+    const steps = cur.steps || [];
+    const done = steps.filter(x => x.d).length;
+    const LONG = 160;
+    const descLong = (cur.desc || '').length > LONG;
+    const descOpen = !!s.descOpen;
+    const relList = (cur.rel || []).filter(r => byId[r.to]);
+    const sumBusy = !!s.sumBusy;
+    d = {
+      origenLine: cur.origen === 'tik' ? 'Tiknology / InVgate · #' + cur.num : 'Handing · ' + cur.num,
+      extLabel: cur.origen === 'tik' ? 'Abrir en InVgate' : 'Abrir en Handing',
+      titulo: cur.titulo, meta: 'Cargado por ' + cur.creado + ' · ' + cur.fecha + ' · ' + cur.cat,
+      delText: '¿Borrar el ticket ' + numLabel(cur) + '? Sale de la lista; queda guardado como borrado.',
+      estados: ESTADOS.map(e => ({
+        label: e, pressed: String(cur.estado === e),
+        style: cur.estado === e ? 'color: ' + (e === 'Hecho' ? '#ECEEF1' : EST_C[e]) + ';' : '',
+        onClick: () => {
+          if (cur.estado === e) return;
+          const prev = cur.estado;
+          set({ T: updT(cur.id, t => { t.estado = e; t.act = [{ a: 'Estado cambiado', d: prev + ' → ' + e, when: 'recién', who: 'Bauti G.' }].concat(t.act || []); return t; }),
+            dStatus: { text: 'Estado: ' + prev + ' → ' + e + '.', undo: { T: T } } });
+        }
+      })),
+      prio: cur.prio, prioStyle: 'color: ' + (cur.prio === 'Urgente' || cur.prio === 'Alta' ? PRIO_C[cur.prio] : '#ECEEF1') + ';',
+      resp: (cur.resp || []).length ? cur.resp.join(', ') : 'Sin responsable',
+      aula: cur.aula || cur.aulaOld || 'Sin aula', piso: cur.aula ? '· ' + cur.piso : (cur.aulaOld ? '· dato anterior' : ''),
+      escuela: cur.escuela || '—', cat: cur.cat || '—',
+      tags: (cur.tags || []).map(x => ({ label: x })), noTags: !(cur.tags || []).length,
+      firstResp: cur.firstResp || 'Sin respuesta',
+      summary: cur.summary, sumWhen: sumBusy ? 'Generando con los últimos cambios…' : cur.sumWhen,
+      sumBtn: sumBusy ? 'Actualizando…' : 'Actualizar resumen',
+      descText: descLong && !descOpen ? cur.desc.slice(0, LONG).replace(/\s+\S*$/, '') + '…' : cur.desc,
+      descLong: descLong, descExpanded: String(descOpen), descBtn: descOpen ? 'Mostrar menos' : 'Mostrar todo',
+      hasFile: !!cur.file, fileName: cur.file ? cur.file.name : '', fileMeta: cur.file ? (cur.file.kind === 'pdf' ? 'PDF' : 'Imagen') + ' · ' + cur.file.size : '',
+      fileIcon: cur.file && cur.file.kind === 'img' ? I.image : I.file,
+      fileKindLabel: cur.file && cur.file.kind === 'img' ? 'Imagen' : 'PDF',
+      pdfOpen: !!s.pdfOpen && !!cur.file, pdfExpanded: String(!!s.pdfOpen),
+      pdfBtn: s.pdfOpen ? 'Ocultar vista previa' : (cur.file && cur.file.kind === 'img' ? 'Ver imagen' : 'Ver PDF'),
+      pdfAria: 'Vista previa de ' + (cur.file ? cur.file.name : ''),
+      stepsCount: steps.length ? done + ' de ' + steps.length : 'Sin pasos',
+      steps: steps.map(st => ({
+        t: st.t, checked: String(!!st.d), aria: (st.d ? 'Reabrir: ' : 'Completar: ') + st.t, delAria: 'Quitar paso: ' + st.t,
+        textStyle: 'flex: 1; font-size: 14px; ' + (st.d ? 'color: #7C8592; text-decoration: line-through;' : 'color: #ECEEF1;'),
+        onToggle: () => set({ T: updT(cur.id, t => { t.steps = t.steps.map(x => (x.id === st.id ? Object.assign({}, x, { d: !x.d }) : x)); t.act = [{ a: st.d ? 'Checklist reabierto' : 'Checklist completado', d: st.t, when: 'recién', who: 'Bauti G.' }].concat(t.act || []); return t; }) }),
+        onDel: () => set({ T: updT(cur.id, t => { t.steps = t.steps.filter(x => x.id !== st.id); return t; }), dStatus: { text: 'Paso quitado: “' + st.t + '”.', undo: { T: T } } })
+      })),
+      rel: relList.map(r => ({
+        kind: r.type + ' · ' + numLabel(byId[r.to]), titulo: byId[r.to].titulo, delAria: 'Desvincular ' + numLabel(byId[r.to]),
+        onGo: () => open(r.to),
+        onDel: () => set({ T: T.map(t => {
+          if (t.id === cur.id) return Object.assign({}, t, { rel: t.rel.filter(x => x.to !== r.to) });
+          if (t.id === r.to) return Object.assign({}, t, { rel: (t.rel || []).filter(x => x.to !== cur.id) });
+          return t;
+        }), dStatus: { text: 'Se desvinculó ' + numLabel(byId[r.to]) + '.', undo: { T: T } } })
+      })),
+      relCount: relList.length, noRel: !relList.length,
+      com: (cur.com || []).map(c => ({ who: c.who, when: c.when, body: c.body, ini: ini(c.who) })),
+      noCom: !(cur.com || []).length, comCount: (cur.com || []).length, actCount: (cur.act || []).length,
+      act: (cur.act || []).map(a => ({ a: a.a, d: a.d || '—', when: a.when, who: a.who }))
+    };
+  }
+  const relPick = s.relPick || null;
+  const linked = cur ? (cur.rel || []).map(r => r.to) : [];
+  const relOptions = cur ? T.filter(t => t.id !== cur.id && linked.indexOf(t.id) < 0).map(t => ({
+    num: numLabel(t), titulo: t.titulo, sel: String(relPick === t.id),
+    style: 'display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; background: ' + (relPick === t.id ? '#1B1F24' : 'transparent') + '; border: 0; border-bottom: 1px solid #262B32; color: #ECEEF1; font-size: 13px; text-align: left; cursor: pointer;',
+    onPick: () => set({ relPick: t.id, relOpen: false })
+  })) : [];
+  const relType = s.relType || 'rel';
+  const doLink = () => {
+    if (!cur || !relPick || !byId[relPick]) return;
+    const mine = relType === 'parent' ? 'Ticket padre' : 'Relacionado';
+    const theirs = relType === 'parent' ? 'Ticket hijo' : 'Relacionado';
+    set({ T: T.map(t => {
+      if (t.id === cur.id) return Object.assign({}, t, { rel: (t.rel || []).concat([{ to: relPick, type: mine }]), act: [{ a: 'Ticket vinculado', d: mine + ' · ' + numLabel(byId[relPick]), when: 'recién', who: 'Bauti G.' }].concat(t.act || []) });
+      if (t.id === relPick) return Object.assign({}, t, { rel: (t.rel || []).concat([{ to: cur.id, type: theirs }]) });
+      return t;
+    }), relPick: null, relOpen: false, dStatus: { text: 'Vinculado: ' + numLabel(byId[relPick]) + ' como ' + mine.toLowerCase() + '.', undo: { T: T } } });
+  };
+  const addStep = () => {
+    const v = String(s.stepDraft || '').trim();
+    if (!v || !cur) return;
+    set({ T: updT(cur.id, t => { t.steps = (t.steps || []).concat([{ id: Date.now(), t: v, d: false }]); return t; }), stepDraft: '' });
+  };
+  const addCom = () => {
+    const v = String(s.comDraft || '').trim();
+    if (!v || !cur) return;
+    set({ T: updT(cur.id, t => {
+      t.com = (t.com || []).concat([{ who: 'Bauti G.', when: 'recién', body: v }]);
+      t.act = [{ a: 'Comentario', d: v.slice(0, 60), when: 'recién', who: 'Bauti G.' }].concat(t.act || []);
+      if (!t.firstResp || t.firstResp === 'Sin respuesta') t.firstResp = 'recién';
+      return t;
+    }), comDraft: '' });
+  };
+  const refreshSum = () => {
+    if (!cur || s.sumBusy) return;
+    const id = cur.id;
+    set({ sumBusy: true });
+    setTimeout(() => {
+      const st = self.state || {};
+      const TT = st.T || B.T;
+      self.setState({ sumBusy: false, T: TT.map(t => (t.id === id ? Object.assign({}, t, { sumWhen: 'Actualizado recién' }) : t)) });
+    }, 1400);
+  };
+
+  // ---------- Chips que se tipean de corrido ----------
+  const chipField = (obj, key, draftKey, apply, ph, mode) => {
+    const items = obj[key] || [];
+    const draft = obj[draftKey] || '';
+    const commit = (list, rest) => apply({ [key]: list, [draftKey]: rest });
+    const addMany = (parts, rest) => {
+      let list = items.slice();
+      parts.map(x => x.trim()).filter(Boolean).forEach(x => { if (list.map(norm).indexOf(norm(x)) < 0) list.push(x); });
+      commit(list, rest);
+    };
+    return {
+      items: items.map((x, i) => ({ label: x, aria: 'Quitar ' + x, onRemove: () => commit(items.filter((_, j) => j !== i), draft) })),
+      draft: draft, ph: items.length ? '' : ph,
+      onInput: e => {
+        const v = val(e);
+        if (v.indexOf(',') >= 0) { const parts = v.split(','); const rest = parts.pop(); addMany(parts, rest.replace(/^\s+/, '')); }
+        else commit(items, v);
+      },
+      onInputLine: e => commit(items, val(e)),
+      onKey: e => {
+        if (!e) return;
+        const v = e.target ? e.target.value : draft;
+        if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); if (v.trim()) addMany(mode === 'line' ? [v] : v.split(','), ''); }
+        else if (e.key === 'Backspace' && !v && items.length) { if (e.preventDefault) e.preventDefault(); commit(items.slice(0, -1), ''); }
+      }
+    };
+  };
+
+  // ---------- Formulario cargar / editar ----------
+  const blankF = () => ({ mode: 'new', origen: 'tik', num: '', estado: 'No hecho', prio: 'Media', resp: [], respD: '', escuela: 'Northfield Puertos', aula: '', piso: '', aulaOld: '', titulo: '', cat: '', desc: '', tags: [], tagD: '', steps: [], stepD: '', file: null, tpl: null, tplOpen: false, tplUndo: null, aulaOpen: false, aulaQ: '', err: '', numErr: false, uploading: false });
+  const F0 = s.F || blankF();
+  const setF = p => set({ F: Object.assign({}, F0, p) });
+  const openNew = () => set({ pane: 'form', mpage: 'pane', F: blankF(), sel: [], selAsk: false });
+  const openEdit = () => {
+    if (!cur || consulta) return;
+    set({ pane: 'form', mpage: 'pane', F: Object.assign(blankF(), { mode: 'edit', id: cur.id, origen: cur.origen, num: cur.num, estado: cur.estado, prio: cur.prio, resp: (cur.resp || []).slice(), escuela: cur.escuela, aula: cur.aula, piso: cur.piso, aulaOld: cur.aulaOld, titulo: cur.titulo, cat: cur.cat, desc: cur.desc, tags: (cur.tags || []).slice(), file: cur.file }) });
+  };
+  const cancelForm = () => set({ pane: 'detail', mpage: F0.mode === 'new' ? 'list' : 'pane', F: null });
+  const pickFile = () => {
+    setF({ uploading: true });
+    setTimeout(() => {
+      const st = self.state || {};
+      const FF = st.F || blankF();
+      self.setState({ F: Object.assign({}, FF, { uploading: false, file: { kind: 'pdf', name: 'ticket-exportado.pdf', size: '[N] KB' } }) });
+    }, 900);
+  };
+  const onSubmit = e => {
+    if (e && e.preventDefault) e.preventDefault();
+    const F = F0;
+    if (F.origen === 'tik' && !String(F.num).trim()) { setF({ numErr: true, err: 'Revisá el formulario: falta el número de ticket de InVgate.' }); return; }
+    const data = { origen: F.origen, num: F.num || '[N]', estado: F.estado, prio: F.prio, resp: F.resp.concat(F.respD.trim() ? [F.respD.trim()] : []), escuela: F.escuela, aula: F.aula, piso: F.piso, aulaOld: F.aula ? '' : F.aulaOld, titulo: F.titulo.trim() || 'Sin título', cat: F.cat || 'Sin categoría', desc: F.desc, tags: F.tags.concat(F.tagD.trim() ? [F.tagD.trim()] : []), file: F.file };
+    if (F.mode === 'edit') {
+      set({ T: updT(F.id, t => { Object.assign(t, data); t.upd = 'recién'; t.act = [{ a: 'Ticket editado', d: 'Datos actualizados', when: 'recién', who: 'Bauti G.' }].concat(t.act || []); return t; }), pane: 'detail', F: null, dStatus: { text: 'Cambios guardados.', undo: null } });
+    } else {
+      const id = Date.now();
+      const nt = Object.assign({ id: id, creado: 'Bauti G.', fecha: 'recién', upd: 'recién', firstResp: 'Sin respuesta', summary: 'El resumen se genera en unos segundos con los datos cargados.', sumWhen: 'En cola', steps: F.steps.map((x, i) => ({ id: id + i + 1, t: x, d: false })), rel: [], com: [], act: [{ a: 'Ticket creado', d: (F.origen === 'tik' ? 'Tiknology / InVgate · #' : 'Handing · ') + (F.num || '[N]'), when: 'recién', who: 'Bauti G.' }] }, data);
+      set({ T: [nt].concat(T), cur: id, pane: 'detail', F: null, fE: 'all', fO: 'all', q: '', dStatus: { text: 'Ticket cargado.', undo: null } });
+    }
+  };
+  const tplApply = t => {
+    const snap = Object.assign({}, F0);
+    setF({ tpl: t.id, tplOpen: false, titulo: t.title, desc: t.desc, prio: t.prio, cat: t.cat, resp: t.resp ? [t.resp] : [], steps: t.steps.slice(), tags: t.tags.slice(), tplUndo: snap });
+  };
+  const allAulas = [];
+  B.AULAS.forEach(g => g.list.forEach(a => allAulas.push({ piso: g.piso, a: a })));
+  const aq = norm(F0.aulaQ || '').replace(/\s+/g, '');
+  const pisos = B.AULAS.map(g => ({
+    piso: g.piso,
+    aulas: g.list.filter(a => !aq || norm(a).replace(/\s+/g, '').indexOf(aq) >= 0).map(a => ({
+      label: a, pressed: String(F0.aula === a), onPick: () => setF({ aula: a, piso: g.piso, aulaOpen: false, aulaQ: '' })
+    }))
+  })).filter(p => p.aulas.length);
+  const cats = [];
+  T.forEach(t => { if (t.cat && cats.indexOf(t.cat) < 0) cats.push(t.cat); });
+  const isTik = F0.origen === 'tik';
+  const F = {
+    eyebrow: F0.mode === 'edit' ? 'Editar' : 'Nuevo', heading: F0.mode === 'edit' ? 'Editar ticket ' + (F0.origen === 'tik' ? '#' : '') + F0.num : 'Cargar ticket',
+    isNew: F0.mode === 'new', showTpl: F0.mode === 'new' && TPL.length > 0,
+    origenes: [['tik', 'Tiknology', 'Ticket Tik / InVgate'], ['handing', 'Handing', 'Ticket Handing']].map(o => ({
+      label: o[1], sub: o[2], pressed: String(F0.origen === o[0]),
+      onClick: () => setF({ origen: o[0], num: o[0] === 'tik' ? String(F0.num || '').replace(/\D/g, '') : F0.num, numErr: false, err: '' })
+    })),
+    tplOpen: !!F0.tplOpen, tplOpenS: String(!!F0.tplOpen), tplChevron: F0.tplOpen ? I.up : I.down,
+    toggleTpl: () => setF({ tplOpen: !F0.tplOpen }),
+    tplLabel: F0.tpl && TPL.find(t => t.id === F0.tpl) ? 'Plantilla: ' + TPL.find(t => t.id === F0.tpl).title : 'Sin plantilla',
+    tpls: [{ id: null, title: 'Sin plantilla', sub: 'No cambia lo cargado' }].concat(TPL.map(t => ({ id: t.id, title: t.title, sub: t.cat + ' · ' + t.prio + ' · ' + t.steps.length + ' pasos', ref: t }))).map(t => ({
+      title: t.title, sub: t.sub, pressed: String((F0.tpl || null) === t.id),
+      onPick: () => (t.ref ? tplApply(t.ref) : setF({ tpl: null, tplOpen: false }))
+    })),
+    tplStatus: !!(F0.tpl && F0.tplUndo),
+    tplStatusText: 'Se completaron título, descripción, prioridad, categoría, responsables, checklist y tags con la plantilla.',
+    undoTpl: () => set({ F: Object.assign({}, F0.tplUndo, { tplOpen: false }) }),
+    numLabel: isTik ? 'Número de ticket (InVgate)' : 'Referencia de ticket (Handing)',
+    numMode: isTik ? 'numeric' : 'text', num: F0.num, numPh: isTik ? 'Ej. 2103' : 'Ej. HDMI-2103',
+    numHint: isTik ? 'Solo números: el # y cualquier otro carácter se ignoran.' : 'Texto libre, como figura en Handing.',
+    numErr: !!F0.numErr, numInvalid: String(!!F0.numErr),
+    numStyle: F0.numErr ? 'border-color: #FF6B6B;' : '',
+    onNum: e => { let v = val(e); if (isTik) v = v.replace(/\D/g, ''); setF({ num: v, numErr: false, err: '' }); },
+    hasNum: !!String(F0.num || '').trim(), noNum: !String(F0.num || '').trim(), testLabel: isTik ? 'Abrir en InVgate' : 'Abrir en Handing',
+    estados: ESTADOS.map(e => ({ label: e, pressed: String(F0.estado === e), onClick: () => setF({ estado: e }) })),
+    prios: PRIOS.map(e => ({ label: e, pressed: String(F0.prio === e), onClick: () => setF({ prio: e }) })),
+    titulo: F0.titulo, onTitulo: e => setF({ titulo: val(e) }),
+    cat: F0.cat, onCat: e => setF({ cat: val(e) }),
+    catSug: cats.filter(c => c !== F0.cat && (!F0.cat || norm(c).indexOf(norm(F0.cat)) === 0)).slice(0, 5).map(c => ({ label: c, onPick: () => setF({ cat: c }) })),
+    escuela: F0.escuela, onEscuela: e => setF({ escuela: val(e) }),
+    desc: F0.desc, onDesc: e => setF({ desc: val(e) }),
+    resp: chipField(F0, 'resp', 'respD', setF, 'Nombre y Enter, o separados por coma'),
+    respSug: B.PEOPLE.filter(p => F0.resp.indexOf(p) < 0).map(p => ({ label: p, onPick: () => setF({ resp: F0.resp.concat([p]) }) })),
+    tags: chipField(F0, 'tags', 'tagD', setF, 'proyector, hdmi…'),
+    aulaOpen: !!F0.aulaOpen, aulaOpenS: String(!!F0.aulaOpen), aulaChevron: F0.aulaOpen ? I.up : I.down,
+    toggleAula: () => setF({ aulaOpen: !F0.aulaOpen }),
+    aulaLabel: F0.aula ? F0.aula + ' · ' + F0.piso : 'Elegí un aula', aulaStyle: F0.aula ? 'color: #ECEEF1;' : 'color: #7C8592;',
+    aulaOld: !F0.aula && !!F0.aulaOld, aulaOldText: F0.aulaOld,
+    aulaQ: F0.aulaQ, onAulaQ: e => setF({ aulaQ: val(e) }), pisos: pisos, aulaNone: !pisos.length,
+    clearAula: () => setF({ aula: '', piso: '', aulaOpen: false }),
+    steps: F0.steps.map((x, i) => ({ n: i + 1, t: x, aria: 'Quitar paso ' + (i + 1), onDel: () => setF({ steps: F0.steps.filter((_, j) => j !== i) }) })),
+    stepDraft: F0.stepD, onStepDraft: e => setF({ stepD: val(e) }),
+    onStepKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); const v = String((e.target && e.target.value) || '').trim(); if (v) setF({ steps: F0.steps.concat([v]), stepD: '' }); } },
+    noFile: !F0.file, hasFile: !!F0.file, fileName: F0.file ? F0.file.name : '', fileMeta: F0.file ? (F0.file.kind === 'pdf' ? 'PDF' : 'Imagen') + ' · ' + F0.file.size + ' · subido' : '',
+    uploading: !!F0.uploading, pickLabel: F0.uploading ? 'Subiendo…' : 'Elegir archivo',
+    pickFile: pickFile, removeFile: () => setF({ file: null }),
+    err: !!F0.err, errText: F0.err
+  };
+
+  // ---------- Plantillas ----------
+  const tEdit = s.tEdit === undefined ? null : s.tEdit;
+  const TD0 = s.TD || { title: '', cat: '', desc: '', prio: 'Media', resp: '', steps: [], stepD: '', tags: [], tagD: '', err: false };
+  const setTD = p => set({ TD: Object.assign({}, TD0, p) });
+  const TD = {
+    title: TD0.title, cat: TD0.cat, desc: TD0.desc, resp: TD0.resp, err: !!TD0.err,
+    onTitle: e => setTD({ title: val(e), err: false }), onCat: e => setTD({ cat: val(e) }), onDesc: e => setTD({ desc: val(e) }), onResp: e => setTD({ resp: val(e) }),
+    prios: PRIOS.map(e => ({ label: e, pressed: String(TD0.prio === e), onClick: () => setTD({ prio: e }) })),
+    steps: chipField(TD0, 'steps', 'stepD', setTD, 'Paso y Enter', 'line'),
+    tags: chipField(TD0, 'tags', 'tagD', setTD, 'tag, tag…')
+  };
+  const tplSave = () => {
+    if (!String(TD0.title || '').trim()) { setTD({ err: true }); return; }
+    const data = { title: TD0.title.trim(), cat: TD0.cat, desc: TD0.desc, prio: TD0.prio, resp: TD0.resp, steps: TD0.steps.concat(TD0.stepD.trim() ? [TD0.stepD.trim()] : []), tags: TD0.tags.concat(TD0.tagD.trim() ? [TD0.tagD.trim()] : []) };
+    if (tEdit === 'new') set({ TPL: TPL.concat([Object.assign({ id: Date.now() }, data)]), tEdit: null, TD: null, tStatus: { text: 'Plantilla creada.', undo: null } });
+    else set({ TPL: TPL.map(t => (t.id === tEdit ? Object.assign({}, t, data) : t)), tEdit: null, TD: null, tStatus: { text: 'Plantilla guardada.', undo: { TPL: TPL } } });
+  };
+  const tpls = TPL.map(t => ({
+    title: t.title, sub: (t.cat || 'Sin categoría') + ' · ' + t.prio + (t.resp ? ' · sugerido: ' + t.resp : ''), desc: t.desc,
+    steps: t.steps.length + (t.steps.length === 1 ? ' paso · ' : ' pasos · ') + t.steps.join(' · '),
+    tags: t.tags.map(x => ({ label: x })),
+    editing: tEdit === t.id, editingS: String(tEdit === t.id), asking: s.tAsk === t.id,
+    onEdit: () => set(tEdit === t.id ? { tEdit: null, TD: null } : { tEdit: t.id, tAsk: null, TD: { title: t.title, cat: t.cat, desc: t.desc, prio: t.prio, resp: t.resp, steps: t.steps.slice(), stepD: '', tags: t.tags.slice(), tagD: '', err: false } }),
+    onAskDel: () => set({ tAsk: t.id, tEdit: null }),
+    onNoDel: () => set({ tAsk: null }),
+    onDel: () => set({ TPL: TPL.filter(x => x.id !== t.id), tAsk: null, tStatus: { text: 'Plantilla “' + t.title + '” eliminada.', undo: { TPL: TPL } } })
+  }));
+
+  const asstOpen = !!s.asst;
+  const showDetail = pane === 'detail' && !!cur;
+  const tab = s.tab || 'com';
+  const mpage = s.mpage || 'list';
+
+  return {
+    ic: I, nav: this.nav(I, 'tickets'), consulta: consulta, canEdit: canEdit,
+    asstOpen: asstOpen, asstPressed: String(asstOpen), toggleAsst: () => set({ asst: !asstOpen }),
+    asstBtnStyle: asstOpen ? 'border-color: #5B9BFF;' : '',
+    asstCtx: cur && pane === 'detail' ? 'Ticket ' + numLabel(cur) + ' · ' + cur.titulo : 'Tickets de NFPT',
+    asstCtx2: cur && pane === 'detail' ? cur.estado + ' · ' + cur.prio + (cur.aula ? ' · ' + cur.aula : '') : 'Sin ticket abierto',
+    q: q, hasQ: !!q, onQ: e => set({ q: val(e) }), clearQ: () => set({ q: '' }),
+    clearFilters: () => set({ q: '', fE: 'all', fO: 'all' }),
+    fEstados: fEstados, fOrigenes: fOrigenes,
+    resLabel: visible.length + (visible.length === 1 ? ' resultado' : ' resultados'),
+    wrapClass: 'tkw ' + (mpage === 'pane' ? 'tkw-pane' : 'tkw-list'),
+    openTpl: () => set({ pane: 'templates', mpage: 'pane', tEdit: null, TD: null, tAsk: null }), tplPressed: String(pane === 'templates'),
+    openNew: openNew,
+    selMode: canEdit && someSel, notSelMode: !(canEdit && someSel),
+    selAllState: allVisSel ? 'true' : (someSel ? 'mixed' : 'false'), onSelAll: onSelAll,
+    selLabel: sel.length + (sel.length === 1 ? ' seleccionado' : ' seleccionados'),
+    clearSel: () => set({ sel: [], selAsk: false }),
+    bulkStates: bulkStates, selAsk: !!s.selAsk, selNoAsk: !s.selAsk,
+    selAskText: '¿Borrar ' + sel.length + (sel.length === 1 ? ' ticket?' : ' tickets?') + ' Salen de la lista y quedan guardados como borrados.',
+    selAskList: selTitles.join(' · '), selAskBtn: 'Borrar ' + sel.length,
+    bulkDelAsk: () => set({ selAsk: true }), bulkDelYes: bulkDelYes, bulkDelNo: () => set({ selAsk: false }),
+    listStatus: statusVals('listStatus'),
+    rows: rows, listEmpty: !visible.length,
+    paneLabel: pane === 'form' ? 'Formulario de ticket' : (pane === 'templates' ? 'Plantillas' : 'Detalle del ticket'),
+    backToList: () => set({ mpage: 'list' }),
+    showDetail: showDetail, showNone: pane === 'detail' && !cur, showForm: pane === 'form', showTpl: pane === 'templates',
+    d: d,
+    delAsk: !!s.delAsk && showDetail, askDel: () => set({ delAsk: true }), delNo: () => set({ delAsk: false }),
+    delYes: () => {
+      const rest = T.filter(t => t.id !== curId);
+      set({ T: rest, delAsk: false, cur: rest[0] ? rest[0].id : null, mpage: 'list',
+        listStatus: { text: 'Ticket ' + numLabel(cur) + ' borrado.', undo: { T: T, cur: curId } } });
+    },
+    dStatus: statusVals('dStatus'),
+    openEdit: openEdit,
+    refreshSum: refreshSum, sumDisabled: consulta || !!s.sumBusy,
+    toggleDesc: () => set({ descOpen: !s.descOpen }), togglePdf: () => set({ pdfOpen: !s.pdfOpen }),
+    stepDraft: s.stepDraft || '', onStepDraft: e => set({ stepDraft: val(e) }),
+    onStepKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); addStep(); } }, addStep: addStep,
+    tabCom: String(tab === 'com'), tabAct: String(tab === 'act'), tabComB: tab === 'com', tabActB: tab === 'act',
+    showCom: () => set({ tab: 'com' }), showAct: () => set({ tab: 'act' }),
+    comDraft: s.comDraft || '', comEmpty: !String(s.comDraft || '').trim(), onComDraft: e => set({ comDraft: val(e) }),
+    onComKey: e => { if (e && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { if (e.preventDefault) e.preventDefault(); addCom(); } }, addCom: addCom,
+    relOpen: !!s.relOpen, relOpenS: String(!!s.relOpen), toggleRel: () => set({ relOpen: !s.relOpen }),
+    relChevron: s.relOpen ? I.up : I.down,
+    relPickLabel: relPick && byId[relPick] ? numLabel(byId[relPick]) + ' · ' + byId[relPick].titulo : 'Elegí un ticket…',
+    relPickStyle: relPick ? 'color: #ECEEF1;' : 'color: #7C8592;',
+    relOptions: relOptions, relNoOptions: !relOptions.length,
+    relTypeRel: String(relType === 'rel'), relTypePar: String(relType === 'parent'),
+    setRelRel: () => set({ relType: 'rel' }), setRelPar: () => set({ relType: 'parent' }),
+    relNoPick: !relPick, doLink: doLink,
+    F: F, onSubmit: onSubmit, cancelForm: cancelForm,
+    tpls: tpls, TD: TD, tStatus: statusVals('tStatus'),
+    tplNewOpen: tEdit === 'new', tplCanNew: tEdit !== 'new',
+    tplNew: () => set({ tEdit: 'new', tAsk: null, TD: null }),
+    tplSave: tplSave, tplCancel: () => set({ tEdit: null, TD: null }),
+    closeTpl: () => set({ pane: 'detail', tEdit: null, TD: null, mpage: cur ? 'pane' : 'list' })
+  };
+}
+}
+</script>
+</body>
+</html>

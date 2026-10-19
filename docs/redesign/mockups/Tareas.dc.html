@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tareas TIC</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+.ta *{box-sizing:border-box}
+.ta button,.ta input,.ta textarea{font:inherit}
+.ta input::placeholder,.ta textarea::placeholder{color:#7C8592}
+.nv:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.ta :focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+
+/* ==== Tokens de movimiento: copiados de src/styles/variables.css + motion.css (sin cambios) ==== */
+:root{
+--ease-out:cubic-bezier(.22,1,.36,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);
+--m-ease:var(--ease-out);--m-ease-entrance:cubic-bezier(0.16,1,0.3,1);--m-in:.22s;--m-out:.15s;--m-blur:2px;
+--modal-open-dur:250ms;--modal-close-dur:150ms;--modal-scale:.96;--modal-scale-close:.98;
+--toast-open:350ms;--toast-close:250ms;--toast-distance:16px;--toast-blur:2px;--toast-scale:.97;
+--dropdown-open-dur:180ms;--dropdown-close-dur:120ms;--dropdown-pre-scale:.96;--dropdown-closing-scale:.98;
+--tabs-dur:260ms;--pulse-dur:1.5s;--pulse-min:.42;
+--stagger-dur:380ms;--stagger-step:45ms;--stagger-col-dur:420ms;--stagger-col-step:60ms;
+--resize-dur:300ms;--bar-dur:520ms;--view-dur:260ms;--view-distance:8px;
+--digit-dur:420ms;--digit-distance:10px;--digit-blur:3px;--digit-stagger:40ms;
+--goo-open-dur:350ms;--goo-open-ease:var(--ease-spring);--goo-close-dur:250ms;--goo-close-ease:var(--ease-out);
+--goo-stagger:40ms;--goo-spread:1;--goo-icon-dur:250ms;--goo-icon-rotate:45deg;--goo-icon-ease:ease-in-out;
+--goo-anticip:5px;--goo-anticip-dur:700ms;--goo-anticip-ease:var(--ease-out);
+--goo-surface:#1B1F24;--goo-icon-color:#ECEEF1;
+}
+
+/* ==== Vista (components.css .view / .tasks-workspace + motion.css .view-enter) ==== */
+.view{padding:18px 22px 28px;font-size:16px;line-height:normal;min-width:0}
+.view strong,.view h3{letter-spacing:-.018em}
+.muted{color:#A7AEB8;font-size:13px}
+@keyframes t-view-enter{from{opacity:0;transform:translateY(var(--view-distance));filter:blur(var(--m-blur))}to{opacity:1;transform:none;filter:blur(0)}}
+.view-enter{animation:t-view-enter var(--view-dur) var(--m-ease-entrance);overflow-x:clip}
+.tasks-workspace{display:grid;gap:22px;min-width:0;overflow:hidden}
+
+/* ==== Barra: solapas · "+" · espacio (motion.css .tasks-compact-toolbar) ==== */
+.tasks-compact-toolbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:8px 0;margin-bottom:10px;min-width:0;transition:margin-bottom var(--goo-close-dur) var(--goo-close-ease)}
+/* Único agregado: con el abanico abierto la barra se estira y empuja el tablero (nada queda encima). */
+.tasks-compact-toolbar.goo-room{margin-bottom:38px;transition:margin-bottom var(--goo-open-dur) var(--goo-open-ease)}
+.tasks-compact-toolbar > .tasks-subnav{justify-self:start}
+.tasks-compact-toolbar > .tasks-primary-actions{justify-self:center;display:flex;align-items:center}
+.tasks-compact-toolbar > .task-space-toggle{justify-self:end}
+
+/* tabs-sliding (motion.css §6) */
+.t-tabs{position:relative}
+.t-tabs > *{position:relative;z-index:1}
+.t-tabs > .t-tabs-pill{position:absolute;left:0;width:0;background:#1B1F24;border-radius:999px;transform:translateX(0);transition:transform var(--tabs-dur) var(--m-ease),width var(--tabs-dur) var(--m-ease),opacity var(--tabs-dur) var(--m-ease);will-change:transform,width;z-index:0;pointer-events:none}
+.tasks-subnav{display:flex;gap:5px;padding:5px;border:1px solid #262B32;border-radius:14px;background:#1B1F24;width:max-content;margin:0}
+.tasks-subnav button{border:0;border-radius:10px;padding:9px 14px;background:transparent;color:#A7AEB8;cursor:pointer;font-weight:700;text-align:center;white-space:nowrap;transition:color var(--tabs-dur) var(--m-ease)}
+.tasks-subnav button.active{color:#ECEEF1}
+.tasks-subnav.t-tabs > .t-tabs-pill{background:rgba(91,155,255,.2);box-shadow:inset 0 0 0 1px rgba(91,155,255,.3);border-radius:10px}
+.task-space-toggle{display:flex;min-width:0;gap:3px;padding:3px;border:1px solid #262B32;border-radius:16px;background:#1B1F24}
+.task-space-toggle button{display:block;padding:7px 12px;border:0;border-radius:8px;background:transparent;color:#ECEEF1;cursor:pointer;text-align:center;white-space:nowrap;transition:color var(--tabs-dur) var(--m-ease)}
+.task-space-toggle.t-tabs > .t-tabs-pill{background:rgba(91,155,255,.16);box-shadow:inset 0 0 0 1px rgba(91,155,255,.6);border-radius:13px}
+
+/* ==== Botón "+" — receta Pro gooey-plus-menu (motion.css §9 + GooeyMenu.tsx) ==== */
+.t-goo-anchor{position:relative;display:inline-block;vertical-align:middle;width:40px;height:40px;z-index:5}
+.t-goo-layer{position:absolute;width:200px;height:200px;overflow:visible;pointer-events:none;will-change:filter,transform}
+.t-goo-blob{fill:var(--goo-surface);transform:translate(0,0);transform-box:fill-box;transition:transform var(--goo-close-dur) var(--goo-close-ease);will-change:transform}
+.t-goo-anchor[data-open="true"] .t-goo-blob{transform:translate(calc(var(--fx,0px) * var(--goo-spread)),calc(var(--fy,0px) * var(--goo-spread)));transition:transform var(--goo-open-dur) var(--goo-open-ease);transition-delay:calc(var(--i,0) * var(--goo-stagger))}
+.t-goo-item,.t-goo-main{position:absolute;left:0;top:0;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--goo-icon-color);-webkit-tap-highlight-color:transparent;transform:translate(0,0);transition:transform var(--goo-close-dur) var(--goo-close-ease),background-color 120ms ease;will-change:transform}
+.t-goo-item{pointer-events:none}
+.t-goo-anchor[data-open="true"] .t-goo-item{pointer-events:auto;transform:translate(calc(var(--fx,0px) * var(--goo-spread)),calc(var(--fy,0px) * var(--goo-spread)));transition:transform var(--goo-open-dur) var(--goo-open-ease),background-color 120ms ease;transition-delay:calc(var(--i,0) * var(--goo-stagger)),0ms}
+.t-goo-anchor[data-open="true"] .t-goo-item:hover{background:rgba(255,255,255,.06)}
+.t-goo-item svg{display:block;opacity:0;filter:blur(2px);transition:opacity 120ms ease,filter 120ms ease}
+.t-goo-anchor[data-open="true"] .t-goo-item svg{opacity:1;filter:blur(0);transition:opacity 180ms ease,filter 180ms ease;transition-delay:calc(var(--i,0) * var(--goo-stagger) + 120ms),calc(var(--i,0) * var(--goo-stagger) + 120ms)}
+@keyframes t-goo-anticipate{0%{transform:translateY(0)}30%{transform:translateY(var(--goo-anticip))}100%{transform:translateY(0)}}
+.t-goo-anchor.is-anticipating .t-goo-layer,.t-goo-anchor.is-anticipating .t-goo-main{animation-name:t-goo-anticipate;animation-duration:var(--goo-anticip-dur);animation-timing-function:var(--goo-anticip-ease);animation-fill-mode:both}
+.t-goo-swap{position:relative;display:inline-grid;place-items:center;transform:rotate(0deg);transition:transform var(--goo-icon-dur) var(--goo-icon-ease)}
+.t-goo-anchor[data-open="true"] .t-goo-swap{transform:rotate(var(--goo-icon-rotate))}
+.t-goo-icon{grid-area:1 / 1;display:inline-flex}
+.t-goo-icon svg{display:block}
+
+/* ==== Tablero (components.css .infinite-*) ==== */
+.infinite-board-shell{width:100%;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:12px;cursor:grab;scrollbar-width:none}
+.infinite-board-shell::-webkit-scrollbar{display:none}
+.infinite-board{display:flex;align-items:flex-start;gap:14px;min-width:max-content;padding:4px 2px 10px}
+.infinite-task-column{width:340px;min-width:340px;max-width:340px;flex:0 0 340px;min-height:504px;padding:10px;border-radius:16px;background:rgba(20,23,27,.82);border:1px solid #262B32;transition:border-color .16s,background .16s}
+.infinite-task-column.drag-over{border-color:#5B9BFF;background:rgba(91,155,255,.09)}
+.infinite-column-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 4px 12px;border-bottom:2px solid var(--column-color,#7C8592)}
+.infinite-column-head > div{display:flex;align-items:center;gap:7px;min-width:0}
+.infinite-column-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.column-grip{color:#A7AEB8;cursor:grab}
+.column-actions{margin-left:auto;flex:none;white-space:nowrap}
+.column-actions button,.column-rename button{border:0;background:transparent;color:#A7AEB8;cursor:pointer}
+.column-actions button:disabled{cursor:not-allowed;opacity:.45}
+.column-rename{display:grid;grid-template-columns:1fr auto;gap:5px;width:100%}
+.infinite-column-stack{display:grid;gap:10px;padding-top:10px}
+.column-empty{display:grid;place-items:center;min-height:100px;border:1px dashed #262B32;border-radius:12px;color:#A7AEB8;font-size:12px}
+.badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.badge.subtle{background:#262B32;color:#ECEEF1}
+
+/* ==== Entrada escalonada (motion.css §6d) — variante -b para repetirla al cambiar de espacio/solapa ==== */
+@keyframes t-list-enter{from{opacity:0;transform:translate3d(-22px,6px,0) scale(.965);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes t-list-enter-b{from{opacity:0;transform:translate3d(-22px,6px,0) scale(.965);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes t-col-enter{from{opacity:0;transform:translate3d(34px,0,0);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes t-col-enter-b{from{opacity:0;transform:translate3d(34px,0,0);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+.t-item{animation:t-list-enter var(--stagger-dur) var(--m-ease-entrance) both}
+.run-b .t-item{animation-name:t-list-enter-b}
+.t-col{animation:t-col-enter var(--stagger-col-dur) var(--m-ease-entrance) both}
+.run-b .t-col{animation-name:t-col-enter-b}
+.t-item.dragging{animation:none !important}
+.t-resize{transition:width var(--resize-dur) var(--m-ease),height var(--resize-dur) var(--m-ease)}
+
+/* ==== Tarjeta de tarea (layout.css + components.css + motion.css, mismo orden de cascada) ==== */
+.task-card{position:relative;background:#1B1F24;border:1px solid #262B32;border-radius:8px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.18);min-width:0;overflow-wrap:anywhere;word-break:break-word;cursor:grab;transition:transform .22s ease,opacity .22s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease}
+.task-card:hover{border-color:#353B44;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.task-card.is-selected{border-color:#5B9BFF;box-shadow:0 0 0 2px rgba(91,155,255,.3)}
+.task-card.task-state-hecha{background:rgba(91,214,138,.09);border-color:rgba(91,214,138,.3)}
+.task-card.dragging{opacity:.45;transform:scale(.98);cursor:grabbing}
+.task-card.menu-open{z-index:20}
+.task-card strong{display:block;overflow-wrap:anywhere}
+.task-card > strong{padding-right:34px}
+.task-card-title-row{display:flex;align-items:flex-start;gap:8px;padding-right:34px}
+.task-card p{margin:16px 0}
+.task-state-pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;margin-top:6px;background:rgba(255,255,255,.06);color:#A7AEB8}
+.task-state-pill-pendiente{background:rgba(91,155,255,.18);color:#8DBBFF}
+.task-state-pill-en-proceso{background:rgba(245,192,78,.18);color:#F5C04E}
+.task-state-pill-hecha{background:rgba(91,214,138,.18);color:#5BD68A}
+.task-private-pill{display:inline-block;margin:6px 0 0 6px;padding:3px 8px;border-radius:999px;background:rgba(183,156,255,.18);color:#B79CFF;font-size:11px;font-weight:700}
+.task-note{background:rgba(245,192,78,.1);border:1px solid rgba(245,192,78,.22);border-radius:10px;padding:8px 10px}
+/* Checkbox propio (regla 6 del brief): sin azul relleno; la tilde entra con la misma transición .12s de la app. */
+.t-check{width:16px;height:16px;flex:0 0 auto;margin:2px 0 0;padding:0;display:inline-grid;place-content:center;border:1px solid #353B44;border-radius:4px;background:transparent;color:#0D0F12;cursor:pointer;transition:background-color .12s ease,border-color .12s ease}
+.t-check svg{opacity:0;transform:scale(.7);transition:opacity .12s ease,transform .12s ease}
+.t-check[aria-checked="true"]{background:#ECEEF1;border-color:#ECEEF1}
+.t-check[aria-checked="true"] svg{opacity:1;transform:scale(1)}
+.t-check:hover{border-color:#7C8592}
+.t-check[aria-checked="true"]:hover{border-color:#ECEEF1}
+.t-check:disabled{cursor:not-allowed;opacity:.6}
+.task-progress{display:flex;flex-direction:column;gap:5px;margin:8px 0;font-size:12px;color:#A7AEB8}
+.task-progress b{color:#ECEEF1;font-variant-numeric:tabular-nums}
+.task-progress-track{display:block;height:5px;border-radius:999px;background:#1B1F24;overflow:hidden}
+.task-progress-fill{display:block;width:100%;height:100%;background:#5B9BFF;transform:scaleX(var(--task-progress,0));transform-origin:left center;transition:transform var(--bar-dur) var(--ease-spring)}
+.task-checklist{display:grid;gap:6px;margin:8px 0}
+.task-check-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin:0;padding:6px 8px;border:1px solid #262B32;border-radius:8px;background:rgba(255,255,255,.02);color:#ECEEF1;font-size:13px;cursor:pointer}
+.task-check-item .t-check{margin:0 8px 0 0}
+.task-check-item > button:last-child{border:0;background:transparent;color:#A7AEB8;cursor:pointer;padding:0 2px}
+.task-add-trigger{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border:1px dashed #262B32;border-radius:999px;background:transparent;color:#A7AEB8;font-size:12px;cursor:pointer;transition:color var(--m-in) var(--m-ease),border-color var(--m-in) var(--m-ease)}
+.task-add-trigger:hover{color:#ECEEF1;border-color:#5B9BFF}
+.task-add-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px}
+@keyframes t-msg-enter{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.t-msg-enter{animation:t-msg-enter var(--m-in) var(--m-ease-entrance)}
+.view .input{width:100%;padding:11px 12px;border-radius:12px;border:1px solid #262B32;background:rgba(27,31,36,.88);color:#ECEEF1;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);outline:none}
+.view .input:focus{border-color:rgba(141,187,255,.75);box-shadow:0 0 0 3px rgba(91,155,255,.13),inset 0 1px 0 rgba(255,255,255,.04)}
+.view .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:11px;padding:11px 14px;cursor:pointer;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);transition:border-color .18s ease,box-shadow .18s ease,filter .18s ease,transform .18s var(--ease-out)}
+.view .btn:hover:not(:disabled){box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 10px 24px rgba(0,0,0,.24);transform:translateY(-1px)}
+.view .btn:active:not(:disabled){transform:translateY(0) scale(.98)}
+.view .btn-secondary{background:#1B1F24;border:1px solid #262B32;color:#ECEEF1}
+
+/* Menú "⋯" de la tarjeta — receta menu-dropdown (motion.css §4) */
+.task-card-menu{position:absolute;top:10px;right:10px}
+.task-menu-trigger{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:8px;background:transparent;color:#A7AEB8;cursor:pointer;padding:0;transition:color var(--m-in) var(--m-ease),background var(--m-in) var(--m-ease)}
+.task-menu-trigger:hover{color:#ECEEF1;background:#1B1F24}
+.task-menu{position:absolute;top:32px;right:0;z-index:10;min-width:178px;padding:5px;display:grid;gap:2px;border:1px solid #262B32;border-radius:12px;background:#14171B;box-shadow:0 16px 44px rgba(0,0,0,.45)}
+.task-menu button{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:#ECEEF1;font-size:13px;text-align:left;cursor:pointer;white-space:nowrap;transition:background var(--m-out) var(--m-ease)}
+.task-menu button:hover:not(:disabled){background:#1B1F24}
+.task-menu button:disabled{opacity:.45;cursor:not-allowed}
+.task-menu button.is-danger{color:#FF6B6B}
+.task-menu button.is-danger:hover:not(:disabled){background:rgba(255,107,107,.12)}
+.task-menu-count{margin-left:auto;padding:1px 7px;border-radius:999px;background:#1B1F24;font-size:11px;color:#A7AEB8}
+.t-dropdown{transform-origin:top left;transform:scale(var(--dropdown-pre-scale));opacity:0;pointer-events:none;transition:transform var(--dropdown-open-dur) var(--m-ease),opacity var(--dropdown-open-dur) var(--m-ease)}
+.t-dropdown[data-origin="top-right"]{transform-origin:top right}
+.t-dropdown.is-open{transform:scale(1);opacity:1;pointer-events:auto}
+.t-dropdown.is-closing{transform:scale(var(--dropdown-closing-scale));opacity:0;pointer-events:none;transition:transform var(--dropdown-close-dur) var(--m-ease),opacity var(--dropdown-close-dur) var(--m-ease)}
+
+/* Números — receta number-pop-in (AnimatedNumber); -b para repetirla cuando el valor cambia */
+@keyframes t-digit-pop-in{0%{transform:translate(0,var(--digit-distance));opacity:0;filter:blur(var(--digit-blur))}100%{transform:translate(0,0);opacity:1;filter:blur(0)}}
+@keyframes t-digit-pop-in-b{0%{transform:translate(0,var(--digit-distance));opacity:0;filter:blur(var(--digit-blur))}100%{transform:translate(0,0);opacity:1;filter:blur(0)}}
+.t-digit-group{display:inline-flex;align-items:baseline;font-variant-numeric:tabular-nums}
+.t-digit{display:inline-block;animation:t-digit-pop-in var(--digit-dur) var(--m-ease-entrance) both}
+.dg-b .t-digit{animation-name:t-digit-pop-in-b}
+
+/* ==== Vista Prioridad (layout.css .task-schedule-*) ==== */
+.task-schedule-grid{display:grid;gap:12px;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:18px}
+.task-schedule-col{background:rgba(255,255,255,.02);border:1px solid #262B32;border-radius:12px;display:flex;flex-direction:column;gap:10px;min-height:320px;min-width:0;padding:12px}
+.task-schedule-col.task-priority-urgente{border-top:3px solid #FF6B6B;background:linear-gradient(180deg,rgba(255,107,107,.07),rgba(255,255,255,.02))}
+.task-schedule-col.task-priority-media{border-top:3px solid #F5C04E;background:linear-gradient(180deg,rgba(245,192,78,.06),rgba(255,255,255,.02))}
+.task-schedule-col.task-priority-baja{border-top:3px solid #5BD68A;background:linear-gradient(180deg,rgba(91,214,138,.06),rgba(255,255,255,.02))}
+.task-schedule-head{display:flex;align-items:center;justify-content:space-between}
+.task-schedule-list{display:grid;gap:10px;min-height:0}
+.empty-state{border:1px dashed #262B32;border-radius:12px;color:#A7AEB8;display:grid;min-height:180px;place-items:center;padding:18px;text-align:center;width:100%;background:rgba(13,15,18,.4)}
+
+/* ==== Analítica de asistentes (layout.css .assistant-*) ==== */
+.view .card{background:#14171B;border:1px solid #262B32;border-radius:16px;padding:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 8px 30px rgba(0,0,0,.26);transition:border-color .22s ease,box-shadow .22s ease,transform .22s var(--ease-out)}
+.view .card:hover{border-color:#3A5680;box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 14px 42px rgba(91,155,255,.17)}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #262B32;padding-bottom:14px;margin-bottom:18px}
+.card-head h3{margin:0;color:#ECEEF1;font-size:18.72px;font-weight:700}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.assistant-progress-card{background:linear-gradient(135deg,rgba(91,155,255,.18),rgba(91,214,138,.1)),#1B1F24;border:1px solid #262B32;border-radius:12px;padding:14px}
+.assistant-progress-1{background:linear-gradient(135deg,rgba(183,156,255,.16),rgba(79,209,197,.1)),#1B1F24}
+.assistant-progress-head{align-items:center;display:flex;justify-content:space-between}
+.progress{background:rgba(167,174,184,.22);border-radius:999px;height:7px;overflow:hidden}
+.progress span{display:block;height:100%;background:#5B9BFF}
+.assistant-progress span{background:linear-gradient(90deg,#5BD68A,#5B9BFF)}
+.assistant-progress-grid{align-items:center;display:grid;gap:8px;grid-template-columns:1fr auto;margin-top:12px}
+.assistant-progress-grid span{color:#A7AEB8}
+.assistant-progress-card p{margin:12px 0 0}
+
+/* ==== Barra de selección flotante (components.css .chip-selection-bar.is-floating) ==== */
+.chip-selection-bar{position:absolute;left:50%;bottom:calc(100% - 882px);transform:translateX(-50%);width:min(760px,calc(100% - 32px));z-index:60;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid #5B9BFF;border-radius:14px;background:#1A222D;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:16px;animation:chip-bar-float-in .16s ease-out}
+@keyframes chip-bar-float-in{from{transform:translate(-50%,8px);opacity:0}}
+.chip-selection-count{font-size:13px;color:#A7AEB8;white-space:nowrap}
+.chip-selection-count b{color:#ECEEF1;font-size:15px}
+.chip-selection-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip-selection-clear{appearance:none;border:0;background:transparent;color:#A7AEB8;font-size:12.5px;cursor:pointer;padding:6px 4px}
+.chip-selection-clear:hover{color:#ECEEF1}
+.fx-btn{border:none;border-radius:12px;padding:8px 14px;cursor:pointer;white-space:nowrap}
+.fx-btn.btn-primary{background:#5B9BFF;color:#0D0F12}
+.fx-btn.btn-secondary{background:#1B1F24;border:1px solid #262B32;color:#ECEEF1}
+.fx-btn.btn-success{background:#5BD68A;color:#0D0F12}
+.fx-btn.btn-danger{background:#FF6B6B;color:#0D0F12}
+.fx-btn.btn-danger:hover{filter:brightness(1.1)}
+.modal .fx-btn{padding:11px 14px}
+.t-text-swap{display:inline-block}
+
+/* ==== Aviso con Deshacer — receta toast (motion.css §3) ==== */
+.app-toasts{position:absolute;right:18px;bottom:calc(100% - 882px);z-index:120;display:grid;gap:8px;justify-items:end;max-width:min(380px,calc(100% - 32px))}
+.app-toast{display:flex;align-items:center;gap:10px;min-width:0;max-width:100%;padding:11px 12px 11px 14px;border-radius:12px;border:1px solid #262B32;background:#14171B;color:#ECEEF1;box-shadow:0 14px 40px rgba(0,0,0,.4);font-size:13.5px;line-height:1.4}
+.app-toast.tone-ok{border-color:#438962}
+.app-toast-message{min-width:0;overflow-wrap:anywhere}
+.app-toast-action{appearance:none;flex:0 0 auto;border:1px solid #5B9BFF;background:transparent;color:#ECEEF1;font-weight:600;font-size:12.5px;padding:5px 10px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.app-toast-action:hover{background:rgba(91,155,255,.18)}
+.app-toast-close{appearance:none;flex:0 0 auto;border:0;background:transparent;color:#A7AEB8;font-size:18px;line-height:1;padding:2px 4px;cursor:pointer}
+.app-toast-close:hover{color:#ECEEF1}
+.t-toast{opacity:0;transform:translateY(var(--toast-distance)) scale(var(--toast-scale));filter:blur(var(--toast-blur));transition:opacity var(--toast-close) var(--m-ease),transform var(--toast-close) var(--m-ease),filter var(--toast-close) var(--m-ease)}
+.t-toast.is-open{opacity:1;transform:translateY(0) scale(1);filter:blur(0);transition:opacity var(--toast-open) var(--m-ease),transform var(--toast-open) var(--m-ease),filter var(--toast-open) var(--m-ease)}
+
+/* ==== Modal de la app — receta modal (motion.css §1). TaskModal y "Nueva columna" ==== */
+.modal{position:absolute;inset:0;display:grid;place-items:start center;padding:20px;z-index:30;font-size:16px}
+.modal-hit{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0;background:transparent;cursor:default}
+.modal.t-modal{background:rgba(0,0,0,0);transition:background var(--modal-open-dur) var(--m-ease)}
+.modal.t-modal.is-open{background:rgba(0,0,0,.58)}
+.modal.t-modal.is-closing{background:rgba(0,0,0,0);transition:background var(--modal-close-dur) var(--m-ease)}
+.modal-card{position:relative;width:min(520px,100%);max-height:860px;overflow-y:auto;scrollbar-width:none;background:#14171B;border:1px solid #262B32;border-radius:16px;padding:18px}
+.modal-card::-webkit-scrollbar{display:none}
+.modal.t-modal > .modal-card{transform-origin:center;transform:scale(var(--modal-scale));opacity:0;filter:blur(var(--m-blur));transition:transform var(--modal-open-dur) var(--m-ease),opacity var(--modal-open-dur) var(--m-ease),filter var(--modal-open-dur) var(--m-ease)}
+.modal.t-modal.is-open > .modal-card{transform:scale(1);opacity:1;filter:blur(0)}
+.modal.t-modal.is-closing > .modal-card{transform:scale(var(--modal-scale-close));opacity:0;filter:blur(var(--m-blur));transition:transform var(--modal-close-dur) var(--m-ease),opacity var(--modal-close-dur) var(--m-ease),filter var(--modal-close-dur) var(--m-ease)}
+.icon-btn{background:transparent;border:none;color:#ECEEF1;cursor:pointer;padding:0;display:grid;place-items:center}
+.stack{display:grid;gap:12px}
+.modal label{display:block;margin-bottom:6px;font-size:13px;color:#A7AEB8}
+.modal .input{display:block;width:100%;padding:11px 12px;border-radius:12px;border:1px solid #262B32;background:#1B1F24;color:#ECEEF1;outline:none;resize:vertical}
+.modal .input:focus{border-color:#5B9BFF}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.task-visibility-choice{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.task-visibility-choice button{display:grid;gap:3px;text-align:left;border:1px solid #262B32;border-radius:12px;background:#1B1F24;color:#ECEEF1;padding:12px;cursor:pointer}
+.task-visibility-choice button span{font-size:11px;color:#A7AEB8}
+.task-visibility-choice button.active{border-color:#5B9BFF;background:rgba(91,155,255,.15)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field-label{font-size:13px;color:#A7AEB8}
+.assignee-chips{display:flex;flex-wrap:wrap;gap:8px}
+.assignee-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;border:1px solid #262B32;background:#1B1F24;color:#A7AEB8;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+.assignee-chip:hover{color:#ECEEF1;border-color:#5B9BFF}
+.assignee-chip.is-on{background:rgba(91,155,255,.16);border-color:#5B9BFF;color:#ECEEF1}
+.assignee-chip-check{font-size:11px;font-weight:700;color:#5B9BFF}
+.field-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;height:38px;padding:0 12px;cursor:pointer;border:1px solid #262B32;border-radius:12px;background:#1B1F24;color:#ECEEF1;font-size:13px;text-align:left;transition:border-color .15s ease}
+.field-select-trigger:hover{border-color:#3A5680}
+.field-select-trigger i{flex:0 0 auto;width:5px;height:5px;border-right:1.4px solid #A7AEB8;border-bottom:1.4px solid #A7AEB8;transform:translateY(-2px) rotate(45deg)}
+.modal .grid-2{gap:16px}
+.task-upload-button{position:relative;overflow:hidden;justify-self:start;display:inline-block;border-radius:12px;padding:11px 14px;color:#ECEEF1;font-size:13px;cursor:pointer;margin:0}
+.task-upload-button input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.task-attachment-editor{display:grid;gap:7px}
+.task-comments{display:grid;gap:12px}
+.task-comment-list{display:grid;gap:8px}
+.task-comment-list article{padding:10px;border:1px solid #262B32;border-radius:10px;background:#1B1F24}
+.task-comment-list header{display:flex;justify-content:space-between;gap:8px}
+.task-comment-list time{font-size:11px;color:#A7AEB8}
+.task-comment-list p{margin:7px 0 0;white-space:pre-wrap}
+.modal .empty-state{min-height:120px}
+
+@media (prefers-reduced-motion:reduce){
+.modal.t-modal > .modal-card,.t-toast,.t-dropdown{filter:none !important;transform:none !important;transition-duration:1ms !important}
+.view-enter,.t-msg-enter,.t-digit,.t-item,.t-col{animation:none !important;opacity:1 !important;transform:none !important;filter:none !important}
+.t-tabs-pill,.t-resize,.tasks-compact-toolbar{transition:none !important}
+.t-goo-blob,.t-goo-item,.t-goo-item svg,.t-goo-swap{transition-delay:0ms !important;transition-duration:1ms !important}
+.t-goo-anchor.is-anticipating .t-goo-layer,.t-goo-anchor.is-anticipating .t-goo-main{animation:none !important}
+.chip-selection-bar{animation:none}
+.task-progress-fill{transition:none}
+}
+</style>
+</helmet>
+<div class="ta" style="width: 100%; min-height: 1300px; display: flex; position: relative; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px;">
+
+  <!-- MENÚ LATERAL (copiado de Menu-A, Tareas TIC activo, sin Traspaso) -->
+  <div style="width: 232px; flex: none; border-right: 1px solid #262B32;">
+  <aside aria-label="Menú principal" style="position: sticky; top: 0; height: 900px; display: flex; flex-direction: column; background: #0D0F12;">
+    <div style="height: 56px; flex: none; display: flex; align-items: center; padding: 0 8px; border-bottom: 1px solid #262B32;">
+      <button type="button" class="ib" aria-label="Cambiar de sede: Northfield Puertos" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 40px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; cursor: pointer; text-align: left;">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; color: #ECEEF1;">NF</span>
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Northfield Puertos</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div style="padding: 12px 12px 4px; flex: none;">
+      <button type="button" aria-label="Buscar o ir a una sección (Ctrl K)" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px 0 10px; background: #14171B; border: 1px solid #262B32; border-radius: 6px; color: #7C8592; cursor: pointer; font-size: 13px; text-align: left;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span style="flex: 1; white-space: nowrap;">Buscar o ir a…</span>
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px; white-space: nowrap;">Ctrl K</span>
+      </button>
+    </div>
+    <nav aria-label="Secciones" style="flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 12px;">
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="padding: 8px 12px 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592; white-space: nowrap;">{{g.label}}</div>
+          <sc-for list="{{g.items}}" as="n" hint-placeholder-count="4">
+            <a href="#" class="nv" style="{{n.style}}" aria-current="{{n.current}}">
+              <span style="{{n.bar}}"></span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+              <span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{n.label}}</span>
+              <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592; font-variant-numeric: tabular-nums;">{{n.count}}</span>
+            </a>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="flex: none; border-top: 1px solid #262B32; padding: 8px; display: flex; flex-direction: column; gap: 4px;">
+      <a href="#" class="nv" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px 0 12px; border-radius: 6px; text-decoration: none; font-size: 14px; color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span>Configuración</span>
+      </a>
+      <div style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 4px 0 8px;">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #ECEEF1;">BG</span>
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Bauti G.</span>
+          <span style="font-size: 12px; color: #7C8592; white-space: nowrap;">Jefe TIC</span>
+        </span>
+        <button type="button" class="ib" aria-label="Opciones de cuenta" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+  </div>
+
+  <main style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+    <header style="height: 56px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 24px 0 16px; border-bottom: 1px solid #262B32; min-width: 0;">
+      <button type="button" class="ib" aria-label="Contraer menú (Ctrl B)" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <nav aria-label="Ubicación" style="display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; margin-left: 4px;">
+        <span style="color: #7C8592;">NFPT</span>
+        <span style="color: #353B44;" aria-hidden="true">/</span>
+        <span style="color: #ECEEF1; font-weight: 500; white-space: nowrap;">Tareas TIC</span>
+        <span style="color: #7C8592; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 4px;">{{context}}</span>
+      </nav>
+      <div style="flex: 1; min-width: 8px;"></div>
+      <button type="button" aria-pressed="false" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; flex: none; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2M20 14h2M15 13v2M9 13v2"></path></svg>
+        Asistente
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="height: 36px; padding: 0 8px; flex: none; display: flex; align-items: center; gap: 6px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #ECEEF1;">[N]</span>
+      </button>
+      <button type="button" class="ib" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <!-- TAREAS: markup y CSS de TasksPage / TaskBoard / TaskCard, recoloreado a Grafito -->
+    <section class="view view-enter tasks-workspace" aria-label="Tareas TIC">
+      <div class="{{toolbarCls}}">
+        <div class="tasks-subnav t-tabs">
+          <span class="t-tabs-pill" style="{{tabPill}}" aria-hidden="true"></span>
+          <button type="button" class="{{tabBoardCls}}" aria-pressed="{{tabBoardOn}}" onClick="{{onTabBoard}}" style="width: 92px; height: 38px; padding: 0;">Tablero</button>
+          <button type="button" class="{{tabPrioCls}}" aria-pressed="{{tabPrioOn}}" onClick="{{onTabPrio}}" style="width: 108px; height: 38px; padding: 0;">Prioridad</button>
+        </div>
+
+        <div class="tasks-primary-actions">
+          <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+            <div class="{{gooCls}}" data-open="{{gooOpenStr}}">
+              <svg class="t-goo-layer" style="left: -80px; top: -20px;" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+                <defs>
+                  <filter id="t-goo-filter-tareas" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"></feGaussianBlur>
+                    <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo"></feColorMatrix>
+                    <feComposite in="SourceGraphic" in2="goo" operator="atop" result="shape"></feComposite>
+                    <feColorMatrix in="shape" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 60 -29.5" result="ring-solid"></feColorMatrix>
+                    <feMorphology in="ring-solid" operator="dilate" radius="1" result="ring-a"></feMorphology>
+                    <feFlood flood-color="#000000" flood-opacity="0.06" result="ring-c"></feFlood>
+                    <feComposite in="ring-c" in2="ring-a" operator="in" result="ring"></feComposite>
+                    <feGaussianBlur in="shape" stdDeviation="3" result="s2-b"></feGaussianBlur>
+                    <feOffset in="s2-b" dy="2" result="s2-o"></feOffset>
+                    <feFlood flood-color="#000000" flood-opacity="0.05" result="s2-c"></feFlood>
+                    <feComposite in="s2-c" in2="s2-o" operator="in" result="s2"></feComposite>
+                    <feGaussianBlur in="shape" stdDeviation="21" result="s3-b"></feGaussianBlur>
+                    <feOffset in="s3-b" dy="4" result="s3-o"></feOffset>
+                    <feFlood flood-color="#000000" flood-opacity="0.06" result="s3-c"></feFlood>
+                    <feComposite in="s3-c" in2="s3-o" operator="in" result="s3"></feComposite>
+                    <feMerge>
+                      <feMergeNode in="s3"></feMergeNode>
+                      <feMergeNode in="s2"></feMergeNode>
+                      <feMergeNode in="ring"></feMergeNode>
+                      <feMergeNode in="shape"></feMergeNode>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <g filter="url(#t-goo-filter-tareas)">
+                  <circle class="t-goo-blob" cx="100" cy="40" r="20" style="--fx: -54px; --fy: 34px; --i: 0;"></circle>
+                  <circle class="t-goo-blob" cx="100" cy="40" r="20" style="--fx: 0px; --fy: 64px; --i: 1;"></circle>
+                  <circle class="t-goo-blob" cx="100" cy="40" r="20" style="--fx: 54px; --fy: 34px; --i: 2;"></circle>
+                  <circle class="t-goo-blob t-goo-blob-main" cx="100" cy="40" r="20"></circle>
+                </g>
+              </svg>
+              <button type="button" class="t-goo-item" style="--fx: -54px; --fy: 34px; --i: 0;" aria-label="Nueva tarea de equipo" title="Nueva tarea de equipo" tabindex="{{gooTab}}" onClick="{{onGooTeam}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </button>
+              <button type="button" class="t-goo-item" style="--fx: 0px; --fy: 64px; --i: 1;" aria-label="Nueva tarea privada" title="Nueva tarea privada" tabindex="{{gooTab}}" onClick="{{onGooMine}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              </button>
+              <button type="button" class="t-goo-item" style="--fx: 54px; --fy: 34px; --i: 2;" aria-label="Nueva columna" title="Nueva columna" tabindex="{{gooTab}}" onClick="{{onGooColumn}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M15 3v18"></path></svg>
+              </button>
+              <button type="button" class="t-goo-main" aria-expanded="{{gooOpenStr}}" aria-label="{{gooLabel}}" onClick="{{onGoo}}">
+                <span class="t-goo-swap"><span class="t-goo-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M10 4V16M4 10H16"></path></svg></span></span>
+              </button>
+            </div>
+          </sc-if>
+        </div>
+
+        <div class="task-space-toggle t-tabs" aria-label="Espacio de tareas">
+          <span class="t-tabs-pill" style="{{spacePill}}" aria-hidden="true"></span>
+          <button type="button" class="{{spTeamCls}}" aria-pressed="{{spTeamOn}}" onClick="{{onSpTeam}}" style="width: 82px; height: 34px; padding: 0;">Equipo</button>
+          <button type="button" class="{{spMyCls}}" aria-pressed="{{spMyOn}}" onClick="{{onSpMy}}" style="width: 104px; height: 34px; padding: 0;">Mis tareas</button>
+        </div>
+      </div>
+
+      <!-- card-resize: el alto se estira entre Tablero/Prioridad y Equipo/Mis tareas -->
+      <div class="t-resize" data-resize="tareas-d" style="{{resizeStyle}}">
+        <div>
+          <sc-if value="{{isBoard}}" hint-placeholder-val="{{ true }}">
+            <div class="infinite-board-shell">
+              <div class="{{boardCls}}" role="region" aria-label="Tablero horizontal de tareas">
+                <sc-for list="{{cols}}" as="c" hint-placeholder-count="3">
+                  <section class="infinite-task-column t-col" style="{{c.delay}}" aria-label="{{c.name}}">
+                    <header class="infinite-column-head" draggable="{{c.draggable}}" style="{{c.headStyle}}">
+                      <sc-if value="{{c.renaming}}" hint-placeholder-val="{{ false }}">
+                        <div class="column-rename">
+                          <input class="input" autofocus="autofocus" aria-label="Nombre de la columna" value="{{c.renameText}}" onInput="{{c.onRenameInput}}" onChange="{{c.onRenameInput}}" onKeyDown="{{c.onRenameKey}}" style="padding: 7px 10px; font-size: 14px;">
+                          <button type="button" aria-label="Guardar nombre" onClick="{{c.onRenameSave}}">✓</button>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{c.notRenaming}}" hint-placeholder-val="{{ true }}">
+                        <div><span class="column-grip" aria-hidden="true">⠿</span><strong>{{c.name}}</strong><span class="badge subtle"><span class="{{c.dg}}"><span class="t-digit">{{c.count}}</span></span></span></div>
+                        <div class="column-actions">
+                          <button type="button" title="Renombrar" aria-label="{{c.renameLabel}}" disabled="{{c.lockEdit}}" onClick="{{c.onRename}}">✎</button>
+                          <button type="button" title="Eliminar" aria-label="{{c.deleteLabel}}" disabled="{{c.lockDelete}}" onClick="{{c.onDelete}}">×</button>
+                        </div>
+                      </sc-if>
+                    </header>
+                    <div class="infinite-column-stack">
+                      <sc-for list="{{c.tasks}}" as="t" hint-placeholder-count="2">
+                        <article class="{{t.cls}}" data-task-id="{{t.id}}" draggable="{{t.draggable}}" style="{{t.delay}}">
+                          <sc-if value="{{t.selectable}}" hint-placeholder-val="{{ true }}">
+                            <div class="task-card-title-row">
+                              <button type="button" class="t-check" role="checkbox" aria-checked="{{t.selStr}}" aria-label="{{t.selLabel}}" onClick="{{t.onSel}}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></button>
+                              <strong>{{t.title}}</strong>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{t.notSelectable}}" hint-placeholder-val="{{ false }}"><strong>{{t.title}}</strong></sc-if>
+                          <div class="muted">{{t.meta}}</div>
+                          <div class="{{t.pillCls}}">{{t.pill}}</div>
+                          <sc-if value="{{t.isPrivate}}" hint-placeholder-val="{{ false }}"><span class="task-private-pill">Privada</span></sc-if>
+                          <sc-if value="{{t.hasDesc}}" hint-placeholder-val="{{ true }}"><p>{{t.desc}}</p></sc-if>
+                          <sc-if value="{{t.hasNote}}" hint-placeholder-val="{{ false }}"><p class="task-note">Nota: {{t.note}}</p></sc-if>
+                          <sc-if value="{{t.hasItems}}" hint-placeholder-val="{{ false }}">
+                            <div class="task-progress">
+                              <span>Subtareas <b><span class="{{t.dgDone}}"><span class="t-digit">{{t.doneN}}</span></span>/<span class="{{t.dgTotal}}"><span class="t-digit">{{t.totalN}}</span></span></b></span>
+                              <span class="task-progress-track" role="progressbar" aria-valuenow="{{t.doneN}}" aria-valuemin="0" aria-valuemax="{{t.totalN}}"><span class="task-progress-fill" style="{{t.fillStyle}}"></span></span>
+                            </div>
+                            <div class="task-checklist">
+                              <sc-for list="{{t.items}}" as="it" hint-placeholder-count="3">
+                                <label class="task-check-item">
+                                  <button type="button" class="t-check" role="checkbox" aria-checked="{{it.on}}" aria-label="{{it.label}}" disabled="{{it.locked}}" onClick="{{it.onToggle}}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></button>
+                                  <span>{{it.text}}</span>
+                                  <button type="button" aria-label="{{it.removeLabel}}" disabled="{{it.locked}}" onClick="{{it.onRemove}}">×</button>
+                                </label>
+                              </sc-for>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{t.canAdd}}" hint-placeholder-val="{{ true }}">
+                            <sc-if value="{{t.adding}}" hint-placeholder-val="{{ false }}">
+                              <div class="task-add-item t-msg-enter">
+                                <input class="input" autofocus="autofocus" aria-label="Nueva subtarea" value="{{t.addText}}" onInput="{{t.onAddInput}}" onChange="{{t.onAddInput}}" onKeyDown="{{t.onAddKey}}" placeholder="¿Qué falta hacer?">
+                                <button type="button" class="btn btn-secondary" onClick="{{t.onAddSubmit}}"><span class="t-text-swap">Agregar</span></button>
+                              </div>
+                            </sc-if>
+                            <sc-if value="{{t.notAdding}}" hint-placeholder-val="{{ true }}">
+                              <button type="button" class="task-add-trigger" onClick="{{t.onAddOpen}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg> Subtarea</button>
+                            </sc-if>
+                          </sc-if>
+                          <div class="task-card-menu" draggable="false">
+                            <button type="button" class="task-menu-trigger" aria-haspopup="menu" aria-expanded="{{t.menuExp}}" aria-label="Acciones de la tarea" onClick="{{t.onMenu}}">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                            </button>
+                            <sc-if value="{{t.menuOn}}" hint-placeholder-val="{{ false }}">
+                              <div class="{{t.menuCls}}" data-origin="top-right" role="menu">
+                                <button type="button" role="menuitem" disabled="{{t.locked}}" onClick="{{t.onEdit}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"></path></svg> Editar</button>
+                                <button type="button" role="menuitem" disabled="{{t.locked}}" onClick="{{t.onNote}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8ZM15 3v4a2 2 0 0 0 2 2h4"></path></svg> Nota</button>
+                                <button type="button" role="menuitem" onClick="{{t.onComments}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Comentarios<sc-if value="{{t.hasComments}}" hint-placeholder-val="{{ false }}"><span class="task-menu-count"><span class="{{t.dgCom}}"><span class="t-digit">{{t.commentsN}}</span></span></span></sc-if></button>
+                                <button type="button" role="menuitem" class="is-danger" disabled="{{t.locked}}" onClick="{{t.onDelete}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"></path></svg> Borrar</button>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </article>
+                      </sc-for>
+                      <sc-if value="{{c.empty}}" hint-placeholder-val="{{ false }}"><div class="column-empty t-item">Soltá una tarea acá</div></sc-if>
+                    </div>
+                  </section>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isPriority}}" hint-placeholder-val="{{ false }}">
+            <div class="{{prioCls}}">
+              <sc-for list="{{prio}}" as="p" hint-placeholder-count="3">
+                <section class="{{p.cls}}" aria-label="{{p.name}}">
+                  <header class="task-schedule-head"><strong>{{p.name}}</strong><span class="badge subtle"><span class="{{p.dg}}"><span class="t-digit">{{p.count}}</span></span></span></header>
+                  <div class="task-schedule-list">
+                    <sc-for list="{{p.tasks}}" as="t" hint-placeholder-count="2">
+                      <article class="{{t.cls}}" data-task-id="{{t.id}}" draggable="{{t.draggable}}" style="{{t.delay}}">
+                        <sc-if value="{{t.selectable}}" hint-placeholder-val="{{ true }}">
+                          <div class="task-card-title-row">
+                            <button type="button" class="t-check" role="checkbox" aria-checked="{{t.selStr}}" aria-label="{{t.selLabel}}" onClick="{{t.onSel}}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></button>
+                            <strong>{{t.title}}</strong>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{t.notSelectable}}" hint-placeholder-val="{{ false }}"><strong>{{t.title}}</strong></sc-if>
+                        <div class="muted">{{t.meta}}</div>
+                        <div class="{{t.pillCls}}">{{t.pill}}</div>
+                        <sc-if value="{{t.isPrivate}}" hint-placeholder-val="{{ false }}"><span class="task-private-pill">Privada</span></sc-if>
+                        <sc-if value="{{t.hasDesc}}" hint-placeholder-val="{{ true }}"><p>{{t.desc}}</p></sc-if>
+                        <sc-if value="{{t.hasNote}}" hint-placeholder-val="{{ false }}"><p class="task-note">Nota: {{t.note}}</p></sc-if>
+                        <sc-if value="{{t.hasItems}}" hint-placeholder-val="{{ false }}">
+                          <div class="task-progress">
+                            <span>Subtareas <b><span class="{{t.dgDone}}"><span class="t-digit">{{t.doneN}}</span></span>/<span class="{{t.dgTotal}}"><span class="t-digit">{{t.totalN}}</span></span></b></span>
+                            <span class="task-progress-track" role="progressbar" aria-valuenow="{{t.doneN}}" aria-valuemin="0" aria-valuemax="{{t.totalN}}"><span class="task-progress-fill" style="{{t.fillStyle}}"></span></span>
+                          </div>
+                          <div class="task-checklist">
+                            <sc-for list="{{t.items}}" as="it" hint-placeholder-count="3">
+                              <label class="task-check-item">
+                                <button type="button" class="t-check" role="checkbox" aria-checked="{{it.on}}" aria-label="{{it.label}}" disabled="{{it.locked}}" onClick="{{it.onToggle}}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></button>
+                                <span>{{it.text}}</span>
+                                <button type="button" aria-label="{{it.removeLabel}}" disabled="{{it.locked}}" onClick="{{it.onRemove}}">×</button>
+                              </label>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{t.canAdd}}" hint-placeholder-val="{{ true }}">
+                          <sc-if value="{{t.adding}}" hint-placeholder-val="{{ false }}">
+                            <div class="task-add-item t-msg-enter">
+                              <input class="input" autofocus="autofocus" aria-label="Nueva subtarea" value="{{t.addText}}" onInput="{{t.onAddInput}}" onChange="{{t.onAddInput}}" onKeyDown="{{t.onAddKey}}" placeholder="¿Qué falta hacer?">
+                              <button type="button" class="btn btn-secondary" onClick="{{t.onAddSubmit}}"><span class="t-text-swap">Agregar</span></button>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{t.notAdding}}" hint-placeholder-val="{{ true }}">
+                            <button type="button" class="task-add-trigger" onClick="{{t.onAddOpen}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg> Subtarea</button>
+                          </sc-if>
+                        </sc-if>
+                        <div class="task-card-menu" draggable="false">
+                          <button type="button" class="task-menu-trigger" aria-haspopup="menu" aria-expanded="{{t.menuExp}}" aria-label="Acciones de la tarea" onClick="{{t.onMenu}}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                          </button>
+                          <sc-if value="{{t.menuOn}}" hint-placeholder-val="{{ false }}">
+                            <div class="{{t.menuCls}}" data-origin="top-right" role="menu">
+                              <button type="button" role="menuitem" disabled="{{t.locked}}" onClick="{{t.onEdit}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"></path></svg> Editar</button>
+                              <button type="button" role="menuitem" disabled="{{t.locked}}" onClick="{{t.onNote}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8ZM15 3v4a2 2 0 0 0 2 2h4"></path></svg> Nota</button>
+                              <button type="button" role="menuitem" onClick="{{t.onComments}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Comentarios<sc-if value="{{t.hasComments}}" hint-placeholder-val="{{ false }}"><span class="task-menu-count"><span class="{{t.dgCom}}"><span class="t-digit">{{t.commentsN}}</span></span></span></sc-if></button>
+                              <button type="button" role="menuitem" class="is-danger" disabled="{{t.locked}}" onClick="{{t.onDelete}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"></path></svg> Borrar</button>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </article>
+                    </sc-for>
+                    <sc-if value="{{p.empty}}" hint-placeholder-val="{{ false }}"><div class="empty-state t-item">Sin tareas</div></sc-if>
+                  </div>
+                </section>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{showAnalytics}}" hint-placeholder-val="{{ true }}">
+            <section class="card assistant-task-analytics">
+              <div class="card-head"><h3>Analítica de asistentes</h3><span class="muted">Datos reales de tareas</span></div>
+              <div class="grid-2">
+                <sc-for list="{{people}}" as="p" hint-placeholder-count="2">
+                  <div class="{{p.cls}}">
+                    <div class="assistant-progress-head"><strong>{{p.name}}</strong><span>{{p.pct}}</span></div>
+                    <div class="progress assistant-progress"><span style="{{p.bar}}"></span></div>
+                    <div class="assistant-progress-grid">
+                      <span>Asignadas</span><strong>{{p.assigned}}</strong>
+                      <span>Pendientes</span><strong>{{p.pending}}</strong>
+                      <span>En proceso</span><strong>{{p.progress}}</strong>
+                      <span>Hechas</span><strong>{{p.done}}</strong>
+                    </div>
+                    <sc-if value="{{p.none}}" hint-placeholder-val="{{ false }}"><p class="muted">Sin tareas asignadas.</p></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+          </sc-if>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Barra de selección flotante (SelectionBar floating) -->
+  <sc-if value="{{hasSel}}" hint-placeholder-val="{{ false }}">
+    <div class="chip-selection-bar is-floating" role="region" aria-label="Acciones sobre la selección">
+      <span class="chip-selection-count"><b>{{selCount}}</b> {{selWord}}</span>
+      <div class="chip-selection-actions">
+        <sc-for list="{{selCols}}" as="b" hint-placeholder-count="3">
+          <button type="button" class="{{b.cls}}" onClick="{{b.onClick}}"><span class="t-text-swap">{{b.name}}</span></button>
+        </sc-for>
+        <button type="button" class="fx-btn btn-danger" onClick="{{onBulkDelete}}"><span class="t-text-swap">Borrar</span></button>
+        <button type="button" class="chip-selection-clear" onClick="{{onClearSel}}">Limpiar</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Aviso (toast) con Deshacer -->
+  <sc-if value="{{toastOn}}" hint-placeholder-val="{{ false }}">
+    <div class="app-toasts" aria-live="polite">
+      <div class="{{toastCls}}" role="status">
+        <span class="app-toast-message">{{toastMsg}}</span>
+        <sc-if value="{{toastHasAction}}" hint-placeholder-val="{{ false }}"><button type="button" class="app-toast-action" onClick="{{onToastAction}}">Deshacer</button></sc-if>
+        <button type="button" class="app-toast-close" aria-label="Cerrar aviso" onClick="{{onToastClose}}">×</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Modal de la app (TaskModal, Nueva columna, Nota, Comentarios, confirmación) -->
+  <sc-if value="{{modalOn}}" hint-placeholder-val="{{ false }}">
+    <div class="{{modalCls}}" role="dialog" aria-modal="true" aria-labelledby="tm-title-d">
+      <button type="button" class="modal-hit" tabindex="-1" aria-label="Cerrar" onClick="{{onModalClose}}"></button>
+      <div class="modal-card">
+        <div class="card-head">
+          <h3 id="tm-title-d">{{m.title}}</h3>
+          <button type="button" class="icon-btn" aria-label="Cerrar" onClick="{{onModalClose}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+        </div>
+
+        <sc-if value="{{m.isTask}}" hint-placeholder-val="{{ true }}">
+          <div class="stack">
+            <sc-if value="{{m.isNew}}" hint-placeholder-val="{{ true }}">
+              <div class="task-visibility-choice">
+                <button type="button" class="{{m.visPrivCls}}" aria-pressed="{{m.visPrivOn}}" onClick="{{m.onVisPriv}}"><strong>Mi tarea</strong><span>Solo visible para vos</span></button>
+                <button type="button" class="{{m.visTeamCls}}" aria-pressed="{{m.visTeamOn}}" onClick="{{m.onVisTeam}}"><strong>Tarea de equipo</strong><span>Visible en el espacio compartido</span></button>
+              </div>
+            </sc-if>
+            <label>Título<input class="input" required="required" value="{{m.titulo}}" onInput="{{m.onTitulo}}" onChange="{{m.onTitulo}}" onKeyDown="{{m.onEnter}}" style="{{m.tituloStyle}}"></label>
+            <label>Descripción<textarea class="input" rows="2" onInput="{{m.onDesc}}" onChange="{{m.onDesc}}">{{m.desc}}</textarea></label>
+            <div class="field">
+              <span class="field-label">Responsables</span>
+              <div class="assignee-chips">
+                <sc-for list="{{m.people}}" as="r" hint-placeholder-count="2">
+                  <button type="button" class="{{r.cls}}" aria-pressed="{{r.on}}" onClick="{{r.onClick}}"><sc-if value="{{r.isOn}}" hint-placeholder-val="{{ true }}"><span class="assignee-chip-check">✓</span></sc-if>{{r.label}}</button>
+                </sc-for>
+              </div>
+              <span class="muted" style="font-size: 12px;">Asignado a: <strong>{{m.resumen}}</strong></span>
+            </div>
+            <div class="grid-2">
+              <label>Prioridad<button type="button" class="field-select-trigger" aria-haspopup="listbox"><span>{{m.prio}}</span><i aria-hidden="true"></i></button></label>
+              <label>Turno<button type="button" class="field-select-trigger" aria-haspopup="listbox"><span>{{m.turno}}</span><i aria-hidden="true"></i></button></label>
+            </div>
+            <label>Tipo<input class="input" value="{{m.tipo}}" placeholder="Soporte, Aula, Agenda..."></label>
+            <label>Vencimiento (DD/MM)<input class="input" value="{{m.vence}}" placeholder="DD/MM" inputmode="numeric" maxlength="5"></label>
+            <label>Comentario<textarea class="input" rows="3" onInput="{{m.onNota}}" onChange="{{m.onNota}}">{{m.nota}}</textarea></label>
+            <div class="task-attachment-editor">
+              <span class="field-label">Adjuntos</span>
+              <label class="task-upload-button"><span class="t-text-swap">+ Adjuntar archivo</span><input type="file" aria-label="Adjuntar archivo" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain,.doc,.docx,.xls,.xlsx"></label>
+            </div>
+            <div class="actions">
+              <button type="button" class="fx-btn btn-primary" onClick="{{m.onSave}}"><span class="t-text-swap">Guardar</span></button>
+              <button type="button" class="fx-btn btn-secondary" onClick="{{onModalClose}}"><span class="t-text-swap">Cancelar</span></button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{m.isColumn}}" hint-placeholder-val="{{ false }}">
+          <div class="stack">
+            <label>Nombre<input class="input" autofocus="autofocus" value="{{m.text}}" onInput="{{m.onText}}" onChange="{{m.onText}}" onKeyDown="{{m.onEnter}}" placeholder="Ej. En revisión"></label>
+            <div class="actions">
+              <button type="button" class="fx-btn btn-primary" onClick="{{m.onSave}}"><span class="t-text-swap">Crear columna</span></button>
+              <button type="button" class="fx-btn btn-secondary" onClick="{{onModalClose}}"><span class="t-text-swap">Cancelar</span></button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{m.isNote}}" hint-placeholder-val="{{ false }}">
+          <div class="stack">
+            <label>Nota<textarea class="input" rows="5" onInput="{{m.onText}}" onChange="{{m.onText}}">{{m.text}}</textarea></label>
+            <div class="actions">
+              <button type="button" class="fx-btn btn-primary" onClick="{{m.onSave}}"><span class="t-text-swap">Guardar nota</span></button>
+              <button type="button" class="fx-btn btn-secondary" onClick="{{onModalClose}}"><span class="t-text-swap">Cancelar</span></button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{m.isComments}}" hint-placeholder-val="{{ false }}">
+          <div class="task-comments">
+            <div class="task-comment-list">
+              <sc-for list="{{m.comments}}" as="k" hint-placeholder-count="1">
+                <article><header><strong>{{k.author}}</strong><time>{{k.date}}</time></header><p>{{k.body}}</p></article>
+              </sc-for>
+              <sc-if value="{{m.noComments}}" hint-placeholder-val="{{ true }}"><div class="empty-state">Todavía no hay comentarios.</div></sc-if>
+            </div>
+            <sc-if value="{{m.canComment}}" hint-placeholder-val="{{ true }}">
+              <div class="stack">
+                <textarea class="input" rows="3" aria-label="Comentario" placeholder="Escribí un comentario" onInput="{{m.onText}}" onChange="{{m.onText}}">{{m.text}}</textarea>
+                <div><button type="button" class="fx-btn btn-primary" onClick="{{m.onSave}}"><span class="t-text-swap">Comentar</span></button></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{m.isConfirm}}" hint-placeholder-val="{{ false }}">
+          <div class="stack">
+            <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #A7AEB8; overflow-wrap: anywhere;">{{m.text}}</p>
+            <div class="actions">
+              <button type="button" class="fx-btn btn-secondary" onClick="{{onModalClose}}"><span class="t-text-swap">Cancelar</span></button>
+              <button type="button" class="fx-btn btn-danger" onClick="{{m.onSave}}"><span class="t-text-swap">Borrar</span></button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300},"consulta":{"editor":"boolean","default":false},"estado":{"editor":"enum","options":["normal","+ abierto"],"default":"normal"}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+seed() {
+  // Tareas reales de NFPT (tablas tasks, task_items y task_columns de la base local, solo lectura).
+  // Columnas: colores de la base (#3b82f6 / #f59e0b / #22c55e) llevados a Grafito.
+  const cols = [
+    { id: 4, name: 'Pendiente', color: '#5B9BFF', done: false },
+    { id: 5, name: 'En proceso', color: '#F5C04E', done: false },
+    { id: 6, name: 'Hecha', color: '#5BD68A', done: true }
+  ];
+  const it = (id, texto, on) => ({ id: id, texto: texto, on: on });
+  const tasks = [
+    { id: 'TK1778511349323', ts: 1778511349323, titulo: 'Probar audio 5to F', desc: 'No le andaban los tomacorrientes de los parlantes, me solucionaron el ticket pero las maestras me dijeron que no funciona. Probar pls', resp: ['Bauti'], prio: 'Media', turno: 'Sin turno', tipo: 'Aula', vence: '12/05', nota: '', vis: 'team', col: 4, items: [], comments: [] },
+    { id: 'TK1778080222094', ts: 1778080222094, titulo: 'Inventario', desc: 'Actualizar el inventario de todos los recursos - Lau', resp: ['Bauti'], prio: 'Media', turno: 'Sin turno', tipo: 'Soporte', vence: '29/05', nota: 'Puse ambos, Bau y Equi. -equi: estoy cargando las tablets, hay que sacarle todas las etiquetas de atras y numerarlas (11/15?) -Bau: Si queres seguir el inventario hacelo en un spread. Podes completar este si queres, ya tiene algunos datos no se que tan confiables pq pueden cambiar. [link a la planilla]', vis: 'team', col: 5, items: [it(1, 'Tablets', true), it(3, 'Dash Robot', true), it(4, 'Beebot', false), it(5, 'Bluebot', true), it(6, 'Mouses disponibles maker/ofi', false), it(7, 'Filamento 3D', false), it(8, 'Arduino', true)], comments: [] },
+    { id: 'TK1778265805663', ts: 1778265805663, titulo: 'Encontrar los microfonos corbateros', desc: '', resp: ['Bauti', 'Equi'], prio: 'Urgente', turno: 'Sin turno', tipo: 'encontrar', vence: '12/05', nota: 'los tenia la tana¡¿¡¿\'??¿', vis: 'team', col: 6, items: [], comments: [] },
+    { id: 'TK1778046144779', ts: 1778046144779, titulo: 'mastro - zapatilla 6to S', desc: 'SACAR EL COSO METIDO EN LA ZAPATILLA(danger...)', resp: ['Bauti'], prio: 'Media', turno: 'Sin turno', tipo: 'Soporte', vence: '', nota: 'DANGER... URGENTE', vis: 'team', col: 6, items: [], comments: [] }
+  ];
+  return { cols: cols, tasks: tasks };
+}
+q(sel) {
+  try { return document.querySelector(sel); } catch (e) { return null; }
+}
+reduced() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const P = this.props || {};
+  const consulta = !!P.consulta;
+  const canEdit = !consulta;
+  const set = p => self.setState(p);
+  const cur = () => self.state || {};
+  const val = e => (e && e.target ? e.target.value : '');
+  const D = this.seed();
+  const OP = 'Bauti';
+  const RESIZE_KEY = '[data-resize="tareas-d"]';
+
+  const cols = s.cols || D.cols;
+  const tasks = s.tasks || D.tasks;
+  const space = s.space || 'team';
+  const tab = s.tab || 'board';
+  const run = s.run || 0;
+  const pops = s.pops || {};
+  const sel = s.sel || {};
+  const gooOpen = s.gooOpen !== undefined ? s.gooOpen : (P.estado === '+ abierto' && canEdit);
+
+  const colById = {};
+  cols.forEach(c => { colById[c.id] = c; });
+  const colOf = t => colById[t.col] || cols[0];
+  const estadoOf = t => (colOf(t) ? colOf(t).name : 'Pendiente');
+  const isDone = t => !!(colOf(t) && colOf(t).done);
+  const inSpace = (t, sp) => sp === 'team' ? t.vis !== 'private' : (t.vis === 'private' || t.resp.indexOf(OP) >= 0);
+  const visibleOf = (list, sp) => list.filter(t => inSpace(t, sp));
+  const sortTasks = list => list.slice().sort((a, b) => ((isDone(a) ? 1 : 0) - (isDone(b) ? 1 : 0)) || (b.ts - a.ts));
+
+  // AnimatedNumber: los dígitos entran de nuevo cuando el valor cambia o cuando se remonta la vista.
+  const dg = k => 't-digit-group ' + ((((pops[k] || 0) + run) % 2) ? 'dg-b' : 'dg-a');
+
+  // Guarda la lista y repite el pop de cada número que cambió (contadores de columna, prioridad, subtareas, comentarios).
+  const counts = (list, sp) => {
+    const m = {};
+    visibleOf(list, sp).forEach(t => {
+      m['col' + t.col] = (m['col' + t.col] || 0) + 1;
+      if (!isDone(t)) m['p' + t.prio] = (m['p' + t.prio] || 0) + 1;
+      m['d' + t.id] = t.items.filter(i => i.on).length;
+      m['t' + t.id] = t.items.length;
+      m['c' + t.id] = t.comments.length;
+    });
+    return m;
+  };
+  const commit = (newTasks, extra) => {
+    const st = cur();
+    const sp = st.space || 'team';
+    const a = counts(st.tasks || D.tasks, sp);
+    const b = counts(newTasks, sp);
+    const np = Object.assign({}, st.pops || {});
+    Object.keys(Object.assign({}, a, b)).forEach(k => { if ((a[k] || 0) !== (b[k] || 0)) np[k] = (np[k] || 0) + 1; });
+    set(Object.assign({ tasks: newTasks, pops: np }, extra || {}));
+  };
+  const curTasks = () => cur().tasks || D.tasks;
+  const curCols = () => cur().cols || D.cols;
+  const mapTask = (id, fn) => curTasks().map(x => x.id === id ? fn(Object.assign({}, x)) : x);
+
+  // ---- Aviso (toast) ----
+  const dismissToast = id => {
+    const t = cur().toast;
+    if (!t || (id && t.id !== id)) return;
+    set({ toast: Object.assign({}, t, { open: false }) });
+    setTimeout(() => { const t2 = cur().toast; if (t2 && t2.id === t.id) set({ toast: null }); }, 260);
+  };
+  const showToast = (msg, tone, undo) => {
+    const id = Date.now();
+    self._undo = undo || null;
+    set({ toast: { id: id, msg: msg, tone: tone || 'info', hasAction: !!undo, open: false } });
+    setTimeout(() => { const t = cur().toast; if (t && t.id === id) set({ toast: Object.assign({}, t, { open: true }) }); }, 30);
+    clearTimeout(self._tt);
+    self._tt = setTimeout(() => dismissToast(id), undo ? 7000 : 3500);
+  };
+
+  // ---- Menú "⋯" (useMountTransition 120 ms) ----
+  const closeMenu = () => {
+    const m = cur().menu;
+    if (!m || m.ph === 'closing') return;
+    set({ menu: { id: m.id, ph: 'closing' } });
+    setTimeout(() => { const m2 = cur().menu; if (m2 && m2.id === m.id && m2.ph === 'closing') set({ menu: null }); }, 120);
+  };
+  const toggleMenu = id => {
+    const m = cur().menu;
+    if (m && m.id === id && m.ph !== 'closing') { closeMenu(); return; }
+    set({ menu: { id: id, ph: 'entering' } });
+    setTimeout(() => { const m2 = cur().menu; if (m2 && m2.id === id && m2.ph === 'entering') set({ menu: { id: id, ph: 'open' } }); }, 30);
+  };
+
+  // ---- Modal (useCloseChoreography 150 ms) ----
+  const openModal = m => {
+    set({ modal: Object.assign({ ph: 'entering' }, m), menu: null });
+    setTimeout(() => { const c = cur().modal; if (c && c.ph === 'entering') set({ modal: Object.assign({}, c, { ph: 'open' }) }); }, 30);
+  };
+  const closeModal = () => {
+    const c = cur().modal;
+    if (!c || c.ph === 'closing') return;
+    set({ modal: Object.assign({}, c, { ph: 'closing' }) });
+    setTimeout(() => { const c2 = cur().modal; if (c2 && c2.ph === 'closing') set({ modal: null }); }, 150);
+  };
+  const patchModal = p => { const c = cur().modal; if (c) set({ modal: Object.assign({}, c, p) }); };
+  const patchDraft = p => { const c = cur().modal; if (c) set({ modal: Object.assign({}, c, { draft: Object.assign({}, c.draft, p) }) }); };
+
+  // ---- "+" gooey (GooeyMenu.tsx: abre, y al cerrar el amague de 700 ms) ----
+  const isGooOpen = () => { const st = cur(); return st.gooOpen !== undefined ? st.gooOpen : gooOpen; };
+  const setGoo = next => {
+    if (isGooOpen() === next) return;
+    clearTimeout(self._gt);
+    if (next) { set({ gooOpen: true, gooAnt: false, menu: null }); return; }
+    set({ gooOpen: false, gooAnt: true });
+    self._gt = setTimeout(() => set({ gooAnt: false }), 750);
+  };
+
+  // ---- Cambio de espacio/solapa: remonta (repite las entradas) + card-resize ----
+  const switchView = patch => {
+    const st = cur();
+    const nextSpace = patch.space || st.space || 'team';
+    const nextTab = patch.tab || st.tab || 'board';
+    if (nextSpace === (st.space || 'team') && nextTab === (st.tab || 'board')) return;
+    const el = self.q(RESIZE_KEY);
+    const from = el && !self.reduced() ? el.offsetHeight : null;
+    set(Object.assign({}, patch, { run: (st.run || 0) + 1, adding: null, menu: null, rh: from }));
+    if (from == null) return;
+    clearTimeout(self._r1); clearTimeout(self._r2);
+    self._r1 = setTimeout(() => {
+      const el2 = self.q(RESIZE_KEY);
+      const inner = el2 ? el2.firstElementChild : null;
+      const to = inner ? inner.offsetHeight : null;
+      if (to == null || to === from) { set({ rh: null }); return; }
+      set({ rh: to });
+      self._r2 = setTimeout(() => set({ rh: null }), 330);
+    }, 34);
+  };
+
+  const newDraft = vis => ({ titulo: '', desc: '', vis: vis, resp: [OP], prio: 'Media', turno: 'Sin turno', tipo: '', vence: '', nota: '' });
+
+  // ---- Tarjeta ----
+  const card = (t, idx) => {
+    const estado = estadoOf(t);
+    const done = isDone(t);
+    const slug = estado.toLowerCase().replace(/\s+/g, '-');
+    const total = t.items.length;
+    const dn = t.items.filter(i => i.on).length;
+    const selected = !!sel[t.id];
+    const menu = s.menu && s.menu.id === t.id ? s.menu : null;
+    const adding = canEdit && s.adding === t.id;
+    const addSubmit = () => {
+      const text = String(cur().addText || '').trim();
+      if (!text) return;
+      commit(mapTask(t.id, x => { x.items = x.items.concat([{ id: Date.now(), texto: text, on: false }]); return x; }), { addText: '' });
+    };
+    return {
+      id: t.id,
+      cls: 'task-card t-item task-state-' + slug + (selected ? ' is-selected' : '') + (menu ? ' menu-open' : ''),
+      delay: 'animation-delay: ' + (idx < 10 ? idx * 45 : 0) + 'ms;',
+      draggable: canEdit ? 'true' : 'false',
+      selectable: canEdit,
+      notSelectable: !canEdit,
+      selStr: selected ? 'true' : 'false',
+      selLabel: 'Seleccionar tarea ' + t.titulo,
+      onSel: () => { const n = Object.assign({}, cur().sel || {}); if (n[t.id]) delete n[t.id]; else n[t.id] = true; set({ sel: n }); },
+      title: t.titulo,
+      meta: (t.resp.join(', ') || 'Sin asignar') + ' - ' + t.prio + (t.turno ? ' · ' + t.turno : '') + (t.vence ? ' · Vence ' + t.vence : ''),
+      pillCls: 'task-state-pill task-state-pill-' + slug,
+      pill: done ? '✓ ' + estado : estado,
+      isPrivate: t.vis === 'private',
+      hasDesc: !!t.desc, desc: t.desc,
+      hasNote: !!t.nota, note: t.nota,
+      hasItems: total > 0,
+      doneN: String(dn), totalN: String(total),
+      dgDone: dg('d' + t.id), dgTotal: dg('t' + t.id),
+      fillStyle: '--task-progress: ' + (total ? (dn / total).toFixed(4) : '0') + ';',
+      items: t.items.map(i => ({
+        text: i.texto,
+        on: i.on ? 'true' : 'false',
+        locked: consulta,
+        label: 'Subtarea hecha: ' + i.texto,
+        removeLabel: 'Quitar subtarea ' + i.texto,
+        onToggle: () => { if (consulta) return; commit(mapTask(t.id, x => { x.items = x.items.map(y => y.id === i.id ? Object.assign({}, y, { on: !y.on }) : y); return x; })); },
+        onRemove: () => {
+          if (consulta) return;
+          commit(mapTask(t.id, x => { x.items = x.items.filter(y => y.id !== i.id); return x; }));
+          // Se puede deshacer: la vuelve a crear con el mismo texto, al final y sin completar.
+          showToast('Subtarea quitada: ' + i.texto, 'info', () => commit(mapTask(t.id, x => { x.items = x.items.concat([{ id: Date.now(), texto: i.texto, on: false }]); return x; })));
+        }
+      })),
+      canAdd: canEdit && !done,
+      adding: adding,
+      notAdding: !adding,
+      addText: s.addText || '',
+      onAddOpen: () => set({ adding: t.id, addText: '' }),
+      onAddInput: e => set({ addText: val(e) }),
+      onAddKey: e => {
+        if (!e) return;
+        if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); addSubmit(); }
+        if (e.key === 'Escape' && !String(cur().addText || '').trim()) set({ adding: null });
+      },
+      onAddSubmit: addSubmit,
+      menuExp: menu ? 'true' : 'false',
+      onMenu: () => toggleMenu(t.id),
+      menuOn: !!menu,
+      menuCls: 'task-menu t-dropdown' + (menu ? (menu.ph === 'open' ? ' is-open' : menu.ph === 'closing' ? ' is-closing' : '') : ''),
+      locked: consulta,
+      hasComments: t.comments.length > 0,
+      commentsN: String(t.comments.length),
+      dgCom: dg('c' + t.id),
+      onEdit: () => { if (consulta) return; openModal({ kind: 'task', taskId: t.id, draft: { titulo: t.titulo, desc: t.desc, vis: t.vis, resp: t.resp.slice(), prio: t.prio, turno: t.turno, tipo: t.tipo, vence: t.vence, nota: t.nota } }); },
+      onNote: () => { if (consulta) return; openModal({ kind: 'note', taskId: t.id, text: t.nota }); },
+      onComments: () => openModal({ kind: 'comments', taskId: t.id, text: '' }),
+      onDelete: () => { if (consulta) return; openModal({ kind: 'confirm', ids: [t.id], title: 'Borrar tarea', text: t.titulo }); }
+    };
+  };
+
+  const visible = sortTasks(visibleOf(tasks, space));
+
+  // ---- Tablero ----
+  const colsView = cols.map((c, ci) => {
+    const group = visible.filter(t => t.col === c.id);
+    const ren = s.renaming && s.renaming.id === c.id;
+    const saveRename = () => {
+      const r = cur().renaming;
+      const name = r ? String(r.text || '').trim() : '';
+      if (!name) return;
+      set({ cols: curCols().map(x => x.id === c.id ? Object.assign({}, x, { name: name }) : x), renaming: null });
+    };
+    return {
+      name: c.name,
+      delay: 'animation-delay: ' + (ci < 6 ? ci * 60 : 0) + 'ms;',
+      headStyle: '--column-color: ' + c.color + ';',
+      draggable: canEdit && !ren ? 'true' : 'false',
+      renaming: !!ren,
+      notRenaming: !ren,
+      renameText: ren ? s.renaming.text : '',
+      onRenameInput: e => set({ renaming: { id: c.id, text: val(e) } }),
+      onRenameKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); saveRename(); } },
+      onRenameSave: saveRename,
+      count: String(group.length),
+      dg: dg('col' + c.id),
+      renameLabel: 'Renombrar ' + c.name,
+      deleteLabel: 'Eliminar ' + c.name,
+      lockEdit: consulta,
+      lockDelete: consulta || cols.length === 1,
+      onRename: () => { if (!consulta) set({ renaming: { id: c.id, text: c.name } }); },
+      onDelete: () => {
+        const list = curCols();
+        if (consulta || list.length === 1) return;
+        // Sin confirmación (como hoy): las tareas pasan a la primera otra columna.
+        const target = list.find(x => x.id !== c.id);
+        set({ cols: list.filter(x => x.id !== c.id) });
+        commit(curTasks().map(x => x.col === c.id ? Object.assign({}, x, { col: target.id }) : x));
+      },
+      tasks: group.map((t, i) => card(t, i)),
+      empty: group.length === 0
+    };
+  });
+
+  // ---- Prioridad: Urgente / Media / Baja, solo no hechas ----
+  const prio = ['Urgente', 'Media', 'Baja'].map(name => {
+    const list = visible.filter(t => !isDone(t) && (t.prio || 'Media') === name);
+    return {
+      name: name,
+      cls: 'task-schedule-col task-priority-' + name.toLowerCase(),
+      count: String(list.length),
+      dg: dg('p' + name),
+      tasks: list.map((t, i) => card(t, i)),
+      empty: list.length === 0
+    };
+  });
+
+  // ---- Analítica de asistentes (solo en Equipo) ----
+  const people = ['Bauti', 'Equi'].map((name, index) => {
+    const assigned = visible.filter(t => t.resp.indexOf(name) >= 0 || t.resp.indexOf('Ambos') >= 0);
+    const dn = assigned.filter(t => estadoOf(t) === 'Hecha').length;
+    const pend = assigned.filter(t => estadoOf(t) === 'Pendiente').length;
+    const prog = assigned.filter(t => estadoOf(t) === 'En proceso').length;
+    const pct = assigned.length ? Math.round(dn / assigned.length * 100) : null;
+    return {
+      name: name,
+      cls: 'assistant-progress-card assistant-progress-' + index,
+      pct: pct === null ? '—' : pct + '%',
+      bar: 'width: ' + (pct || 0) + '%;',
+      assigned: String(assigned.length), pending: String(pend), progress: String(prog), done: String(dn),
+      none: assigned.length === 0
+    };
+  });
+
+  // ---- Selección múltiple ----
+  const selectedTasks = tasks.filter(t => sel[t.id]);
+  const selCount = selectedTasks.length;
+  const selCols = cols.map(c => ({
+    name: c.name,
+    cls: 'fx-btn ' + (c.done ? 'btn-success' : 'btn-secondary'),
+    onClick: () => {
+      const st = cur();
+      const ids = (st.tasks || D.tasks).filter(t => (st.sel || {})[t.id]).map(t => t.id);
+      commit(curTasks().map(x => ids.indexOf(x.id) >= 0 ? Object.assign({}, x, { col: c.id }) : x), { sel: {} });
+      showToast(ids.length + ' tareas en "' + c.name + '".', 'ok');
+    }
+  }));
+
+  // ---- Modal ----
+  const M = s.modal;
+  const mTask = M && M.taskId ? tasks.find(t => t.id === M.taskId) : null;
+  let m = { title: '' };
+  if (M) {
+    const dr = M.draft || {};
+    const respNames = [OP, 'Equi'].concat((dr.resp || []).filter(n => n !== OP && n !== 'Equi'));
+    const chosen = dr.resp || [];
+    const resumen = chosen.length === 0 ? 'Sin asignar' : chosen.length === 1 ? chosen[0] : chosen.length === 2 ? chosen[0] + ' e ' + chosen[1] : chosen.slice(0, -1).join(', ') + ' y ' + chosen[chosen.length - 1];
+    const saveTask = () => {
+      const c = cur().modal; if (!c) return;
+      const d = c.draft;
+      if (!String(d.titulo || '').trim()) { patchModal({ invalid: true }); return; }
+      const resp = d.resp.length ? d.resp.slice() : ['Sin asignar'];
+      if (c.taskId) {
+        commit(mapTask(c.taskId, x => Object.assign(x, { titulo: d.titulo.trim(), desc: d.desc, resp: resp, nota: d.nota })));
+      } else {
+        const now = Date.now();
+        const first = curCols()[0];
+        commit([{ id: 'TK' + now, ts: now, titulo: d.titulo.trim(), desc: d.desc, resp: resp, prio: d.prio, turno: d.turno, tipo: d.tipo || 'Soporte', vence: '', nota: d.nota, vis: d.vis, col: first.id, items: [], comments: [] }].concat(curTasks()));
+      }
+      closeModal();
+    };
+    const saveColumn = () => {
+      const c = cur().modal; if (!c) return;
+      const name = String(c.text || '').trim();
+      if (!name) return;
+      const list = curCols();
+      if (list.some(x => x.name.toLowerCase() === name.toLowerCase())) return;
+      set({ cols: list.concat([{ id: Date.now(), name: name, color: '#7C8592', done: false }]) });
+      closeModal();
+    };
+    const saveNote = () => {
+      const c = cur().modal; if (!c) return;
+      commit(mapTask(c.taskId, x => Object.assign(x, { nota: c.text || '' })));
+      closeModal();
+    };
+    const saveComment = () => {
+      const c = cur().modal; if (!c) return;
+      const body = String(c.text || '').trim();
+      if (!body) return;
+      const d = new Date();
+      const pad = n => (n < 10 ? '0' : '') + n;
+      const date = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+      commit(mapTask(c.taskId, x => { x.comments = x.comments.concat([{ author: OP, date: date, body: body }]); return x; }));
+      patchModal({ text: '' });
+    };
+    const confirmDelete = () => {
+      const c = cur().modal; if (!c) return;
+      const ids = c.ids || [];
+      const ns = Object.assign({}, cur().sel || {});
+      ids.forEach(id => { delete ns[id]; });
+      commit(curTasks().filter(x => ids.indexOf(x.id) < 0), { sel: ns });
+      closeModal();
+    };
+    m = {
+      title: M.kind === 'task' ? (M.taskId ? 'Editar tarea' : '+ Nueva tarea') : M.kind === 'column' ? 'Nueva columna' : M.kind === 'note' ? 'Nota - ' + (mTask ? mTask.titulo : '') : M.kind === 'comments' ? 'Comentarios · ' + (mTask ? mTask.titulo : '') : (M.title || ''),
+      isTask: M.kind === 'task', isColumn: M.kind === 'column', isNote: M.kind === 'note', isComments: M.kind === 'comments', isConfirm: M.kind === 'confirm',
+      isNew: M.kind === 'task' && !M.taskId,
+      visPrivCls: dr.vis === 'private' ? 'active' : '', visPrivOn: dr.vis === 'private' ? 'true' : 'false',
+      visTeamCls: dr.vis !== 'private' ? 'active' : '', visTeamOn: dr.vis !== 'private' ? 'true' : 'false',
+      onVisPriv: () => patchDraft({ vis: 'private' }),
+      onVisTeam: () => patchDraft({ vis: 'team' }),
+      titulo: dr.titulo || '',
+      tituloStyle: M.invalid && !String(dr.titulo || '').trim() ? 'border-color: #FF6B6B;' : '',
+      onTitulo: e => patchDraft({ titulo: val(e) }),
+      onDesc: e => patchDraft({ desc: val(e) }),
+      onNota: e => patchDraft({ nota: val(e) }),
+      desc: dr.desc || '', nota: dr.nota || '', tipo: dr.tipo || '', vence: dr.vence || '',
+      prio: dr.prio || 'Media', turno: dr.turno || 'Sin turno',
+      people: respNames.map(n => {
+        const on = chosen.indexOf(n) >= 0;
+        return {
+          label: n + (n === OP ? ' (vos)' : ''),
+          isOn: on, on: on ? 'true' : 'false',
+          cls: 'assignee-chip' + (on ? ' is-on' : ''),
+          onClick: () => { const c = cur().modal; if (!c) return; const r = c.draft.resp || []; patchDraft({ resp: r.indexOf(n) >= 0 ? r.filter(x => x !== n) : r.concat([n]) }); }
+        };
+      }),
+      resumen: resumen,
+      text: M.text || '',
+      onText: e => patchModal({ text: val(e) }),
+      comments: mTask ? mTask.comments : [],
+      noComments: !mTask || mTask.comments.length === 0,
+      canComment: canEdit,
+      onEnter: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); (M.kind === 'column' ? saveColumn : saveTask)(); } },
+      onSave: M.kind === 'task' ? saveTask : M.kind === 'column' ? saveColumn : M.kind === 'note' ? saveNote : M.kind === 'comments' ? saveComment : confirmDelete
+    };
+  }
+
+  // ---- Shell ----
+  const I = this.icons();
+  const base = 'display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px 0 12px; border-radius: 6px; position: relative; text-decoration: none; font-size: 14px; line-height: 20px;';
+  const openCount = tasks.filter(t => !isDone(t) && t.vis !== 'private').length;
+  const nv = (k, label, count) => {
+    const on = k === 'tasks';
+    return {
+      label: label, d: I[k], count: count || '',
+      current: on ? 'page' : 'false',
+      style: base + (on ? ' background: #1B1F24; color: #ECEEF1; font-weight: 500;' : ' color: #A7AEB8;'),
+      bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;'
+    };
+  };
+  const groups = [
+    { label: 'Operación', items: [nv('home', 'Inicio'), nv('loans', 'Préstamos', '[N]'), nv('devices', 'Dispositivos'), nv('agenda', 'Agenda TIC'), nv('rooms', 'Estado aulas')] },
+    { label: 'Gestión', items: [nv('tasks', 'Tareas TIC', String(openCount)), nv('tickets', 'Tickets'), nv('reminders', 'Recordatorios'), nv('history', 'Historial')] },
+    { label: 'Inventario y datos', items: [nv('inventory', 'Inventario TIC'), nv('analytics', 'Analítica'), nv('cash', 'Caja chica')] },
+    { label: 'Recursos', items: [nv('knowledge', 'Base de conocimiento'), nv('tools', 'Herramientas'), nv('links', 'Accesos rápidos')] }
+  ];
+
+  // Píldoras deslizantes (tabs-sliding): posición y ancho del tab activo, medidos sobre anchos fijos.
+  const pill = (x, w, top, h) => 'transform: translateX(' + x + 'px); width: ' + w + 'px; top: ' + top + 'px; height: ' + h + 'px; opacity: 1;';
+  const toast = s.toast;
+
+  return {
+    groups: groups,
+    context: (space === 'team' ? 'Equipo' : 'Mis tareas') + ' · ' + (tab === 'board' ? 'Tablero' : 'Prioridad'),
+    canEdit: canEdit,
+    toolbarCls: 'tasks-compact-toolbar' + (gooOpen ? ' goo-room' : ''),
+    tabPill: tab === 'board' ? pill(5, 92, 5, 38) : pill(102, 108, 5, 38),
+    tabBoardCls: tab === 'board' ? 'active' : '', tabBoardOn: tab === 'board' ? 'true' : 'false',
+    tabPrioCls: tab === 'priority' ? 'active' : '', tabPrioOn: tab === 'priority' ? 'true' : 'false',
+    onTabBoard: () => switchView({ tab: 'board' }),
+    onTabPrio: () => switchView({ tab: 'priority' }),
+    spacePill: space === 'team' ? pill(3, 82, 3, 34) : pill(88, 104, 3, 34),
+    spTeamCls: space === 'team' ? 'active' : '', spTeamOn: space === 'team' ? 'true' : 'false',
+    spMyCls: space === 'my' ? 'active' : '', spMyOn: space === 'my' ? 'true' : 'false',
+    onSpTeam: () => switchView({ space: 'team' }),
+    onSpMy: () => switchView({ space: 'my' }),
+
+    gooCls: 't-goo-anchor' + (s.gooAnt ? ' is-anticipating' : ''),
+    gooOpenStr: gooOpen ? 'true' : 'false',
+    gooTab: gooOpen ? '0' : '-1',
+    gooLabel: gooOpen ? 'Cerrar acciones' : 'Nueva tarea',
+    onGoo: () => setGoo(!isGooOpen()),
+    onGooTeam: () => { setGoo(false); switchView({ space: 'team' }); openModal({ kind: 'task', draft: newDraft('team') }); },
+    onGooMine: () => { setGoo(false); switchView({ space: 'my' }); openModal({ kind: 'task', draft: newDraft('private') }); },
+    onGooColumn: () => { setGoo(false); openModal({ kind: 'column', text: '' }); },
+
+    resizeStyle: s.rh != null ? 'height: ' + s.rh + 'px; overflow: hidden;' : '',
+    isBoard: tab === 'board',
+    isPriority: tab === 'priority',
+    boardCls: 'infinite-board ' + (run % 2 ? 'run-b' : 'run-a'),
+    prioCls: 'task-schedule-grid ' + (run % 2 ? 'run-b' : 'run-a'),
+    cols: colsView,
+    prio: prio,
+    showAnalytics: space === 'team',
+    people: people,
+
+    hasSel: canEdit && selCount > 0,
+    selCount: String(selCount),
+    selWord: selCount === 1 ? 'seleccionado' : 'seleccionados',
+    selCols: selCols,
+    onBulkDelete: () => {
+      const st = cur();
+      const list = (st.tasks || D.tasks).filter(t => (st.sel || {})[t.id]);
+      openModal({ kind: 'confirm', ids: list.map(t => t.id), title: 'Borrar ' + list.length + ' tareas', text: list.map(t => t.titulo).join(' · ') });
+    },
+    onClearSel: () => set({ sel: {} }),
+
+    toastOn: !!toast,
+    toastCls: 'app-toast t-toast tone-' + (toast ? toast.tone : 'info') + (toast && toast.open ? ' is-open' : ''),
+    toastMsg: toast ? toast.msg : '',
+    toastHasAction: !!(toast && toast.hasAction),
+    onToastAction: () => { const u = self._undo; dismissToast(); if (u) u(); },
+    onToastClose: () => dismissToast(),
+
+    modalOn: !!M,
+    modalCls: 'modal t-modal' + (M ? (M.ph === 'open' ? ' is-open' : M.ph === 'closing' ? ' is-closing' : '') : ''),
+    onModalClose: closeModal,
+    m: m
+  };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Horarios — mobile</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+input::placeholder,textarea::placeholder{color:#7C8592}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.ey{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;min-width:0;box-sizing:border-box}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 14px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.bp{background:#5B9BFF;color:#0D0F12;border:0;font-weight:600}
+.bs{background:#1B1F24;color:#ECEEF1;border:1px solid #353B44}
+.bg{background:transparent;color:#A7AEB8;border:0}
+.bd{background:transparent;color:#FF6B6B;border:1px solid #262B32}
+.bx[disabled]{opacity:.45}
+.ib{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:6px;color:#A7AEB8;cursor:pointer}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:2px;background:#14171B;border:1px solid #262B32;border-radius:6px;box-sizing:border-box;width:100%}
+.sg{display:flex;align-items:center;justify-content:center;height:44px;padding:0 6px;border-radius:4px;font-size:14px;cursor:pointer;white-space:nowrap;box-sizing:border-box;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 12px;border-radius:6px;font-size:14px;cursor:pointer;white-space:nowrap;box-sizing:border-box}
+.fl{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:#A7AEB8;min-width:0}
+.inp{height:44px;padding:0 12px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:16px;box-sizing:border-box;width:100%;min-width:0}
+.ta{display:block;width:100%;min-width:0;box-sizing:border-box;padding:10px 12px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:16px;line-height:22px;resize:none;scrollbar-width:none}
+.ta::-webkit-scrollbar{display:none}
+.ch{min-height:48px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:8px 16px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.grp{display:flex;align-items:center;gap:8px;height:32px;padding:0 16px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:8px;align-items:center;padding:0 12px 0 0;border-bottom:1px solid #262B32}
+.row-m{display:flex;flex-direction:column;gap:4px;min-width:0;width:100%;padding:12px 0 12px 16px;background:transparent;border:0;color:#ECEEF1;text-align:left;cursor:pointer;box-sizing:border-box}
+.row-a{display:flex;flex-direction:column;gap:6px}
+.det{padding:16px;background:#1B1F24;border-bottom:1px solid #262B32;display:flex;flex-direction:column;gap:16px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pk{display:flex;flex-direction:column;gap:10px;padding:12px;background:#0D0F12;border:1px solid #262B32;border-radius:6px}
+.g6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.g7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.calm{height:44px;border-radius:6px;font-size:14px;cursor:pointer;box-sizing:border-box}
+.w100{width:100%;font-size:16px !important}
+.hm{width:auto;height:44px;padding:0 !important}
+.lh18{line-height:18px}
+.mcm{height:48px;padding:4px;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;box-sizing:border-box;min-width:0}
+.c16{font-size:16px !important;line-height:22px}
+.ow{overflow-wrap:anywhere;white-space:normal !important}
+.f13{font-size:13px}
+.ch{min-height:48px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:8px 16px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.srch{display:flex;align-items:center;gap:8px;height:44px;padding:0 0 0 12px;background:#14171B;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;color:#7C8592}
+.srch:focus-within{outline:2px solid #5B9BFF;outline-offset:0}
+.srch input{flex:1;min-width:0;height:42px;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:16px}
+.dl{display:flex;align-items:center;height:28px;padding:0 16px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;border-top:1px solid #262B32}
+.sr{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;min-height:56px;padding:4px 4px 4px 16px;border-top:1px solid #262B32;box-sizing:border-box}
+.frm{display:flex;flex-direction:column;gap:14px;padding:16px}
+.rg{display:flex;flex-direction:column;gap:8px;padding:12px 16px 16px;border-top:1px solid #262B32}
+.rs{display:grid;grid-template-columns:minmax(0,1fr) 72px 8px 72px 44px;gap:6px;align-items:center}
+.tb2{height:44px;padding:0;border-radius:6px;font-size:15px;cursor:pointer;box-sizing:border-box;width:100%}
+.hm{width:auto;height:44px;padding:0 !important}
+.w100{width:100%;font-size:16px !important}
+.chg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1790px; display: flex; flex-direction: column; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- TOPBAR mobile: título + Asistente (ícono) + campana -->
+  <header style="height: 56px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 16px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+    <h1 class="ell" style="flex: 1; margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Horarios</h1>
+    <button type="button" class="ib" aria-label="Abrir el Asistente">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2M20 14h2M15 13v2M9 13v2"></path></svg>
+    </button>
+    <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+      <span class="mono" style="position: absolute; top: 6px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+    </button>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 16px; min-width: 0;">
+
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="ey">Vie 16 oct · {{clock}}</div>
+      <h2 class="ell" style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600;">Docentes y recreos</h2>
+      <p class="ell" style="margin: 0; font-size: 13px; line-height: 20px; color: #A7AEB8;">Hora del colegio · se actualiza cada minuto</p>
+    </div>
+
+    <!-- Recreo activo -->
+    <section class="card" aria-label="Recreo ahora" style="padding: 12px 16px; display: flex; flex-direction: column; gap: 4px;">
+      <span class="ey">{{recEyebrow}}</span>
+      <sc-for list="{{recNow}}" as="a" hint-placeholder-count="1">
+        <span class="ell" style="font-size: 16px; font-weight: 600;">{{a.name}} <span class="mono" style="font-weight: 400; color: #A7AEB8;">{{a.time}}</span></span>
+        <span style="{{a.leftStyle}}">{{a.left}}</span>
+      </sc-for>
+      <sc-if value="{{recNone}}" hint-placeholder-val="{{ false }}"><span style="font-size: 14px; color: #A7AEB8;">No hay franjas de recreo hoy.</span></sc-if>
+    </section>
+
+    <div class="seg" role="tablist" aria-label="Sección">
+      <sc-for list="{{tabs}}" as="v" hint-placeholder-count="2">
+        <button type="button" role="tab" class="sg" style="{{v.style}}" aria-selected="{{v.pr}}" onClick="{{v.on}}">{{v.label}}</button>
+      </sc-for>
+    </div>
+
+    <!-- ===== DOCENTES ===== -->
+    <sc-if value="{{tabDoc}}" hint-placeholder-val="{{ true }}">
+      <div class="seg" role="tablist" aria-label="Nivel">
+        <sc-for list="{{levels}}" as="v" hint-placeholder-count="3">
+          <button type="button" role="tab" class="sg" style="{{v.style}}" aria-selected="{{v.pr}}" onClick="{{v.on}}">{{v.short}} <span class="mono" style="margin-left: 4px; font-size: 12px; color: #7C8592;">{{v.count}}</span></button>
+        </sc-for>
+      </div>
+
+      <button type="button" class="btn bp" onClick="{{onAdd}}" aria-expanded="{{addExp}}" style="width: 100%;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M5 12h14M12 5v14"></path></svg>
+        Agregar horario
+      </button>
+
+      <sc-if value="{{msgShow}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="display: flex; align-items: center; gap: 8px; padding: 8px 4px 8px 12px; border: 1px solid #262B32; border-radius: 6px;">
+          <span style="flex: 1; min-width: 0; font-size: 14px; line-height: 20px;">{{msg}}</span>
+          <sc-if value="{{msgUndo}}" hint-placeholder-val="{{ false }}"><button type="button" class="btn bg" onClick="{{onUndo}}" style="color: #5B9BFF; padding: 0 10px;">Deshacer</button></sc-if>
+          <button type="button" class="ib" aria-label="Ocultar aviso" onClick="{{onMsgX}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{addOpen}}" hint-placeholder-val="{{ false }}">
+        <section class="card" aria-label="Nuevo horario">
+          <div class="ch"><h3 style="margin: 0; flex: 1; font-size: 15px; font-weight: 600;">Nuevo horario</h3><button type="button" class="btn bg" onClick="{{onAdd}}" style="margin-right: -8px;">Cancelar</button></div>
+          <div class="frm">
+            <div class="fl"><span>Nivel</span><div class="seg" role="group" aria-label="Nivel"><sc-for list="{{tf.levels}}" as="o" hint-placeholder-count="3"><button type="button" class="sg" style="{{o.style}}" aria-pressed="{{o.pr}}" onClick="{{o.on}}">{{o.short}}</button></sc-for></div></div>
+            <label class="fl"><span>Docente <span style="color: #7C8592;">(obligatorio)</span></span><input class="inp" type="text" value="{{tf.docente}}" onInput="{{tf.onDoc}}" onChange="{{tf.onDoc}}" autocomplete="off"></label>
+            <label class="fl"><span>Curso <span style="color: #7C8592;">(obligatorio)</span></span><input class="inp" type="text" value="{{tf.curso}}" onInput="{{tf.onCurso}}" onChange="{{tf.onCurso}}" placeholder="Ej. 4N" autocomplete="off"></label>
+            <div class="chg">
+              <label class="fl"><span>Materia</span><input class="inp" type="text" value="{{tf.materia}}" onInput="{{tf.onMat}}" onChange="{{tf.onMat}}" autocomplete="off"></label>
+              <label class="fl"><span>Aula</span><input class="inp" type="text" value="{{tf.aula}}" onInput="{{tf.onAula}}" onChange="{{tf.onAula}}" autocomplete="off"></label>
+            </div>
+            <div class="fl"><span>Día</span><div class="seg" role="group" aria-label="Día"><sc-for list="{{tf.days}}" as="o" hint-placeholder-count="7"><button type="button" class="sg" style="{{o.style}}" aria-pressed="{{o.pr}}" onClick="{{o.on}}">{{o.label}}</button></sc-for></div></div>
+            <div class="fl"><span>Módulo</span><div class="chg"><sc-for list="{{tf.mods}}" as="m" hint-placeholder-count="7"><button type="button" class="chip mono" style="{{m.style}}" aria-pressed="{{m.pr}}" onClick="{{m.on}}">{{m.label}}</button></sc-for></div></div>
+            <div class="chg">
+              <div class="fl"><span>Desde</span><button type="button" class="btn bs mono w100" style="{{tf.iniBtn}}" aria-expanded="{{tf.iniExp}}" onClick="{{tf.onPickIni}}">{{tf.inicio}}</button></div>
+              <div class="fl"><span>Hasta</span><button type="button" class="btn bs mono w100" style="{{tf.finBtn}}" aria-expanded="{{tf.finExp}}" onClick="{{tf.onPickFin}}">{{tf.fin}}</button></div>
+            </div>
+            <sc-if value="{{tf.pick}}" hint-placeholder-val="{{ false }}">
+              <div class="pk" role="group" aria-label="{{tf.pickLabel}}">
+                <div style="display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-size: 14px; font-weight: 500;">{{tf.pickLabel}} <span class="mono" style="color: #A7AEB8;">{{tf.pickValue}}</span></span><button type="button" class="btn bs" onClick="{{tf.onPickDone}}">Listo</button></div>
+                <span style="font-size: 12px; color: #7C8592;">Hora</span>
+                <div class="g6"><sc-for list="{{tf.hours}}" as="h" hint-placeholder-count="11"><button type="button" class="chip mono hm" style="{{h.style}}" aria-pressed="{{h.pr}}" onClick="{{h.on}}">{{h.v}}</button></sc-for></div>
+                <span style="font-size: 12px; color: #7C8592;">Minutos</span>
+                <div class="g6"><sc-for list="{{tf.mins}}" as="h" hint-placeholder-count="12"><button type="button" class="chip mono hm" style="{{h.style}}" aria-pressed="{{h.pr}}" onClick="{{h.on}}">{{h.v}}</button></sc-for></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{tf.errShow}}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin: 0; font-size: 14px; color: #FF6B6B;">{{tf.err}}</p></sc-if>
+            <p style="margin: 0; font-size: 13px; color: #7C8592;">Al guardar se avisa a los administradores de la sede.</p>
+            <button type="button" class="btn bp" onClick="{{tf.onSave}}" style="width: 100%;">Guardar horario</button>
+          </div>
+        </section>
+      </sc-if>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span class="ey">Ahora · {{clock}}</span>
+        <sc-for list="{{nowCards}}" as="n" hint-placeholder-count="3">
+          <div class="card" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;">
+            <span class="ell" style="font-size: 15px; font-weight: 600;">{{n.docente}}</span>
+            <span class="ell" style="font-size: 14px; color: #A7AEB8;">{{n.curso}}</span>
+            <span class="mono ell" style="font-size: 13px; color: #A7AEB8;">{{n.cuando}}</span>
+          </div>
+        </sc-for>
+        <sc-if value="{{nowEmpty}}" hint-placeholder-val="{{ true }}">
+          <p style="margin: 0; padding: 12px 14px; border: 1px solid #262B32; border-radius: 10px; font-size: 14px; line-height: 20px; color: #A7AEB8;">{{nowEmptyText}}</p>
+        </sc-if>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <label class="srch">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <input type="text" role="searchbox" aria-label="Buscar por docente, curso, materia, aula o día" placeholder="Docente, curso, materia, aula o día" value="{{q}}" onInput="{{onQ}}" onChange="{{onQ}}" autocomplete="off">
+          <sc-if value="{{hasQ}}" hint-placeholder-val="{{ false }}"><button type="button" class="ib" aria-label="Limpiar búsqueda" onClick="{{onQClear}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+        </label>
+        <div class="seg" role="group" aria-label="Agrupar">
+          <button type="button" class="sg" style="{{byTStyle}}" aria-pressed="{{byTPr}}" onClick="{{onByT}}">Por docente</button>
+          <button type="button" class="sg" style="{{byCStyle}}" aria-pressed="{{byCPr}}" onClick="{{onByC}}">Por curso</button>
+        </div>
+        <span style="font-size: 13px; color: #7C8592;">{{resultText}}</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+          <article class="card" aria-label="{{g.aria}}">
+            <header style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; box-sizing: border-box;">
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;"><span class="ey">{{g.kind}}</span><span class="ell" style="font-size: 16px; font-weight: 600;">{{g.name}}</span></span>
+              <span class="nw" style="font-size: 13px; color: #7C8592;"><span class="mono">{{g.n}}</span> {{g.nLabel}}</span>
+            </header>
+            <sc-for list="{{g.days}}" as="d" hint-placeholder-count="2">
+              <div class="dl">{{d.label}}</div>
+              <sc-for list="{{d.rows}}" as="r" hint-placeholder-count="2">
+                <sc-if value="{{r.view}}" hint-placeholder-val="{{ true }}">
+                  <div class="sr">
+                    <time class="mono" style="display: flex; flex-direction: column; line-height: 18px;"><span style="font-size: 14px;">{{r.ini}}</span><span style="font-size: 12px; color: #7C8592;">{{r.fin}}</span></time>
+                    <span style="min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                      <span class="ell" style="font-size: 15px; font-weight: 500;">{{r.title}} <span style="{{r.nowStyle}}">{{r.nowTag}}</span></span>
+                      <span class="ell" style="{{r.subStyle}}">{{r.sub}}</span>
+                    </span>
+                    <span style="display: flex;">
+                      <button type="button" class="ib" aria-label="{{r.editAria}}" onClick="{{r.onEdit}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5zM15 5l4 4"></path></svg></button>
+                      <button type="button" class="ib" aria-label="{{r.delAria}}" onClick="{{r.onDelAsk}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{r.askDel}}" hint-placeholder-val="{{ false }}">
+                  <div role="alert" style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-top: 1px solid #262B32; background: #1B1F24;">
+                    <span style="font-size: 14px; line-height: 20px; color: #FF6B6B;">¿Borrar {{r.short}}?</span>
+                    <div class="chg"><button type="button" class="btn bs" onClick="{{r.onDelYes}}" style="color: #FF6B6B;">Borrar</button><button type="button" class="btn bg" onClick="{{r.onNo}}">No</button></div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{r.editing}}" hint-placeholder-val="{{ false }}">
+                  <div style="border-top: 1px solid #262B32; background: #1B1F24;">
+                    <div class="frm" aria-label="Editar horario">
+                      <div class="fl"><span>Nivel</span><div class="seg" role="group" aria-label="Nivel"><sc-for list="{{r.tf.levels}}" as="o" hint-placeholder-count="3"><button type="button" class="sg" style="{{o.style}}" aria-pressed="{{o.pr}}" onClick="{{o.on}}">{{o.short}}</button></sc-for></div></div>
+                      <label class="fl"><span>Docente</span><input class="inp" type="text" value="{{r.tf.docente}}" onInput="{{r.tf.onDoc}}" onChange="{{r.tf.onDoc}}" autocomplete="off"></label>
+                      <div class="chg">
+                        <label class="fl"><span>Curso</span><input class="inp" type="text" value="{{r.tf.curso}}" onInput="{{r.tf.onCurso}}" onChange="{{r.tf.onCurso}}" autocomplete="off"></label>
+                        <label class="fl"><span>Aula</span><input class="inp" type="text" value="{{r.tf.aula}}" onInput="{{r.tf.onAula}}" onChange="{{r.tf.onAula}}" autocomplete="off"></label>
+                      </div>
+                      <label class="fl"><span>Materia</span><input class="inp" type="text" value="{{r.tf.materia}}" onInput="{{r.tf.onMat}}" onChange="{{r.tf.onMat}}" autocomplete="off"></label>
+                      <div class="fl"><span>Día</span><div class="seg" role="group" aria-label="Día"><sc-for list="{{r.tf.days}}" as="o" hint-placeholder-count="7"><button type="button" class="sg" style="{{o.style}}" aria-pressed="{{o.pr}}" onClick="{{o.on}}">{{o.label}}</button></sc-for></div></div>
+                      <div class="chg">
+                        <div class="fl"><span>Desde</span><button type="button" class="btn bs mono w100" style="{{r.tf.iniBtn}}" aria-expanded="{{r.tf.iniExp}}" onClick="{{r.tf.onPickIni}}">{{r.tf.inicio}}</button></div>
+                        <div class="fl"><span>Hasta</span><button type="button" class="btn bs mono w100" style="{{r.tf.finBtn}}" aria-expanded="{{r.tf.finExp}}" onClick="{{r.tf.onPickFin}}">{{r.tf.fin}}</button></div>
+                      </div>
+                      <sc-if value="{{r.tf.pick}}" hint-placeholder-val="{{ false }}">
+                        <div class="pk" role="group" aria-label="{{r.tf.pickLabel}}">
+                          <div style="display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-size: 14px; font-weight: 500;">{{r.tf.pickLabel}} <span class="mono" style="color: #A7AEB8;">{{r.tf.pickValue}}</span></span><button type="button" class="btn bs" onClick="{{r.tf.onPickDone}}">Listo</button></div>
+                          <div class="g6"><sc-for list="{{r.tf.hours}}" as="h" hint-placeholder-count="11"><button type="button" class="chip mono hm" style="{{h.style}}" aria-pressed="{{h.pr}}" onClick="{{h.on}}">{{h.v}}</button></sc-for></div>
+                          <div class="g6"><sc-for list="{{r.tf.mins}}" as="h" hint-placeholder-count="12"><button type="button" class="chip mono hm" style="{{h.style}}" aria-pressed="{{h.pr}}" onClick="{{h.on}}">{{h.v}}</button></sc-for></div>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{r.tf.errShow}}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin: 0; font-size: 14px; color: #FF6B6B;">{{r.tf.err}}</p></sc-if>
+                      <div class="chg">
+                        <button type="button" class="btn bp" onClick="{{r.tf.onSave}}">Guardar</button>
+                        <button type="button" class="btn bg" onClick="{{r.onEditCancel}}" style="border: 1px solid #262B32;">Cancelar</button>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+              </sc-for>
+            </sc-for>
+          </article>
+        </sc-for>
+        <sc-if value="{{groupsEmpty}}" hint-placeholder-val="{{ false }}">
+          <div class="card" style="padding: 24px 16px; display: flex; flex-direction: column; gap: 12px; text-align: center;">
+            <p style="margin: 0; font-size: 14px; color: #A7AEB8;">{{emptyText}}</p>
+            <sc-if value="{{emptyCta}}" hint-placeholder-val="{{ true }}"><button type="button" class="btn bs" onClick="{{onAdd}}" style="width: 100%;">Agregar el primero</button></sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ===== RECREOS ===== -->
+    <sc-if value="{{tabRec}}" hint-placeholder-val="{{ false }}">
+      <section class="card" aria-label="Franjas de recreo">
+        <div class="ch">
+          <h3 style="margin: 0; flex: 1; font-size: 15px; font-weight: 600;">Franjas de recreo</h3>
+          <button type="button" class="btn bs" onClick="{{onAddGroup}}" style="height: 36px;">Agregar grupo</button>
+        </div>
+        <p style="margin: 0; padding: 10px 16px; font-size: 13px; line-height: 19px; color: #7C8592;">Solo los administradores de la sede los editan. Se guardan todos juntos.</p>
+        <sc-for list="{{rgroups}}" as="g" hint-placeholder-count="2">
+          <div class="rg">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input class="inp" type="text" aria-label="Nombre del grupo" value="{{g.name}}" onInput="{{g.onName}}" onChange="{{g.onName}}" placeholder="Nombre del grupo" style="{{g.nameStyle}}">
+              <button type="button" class="btn bg" onClick="{{g.onDelAsk}}" style="padding: 0 10px; flex: none;">Eliminar</button>
+            </div>
+            <sc-if value="{{g.askDel}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid #353B44; border-radius: 6px;">
+                <span style="font-size: 14px; color: #FF6B6B;">¿Eliminar {{g.label}} y sus franjas?</span>
+                <div class="chg"><button type="button" class="btn bs" onClick="{{g.onDelYes}}" style="color: #FF6B6B;">Eliminar</button><button type="button" class="btn bg" onClick="{{g.onNo}}">No</button></div>
+              </div>
+            </sc-if>
+            <sc-for list="{{g.slots}}" as="sl" hint-placeholder-count="2">
+              <div class="rs">
+                <input class="inp" type="text" aria-label="{{sl.labelAria}}" value="{{sl.label}}" onInput="{{sl.onLabel}}" onChange="{{sl.onLabel}}">
+                <button type="button" class="tb2 mono" style="{{sl.iniStyle}}" aria-label="{{sl.iniAria}}" aria-expanded="{{sl.iniExp}}" onClick="{{sl.onPickIni}}">{{sl.ini}}</button>
+                <span aria-hidden="true" style="text-align: center; color: #7C8592;">–</span>
+                <button type="button" class="tb2 mono" style="{{sl.finStyle}}" aria-label="{{sl.finAria}}" aria-expanded="{{sl.finExp}}" onClick="{{sl.onPickFin}}">{{sl.fin}}</button>
+                <button type="button" class="ib" aria-label="{{sl.rmAria}}" onClick="{{sl.onRemove}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+              </div>
+              <sc-if value="{{sl.active}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #4FD1C5;">En curso ahora</span></sc-if>
+              <sc-if value="{{sl.bad}}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size: 13px; color: #FF6B6B;">El fin tiene que ser después del inicio. Así no se guarda.</span></sc-if>
+              <sc-if value="{{sl.pick}}" hint-placeholder-val="{{ false }}">
+                <div class="pk" role="group" aria-label="{{sl.pickLabel}}">
+                  <div style="display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-size: 14px; font-weight: 500;">{{sl.pickLabel}}</span><button type="button" class="btn bs" onClick="{{sl.onDone}}">Listo</button></div>
+                  <div class="g6"><sc-for list="{{sl.hours}}" as="h" hint-placeholder-count="11"><button type="button" class="chip mono hm" style="{{h.style}}" aria-pressed="{{h.pr}}" onClick="{{h.on}}">{{h.v}}</button></sc-for></div>
+                  <div class="g6"><sc-for list="{{sl.mins}}" as="h" hint-placeholder-count="12"><button type="button" class="chip mono hm" style="{{h.style}}" aria-pressed="{{h.pr}}" onClick="{{h.on}}">{{h.v}}</button></sc-for></div>
+                </div>
+              </sc-if>
+            </sc-for>
+            <button type="button" class="btn bg" onClick="{{g.onAddSlot}}" style="align-self: flex-start; border: 1px solid #262B32;">Agregar franja</button>
+          </div>
+        </sc-for>
+        <sc-if value="{{rEmpty}}" hint-placeholder-val="{{ false }}">
+          <p style="margin: 0; padding: 24px 16px; border-top: 1px solid #262B32; font-size: 14px; color: #A7AEB8; text-align: center;">Todavía no hay grupos de recreo configurados.</p>
+        </sc-if>
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid #262B32;">
+          <span role="status" style="{{rStateStyle}}">{{rState}}</span>
+          <div class="chg">
+            <button type="button" class="btn bg" onClick="{{onRDiscard}}" style="border: 1px solid #262B32;">Descartar</button>
+            <button type="button" class="btn bp" onClick="{{onRSave}}">Guardar cambios</button>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+
+  <!-- BARRA INFERIOR -->
+  <nav aria-label="Navegación principal" style="position: sticky; bottom: 0; flex: none; height: 64px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid #262B32; background: #0D0F12;">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+      <span class="nw">Inicio</span>
+    </a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg>
+      <span class="nw">Préstamos</span>
+    </a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ECEEF1; text-decoration: none; font-size: 11px;">
+      <span style="width: 48px; height: 30px; display: flex; align-items: center; justify-content: center; background: #5B9BFF; color: #0D0F12; border-radius: 6px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"></path></svg></span>
+      <span class="nw">Escanear</span>
+    </a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      <span class="nw">Agenda</span>
+    </a>
+    <a href="#" aria-current="page" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ECEEF1; text-decoration: none; font-size: 11px; font-weight: 500;"><span style="position: absolute; top: -1px; left: 50%; width: 24px; margin-left: -12px; height: 2px; border-radius: 2px; background: #5B9BFF;"></span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+      <span class="nw">Más</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1790}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    schedules: C(12, 12, 10) + 'M12 6v6l4 2',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+seed() {
+  // teacher_schedule_entries y recess_* están vacías en la base: filas de muestra con placeholders [ ].
+  // Cursos y módulos horarios tomados de la agenda real de NFPT. id, nivel, docente, curso, materia, aula, día (1-7), inicio, fin.
+  return [
+    [1, 'primary_first', '[Docente 1]', '1N', '[Materia]', '[Aula]', 1, '08:15', '09:05'],
+    [2, 'primary_first', '[Docente 1]', '1F', '[Materia]', '[Aula]', 1, '09:05', '09:55'],
+    [3, 'primary_first', '[Docente 1]', '1S', '[Materia]', '[Aula]', 3, '10:10', '11:00'],
+    [4, 'primary_first', '[Docente 1]', '1N', '[Materia]', '[Aula]', 5, '09:05', '09:55'],
+    [5, 'primary_first', '[Docente 2]', '2N', '[Materia]', '[Aula]', 2, '08:15', '09:05'],
+    [6, 'primary_first', '[Docente 2]', '2F', '[Materia]', '[Aula]', 4, '11:00', '11:45'],
+    [7, 'primary_first', '[Docente 2]', '2S', '[Materia]', '', 5, '09:05', '09:55'],
+    [8, 'primary_first', '[Docente 3]', '1F', '', '', 5, '08:15', '09:05'],
+    [9, 'primary_first', '[Docente 3]', '1S', '[Materia]', '[Aula]', 5, '09:05', '09:55'],
+    [10, 'primary_first', '[Docente 3]', '1N', '[Materia]', '[Aula]', 1, '13:30', '14:15'],
+    [11, 'primary_second', '[Docente 4]', '4N', '[Materia]', '[Aula]', 5, '09:05', '09:55'],
+    [12, 'primary_second', '[Docente 4]', '4S', '[Materia]', '[Aula]', 2, '10:10', '11:00'],
+    [13, 'primary_second', '[Docente 5]', '3N', '[Materia]', '[Aula]', 4, '14:35', '15:25']
+  ];
+}
+recessSeed() {
+  // Franjas = huecos entre los módulos de la agenda real (09:55–10:10, 11:45–13:30, 14:15–14:35). Nombres de grupo: placeholders.
+  return [
+    { id: 'g1', name: '[Grupo A]', slots: [{ label: 'Recreo', s: '09:55', e: '10:10' }, { label: 'Recreo', s: '14:15', e: '14:35' }] },
+    { id: 'g2', name: '[Grupo B]', slots: [{ label: 'Almuerzo', s: '11:45', e: '13:30' }] }
+  ];
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const I = this.icons();
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const NOW = 10 * 60 + 2;
+  const TODAY_DOW = 5;
+  const toMin = t => { const p = String(t).split(':'); return (+p[0]) * 60 + (+p[1]); };
+  const pad = n => (n < 10 ? '0' : '') + n;
+  const clock = pad(Math.floor(NOW / 60)) + ':' + pad(NOW % 60);
+  const DAYN = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  const DAYS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const LEVELS = [['primary_first', 'Primaria · 1er ciclo', '1er ciclo'], ['primary_second', 'Primaria · 2do ciclo', '2do ciclo'], ['secondary', 'Secundaria', 'Secundaria']];
+  const segOn = 'background: #1B1F24; color: #ECEEF1; border: 1px solid #353B44;';
+  const segOff = 'background: transparent; color: #A7AEB8; border: 1px solid transparent;';
+  const chipOn = 'background: #1B1F24; color: #ECEEF1; border: 1px solid #353B44;';
+  const chipOff = 'background: transparent; color: #A7AEB8; border: 1px solid #262B32;';
+  const norm = t => String(t || '').toLocaleLowerCase('es').normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const mods = [['08:15', '09:05'], ['09:05', '09:55'], ['10:10', '11:00'], ['11:00', '11:45'], ['13:30', '14:15'], ['14:35', '15:25'], ['15:25', '16:20']];
+  const hrs = []; for (let h = 7; h <= 17; h++) hrs.push(pad(h));
+  const mns = []; for (let m = 0; m < 60; m += 5) mns.push(pad(m));
+  const timeChips = (cur, onH, onM) => ({
+    hours: hrs.map(h => { const on = cur.split(':')[0] === h; return { v: h, pr: on ? 'true' : 'false', style: on ? chipOn : chipOff, on: () => onH(h) }; }),
+    mins: mns.map(m => { const on = cur.split(':')[1] === m; return { v: m, pr: on ? 'true' : 'false', style: on ? chipOn : chipOff, on: () => onM(m) }; })
+  });
+  const left = mins => mins >= 60 ? (Math.floor(mins / 60) + ' h ' + (mins % 60 ? (mins % 60) + ' min' : '')) : mins + ' min';
+
+  // ---- horarios docentes
+  const level = s.level || 'primary_first';
+  const by = s.by || 'teacher';
+  const q = s.q || '';
+  const edits = s.edits || {};
+  const dels = s.dels || {};
+  const added = s.added || [];
+  const rows = this.seed().map(a => ({ id: a[0], level: a[1], docente: a[2], curso: a[3], materia: a[4], aula: a[5], dia: a[6], inicio: a[7], fin: a[8] }))
+    .concat(added).map(r => Object.assign({}, r, edits[r.id] || {})).filter(r => !dels[r.id]);
+  const lvRows = rows.filter(r => r.level === level);
+  const nq = norm(q).trim();
+  const match = r => !nq || [r.docente, r.curso, r.materia, r.aula, DAYN[r.dia]].some(x => norm(x).includes(nq));
+  const shown = lvRows.filter(match);
+  const editId = s.editId || 0;
+  const delId = s.delId || 0;
+
+  // formulario (alta o edición)
+  const T0 = { level: level, docente: '', curso: '', materia: '', aula: '', dia: 1, inicio: '08:00', fin: '08:45' };
+  const tf0 = Object.assign({}, T0, s.tf || {});
+  const tpick = s.tpick || '';
+  const setT = p => set({ tf: Object.assign({}, T0, (self.state || {}).tf || {}, p), tErr: '' });
+  const tCur = tpick === 'inicio' ? tf0.inicio : tf0.fin;
+  const setTime = (part, v) => { const c = tCur.split(':'); const p = {}; p[tpick] = part === 'h' ? v + ':' + c[1] : c[0] + ':' + v; setT(p); };
+  const tc = timeChips(tCur, h => setTime('h', h), m => setTime('m', m));
+  const okT = toMin(tf0.inicio) < toMin(tf0.fin);
+  const tErr = s.tErr || '';
+  const tf = {
+    levels: LEVELS.map(l => ({ label: l[1], short: l[2], pr: tf0.level === l[0] ? 'true' : 'false', style: tf0.level === l[0] ? segOn : segOff, on: () => setT({ level: l[0] }) })),
+    days: [1, 2, 3, 4, 5, 6, 7].map(d => ({ label: DAYS[d], pr: tf0.dia === d ? 'true' : 'false', style: tf0.dia === d ? segOn : segOff, on: () => setT({ dia: d }) })),
+    docente: tf0.docente, curso: tf0.curso, materia: tf0.materia, aula: tf0.aula,
+    onDoc: e => setT({ docente: val(e) }), onCurso: e => setT({ curso: val(e) }), onMat: e => setT({ materia: val(e) }), onAula: e => setT({ aula: val(e) }),
+    mods: mods.map(m => { const on = tf0.inicio === m[0] && tf0.fin === m[1]; return { label: m[0] + '–' + m[1], pr: on ? 'true' : 'false', style: on ? chipOn : chipOff, on: () => { setT({ inicio: m[0], fin: m[1] }); set({ tpick: '' }); } }; }),
+    inicio: tf0.inicio, fin: tf0.fin,
+    iniExp: tpick === 'inicio' ? 'true' : 'false', finExp: tpick === 'fin' ? 'true' : 'false',
+    iniBtn: 'font-size: 15px; min-width: 88px;' + (tpick === 'inicio' ? ' border-color: #5B9BFF;' : ''),
+    finBtn: 'font-size: 15px; min-width: 88px;' + (tpick === 'fin' ? ' border-color: #5B9BFF;' : '') + (okT ? '' : ' color: #FF6B6B;'),
+    onPickIni: () => set({ tpick: tpick === 'inicio' ? '' : 'inicio' }),
+    onPickFin: () => set({ tpick: tpick === 'fin' ? '' : 'fin' }),
+    pick: !!tpick, pickLabel: tpick === 'inicio' ? 'Desde' : 'Hasta', pickValue: tCur,
+    onPickDone: () => set({ tpick: '' }),
+    hours: tc.hours, mins: tc.mins,
+    errShow: !!tErr || !okT, err: tErr || 'Hasta tiene que ser después de Desde.',
+    onSave: () => {
+      const cur = Object.assign({}, T0, (self.state || {}).tf || {});
+      if (!cur.docente.trim() || !cur.curso.trim()) { set({ tErr: 'Completá docente y curso para guardar.' }); return; }
+      if (toMin(cur.inicio) >= toMin(cur.fin)) { set({ tErr: 'Hasta tiene que ser después de Desde.' }); return; }
+      const st = self.state || {};
+      if (st.editId) {
+        const e2 = Object.assign({}, st.edits || {}); e2[st.editId] = cur;
+        set({ edits: e2, editId: 0, tf: null, tpick: '', level: cur.level, msg: { text: 'Horario guardado. Se avisó a los administradores de la sede.', undo: st.edits || {} } });
+      } else {
+        const id = 100 + (st.added || []).length;
+        set({ added: (st.added || []).concat([Object.assign({ id: id }, cur)]), addOpen: false, tf: null, tpick: '', level: cur.level, q: '', msg: { text: 'Horario guardado: ' + cur.docente + ' · ' + cur.curso + ' · ' + DAYN[cur.dia] + ' ' + cur.inicio + '–' + cur.fin + '. Se avisó a los administradores.', undo: null } });
+      }
+    }
+  };
+
+  // grupos
+  const keyOf = r => by === 'teacher' ? r.docente : r.curso;
+  const keys = Array.from(new Set(shown.map(keyOf))).sort((a, b) => a.localeCompare(b, 'es'));
+  const groups = keys.map(k => {
+    const gr = shown.filter(r => keyOf(r) === k);
+    const days = Array.from(new Set(gr.map(r => r.dia))).sort((a, b) => a - b).map(d => ({
+      label: DAYN[d],
+      rows: gr.filter(r => r.dia === d).sort((a, b) => a.inicio.localeCompare(b.inicio)).map(r => {
+        const isNow = r.dia === TODAY_DOW && NOW >= toMin(r.inicio) && NOW < toMin(r.fin);
+        const title = by === 'teacher' ? r.curso : r.docente;
+        const detail = [r.materia, r.aula].filter(Boolean).join(' · ');
+        const short = r.docente + ' · ' + r.curso + ' (' + DAYS[r.dia] + ' ' + r.inicio + ')';
+        const editing = editId === r.id;
+        return {
+          view: !editing && delId !== r.id, editing: editing, askDel: delId === r.id,
+          ini: r.inicio, fin: r.fin, title: title,
+          nowTag: isNow ? '· ahora' : '', nowStyle: 'font-weight: 400; font-size: 12px; color: #4FD1C5;',
+          sub: detail || 'Sin detalle', subStyle: 'font-size: 12px; color: ' + (detail ? '#A7AEB8' : '#7C8592') + ';',
+          rowStyle: '',
+          short: short,
+          editAria: 'Editar ' + short, delAria: 'Borrar ' + short,
+          tf: tf, onEditCancel: () => set({ editId: 0, tf: null, tpick: '', tErr: '' }),
+          onEdit: () => set({ editId: r.id, delId: 0, addOpen: false, tf: { level: r.level, docente: r.docente, curso: r.curso, materia: r.materia, aula: r.aula, dia: r.dia, inicio: r.inicio, fin: r.fin }, tpick: '', tErr: '' }),
+          onDelAsk: () => set({ delId: r.id, editId: 0 }),
+          onNo: () => set({ delId: 0 }),
+          onDelYes: () => { const st = self.state || {}; const d2 = Object.assign({}, st.dels || {}); d2[r.id] = true; set({ dels: d2, delId: 0, msg: { text: 'Horario borrado: ' + short + '.', undo: { dels: st.dels || {} } } }); }
+        };
+      })
+    }));
+    return { kind: by === 'teacher' ? 'Docente' : 'Curso', name: k, aria: (by === 'teacher' ? 'Docente ' : 'Curso ') + k, n: gr.length, nLabel: gr.length === 1 ? 'clase' : 'clases', days: days };
+  });
+  const lvName = (LEVELS.find(l => l[0] === level) || LEVELS[0])[1];
+
+  // ahora
+  const nowRows = lvRows.filter(r => r.dia === TODAY_DOW && NOW >= toMin(r.inicio) && NOW < toMin(r.fin));
+  const nextRow = lvRows.filter(r => r.dia === TODAY_DOW && toMin(r.inicio) > NOW).sort((a, b) => a.inicio.localeCompare(b.inicio))[0];
+
+  // ---- recreos (se editan en memoria hasta Guardar)
+  const saved = s.rSaved || this.recessSeed();
+  const rg = s.rg || saved;
+  const rDirty = JSON.stringify(rg) !== JSON.stringify(saved);
+  const rp = s.rp || null; // { g, i, w }
+  const setRg = next => set({ rg: next, rMsg: '' });
+  const cloneRg = () => JSON.parse(JSON.stringify((self.state || {}).rg || (self.state || {}).rSaved || self.recessSeed()));
+  const activeR = [];
+  rg.forEach(g => g.slots.forEach(sl => { if (toMin(sl.s) < toMin(sl.e) && NOW >= toMin(sl.s) && NOW < toMin(sl.e)) activeR.push({ g: g, sl: sl }); }));
+  const upcoming = [];
+  rg.forEach(g => g.slots.forEach(sl => { if (toMin(sl.s) < toMin(sl.e) && toMin(sl.s) > NOW) upcoming.push({ g: g, sl: sl }); }));
+  upcoming.sort((a, b) => toMin(a.sl.s) - toMin(b.sl.s));
+  const recNow = activeR.length
+    ? activeR.map(a => ({ name: (a.g.name || 'Sin nombre') + ' · ' + a.sl.label, time: a.sl.s + '–' + a.sl.e, left: 'Termina en ' + left(toMin(a.sl.e) - NOW), leftStyle: 'font-size: 13px; color: #4FD1C5;' }))
+    : upcoming.slice(0, 1).map(a => ({ name: (a.g.name || 'Sin nombre') + ' · ' + a.sl.label, time: a.sl.s + '–' + a.sl.e, left: 'Empieza en ' + left(toMin(a.sl.s) - NOW), leftStyle: 'font-size: 13px; color: #A7AEB8;' }));
+  const anyBad = rg.some(g => g.slots.some(sl => toMin(sl.s) >= toMin(sl.e)));
+  const anyNoName = rg.some(g => !String(g.name || '').trim());
+  const delG = s.delG || '';
+  const rgroups = rg.map((g, gi) => ({
+    inputId: 'rg-' + g.id, name: g.name, label: g.name || 'este grupo',
+    nameStyle: 'height: 36px; font-weight: 600;' + (String(g.name || '').trim() ? '' : ' border-color: #FF6B6B;'),
+    onName: e => { const n = cloneRg(); n[gi].name = val(e); setRg(n); },
+    askDel: delG === g.id,
+    onDelAsk: () => set({ delG: g.id }), onNo: () => set({ delG: '' }),
+    onDelYes: () => { const n = cloneRg(); n.splice(gi, 1); set({ rg: n, delG: '', rp: null, rMsg: '' }); },
+    onAddSlot: () => { const n = cloneRg(); n[gi].slots.push({ label: 'Recreo', s: '10:00', e: '10:15' }); setRg(n); },
+    slots: g.slots.map((sl, si) => {
+      const pickHere = !!(rp && rp.g === gi && rp.i === si);
+      const which = pickHere ? rp.w : '';
+      const cur = which === 'e' ? sl.e : sl.s;
+      const tcs = pickHere ? timeChips(cur, h => { const n = cloneRg(); const c = n[gi].slots[si][which].split(':'); n[gi].slots[si][which] = h + ':' + c[1]; setRg(n); }, m => { const n = cloneRg(); const c = n[gi].slots[si][which].split(':'); n[gi].slots[si][which] = c[0] + ':' + m; setRg(n); }) : { hours: [], mins: [] };
+      const bad = toMin(sl.s) >= toMin(sl.e);
+      const active = !bad && NOW >= toMin(sl.s) && NOW < toMin(sl.e);
+      const btn = on => (on ? 'background: #1B1F24; border: 1px solid #5B9BFF; color: #ECEEF1;' : 'background: #0D0F12; border: 1px solid #353B44; color: #ECEEF1;');
+      return {
+        label: sl.label, labelAria: 'Nombre de la franja ' + (si + 1) + ' de ' + (g.name || 'grupo'),
+        ini: sl.s, fin: sl.e,
+        iniStyle: btn(which === 's'), finStyle: btn(which === 'e') + (bad ? ' color: #FF6B6B;' : ''),
+        iniAria: 'Inicio ' + sl.s, finAria: 'Fin ' + sl.e,
+        iniExp: which === 's' ? 'true' : 'false', finExp: which === 'e' ? 'true' : 'false',
+        onPickIni: () => set({ rp: which === 's' ? null : { g: gi, i: si, w: 's' } }),
+        onPickFin: () => set({ rp: which === 'e' ? null : { g: gi, i: si, w: 'e' } }),
+        onLabel: e => { const n = cloneRg(); n[gi].slots[si].label = val(e); setRg(n); },
+        onRemove: () => { const n = cloneRg(); n[gi].slots.splice(si, 1); set({ rg: n, rp: null, rMsg: '' }); },
+        rmAria: 'Quitar la franja ' + sl.label + ' ' + sl.s + '–' + sl.e,
+        active: active, bad: bad,
+        pick: pickHere, pickLabel: (which === 'e' ? 'Fin ' : 'Inicio ') + cur,
+        hours: tcs.hours, mins: tcs.mins,
+        onDone: () => set({ rp: null })
+      };
+    })
+  }));
+  const rMsg = s.rMsg || '';
+  const rState = rMsg || (anyNoName ? 'Todos los grupos necesitan un nombre.' : (anyBad ? 'Hay franjas con el fin antes del inicio.' : (rDirty ? 'Cambios sin guardar' : 'Sin cambios')));
+  const rStateCol = rMsg ? (rMsg.indexOf('guardados') >= 0 ? '#5BD68A' : '#FF6B6B') : (anyNoName || anyBad ? '#FF6B6B' : (rDirty ? '#F5C04E' : '#7C8592'));
+
+  const mk = (k, label, count) => {
+    const on = k === 'schedules';
+    return { label: label, d: I[k], count: count || '', current: on ? 'page' : 'false', style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;', bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;' };
+  };
+  const msg = s.msg || null;
+  const tab = s.tab || 'docentes';
+  return {
+    ops: [mk('home', 'Inicio'), mk('loans', 'Préstamos', '[N]'), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC', '6'), mk('schedules', 'Horarios'), mk('rooms', 'Estado aulas')],
+    mgmt: [mk('tasks', 'Tareas TIC', '[N]'), mk('tickets', 'Tickets'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')],
+    data: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')],
+    res: [mk('knowledge', 'Base de conocimiento'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')],
+    updText: 'Actualizado recién',
+    clock: clock,
+    tabDoc: tab === 'docentes', tabRec: tab === 'recreos',
+    tabs: [['docentes', 'Docentes'], ['recreos', 'Recreos']].map(t => ({ label: t[1], pr: tab === t[0] ? 'true' : 'false', style: tab === t[0] ? segOn : segOff, on: () => set({ tab: t[0] }) })),
+    addOpen: !!s.addOpen, addExp: s.addOpen ? 'true' : 'false',
+    onAdd: () => set({ addOpen: !s.addOpen, editId: 0, delId: 0, tf: s.addOpen ? null : { level: level }, tpick: '', tErr: '', tab: 'docentes' }),
+    onEditCancel: () => set({ editId: 0, tf: null, tpick: '', tErr: '' }),
+    tf: tf,
+    levels: LEVELS.map(l => { const n = rows.filter(r => r.level === l[0]).length; return { label: l[1], short: l[2], count: n ? '[N]' : '0', pr: level === l[0] ? 'true' : 'false', style: level === l[0] ? segOn : segOff, on: () => set({ level: l[0], editId: 0, delId: 0 }) }; }),
+    msgShow: !!msg, msg: msg ? msg.text : '', msgUndo: !!(msg && msg.undo),
+    onUndo: () => { const m = (self.state || {}).msg; if (!m || !m.undo) return; if (m.undo.dels) set({ dels: m.undo.dels, msg: null }); else set({ edits: m.undo, msg: null }); },
+    onMsgX: () => set({ msg: null }),
+    nowSub: nowRows.length ? 'viernes · ' + lvName : '',
+    nowCards: nowRows.map(r => ({ docente: r.docente, curso: r.curso + ' · ' + (r.materia || 'sin materia'), cuando: r.inicio + '–' + r.fin + (r.aula ? ' · ' + r.aula : '') })),
+    nowEmpty: nowRows.length === 0,
+    nowEmptyText: activeR.length ? ('Nadie da clase en ' + lvName + ': ' + activeR.map(a => (a.g.name || 'un grupo') + ' está en ' + a.sl.label.toLowerCase() + ' hasta las ' + a.sl.e).join(', ') + '.' + (nextRow ? ' Próxima clase ' + nextRow.inicio + '.' : '')) : ('Nadie da clase ahora en ' + lvName + '.' + (nextRow ? ' Próxima: ' + nextRow.docente + ' a las ' + nextRow.inicio + '.' : '')),
+    q: q, hasQ: !!q, onQ: e => set({ q: val(e) }), onQClear: () => set({ q: '' }),
+    byTStyle: by === 'teacher' ? segOn : segOff, byTPr: by === 'teacher' ? 'true' : 'false', onByT: () => set({ by: 'teacher' }),
+    byCStyle: by === 'course' ? segOn : segOff, byCPr: by === 'course' ? 'true' : 'false', onByC: () => set({ by: 'course' }),
+    resultText: shown.length + (shown.length === 1 ? ' horario' : ' horarios') + (nq ? ' con “' + q + '”' : ''),
+    groups: groups, groupsEmpty: groups.length === 0,
+    emptyText: nq ? 'Ningún horario de ' + lvName.toLowerCase() + ' coincide con “' + q + '”.' : 'No hay horarios cargados para ' + lvName.toLowerCase() + '.',
+    emptyCta: !nq,
+    recEyebrow: activeR.length ? 'Recreo activo · ' + clock : 'Próximo recreo · ' + clock,
+    recNow: recNow, recNone: recNow.length === 0,
+    rgroups: rgroups, rEmpty: rg.length === 0,
+    onAddGroup: () => { const n = cloneRg(); n.push({ id: 'g' + Date.now(), name: 'Grupo ' + (n.length + 1), slots: [] }); setRg(n); },
+    onRPickDone: () => set({ rp: null }),
+    rDirty: rDirty,
+    rState: rState, rStateStyle: 'flex: 1 1 160px; min-width: 0; font-size: 13px; color: ' + rStateCol + ';',
+    onRDiscard: () => set({ rg: null, rp: null, rMsg: '', delG: '' }),
+    onRSave: () => {
+      if (anyNoName) { set({ rMsg: 'No se guardó: todos los grupos necesitan un nombre.' }); return; }
+      if (anyBad) { set({ rMsg: 'No se guardó: corregí las franjas marcadas en rojo.' }); return; }
+      set({ rSaved: rg, rg: null, rp: null, rMsg: 'Recreos guardados. Se avisó a los administradores.' });
+    }
+  };
+}
+}
+</script>
+</body>
+</html>

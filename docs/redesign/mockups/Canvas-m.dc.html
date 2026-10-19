@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Canvas — mobile</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+.nv:hover,.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+input::placeholder,textarea::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.eb{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.cnt{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592;font-variant-numeric:tabular-nums}
+.noscroll{scrollbar-width:none}.noscroll::-webkit-scrollbar{display:none}
+
+/* Menú lateral 232 / rail 56 bajo 1100 / barra inferior bajo 768 */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}.sb-head{justify-content:center}.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}.sb-grpt{display:none}.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}.sb-user{padding:0;justify-content:center}.sb-hide{display:none !important}
+}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.body{flex:1;display:flex;min-width:0;align-items:flex-start}
+.pad{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:20px 24px 32px;box-sizing:border-box}
+.asst{width:320px;flex:none;align-self:stretch;border-left:1px solid #262B32;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:16px;background:#0D0F12}
+.bnav{display:none}
+@media (max-width:767px){
+.sb{display:none}.tb{padding:0 8px 0 16px}.tb-collapse{display:none !important}.pad{padding:16px 16px 24px}
+.asst{display:none}
+.bnav{display:flex;position:sticky;bottom:0;z-index:5;height:64px;border-top:1px solid #262B32;background:#0D0F12}
+}
+@media (max-width:639px){.tb-ctx{display:none !important}.tb-asst-t{display:none !important}}
+
+/* Componentes */
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none;max-width:100%;text-decoration:none}
+.bp{background:#5B9BFF;color:#0D0F12;border:0;font-weight:600}.bp:hover{background:#8DBBFF;color:#0D0F12}
+.bs{background:#1B1F24;color:#ECEEF1;border:1px solid #353B44}.bs:hover{border-color:#7C8592;color:#ECEEF1}
+.bg{background:transparent;color:#A7AEB8;border:0}.bg:hover{background:#1B1F24;color:#ECEEF1}
+.bd{background:transparent;color:#FF6B6B;border:1px solid #353B44}.bd:hover{border-color:#FF6B6B}
+.bsm{height:30px;padding:0 10px;font-size:13px;gap:6px}
+.icb{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:6px;color:#A7AEB8;cursor:pointer;flex:none;text-decoration:none}
+.icb:hover{background:#1B1F24;color:#ECEEF1}
+.btn[disabled],.icb[disabled]{opacity:.45;cursor:not-allowed}
+.seg{display:flex;flex-wrap:wrap;gap:2px;padding:2px;background:#0D0F12;border:1px solid #262B32;border-radius:6px;min-width:0;box-sizing:border-box}
+.sg{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:4px;font-size:13px;cursor:pointer;white-space:nowrap;background:transparent;color:#A7AEB8;min-width:0}
+.sg:hover{color:#ECEEF1}
+.sg[aria-pressed="true"]{background:#1B1F24;color:#ECEEF1;font-weight:500}
+.fld{display:flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;color:#7C8592;min-width:0}
+.fld:focus-within,.inp:focus,.chipin:focus-within{outline:2px solid #5B9BFF;outline-offset:1px}
+.fld input{flex:1;min-width:0;height:32px;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:14px;text-overflow:ellipsis}
+.inp{width:100%;min-width:0;height:36px;padding:0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:14px;box-sizing:border-box;outline:none;text-overflow:ellipsis}
+textarea.inp{height:auto;padding:8px 10px;line-height:20px;resize:none;overflow:hidden}
+.lbl{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;font-weight:500;color:#A7AEB8}
+.hint{font-size:12px;line-height:16px;color:#7C8592;font-weight:400}
+.err{font-size:12px;line-height:16px;color:#FF6B6B;font-weight:500}
+.chip{display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border:1px solid #353B44;border-radius:6px;font-size:12px;color:#A7AEB8;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.chipx{display:inline-flex;align-items:center;gap:2px;height:26px;padding:0 2px 0 8px;border:1px solid #353B44;border-radius:6px;background:#1B1F24;font-size:13px;color:#ECEEF1;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.chipx button{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:4px;color:#A7AEB8;cursor:pointer;padding:0}
+.chipx button:hover{color:#ECEEF1;background:#262B32}
+.chipin{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:36px;padding:4px 6px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;min-width:0}
+.chipin input{flex:1 1 120px;min-width:80px;height:26px;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:14px;padding:0 4px}
+.opt{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#ECEEF1;font-size:13px;cursor:pointer;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.opt:hover{border-color:#353B44;background:#1B1F24}
+.opt[aria-pressed="true"]{border-color:#ECEEF1;background:#1B1F24}
+.cb{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:6px;cursor:pointer;flex:none;padding:0}
+.cbx{width:16px;height:16px;box-sizing:border-box;border:1px solid #353B44;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#0D0F12}
+.cbx svg{display:none}
+.cb[aria-checked="true"] .cbx,.cb[aria-checked="mixed"] .cbx{background:#ECEEF1;border-color:#ECEEF1}
+.cb[aria-checked="true"] .ck-c{display:block}.cb[aria-checked="mixed"] .ck-m{display:block}
+.cb:focus-visible{outline:none}.cb:focus-visible .cbx{outline:2px solid #5B9BFF;outline-offset:2px}
+.cb[disabled]{cursor:not-allowed;opacity:.45}
+.sl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;min-height:40px;padding:4px 4px 4px 12px;border:1px solid #353B44;border-radius:6px;background:#1B1F24;font-size:13px;color:#ECEEF1;box-sizing:border-box}
+.lk{display:inline-flex;align-items:center;height:30px;padding:0 8px;background:transparent;border:0;border-radius:4px;color:#5B9BFF;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.lk:hover{color:#8DBBFF;background:#262B32}
+.tt{position:relative;min-width:0}
+.tip{display:none;position:absolute;left:0;top:calc(100% + 4px);z-index:20;max-width:340px;width:max-content;padding:6px 8px;background:#1B1F24;border:1px solid #353B44;border-radius:6px;font-size:13px;line-height:18px;font-weight:400;color:#ECEEF1;white-space:normal;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.tt:hover .tip,.tt:focus-within .tip{display:block}
+.drop{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:16px;border:1px dashed #353B44;border-radius:10px;box-sizing:border-box;min-width:0}
+
+
+/* Canvas: la interfaz alrededor nunca se superpone; los nodos sí se apilan dentro del lienzo */
+.cvbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;min-width:0}
+.cv-add{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;flex:1 1 auto}
+.cv-zoom{display:flex;flex-wrap:wrap;align-items:center;gap:4px;flex:none;min-width:0}
+.cv-zv{min-width:64px;justify-content:center;font-family:'Geist Mono',ui-monospace,monospace}
+.board{position:relative;height:680px;overflow:hidden;border:1px solid #262B32;border-radius:10px;background:#0D0F12;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.board:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.board-pan{cursor:grabbing}
+.dots{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.origin{position:absolute;left:0;top:0;transform-origin:0 0}
+.node{position:absolute;display:flex;flex-direction:column;border:1px solid #353B44;border-radius:10px;box-sizing:border-box;background:#14171B;cursor:default;user-select:text;-webkit-user-select:text}
+.node:focus-within{border-color:#5B9BFF}
+.nh{display:flex;align-items:center;gap:2px;height:36px;padding:0 2px;border-bottom:1px solid #262B32;flex:none;border-radius:10px 10px 0 0}
+.grip{width:28px;height:28px;flex:none;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:#7C8592;cursor:grab;border-radius:4px;touch-action:none;padding:0}
+.grip:hover{background:#262B32;color:#ECEEF1}
+.nt{flex:1;min-width:0;height:28px;background:transparent;border:0;border-radius:4px;outline:none;color:#ECEEF1;font-size:13px;font-weight:600;padding:0 4px;text-overflow:ellipsis;font-family:inherit}
+.nt:focus{background:#0D0F12}
+.nb{flex:1;padding:10px;display:flex;flex-direction:column;gap:6px;min-height:0}
+.nta{width:100%;flex:1;background:transparent;border:0;outline:none;resize:none;color:#ECEEF1;font-size:14px;line-height:20px;padding:0;overflow:hidden;font-family:inherit}
+.nin{flex:1;min-width:0;height:28px;background:transparent;border:0;border-radius:4px;outline:none;color:#ECEEF1;font-size:13px;padding:0 4px;text-overflow:ellipsis;font-family:inherit}
+.nin:focus{background:#0D0F12}
+.nlab{display:flex;flex-direction:column;gap:2px;font-size:11px;font-weight:500;color:#7C8592}
+.nlab input{height:30px;padding:0 8px;background:#0D0F12;border:1px solid #262B32;border-radius:6px;color:#ECEEF1;font-size:13px;outline:none;font-family:inherit;min-width:0;text-overflow:ellipsis}
+.nlab input:focus{border-color:#5B9BFF}
+.cv-hint{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:#7C8592;min-width:0}
+@media (max-width:479px){.hide-xs{display:none}}
+
+
+/* ===== Mobile 390: tamaños táctiles y barra inferior siempre ===== */
+.tb{padding:0 4px 0 16px}
+.pad{padding:16px 16px 24px}
+.bnav{display:flex;position:sticky;bottom:0;z-index:5;height:64px;border-top:1px solid #262B32;background:#0D0F12}
+.btn{height:44px}.bsm{height:40px}
+.icb{width:44px;height:44px}
+.sg{height:36px;padding:0 12px}
+.inp,.fld{min-height:44px}.fld input{height:42px;font-size:16px}.inp{font-size:16px}
+.chipin{min-height:44px}.chipin input{height:32px;font-size:16px}
+.chipx{height:32px}.chipx button{width:28px;height:28px}
+.opt{height:40px}
+.cb{width:44px;height:44px}
+.lk{height:40px}
+.mb-full{flex:1 1 100% !important;max-width:none !important}
+.mb-btns{flex:1 1 100% !important}.mb-btns > button,.mb-btns > a{flex:1 1 0;min-width:0}
+.asst{width:100%;border-left:0;padding:16px;min-height:640px}
+.cv-add{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));flex:1 1 100%}.cv-add > button{width:100%;justify-content:flex-start}
+.cv-zoom{flex:1 1 100%}.board{height:560px}
+.f-toggle{display:flex}.fbody-closed{display:none}.mb-grow{flex:1 1 100%}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1000px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+
+  <main class="main" style="min-height: 1000px;">
+    <!-- TOPBAR -->
+    <header class="tb" style="gap: 4px; padding: 0 4px 0 16px;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+        <h1 class="ell" style="margin: 0; font-size: 16px; line-height: 22px; font-weight: 600;">Canvas</h1>
+        <span class="ell" style="font-size: 12px; color: #7C8592;">Pizarra compartida · NFPT</span>
+      </div>
+      <button type="button" class="ib icb" aria-label="Asistente" aria-pressed="{{asstPressed}}" onClick="{{toggleAsst}}" style="width: 44px; height: 44px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.bot}}"></path></svg>
+      </button>
+      <button type="button" class="ib icb" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 44px; height: 44px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span class="mono" style="position: absolute; top: 6px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+    </header>
+
+    <div class="body">
+    <sc-if value="{{asstClosed}}" hint-placeholder-val="{{ true }}">
+    <div class="pad" style="gap: 12px;">
+
+      <!-- BARRA DEL CANVAS: en el flujo, arriba del lienzo (nunca flotando encima) -->
+      <div class="cvbar">
+        <div class="cv-add" role="group" aria-label="Agregar al canvas">
+          <sc-for list="{{adds}}" as="a" hint-placeholder-count="6">
+            <button type="button" class="btn bs bsm" onClick="{{a.onClick}}" disabled="{{consulta}}" aria-expanded="{{a.expanded}}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{a.d}}"></path></svg>
+              {{a.label}}
+            </button>
+          </sc-for>
+        </div>
+        <div class="cv-zoom" role="group" aria-label="Vista del lienzo">
+          <span class="nw" role="status" style="{{save.style}}">{{save.text}}</span>
+          <sc-if value="{{save.error}}" hint-placeholder-val="{{ false }}"><button type="button" class="lk" onClick="{{save.onRetry}}">Reintentar</button></sc-if>
+          <span style="width: 8px;"></span>
+          <button type="button" class="icb" aria-label="Alejar" onClick="{{zoomOut}}" disabled="{{zoomMin}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+          </button>
+          <button type="button" class="btn bg bsm cv-zv" aria-label="{{zoomAria}}" onClick="{{zoomReset}}">{{zoomLabel}}</button>
+          <button type="button" class="icb" aria-label="Acercar" onClick="{{zoomIn}}" disabled="{{zoomMax}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+          </button>
+          <button type="button" class="btn bs bsm" onClick="{{fit}}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+            Encuadrar
+          </button>
+          <button type="button" class="btn bg bsm" onClick="{{center}}">Centrar</button>
+          <button type="button" class="btn bg bsm" onClick="{{reload}}" aria-label="Recargar el canvas con los cambios del equipo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"></path></svg>
+            <span class="hide-xs">Recargar</span>
+          </button>
+        </div>
+      </div>
+
+      <sc-if value="{{consulta}}" hint-placeholder-val="{{ false }}">
+        <div class="nw" style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #A7AEB8;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Modo consulta: podés moverte y hacer zoom, no editar.
+        </div>
+      </sc-if>
+
+      <!-- Subir archivos: se despliega en línea y empuja el lienzo -->
+      <sc-if value="{{fileOpen}}" hint-placeholder-val="{{ false }}">
+        <div class="drop" aria-label="Subir archivos al canvas">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path></svg>
+          <span style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 14px;">Arrastrá archivos acá o directo sobre el lienzo, o pegá una imagen con Ctrl V</span>
+            <span class="hint">Imágenes, PDF, DOCX, XLSX o TXT · hasta 7,5 MB · se ubican en el centro de lo que estás viendo</span>
+          </span>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button type="button" class="btn bs" onClick="{{pickImage}}" disabled="{{uploading}}">{{pickLabel}}</button>
+            <button type="button" class="btn bg" onClick="{{closeFile}}">Cancelar</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{status.show}}" hint-placeholder-val="{{ false }}">
+        <div class="sl" role="status">
+          <span style="flex: 1 1 220px; min-width: 0; line-height: 18px; padding: 4px 0;">{{status.text}}</span>
+          <sc-if value="{{status.canUndo}}" hint-placeholder-val="{{ true }}"><button type="button" class="lk" onClick="{{status.onUndo}}">Deshacer</button></sc-if>
+          <button type="button" class="icb" aria-label="Cerrar aviso" onClick="{{status.onClose}}" style="width: 30px; height: 30px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </sc-if>
+
+      <!-- LIENZO -->
+      <div class="{{boardClass}}" role="application" aria-label="Lienzo del canvas. Arrastrá el fondo para moverte; rueda o botones para el zoom." onPointerDown="{{onBoardDown}}" onPointerMove="{{onBoardMove}}" onPointerUp="{{onBoardUp}}" onPointerCancel="{{onBoardUp}}" onWheel="{{onWheel}}">
+        <svg class="dots" aria-hidden="true">
+          <defs>
+            <pattern id="cv-dots" width="{{grid.size}}" height="{{grid.size}}" x="{{grid.x}}" y="{{grid.y}}" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill="#262B32"></circle>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#cv-dots)"></rect>
+        </svg>
+        <div class="origin" style="{{originStyle}}">
+          <sc-for list="{{nodes}}" as="n" hint-placeholder-count="7">
+            <article class="node" style="{{n.style}}" aria-label="{{n.aria}}">
+              <div class="nh" style="{{n.headStyle}}">
+                <button type="button" class="grip" aria-label="{{n.gripAria}}" onPointerDown="{{n.onDown}}" onKeyDown="{{n.onKey}}" disabled="{{consulta}}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"></path></svg>
+                </button>
+                <input class="nt" type="text" value="{{n.title}}" onInput="{{n.onTitle}}" onChange="{{n.onTitle}}" placeholder="Sin título" aria-label="Título del nodo" disabled="{{consulta}}">
+                <button type="button" class="icb" aria-label="{{n.delAria}}" onClick="{{n.onDel}}" disabled="{{consulta}}" style="width: 28px; height: 28px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              <div class="nb">
+                <sc-if value="{{n.isText}}" hint-placeholder-val="{{ true }}">
+                  <textarea class="nta" rows="{{n.rows}}" value="{{n.text}}" onInput="{{n.onText}}" onChange="{{n.onText}}" aria-label="Contenido" disabled="{{consulta}}"></textarea>
+                </sc-if>
+
+                <sc-if value="{{n.isCheck}}" hint-placeholder-val="{{ false }}">
+                  <sc-for list="{{n.steps}}" as="st" hint-placeholder-count="3">
+                    <div style="display: flex; align-items: center; gap: 0; min-width: 0;">
+                      <button type="button" class="cb" role="checkbox" aria-checked="{{st.checked}}" aria-label="{{st.aria}}" onClick="{{st.onToggle}}" disabled="{{consulta}}">
+                        <span class="cbx"><svg class="ck-c" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+                      </button>
+                      <input class="nin" type="text" value="{{st.t}}" onInput="{{st.onText}}" onChange="{{st.onText}}" aria-label="{{st.inAria}}" disabled="{{consulta}}" style="{{st.style}}">
+                      <button type="button" class="icb" aria-label="{{st.delAria}}" onClick="{{st.onDel}}" disabled="{{consulta}}" style="width: 26px; height: 26px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                      </button>
+                    </div>
+                  </sc-for>
+                  <button type="button" class="btn bg bsm" onClick="{{n.onAddStep}}" disabled="{{consulta}}" style="align-self: flex-start; margin-left: -4px;">+ Paso</button>
+                </sc-if>
+
+                <sc-if value="{{n.isLink}}" hint-placeholder-val="{{ false }}">
+                  <label class="nlab">Texto<input type="text" value="{{n.linkText}}" onInput="{{n.onLinkText}}" onChange="{{n.onLinkText}}" placeholder="Cómo se muestra" disabled="{{consulta}}"></label>
+                  <label class="nlab">URL<input type="url" value="{{n.url}}" onInput="{{n.onUrl}}" onChange="{{n.onUrl}}" placeholder="https://" disabled="{{consulta}}" style="{{n.urlStyle}}"></label>
+                  <sc-if value="{{n.urlOk}}" hint-placeholder-val="{{ true }}">
+                    <a href="#" class="btn bs bsm" style="align-self: flex-start;">{{n.openLabel}} ↗</a>
+                  </sc-if>
+                  <sc-if value="{{n.urlBad}}" hint-placeholder-val="{{ false }}">
+                    <span class="hint">Solo se abren enlaces http o https.</span>
+                  </sc-if>
+                </sc-if>
+
+                <sc-if value="{{n.isImage}}" hint-placeholder-val="{{ false }}">
+                  <div role="img" aria-label="{{n.imgAria}}" style="flex: 1; min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px solid #262B32; border-radius: 6px; background: #0D0F12; color: #7C8592; font-size: 12px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.image}}"></path></svg>
+                    <span class="ell" style="max-width: 90%;">{{n.fileName}}</span>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{n.isFile}}" hint-placeholder-val="{{ false }}">
+                  <a href="#" style="display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px; border: 1px solid #262B32; border-radius: 6px; text-decoration: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{ic.file}}"></path></svg>
+                    <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+                      <span class="ell" style="font-size: 13px; color: #5B9BFF;">{{n.fileName}}</span>
+                      <span class="mono" style="font-size: 11px; color: #7C8592;">{{n.fileMeta}}</span>
+                    </span>
+                  </a>
+                </sc-if>
+
+                <sc-if value="{{n.isGroup}}" hint-placeholder-val="{{ false }}">
+                  <sc-for list="{{n.chosen}}" as="t" hint-placeholder-count="2">
+                    <div style="display: flex; align-items: center; gap: 8px; min-height: 28px; min-width: 0; font-size: 13px;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{t.iconColor}}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{t.icon}}"></path></svg>
+                      <span class="ell" style="{{t.style}}">{{t.titulo}}</span>
+                      <span class="nw" style="{{t.prioStyle}}">{{t.prio}}</span>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{n.noChosen}}" hint-placeholder-val="{{ false }}"><span class="hint">Elegí tareas para armar este grupo.</span></sc-if>
+                  <button type="button" class="btn bg bsm" aria-expanded="{{n.pickOpenS}}" onClick="{{n.onPickToggle}}" disabled="{{consulta}}" style="align-self: flex-start; margin-left: -4px;">
+                    {{n.pickLabel}}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.pickChevron}}"></path></svg>
+                  </button>
+                  <sc-if value="{{n.pickOpen}}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; flex-direction: column; border-top: 1px solid #262B32;">
+                      <span class="hint" style="padding: 6px 0 2px;">Tareas de equipo sin terminar</span>
+                      <sc-for list="{{n.options}}" as="o" hint-placeholder-count="2">
+                        <div style="display: flex; align-items: center; min-width: 0;">
+                          <button type="button" class="cb" role="checkbox" aria-checked="{{o.checked}}" aria-label="{{o.aria}}" onClick="{{o.onToggle}}">
+                            <span class="cbx"><svg class="ck-c" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span>
+                          </button>
+                          <span class="ell" style="flex: 1; font-size: 13px;">{{o.titulo}}</span>
+                          <span class="nw" style="font-size: 12px; color: #7C8592;">{{o.estado}}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </sc-if>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+        <sc-if value="{{empty}}" hint-placeholder-val="{{ false }}">
+          <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; pointer-events: none; text-align: center; padding: 16px;">
+            <div style="font-size: 16px; font-weight: 600;">El canvas está vacío</div>
+            <div style="font-size: 13px; color: #A7AEB8;">Agregá una nota, un checklist, un enlace o un archivo.</div>
+          </div>
+        </sc-if>
+      </div>
+
+      <div class="cv-hint">
+        <span>Arrastrá el fondo para moverte</span>
+        <span>Rueda o − / + para el zoom (35 a 220 %)</span>
+        <span>Mové un nodo desde su manija o con las flechas</span>
+        <span>Soltá archivos sobre el lienzo</span>
+      </div>
+    </div>
+
+    </sc-if>
+    <!-- ASISTENTE: en mobile es una vista propia (reemplaza el contenido) -->
+    <sc-if value="{{asstOpen}}" hint-placeholder-val="{{ false }}">
+      <aside class="asst" aria-label="Asistente">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex: 1; font-size: 14px; font-weight: 600;">Asistente</span>
+          <button type="button" class="icb" aria-label="Cerrar asistente" onClick="{{toggleAsst}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="padding: 10px 12px; border: 1px solid #262B32; border-radius: 6px; font-size: 13px; line-height: 18px;">
+          <div class="eb">Contexto</div>
+          <div class="ell" style="margin-top: 4px; color: #ECEEF1;">Canvas de NFPT</div>
+          <div class="ell" style="color: #7C8592;">{{asstCtx2}}</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button type="button" class="opt" style="justify-content: flex-start;">Ordená las notas en tareas</button>
+          <button type="button" class="opt" style="justify-content: flex-start;">¿Qué quedó pendiente en los checklists?</button>
+        </div>
+        <span style="flex: 1;"></span>
+        <label class="fld">
+          <input type="text" aria-label="Preguntale al asistente" placeholder="Preguntale al asistente…">
+        </label>
+      </aside>
+    </sc-if>
+    </div>
+
+    <!-- BARRA INFERIOR (solo bajo 768px) -->
+    <nav class="bnav" aria-label="Navegación principal">
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span class="nw">Inicio</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg><span class="nw">Préstamos</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ECEEF1; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg><span class="nw">Escanear</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg><span class="nw">Agenda</span></a>
+      <a href="#" aria-current="page" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #5B9BFF; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg><span class="nw">Más</span></a>
+    </nav>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000},"consulta":{"editor":"boolean","default":false}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    ideas: 'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    canvas: 'M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z' + R(3, 14, 7, 7, 1) + C(17.5, 17.5, 3.5),
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
+    bot: 'M12 8V4H8' + R(4, 8, 16, 12, 2) + 'M2 14h2M20 14h2M15 13v2M9 13v2',
+    tpl: R(3, 3, 18, 7, 1) + R(3, 14, 7, 7, 1) + R(14, 14, 7, 7, 1),
+    pencil: 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4',
+    trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+    file: 'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7zM14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8',
+    image: R(3, 3, 18, 18, 2) + C(9, 9, 2) + 'M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21',
+    down: 'M6 9l6 6 6-6',
+    up: 'M18 15l-6-6-6 6'
+  };
+}
+nav(I, active) {
+  const base = 'display: flex; align-items: center; gap: 10px; height: 32px; border-radius: 6px; position: relative; text-decoration: none; font-size: 14px; line-height: 20px;';
+  const mk = (k, label, count) => {
+    const on = k === active;
+    return {
+      label: label, d: I[k], count: count || '', current: on ? 'page' : 'false',
+      style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;',
+      bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;'
+    };
+  };
+  return {
+    ops: [mk('home', 'Inicio'), mk('loans', 'Préstamos', '[N]'), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC'), mk('rooms', 'Estado aulas')],
+    mgmt: [mk('tasks', 'Tareas TIC', '2'), mk('tickets', 'Tickets'), mk('ideas', 'Sugerencias'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')],
+    data: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')],
+    res: [mk('knowledge', 'Base de conocimiento'), mk('canvas', 'Canvas'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')]
+  };
+}
+seed() {
+  // canvas_items está vacío en la base local: nodos de ejemplo. Las tareas del grupo son las tareas reales de equipo de NFPT.
+  const NODES = [
+    { id: 1, type: 'sticky', title: 'Acto del viernes', color: '#fef08a', x: 40, y: 40, w: 260, h: 180, text: 'Micrófonos corbateros: cargar baterías el jueves.\nProyector del SUM: probar con la notebook TIC.' },
+    { id: 2, type: 'checklist', title: 'Inventario', color: '#bfdbfe', x: 330, y: 30, w: 260, h: 200, steps: [{ id: 21, t: 'Contar los Touch del carro', d: true }, { id: 22, t: 'Revisar cargadores TIC', d: false }, { id: 23, t: 'Etiquetar cartelitos', d: false }] },
+    { id: 3, type: 'task-group', title: 'Esta semana', color: '#bbf7d0', x: 620, y: 40, w: 380, h: 260, taskIds: ['TK1778080222094', 'TK1778511349323', 'TK1778265805663'] },
+    { id: 4, type: 'link', title: 'Mesa de ayuda', color: '#fecdd3', x: 40, y: 262, w: 280, h: 190, linkText: 'InVgate · Tiknology', url: 'https://tikno.sd.cloud.invgate.net' },
+    { id: 5, type: 'image', title: 'Plano primer piso', color: '#bfdbfe', x: 350, y: 250, w: 360, h: 260, fileName: 'plano-primer-piso.png' },
+    { id: 6, type: 'file', title: 'Protocolo de préstamos', color: '#bfdbfe', x: 740, y: 330, w: 280, h: 140, fileName: 'protocolo-prestamos.pdf', fileMeta: 'PDF · [N] KB' },
+    { id: 7, type: 'text', title: 'Turno tarde', color: '#ddd6fe', x: 60, y: 486, w: 300, h: 124, text: 'Devolver la Plani 5 a sala de profes antes de las 13:00.' }
+  ];
+  const TASKS = [
+    { id: 'TK1778046144779', titulo: 'mastro - zapatilla 6to S', estado: 'Hecha', prio: 'Media' },
+    { id: 'TK1778080222094', titulo: 'Inventario', estado: 'En proceso', prio: 'Media' },
+    { id: 'TK1778265805663', titulo: 'Encontrar los microfonos corbateros', estado: 'Hecha', prio: 'Urgente' },
+    { id: 'TK1778511349323', titulo: 'Probar audio 5to F', estado: 'Pendiente', prio: 'Media' }
+  ];
+  return { NODES: NODES, TASKS: TASKS };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const B = this.seed();
+  const I = this.icons();
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const consulta = !!(this.props && this.props.consulta);
+  const BW = 358, BH = 560, START = { x: -8, y: -8, z: 0.6 }; // tamaño del lienzo en este artboard
+  const ZMIN = 0.35, ZMAX = 2.2;
+  const clampZ = z => Math.min(ZMAX, Math.max(ZMIN, Math.round(z * 100) / 100));
+  // Colores guardados (claros, de hoy) → tono oscuro equivalente para el tema grafito
+  const DARK = { '#fef08a': '#24220F', '#bfdbfe': '#141D2A', '#bbf7d0': '#132219', '#fecdd3': '#26171A', '#ddd6fe': '#1C1929' };
+  const CYCLE = ['#fef08a', '#bfdbfe', '#bbf7d0', '#fecdd3', '#ddd6fe'];
+  const N = s.N || B.NODES;
+  const TASKS = B.TASKS;
+  const byTask = {};
+  TASKS.forEach(t => { byTask[t.id] = t; });
+
+  const fitView = (list, cap) => {
+    if (!list.length) return { x: 140, y: 100, z: 1 };
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    list.forEach(n => { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x + n.w); y1 = Math.max(y1, n.y + n.h); });
+    const z = clampZ(Math.min((BW - 48) / (x1 - x0), (BH - 48) / (y1 - y0), cap || ZMAX));
+    return { x: Math.round((BW - (x1 - x0) * z) / 2 - x0 * z), y: Math.round((BH - (y1 - y0) * z) / 2 - y0 * z), z: z };
+  };
+  const view = s.view || START || fitView(N, 1);
+
+  // ---------- Guardado diferido (450 ms por nodo, como hoy) ----------
+  const touch = () => {
+    if ((self.state || {}).save !== 'saving') set({ save: 'saving' });
+    clearTimeout(self._st);
+    self._st = setTimeout(() => self.setState({ save: 'ok' }), 450);
+  };
+  const updN = (id, patch) => { set({ N: N.map(n => (n.id === id ? Object.assign({}, n, patch) : n)) }); touch(); };
+  const saveSt = s.save || 'idle';
+  const save = {
+    text: saveSt === 'saving' ? 'Guardando…' : (saveSt === 'error' ? 'No se pudo guardar el cambio' : (saveSt === 'ok' ? 'Guardado' : 'Todo guardado')),
+    style: 'font-size: 12px; color: ' + (saveSt === 'error' ? '#FF6B6B' : (saveSt === 'saving' ? '#A7AEB8' : '#7C8592')) + ';',
+    error: saveSt === 'error', onRetry: () => touch()
+  };
+
+  // ---------- Altas ----------
+  const centerFor = (w, h) => {
+    const k = N.length % 4;
+    return { x: Math.round((BW / 2 - view.x) / view.z - w / 2 + k * 16), y: Math.round((BH / 2 - view.y) / view.z - h / 2 + k * 16) };
+  };
+  const add = (type, extra, label) => {
+    const size = type === 'task-group' ? [380, 260] : (type === 'image' ? [360, 260] : (type === 'file' ? [280, 140] : [260, 180]));
+    const p = centerFor(size[0], size[1]);
+    const n = Object.assign({ id: Date.now(), type: type, title: '', color: CYCLE[N.length % 5], x: p.x, y: p.y, w: size[0], h: size[1] }, extra);
+    set({ N: N.concat([n]), fileOpen: false, uploading: false, status: { text: 'Se agregó ' + label + ' en el centro de la vista.', undo: { N: N } } });
+    touch();
+  };
+  const fileOpen = !!s.fileOpen;
+  const adds = [
+    ['Nota', 'M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8ZM15 3v4a2 2 0 0 0 2 2h4', () => add('sticky', { title: 'Nota', text: 'Nueva idea' }, 'una nota')],
+    ['Texto', 'M4 7V4h16v3M9 20h6M12 4v16', () => add('text', { title: '', text: 'Bloque de texto' }, 'un bloque de texto')],
+    ['Checklist', 'M3 17l2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8', () => add('checklist', { title: 'Checklist', steps: [{ id: Date.now() + 1, t: 'Primer paso', d: false }] }, 'un checklist')],
+    ['Grupo de tareas', I.tasks, () => add('task-group', { title: 'Grupo de tareas', taskIds: [] }, 'un grupo de tareas')],
+    ['Enlace', 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71', () => add('link', { title: 'Enlace', linkText: 'Enlace', url: 'https://' }, 'un enlace')],
+    ['Archivo', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12', () => set({ fileOpen: !fileOpen })]
+  ].map(a => ({ label: a[0], d: a[1], onClick: a[2], expanded: a[0] === 'Archivo' ? String(fileOpen) : 'false' }));
+  const pickImage = () => {
+    set({ uploading: true });
+    setTimeout(() => {
+      const st = self.state || {};
+      const NN = st.N || B.NODES;
+      const vv = st.view || view;
+      const k = NN.length % 4;
+      const n = { id: Date.now(), type: 'image', title: 'Foto de la pizarra', color: '#bfdbfe', x: Math.round((BW / 2 - vv.x) / vv.z - 180 + k * 16), y: Math.round((BH / 2 - vv.y) / vv.z - 130 + k * 16), w: 360, h: 260, fileName: 'foto-pizarra.jpg' };
+      self.setState({ N: NN.concat([n]), uploading: false, fileOpen: false, status: { text: 'Se agregó “foto-pizarra.jpg” en el centro de la vista.', undo: { N: NN } } });
+    }, 900);
+  };
+
+  // ---------- Zoom y paneo ----------
+  const zoomTo = (nz, px, py) => {
+    nz = clampZ(nz);
+    const cx = px === undefined ? BW / 2 : px, cy = py === undefined ? BH / 2 : py;
+    set({ view: { x: Math.round(cx - (cx - view.x) * (nz / view.z)), y: Math.round(cy - (cy - view.y) * (nz / view.z)), z: nz } });
+  };
+  const onBoardDown = e => {
+    if (!e) return;
+    const t = e.target;
+    if (t && t.closest && t.closest('.node')) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    self._pan = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    set({ panning: true });
+  };
+  const onBoardMove = e => {
+    if (!e) return;
+    const st = self.state || {};
+    const v = st.view || view;
+    if (self._drag) {
+      const d = self._drag;
+      const NN = st.N || B.NODES;
+      self.setState({ N: NN.map(n => (n.id === d.id ? Object.assign({}, n, { x: Math.round(d.nx + (e.clientX - d.sx) / v.z), y: Math.round(d.ny + (e.clientY - d.sy) / v.z) }) : n)) });
+    } else if (self._pan) {
+      const p = self._pan;
+      self.setState({ view: { x: p.vx + (e.clientX - p.sx), y: p.vy + (e.clientY - p.sy), z: v.z } });
+    }
+  };
+  const onBoardUp = () => {
+    const dragged = !!self._drag;
+    self._pan = null; self._drag = null;
+    set({ panning: false });
+    if (dragged) touch();
+  };
+  const onWheel = e => {
+    if (!e) return;
+    let px, py;
+    try { const r = e.currentTarget.getBoundingClientRect(); px = e.clientX - r.left; py = e.clientY - r.top; } catch (err) {}
+    zoomTo(view.z * (e.deltaY > 0 ? 0.9 : 1.1), px, py);
+  };
+
+  // ---------- Nodos ----------
+  const nodes = N.map((n, i) => {
+    const dark = DARK[n.color] || '#14171B';
+    const tinted = n.type === 'sticky';
+    const steps = n.steps || [];
+    const urlOk = /^https?:\/\/[^\s]+\.[^\s]+/i.test(n.url || '');
+    const chosen = (n.taskIds || []).filter(id => byTask[id]).map(id => byTask[id]);
+    const pickOpen = s.pick === n.id;
+    return {
+      aria: (n.title || 'Sin título') + ' · ' + ({ sticky: 'nota', text: 'texto', checklist: 'checklist', 'task-group': 'grupo de tareas', link: 'enlace', image: 'imagen', file: 'archivo' }[n.type]),
+      style: 'left: ' + n.x + 'px; top: ' + n.y + 'px; width: ' + n.w + 'px; min-height: ' + n.h + 'px; z-index: ' + (i + 1) + ';' + (tinted ? ' background: ' + dark + ';' : ''),
+      headStyle: tinted ? 'border-bottom-color: rgba(255,255,255,.08);' : '',
+      title: n.title || '', onTitle: e => updN(n.id, { title: val(e) }),
+      gripAria: 'Mover “' + (n.title || 'Sin título') + '”. Arrastrá o usá las flechas.', delAria: 'Borrar “' + (n.title || 'Sin título') + '”',
+      onDown: e => {
+        if (consulta || !e) return;
+        if (e.stopPropagation) e.stopPropagation();
+        self._drag = { id: n.id, sx: e.clientX, sy: e.clientY, nx: n.x, ny: n.y };
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+        // traer al frente
+        set({ N: N.filter(x => x.id !== n.id).concat([n]) });
+      },
+      onKey: e => {
+        if (!e || consulta) return;
+        const k = e.shiftKey ? 50 : 10;
+        const mv = { ArrowLeft: [-k, 0], ArrowRight: [k, 0], ArrowUp: [0, -k], ArrowDown: [0, k] }[e.key];
+        if (!mv) return;
+        if (e.preventDefault) e.preventDefault();
+        updN(n.id, { x: n.x + mv[0], y: n.y + mv[1] });
+      },
+      onDel: () => { set({ N: N.filter(x => x.id !== n.id), status: { text: 'Se borró “' + (n.title || 'Sin título') + '”.', undo: { N: N } } }); touch(); },
+      isText: n.type === 'sticky' || n.type === 'text', text: n.text || '', rows: Math.max(2, Math.floor((n.h - 56) / 20)),
+      onText: e => updN(n.id, { text: val(e) }),
+      isCheck: n.type === 'checklist',
+      steps: steps.map((st, j) => ({
+        t: st.t, checked: String(!!st.d), aria: (st.d ? 'Reabrir: ' : 'Completar: ') + st.t, inAria: 'Paso ' + (j + 1), delAria: 'Quitar paso: ' + st.t,
+        style: st.d ? 'color: #7C8592; text-decoration: line-through;' : '',
+        onToggle: () => updN(n.id, { steps: steps.map(x => (x.id === st.id ? Object.assign({}, x, { d: !x.d }) : x)) }),
+        onText: e => updN(n.id, { steps: steps.map(x => (x.id === st.id ? Object.assign({}, x, { t: val(e) }) : x)) }),
+        onDel: () => updN(n.id, { steps: steps.filter(x => x.id !== st.id) })
+      })),
+      onAddStep: () => updN(n.id, { steps: steps.concat([{ id: Date.now(), t: 'Nuevo paso', d: false }]) }),
+      isLink: n.type === 'link', linkText: n.linkText || '', url: n.url || '', urlOk: urlOk, urlBad: !urlOk,
+      urlStyle: urlOk || !n.url || n.url === 'https://' ? '' : 'border-color: #F5C04E;',
+      openLabel: n.linkText || 'Abrir enlace',
+      onLinkText: e => updN(n.id, { linkText: val(e) }), onUrl: e => updN(n.id, { url: val(e) }),
+      isImage: n.type === 'image', isFile: n.type === 'file', fileName: n.fileName || '', fileMeta: n.fileMeta || '',
+      imgAria: 'Imagen ' + (n.fileName || ''),
+      isGroup: n.type === 'task-group',
+      chosen: chosen.map(t => {
+        const done = t.estado === 'Hecha';
+        return {
+          titulo: t.titulo, prio: t.prio === 'Urgente' || t.prio === 'Alta' ? t.prio : '',
+          prioStyle: 'font-size: 12px; color: ' + (t.prio === 'Urgente' ? '#FF6B6B' : '#F5C04E') + ';',
+          style: 'flex: 1; ' + (done ? 'color: #7C8592; text-decoration: line-through;' : 'color: #ECEEF1;'),
+          icon: done ? 'M20 6 9 17l-5-5' : 'M12 12m-8 0a8 8 0 1 0 16 0a8 8 0 1 0-16 0', iconColor: done ? '#7C8592' : '#A7AEB8'
+        };
+      }),
+      noChosen: !chosen.length,
+      pickOpen: pickOpen, pickOpenS: String(pickOpen), pickChevron: pickOpen ? I.up : I.down,
+      pickLabel: pickOpen ? 'Listo' : 'Agregar tareas',
+      onPickToggle: () => set({ pick: pickOpen ? null : n.id }),
+      options: TASKS.filter(t => t.estado !== 'Hecha').map(t => {
+        const on = (n.taskIds || []).indexOf(t.id) >= 0;
+        return {
+          titulo: t.titulo, estado: t.estado, checked: String(on), aria: (on ? 'Quitar del grupo: ' : 'Agregar al grupo: ') + t.titulo,
+          onToggle: () => updN(n.id, { taskIds: on ? n.taskIds.filter(x => x !== t.id) : (n.taskIds || []).concat([t.id]) })
+        };
+      })
+    };
+  });
+
+  const grid = 24 * view.z;
+  const st = s.status;
+  const asstOpen = !!s.asst;
+  return {
+    asstClosed: !asstOpen,
+    ic: I, nav: this.nav(I, 'canvas'), consulta: consulta,
+    asstOpen: asstOpen, asstPressed: String(asstOpen), toggleAsst: () => set({ asst: !asstOpen }),
+    asstBtnStyle: asstOpen ? 'border-color: #5B9BFF;' : '',
+    asstCtx2: N.length + (N.length === 1 ? ' elemento' : ' elementos') + ' en el lienzo',
+    adds: adds, save: save,
+    fileOpen: fileOpen, closeFile: () => set({ fileOpen: false }), pickImage: pickImage,
+    uploading: !!s.uploading, pickLabel: s.uploading ? 'Subiendo…' : 'Elegir archivo',
+    status: {
+      show: !!st, text: st ? st.text : '', canUndo: !!(st && st.undo),
+      onUndo: () => { const x = (self.state || {}).status; if (x && x.undo) { self.setState(Object.assign({}, x.undo, { status: null })); touch(); } },
+      onClose: () => set({ status: null })
+    },
+    zoomLabel: Math.round(view.z * 100) + ' %', zoomAria: 'Zoom ' + Math.round(view.z * 100) + ' %. Volver a 100 %',
+    zoomIn: () => zoomTo(view.z + 0.15), zoomOut: () => zoomTo(view.z - 0.15), zoomReset: () => zoomTo(1),
+    zoomMin: view.z <= ZMIN, zoomMax: view.z >= ZMAX,
+    fit: () => set({ view: fitView(N) }), center: () => set({ view: { x: 140, y: 100, z: 1 } }),
+    reload: () => set({ status: { text: 'Canvas actualizado con los cambios del equipo.', undo: null } }),
+    boardClass: 'board' + (s.panning ? ' board-pan' : ''),
+    onBoardDown: onBoardDown, onBoardMove: onBoardMove, onBoardUp: onBoardUp, onWheel: onWheel,
+    grid: { size: grid, x: ((view.x % grid) + grid) % grid, y: ((view.y % grid) + grid) % grid },
+    originStyle: 'transform: translate(' + view.x + 'px, ' + view.y + 'px) scale(' + view.z + ');',
+    nodes: nodes, empty: !N.length
+  };
+}
+
+}
+</script>
+</body>
+</html>

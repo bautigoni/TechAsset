@@ -1,0 +1,1957 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Préstamos — Mostrador</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+*{scrollbar-width:none}*::-webkit-scrollbar{display:none}
+.nv:hover,.ib:hover,.gh:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.sec:hover{border-color:#4A525E !important}
+.pri:hover{background:#8DBBFF !important}
+.chip:hover{filter:brightness(1.15)}
+.fld:focus-within{border-color:#5B9BFF !important}
+.lnk{color:#ECEEF1;text-decoration:none}.lnk:hover{color:#8DBBFF;text-decoration:underline}
+input::placeholder,textarea::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+/* Texto truncado: tooltip chico solo si se corta; en touch, tocar lo despliega en línea */
+.trn{position:relative;display:block;width:100%;min-width:0;padding:0;margin:0;background:transparent;border:0;color:inherit;font:inherit;line-height:inherit;text-align:left;cursor:default}
+.trn .tx{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trn .tip{display:none;position:absolute;left:-9px;top:calc(100% + 4px);z-index:30;width:max-content;max-width:min(320px,calc(100vw - 48px));padding:6px 8px;background:#1B1F24;border:1px solid #262B32;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.25);font-size:13px;line-height:18px;color:#ECEEF1;white-space:normal;pointer-events:none}
+.trn.r .tip{left:auto;right:-9px}
+.trn:hover .tip,.trn:focus-visible .tip{display:block}
+.trn[aria-expanded="true"] .tx{white-space:normal;overflow:visible}
+.trn[aria-expanded="true"] .tip{display:none !important}
+.chip[aria-pressed="true"]:hover{filter:none}
+@media (hover:none){.trn .tip{display:none !important}}
+/* Shell */
+.side{width:232px;flex:none;display:flex;flex-direction:column}
+.only-narrow{display:none !important}
+.tb{padding:0 24px 0 16px}
+.page{padding:24px 32px 32px}
+.lbl-short{display:none}
+.cols{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.col-main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:24px}
+.col-side{flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:24px}
+.asst-row{flex:1;display:flex;align-items:stretch;min-width:0}
+.asst-col{width:340px;flex:none;border-left:1px solid #262B32;box-sizing:border-box;display:flex;flex-direction:column}
+@media (max-width:1099px){.tb-upd{display:none !important}.side{width:56px}.side .nl{display:none !important}.side .ni{justify-content:center !important;padding:0 !important;gap:0 !important}.side .grp-l{font-size:0 !important;height:1px;padding:0 !important;margin:6px 8px;background:#262B32}.side .nav-p{padding:4px 8px 8px !important}}
+@media (max-width:899px){.side,.wide-only,.tb-date,.tb-upd{display:none !important}.only-narrow{display:flex !important}.asst-row{flex-direction:column-reverse}.asst-col{width:100%;border-left:0;border-bottom:1px solid #262B32}}
+@media (max-width:599px){.tb{padding:0 12px 0 8px}.page{padding:16px 16px 24px}.lbl-long{display:none}.lbl-short{display:inline}.tb-asst-t{display:none}}
+/* Contenedores */
+.cq{container-type:inline-size}
+.frow{display:grid;grid-template-columns:112px minmax(0,1fr);gap:6px 16px;align-items:start}
+.flabel{padding-top:8px}
+.q-row{display:grid;grid-template-columns:minmax(0,1.2fr) 72px minmax(0,1.4fr) auto;gap:12px;align-items:center;min-height:40px;padding:4px 12px;box-sizing:border-box}
+.pd-head,.pd-row{display:grid;grid-template-columns:56px minmax(0,1fr) minmax(0,.9fr) minmax(0,1.3fr) minmax(0,1fr) minmax(0,.9fr);gap:12px;align-items:center;padding:0 16px;box-sizing:border-box}
+.pd-row{min-height:40px}
+.cierre-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+@container (max-width:520px){.frow{grid-template-columns:minmax(0,1fr)}.flabel{padding-top:0}.q-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}.q-tipo{display:none}}
+@container (max-width:760px){.pd-head{display:none}.pd-row{grid-template-columns:48px minmax(0,1fr) minmax(0,1fr);row-gap:2px;padding:8px 16px}.pd-x{grid-column:2 / -1}}
+@container (max-width:680px){.cierre-grid{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</helmet>
+<div style="width: 100%; display: flex; align-items: stretch; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums; overflow-x: clip;">
+
+  <!-- MENÚ LATERAL AGRUPADO (232px) · copia de Menu-A con "Préstamos" activo -->
+  <sc-if value="{{isD}}" hint-placeholder-val="{{ true }}">
+  <aside class="side" aria-label="Menú principal" style="border-right: 1px solid #262B32; box-sizing: border-box; background: #0D0F12;">
+    <div style="height: 56px; flex: none; display: flex; align-items: center; padding: 0 8px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+      <button type="button" class="ib ni" aria-label="Cambiar de sede: Northfield Puertos" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 40px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; cursor: pointer; text-align: left;">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; color: #ECEEF1;">NF</span>
+        <span class="nl" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span style="font-size: 13px; font-weight: 600; white-space: nowrap;">Northfield Puertos</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="nl" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="nav-p" style="padding: 12px 12px 4px; flex: none;">
+      <button type="button" class="ni" aria-label="Buscar o ir a una sección (Ctrl K)" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px 0 10px; background: #14171B; border: 1px solid #262B32; border-radius: 6px; color: #7C8592; cursor: pointer; font-size: 13px; text-align: left; box-sizing: border-box;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="nl" style="flex: 1;">Buscar o ir a…</span>
+        <span class="nl" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="nav-p" aria-label="Secciones" style="flex: 1; padding: 4px 8px 8px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div class="grp-l" style="padding: 8px 12px 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Operación</div>
+        <sc-for list="{{ops}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nv ni" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="nl" style="flex: 1; min-width: 0; white-space: nowrap;">{{n.label}}</span>
+            <span class="nl" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div class="grp-l" style="padding: 8px 12px 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Gestión</div>
+        <sc-for list="{{mgmt}}" as="n" hint-placeholder-count="4">
+          <a href="#" class="nv ni" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="nl" style="flex: 1; min-width: 0; white-space: nowrap;">{{n.label}}</span>
+            <span class="nl" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div class="grp-l" style="padding: 8px 12px 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Inventario y datos</div>
+        <sc-for list="{{data}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv ni" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="nl" style="flex: 1; min-width: 0; white-space: nowrap;">{{n.label}}</span>
+            <span class="nl" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <div class="grp-l" style="padding: 8px 12px 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Recursos</div>
+        <sc-for list="{{res}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv ni" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="nl" style="flex: 1; min-width: 0; white-space: nowrap;">{{n.label}}</span>
+            <span class="nl" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </nav>
+    <div style="flex: none; border-top: 1px solid #262B32; padding: 8px; display: flex; flex-direction: column; gap: 4px;">
+      <a href="#" class="nv ni" aria-label="Configuración" style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px 0 12px; border-radius: 6px; text-decoration: none; font-size: 14px; color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.730l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="nl">Configuración</span>
+      </a>
+      <div class="ni" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 4px 0 8px;">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #ECEEF1;">BG</span>
+        <span class="nl" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+        <button type="button" class="ib nl" aria-label="Opciones de cuenta" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+  </sc-if>
+
+  <!-- CONTENIDO -->
+  <main style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+
+    <!-- TOPBAR -->
+    <sc-if value="{{isD}}" hint-placeholder-val="{{ true }}">
+    <header class="tb" style="height: 56px; flex: none; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+      <button type="button" class="ib only-narrow" aria-label="Menú" aria-expanded="{{mnav.expanded}}" onClick="{{mnav.onToggle}}" style="width: 36px; height: 36px; flex: none; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+      <button type="button" class="ib wide-only" aria-label="Contraer menú (Ctrl B)" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <h1 style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap;">Préstamos</h1>
+      <span class="tb-date" style="color: #353B44;" aria-hidden="true">/</span>
+      <span class="tb-date" style="min-width: 0; font-size: 13px; color: #A7AEB8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Viernes 16 de octubre · Turno mañana</span>
+      <div style="flex: 1; min-width: 0;"></div>
+      <span class="tb-upd" role="status" style="font-size: 12px; color: #7C8592; white-space: nowrap;">Actualizado hace 12 s</span>
+      <button type="button" class="sec" aria-expanded="{{cierre.expanded}}" aria-controls="cierre" onClick="{{cierre.onToggle}}" style="{{cierre.btnStyle}}"><span class="lbl-long">Cierre del día</span><span class="lbl-short">Cierre</span></button>
+      <button type="button" class="sec" aria-expanded="{{asst.expanded}}" aria-label="Asistente" onClick="{{asst.onToggle}}" style="{{asst.btnStyle}}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"></path><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path></svg>
+        <span class="tb-asst-t">Asistente</span>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib wide-only" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+    </sc-if>
+
+    <!-- Topbar mobile: título + Asistente (ícono) + campana -->
+    <sc-if value="{{isM}}" hint-placeholder-val="{{ false }}">
+    <header style="height: 56px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 16px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+      <h1 style="flex: 1; min-width: 0; margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap;">{{mTitle}}</h1>
+      <button type="button" class="ib" aria-label="Asistente" aria-expanded="{{asst.expanded}}" onClick="{{asst.onToggle}}" style="{{asst.mBtnStyle}}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"></path><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path></svg>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="position: absolute; top: 6px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+    </header>
+    </sc-if>
+
+    <!-- Menú en mobile: se despliega en línea debajo del topbar (empuja, no flota) -->
+    <sc-if value="{{mnav.open}}" hint-placeholder-val="{{ false }}">
+      <nav class="only-narrow" aria-label="Secciones" style="flex-wrap: wrap; gap: 6px; padding: 12px 16px; border-bottom: 1px solid #262B32; background: #14171B;">
+        <sc-for list="{{mnav.items}}" as="n" hint-placeholder-count="8">
+          <a href="#" class="nv" aria-current="{{n.current}}" style="{{n.mStyle}}">{{n.label}}</a>
+        </sc-for>
+      </nav>
+    </sc-if>
+
+    <div class="asst-row">
+    <sc-if value="{{showPage}}" hint-placeholder-val="{{ true }}">
+    <div class="page" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 24px; box-sizing: border-box;">
+
+      <!-- Mobile: fecha + Cierre del día (en desktop van en la barra superior) -->
+      <sc-if value="{{isM}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="flex: 1; min-width: 0; font-size: 13px; color: #A7AEB8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Vie 16 oct · Turno mañana · hace 12 s</span>
+          <button type="button" class="sec" aria-expanded="{{cierre.expanded}}" aria-controls="cierre" onClick="{{cierre.onToggle}}" style="{{cierre.btnStyle}}">Cierre del día</button>
+        </div>
+      </sc-if>
+
+      <!-- CIERRE DEL DÍA (antes modal → sección en línea arriba de todo) -->
+      <sc-if value="{{cierre.open}}" hint-placeholder-val="{{ false }}">
+        <section id="cierre" class="cq" aria-labelledby="cierre-t" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 56px; padding: 10px 16px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+            <div style="flex: 1 1 220px; min-width: 0;">
+              <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Cierre del día TIC</div>
+              <h2 id="cierre-t" style="margin: 2px 0 0; font-size: 16px; line-height: 24px; font-weight: 600;">Viernes 16 de octubre</h2>
+            </div>
+            <button type="button" class="gh" aria-expanded="{{cierre.histExpanded}}" onClick="{{cierre.onHist}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">{{cierre.histLabel}}</button>
+            <button type="button" class="gh" onClick="{{cierre.onToggle}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">Cerrar</button>
+          </div>
+          <sc-if value="{{cierre.histOpen}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 12px 16px; border-bottom: 1px solid #262B32; display: flex; flex-direction: column; gap: 4px;">
+              <sc-for list="{{cierre.hist}}" as="h" hint-placeholder-count="2">
+                <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; line-height: 24px;">
+                  <span style="font-family: 'Geist Mono', ui-monospace, monospace; color: #A7AEB8; white-space: nowrap;">{{h.when}}</span>
+                  <span style="color: #ECEEF1;">{{h.op}}</span>
+                  <span style="color: #7C8592;">{{h.obs}}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{cierre.histEmpty}}" hint-placeholder-val="{{ false }}">
+                <span style="font-size: 13px; color: #7C8592;">Todavía no hay cierres guardados en esta sede.</span>
+              </sc-if>
+            </div>
+          </sc-if>
+          <div class="cierre-grid" style="padding: 16px;">
+            <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+              <span style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Vista previa</span>
+              <div aria-live="polite" style="padding: 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 20px; color: #A7AEB8; white-space: pre-wrap; overflow-wrap: anywhere;">{{cierre.text}}</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+              <label for="cierre-obs" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Observaciones manuales</label>
+              <textarea id="cierre-obs" rows="5" onInput="{{cierre.onObs}}" onChange="{{cierre.onObs}}" placeholder="Lo que el próximo turno tiene que saber…" style="width: 100%; box-sizing: border-box; padding: 8px 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; line-height: 20px; resize: vertical;">{{cierre.obs}}</textarea>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                <button type="button" class="sec" onClick="{{cierre.onCopy}}" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Copiar</button>
+                <button type="button" class="pri" aria-disabled="{{cierre.genDisabled}}" onClick="{{cierre.onGen}}" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">Generar cierre</button>
+                <sc-if value="{{cierre.hasMsg}}" hint-placeholder-val="{{ false }}">
+                  <span role="status" style="font-size: 13px; color: #A7AEB8;">{{cierre.msg}}</span>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <div class="cols">
+
+        <!-- ===================== COLUMNA PRINCIPAL ===================== -->
+        <div class="col-main">
+
+          <!-- 1. PRESTAR O DEVOLVER -->
+          <section class="cq" aria-labelledby="pf-t" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px;">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 56px; padding: 10px 16px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+              <h2 id="pf-t" style="flex: 1 1 160px; margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap;">Prestar o devolver</h2>
+              <button type="button" role="switch" aria-checked="{{f.contChecked}}" onClick="{{f.onCont}}" style="{{f.contStyle}}">
+                <span aria-hidden="true" style="{{f.trackStyle}}"><span style="{{f.knobStyle}}"></span></span>
+                Escaneo continuo
+              </button>
+              <button type="button" class="gh" onClick="{{f.onFocusScan}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg>
+                Foco lector
+              </button>
+              <sc-if value="{{f.camAvail}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="gh" aria-expanded="{{f.camExpanded}}" onClick="{{f.onCam}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+                  {{f.camLabel}}
+                </button>
+              </sc-if>
+            </div>
+
+            <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+
+              <sc-if value="{{f.consulta}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #A7AEB8;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  Modo consulta: solo lectura. Podés buscar equipos, pero no prestar ni devolver.
+                </div>
+              </sc-if>
+
+              <!-- Línea de estado con Deshacer (reemplaza al toast) -->
+              <sc-if value="{{stForm.show}}" hint-placeholder-val="{{ false }}">
+                <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 40px; padding: 4px 4px 4px 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD68A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M20 6 9 17l-5-5"></path></svg>
+                  <span style="flex: 1 1 200px; min-width: 0; font-size: 14px; line-height: 20px;">{{stForm.text}}</span>
+                  <sc-if value="{{stForm.hasUndo}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="gh" onClick="{{stForm.onUndo}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #5B9BFF; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">Deshacer</button>
+                  </sc-if>
+                  <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{stForm.onClose}}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #7C8592; cursor: pointer;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+              </sc-if>
+
+              <!-- Salir del escaneo continuo con lista cargada (antes confirmDialog) -->
+              <sc-if value="{{f.askExit}}" hint-placeholder-val="{{ false }}">
+                <div role="group" aria-label="Salir del escaneo continuo" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px;">
+                  <span style="flex: 1 1 220px; min-width: 0; font-size: 14px;">{{f.askExitText}}</span>
+                  <button type="button" class="sec" onClick="{{f.onKeep}}" style="height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">Conservar lista</button>
+                  <button type="button" class="sec" onClick="{{f.onDrop}}" style="height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">Vaciar lista</button>
+                  <button type="button" class="gh" onClick="{{f.onStay}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">Seguir escaneando</button>
+                </div>
+              </sc-if>
+
+              <!-- Cámara en línea -->
+              <sc-if value="{{f.camOpen}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start;">
+                  <div role="img" aria-label="Vista de la cámara trasera" style="flex: 1 1 240px; max-width: 360px; height: 180px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#353B44" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
+                  </div>
+                  <div style="flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 20px; color: #A7AEB8;">
+                    <span style="color: #ECEEF1; font-weight: 500;">Apuntá al QR del equipo</span>
+                    <span>Cámara trasera. Al leer el código lo carga arriba y se cierra sola.</span>
+                    <span style="color: #7C8592;">Si el navegador no lee QR, escribí el código a mano. La cámara necesita HTTPS.</span>
+                  </div>
+                </div>
+              </sc-if>
+
+              <!-- Campo de código -->
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <div class="fld" style="{{f.fieldStyle}}">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; color: #A7AEB8;"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg>
+                  <label for="pr-code" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;">Etiqueta, número o alias del equipo</label>
+                  <input id="pr-code" type="text" autocomplete="off" spellcheck="false" value="{{code}}" onInput="{{f.onCode}}" onChange="{{f.onCode}}" onKeyDown="{{f.onCodeKey}}" placeholder="{{f.placeholder}}" style="flex: 1; min-width: 0; height: 44px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 16px; font-family: 'Geist Mono', ui-monospace, monospace;">
+                  <sc-if value="{{f.hasCode}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="ib" aria-label="Limpiar (Esc)" onClick="{{f.onClearCode}}" style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                    </button>
+                  </sc-if>
+                  <kbd style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8; padding: 1px 7px; border: 1px solid #353B44; border-radius: 4px;">/</kbd>
+                </div>
+                <sc-if value="{{f.cont}}" hint-placeholder-val="{{ false }}">
+                  <button type="button" class="sec" aria-disabled="{{f.addDisabled}}" onClick="{{f.onAdd}}" style="{{f.addStyle}}">
+                    Agregar a la lista
+                    <kbd style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 18px; padding: 0 6px; border: 1px solid #353B44; border-radius: 4px; color: #A7AEB8;">↵</kbd>
+                  </button>
+                </sc-if>
+              </div>
+
+              <!-- Resultado en línea (modo normal) -->
+              <sc-if value="{{f.idle}}" hint-placeholder-val="{{ true }}">
+                <p style="margin: 0; font-size: 13px; line-height: 20px; color: #7C8592;">Escaneá con el lector o escribí etiqueta, número o alias. <span style="color: #A7AEB8;">Enter</span> hace la acción: devuelve si está prestado, abre el préstamo si está libre.</p>
+              </sc-if>
+
+              <sc-if value="{{f.found}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px;">
+                  <div style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;">
+                      <span style="font-size: 20px; line-height: 28px; font-weight: 600; white-space: nowrap;">{{f.alias}}</span>
+                      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #A7AEB8;">{{f.et}}</span>
+                      <span style="{{f.stateStyle}}">{{f.stateText}}</span>
+                    </div>
+                    <sc-if value="{{f.detailT.trunc}}" hint-placeholder-val="{{ false }}">
+                      <button type="button" class="trn" aria-expanded="{{f.detailT.tExp}}" aria-label="{{f.detailT.full}}" onClick="{{f.detailT.onT}}" style="font-size: 13px; line-height: 20px; color: #A7AEB8;"><span class="tx">{{f.detailT.full}}</span><span class="tip" role="tooltip" aria-hidden="true">{{f.detailT.full}}</span></button>
+                    </sc-if>
+                    <sc-if value="{{f.detailT.plain}}" hint-placeholder-val="{{ true }}">
+                      <span style="font-size: 13px; line-height: 20px; color: #A7AEB8;">{{f.detailT.full}}</span>
+                    </sc-if>
+                  </div>
+                  <sc-if value="{{f.canReturn}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="pri" onClick="{{f.onReturn}}" aria-disabled="{{f.actDisabled}}" style="display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 16px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                      Devolver
+                      <kbd style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: 4px; background: rgba(13,15,18,.16); color: #0D0F12;">↵</kbd>
+                    </button>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <!-- Accesorios que tienen que volver -->
+              <sc-if value="{{f.canReturn}}" hint-placeholder-val="{{ false }}">
+                <div class="frow">
+                  <span class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Accesorios</span>
+                  <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <sc-if value="{{f.hasRetAcc}}" hint-placeholder-val="{{ true }}">
+                      <div role="group" aria-label="Accesorios entregados originalmente" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <sc-for list="{{f.retAcc}}" as="a" hint-placeholder-count="2">
+                          <button type="button" role="switch" aria-checked="{{a.checked}}" onClick="{{a.onClick}}" style="{{a.style}}">{{a.label}}</button>
+                        </sc-for>
+                      </div>
+                      <span style="font-size: 12px; color: #7C8592;">Marcá lo que vuelve. No es obligatorio.</span>
+                    </sc-if>
+                    <sc-if value="{{f.noRetAcc}}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size: 13px; line-height: 32px; color: #7C8592;">No se registraron accesorios para este préstamo.</span>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{f.blocked}}" hint-placeholder-val="{{ false }}">
+                <div role="alert" style="display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 20px; color: #FF6B6B;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><path d="M4.9 4.9l14.2 14.2"></path></svg>
+                  <span>{{f.blockedText}}</span>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{f.multi}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <span style="font-size: 14px; color: #F5C04E;">{{f.multiText}}</span>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <sc-for list="{{f.multiList}}" as="m" hint-placeholder-count="4">
+                      <button type="button" class="sec" onClick="{{m.onPick}}" style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                        {{m.alias}}<span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{m.et}}</span><span style="{{m.stateStyle}}">{{m.stateText}}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{f.none}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+                  <span role="alert" style="font-size: 14px; color: #FF6B6B; margin-right: 4px;">{{f.noneText}}</span>
+                  <sc-if value="{{f.hasSug}}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size: 13px; color: #A7AEB8;">¿Quisiste decir</span>
+                    <sc-for list="{{f.sug}}" as="g" hint-placeholder-count="3">
+                      <button type="button" class="sec" onClick="{{g.onPick}}" style="height: 28px; padding: 0 10px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; cursor: pointer; white-space: nowrap;">{{g.label}}</button>
+                    </sc-for>
+                    <span style="font-size: 13px; color: #A7AEB8;">?</span>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <!-- Escaneo continuo: lista -->
+              <sc-if value="{{f.cont}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <sc-if value="{{f.hasScanMsg}}" hint-placeholder-val="{{ true }}">
+                    <div role="{{f.scanRole}}" style="{{f.scanStyle}}">{{f.scanText}}</div>
+                  </sc-if>
+                  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px;">
+                    <span style="flex: 1 1 auto; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{f.summary}}</span>
+                    <button type="button" class="gh" aria-disabled="{{f.clearDisabled}}" onClick="{{f.onClearList}}" style="height: 28px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">Limpiar lista</button>
+                  </div>
+                  <div style="border: 1px solid #262B32; border-radius: 6px;">
+                    <sc-for list="{{f.queue}}" as="r" hint-placeholder-count="3">
+                      <div class="q-row" style="{{r.rowStyle}}">
+                        <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap;">
+                          <span style="font-size: 14px; font-weight: 500;">{{r.alias}}</span>
+                          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{r.et}}</span>
+                        </span>
+                        <span class="q-tipo" style="font-size: 13px; color: #A7AEB8;">{{r.tipo}}</span>
+                        <span style="{{r.stateStyle}}">{{r.stateText}}</span>
+                        <button type="button" class="gh" aria-label="{{r.removeLabel}}" onClick="{{r.onRemove}}" style="height: 28px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">Quitar</button>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{f.queueEmpty}}" hint-placeholder-val="{{ false }}">
+                      <div style="padding: 10px 12px; font-size: 13px; color: #7C8592;">Aún no escaneaste ningún equipo.</div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-if>
+
+              <!-- Datos del préstamo (en línea) -->
+              <sc-if value="{{f.lendOpen}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 16px; border-top: 1px solid #262B32;">
+                  <div style="font-size: 14px; font-weight: 600;">{{f.lendTitle}}</div>
+
+                  <div class="frow">
+                    <label for="pr-persona" class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Persona</label>
+                    <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+                      <input id="pr-persona" type="text" autocomplete="off" value="{{f.fp}}" onInput="{{f.onFp}}" onChange="{{f.onFp}}" onKeyDown="{{f.onFpKey}}" placeholder="Nombre (escribí 2 letras para ver sugerencias)" style="width: 100%; max-width: 420px; height: 36px; padding: 0 10px; box-sizing: border-box; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px;">
+                      <sc-if value="{{f.hasPeople}}" hint-placeholder-val="{{ false }}">
+                        <div role="listbox" aria-label="Personas que ya pidieron equipos" style="max-width: 420px; display: flex; flex-direction: column; border: 1px solid #262B32; border-radius: 6px; background: #0D0F12;">
+                          <sc-for list="{{f.people}}" as="p" hint-placeholder-count="3">
+                            <button type="button" role="option" aria-selected="{{p.selected}}" class="gh" onClick="{{p.onPick}}" style="{{p.style}}">
+                              <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+                                <span style="font-size: 14px; font-weight: 500; color: #ECEEF1;">{{p.name}}</span>
+                                <span style="font-size: 12px; color: #7C8592;">{{p.hint}}</span>
+                              </span>
+                              <span style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{p.times}}</span>
+                            </button>
+                          </sc-for>
+                          <div style="padding: 6px 10px; border-top: 1px solid #262B32; font-size: 12px; color: #7C8592;">Enter elige la primera. Completa rol, ubicación, curso y motivo más usados.</div>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </div>
+
+                  <div class="frow">
+                    <span class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Rol</span>
+                    <div role="group" aria-label="Rol" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                      <sc-for list="{{f.roles}}" as="o" hint-placeholder-count="7">
+                        <button type="button" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+
+                  <div class="frow">
+                    <span class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Ubicación</span>
+                    <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                      <div role="group" aria-label="Ubicación" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <sc-for list="{{f.ubis}}" as="o" hint-placeholder-count="4">
+                          <button type="button" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{f.needUbiDet}}" hint-placeholder-val="{{ false }}">
+                        <input type="text" aria-label="Especificar ubicación" autocomplete="off" value="{{f.fubiDet}}" onInput="{{f.onUbiDet}}" onChange="{{f.onUbiDet}}" onKeyDown="{{f.onLendKey}}" placeholder="Especificá la ubicación" style="width: 100%; max-width: 420px; height: 36px; padding: 0 10px; box-sizing: border-box; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px;">
+                      </sc-if>
+                    </div>
+                  </div>
+
+                  <sc-if value="{{f.needCourse}}" hint-placeholder-val="{{ true }}">
+                    <div class="frow">
+                      <span class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Nivel y curso</span>
+                      <div style="display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-start;">
+                        <div role="group" aria-label="Nivel" style="display: flex; gap: 6px;">
+                          <sc-for list="{{f.levels}}" as="o" hint-placeholder-count="2">
+                            <button type="button" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button>
+                          </sc-for>
+                        </div>
+                        <div role="group" aria-label="Grado, año o curso" style="display: flex; flex-direction: column; gap: 4px;">
+                          <sc-for list="{{f.grades}}" as="gr" hint-placeholder-count="3">
+                            <div style="display: flex; gap: 4px;">
+                              <sc-for list="{{gr.cells}}" as="gc" hint-placeholder-count="6">
+                                <button type="button" aria-pressed="{{gc.pressed}}" onClick="{{gc.onClick}}" style="{{gc.style}}">{{gc.label}}</button>
+                              </sc-for>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <div class="frow">
+                    <span class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Motivo</span>
+                    <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                      <div role="group" aria-label="Motivo" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <sc-for list="{{f.mots}}" as="o" hint-placeholder-count="4">
+                          <button type="button" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button>
+                        </sc-for>
+                      </div>
+                      <sc-if value="{{f.needMotDet}}" hint-placeholder-val="{{ false }}">
+                        <input type="text" aria-label="Especificar motivo" autocomplete="off" value="{{f.fmotDet}}" onInput="{{f.onMotDet}}" onChange="{{f.onMotDet}}" onKeyDown="{{f.onLendKey}}" placeholder="Especificá el motivo" style="width: 100%; max-width: 420px; height: 36px; padding: 0 10px; box-sizing: border-box; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px;">
+                      </sc-if>
+                    </div>
+                  </div>
+
+                  <div class="frow">
+                    <label for="pr-com" class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Comentario</label>
+                    <input id="pr-com" type="text" autocomplete="off" value="{{f.fcom}}" onInput="{{f.onCom}}" onChange="{{f.onCom}}" onKeyDown="{{f.onLendKey}}" placeholder="Opcional" style="width: 100%; max-width: 420px; height: 36px; padding: 0 10px; box-sizing: border-box; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px;">
+                  </div>
+
+                  <div class="frow">
+                    <span class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Accesorios</span>
+                    <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+                      <button type="button" class="gh" aria-expanded="{{f.accExpanded}}" onClick="{{f.onAccToggle}}" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px; margin-left: -8px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{f.accChev}}"><path d="m6 9 6 6 6-6"></path></svg>
+                        {{f.accLabel}}
+                      </button>
+                      <sc-if value="{{f.accOpen}}" hint-placeholder-val="{{ false }}">
+                        <div role="group" aria-label="Accesorios de entrega" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                          <sc-for list="{{f.accs}}" as="a" hint-placeholder-count="7">
+                            <button type="button" role="switch" aria-checked="{{a.checked}}" onClick="{{a.onClick}}" style="{{a.style}}">{{a.label}}</button>
+                          </sc-for>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                          <input type="text" aria-label="Agregar otro accesorio" autocomplete="off" value="{{f.accNew}}" onInput="{{f.onAccNew}}" onChange="{{f.onAccNew}}" onKeyDown="{{f.onAccNewKey}}" placeholder="Agregar otro accesorio" style="flex: 1 1 180px; max-width: 280px; min-width: 0; height: 32px; padding: 0 10px; box-sizing: border-box; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px;">
+                          <button type="button" class="sec" onClick="{{f.onAccAdd}}" style="height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">Agregar</button>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+                    <button type="button" class="pri" aria-disabled="{{f.actDisabled}}" onClick="{{f.onLend}}" style="display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 16px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                      {{f.lendCta}}
+                      <kbd style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: 4px; background: rgba(13,15,18,.16); color: #0D0F12;">↵</kbd>
+                    </button>
+                    <button type="button" class="gh" onClick="{{f.onCancelLend}}" style="height: 36px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer; white-space: nowrap;">Cancelar</button>
+                    <sc-if value="{{f.hasErr}}" hint-placeholder-val="{{ false }}">
+                      <span role="alert" style="flex: 1 1 200px; min-width: 0; font-size: 13px; line-height: 20px; color: #FF6B6B;">{{f.err}}</span>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </section>
+
+          <!-- 2. EQUIPOS POR TIPO -->
+          <section aria-labelledby="eq-t" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px;">
+            <sc-if value="{{eq.headNormal}}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 64px; padding: 10px 16px; box-sizing: border-box;">
+                <div style="flex: 1 1 260px; min-width: 0;">
+                  <h2 id="eq-t" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Equipos por tipo</h2>
+                  <p style="margin: 2px 0 0; font-size: 12px; line-height: 18px; color: #7C8592;">{{eq.help}}</p>
+                </div>
+                <button type="button" class="sec" aria-disabled="{{eq.selDisabled}}" onClick="{{eq.onSelMode}}" style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="m9 12 2 2 4-4"></path></svg>
+                  <span class="lbl-long">Seleccionar varios</span><span class="lbl-short">Varios</span>
+                </button>
+              </div>
+            </sc-if>
+
+            <!-- Barra de selección: reemplaza al encabezado de la sección -->
+            <sc-if value="{{eq.headSel}}" hint-placeholder-val="{{ false }}">
+              <div role="region" aria-label="Selección de equipos" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 64px; padding: 10px 16px; box-sizing: border-box; background: #1B1F24; border-bottom: 1px solid #353B44; border-radius: 10px 10px 0 0;">
+                <sc-if value="{{eq.bar.normal}}" hint-placeholder-val="{{ true }}">
+                  <span style="font-size: 14px; font-weight: 600; white-space: nowrap;">{{eq.bar.label}}</span>
+                  <span style="flex: 1 1 160px; min-width: 0; font-size: 12px; line-height: 18px; color: #7C8592;">{{eq.bar.hint}}</span>
+                  <sc-if value="{{eq.bar.hasLend}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="pri" onClick="{{eq.bar.onLend}}" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">{{eq.bar.lendLabel}}</button>
+                  </sc-if>
+                  <sc-if value="{{eq.bar.hasRet}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="sec" onClick="{{eq.bar.onReturn}}" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">{{eq.bar.retLabel}}</button>
+                  </sc-if>
+                  <sc-if value="{{eq.bar.hasAny}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="gh" onClick="{{eq.bar.onClear}}" style="height: 36px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer; white-space: nowrap;">Limpiar</button>
+                  </sc-if>
+                  <button type="button" class="gh" onClick="{{eq.bar.onDone}}" style="height: 36px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Listo</button>
+                </sc-if>
+                <sc-if value="{{eq.bar.confirm}}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size: 14px; font-weight: 600; white-space: nowrap;">{{eq.bar.confirmLabel}}</span>
+                  <span style="flex: 1 1 200px; min-width: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 18px; color: #A7AEB8; overflow-wrap: anywhere;">{{eq.bar.retTags}}</span>
+                  <button type="button" class="pri" onClick="{{eq.bar.onConfirm}}" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">{{eq.bar.retLabel}}</button>
+                  <button type="button" class="gh" onClick="{{eq.bar.onCancel}}" style="height: 36px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer; white-space: nowrap;">Cancelar</button>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{stChips.show}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 0 16px 12px;">
+                <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 40px; padding: 4px 4px 4px 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD68A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M20 6 9 17l-5-5"></path></svg>
+                  <span style="flex: 1 1 200px; min-width: 0; font-size: 14px; line-height: 20px;">{{stChips.text}}</span>
+                  <sc-if value="{{stChips.hasUndo}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="gh" onClick="{{stChips.onUndo}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #5B9BFF; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">Deshacer</button>
+                  </sc-if>
+                  <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{stChips.onClose}}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #7C8592; cursor: pointer;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- Referencia de los chips: muestras con número (sin puntitos ni fondos de color) -->
+            <div aria-hidden="true" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 0 16px 12px; font-size: 12px; color: #7C8592;">
+              <span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; background: #1B1F24; border: 1px solid #353B44; color: #ECEEF1;">12</span>Libre</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; border: 1px solid #4FD1C5; color: #4FD1C5; font-weight: 600;">12</span>Prestado</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; border: 1px solid #F5C04E; color: #F5C04E; font-weight: 600;">12</span>1 día afuera</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; border: 1px solid #FF6B6B; color: #FF6B6B; font-weight: 600;">12</span>2 días o más</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; border: 1px dashed #353B44; color: #7C8592; text-decoration: line-through;">12</span>Fuera de servicio o no encontrado</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 22px; padding: 0 4px; box-sizing: border-box; border-radius: 4px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; background: #ECEEF1; border: 1px solid #ECEEF1; color: #0D0F12; font-weight: 600;">12</span>Marcado</span>
+            </div>
+
+            <sc-for list="{{eq.groups}}" as="g" hint-placeholder-count="5">
+              <div style="border-top: 1px solid #262B32;">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 6px 16px 6px 8px;">
+                  <button type="button" class="gh" aria-expanded="{{g.expanded}}" onClick="{{g.onToggle}}" style="flex: 1 1 240px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 48px; padding: 4px 8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; cursor: pointer; text-align: left;">
+                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{g.chevStyle}}"><path d="m9 18 6-6-6-6"></path></svg>
+                      <span style="width: 56px; font-size: 14px; font-weight: 600; white-space: nowrap;">{{g.name}}</span>
+                    </span>
+                    <span style="display: inline-flex; align-items: center; gap: 10px;">
+                      <svg width="36" height="36" viewBox="0 0 36 36" role="img" aria-label="{{g.ringAria}}" style="flex: none;">
+                        <circle cx="18" cy="18" r="16.5" fill="none" stroke="{{g.trackColor}}" stroke-width="3"></circle>
+                        <circle cx="18" cy="18" r="16.5" fill="none" stroke="{{g.arcColor}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{g.dash}}" transform="rotate(-90 18 18)"></circle>
+                      </svg>
+                      <span style="display: flex; flex-direction: column; line-height: 16px;">
+                        <span style="{{g.numStyle}}">{{g.ratio}}</span>
+                        <span style="font-size: 12px; color: #7C8592;">libres</span>
+                      </span>
+                    </span>
+                    <span style="display: inline-flex; flex-wrap: wrap; gap: 0 8px; font-size: 13px; line-height: 20px;">
+                      <span style="color: #A7AEB8; white-space: nowrap;">{{g.outText}}</span>
+                      <span style="{{g.warnStyle}}">{{g.warnText}}</span>
+                    </span>
+                  </button>
+                  <sc-if value="{{g.showAll}}" hint-placeholder-val="{{ false }}">
+                    <span style="display: inline-flex; gap: 4px;">
+                      <button type="button" class="gh" onClick="{{g.onAll}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">Todos</button>
+                      <button type="button" class="gh" onClick="{{g.onNone}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">Ninguno</button>
+                    </span>
+                  </sc-if>
+                </div>
+                <sc-if value="{{g.open}}" hint-placeholder-val="{{ true }}">
+                  <div style="padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 14px;">
+                    <div role="group" aria-label="{{g.chipsAria}}" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                      <sc-for list="{{g.chips}}" as="c" hint-placeholder-count="24">
+                        <button type="button" class="chip" aria-label="{{c.aria}}" aria-pressed="{{c.pressed}}" aria-disabled="{{c.disabled}}" onClick="{{c.onClick}}" style="{{c.style}}">{{c.label}}</button>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{g.hasLoaned}}" hint-placeholder-val="{{ true }}">
+                      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 24px;">
+                        <sc-for list="{{g.loaned}}" as="l" hint-placeholder-count="4">
+                          <div style="display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 28px;">
+                            <span style="{{l.numStyle}}">{{l.num}}</span>
+                            <span style="flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 18px; color: #A7AEB8;">
+                              <sc-if value="{{l.who.trunc}}" hint-placeholder-val="{{ false }}">
+                                <button type="button" class="trn" aria-expanded="{{l.who.tExp}}" aria-label="{{l.who.full}}" onClick="{{l.who.onT}}"><span class="tx">{{l.who.full}}</span><span class="tip" role="tooltip" aria-hidden="true">{{l.who.full}}</span></button>
+                              </sc-if>
+                              <sc-if value="{{l.who.plain}}" hint-placeholder-val="{{ true }}">
+                                <span style="display: block; white-space: nowrap;">{{l.who.full}}</span>
+                              </sc-if>
+                            </span>
+                            <span style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{l.t}}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </section>
+
+          <!-- 3. CARTELITOS DE FOTOS -->
+          <section aria-labelledby="ct-t" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px;">
+            <sc-if value="{{ps.headNormal}}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 16px 8px 8px;">
+                <button type="button" class="gh" aria-expanded="{{ps.expanded}}" onClick="{{ps.onToggle}}" style="flex: 1 1 260px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 48px; padding: 4px 8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; cursor: pointer; text-align: left;">
+                  <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{ps.chevStyle}}"><path d="m9 18 6-6-6-6"></path></svg>
+                    <h2 id="ct-t" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap;">Cartelitos de fotos</h2>
+                  </span>
+                  <span style="display: inline-flex; align-items: center; gap: 10px;">
+                    <svg width="36" height="36" viewBox="0 0 36 36" role="img" aria-label="{{ps.ringAria}}" style="flex: none;">
+                      <circle cx="18" cy="18" r="16.5" fill="none" stroke="{{ps.trackColor}}" stroke-width="3"></circle>
+                      <circle cx="18" cy="18" r="16.5" fill="none" stroke="{{ps.arcColor}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{ps.dash}}" transform="rotate(-90 18 18)"></circle>
+                    </svg>
+                    <span style="display: flex; flex-direction: column; line-height: 16px;">
+                      <span style="{{ps.numStyle}}">{{ps.ratio}}</span>
+                      <span style="font-size: 12px; color: #7C8592;">libres</span>
+                    </span>
+                  </span>
+                  <span style="font-size: 13px; color: #A7AEB8; white-space: nowrap;">{{ps.outText}}</span>
+                </button>
+                <button type="button" class="sec" aria-disabled="{{ps.selDisabled}}" onClick="{{ps.onSelMode}}" style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="m9 12 2 2 4-4"></path></svg>
+                  <span class="lbl-long">Seleccionar varios</span><span class="lbl-short">Varios</span>
+                </button>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ps.headSel}}" hint-placeholder-val="{{ false }}">
+              <div role="region" aria-label="Selección de cartelitos" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 64px; padding: 10px 16px; box-sizing: border-box; background: #1B1F24; border-bottom: 1px solid #353B44; border-radius: 10px 10px 0 0;">
+                <sc-if value="{{ps.bar.normal}}" hint-placeholder-val="{{ true }}">
+                  <span style="font-size: 14px; font-weight: 600; white-space: nowrap;">{{ps.bar.label}}</span>
+                  <span style="flex: 1 1 160px; min-width: 0; font-size: 12px; line-height: 18px; color: #7C8592;">{{ps.bar.hint}}</span>
+                  <sc-if value="{{ps.bar.hasLend}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="pri" onClick="{{ps.bar.onLend}}" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">{{ps.bar.lendLabel}}</button>
+                  </sc-if>
+                  <sc-if value="{{ps.bar.hasRet}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="sec" onClick="{{ps.bar.onReturn}}" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">{{ps.bar.retLabel}}</button>
+                  </sc-if>
+                  <sc-if value="{{ps.bar.hasAny}}" hint-placeholder-val="{{ true }}">
+                    <button type="button" class="gh" onClick="{{ps.bar.onClear}}" style="height: 36px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer; white-space: nowrap;">Limpiar</button>
+                  </sc-if>
+                  <button type="button" class="gh" onClick="{{ps.bar.onDone}}" style="height: 36px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Listo</button>
+                </sc-if>
+                <sc-if value="{{ps.bar.confirm}}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size: 14px; font-weight: 600; white-space: nowrap;">{{ps.bar.confirmLabel}}</span>
+                  <span style="flex: 1 1 200px; min-width: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 18px; color: #A7AEB8;">{{ps.bar.retTags}}</span>
+                  <button type="button" class="pri" onClick="{{ps.bar.onConfirm}}" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">{{ps.bar.retLabel}}</button>
+                  <button type="button" class="gh" onClick="{{ps.bar.onCancel}}" style="height: 36px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer; white-space: nowrap;">Cancelar</button>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ps.open}}" hint-placeholder-val="{{ true }}">
+              <div style="padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 14px;">
+
+                <sc-if value="{{stPass.show}}" hint-placeholder-val="{{ false }}">
+                  <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 40px; padding: 4px 4px 4px 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD68A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M20 6 9 17l-5-5"></path></svg>
+                    <span style="flex: 1 1 200px; min-width: 0; font-size: 14px; line-height: 20px;">{{stPass.text}}</span>
+                    <sc-if value="{{stPass.hasUndo}}" hint-placeholder-val="{{ true }}">
+                      <button type="button" class="gh" onClick="{{stPass.onUndo}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #5B9BFF; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">Deshacer</button>
+                    </sc-if>
+                    <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{stPass.onClose}}" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #7C8592; cursor: pointer;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                    </button>
+                  </div>
+                </sc-if>
+
+                <!-- Entregar cartelitos (antes modal → formulario en línea arriba de la grilla) -->
+                <sc-if value="{{pf.open}}" hint-placeholder-val="{{ false }}">
+                  <div class="cq" role="group" aria-labelledby="pf-title" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                      <span id="pf-title" style="font-size: 14px; font-weight: 600; margin-right: 4px;">{{pf.title}}</span>
+                      <sc-for list="{{pf.chips}}" as="c" hint-placeholder-count="0">
+                        <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 28px; padding: 0 6px; box-sizing: border-box; border: 1px solid #353B44; border-radius: 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px;">{{c.n}}</span>
+                      </sc-for>
+                    </div>
+                    <div class="frow">
+                      <label for="pf-alumno" class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">{{pf.whoLabel}}</label>
+                      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+                        <input id="pf-alumno" type="text" autocomplete="off" value="{{pf.pa}}" onInput="{{pf.onPa}}" onChange="{{pf.onPa}}" onKeyDown="{{pf.onPaKey}}" placeholder="Nombre" style="width: 100%; max-width: 420px; height: 36px; padding: 0 10px; box-sizing: border-box; background: #14171B; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px;">
+                        <sc-if value="{{pf.hasSugA}}" hint-placeholder-val="{{ false }}">
+                          <div role="listbox" aria-label="Alumnos que ya pidieron cartelitos" style="max-width: 420px; display: flex; flex-direction: column; border: 1px solid #262B32; border-radius: 6px; background: #14171B;">
+                            <sc-for list="{{pf.sugA}}" as="p" hint-placeholder-count="3">
+                              <button type="button" role="option" aria-selected="false" class="gh" onClick="{{p.onPick}}" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 4px 10px; background: transparent; border: 0; border-top: 1px solid #262B32; color: #ECEEF1; text-align: left; cursor: pointer; box-sizing: border-box;">
+                                <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+                                  <span style="font-size: 14px; font-weight: 500;">{{p.name}}</span>
+                                  <span style="font-size: 12px; color: #7C8592;">{{p.hint}}</span>
+                                </span>
+                                <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{p.times}}</span>
+                              </button>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </div>
+                    <div class="frow">
+                      <span class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Curso</span>
+                      <div role="group" aria-label="Curso" style="display: flex; flex-direction: column; gap: 4px;">
+                        <sc-for list="{{pf.grades}}" as="gr" hint-placeholder-count="3">
+                          <div style="display: flex; gap: 4px;">
+                            <sc-for list="{{gr.cells}}" as="gc" hint-placeholder-count="6">
+                              <button type="button" aria-pressed="{{gc.pressed}}" onClick="{{gc.onClick}}" style="{{gc.style}}">{{gc.label}}</button>
+                            </sc-for>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div class="frow">
+                      <label for="pf-docente" class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Docente a cargo</label>
+                      <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                        <input id="pf-docente" type="text" autocomplete="off" value="{{pf.pd}}" onInput="{{pf.onPd}}" onChange="{{pf.onPd}}" onKeyDown="{{pf.onKey}}" placeholder="Nombre del docente" style="width: 100%; max-width: 420px; height: 36px; padding: 0 10px; box-sizing: border-box; background: #14171B; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                          <sc-for list="{{pf.docs}}" as="o" hint-placeholder-count="4">
+                            <button type="button" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="frow">
+                      <label for="pf-motivo" class="flabel" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Motivo</label>
+                      <input id="pf-motivo" type="text" autocomplete="off" value="{{pf.pm}}" onInput="{{pf.onPm}}" onChange="{{pf.onPm}}" onKeyDown="{{pf.onKey}}" placeholder="Opcional" style="width: 100%; max-width: 420px; height: 36px; padding: 0 10px; box-sizing: border-box; background: #14171B; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px;">
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+                      <button type="button" class="pri" aria-disabled="{{pf.ctaDisabled}}" onClick="{{pf.onSubmit}}" style="{{pf.ctaStyle}}">
+                        {{pf.cta}}
+                        <kbd style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 18px; padding: 0 6px; border-radius: 4px; background: rgba(13,15,18,.16); color: inherit;">↵</kbd>
+                      </button>
+                      <button type="button" class="gh" onClick="{{pf.onCancel}}" style="height: 36px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer; white-space: nowrap;">Cancelar</button>
+                      <sc-if value="{{pf.hasErr}}" hint-placeholder-val="{{ false }}">
+                        <span role="alert" style="font-size: 13px; color: #FF6B6B;">{{pf.err}}</span>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <p style="margin: 0; font-size: 12px; line-height: 18px; color: #7C8592;">{{ps.help}}</p>
+                <div role="group" aria-label="Cartelitos" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                  <sc-for list="{{ps.chips}}" as="c" hint-placeholder-count="30">
+                    <button type="button" class="chip" aria-label="{{c.aria}}" aria-pressed="{{c.pressed}}" aria-disabled="{{c.disabled}}" onClick="{{c.onClick}}" style="{{c.style}}">{{c.label}}</button>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ps.hasOut}}" hint-placeholder-val="{{ true }}">
+                  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 24px;">
+                    <sc-for list="{{ps.out}}" as="l" hint-placeholder-count="3">
+                      <div style="display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 28px;">
+                        <span style="width: 24px; flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #4FD1C5;">{{l.n}}</span>
+                        <span style="flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 18px; color: #A7AEB8; white-space: nowrap;">{{l.who}}</span>
+                        <span style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{l.t}}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </section>
+        </div>
+
+        <!-- ===================== COLUMNA LATERAL ===================== -->
+        <div class="col-side">
+
+          <!-- Estado ahora -->
+          <section aria-labelledby="rs-t" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+            <div id="rs-t" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Ahora en NFPT</div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px;">
+              <sc-for list="{{sum.tiles}}" as="t" hint-placeholder-count="4">
+                <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                  <span style="{{t.numStyle}}">{{t.num}}</span>
+                  <span style="font-size: 12px; line-height: 16px; color: #A7AEB8;">{{t.label}}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid #262B32; font-size: 13px; line-height: 20px;">
+              <div style="display: flex; flex-wrap: wrap; gap: 0 8px;"><span style="color: #7C8592;">Donde hay más equipos</span><span style="color: #ECEEF1;">{{sum.topUbi}}</span></div>
+              <div style="display: flex; flex-wrap: wrap; gap: 0 8px;"><span style="color: #7C8592;">Tipo más numeroso</span><span style="color: #ECEEF1;">{{sum.topType}}</span></div>
+            </div>
+          </section>
+
+          <!-- Actualmente prestados -->
+          <section aria-labelledby="ap-t" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px;">
+            <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 56px; padding: 16px 16px 12px; box-sizing: border-box;">
+              <h2 id="ap-t" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap;">Actualmente prestados</h2>
+              <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #A7AEB8;">{{side.count}}</span>
+              <span style="flex: 1 1 100%; font-size: 12px; color: #7C8592;">Los que están afuera hace más tiempo, primero.</span>
+            </div>
+            <sc-for list="{{side.items}}" as="it" hint-placeholder-count="8">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; border-top: 1px solid #262B32;">
+                <div style="flex: 1 1 150px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                  <div style="display: flex; align-items: baseline; gap: 8px; white-space: nowrap;">
+                    <a href="#" class="lnk" aria-label="{{it.fichaLabel}}" style="font-size: 14px; font-weight: 500;">{{it.alias}}</a>
+                    <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{it.et}}</span>
+                  </div>
+                  <span style="min-width: 0; font-size: 13px; line-height: 18px; color: #A7AEB8;">
+                    <sc-if value="{{it.who.trunc}}" hint-placeholder-val="{{ false }}">
+                      <button type="button" class="trn" aria-expanded="{{it.who.tExp}}" aria-label="{{it.who.full}}" onClick="{{it.who.onT}}"><span class="tx">{{it.who.full}}</span><span class="tip" role="tooltip" aria-hidden="true">{{it.who.full}}</span></button>
+                    </sc-if>
+                    <sc-if value="{{it.who.plain}}" hint-placeholder-val="{{ true }}">
+                      <span style="display: block;">{{it.who.full}}</span>
+                    </sc-if>
+                  </span>
+                  <span style="{{it.sinceStyle}}">{{it.since}}</span>
+                </div>
+                <div style="display: flex; gap: 6px; flex: none;">
+                  <button type="button" class="gh" aria-label="{{it.reviewLabel}}" aria-disabled="{{it.actDisabled}}" onClick="{{it.onReview}}" style="height: 30px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">Revisar</button>
+                  <button type="button" class="sec" aria-label="{{it.returnLabel}}" aria-disabled="{{it.actDisabled}}" onClick="{{it.onReturn}}" style="height: 30px; padding: 0 10px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">Devolver</button>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{side.empty}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 16px; border-top: 1px solid #262B32; font-size: 13px; color: #7C8592;">No hay equipos prestados ahora.</div>
+            </sc-if>
+            <sc-if value="{{side.hasMore}}" hint-placeholder-val="{{ true }}">
+              <div style="padding: 8px; border-top: 1px solid #262B32;">
+                <button type="button" class="gh" onClick="{{side.onMore}}" style="width: 100%; height: 36px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">{{side.moreLabel}}</button>
+              </div>
+            </sc-if>
+          </section>
+        </div>
+      </div>
+
+      <!-- ÚLTIMO DÍA CON PRÉSTAMOS (ancho completo) -->
+      <section class="cq" aria-labelledby="pd-t" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px 8px 8px;">
+          <button type="button" class="gh" aria-expanded="{{prev.expanded}}" onClick="{{prev.onToggle}}" style="flex: 1 1 260px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 44px; padding: 4px 8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; cursor: pointer; text-align: left;">
+            <span style="display: inline-flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{prev.chevStyle}}"><path d="m9 18 6-6-6-6"></path></svg>
+              <h2 id="pd-t" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap;">Último día con préstamos</h2>
+            </span>
+            <span style="font-size: 13px; color: #A7AEB8; white-space: nowrap;">jue 15 oct</span>
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #A7AEB8;">{{prev.count}}</span>
+          </button>
+          <span style="font-size: 12px; color: #7C8592;">Si ayer no hubo clases, muestra el último día que sí hubo.</span>
+        </div>
+        <sc-if value="{{prev.open}}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div class="pd-head" role="row" style="height: 36px; border-top: 1px solid #262B32; font-size: 12px; font-weight: 500; color: #7C8592;">
+              <span>Hora</span><span>Equipo</span><span>Persona</span><span>Ubicación · curso</span><span>Motivo</span><span>Accesorios</span>
+            </div>
+            <sc-for list="{{prev.rows}}" as="r" hint-placeholder-count="8">
+              <div class="pd-row" style="border-top: 1px solid #262B32; font-size: 13px; line-height: 18px;">
+                <span style="font-family: 'Geist Mono', ui-monospace, monospace; color: #A7AEB8;">{{r.hora}}</span>
+                <span style="min-width: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap;">
+                  <a href="#" class="lnk" aria-label="{{r.fichaLabel}}" style="font-size: 14px; font-weight: 500;">{{r.alias}}</a>
+                  <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{r.et}}</span>
+                </span>
+                <span style="min-width: 0; color: #ECEEF1; white-space: nowrap;">{{r.persona}}</span>
+                <span class="pd-x" style="min-width: 0; color: #A7AEB8;">
+                  <sc-if value="{{r.ubi.trunc}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="trn" aria-expanded="{{r.ubi.tExp}}" aria-label="{{r.ubi.full}}" onClick="{{r.ubi.onT}}"><span class="tx">{{r.ubi.full}}</span><span class="tip" role="tooltip" aria-hidden="true">{{r.ubi.full}}</span></button>
+                  </sc-if>
+                  <sc-if value="{{r.ubi.plain}}" hint-placeholder-val="{{ true }}"><span style="display: block; white-space: nowrap;">{{r.ubi.full}}</span></sc-if>
+                </span>
+                <span class="pd-x" style="min-width: 0; color: #A7AEB8;">
+                  <sc-if value="{{r.mot.trunc}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="trn" aria-expanded="{{r.mot.tExp}}" aria-label="{{r.mot.full}}" onClick="{{r.mot.onT}}"><span class="tx">{{r.mot.full}}</span><span class="tip" role="tooltip" aria-hidden="true">{{r.mot.full}}</span></button>
+                  </sc-if>
+                  <sc-if value="{{r.mot.plain}}" hint-placeholder-val="{{ true }}"><span style="display: block; white-space: nowrap;">{{r.mot.full}}</span></sc-if>
+                </span>
+                <span class="pd-x" style="min-width: 0; color: #7C8592;">
+                  <sc-if value="{{r.acc.trunc}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="trn r" aria-expanded="{{r.acc.tExp}}" aria-label="{{r.acc.full}}" onClick="{{r.acc.onT}}"><span class="tx">{{r.acc.full}}</span><span class="tip" role="tooltip" aria-hidden="true">{{r.acc.full}}</span></button>
+                  </sc-if>
+                  <sc-if value="{{r.acc.plain}}" hint-placeholder-val="{{ true }}"><span style="display: block; white-space: nowrap;">{{r.acc.full}}</span></sc-if>
+                </span>
+              </div>
+            </sc-for>
+            <sc-if value="{{prev.hasMore}}" hint-placeholder-val="{{ true }}">
+              <div style="padding: 8px; border-top: 1px solid #262B32;">
+                <button type="button" class="gh" onClick="{{prev.onMore}}" style="width: 100%; height: 36px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer; white-space: nowrap;">{{prev.moreLabel}}</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </div>
+    </sc-if>
+
+    <!-- ASISTENTE: columna que empuja el contenido (desktop) o vista propia (mobile) -->
+    <sc-if value="{{asst.open}}" hint-placeholder-val="{{ false }}">
+      <aside class="asst-col" aria-labelledby="as-t" style="background: #0D0F12;">
+        <div style="display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 8px 8px 8px 16px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+          <div style="flex: 1; min-width: 0;">
+            <h2 id="as-t" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Asistente</h2>
+            <div style="font-size: 12px; color: #7C8592; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Responde con los datos vivos de NFPT</div>
+          </div>
+          <button type="button" class="gh" onClick="{{asst.onToggle}}" style="{{asst.closeStyle}}">Cerrar</button>
+        </div>
+        <div aria-live="polite" style="padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+          <sc-if value="{{asst.empty}}" hint-placeholder-val="{{ true }}">
+            <p style="margin: 0; font-size: 13px; line-height: 20px; color: #A7AEB8;">Preguntale por un equipo, una persona o lo que está afuera. Por ejemplo:</p>
+          </sc-if>
+          <sc-for list="{{asst.msgs}}" as="m" hint-placeholder-count="0">
+            <div style="{{m.style}}">{{m.text}}</div>
+          </sc-for>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <sc-for list="{{asst.sug}}" as="q" hint-placeholder-count="3">
+              <button type="button" class="sec" onClick="{{q.onClick}}" style="{{q.style}}">{{q.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid #262B32;">
+          <label for="as-in" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;">Pregunta para el asistente</label>
+          <input id="as-in" type="text" autocomplete="off" value="{{asst.draft}}" onInput="{{asst.onDraft}}" onChange="{{asst.onDraft}}" onKeyDown="{{asst.onKey}}" placeholder="Preguntá algo…" style="{{asst.inputStyle}}">
+          <button type="button" class="pri" onClick="{{asst.onSend}}" style="{{asst.sendStyle}}">Enviar</button>
+        </div>
+      </aside>
+    </sc-if>
+    </div>
+
+    <!-- Mobile: barra inferior de navegación -->
+    <sc-if value="{{isM}}" hint-placeholder-val="{{ false }}">
+      <nav aria-label="Navegación principal" style="position: sticky; bottom: 0; z-index: 10; height: 64px; flex: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 4px; background: #0D0F12; border-top: 1px solid #262B32; box-sizing: border-box;">
+        <sc-for list="{{bottom}}" as="b" hint-placeholder-count="5">
+          <a href="#" aria-current="{{b.current}}" aria-label="{{b.label}}" onClick="{{b.onClick}}" style="{{b.style}}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{b.d}}"></path></svg>
+            <span style="font-size: 11px; line-height: 14px; white-space: nowrap;">{{b.label}}</span>
+          </a>
+        </sc-for>
+      </nav>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1860},"consulta":{"editor":"enum","options":["no","sí"],"default":"no"}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+seed() {
+  // Equipos activos de NFPT en la base local (local_devices): etiqueta, alias, tipo, estado, modelo. Mismo set que el Inicio.
+  const RAW = [["D0109","Plani 9","Plani","Disponible","Samsung XE500C12"],["D0110","Plani 5","Plani","Disponible","Samsung XE500C12"],["D0111","Plani 6","Plani","Disponible","Samsung XE500C12"],["D0112","Plani 1","Plani","Disponible","Samsung XE500C12"],["D0116","Plani 3","Plani","Disponible","Samsung XE500C12"],["D0117","Plani 10","Plani","Disponible","Samsung XE500C12"],["D0118","Plani 7","Plani","Disponible","Samsung XE500C12"],["D0159","Touch 9","Touch","Disponible","Lenovo Chromebook C340-11"],["D0160","Touch 14","Touch","Disponible","Lenovo Chromebook C340-11"],["D0161","Touch 11","Touch","Disponible","Lenovo Chromebook C340-11"],["D0162","Touch 20","Touch","Fuera de servicio","Lenovo Chromebook C340-11"],["D0163","Touch 16","Touch","Disponible","Lenovo Chromebook C340-11"],["D0164","Touch 8","Touch","Disponible","Lenovo Chromebook C340-11"],["D0165","Touch 18","Touch","Fuera de servicio","Lenovo Chromebook C340-11"],["D0166","Touch 5","Touch","Disponible","Lenovo Chromebook C340-11"],["D0168","Touch 3","Touch","Disponible","Lenovo Chromebook C340-11"],["D0169","Touch 6","Touch","Disponible","Lenovo Chromebook C340-11"],["D0172","Touch 7","Touch","Disponible","Lenovo Chromebook C340-11"],["D0173","Touch 4","Touch","Disponible","Lenovo Chromebook C340-11"],["D0174","Touch 2","Touch","Disponible","Lenovo Chromebook C340-11"],["D0175","Touch 21","Touch","Fuera de servicio","Lenovo Chromebook C340-11"],["D0176","Touch 13","Touch","Disponible","Lenovo Chromebook C340-11"],["D0178","Touch 17","Touch","Disponible","Lenovo Chromebook C340-11"],["D0179","Touch 12","Touch","Disponible","Lenovo Chromebook C340-11"],["D0180","Touch 19","Touch","Fuera de servicio","Lenovo Chromebook C340-11"],["D0182","Touch 15","Touch","Disponible","Lenovo Chromebook C340-11"],["D0184","Touch 1","Touch","Disponible","Lenovo Chromebook C340-11"],["D0185","Touch 10","Touch","Disponible","Lenovo Chromebook C340-11"],["D0189","Plani 8","Plani","Disponible","Samsung XE500C12"],["D0248","Plani 11","Plani","Disponible","Samsung XE500C12"],["D0689","Touch 22","Touch","Disponible","Samsung XE520QAB'K04US"],["D0690","Touch 27","Touch","Disponible","Samsung XE520QAB'K04US"],["D0691","Touch 30","Touch","Fuera de servicio","Samsung XE520QAB'K04US"],["D0692","Touch 23","Touch","Disponible","Samsung XE520QAB'K04US"],["D0693","Touch 29","Touch","Disponible","Samsung XE520QAB'K04US"],["D0694","Touch 24","Touch","Disponible","Samsung XE520QAB'K04US"],["D0695","Touch 28","Touch","Disponible","Samsung XE520QAB'K04US"],["D0696","Touch 26","Touch","Disponible","Samsung XE520QAB'K04US"],["D0697","Touch 25","Touch","Disponible","Samsung XE520QAB'K04US"],["D0750","Dell 7","Dell","Disponible","Dell Vostro 14 3405"],["D0753","Dell 1","Dell","Disponible","Dell Vostro 14 3405"],["D0754","Dell 6","Dell","Disponible","Dell Vostro 14 3405"],["D0755","Dell 4","Dell","Disponible","Dell Vostro 14 3405"],["D0756","Dell 5","Dell","Disponible","Dell Vostro 14 3405"],["D0757","Dell 2","Dell","Disponible","Dell Vostro 14 3405"],["D0828","Dell 3","Dell","Disponible","Dell Vostro 14 3405"],["D0847","Tablet 8","Tablet","Disponible",""],["D0848","Tablet 14","Tablet","Disponible",""],["D0849","Tablet 7","Tablet","Disponible",""],["D0851","Tablet 12","Tablet","Disponible",""],["D0852","Tablet 5","Tablet","Disponible",""],["D0853","Tablet 9","Tablet","Disponible",""],["D0854","Tablet 2","Tablet","Disponible",""],["D0855","Tablet 6","Tablet","Disponible",""],["D0856","Tablet 10","Tablet","Disponible",""],["D1257","Tablet 3","Tablet","Disponible",""],["D1258","Tablet 1","Tablet","Disponible",""],["D1259","Tablet 13","Tablet","Disponible",""],["D1265","Tablet 11","Tablet","Disponible",""],["D1266","Tablet 4","Tablet","Disponible",""],["D1337","TIC 4","TIC","Disponible","Acer Chromebook CB315-3H"],["D1338","TIC 3","TIC","Disponible","Acer Chromebook CB315-3H"],["D1388","TIC 1","TIC","Disponible","Acer Chromebook CB315-3H"],["D1391","TIC 2","TIC","Disponible","Acer Chromebook CB315-3H"],["D1433","Touch 31","Touch","Disponible","Acer R841T"],["D1434","Touch 32","Touch","Disponible","Acer R841T"],["D1435","Touch 33","Touch","Disponible","Acer R841T"],["D1436","Touch 34","Touch","Disponible","Acer R841T"],["D1437","Touch 35","Touch","Disponible","Acer R841T"],["D1438","Touch 36","Touch","Disponible","Acer R841T"],["D1439","Touch 37","Touch","Disponible","Acer R841T"],["D1440","Touch 38","Touch","Disponible","Acer R841T"],["D1441","Touch 39","Touch","Disponible","Acer R841T"],["D1442","Touch 40","Touch","No encontrada","Acer R841T"],["D1546","Plani 2","Plani","Disponible","Samsung XE500C12"],["D1547","Plani 4","Plani","Disponible","Samsung XE500C12"]];
+  const A = 'Préstamo autorizado';
+  // Préstamos de la mañana: personas de loan_events/local_states (nombre + inicial); rol/ubicación como en el Inicio.
+  const LOANS = {
+    D0164: { p: 'Máximo M.', rol: 'Alumno', donde: '4N · Aula', motivo: A, t: '08:10', d: 4, since: 'lun 12/10', acc: [] },
+    D0116: { p: 'Wanda', rol: 'Maestra', donde: 'Planificación móvil', motivo: 'Planificación', t: '09:43', d: 2, since: 'mié 14/10', acc: ['Cargador', 'Mouse'] },
+    D1338: { p: 'Lu P.', rol: 'DOE', donde: 'DOE', motivo: '', t: '11:32', d: 1, since: 'jue 15/10', acc: [] },
+    D1546: { p: 'Juani V.', rol: 'Maestra', donde: 'Planificación móvil', motivo: 'Planificación', t: '07:40', d: 0, acc: ['Cargador'] },
+    D1436: { p: 'Alex C.', rol: 'Alumno', donde: '2F · Aula', motivo: A, t: '07:48', d: 0, acc: [] },
+    D0112: { p: 'Alex C.', rol: 'Alumno', donde: '2F · Aula', motivo: A, t: '07:48', d: 0, acc: [] },
+    D1337: { p: 'Delfi M.', rol: 'Alumno', donde: '4N · Aula', motivo: A, t: '08:05', d: 0, acc: [] },
+    D0179: { p: 'Ame W.', rol: 'Alumno', donde: '4S · Aula', motivo: A, t: '08:20', d: 0, acc: [] },
+    D0182: { p: 'Edu M.', rol: 'Alumno', donde: '4S · Aula', motivo: A, t: '08:20', d: 0, acc: [] },
+    D0689: { p: 'Felipe M.', rol: 'Alumno', donde: '1N · Aula', motivo: A, t: '08:31', d: 0, acc: [] },
+    D1433: { p: 'Lola F.', rol: 'Alumno', donde: '3N · Aula', motivo: A, t: '08:50', d: 0, acc: [] },
+    D0110: { p: 'Mili', rol: 'Maestra', donde: 'Planificación móvil', motivo: 'Planificación', t: '08:55', d: 0, acc: [] },
+    D0753: { p: 'Tomi A.', rol: 'Profesor', donde: '1S · Aula', motivo: A, t: '09:02', d: 0, acc: ['Cargador'] },
+    D1441: { p: 'Catalina L.', rol: 'Alumno', donde: 'Otro · Sala de música, 2do piso (armario del fondo)', motivo: A, t: '09:05', d: 0, acc: [] },
+    D1258: { p: 'Cami', rol: 'Alumno', donde: '1F · Aula', motivo: A, t: '09:10', d: 0, acc: [] }
+  };
+  // Recomendador por historial (loan_events): rol/ubicación/curso/motivo más usados y veces.
+  const PEOPLE = [
+    { p: 'Alex C.', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '2F', mot: A, n: 7 },
+    { p: 'Akane', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '5F', mot: A, n: 4 },
+    { p: 'Máximo M.', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '4N', mot: A, n: 3 },
+    { p: 'Delfi M.', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '4N', mot: A, n: 3 },
+    { p: 'Wanda', rol: 'Maestra', ubi: 'Planificación móvil', niv: '', cur: '', mot: 'Planificación', n: 2 },
+    { p: 'Mili', rol: 'Maestra', ubi: 'Planificación móvil', niv: '', cur: '', mot: 'Planificación', n: 2 },
+    { p: 'Lu P.', rol: 'DOE', ubi: 'DOE', niv: '', cur: '', mot: '', n: 2 },
+    { p: 'Juani V.', rol: 'Maestra', ubi: 'Planificación móvil', niv: '', cur: '', mot: 'Planificación', n: 2 },
+    { p: 'Felipe M.', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '1N', mot: A, n: 2 },
+    { p: 'Edu M.', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '4S', mot: A, n: 2 },
+    { p: 'Iara', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '6S', mot: A, n: 2 },
+    { p: 'Ame W.', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '4S', mot: A, n: 1 },
+    { p: 'Lola F.', rol: 'Alumno', ubi: 'Aula', niv: 'EP', cur: '3N', mot: A, n: 1 }
+  ];
+  // Cartelitos: la sede arranca con 1 a 30 (siembra del server). Entregados de ejemplo con alumnos/docentes del historial.
+  const PASSES = {
+    3: { p: 'Ame W.', curso: '4S', doc: 'Wanda', t: '08:40' },
+    7: { p: 'Lola F.', curso: '3N', doc: 'Mili', t: '08:52' },
+    12: { p: 'Felipe M.', curso: '1N', doc: 'Juani V.', t: '09:05' }
+  };
+  const PASS_BLOCKED = { 27: 'Perdido' };
+  const PASS_PEOPLE = [
+    { p: 'Ame W.', curso: '4S', doc: 'Wanda', n: 3 },
+    { p: 'Alex C.', curso: '2F', doc: 'Wanda', n: 2 },
+    { p: 'Lola F.', curso: '3N', doc: 'Mili', n: 2 },
+    { p: 'Felipe M.', curso: '1N', doc: 'Juani V.', n: 2 },
+    { p: 'Delfi M.', curso: '4N', doc: 'Mili', n: 1 }
+  ];
+  const DOCENTES = ['Wanda', 'Mili', 'Juani V.', 'Tomi A.'];
+  // "Último día con préstamos": los préstamos reales de un día completo de loan_events (hora AR), con el día corrido a jue 15/10.
+  const PREV = [
+    ['08:15', 'D1337', 'Juani V.', 'Planificación móvil', 'Planificación', 'Sin accesorios'],
+    ['08:16', 'D1388', 'Edu M.', '4S · Aula', A, 'Sin accesorios'],
+    ['08:57', 'D1338', 'Delfi M.', '4N · Aula', A, 'Sin accesorios'],
+    ['09:08', 'D1391', 'Akane', '5F · Aula', A, 'Sin accesorios'],
+    ['09:24', 'D0695', 'Ame W.', '4S · Aula', A, 'Cargador'],
+    ['10:48', 'D0697', 'Alex C.', '2F · Aula', A, 'Sin accesorios'],
+    ['11:18', 'D0184', 'Moira', '1F · Aula', A, 'Sin accesorios'],
+    ['11:21', 'D0689', 'Delfi M.', '4N · Aula', A, 'Sin accesorios'],
+    ['11:32', 'D1338', 'Lu P.', 'DOE', '—', 'Sin accesorios'],
+    ['13:30', 'D0110', 'Alex C.', 'Planificación móvil', A, 'Cargador'],
+    ['13:34', 'D1546', 'Máximo M.', 'Planificación móvil', 'Planificación', 'Cargador'],
+    ['13:38', 'D0111', 'Lola F.', '3N · Aula', A, 'Sin accesorios'],
+    ['14:30', 'D1547', 'Iara', 'Otro · Laboratorio de ciencias, planta baja (mesada 2)', 'Otro · Ensayo para la feria de ciencias', 'Cargador, Mouse, Cable HDMI']
+  ];
+  const NOTES_IMP = ['La unica compu que no encontre es la touch 8', 'Encontre los microfonos corbateros'];
+  return { RAW: RAW, LOANS: LOANS, PEOPLE: PEOPLE, PASSES: PASSES, PASS_BLOCKED: PASS_BLOCKED, PASS_PEOPLE: PASS_PEOPLE, DOCENTES: DOCENTES, PREV: PREV, NOTES_IMP: NOTES_IMP };
+}
+renderVals() {
+  const MOBILE = false; // la versión -m.dc.html es este mismo archivo con MOBILE = true
+  const self = this;
+  const s = this.state || {};
+  const P = this.props || {};
+  const consulta = P.consulta === 'sí' || P.consulta === true;
+  const B = this.seed();
+  const I = this.icons();
+  const MONO = "'Geist Mono', ui-monospace, monospace";
+  const NOW = 9 * 60 + 20; // viernes 16/10, 09:20
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const mod = e => !!(e && (e.ctrlKey || e.metaKey || e.shiftKey));
+  const noop = () => {};
+  const focusId = id => setTimeout(() => { try { const el = document.getElementById(id); if (el) el.focus(); } catch (x) {} }, 40);
+  const toTop = () => { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (x) {} };
+  const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+  const toMin = t => { const p = String(t).split(':'); return (+p[0]) * 60 + (+p[1]); };
+  const hace = t => {
+    const m = NOW - toMin(t);
+    if (m < 1) return 'recién';
+    const h = Math.floor(m / 60), mm = m % 60;
+    return 'hace ' + (h ? h + ' h' : '') + (h && mm ? ' ' : '') + (mm ? mm + ' min' : '');
+  };
+  const exp = s.exp || {};
+  const tr = (key, text, limit) => {
+    const full = text || '—';
+    const t = full.length > limit;
+    const on = !!exp[key];
+    const o = {}; o[key] = !on;
+    return { full: full, trunc: t, plain: !t, tExp: on ? 'true' : 'false', onT: () => set({ exp: Object.assign({}, exp, o) }) };
+  };
+
+  // ---------- Estado vivo ----------
+  const loans = s.loans || B.LOANS;
+  const passes = s.passes || B.PASSES;
+  const devs = B.RAW.map(r => {
+    const mm = r[1].match(/(\d+)\s*$/);
+    const L = loans[r[0]] || null;
+    const base = r[3] === 'Fuera de servicio' ? 'out' : (r[3] === 'No encontrada' ? 'missing' : 'available');
+    return { et: r[0], alias: r[1], g: r[2], model: r[4], num: mm ? mm[1] : '', L: L, raw: r[3], st: L ? 'loaned' : base };
+  });
+  const byEt = {};
+  devs.forEach(d => { byEt[d.et] = d; });
+  const nLoaned = devs.filter(d => d.st === 'loaned').length;
+
+  // Texto de estado: lo normal no se marca; solo lo que pide atención, como texto plano coloreado.
+  const stateOf = d => {
+    if (d.st === 'available') return ['Libre', '#A7AEB8'];
+    if (d.st === 'out') return ['Fuera de servicio', '#FF6B6B'];
+    if (d.st === 'missing') return ['No encontrado', '#FF6B6B'];
+    if (d.L.d >= 2) return ['Prestado · hace ' + d.L.d + ' días', '#FF6B6B'];
+    if (d.L.d === 1) return ['Prestado · hace 1 día', '#F5C04E'];
+    return ['Prestado', '#4FD1C5'];
+  };
+  const stateStyle = c => 'font-size: 13px; font-weight: 500; white-space: nowrap; color: ' + c + ';';
+
+  // ---------- Búsqueda flexible (touch 34 / touch34 / 34touch / D1436 / 1436 / plani 5 / planificación 5) ----------
+  const GROUPS = ['Touch', 'TIC', 'Plani', 'Dell', 'Tablet'];
+  const groupOf = w => {
+    if (!w) return '';
+    if (w.indexOf('plan') === 0) return 'Plani';
+    for (let i = 0; i < GROUPS.length; i++) {
+      const k = GROUPS[i].toLowerCase();
+      if (k.indexOf(w) === 0 || w.indexOf(k) === 0) return GROUPS[i];
+    }
+    return null;
+  };
+  const parseQ = n => {
+    const m = n.match(/^([a-z]*)(\d+)([a-z]*)$/);
+    if (!m) return null;
+    const w = m[1] || m[3];
+    return { w: w, g: groupOf(w), num: String(parseInt(m[2], 10)) };
+  };
+  const search = text => {
+    const n = norm(text);
+    if (!n) return null;
+    let d = devs.find(x => norm(x.et) === n);
+    if (!d && /^\d{3,4}$/.test(n)) d = byEt['D' + ('0000' + n).slice(-4)];
+    if (!d && /^d0*\d{1,4}$/.test(n)) d = byEt['D' + ('0000' + n.replace(/^d0*/, '')).slice(-4)];
+    if (d) return { kind: 'found', d: d };
+    if (/^d\d{3,5}$/.test(n)) return { kind: 'none', label: text.trim(), sug: devs.filter(x => norm(x.et).indexOf(n.slice(0, 3)) === 0).slice(0, 4) };
+    const p = parseQ(n);
+    if (p && p.g) {
+      d = devs.find(x => x.g === p.g && x.num === p.num);
+      if (d) return { kind: 'found', d: d };
+      const sug = devs.filter(x => x.g === p.g).sort((a, b) => Math.abs(a.num - p.num) - Math.abs(b.num - p.num)).slice(0, 4);
+      return { kind: 'none', label: text.trim(), sug: sug };
+    }
+    if (p && !p.w) {
+      const l = devs.filter(x => x.num === p.num);
+      if (l.length === 1) return { kind: 'found', d: l[0] };
+      if (l.length) return { kind: 'multi', list: l };
+    }
+    const list = devs.filter(x => norm(x.alias).indexOf(n) >= 0 || norm(x.et).indexOf(n) >= 0 || (x.L && norm(x.L.p).indexOf(n) >= 0));
+    if (list.length === 1) return { kind: 'found', d: list[0] };
+    if (list.length) return { kind: 'multi', list: list.slice(0, 8) };
+    return { kind: 'none', label: text.trim(), sug: [] };
+  };
+
+  // ---------- Opciones de la sede (defaults de LoanForm) ----------
+  const ROLES = ['DOE', 'Alumno', 'Maestra', 'Profesor', 'Directivo', 'Preceptor', 'Otro'];
+  const UBIS = [{ l: 'Aula', course: true }, { l: 'DOE' }, { l: 'Planificación móvil' }, { l: 'Otro', detail: true }];
+  const MOTS = [{ l: 'Sin motivo', v: '' }, { l: 'Planificación', v: 'Planificación' }, { l: 'Préstamo autorizado', v: 'Préstamo autorizado' }, { l: 'Otro', v: 'Otro', detail: true }];
+  const ACCS = ['Cargador', 'Mouse', 'Bolso', 'Cable HDMI', 'Adaptador', 'Lápiz óptico', 'Auriculares'].concat(s.accExtra || []);
+  const optStyle = on => 'height: 32px; padding: 0 12px; box-sizing: border-box; border-radius: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; background: ' + (on ? '#1B1F24' : 'transparent') + '; border: 1px solid ' + (on ? '#5B9BFF' : '#353B44') + '; color: ' + (on ? '#ECEEF1' : '#A7AEB8') + '; font-weight: ' + (on ? '500' : '400') + ';';
+  const gradeRows = (cur, onPick) => ['N', 'F', 'S'].map(sec => ({
+    cells: [1, 2, 3, 4, 5, 6].map(y => {
+      const g = y + sec;
+      const on = cur === g;
+      return {
+        label: g, pressed: on ? 'true' : 'false', onClick: () => onPick(on ? '' : g),
+        style: 'width: ' + (MOBILE ? 44 : 40) + 'px; height: 32px; padding: 0; box-sizing: border-box; border-radius: 6px; font-family: ' + MONO + '; font-size: 13px; cursor: pointer; background: ' + (on ? '#1B1F24' : 'transparent') + '; border: 1px solid ' + (on ? '#5B9BFF' : '#353B44') + '; color: ' + (on ? '#ECEEF1' : '#A7AEB8') + ';'
+      };
+    })
+  }));
+
+  // ---------- Estado del formulario ----------
+  const code = s.code || '';
+  const cont = !!s.cont;
+  const queue = s.queue || [];
+  const RESET = { fp: '', fpPicked: false, frol: '', fubi: '', fubiDet: '', fniv: '', fcur: '', fmot: '', fmotDet: '', fcom: '', facc: [], faccOpen: false, accNew: '', ferr: '', retAcc: [] };
+  const status = s.status || null;
+
+  const doReturn = (ets, area, extra) => {
+    if (consulta) return;
+    const ok = ets.filter(et => loans[et]);
+    if (!ok.length) return;
+    const next = Object.assign({}, loans);
+    ok.forEach(et => { delete next[et]; });
+    const one = ok.length === 1 ? byEt[ok[0]] : null;
+    const text = one ? one.alias + ' (' + one.et + ') devuelto · lo tenía ' + loans[one.et].p : 'Se devolvieron ' + ok.length + ' equipos: ' + ok.map(et => byEt[et].alias).join(', ') + '.';
+    const sel = s.sel || [];
+    set(Object.assign({
+      loans: next, status: { area: area, text: text, undo: { loans: loans } },
+      sel: sel.filter(et => ok.indexOf(et) < 0), selConfirm: false
+    }, extra || {}));
+  };
+
+  const ubiDef = UBIS.find(u => u.l === s.fubi) || null;
+  const motDef = MOTS.find(m => m.v === (s.fmot || '') && (s.fmot || s.fmotSet)) || null;
+  const needCourse = !!(ubiDef && ubiDef.course);
+  const doLend = ets => {
+    if (consulta) { set({ ferr: 'Modo consulta: solo lectura.' }); return; }
+    const ok = ets.filter(et => byEt[et] && byEt[et].st === 'available');
+    const p = (s.fp || '').trim();
+    if (!ok.length) { set({ ferr: 'No hay equipos disponibles para prestar.' }); return; }
+    if (!p) { set({ ferr: 'Completá la persona.' }); focusId('pr-persona'); return; }
+    if (!s.frol) { set({ ferr: 'Elegí el rol.' }); return; }
+    if (!s.fubi) { set({ ferr: 'Elegí la ubicación.' }); return; }
+    if (needCourse && (!s.fniv || !s.fcur)) { set({ ferr: 'Elegí nivel y curso: la ubicación Aula los pide.' }); return; }
+    if (ubiDef && ubiDef.detail && !(s.fubiDet || '').trim()) { set({ ferr: 'Especificá la ubicación.' }); return; }
+    if (s.fmot === 'Otro' && !(s.fmotDet || '').trim()) { set({ ferr: 'Especificá el motivo.' }); return; }
+    const donde = needCourse ? s.fcur + ' · Aula' : (ubiDef && ubiDef.detail ? 'Otro · ' + s.fubiDet.trim() : s.fubi);
+    const motivo = s.fmot === 'Otro' ? 'Otro · ' + s.fmotDet.trim() : (s.fmot || '');
+    const next = Object.assign({}, loans);
+    ok.forEach(et => { next[et] = { p: p, rol: s.frol, donde: donde, motivo: motivo, t: '09:20', d: 0, acc: (s.facc || []).slice() }; });
+    const one = ok.length === 1 ? byEt[ok[0]] : null;
+    const text = one ? one.alias + ' (' + one.et + ') prestado a ' + p + ' · ' + donde : 'Se prestaron ' + ok.length + ' equipos a ' + p + ' · ' + donde + '.';
+    set(Object.assign({}, RESET, {
+      loans: next, code: '',
+      queue: cont ? queue.filter(et => ok.indexOf(et) < 0) : queue,
+      scanMsg: cont ? { tone: 'info', text: 'Se prestaron ' + ok.length + ' equipos correctamente.' } : null,
+      status: { area: 'form', text: text, undo: { loans: loans } }
+    }));
+    focusId('pr-code');
+  };
+
+  const addToQueue = () => {
+    const raw = code.trim();
+    if (!raw) return;
+    const r = search(raw);
+    let msg;
+    let q = queue;
+    if (!r || r.kind === 'none') msg = { tone: 'error', text: 'No se encontró ningún equipo para "' + raw + '".' };
+    else if (r.kind === 'multi') msg = { tone: 'warn', text: 'Hay más de un equipo posible para "' + raw + '". Especificá mejor.' };
+    else if (queue.indexOf(r.d.et) >= 0) msg = { tone: 'warn', text: r.d.et + ' ya estaba en la lista.' };
+    else {
+      q = queue.concat([r.d.et]);
+      msg = r.d.st === 'available' ? { tone: 'info', text: 'Agregado: ' + r.d.et + ' · ' + r.d.alias } : { tone: 'error', text: 'Agregado con error: ' + r.d.et + ' (' + stateOf(r.d)[0] + ')' };
+    }
+    set({ queue: q, scanMsg: msg, code: '' });
+    focusId('pr-code');
+  };
+
+  const seedCode = et => {
+    if (cont) {
+      if (queue.indexOf(et) >= 0) set({ scanMsg: { tone: 'warn', text: et + ' ya estaba en la lista.' } });
+      else set({ queue: queue.concat([et]), scanMsg: { tone: 'info', text: 'Agregado: ' + et + ' · ' + byEt[et].alias } });
+    } else {
+      set({ code: et, ferr: '', retAcc: [] });
+    }
+    toTop();
+    focusId(cont ? 'pr-code' : 'pr-code');
+  };
+
+  // ---------- Menú ----------
+  const navBase = 'display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px 0 12px; border-radius: 6px; position: relative; text-decoration: none; font-size: 14px; line-height: 20px;';
+  const barOn = 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;';
+  const mk = (k, label, count) => {
+    const on = k === 'loans';
+    return {
+      label: label, d: I[k], count: count || '', current: on ? 'page' : 'false',
+      style: navBase + (on ? ' background: #1B1F24; color: #ECEEF1; font-weight: 500;' : ' color: #A7AEB8;'),
+      bar: on ? barOn : 'display: none;',
+      mStyle: 'display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border-radius: 6px; text-decoration: none; font-size: 14px; white-space: nowrap; border: 1px solid ' + (on ? '#5B9BFF' : '#262B32') + '; color: ' + (on ? '#ECEEF1' : '#A7AEB8') + ';'
+    };
+  };
+  const ops = [mk('home', 'Inicio'), mk('loans', 'Préstamos', String(nLoaned)), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC'), mk('rooms', 'Estado aulas')];
+  const mgmt = [mk('tasks', 'Tareas TIC', '5'), mk('tickets', 'Tickets'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')];
+  const dataNav = [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')];
+  const resNav = [mk('knowledge', 'Base de conocimiento'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')];
+
+  // ---------- Líneas de estado (Deshacer en línea) ----------
+  const stFor = area => {
+    const st = status && status.area === area ? status : null;
+    return {
+      show: !!st, text: st ? st.text : '', hasUndo: !!(st && st.undo),
+      onUndo: () => {
+        const cur = (self.state || {}).status;
+        if (!cur || !cur.undo) return;
+        set(Object.assign({}, cur.undo, { status: { area: cur.area, text: 'Se deshizo: ' + cur.text, undo: null } }));
+      },
+      onClose: () => set({ status: null })
+    };
+  };
+
+  // ---------- Formulario ----------
+  const res = !cont ? search(code) : null;
+  const fd = res && res.kind === 'found' ? res.d : null;
+  const queueDevs = queue.map(et => byEt[et]).filter(Boolean);
+  const queueAvail = queueDevs.filter(d => d.st === 'available');
+  const lendOpen = cont ? queueAvail.length > 0 : !!(fd && fd.st === 'available');
+  const lendTargets = cont ? queueAvail.map(d => d.et) : (fd ? [fd.et] : []);
+  const camOpen = !!s.cam && !cont;
+
+  const f = {
+    consulta: consulta,
+    contChecked: cont ? 'true' : 'false',
+    contStyle: 'display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 6px; background: transparent; border: 0; border-radius: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; color: ' + (cont ? '#ECEEF1' : '#A7AEB8') + ';',
+    trackStyle: 'position: relative; display: inline-block; width: 28px; height: 16px; box-sizing: border-box; border-radius: 999px; transition: background .15s ease; background: ' + (cont ? '#5B9BFF' : '#262B32') + '; border: 1px solid ' + (cont ? '#5B9BFF' : '#353B44') + ';',
+    knobStyle: 'position: absolute; top: 2px; left: ' + (cont ? '14px' : '2px') + '; width: 10px; height: 10px; border-radius: 999px; transition: left .15s ease; background: ' + (cont ? '#0D0F12' : '#A7AEB8') + ';',
+    onCont: () => {
+      if (!cont) { set({ cont: true, askExit: false, cam: false, code: '', scanMsg: { tone: 'info', text: 'Escaneo continuo activado. Escaneá los equipos uno detrás del otro.' } }); focusId('pr-code'); return; }
+      if (queue.length) set({ askExit: true });
+      else set({ cont: false, askExit: false, scanMsg: null });
+    },
+    askExit: !!s.askExit && cont,
+    askExitText: 'Hay ' + queue.length + (queue.length === 1 ? ' equipo' : ' equipos') + ' en la lista. ¿Los conservás para la próxima vez?',
+    onKeep: () => set({ cont: false, askExit: false, scanMsg: null }),
+    onDrop: () => set(Object.assign({}, RESET, { cont: false, askExit: false, queue: [], scanMsg: null })),
+    onStay: () => { set({ askExit: false }); focusId('pr-code'); },
+    onFocusScan: () => focusId('pr-code'),
+    camAvail: !cont,
+    camOpen: camOpen,
+    camExpanded: camOpen ? 'true' : 'false',
+    camLabel: camOpen ? 'Cerrar cámara' : 'Cámara',
+    onCam: () => set({ cam: !s.cam }),
+    placeholder: cont ? 'Escaneá uno tras otro: cada Enter suma a la lista' : 'Escaneá o escribí: D1436, touch 34, plani 5',
+    fieldStyle: 'position: relative; flex: 1 1 240px; min-width: 0; height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 14px; box-sizing: border-box; background: #0D0F12; border-radius: 6px; border: 1px solid ' + (code ? '#5B9BFF' : '#353B44') + ';',
+    hasCode: !!code,
+    onCode: e => { const v = val(e); if (v === (self.state || {}).code) return; set({ code: v, ferr: '', retAcc: [] }); },
+    onClearCode: () => { set({ code: '', ferr: '' }); focusId('pr-code'); },
+    onCodeKey: e => {
+      if (!e) return;
+      if (e.key === 'Escape') { set({ code: '', ferr: '' }); return; }
+      if (e.key !== 'Enter') return;
+      if (e.preventDefault) e.preventDefault();
+      if (cont) { addToQueue(); return; }
+      if (fd && fd.st === 'loaned') doReturn([fd.et], 'form', Object.assign({}, RESET, { code: '' }));
+      else if (fd && fd.st === 'available') focusId('pr-persona');
+    },
+    cont: cont,
+    addDisabled: code.trim() ? 'false' : 'true',
+    addStyle: 'display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 12px 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; color: ' + (code.trim() ? '#ECEEF1' : '#7C8592') + ';',
+    onAdd: addToQueue,
+    idle: !cont && !code.trim(),
+    found: !!fd, alias: '', et: '', stateText: '', stateStyle: '', detailT: tr('fd', '', 999),
+    canReturn: false, blocked: false, multi: false, none: false,
+    blockedText: '', multiText: '', multiList: [], noneText: '', hasSug: false, sug: [],
+    retAcc: [], hasRetAcc: false, noRetAcc: false, onReturn: noop,
+    actDisabled: consulta ? 'true' : 'false'
+  };
+  if (fd) {
+    const so = stateOf(fd);
+    f.alias = fd.alias; f.et = fd.et; f.stateText = so[0]; f.stateStyle = stateStyle(so[1]);
+    let detail;
+    if (fd.L) detail = [fd.L.p, fd.L.rol, fd.L.donde].filter(Boolean).join(' · ') + ' · ' + (fd.L.d ? 'desde ' + fd.L.since : 'desde ' + fd.L.t + ' (' + hace(fd.L.t) + ')');
+    else if (fd.st === 'available') detail = (fd.model ? fd.model + ' · ' : '') + 'en el mostrador';
+    else detail = fd.model || '—';
+    f.detailT = tr('fd-' + fd.et, detail, 80);
+    f.canReturn = fd.st === 'loaned';
+    f.blocked = fd.st === 'out' || fd.st === 'missing';
+    f.blockedText = fd.alias + ' · ' + fd.et + ' está ' + (fd.st === 'out' ? 'fuera de servicio' : 'como no encontrado') + '. No se puede prestar ni devolver desde acá.';
+    f.onReturn = () => doReturn([fd.et], 'form', Object.assign({}, RESET, { code: '' }));
+    const expected = fd.L ? (fd.L.acc || []) : [];
+    const back = s.retAcc || [];
+    f.hasRetAcc = expected.length > 0;
+    f.noRetAcc = expected.length === 0;
+    f.retAcc = expected.map(a => {
+      const on = back.indexOf(a) >= 0;
+      return { label: (on ? 'Volvió: ' : '') + a, checked: on ? 'true' : 'false', style: optStyle(on), onClick: () => set({ retAcc: on ? back.filter(x => x !== a) : back.concat([a]) }) };
+    });
+  }
+  if (res && res.kind === 'multi') {
+    f.multi = true;
+    f.multiText = 'Hay más de un equipo posible para "' + code.trim() + '". Elegí uno:';
+    f.multiList = res.list.map(d => { const so = stateOf(d); return { alias: d.alias, et: d.et, stateText: so[0], stateStyle: 'font-size: 12px; color: ' + so[1] + ';', onPick: () => set({ code: d.et }) }; });
+  }
+  if (res && res.kind === 'none') {
+    f.none = true;
+    f.noneText = 'No se encontró ningún equipo para "' + res.label + '".';
+    f.sug = res.sug.map(d => ({ label: d.alias, onPick: () => set({ code: d.et }) }));
+    f.hasSug = res.sug.length > 0;
+  }
+  // Escaneo continuo
+  const sm = s.scanMsg || null;
+  const TONE = { info: '#A7AEB8', warn: '#F5C04E', error: '#FF6B6B' };
+  f.hasScanMsg = !!sm;
+  f.scanText = sm ? sm.text : '';
+  f.scanRole = sm && sm.tone === 'error' ? 'alert' : 'status';
+  f.scanStyle = 'font-size: 14px; line-height: 20px; color: ' + (sm ? TONE[sm.tone] : '#A7AEB8') + ';';
+  const nErr = queueDevs.length - queueAvail.length;
+  f.summary = 'Total ' + queueDevs.length + ' · Disponibles ' + queueAvail.length + ' · Con error ' + nErr;
+  f.queue = queueDevs.map(d => {
+    const ok = d.st === 'available';
+    const so = stateOf(d);
+    return {
+      alias: d.alias, et: d.et, tipo: d.g,
+      stateText: ok ? 'Disponible' : 'No disponible (' + so[0] + ')',
+      stateStyle: 'min-width: 0; font-size: 13px; color: ' + (ok ? '#A7AEB8' : '#FF6B6B') + ';',
+      rowStyle: 'border-bottom: 1px solid #262B32;',
+      removeLabel: 'Quitar ' + d.alias + ' de la lista',
+      onRemove: () => set({ queue: queue.filter(x => x !== d.et) })
+    };
+  });
+  f.queueEmpty = queueDevs.length === 0;
+  f.clearDisabled = queueDevs.length ? 'false' : 'true';
+  f.onClearList = () => { if (queueDevs.length) set({ queue: [], scanMsg: null }); };
+  // Datos del préstamo
+  f.lendOpen = lendOpen;
+  f.lendTitle = cont ? 'Datos del préstamo · uno para los ' + queueAvail.length + ' disponibles de la lista' : 'Prestar ' + (fd ? fd.alias : '');
+  f.lendCta = cont ? 'Confirmar préstamo múltiple (' + queueAvail.length + ')' : 'Prestar';
+  f.onLend = () => doLend(lendTargets);
+  f.onCancelLend = () => { set(Object.assign({}, RESET, cont ? { queue: [], scanMsg: null } : { code: '' })); focusId('pr-code'); };
+  f.err = s.ferr || '';
+  f.hasErr = !!s.ferr;
+  f.fp = s.fp || '';
+  const fpn = norm(s.fp);
+  const people = fpn.length >= 2 && !s.fpPicked ? B.PEOPLE.filter(x => norm(x.p).indexOf(fpn) >= 0).sort((a, b) => b.n - a.n).slice(0, 8) : [];
+  const pickPerson = x => {
+    set({ fp: x.p, fpPicked: true, frol: x.rol, fubi: x.ubi, fniv: x.niv, fcur: x.cur, fmot: x.mot, fmotSet: true, fubiDet: '', fmotDet: '', ferr: '' });
+  };
+  f.hasPeople = people.length > 0;
+  f.people = people.map((x, i) => ({
+    name: x.p,
+    hint: x.rol + ' · ' + (x.ubi === 'Aula' ? x.niv + ' · ' + x.cur + ' · Aula' : x.ubi) + (x.mot ? ' · ' + x.mot : ''),
+    times: x.n + '×', selected: i === 0 ? 'true' : 'false',
+    style: 'display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 4px 10px; background: transparent; border: 0; ' + (i ? 'border-top: 1px solid #262B32; ' : '') + 'color: #ECEEF1; text-align: left; cursor: pointer; box-sizing: border-box;',
+    onPick: () => pickPerson(x)
+  }));
+  f.onFp = e => set({ fp: val(e), fpPicked: false, ferr: '' });
+  f.onFpKey = e => {
+    if (!e || e.key !== 'Enter') return;
+    if (e.preventDefault) e.preventDefault();
+    if (people.length) pickPerson(people[0]);
+    else doLend(lendTargets);
+  };
+  f.onLendKey = e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); doLend(lendTargets); } };
+  f.roles = ROLES.map(r => ({ label: r, pressed: s.frol === r ? 'true' : 'false', style: optStyle(s.frol === r), onClick: () => set({ frol: s.frol === r ? '' : r, ferr: '' }) }));
+  f.ubis = UBIS.map(u => ({ label: u.l, pressed: s.fubi === u.l ? 'true' : 'false', style: optStyle(s.fubi === u.l), onClick: () => set({ fubi: s.fubi === u.l ? '' : u.l, ferr: '' }) }));
+  f.needUbiDet = !!(ubiDef && ubiDef.detail);
+  f.fubiDet = s.fubiDet || '';
+  f.onUbiDet = e => set({ fubiDet: val(e) });
+  f.needCourse = needCourse;
+  f.levels = ['EP', 'ES'].map(l => ({ label: l, pressed: s.fniv === l ? 'true' : 'false', style: optStyle(s.fniv === l), onClick: () => set({ fniv: s.fniv === l ? '' : l, ferr: '' }) }));
+  f.grades = gradeRows(s.fcur || '', g => set({ fcur: g, ferr: '' }));
+  f.mots = MOTS.map(m => {
+    const on = (s.fmot || '') === m.v && (m.v !== '' || !!s.fmotSet);
+    return { label: m.l, pressed: on ? 'true' : 'false', style: optStyle(on), onClick: () => set({ fmot: m.v, fmotSet: true, ferr: '' }) };
+  });
+  f.needMotDet = s.fmot === 'Otro';
+  f.fmotDet = s.fmotDet || '';
+  f.onMotDet = e => set({ fmotDet: val(e) });
+  f.fcom = s.fcom || '';
+  f.onCom = e => set({ fcom: val(e) });
+  const facc = s.facc || [];
+  f.accOpen = !!s.faccOpen;
+  f.accExpanded = f.accOpen ? 'true' : 'false';
+  f.accLabel = facc.length ? 'Accesorios de entrega · ' + facc.join(', ') : 'Agregar accesorios de entrega (opcional)';
+  f.accChev = 'flex: none; transition: transform .15s ease; transform: rotate(' + (f.accOpen ? '0' : '-90') + 'deg);';
+  f.onAccToggle = () => set({ faccOpen: !s.faccOpen });
+  f.accs = ACCS.map(a => {
+    const on = facc.indexOf(a) >= 0;
+    return { label: a, checked: on ? 'true' : 'false', style: optStyle(on), onClick: () => set({ facc: on ? facc.filter(x => x !== a) : facc.concat([a]) }) };
+  });
+  f.accNew = s.accNew || '';
+  const addAcc = () => {
+    const t = (s.accNew || '').trim();
+    if (!t || ACCS.indexOf(t) >= 0) { set({ accNew: '' }); return; }
+    set({ accExtra: (s.accExtra || []).concat([t]), facc: facc.concat([t]), accNew: '' });
+  };
+  f.onAccNew = e => set({ accNew: val(e) });
+  f.onAccNewKey = e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); addAcc(); } };
+  f.onAccAdd = addAcc;
+
+  // ---------- Equipos por tipo ----------
+  const sel = s.sel || [];
+  const selMode = !!s.selMode;
+  const open = s.open || { Touch: true };
+  const toggleSel = et => set({ selMode: true, sel: sel.indexOf(et) >= 0 ? sel.filter(x => x !== et) : sel.concat([et]), selConfirm: false });
+  const CIRC = 2 * Math.PI * 16.5;
+  const ring = (free, total) => {
+    const frac = total ? free / total : 0;
+    const low = free > 0 && frac <= 0.2;
+    return {
+      dash: (frac * CIRC).toFixed(2) + ' ' + CIRC.toFixed(2),
+      arcColor: free === 0 ? 'none' : (low ? '#F5C04E' : '#A7AEB8'),
+      trackColor: free === 0 ? '#FF6B6B' : '#262B32',
+      numStyle: 'font-family: ' + MONO + '; font-size: 14px; font-weight: 500; white-space: nowrap; color: ' + (free === 0 ? '#FF6B6B' : (low ? '#F5C04E' : '#ECEEF1')) + ';',
+      ratio: free + '/' + total
+    };
+  };
+  const chipStyle = (kind, on, wide) => {
+    let c = 'min-width: ' + (wide ? '64px' : '44px') + '; height: 36px; padding: 0 8px; box-sizing: border-box; border-radius: 6px; font-family: ' + MONO + '; font-size: 13px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; ';
+    if (kind === 'blocked') return c + 'cursor: not-allowed; background: transparent; border: 1px dashed #353B44; color: #7C8592; text-decoration: line-through;';
+    const col = { free: ['#353B44', '#ECEEF1', '500', '#1B1F24'], loaned: ['#4FD1C5', '#4FD1C5', '600', 'transparent'], late1: ['#F5C04E', '#F5C04E', '600', 'transparent'], late2: ['#FF6B6B', '#FF6B6B', '600', 'transparent'] }[kind];
+    c += 'cursor: ' + (consulta ? 'default' : 'pointer') + '; ';
+    // Marcado = como el checkbox propio: fondo texto claro, número oscuro. Nunca azul relleno.
+    if (on) return c + 'color: #0D0F12; font-weight: 600; background: #ECEEF1; border: 1px solid #ECEEF1;';
+    return c + 'color: ' + col[1] + '; font-weight: ' + col[2] + '; background: ' + col[3] + '; border: 1px solid ' + col[0] + ';';
+  };
+  const kindOf = d => {
+    if (d.st === 'out' || d.st === 'missing') return 'blocked';
+    if (d.st === 'available') return 'free';
+    return d.L.d >= 2 ? 'late2' : (d.L.d === 1 ? 'late1' : 'loaned');
+  };
+  const gNames = GROUPS.slice().sort((a, b) => (devs.filter(d => d.g === b).length - devs.filter(d => d.g === a).length) || a.localeCompare(b));
+  const groups = gNames.map(g => {
+    const all = devs.filter(d => d.g === g).sort((a, b) => ((+a.num || 999) - (+b.num || 999)) || a.et.localeCompare(b.et));
+    const free = all.filter(d => d.st === 'available').length;
+    const out = all.filter(d => d.st === 'loaned');
+    const late = out.filter(d => d.L.d >= 1).length;
+    const isOpen = !!open[g];
+    const rg = ring(free, all.length);
+    const o = {}; o[g] = !isOpen;
+    const selectable = all.filter(d => d.st === 'available' || d.st === 'loaned').map(d => d.et);
+    return {
+      name: g, open: isOpen, expanded: isOpen ? 'true' : 'false',
+      chevStyle: 'flex: none; transition: transform .15s ease; transform: rotate(' + (isOpen ? '90' : '0') + 'deg);',
+      ringAria: g + ': ' + free + ' libres de ' + all.length,
+      dash: rg.dash, arcColor: rg.arcColor, trackColor: rg.trackColor, numStyle: rg.numStyle, ratio: rg.ratio,
+      outText: out.length ? out.length + (out.length === 1 ? ' prestado' : ' prestados') : 'nada afuera',
+      warnText: late ? late + ' hace más de 1 día' : '',
+      warnStyle: 'white-space: nowrap; color: #F5C04E;' + (late ? '' : ' display: none;'),
+      onToggle: () => set({ open: Object.assign({}, open, o) }),
+      showAll: selMode && isOpen && !consulta,
+      onAll: () => set({ sel: sel.concat(selectable.filter(et => sel.indexOf(et) < 0)), selConfirm: false }),
+      onNone: () => set({ sel: sel.filter(et => selectable.indexOf(et) < 0), selConfirm: false }),
+      chipsAria: 'Equipos ' + g,
+      chips: all.map(d => {
+        const k = kindOf(d);
+        const on = sel.indexOf(d.et) >= 0;
+        const blocked = k === 'blocked';
+        const base = d.alias + ' · ' + d.et;
+        let aria;
+        if (blocked) aria = base + ' — ' + stateOf(d)[0] + ', no se puede operar';
+        else if (selMode) aria = base + ' — clic para ' + (on ? 'desmarcar' : 'marcar');
+        else if (d.st === 'loaned') aria = base + ' — prestado a ' + d.L.p + ' · ' + d.L.donde + ', clic para devolver';
+        else aria = base + ' — libre, clic para cargarlo en el formulario';
+        return {
+          label: d.num || d.et, aria: aria,
+          pressed: selMode && !blocked ? (on ? 'true' : 'false') : 'false',
+          disabled: blocked || consulta ? 'true' : 'false',
+          style: chipStyle(k, on, !d.num),
+          onClick: (blocked || consulta) ? noop : (e => {
+            if (selMode || mod(e)) { if (e && e.preventDefault) e.preventDefault(); toggleSel(d.et); return; }
+            if (d.st === 'loaned') doReturn([d.et], 'chips');
+            else seedCode(d.et);
+          })
+        };
+      }),
+      hasLoaned: out.length > 0,
+      loaned: out.map(d => ({
+        num: d.num || d.et,
+        numStyle: 'width: 28px; flex: none; font-family: ' + MONO + '; font-size: 13px; font-weight: 600; color: ' + (d.L.d >= 2 ? '#FF6B6B' : (d.L.d === 1 ? '#F5C04E' : '#4FD1C5')) + ';',
+        who: tr('g-' + d.et, d.L.p + ' · ' + d.L.donde, 30),
+        t: d.L.d ? d.L.since.split(' ')[0] + ' ' + d.L.t : d.L.t
+      }))
+    };
+  });
+  const selDevs = sel.map(et => byEt[et]).filter(Boolean);
+  const selRet = selDevs.filter(d => d.st === 'loaned');
+  const selLend = selDevs.filter(d => d.st === 'available');
+  const eq = {
+    headNormal: !selMode, headSel: selMode,
+    help: MOBILE ? 'Tocá uno libre para cargarlo arriba; uno prestado, para devolverlo. "Varios" marca varios.' : 'Clic: libre lo carga arriba, prestado lo devuelve. Ctrl/⌘/Shift + clic marca varios.',
+    selDisabled: consulta ? 'true' : 'false',
+    onSelMode: () => { if (!consulta) set({ selMode: true, selConfirm: false }); },
+    groups: groups,
+    bar: {
+      normal: !s.selConfirm, confirm: !!s.selConfirm,
+      label: selDevs.length ? selDevs.length + (selDevs.length === 1 ? ' seleccionado' : ' seleccionados') : 'Modo selección',
+      hint: selDevs.length ? 'Seguí marcando o elegí qué hacer.' : 'Tocá los equipos que quieras marcar.',
+      hasAny: selDevs.length > 0, hasLend: selLend.length > 0, hasRet: selRet.length > 0,
+      lendLabel: 'Prestar ' + selLend.length, retLabel: 'Devolver ' + selRet.length,
+      confirmLabel: '¿Devolver ' + selRet.length + ' equipos?',
+      retTags: selRet.map(d => d.alias + ' ' + d.et).join(' · '),
+      onLend: () => {
+        const add = selLend.map(d => d.et).filter(et => queue.indexOf(et) < 0);
+        set({ cont: true, askExit: false, cam: false, code: '', queue: queue.concat(add), selMode: false, sel: [], selConfirm: false,
+          scanMsg: { tone: 'info', text: selLend.length + (selLend.length === 1 ? ' equipo agregado' : ' equipos agregados') + ' desde la grilla. Completá persona y confirmá.' } });
+        toTop(); focusId('pr-persona');
+      },
+      onReturn: () => { if (selRet.length > 1) set({ selConfirm: true }); else doReturn(selRet.map(d => d.et), 'chips', { selMode: false, sel: [] }); },
+      onConfirm: () => doReturn(selRet.map(d => d.et), 'chips', { selMode: false, sel: [] }),
+      onCancel: () => set({ selConfirm: false }),
+      onClear: () => set({ sel: [], selConfirm: false }),
+      onDone: () => set({ selMode: false, sel: [], selConfirm: false })
+    }
+  };
+
+  // ---------- Cartelitos ----------
+  const pSel = s.pSel || [];
+  const pSelMode = !!s.pSelMode;
+  const pOpen = s.pOpen !== false;
+  const NUMS = [];
+  for (let i = 1; i <= 30; i++) NUMS.push(i);
+  const pFree = NUMS.filter(n => !passes[n] && !B.PASS_BLOCKED[n]);
+  const pOut = NUMS.filter(n => passes[n]);
+  const prg = ring(pFree.length, NUMS.length);
+  const returnPasses = (nums, extra) => {
+    if (consulta) return;
+    const ok = nums.filter(n => passes[n]);
+    if (!ok.length) return;
+    const next = Object.assign({}, passes);
+    ok.forEach(n => { delete next[n]; });
+    const text = ok.length === 1 ? 'Cartelito ' + ok[0] + ' devuelto · lo tenía ' + passes[ok[0]].p : 'Se devolvieron ' + ok.length + ' cartelitos.';
+    set(Object.assign({ passes: next, pSel: pSel.filter(n => ok.indexOf(n) < 0), pSelConfirm: false, status: { area: 'passes', text: text, undo: { passes: passes } } }, extra || {}));
+  };
+  const openPassForm = nums => { set({ pf: nums, pa: '', paPicked: false, pc: '', pd: '', pm: '', perr: '' }); focusId('pf-alumno'); };
+  const togglePass = n => set({ pSelMode: true, pSel: pSel.indexOf(n) >= 0 ? pSel.filter(x => x !== n) : pSel.concat([n]), pSelConfirm: false });
+  const pSelFree = pSel.filter(n => !passes[n] && !B.PASS_BLOCKED[n]);
+  const pSelOut = pSel.filter(n => passes[n]);
+  const ps = {
+    headNormal: !pSelMode, headSel: pSelMode,
+    help: MOBILE ? 'Tocá uno libre para entregarlo; uno entregado, para devolverlo. "Varios" marca varios.' : 'Clic: libre lo entrega, entregado lo devuelve. Ctrl/⌘/Shift + clic marca varios.',
+    open: pOpen || pSelMode, expanded: pOpen ? 'true' : 'false',
+    chevStyle: 'flex: none; transition: transform .15s ease; transform: rotate(' + (pOpen ? '90' : '0') + 'deg);',
+    onToggle: () => set({ pOpen: !pOpen }),
+    ringAria: 'Cartelitos: ' + pFree.length + ' libres de ' + NUMS.length,
+    dash: prg.dash, arcColor: prg.arcColor, trackColor: prg.trackColor, numStyle: prg.numStyle, ratio: prg.ratio,
+    outText: pOut.length + (pOut.length === 1 ? ' entregado' : ' entregados'),
+    selDisabled: consulta ? 'true' : 'false',
+    onSelMode: () => { if (!consulta) set({ pSelMode: true, pOpen: true, pSelConfirm: false }); },
+    chips: NUMS.map(n => {
+      const L = passes[n];
+      const blocked = B.PASS_BLOCKED[n];
+      const on = pSel.indexOf(n) >= 0;
+      const kind = blocked ? 'blocked' : (L ? 'loaned' : 'free');
+      let aria = 'Cartelito ' + n;
+      if (blocked) aria += ' — ' + blocked + ', no se puede operar';
+      else if (pSelMode) aria += ' — clic para ' + (on ? 'desmarcar' : 'marcar');
+      else if (L) aria += ' — entregado a ' + L.p + ' · ' + L.curso + ', clic para devolver';
+      else aria += ' — libre, clic para entregar';
+      return {
+        label: String(n), aria: aria, pressed: pSelMode && !blocked ? (on ? 'true' : 'false') : 'false',
+        disabled: blocked || consulta ? 'true' : 'false',
+        style: chipStyle(kind, on, false),
+        onClick: (blocked || consulta) ? noop : (e => {
+          if (pSelMode || mod(e)) { if (e && e.preventDefault) e.preventDefault(); togglePass(n); return; }
+          if (L) returnPasses([n]);
+          else openPassForm([n]);
+        })
+      };
+    }),
+    hasOut: pOut.length > 0,
+    out: pOut.map(n => ({ n: n, who: passes[n].p + ' · ' + passes[n].curso + ' · con ' + passes[n].doc, t: passes[n].t })),
+    bar: {
+      normal: !s.pSelConfirm, confirm: !!s.pSelConfirm,
+      label: pSel.length ? pSel.length + (pSel.length === 1 ? ' seleccionado' : ' seleccionados') : 'Modo selección',
+      hint: pSel.length ? 'Seguí marcando o elegí qué hacer.' : 'Tocá los cartelitos que quieras marcar.',
+      hasAny: pSel.length > 0, hasLend: pSelFree.length > 0, hasRet: pSelOut.length > 0,
+      lendLabel: 'Entregar ' + pSelFree.length, retLabel: 'Devolver ' + pSelOut.length,
+      confirmLabel: '¿Devolver ' + pSelOut.length + ' cartelitos?',
+      retTags: pSelOut.join(' · '),
+      onLend: () => openPassForm(pSelFree.slice().sort((a, b) => a - b)),
+      onReturn: () => { if (pSelOut.length > 1) set({ pSelConfirm: true }); else returnPasses(pSelOut, { pSelMode: false, pSel: [] }); },
+      onConfirm: () => returnPasses(pSelOut, { pSelMode: false, pSel: [] }),
+      onCancel: () => set({ pSelConfirm: false }),
+      onClear: () => set({ pSel: [], pSelConfirm: false }),
+      onDone: () => set({ pSelMode: false, pSel: [], pSelConfirm: false })
+    }
+  };
+  const pfNums = s.pf || [];
+  const pan = norm(s.pa);
+  const sugA = pan.length >= 2 && !s.paPicked ? B.PASS_PEOPLE.filter(x => norm(x.p).indexOf(pan) >= 0).slice(0, 6) : [];
+  const pickA = x => set({ pa: x.p, paPicked: true, pc: s.pc || x.curso, pd: s.pd || x.doc, perr: '' });
+  const submitPass = () => {
+    if (consulta) return;
+    const who = (s.pa || '').trim();
+    if (!who) { set({ perr: pfNums.length > 1 ? 'Completá el responsable.' : 'Completá el alumno.' }); focusId('pf-alumno'); return; }
+    const ok = pfNums.filter(n => !passes[n] && !B.PASS_BLOCKED[n]);
+    const next = Object.assign({}, passes);
+    ok.forEach(n => { next[n] = { p: who, curso: s.pc || '—', doc: (s.pd || '').trim() || '—', t: '09:20' }; });
+    const text = ok.length === 1 ? 'Cartelito ' + ok[0] + ' entregado a ' + who : 'Se entregaron ' + ok.length + ' cartelitos a ' + who + '.';
+    set({ passes: next, pf: [], pa: '', pc: '', pd: '', pm: '', perr: '', pSelMode: false, pSel: [], status: { area: 'passes', text: text, undo: { passes: passes } } });
+  };
+  const pfv = {
+    open: pfNums.length > 0,
+    title: pfNums.length > 1 ? 'Entregar ' + pfNums.length + ' cartelitos' : 'Entregar cartelito ' + (pfNums[0] || ''),
+    chips: pfNums.length > 1 ? pfNums.map(n => ({ n: n })) : [],
+    whoLabel: pfNums.length > 1 ? 'Responsable' : 'Alumno',
+    pa: s.pa || '', pd: s.pd || '', pm: s.pm || '',
+    onPa: e => set({ pa: val(e), paPicked: false, perr: '' }),
+    onPaKey: e => {
+      if (!e || e.key !== 'Enter') return;
+      if (e.preventDefault) e.preventDefault();
+      if (sugA.length) pickA(sugA[0]); else submitPass();
+    },
+    onPd: e => set({ pd: val(e) }),
+    onPm: e => set({ pm: val(e) }),
+    onKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); submitPass(); } },
+    hasSugA: sugA.length > 0,
+    sugA: sugA.map(x => ({ name: x.p, hint: x.curso + ' · con ' + x.doc, times: x.n + '×', onPick: () => pickA(x) })),
+    grades: gradeRows(s.pc || '', g => set({ pc: g })),
+    docs: B.DOCENTES.map(d => ({ label: d, pressed: s.pd === d ? 'true' : 'false', style: optStyle(s.pd === d), onClick: () => set({ pd: s.pd === d ? '' : d }) })),
+    cta: pfNums.length > 1 ? 'Entregar ' + pfNums.length : 'Entregar',
+    ctaDisabled: (s.pa || '').trim() && !consulta ? 'false' : 'true',
+    ctaStyle: 'display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px 0 16px; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; background: ' + ((s.pa || '').trim() ? '#5B9BFF' : '#262B32') + '; color: ' + ((s.pa || '').trim() ? '#0D0F12' : '#7C8592') + ';',
+    onSubmit: submitPass,
+    onCancel: () => set({ pf: [], perr: '' }),
+    hasErr: !!s.perr, err: s.perr || ''
+  };
+
+  // ---------- Lateral: ahora + actualmente prestados ----------
+  const outDevs = devs.filter(d => d.st === 'loaned').sort((a, b) => (b.L.d - a.L.d) || (toMin(a.L.t) - toMin(b.L.t)));
+  const byUbi = {};
+  outDevs.forEach(d => { byUbi[d.L.donde] = (byUbi[d.L.donde] || 0) + 1; });
+  const topUbi = Object.keys(byUbi).sort((a, b) => byUbi[b] - byUbi[a])[0];
+  const nOut = devs.filter(d => d.st === 'out').length;
+  const nMiss = devs.filter(d => d.st === 'missing').length;
+  const tile = (num, label, color) => ({ num: num, label: label, numStyle: 'font-family: ' + MONO + '; font-size: 28px; line-height: 32px; font-weight: 500; color: ' + color + ';' });
+  const sum = {
+    tiles: [
+      tile(outDevs.length, 'Prestados', '#ECEEF1'),
+      tile(devs.filter(d => d.st === 'available').length, 'Disponibles de ' + devs.length, '#ECEEF1'),
+      tile(nOut, 'Fuera de servicio', nOut ? '#FF6B6B' : '#ECEEF1'),
+      tile(nMiss, 'No encontrados', nMiss ? '#FF6B6B' : '#ECEEF1')
+    ],
+    topUbi: topUbi ? topUbi + ' (' + byUbi[topUbi] + ')' : '—',
+    topType: gNames[0] + ' (' + devs.filter(d => d.g === gNames[0]).length + ')'
+  };
+  const sideAll = !!s.sideAll;
+  const SIDE_N = MOBILE ? 5 : 8;
+  const sideList = sideAll ? outDevs : outDevs.slice(0, SIDE_N);
+  const side = {
+    count: String(outDevs.length),
+    empty: outDevs.length === 0,
+    hasMore: outDevs.length > SIDE_N,
+    moreLabel: sideAll ? 'Ver solo los ' + SIDE_N + ' más antiguos' : 'Ver todos (' + outDevs.length + ')',
+    onMore: () => set({ sideAll: !sideAll }),
+    items: sideList.map(d => {
+      const L = d.L;
+      const late = L.d >= 2 ? '#FF6B6B' : (L.d === 1 ? '#F5C04E' : '#7C8592');
+      return {
+        alias: d.alias, et: d.et,
+        fichaLabel: 'Abrir la ficha de ' + d.alias + ' en Dispositivos',
+        who: tr('s-' + d.et, L.p + ' · ' + L.donde, 32),
+        since: L.d ? 'Desde ' + L.since + ' · hace ' + L.d + (L.d === 1 ? ' día' : ' días') : 'Hoy ' + L.t + ' · ' + hace(L.t),
+        sinceStyle: 'font-size: 12px; line-height: 16px; color: ' + late + ';' + (L.d ? ' font-weight: 500;' : ''),
+        reviewLabel: 'Revisar la devolución de ' + d.alias + ' en el formulario',
+        returnLabel: 'Devolver ' + d.alias + ' ahora',
+        actDisabled: consulta ? 'true' : 'false',
+        onReview: () => { if (consulta) return; set({ cont: false, askExit: false, code: d.et, retAcc: [], ferr: '' }); toTop(); focusId('pr-code'); },
+        onReturn: () => doReturn([d.et], 'form')
+      };
+    })
+  };
+
+  // ---------- Último día con préstamos ----------
+  const prevOpen = s.prevOpen !== undefined ? !!s.prevOpen : !MOBILE;
+  const prevAll = !!s.prevAll;
+  const prevRows = (prevAll ? B.PREV : B.PREV.slice(0, 8)).map((r, i) => ({
+    hora: r[0], et: r[1], alias: byEt[r[1]] ? byEt[r[1]].alias : r[1], persona: r[2],
+    fichaLabel: 'Abrir la ficha de ' + (byEt[r[1]] ? byEt[r[1]].alias : r[1]) + ' en Dispositivos',
+    ubi: tr('pu' + i, r[3], 24), mot: tr('pm' + i, r[4], 20), acc: tr('pa' + i, r[5], 16)
+  }));
+  const prev = {
+    open: prevOpen, expanded: prevOpen ? 'true' : 'false',
+    chevStyle: 'flex: none; transition: transform .15s ease; transform: rotate(' + (prevOpen ? '90' : '0') + 'deg);',
+    onToggle: () => set({ prevOpen: !prevOpen }),
+    count: B.PREV.length + ' préstamos',
+    rows: prevRows,
+    hasMore: B.PREV.length > 8,
+    moreLabel: prevAll ? 'Ver menos' : 'Ver los ' + B.PREV.length,
+    onMore: () => set({ prevAll: !prevAll })
+  };
+
+  // ---------- Cierre del día (en línea) ----------
+  const late = outDevs.filter(d => d.L.d >= 1);
+  const obs = s.obs || '';
+  const closures = s.closures || [];
+  const cierreText = [
+    'Cierre del día TIC · viernes 16/10/2026 · NFPT',
+    'Operador: Bauti G.',
+    '',
+    'Préstamos activos: ' + outDevs.length,
+    'No devueltos de días anteriores: ' + (late.length ? late.map(d => d.alias + ' (' + d.L.p + ', ' + d.L.d + (d.L.d === 1 ? ' día)' : ' días)')).join('; ') : 'ninguno'),
+    'Tareas: [N] pendientes · [N] en proceso · [N] hechas hoy',
+    'Agenda del día: [N] actividades · [N] canceladas · [N] con faltantes',
+    'Aulas con problemas: [N]',
+    'Notas importantes: ' + B.NOTES_IMP.map(n => '"' + n + '"').join('; '),
+    '',
+    'Observaciones: ' + (obs.trim() || '—')
+  ].join('\n');
+  const cierreOpen = !!s.cierre;
+  const cierre = {
+    open: cierreOpen, expanded: cierreOpen ? 'true' : 'false',
+    btnStyle: 'display: inline-flex; align-items: center; height: 36px; padding: 0 14px; flex: none; background: #1B1F24; border: 1px solid ' + (cierreOpen ? '#5B9BFF' : '#353B44') + '; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;',
+    onToggle: () => set({ cierre: !cierreOpen, cierreMsg: '' }),
+    text: cierreText, obs: obs,
+    onObs: e => set({ obs: val(e), cierreMsg: '' }),
+    onCopy: () => { try { navigator.clipboard.writeText(cierreText); } catch (x) {} set({ cierreMsg: 'Copiado al portapapeles.' }); },
+    genDisabled: consulta ? 'true' : 'false',
+    onGen: () => { if (consulta) return; set({ closures: [{ when: '16/10 09:20', op: 'Bauti G.', obs: obs.trim() ? obs.trim().slice(0, 60) : 'Sin observaciones' }].concat(closures), cierreMsg: 'Cierre guardado.' }); },
+    hasMsg: !!s.cierreMsg, msg: s.cierreMsg || '',
+    histOpen: !!s.histOpen, histExpanded: s.histOpen ? 'true' : 'false',
+    histLabel: 'Historial (' + closures.length + ')',
+    onHist: () => set({ histOpen: !s.histOpen }),
+    hist: closures, histEmpty: closures.length === 0
+  };
+
+  // ---------- Asistente (columna en línea / vista propia en mobile) ----------
+  const asstOpen = !!s.asst;
+  const amsgs = s.amsgs || [];
+  const answer = q => {
+    const n = norm(q);
+    if (n.indexOf('dia') >= 0 || n.indexOf('afuera') >= 0 || n.indexOf('atrasad') >= 0) {
+      return late.length ? 'Hace más de 1 día: ' + late.map(d => d.alias + ' (' + d.L.p + ', ' + d.L.d + (d.L.d === 1 ? ' día)' : ' días)')).join('; ') + '.' : 'Nada atrasado: todo lo prestado salió hoy.';
+    }
+    if (n.indexOf('libre') >= 0 || n.indexOf('quedan') >= 0) {
+      return 'Libres ahora: ' + gNames.map(g => g + ' ' + devs.filter(d => d.g === g && d.st === 'available').length + '/' + devs.filter(d => d.g === g).length).join(' · ') + '.';
+    }
+    const m = String(q).match(/(touch|tic|plani|dell|tablet)\s*\d+|d\s*0*\d{3,4}/i);
+    const r = m ? search(m[0]) : null;
+    if (r && r.kind === 'found') {
+      const d = r.d;
+      if (d.L) return d.alias + ' (' + d.et + ') lo tiene ' + d.L.p + ' · ' + d.L.donde + ', ' + (d.L.d ? 'desde el ' + d.L.since + ' (' + d.L.d + (d.L.d === 1 ? ' día).' : ' días).') : 'desde las ' + d.L.t + '.');
+      if (d.st === 'available') return d.alias + ' (' + d.et + ') está libre en el mostrador.';
+      return d.alias + ' (' + d.et + ') figura como ' + stateOf(d)[0].toLowerCase() + '.';
+    }
+    return '[respuesta del asistente]';
+  };
+  const ask = q => {
+    const text = String(q || '').trim();
+    if (!text) return;
+    set({ amsgs: amsgs.concat([{ me: true, text: text }, { me: false, text: answer(text) }]), adraft: '' });
+  };
+  const btnH = MOBILE ? 44 : 36;
+  const asst = {
+    open: asstOpen, expanded: asstOpen ? 'true' : 'false',
+    onToggle: () => { set({ asst: !asstOpen }); if (!asstOpen) focusId('as-in'); },
+    btnStyle: 'display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; flex: none; background: #1B1F24; border: 1px solid ' + (asstOpen ? '#5B9BFF' : '#353B44') + '; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;',
+    mBtnStyle: 'width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: ' + (asstOpen ? '#1B1F24' : 'transparent') + '; border: 0; border-radius: 6px; color: ' + (asstOpen ? '#ECEEF1' : '#A7AEB8') + '; cursor: pointer;',
+    closeStyle: 'height: ' + btnH + 'px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer; white-space: nowrap;',
+    empty: amsgs.length === 0,
+    msgs: amsgs.map(m => ({ text: m.text, style: m.me
+      ? 'align-self: flex-end; max-width: 88%; padding: 8px 10px; background: #1B1F24; border: 1px solid #262B32; border-radius: 10px; font-size: 13px; line-height: 18px; color: #ECEEF1;'
+      : 'align-self: flex-start; max-width: 100%; font-size: 14px; line-height: 20px; color: #ECEEF1;' })),
+    sug: amsgs.length ? [] : ['¿Quién tiene la Touch 8?', '¿Qué está afuera hace más de 1 día?', '¿Cuántas quedan libres?'].map(q => ({
+      label: q, onClick: () => ask(q),
+      style: 'height: ' + (MOBILE ? 44 : 32) + 'px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; cursor: pointer; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;'
+    })),
+    draft: s.adraft || '',
+    onDraft: e => set({ adraft: val(e) }),
+    onKey: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); ask(s.adraft); } },
+    onSend: () => ask(s.adraft),
+    inputStyle: 'flex: 1; min-width: 0; height: ' + btnH + 'px; padding: 0 10px; box-sizing: border-box; background: #14171B; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: ' + (MOBILE ? 16 : 14) + 'px;',
+    sendStyle: 'flex: none; height: ' + btnH + 'px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;'
+  };
+  const bItem = (k, label, d, onClick) => {
+    const on = k === 'loans' && !asstOpen;
+    return {
+      label: label, d: d, current: on ? 'page' : 'false',
+      onClick: e => { if (e && e.preventDefault) e.preventDefault(); if (onClick) onClick(); },
+      style: 'display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 56px; min-width: 0; border-radius: 6px; text-decoration: none; color: ' + (k === 'scan' ? '#5B9BFF' : (on ? '#ECEEF1' : '#A7AEB8')) + '; font-weight: ' + (on || k === 'scan' ? '600' : '400') + ';'
+    };
+  };
+  const bottom = [
+    bItem('home', 'Inicio', I.home),
+    bItem('loans', 'Préstamos', I.loans, () => set({ asst: false })),
+    bItem('scan', 'Escanear', 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10', () => { set({ asst: false }); toTop(); focusId('pr-code'); }),
+    bItem('agenda', 'Agenda', I.agenda),
+    bItem('more', 'Más', 'M4 6h16M4 12h16M4 18h16')
+  ];
+
+  const mnavOpen = !!s.mnav && !MOBILE;
+  return {
+    isD: !MOBILE, isM: MOBILE,
+    showPage: !(MOBILE && asstOpen),
+    mTitle: MOBILE && asstOpen ? 'Asistente' : 'Préstamos',
+    asst: asst, bottom: bottom,
+    ops: ops, mgmt: mgmt, data: dataNav, res: resNav,
+    mnav: { open: mnavOpen, expanded: mnavOpen ? 'true' : 'false', onToggle: () => set({ mnav: !mnavOpen }), items: ops.concat(mgmt, dataNav, resNav) },
+    code: code,
+    f: f,
+    stForm: stFor('form'), stChips: stFor('chips'), stPass: stFor('passes'),
+    eq: eq,
+    ps: ps, pf: pfv,
+    sum: sum, side: side,
+    prev: prev,
+    cierre: cierre
+  };
+}
+}
+</script>
+</body>
+</html>

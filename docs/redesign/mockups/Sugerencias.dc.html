@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Sugerencias — buzón de ideas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+.nv:hover,.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+input::placeholder,textarea::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.eb{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.cnt{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592;font-variant-numeric:tabular-nums}
+.noscroll{scrollbar-width:none}.noscroll::-webkit-scrollbar{display:none}
+
+/* Menú lateral 232 / rail 56 bajo 1100 / barra inferior bajo 768 */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}.sb-head{justify-content:center}.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}.sb-grpt{display:none}.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}.sb-user{padding:0;justify-content:center}.sb-hide{display:none !important}
+}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.body{flex:1;display:flex;min-width:0;align-items:flex-start}
+.pad{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;padding:20px 24px 32px;box-sizing:border-box}
+.asst{width:320px;flex:none;align-self:stretch;border-left:1px solid #262B32;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:16px;background:#0D0F12}
+.bnav{display:none}
+@media (max-width:767px){
+.sb{display:none}.tb{padding:0 8px 0 16px}.tb-collapse{display:none !important}.pad{padding:16px 16px 24px}
+.asst{display:none}
+.bnav{display:flex;position:sticky;bottom:0;z-index:5;height:64px;border-top:1px solid #262B32;background:#0D0F12}
+}
+@media (max-width:639px){.tb-ctx{display:none !important}.tb-asst-t{display:none !important}}
+
+/* Componentes */
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none;max-width:100%;text-decoration:none}
+.bp{background:#5B9BFF;color:#0D0F12;border:0;font-weight:600}.bp:hover{background:#8DBBFF;color:#0D0F12}
+.bs{background:#1B1F24;color:#ECEEF1;border:1px solid #353B44}.bs:hover{border-color:#7C8592;color:#ECEEF1}
+.bg{background:transparent;color:#A7AEB8;border:0}.bg:hover{background:#1B1F24;color:#ECEEF1}
+.bd{background:transparent;color:#FF6B6B;border:1px solid #353B44}.bd:hover{border-color:#FF6B6B}
+.bsm{height:30px;padding:0 10px;font-size:13px;gap:6px}
+.icb{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:6px;color:#A7AEB8;cursor:pointer;flex:none;text-decoration:none}
+.icb:hover{background:#1B1F24;color:#ECEEF1}
+.btn[disabled],.icb[disabled]{opacity:.45;cursor:not-allowed}
+.seg{display:flex;flex-wrap:wrap;gap:2px;padding:2px;background:#0D0F12;border:1px solid #262B32;border-radius:6px;min-width:0;box-sizing:border-box}
+.sg{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:4px;font-size:13px;cursor:pointer;white-space:nowrap;background:transparent;color:#A7AEB8;min-width:0}
+.sg:hover{color:#ECEEF1}
+.sg[aria-pressed="true"]{background:#1B1F24;color:#ECEEF1;font-weight:500}
+.fld{display:flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;color:#7C8592;min-width:0}
+.fld:focus-within,.inp:focus,.chipin:focus-within{outline:2px solid #5B9BFF;outline-offset:1px}
+.fld input{flex:1;min-width:0;height:32px;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:14px;text-overflow:ellipsis}
+.inp{width:100%;min-width:0;height:36px;padding:0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:14px;box-sizing:border-box;outline:none;text-overflow:ellipsis}
+textarea.inp{height:auto;padding:8px 10px;line-height:20px;resize:none;overflow:hidden}
+.lbl{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;font-weight:500;color:#A7AEB8}
+.hint{font-size:12px;line-height:16px;color:#7C8592;font-weight:400}
+.err{font-size:12px;line-height:16px;color:#FF6B6B;font-weight:500}
+.chip{display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 8px;border:1px solid #353B44;border-radius:6px;font-size:12px;color:#A7AEB8;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.chipx{display:inline-flex;align-items:center;gap:2px;height:26px;padding:0 2px 0 8px;border:1px solid #353B44;border-radius:6px;background:#1B1F24;font-size:13px;color:#ECEEF1;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.chipx button{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:4px;color:#A7AEB8;cursor:pointer;padding:0}
+.chipx button:hover{color:#ECEEF1;background:#262B32}
+.chipin{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:36px;padding:4px 6px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;min-width:0}
+.chipin input{flex:1 1 120px;min-width:80px;height:26px;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:14px;padding:0 4px}
+.opt{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#ECEEF1;font-size:13px;cursor:pointer;white-space:nowrap;max-width:100%;box-sizing:border-box}
+.opt:hover{border-color:#353B44;background:#1B1F24}
+.opt[aria-pressed="true"]{border-color:#ECEEF1;background:#1B1F24}
+.cb{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:0;border-radius:6px;cursor:pointer;flex:none;padding:0}
+.cbx{width:16px;height:16px;box-sizing:border-box;border:1px solid #353B44;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#0D0F12}
+.cbx svg{display:none}
+.cb[aria-checked="true"] .cbx,.cb[aria-checked="mixed"] .cbx{background:#ECEEF1;border-color:#ECEEF1}
+.cb[aria-checked="true"] .ck-c{display:block}.cb[aria-checked="mixed"] .ck-m{display:block}
+.cb:focus-visible{outline:none}.cb:focus-visible .cbx{outline:2px solid #5B9BFF;outline-offset:2px}
+.cb[disabled]{cursor:not-allowed;opacity:.45}
+.sl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;min-height:40px;padding:4px 4px 4px 12px;border:1px solid #353B44;border-radius:6px;background:#1B1F24;font-size:13px;color:#ECEEF1;box-sizing:border-box}
+.lk{display:inline-flex;align-items:center;height:30px;padding:0 8px;background:transparent;border:0;border-radius:4px;color:#5B9BFF;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.lk:hover{color:#8DBBFF;background:#262B32}
+.tt{position:relative;min-width:0}
+.tip{display:none;position:absolute;left:0;top:calc(100% + 4px);z-index:20;max-width:340px;width:max-content;padding:6px 8px;background:#1B1F24;border:1px solid #353B44;border-radius:6px;font-size:13px;line-height:18px;font-weight:400;color:#ECEEF1;white-space:normal;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.tt:hover .tip,.tt:focus-within .tip{display:block}
+.drop{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:16px;border:1px dashed #353B44;border-radius:10px;box-sizing:border-box;min-width:0}
+
+
+/* Sugerencias */
+.kpw{container-type:inline-size;container-name:kpis;min-width:0}
+.kpis{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
+.kp{display:flex;flex-direction:column;gap:4px;padding:12px 16px;min-width:0;border-left:1px solid #262B32}
+.kp:first-child{border-left:0}
+.kl{font-size:12px;font-weight:500;color:#7C8592;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv{font-size:20px;line-height:28px;color:#ECEEF1}
+.kv2{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:14px;line-height:28px}
+@container kpis (max-width:699px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.kp{padding:12px}.kp-wide{order:4;grid-column:1 / -1;border-left:0;border-top:1px solid #262B32}}
+.sgw{container-type:inline-size;container-name:sgw;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;min-width:0}
+.sg-main{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.sg-side{flex:1 1 240px;max-width:280px;min-width:0;display:flex;flex-direction:column;gap:12px}
+@container sgw (max-width:819px){.sg-side{order:-1;max-width:none;flex-basis:100%}}
+.fi{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#A7AEB8;font-size:13px;cursor:pointer;text-align:left;box-sizing:border-box;min-width:0}
+.fi:hover{background:#1B1F24;color:#ECEEF1}
+.fi[aria-pressed="true"]{background:#1B1F24;color:#ECEEF1;font-weight:500}
+.fi .ell{flex:1}
+.fgrp{display:flex;flex-direction:column;gap:2px}
+.f-toggle{display:none}
+.vote{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;width:48px;height:56px;border:1px solid #353B44;border-radius:6px;background:transparent;color:#A7AEB8;cursor:pointer;flex:none;padding:0}
+.vote:hover{border-color:#7C8592;color:#ECEEF1}
+.vote[aria-pressed="true"]{border-color:#5B9BFF;color:#5B9BFF}
+.sgr{display:flex;gap:14px;padding:16px;border-top:1px solid #262B32;min-width:0}
+.sgr:first-child{border-top:0}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1240px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- MENÚ LATERAL (Menu-A, Sugerencias activo; sin Traspaso) -->
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="ib sb-sede" aria-label="Cambiar de sede: Northfield Puertos">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Northfield Puertos</span>
+          <span class="mono" style="font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide ell" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide mono nw" style="font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <div class="sb-grp">
+        <div class="sb-grpt">Operación</div>
+        <sc-for list="{{nav.ops}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Gestión</div>
+        <sc-for list="{{nav.mgmt}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Inventario y datos</div>
+        <sc-for list="{{nav.data}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Recursos</div>
+        <sc-for list="{{nav.res}}" as="n" hint-placeholder-count="4">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nv nvi" aria-label="Configuración" style="color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div class="sb-user">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;" aria-label="Bauti G., Jefe TIC">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+        <button type="button" class="ib sb-hide icb" aria-label="Opciones de cuenta">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- TOPBAR -->
+    <header class="tb">
+      <button type="button" class="ib icb tb-collapse" aria-label="Contraer menú (Ctrl B)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Sugerencias</h1>
+      <span class="tb-ctx" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-ctx ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">Buzón de ideas del equipo · NFPT</span>
+      <span style="flex: 1;"></span>
+      <button type="button" class="btn bs" aria-pressed="{{asstPressed}}" aria-label="Asistente" onClick="{{toggleAsst}}" style="{{asstBtnStyle}}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.bot}}"></path></svg>
+        <span class="tb-asst-t">Asistente</span>
+      </button>
+      <button type="button" class="ib icb" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span class="mono" style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib icb" aria-label="Ayuda" style="width: 36px; height: 36px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <div class="body">
+    <div class="pad" style="gap: 16px;">
+
+      <!-- RESUMEN DEL BUZÓN (conteos, sin gráficos) -->
+      <div class="kpw">
+      <div class="card kpis" role="group" aria-label="Resumen del buzón">
+        <div class="kp"><span class="kl">Total</span><span class="kv mono">{{k.total}}</span></div>
+        <div class="kp kp-wide">
+          <span class="kl">Más votada</span>
+          <span class="kv2">
+            <span class="mono nw" style="color: #ECEEF1;">{{k.topVotes}}</span>
+            <span class="tt" style="flex: 1; min-width: 0;">
+              <button type="button" class="ell" onClick="{{k.onTop}}" style="display: block; max-width: 100%; padding: 0; background: none; border: 0; color: #ECEEF1; font-size: 14px; text-align: left; cursor: pointer;">{{k.topTitle}}</button>
+              <sc-if value="{{k.topLong}}" hint-placeholder-val="{{ false }}"><span class="tip" role="tooltip">{{k.topTitle}}</span></sc-if>
+            </span>
+          </span>
+        </div>
+        <div class="kp"><span class="kl">Implementadas</span><span class="kv mono">{{k.impl}}</span></div>
+        <div class="kp"><span class="kl">Por revisar</span><span class="kv mono" style="{{k.pendStyle}}">{{k.pend}}</span></div>
+      </div>
+      </div>
+
+      <div class="sgw">
+        <!-- ===== LISTA ===== -->
+        <section class="sg-main" aria-labelledby="sg-title">
+          <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; min-width: 0;">
+            <div style="flex: 1 1 220px; min-width: 0;">
+              <div class="eb">Buzón de ideas</div>
+              <h2 id="sg-title" class="ell" style="margin: 4px 0 0; font-size: 20px; line-height: 28px; font-weight: 600;">Sugerencias <span class="cnt" style="font-size: 14px;">{{countLabel}}</span></h2>
+            </div>
+            <button type="button" class="btn bp mb-grow" onClick="{{openNew}}" aria-expanded="{{newOpenS}}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+              Nueva sugerencia
+            </button>
+          </div>
+
+          <sc-if value="{{status.show}}" hint-placeholder-val="{{ false }}">
+            <div class="sl" role="status">
+              <span style="flex: 1 1 200px; min-width: 0; line-height: 18px; padding: 4px 0;">{{status.text}}</span>
+              <sc-if value="{{status.canUndo}}" hint-placeholder-val="{{ true }}"><button type="button" class="lk" onClick="{{status.onUndo}}">Deshacer</button></sc-if>
+              <button type="button" class="icb" aria-label="Cerrar aviso" onClick="{{status.onClose}}" style="width: 30px; height: 30px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+              </button>
+            </div>
+          </sc-if>
+
+          <!-- Alta en línea: empuja la lista -->
+          <sc-if value="{{newOpen}}" hint-placeholder-val="{{ false }}">
+            <form class="card" onSubmit="{{onSave}}" aria-label="Nueva sugerencia" style="padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-size: 16px; font-weight: 600;">Nueva sugerencia</div>
+              <label class="lbl">
+                <span style="display: flex; gap: 8px;"><span style="flex: 1;">Título</span><span class="cnt" style="font-weight: 400;">{{FD.count}}</span></span>
+                <input class="inp" type="text" maxlength="180" value="{{FD.title}}" onInput="{{FD.onTitle}}" onChange="{{FD.onTitle}}" placeholder="Qué cambiarías o agregarías" aria-invalid="{{FD.titleInvalid}}" style="{{FD.titleStyle}}">
+              </label>
+              <div class="lbl">
+                <label for="sg-cat-n">Categoría</label>
+                <input id="sg-cat-n" class="inp" type="text" value="{{FD.cat}}" onInput="{{FD.onCat}}" onChange="{{FD.onCat}}" placeholder="General">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+                  <span class="hint">Usadas</span>
+                  <sc-for list="{{FD.catSug}}" as="c" hint-placeholder-count="4">
+                    <button type="button" class="opt" aria-pressed="{{c.pressed}}" onClick="{{c.onPick}}" style="height: 28px; font-size: 12px;">{{c.label}}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <label class="lbl">
+                Descripción
+                <textarea class="inp noscroll" rows="5" value="{{FD.desc}}" onInput="{{FD.onDesc}}" onChange="{{FD.onDesc}}" placeholder="Contá el problema que resuelve y cómo lo imaginás" aria-invalid="{{FD.descInvalid}}" style="{{FD.descStyle}}"></textarea>
+              </label>
+              <sc-if value="{{FD.err}}" hint-placeholder-val="{{ false }}"><span class="err" role="alert">Completá título y descripción.</span></sc-if>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <button type="submit" class="btn bp" disabled="{{FD.saving}}">{{FD.saveLabel}}</button>
+                <button type="button" class="btn bg" onClick="{{closeForm}}">Cancelar</button>
+              </div>
+            </form>
+          </sc-if>
+
+          <div class="card" style="display: flex; flex-direction: column;">
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+              <article class="sgr" aria-labelledby="{{r.hid}}">
+                <button type="button" class="vote" aria-pressed="{{r.voted}}" aria-label="{{r.voteAria}}" onClick="{{r.onVote}}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"></path></svg>
+                  <span class="mono" style="font-size: 14px; line-height: 18px;">{{r.votes}}</span>
+                </button>
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+                  <sc-if value="{{r.notEditing}}" hint-placeholder-val="{{ true }}">
+                    <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0;">
+                      <h3 id="{{r.hid}}" style="flex: 1 1 260px; min-width: 0; margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; overflow-wrap: anywhere;">{{r.title}}</h3>
+                      <span class="nw" style="{{r.stStyle}}">{{r.status}}</span>
+                    </div>
+                    <div class="ell" style="font-size: 12px; color: #7C8592;">{{r.meta}}</div>
+                    <p class="{{r.descClass}}" style="margin: 0; font-size: 14px; line-height: 21px; color: #A7AEB8; white-space: pre-wrap; overflow-wrap: anywhere;">{{r.desc}}</p>
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: -10px;">
+                      <button type="button" class="btn bg bsm" aria-expanded="{{r.openS}}" onClick="{{r.onToggle}}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        {{r.comLabel}}
+                      </button>
+                      <sc-if value="{{r.canManage}}" hint-placeholder-val="{{ true }}">
+                        <button type="button" class="btn bg bsm" aria-expanded="{{r.stOpenS}}" onClick="{{r.onStToggle}}">
+                          Estado
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.stChevron}}"></path></svg>
+                        </button>
+                      </sc-if>
+                      <sc-if value="{{r.canEdit}}" hint-placeholder-val="{{ true }}">
+                        <button type="button" class="btn bg bsm" onClick="{{r.onEdit}}">Editar</button>
+                      </sc-if>
+                      <sc-if value="{{r.canDelete}}" hint-placeholder-val="{{ true }}">
+                        <button type="button" class="btn bg bsm" onClick="{{r.onAskDel}}" style="color: #FF6B6B;">Eliminar</button>
+                      </sc-if>
+                    </div>
+
+                    <sc-if value="{{r.stOpen}}" hint-placeholder-val="{{ false }}">
+                      <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid #262B32; border-radius: 6px;">
+                        <div role="radiogroup" aria-label="Estado de la sugerencia" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                          <sc-for list="{{r.stOptions}}" as="o" hint-placeholder-count="6">
+                            <button type="button" role="radio" class="opt" aria-pressed="{{o.pressed}}" aria-checked="{{o.pressed}}" onClick="{{o.onPick}}">{{o.label}}</button>
+                          </sc-for>
+                        </div>
+                        <span class="hint">Al cambiarlo se avisa al autor, a quienes votaron y a quienes comentaron.</span>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{r.asking}}" hint-placeholder-val="{{ false }}">
+                      <div class="sl" role="alert">
+                        <span style="flex: 1 1 200px; min-width: 0; line-height: 18px; padding: 4px 0;">¿Eliminar esta sugerencia y sus votos?</span>
+                        <button type="button" class="btn bd bsm" onClick="{{r.onDel}}">Eliminar</button>
+                        <button type="button" class="btn bg bsm" onClick="{{r.onNoDel}}">Cancelar</button>
+                      </div>
+                    </sc-if>
+
+                    <!-- Detalle en línea: descripción completa + comentarios -->
+                    <sc-if value="{{r.open}}" hint-placeholder-val="{{ false }}">
+                      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 4px; padding-top: 12px; border-top: 1px solid #262B32;">
+                        <sc-for list="{{r.com}}" as="c" hint-placeholder-count="2">
+                          <div style="display: flex; gap: 10px; min-width: 0;">
+                            <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;" aria-hidden="true">{{c.ini}}</span>
+                            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                              <div style="display: flex; gap: 8px; align-items: baseline; min-width: 0;"><span class="ell" style="font-size: 13px; font-weight: 600;">{{c.who}}</span><span class="nw" style="font-size: 12px; color: #7C8592;">{{c.when}}</span></div>
+                              <p style="margin: 0; font-size: 14px; line-height: 21px; color: #A7AEB8; white-space: pre-wrap; overflow-wrap: anywhere;">{{c.body}}</p>
+                            </div>
+                          </div>
+                        </sc-for>
+                        <sc-if value="{{r.noCom}}" hint-placeholder-val="{{ false }}"><div style="font-size: 13px; color: #7C8592;">Todavía no hay comentarios.</div></sc-if>
+                        <label class="lbl">
+                          Comentar
+                          <textarea class="inp noscroll" rows="2" value="{{comDraft}}" onInput="{{onComDraft}}" onChange="{{onComDraft}}" onKeyDown="{{onComKey}}" placeholder="Sumá tu opinión o un dato"></textarea>
+                        </label>
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                          <span class="hint" style="flex: 1 1 180px;">Ctrl Enter publica. Se avisa al autor.</span>
+                          <button type="button" class="btn bs" onClick="{{r.onCom}}" disabled="{{comEmpty}}">Publicar comentario</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </sc-if>
+
+                  <!-- Edición en línea (reemplaza la fila) -->
+                  <sc-if value="{{r.editing}}" hint-placeholder-val="{{ false }}">
+                    <form onSubmit="{{onSave}}" aria-label="Editar sugerencia" style="display: flex; flex-direction: column; gap: 14px;">
+                      <label class="lbl">
+                        <span style="display: flex; gap: 8px;"><span style="flex: 1;">Título</span><span class="cnt" style="font-weight: 400;">{{FD.count}}</span></span>
+                        <input class="inp" type="text" maxlength="180" value="{{FD.title}}" onInput="{{FD.onTitle}}" onChange="{{FD.onTitle}}" aria-invalid="{{FD.titleInvalid}}" style="{{FD.titleStyle}}">
+                      </label>
+                      <div class="lbl">
+                        <span>Categoría</span>
+                        <input class="inp" type="text" aria-label="Categoría" value="{{FD.cat}}" onInput="{{FD.onCat}}" onChange="{{FD.onCat}}">
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                          <sc-for list="{{FD.catSug}}" as="c" hint-placeholder-count="4">
+                            <button type="button" class="opt" aria-pressed="{{c.pressed}}" onClick="{{c.onPick}}" style="height: 28px; font-size: 12px;">{{c.label}}</button>
+                          </sc-for>
+                        </div>
+                      </div>
+                      <label class="lbl">
+                        Descripción
+                        <textarea class="inp noscroll" rows="5" value="{{FD.desc}}" onInput="{{FD.onDesc}}" onChange="{{FD.onDesc}}" aria-invalid="{{FD.descInvalid}}" style="{{FD.descStyle}}"></textarea>
+                      </label>
+                      <sc-if value="{{FD.err}}" hint-placeholder-val="{{ false }}"><span class="err" role="alert">Completá título y descripción.</span></sc-if>
+                      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button type="submit" class="btn bp bsm" disabled="{{FD.saving}}">{{FD.saveLabel}}</button>
+                        <button type="button" class="btn bg bsm" onClick="{{closeForm}}">Cancelar</button>
+                      </div>
+                    </form>
+                  </sc-if>
+                </div>
+              </article>
+            </sc-for>
+            <sc-if value="{{empty}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 24px 16px;">
+                <div style="font-size: 14px; font-weight: 500;">No hay sugerencias para estos filtros.</div>
+                <button type="button" class="btn bs bsm" onClick="{{clearFilters}}">Ver todas</button>
+              </div>
+            </sc-if>
+          </div>
+        </section>
+
+        <!-- ===== FILTROS (el servidor filtra por estado, categoría y orden) ===== -->
+        <aside class="sg-side card" aria-label="Filtros" style="padding: 12px;">
+          <button type="button" class="f-toggle btn bg" aria-expanded="{{fOpenS}}" onClick="{{toggleF}}" style="justify-content: flex-start; width: 100%; padding: 0 8px; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M3 6h18M7 12h10M10 18h4"></path></svg>
+            <span class="nw" style="color: #ECEEF1;">Filtros</span>
+            <span class="ell" style="flex: 1; color: #7C8592; font-weight: 400;">{{fSummary}}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{fChevron}}"></path></svg>
+          </button>
+          <div class="{{fBodyClass}}">
+            <div class="fgrp" role="group" aria-label="Estado">
+              <span class="eb" style="padding: 4px 10px 6px;">Estado</span>
+              <sc-for list="{{fStatus}}" as="f" hint-placeholder-count="7">
+                <button type="button" class="fi" aria-pressed="{{f.pressed}}" onClick="{{f.onClick}}"><span class="ell" style="{{f.style}}">{{f.label}}</span><span class="cnt">{{f.count}}</span></button>
+              </sc-for>
+            </div>
+            <div class="fgrp" role="group" aria-label="Categoría" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #262B32;">
+              <span class="eb" style="padding: 4px 10px 6px;">Categoría</span>
+              <sc-for list="{{fCats}}" as="f" hint-placeholder-count="5">
+                <button type="button" class="fi" aria-pressed="{{f.pressed}}" onClick="{{f.onClick}}"><span class="ell">{{f.label}}</span><span class="cnt">{{f.count}}</span></button>
+              </sc-for>
+            </div>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #262B32; display: flex; flex-direction: column; gap: 6px;">
+              <span class="eb" style="padding: 0 10px;">Orden</span>
+              <div class="seg" role="group" aria-label="Orden">
+                <button type="button" class="sg" aria-pressed="{{sortNew}}" onClick="{{setSortNew}}" style="flex: 1; justify-content: center;">Más nuevas</button>
+                <button type="button" class="sg" aria-pressed="{{sortVotes}}" onClick="{{setSortVotes}}" style="flex: 1; justify-content: center;">Más votadas</button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ASISTENTE: columna que empuja el contenido, nunca encima -->
+    <sc-if value="{{asstOpen}}" hint-placeholder-val="{{ false }}">
+      <aside class="asst" aria-label="Asistente">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="flex: 1; font-size: 14px; font-weight: 600;">Asistente</span>
+          <button type="button" class="icb" aria-label="Cerrar asistente" onClick="{{toggleAsst}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="padding: 10px 12px; border: 1px solid #262B32; border-radius: 6px; font-size: 13px; line-height: 18px;">
+          <div class="eb">Contexto</div>
+          <div class="ell" style="margin-top: 4px; color: #ECEEF1;">{{asstCtx}}</div>
+          <div class="ell" style="color: #7C8592;">{{asstCtx2}}</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button type="button" class="opt" style="justify-content: flex-start;">Resumime los comentarios</button>
+          <button type="button" class="opt" style="justify-content: flex-start;">¿Hay una sugerencia parecida?</button>
+        </div>
+        <span style="flex: 1;"></span>
+        <label class="fld">
+          <input type="text" aria-label="Preguntale al asistente" placeholder="Preguntale al asistente…">
+        </label>
+      </aside>
+    </sc-if>
+    </div>
+
+    <!-- BARRA INFERIOR (solo bajo 768px) -->
+    <nav class="bnav" aria-label="Navegación principal">
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span class="nw">Inicio</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg><span class="nw">Préstamos</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ECEEF1; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg><span class="nw">Escanear</span></a>
+      <a href="#" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg><span class="nw">Agenda</span></a>
+      <a href="#" aria-current="page" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #5B9BFF; text-decoration: none; font-size: 11px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg><span class="nw">Más</span></a>
+    </nav>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240},"gestor":{"editor":"boolean","default":true}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    ideas: 'M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    canvas: 'M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z' + R(3, 14, 7, 7, 1) + C(17.5, 17.5, 3.5),
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
+    bot: 'M12 8V4H8' + R(4, 8, 16, 12, 2) + 'M2 14h2M20 14h2M15 13v2M9 13v2',
+    tpl: R(3, 3, 18, 7, 1) + R(3, 14, 7, 7, 1) + R(14, 14, 7, 7, 1),
+    pencil: 'M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4',
+    trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2',
+    file: 'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7zM14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8',
+    image: R(3, 3, 18, 18, 2) + C(9, 9, 2) + 'M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21',
+    down: 'M6 9l6 6 6-6',
+    up: 'M18 15l-6-6-6 6'
+  };
+}
+nav(I, active) {
+  const base = 'display: flex; align-items: center; gap: 10px; height: 32px; border-radius: 6px; position: relative; text-decoration: none; font-size: 14px; line-height: 20px;';
+  const mk = (k, label, count) => {
+    const on = k === active;
+    return {
+      label: label, d: I[k], count: count || '', current: on ? 'page' : 'false',
+      style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;',
+      bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;'
+    };
+  };
+  return {
+    ops: [mk('home', 'Inicio'), mk('loans', 'Préstamos', '[N]'), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC'), mk('rooms', 'Estado aulas')],
+    mgmt: [mk('tasks', 'Tareas TIC', '2'), mk('tickets', 'Tickets'), mk('ideas', 'Sugerencias'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')],
+    data: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')],
+    res: [mk('knowledge', 'Base de conocimiento'), mk('canvas', 'Canvas'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')]
+  };
+}
+seed() {
+  // La base local no tiene sugerencias: ejemplos armados con personas reales de NFPT y temas de la propia app.
+  const S = [
+    { id: 6, title: 'Plantilla de ticket para cuentas de alumno bloqueadas', cat: 'Tickets', st: 'In Progress', author: 'Bauti G.', when: 'hoy 08:30', votes: 1, voted: true,
+      desc: 'Se repite varias veces por semana. Con una plantilla con los pasos (verificar usuario, pedir reseteo, avisar a la docente) se carga en segundos.', com: [] },
+    { id: 5, title: 'Avisar cuando un préstamo pasa de un día afuera', cat: 'Préstamos', st: 'Proposed', author: 'Equi F.', when: '15/10 16:02', votes: 3, voted: true,
+      desc: 'Que la campana avise a la mañana qué equipos siguen afuera desde el día anterior, con quién y en qué curso. Hoy lo vemos solo si entramos a Préstamos.',
+      com: [{ who: 'Bauti G.', when: '15/10 16:20', body: 'Sí, sobre todo para los Touch que se llevan al aula y vuelven tarde.' }, { who: 'Vanina G.', when: '16/10 08:05', body: 'Lo vemos en la reunión del viernes.' }] },
+    { id: 4, title: 'Etiquetas QR para los cartelitos', cat: 'Inventario', st: 'Under Review', author: 'Vanina G.', when: '14/10 11:40', votes: 4, voted: false,
+      desc: 'Imprimir una etiqueta con QR para cada cartelito así se escanean igual que los equipos al prestar y devolver.', com: [{ who: 'Equi F.', when: '14/10 12:10', body: 'Las del laboratorio ya tienen código de barras, se podría usar el mismo formato.' }] },
+    { id: 3, title: 'Cargar las aulas que faltan del segundo piso en el plano', cat: 'Aulas', st: 'Planned', author: 'Equi F.', when: '10/10 09:15', votes: 2, voted: false,
+      desc: 'En Estado de aulas del segundo piso hoy figuran 3S, 4F, 4N, 4S y el pasillo. Faltan las demás aulas del piso.', com: [] },
+    { id: 2, title: 'Exportar el cierre del día en PDF', cat: 'General', st: 'Implemented', author: 'Laura B.', when: '02/10 17:45', votes: 2, voted: true,
+      desc: 'Para mandarlo por mail a dirección sin copiar y pegar.', com: [{ who: 'Bauti G.', when: '09/10 10:00', body: 'Ya está: botón Descargar en el cierre del día.' }] },
+    { id: 1, title: 'Recordar la última sede elegida en cada pestaña', cat: 'General', st: 'Rejected', author: 'Eze M.', when: '28/09 13:20', votes: 0, voted: false,
+      desc: 'Cada pestaña nueva arranca en la sede por defecto.', com: [{ who: 'Vanina G.', when: '30/09 09:00', body: 'Lo dejamos así a propósito: NFPT y NFND no se tienen que mezclar.' }] }
+  ];
+  return { S: S };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const B = this.seed();
+  const I = this.icons();
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const ME = 'Bauti G.';
+  const canManage = !(this.props && this.props.gestor === false);
+  const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const ini = n => String(n || '').split(/\s+/).map(w => w.charAt(0)).join('').slice(0, 2).toUpperCase();
+  // El servidor guarda el estado en inglés; la UI lo traduce siempre.
+  const ST = [['Proposed', 'Propuesta', '#A7AEB8'], ['Under Review', 'En revisión', '#F5C04E'], ['Planned', 'Planificada', '#4FD1C5'], ['In Progress', 'En progreso', '#4FD1C5'], ['Implemented', 'Implementada', '#5BD68A'], ['Rejected', 'Rechazada', '#7C8592']];
+  const stLabel = {}; const stColor = {};
+  ST.forEach(x => { stLabel[x[0]] = x[1]; stColor[x[0]] = x[2]; });
+
+  const S = s.S || B.S;
+  const fS = s.fS || 'all';
+  const fC = s.fC || 'all';
+  const sort = s.sort || 'new';
+  const openId = s.openId || null;
+  const fmode = s.fmode || null;
+  const fid = s.fid || null;
+
+  const cats = [];
+  S.forEach(x => { if (cats.indexOf(x.cat) < 0) cats.push(x.cat); });
+  cats.sort((a, b) => (a === 'General' ? -1 : b === 'General' ? 1 : a.localeCompare(b)));
+  const inCat = S.filter(x => fC === 'all' || x.cat === fC);
+  const inSt = S.filter(x => fS === 'all' || x.st === fS);
+  let list = inCat.filter(x => fS === 'all' || x.st === fS);
+  if (sort === 'votes') list = list.slice().sort((a, b) => b.votes - a.votes);
+
+  const top = S.slice().sort((a, b) => b.votes - a.votes)[0];
+  const k = {
+    total: S.length,
+    topVotes: top && top.votes ? top.votes + (top.votes === 1 ? ' voto' : ' votos') : '',
+    topTitle: top && top.votes ? top.title : 'Sin votos',
+    topLong: !!(top && top.votes && top.title.length > 34),
+    onTop: () => { if (top && top.votes) set({ openId: top.id, fS: 'all', fC: 'all' }); },
+    impl: S.filter(x => x.st === 'Implemented').length,
+    pend: S.filter(x => x.st === 'Proposed' || x.st === 'Under Review').length,
+    pendStyle: S.filter(x => x.st === 'Proposed' || x.st === 'Under Review').length ? 'color: #F5C04E;' : ''
+  };
+
+  const status = (() => {
+    const st = s.status;
+    return {
+      show: !!st, text: st ? st.text : '', canUndo: !!(st && st.undo),
+      onUndo: () => { const x = (self.state || {}).status; if (x && x.undo) self.setState(Object.assign({}, x.undo, { status: null })); },
+      onClose: () => set({ status: null })
+    };
+  })();
+
+  // ---------- Formulario (alta arriba / edición en la fila) ----------
+  const FD0 = s.FD || { title: '', cat: 'General', desc: '', err: false, saving: false };
+  const setFD = p => set({ FD: Object.assign({}, FD0, p) });
+  const tOk = !!FD0.title.trim();
+  const dOk = !!FD0.desc.trim();
+  const FD = {
+    title: FD0.title, cat: FD0.cat, desc: FD0.desc, err: !!FD0.err, saving: !!FD0.saving,
+    count: FD0.title.length + '/180', saveLabel: FD0.saving ? 'Guardando…' : 'Guardar',
+    titleInvalid: String(!!FD0.err && !tOk), descInvalid: String(!!FD0.err && !dOk),
+    titleStyle: FD0.err && !tOk ? 'border-color: #FF6B6B;' : '', descStyle: FD0.err && !dOk ? 'border-color: #FF6B6B;' : '',
+    onTitle: e => setFD({ title: val(e).slice(0, 180) }), onCat: e => setFD({ cat: val(e) }), onDesc: e => setFD({ desc: val(e) }),
+    catSug: cats.filter(c => !FD0.cat || cats.indexOf(FD0.cat) >= 0 || norm(c).indexOf(norm(FD0.cat)) === 0).map(c => ({ label: c, pressed: String(c === FD0.cat), onPick: () => setFD({ cat: c }) }))
+  };
+  const openNew = () => set(fmode === 'new' ? { fmode: null, FD: null } : { fmode: 'new', fid: null, FD: null, status: null });
+  const closeForm = () => set({ fmode: null, fid: null, FD: null });
+  const onSave = e => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!tOk || !dOk) { setFD({ err: true }); return; }
+    setFD({ saving: true, err: false });
+    setTimeout(() => {
+      const st = self.state || {};
+      const SS = st.S || B.S;
+      const F = st.FD || FD0;
+      const data = { title: F.title.trim(), cat: (F.cat || '').trim() || 'General', desc: F.desc.trim() };
+      if (st.fmode === 'edit') {
+        self.setState({ S: SS.map(x => (x.id === st.fid ? Object.assign({}, x, data) : x)), fmode: null, fid: null, FD: null, status: { text: 'Cambios guardados.', undo: { S: SS } } });
+      } else {
+        const id = Date.now();
+        self.setState({ S: [Object.assign({ id: id, st: 'Proposed', author: ME, when: 'recién', votes: 0, voted: false, com: [] }, data)].concat(SS), fmode: null, FD: null, fS: 'all', fC: 'all', sort: 'new', status: { text: 'Sugerencia publicada. Se avisó a quienes gestionan el buzón.', undo: null } });
+      }
+    }, 600);
+  };
+
+  const comDraft = s.comDraft || '';
+  const addCom = id => {
+    const v = comDraft.trim();
+    if (!v) return;
+    set({ S: S.map(x => (x.id === id ? Object.assign({}, x, { com: x.com.concat([{ who: ME, when: 'recién', body: v }]) }) : x)), comDraft: '' });
+  };
+
+  const rows = list.map(x => {
+    const isOpen = openId === x.id;
+    const canEdit = canManage || x.author === ME;
+    const editing = fmode === 'edit' && fid === x.id;
+    return {
+      hid: 'sg-' + x.id, title: x.title, status: stLabel[x.st], stStyle: 'font-size: 13px; font-weight: 500; color: ' + stColor[x.st] + ';',
+      meta: x.cat + ' · ' + x.author + ' · ' + x.when,
+      desc: x.desc, descClass: isOpen ? '' : 'clamp2',
+      votes: x.votes, voted: String(!!x.voted),
+      voteAria: (x.voted ? 'Quitar tu voto. ' : 'Votar. ') + x.votes + (x.votes === 1 ? ' voto' : ' votos'),
+      onVote: () => set({ S: S.map(y => (y.id === x.id ? Object.assign({}, y, { voted: !y.voted, votes: y.votes + (y.voted ? -1 : 1) }) : y)) }),
+      comLabel: (isOpen ? 'Ocultar comentarios' : 'Comentarios') + ' ' + x.com.length,
+      open: isOpen && !editing, openS: String(isOpen), onToggle: () => set({ openId: isOpen ? null : x.id, comDraft: '' }),
+      com: x.com.map(c => ({ who: c.who, when: c.when, body: c.body, ini: ini(c.who) })), noCom: !x.com.length,
+      onCom: () => addCom(x.id),
+      canManage: canManage, stOpen: s.stOpen === x.id && !editing, stOpenS: String(s.stOpen === x.id), stChevron: s.stOpen === x.id ? I.up : I.down,
+      onStToggle: () => set({ stOpen: s.stOpen === x.id ? null : x.id, askId: null }),
+      stOptions: ST.map(o => ({
+        label: o[1], pressed: String(x.st === o[0]),
+        onPick: () => {
+          if (x.st === o[0]) return;
+          set({ S: S.map(y => (y.id === x.id ? Object.assign({}, y, { st: o[0] }) : y)), stOpen: null,
+            status: { text: '“' + x.title + '” pasó a ' + o[1] + '. Se avisó al autor, a quienes votaron y a quienes comentaron.', undo: { S: S } } });
+        }
+      })),
+      canEdit: canEdit, canDelete: canEdit,
+      notEditing: !editing, editing: editing,
+      onEdit: () => set({ fmode: 'edit', fid: x.id, stOpen: null, askId: null, FD: { title: x.title, cat: x.cat, desc: x.desc, err: false, saving: false } }),
+      asking: s.askId === x.id && !editing, onAskDel: () => set({ askId: x.id, stOpen: null }), onNoDel: () => set({ askId: null }),
+      onDel: () => set({ S: S.filter(y => y.id !== x.id), askId: null, openId: null, status: { text: 'Sugerencia eliminada con sus votos.', undo: { S: S } } })
+    };
+  });
+
+  const fStatus = [['all', 'Todos', '']].concat(ST).map(o => ({
+    label: o[1], count: o[0] === 'all' ? inCat.length : inCat.filter(x => x.st === o[0]).length,
+    pressed: String(fS === o[0]), style: '', onClick: () => set({ fS: o[0] })
+  }));
+  const fCats = [['all', 'Todas']].concat(cats.map(c => [c, c])).map(o => ({
+    label: o[1], count: o[0] === 'all' ? inSt.length : inSt.filter(x => x.cat === o[0]).length,
+    pressed: String(fC === o[0]), onClick: () => set({ fC: o[0] })
+  }));
+  const fOpen = !!s.fOpen;
+  const opened = S.find(x => x.id === openId);
+  const asstOpen = !!s.asst;
+
+  return {
+    ic: I, nav: this.nav(I, 'ideas'),
+    asstOpen: asstOpen, asstPressed: String(asstOpen), toggleAsst: () => set({ asst: !asstOpen }),
+    asstBtnStyle: asstOpen ? 'border-color: #5B9BFF;' : '',
+    asstCtx: opened ? 'Sugerencia · ' + opened.title : 'Sugerencias de NFPT',
+    asstCtx2: opened ? stLabel[opened.st] + ' · ' + opened.cat + ' · ' + opened.votes + ' votos' : 'Abrí una para darle contexto',
+    k: k, status: status,
+    countLabel: list.length + ' de ' + S.length,
+    openNew: openNew, newOpen: fmode === 'new', newOpenS: String(fmode === 'new'), closeForm: closeForm, onSave: onSave, FD: FD,
+    rows: rows, empty: !list.length, clearFilters: () => set({ fS: 'all', fC: 'all' }),
+    comDraft: comDraft, comEmpty: !comDraft.trim(), onComDraft: e => set({ comDraft: val(e) }),
+    onComKey: e => { if (e && e.key === 'Enter' && (e.ctrlKey || e.metaKey) && openId) { if (e.preventDefault) e.preventDefault(); addCom(openId); } },
+    fStatus: fStatus, fCats: fCats,
+    sortNew: String(sort === 'new'), sortVotes: String(sort === 'votes'),
+    setSortNew: () => set({ sort: 'new' }), setSortVotes: () => set({ sort: 'votes' }),
+    fOpenS: String(fOpen), toggleF: () => set({ fOpen: !fOpen }), fChevron: fOpen ? I.up : I.down,
+    fBodyClass: fOpen ? 'fbody' : 'fbody fbody-closed',
+    fSummary: [fS === 'all' ? 'Todos los estados' : stLabel[fS], fC === 'all' ? 'todas las categorías' : fC, sort === 'new' ? 'más nuevas' : 'más votadas'].join(' · ')
+  };
+}
+
+}
+</script>
+</body>
+</html>

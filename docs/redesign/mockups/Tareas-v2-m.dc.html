@@ -1,0 +1,1609 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Tareas TIC v2 mobile</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#0D0F12;overscroll-behavior:none}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+.ta *{box-sizing:border-box}
+.ta{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.ta button,.ta input,.ta textarea{font:inherit;color:inherit}
+.ta input::placeholder,.ta textarea::placeholder{color:#7C8592}
+.ta :focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.eb{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.lbl{font-size:12px;line-height:16px;font-weight:500;color:#A7AEB8;white-space:nowrap}
+
+/* Shell mobile */
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:2px;padding:0 4px 0 16px;border-bottom:1px solid #262B32;min-width:0}
+.bnav{display:flex;position:sticky;bottom:0;z-index:5;height:64px;flex:none;margin-top:auto;padding-bottom:env(safe-area-inset-bottom);border-top:1px solid #262B32;background:#0D0F12}
+.bnav a{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;font-size:11px}
+
+/* Botones: 44px en mobile */
+.ib{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;padding:0;background:transparent;border:0;border-radius:6px;color:#A7AEB8;cursor:pointer}
+.ib:active{background:#1B1F24;color:#ECEEF1}
+.ib:disabled{opacity:.4;cursor:not-allowed;background:transparent;color:#A7AEB8}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;max-width:100%;padding:0 16px;flex:none;border:1px solid transparent;border-radius:6px;font-size:15px;line-height:20px;font-weight:500;white-space:nowrap;cursor:pointer}
+.btn > span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.btn-p{background:#5B9BFF;border-color:#5B9BFF;color:#0D0F12 !important}
+.btn-s{background:#1B1F24;border-color:#353B44;color:#ECEEF1}
+.btn-g{background:transparent;color:#A7AEB8}
+.btn-g:active{background:#1B1F24;color:#ECEEF1}
+.btn-d{color:#FF6B6B !important}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-sm{padding:0 12px;font-size:14px;gap:6px}
+.lnk{display:inline-flex;align-items:center;min-height:44px;background:none;border:0;padding:0;color:#5B9BFF;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap}
+.opt{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px;flex:none;max-width:100%;border:1px solid #262B32;border-radius:6px;background:transparent;color:#A7AEB8;font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer}
+.opt[aria-pressed="true"]{background:#262B32;border-color:#353B44;color:#ECEEF1}
+.opt:disabled{opacity:.45;cursor:not-allowed}
+.opt .ok{display:none}
+.opt[aria-pressed="true"] .ok{display:block}
+
+/* Campos: 16px para que iOS no haga zoom */
+.in{display:block;width:100%;min-width:0;height:44px;padding:0 12px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#ECEEF1;font-size:16px;line-height:22px}
+.in:focus{outline:none;border-color:#5B9BFF}
+.in.bad{border-color:#FF6B6B}
+textarea.in{height:auto;padding:10px 12px;resize:vertical}
+
+/* Checkbox propio (regla 6), con área táctil de 44px */
+.ckh{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;margin:-14px;padding:0;background:transparent;border:0;border-radius:6px;cursor:pointer}
+.ck{display:inline-grid;place-items:center;width:16px;height:16px;border:1px solid #353B44;border-radius:4px;background:transparent;color:#0D0F12;transition:background-color .12s ease,border-color .12s ease}
+.ck svg{grid-area:1 / 1;opacity:0;transform:scale(.7);transition:opacity .12s ease,transform .12s ease}
+.ckh[aria-checked="true"] .ck,.ckh[aria-checked="mixed"] .ck{background:#ECEEF1;border-color:#ECEEF1}
+.ckh[aria-checked="true"] .ck-t,.ckh[aria-checked="mixed"] .ck-m{opacity:1;transform:scale(1)}
+.ckh:disabled{cursor:not-allowed;opacity:.45}
+
+/* Segmentado de dos mitades con indicador deslizante */
+.seg{position:relative;display:flex;gap:2px;padding:3px;width:100%;background:#14171B;border:1px solid #262B32;border-radius:8px}
+.seg > button{position:relative;z-index:1;flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:#A7AEB8;font-size:15px;font-weight:500;white-space:nowrap;cursor:pointer;transition:color .2s ease}
+.seg > button[aria-pressed="true"]{color:#ECEEF1}
+.seg-pill{position:absolute;z-index:0;top:3px;bottom:3px;left:3px;width:calc(50% - 4px);border-radius:6px;background:#262B32;transition:transform 260ms cubic-bezier(.22,1,.36,1);pointer-events:none}
+
+/* Selector de columna: envuelve, nunca scrollea */
+.lsw{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px}
+.lsw > button{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;min-width:0;padding:0 10px;border:1px solid #262B32;border-radius:6px;background:transparent;color:#A7AEB8;font-size:14px;font-weight:500;cursor:pointer}
+.lsw > button[aria-pressed="true"]{background:#262B32;border-color:#353B44;color:#ECEEF1}
+
+/* Tablero */
+.tbar{transition:margin-bottom 250ms cubic-bezier(.22,1,.36,1)}
+.tbar.goo-room{margin-bottom:88px;transition:margin-bottom 350ms cubic-bezier(.22,1,.36,1)}
+.lane{display:flex;flex-direction:column;gap:10px;min-width:0;touch-action:pan-y}
+.card{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0;padding:14px;background:#14171B;border:1px solid #262B32;border-radius:10px;overflow-wrap:anywhere;transition:border-color .15s ease,background-color .15s ease}
+.card.is-sel{background:#1B1F24;border-color:#7C8592}
+.ttl{display:block;width:100%;min-width:0;min-height:24px;padding:0;background:none;border:0;text-align:left;font-size:16px;line-height:22px;font-weight:600;cursor:pointer;overflow-wrap:anywhere}
+.foot-b{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 10px;flex:none;background:transparent;border:0;border-radius:6px;color:#A7AEB8;font-size:13px;cursor:pointer;white-space:nowrap}
+.foot-b:active{background:#1B1F24;color:#ECEEF1}
+.tapx{cursor:pointer}
+.sub-row{display:flex;align-items:center;gap:12px;min-height:44px;min-width:0}
+.sk{background:#14171B;border-radius:8px;animation:sk-pulse 1.5s ease-in-out infinite}
+@keyframes sk-pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* Entradas: tarjetas escalonadas y carril que llega desde el lado del deslizamiento */
+@keyframes t-in-a{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes t-in-b{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.run-a .t-item{animation:t-in-a 240ms cubic-bezier(.16,1,.3,1) both}
+.run-b .t-item{animation:t-in-b 240ms cubic-bezier(.16,1,.3,1) both}
+@keyframes m-r-a{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes m-r-b{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes m-l-a{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+@keyframes m-l-b{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+.lane.m-ra{animation:m-r-a 260ms cubic-bezier(.16,1,.3,1) both}
+.lane.m-rb{animation:m-r-b 260ms cubic-bezier(.16,1,.3,1) both}
+.lane.m-la{animation:m-l-a 260ms cubic-bezier(.16,1,.3,1) both}
+.lane.m-lb{animation:m-l-b 260ms cubic-bezier(.16,1,.3,1) both}
+@keyframes t-fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.t-fade{animation:t-fade 200ms cubic-bezier(.22,1,.36,1) both}
+
+/* ==== Botón "+" — receta Pro gooey-plus-menu, copiada fiel de motion.css §9 + GooeyMenu.tsx ==== */
+:root{
+--ease-out:cubic-bezier(.22,1,.36,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);
+--goo-open-dur:350ms;--goo-open-ease:var(--ease-spring);--goo-close-dur:250ms;--goo-close-ease:var(--ease-out);
+--goo-stagger:40ms;--goo-spread:1;--goo-blur:6;--goo-contrast:18;--goo-icon-dur:250ms;--goo-icon-rotate:45deg;--goo-icon-ease:ease-in-out;
+--goo-anticip:5px;--goo-anticip-dur:700ms;--goo-anticip-ease:var(--ease-out);
+--goo-surface:#262B32;--goo-icon-color:#ECEEF1;
+}
+.t-goo-anchor{position:relative;display:inline-block;vertical-align:middle;width:40px;height:40px;z-index:5}
+.t-goo-layer{position:absolute;width:200px;height:200px;overflow:visible;pointer-events:none;will-change:filter,transform}
+.t-goo-blob{fill:var(--goo-surface);transform:translate(0,0);transform-box:fill-box;transition:transform var(--goo-close-dur) var(--goo-close-ease);will-change:transform}
+.t-goo-anchor[data-open="true"] .t-goo-blob{transform:translate(calc(var(--fx,0px) * var(--goo-spread)),calc(var(--fy,0px) * var(--goo-spread)));transition:transform var(--goo-open-dur) var(--goo-open-ease);transition-delay:calc(var(--i,0) * var(--goo-stagger))}
+.t-goo-item,.t-goo-main{position:absolute;left:0;top:0;width:40px;height:40px;border:0;padding:0;border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--goo-icon-color);-webkit-tap-highlight-color:transparent;transform:translate(0,0);transition:transform var(--goo-close-dur) var(--goo-close-ease),background-color 120ms ease;will-change:transform}
+.t-goo-item{pointer-events:none}
+.t-goo-anchor[data-open="true"] .t-goo-item{pointer-events:auto;transform:translate(calc(var(--fx,0px) * var(--goo-spread)),calc(var(--fy,0px) * var(--goo-spread)));transition:transform var(--goo-open-dur) var(--goo-open-ease),background-color 120ms ease;transition-delay:calc(var(--i,0) * var(--goo-stagger)),0ms}
+.t-goo-anchor[data-open="true"] .t-goo-item:hover{background:rgba(255,255,255,.06)}
+.t-goo-item svg{display:block;opacity:0;filter:blur(2px);transition:opacity 120ms ease,filter 120ms ease}
+.t-goo-anchor[data-open="true"] .t-goo-item svg{opacity:1;filter:blur(0);transition:opacity 180ms ease,filter 180ms ease;transition-delay:calc(var(--i,0) * var(--goo-stagger) + 120ms),calc(var(--i,0) * var(--goo-stagger) + 120ms)}
+@keyframes t-goo-anticipate{0%{transform:translateY(0)}30%{transform:translateY(var(--goo-anticip))}100%{transform:translateY(0)}}
+.t-goo-anchor.is-anticipating .t-goo-layer,.t-goo-anchor.is-anticipating .t-goo-main{animation-name:t-goo-anticipate;animation-duration:var(--goo-anticip-dur);animation-timing-function:var(--goo-anticip-ease);animation-fill-mode:both}
+.t-goo-swap{position:relative;display:inline-grid;place-items:center;transform:rotate(0deg);transition:transform var(--goo-icon-dur) var(--goo-icon-ease)}
+.t-goo-anchor[data-open="true"] .t-goo-swap{transform:rotate(var(--goo-icon-rotate))}
+.t-goo-icon{grid-area:1 / 1;display:inline-flex}
+.t-goo-icon svg{display:block}
+/* Agregados mobile: área táctil de 44px sin tocar el dibujo, y el nombre del satélite escrito en el hueco reservado. */
+.t-goo-item::before,.t-goo-main::before{content:"";position:absolute;inset:-2px;border-radius:50%}
+.goo-cap{position:absolute;left:50%;top:112px;transform:translateX(-50%);font-size:13px;line-height:16px;color:#A7AEB8;white-space:nowrap;opacity:0;transition:opacity 120ms ease;pointer-events:none}
+.t-goo-anchor[data-open="true"] .goo-cap{opacity:1;transition:opacity 180ms ease 200ms}
+
+@media (prefers-reduced-motion:reduce){
+.t-item,.lane,.t-fade,.sk{animation:none !important}
+.seg-pill,.tbar,.card,.ck,.ck svg{transition:none !important}
+.t-goo-blob,.t-goo-item,.t-goo-item svg,.t-goo-swap,.goo-cap{transition-delay:0ms !important;transition-duration:1ms !important}
+.t-goo-anchor.is-anticipating .t-goo-layer,.t-goo-anchor.is-anticipating .t-goo-main{animation:none !important}
+}
+</style>
+</helmet>
+<div class="ta" style="width: 100%; min-height: 1000px; display: flex; flex-direction: column; position: relative; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 15px; line-height: 22px;">
+
+  <main style="flex: 1 0 auto; min-width: 0; display: flex; flex-direction: column;">
+    <!-- TOPBAR: título + accesos (rayo) + Asistente (ícono) + campana -->
+    <header class="tb">
+      <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Tareas TIC</h1>
+      <span class="ell" style="flex: 1 1 auto; margin-left: 8px; font-size: 13px; color: #A7AEB8;">{{context}}</span>
+      <button type="button" class="ib" aria-label="Accesos rápidos" aria-expanded="{{quickExp}}" onClick="{{onQuick}}" style="{{quickBtnStyle}}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path></svg>
+      </button>
+      <button type="button" class="ib" aria-label="Asistente" aria-pressed="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2M20 14h2M15 13v2M9 13v2"></path></svg>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="width: auto; padding: 0 8px; gap: 6px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span class="mono" style="font-size: 12px; color: #ECEEF1;">[N]</span>
+      </button>
+    </header>
+
+    <!-- ACCESOS RÁPIDOS: franja en línea (regla 11); los nombres largos envuelven, no se cortan -->
+    <sc-if value="{{quickOn}}" hint-placeholder-val="{{ false }}">
+      <div class="t-fade" role="region" aria-label="Accesos rápidos" style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #262B32;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <span class="eb">Accesos rápidos</span>
+          <a href="#" class="lnk" style="text-decoration: none;">Editar accesos</a>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+          <sc-for list="{{links}}" as="l" hint-placeholder-count="7">
+            <a href="#" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 10px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; line-height: 18px; text-decoration: none; overflow-wrap: anywhere;">
+              <span style="flex: 1; min-width: 0;">{{l.name}}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+            </a>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- CONTENIDO -->
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; padding: 16px 16px 24px;">
+
+      <sc-if value="{{consulta}}" hint-placeholder-val="{{ false }}">
+        <p style="margin: 0; display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: #A7AEB8;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 3px;"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          Modo consulta: ves las tareas y sus comentarios, sin editar.
+        </p>
+      </sc-if>
+
+      <sc-if value="{{backOn}}" hint-placeholder-val="{{ false }}">
+        <button type="button" class="btn btn-g" onClick="{{onBack}}" style="align-self: flex-start; margin: -8px 0 -8px -8px; padding: 0 12px 0 6px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19l-7-7 7-7M19 12H5"></path></svg>
+          <span>{{backLabel}}</span>
+        </button>
+      </sc-if>
+
+      <!-- CABECERA: vista · "+" · resumen; abajo espacio, vista y búsqueda -->
+      <sc-if value="{{toolOn}}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+          <div class="{{tbarCls}}" style="display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); align-items: center; gap: 12px; min-width: 0;">
+            <div style="display: flex; flex-direction: column; min-width: 0;">
+              <span class="eb">{{boardEyebrow}}</span>
+              <span class="ell" style="font-size: 18px; line-height: 26px; font-weight: 600;">{{mHeadTitle}}</span>
+            </div>
+            <div style="width: 40px; height: 40px;">
+              <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+                <div class="{{gooCls}}" data-open="{{gooOpenStr}}">
+                  <svg class="t-goo-layer" style="left: -80px; top: -20px;" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+                    <defs>
+                      <filter id="t-goo-filter-tareas-v2m" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"></feGaussianBlur>
+                        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo"></feColorMatrix>
+                        <feComposite in="SourceGraphic" in2="goo" operator="atop" result="shape"></feComposite>
+                        <feColorMatrix in="shape" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 60 -29.5" result="ring-solid"></feColorMatrix>
+                        <feMorphology in="ring-solid" operator="dilate" radius="1" result="ring-a"></feMorphology>
+                        <feFlood flood-color="#000000" flood-opacity="0.06" result="ring-c"></feFlood>
+                        <feComposite in="ring-c" in2="ring-a" operator="in" result="ring"></feComposite>
+                        <feGaussianBlur in="shape" stdDeviation="3" result="s2-b"></feGaussianBlur>
+                        <feOffset in="s2-b" dy="2" result="s2-o"></feOffset>
+                        <feFlood flood-color="#000000" flood-opacity="0.05" result="s2-c"></feFlood>
+                        <feComposite in="s2-c" in2="s2-o" operator="in" result="s2"></feComposite>
+                        <feGaussianBlur in="shape" stdDeviation="21" result="s3-b"></feGaussianBlur>
+                        <feOffset in="s3-b" dy="4" result="s3-o"></feOffset>
+                        <feFlood flood-color="#000000" flood-opacity="0.06" result="s3-c"></feFlood>
+                        <feComposite in="s3-c" in2="s3-o" operator="in" result="s3"></feComposite>
+                        <feMerge>
+                          <feMergeNode in="s3"></feMergeNode>
+                          <feMergeNode in="s2"></feMergeNode>
+                          <feMergeNode in="ring"></feMergeNode>
+                          <feMergeNode in="shape"></feMergeNode>
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    <g filter="url(#t-goo-filter-tareas-v2m)">
+                      <circle class="t-goo-blob" cx="100" cy="40" r="20" style="--fx: -54px; --fy: 34px; --i: 0;"></circle>
+                      <circle class="t-goo-blob" cx="100" cy="40" r="20" style="--fx: 0px; --fy: 64px; --i: 1;"></circle>
+                      <circle class="t-goo-blob" cx="100" cy="40" r="20" style="--fx: 54px; --fy: 34px; --i: 2;"></circle>
+                      <circle class="t-goo-blob t-goo-blob-main" cx="100" cy="40" r="20"></circle>
+                    </g>
+                  </svg>
+                  <button type="button" class="t-goo-item" style="--fx: -54px; --fy: 34px; --i: 0;" aria-label="Nueva tarea de equipo" tabindex="{{gooTab}}" onClick="{{onGooTeam}}" onFocus="{{onCapTeam}}" onBlur="{{onCapOff}}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  </button>
+                  <button type="button" class="t-goo-item" style="--fx: 0px; --fy: 64px; --i: 1;" aria-label="Nueva tarea privada" tabindex="{{gooTab}}" onClick="{{onGooMine}}" onFocus="{{onCapMine}}" onBlur="{{onCapOff}}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  </button>
+                  <button type="button" class="t-goo-item" style="--fx: 54px; --fy: 34px; --i: 2;" aria-label="Nueva columna" tabindex="{{gooTab}}" onClick="{{onGooColumn}}" onFocus="{{onCapCol}}" onBlur="{{onCapOff}}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M15 3v18"></path></svg>
+                  </button>
+                  <button type="button" class="t-goo-main" aria-expanded="{{gooOpenStr}}" aria-label="{{gooLabel}}" onClick="{{onGoo}}">
+                    <span class="t-goo-swap"><span class="t-goo-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M10 4V16M4 10H16"></path></svg></span></span>
+                  </button>
+                  <span class="goo-cap" aria-hidden="true">{{gooCap}}</span>
+                </div>
+              </sc-if>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; min-width: 0;">
+              <span class="mono nw" style="font-size: 13px; color: #A7AEB8;">{{sumOpen}}</span>
+              <sc-if value="{{hasOver}}" hint-placeholder-val="{{ true }}"><span class="mono nw" style="font-size: 13px; color: #FF6B6B;">{{sumOver}}</span></sc-if>
+              <sc-if value="{{noOver}}" hint-placeholder-val="{{ false }}"><span class="mono nw" style="font-size: 13px; color: #7C8592;">{{sumDone}}</span></sc-if>
+            </div>
+          </div>
+
+          <div class="seg" role="group" aria-label="Espacio de tareas">
+            <span class="seg-pill" style="{{spacePill}}" aria-hidden="true"></span>
+            <button type="button" aria-pressed="{{spTeamOn}}" onClick="{{onSpTeam}}">Equipo <span class="mono" style="font-size: 12px; color: #7C8592;">{{teamN}}</span></button>
+            <button type="button" aria-pressed="{{spMyOn}}" onClick="{{onSpMy}}">Mis tareas <span class="mono" style="font-size: 12px; color: #7C8592;">{{myN}}</span></button>
+          </div>
+          <div class="seg" role="group" aria-label="Vista">
+            <span class="seg-pill" style="{{tabPill}}" aria-hidden="true"></span>
+            <button type="button" aria-pressed="{{tabBoardOn}}" onClick="{{onTabBoard}}">Tablero</button>
+            <button type="button" aria-pressed="{{tabPrioOn}}" onClick="{{onTabPrio}}">Prioridad</button>
+          </div>
+          <div style="position: relative; min-width: 0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; left: 12px; top: 13px; pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+            <input class="in" type="search" value="{{q}}" onInput="{{onQ}}" onKeyDown="{{onQKey}}" placeholder="Buscar tarea, persona o subtarea" aria-label="Buscar tareas" style="padding-left: 40px; padding-right: 48px;">
+            <sc-if value="{{hasQ}}" hint-placeholder-val="{{ false }}">
+              <button type="button" class="ib" aria-label="Limpiar búsqueda" onClick="{{onClearQ}}" style="position: absolute; right: 0; top: 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+              </button>
+            </sc-if>
+          </div>
+          <sc-if value="{{hasQ}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #A7AEB8; margin-top: -4px;">{{qText}}</span></sc-if>
+        </div>
+      </sc-if>
+
+      <!-- BARRA DE SELECCIÓN: reemplaza a la cabecera (nada flotante sobre la barra inferior) -->
+      <sc-if value="{{selOn}}" hint-placeholder-val="{{ false }}">
+        <div class="t-fade" role="region" aria-label="Selección de tareas" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; background: #14171B; border: 1px solid #353B44; border-radius: 10px; min-width: 0;">
+          <sc-if value="{{selNotConfirm}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+              <button type="button" class="ckh" role="checkbox" aria-checked="{{selAll}}" aria-label="Seleccionar todas las tareas de esta columna" onClick="{{onSelAll}}" style="margin: -8px -6px -8px -14px;">
+                <span class="ck"><svg class="ck-t" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5"></path></svg><svg class="ck-m" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h6"></path></svg></span>
+              </button>
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+                <span class="nw" style="font-size: 15px; font-weight: 500;">{{selText}}</span>
+                <sc-if value="{{selHidden}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #7C8592;">{{selHiddenText}}</span></sc-if>
+              </span>
+              <button type="button" class="btn btn-g btn-sm" onClick="{{onClearSel}}" style="margin-right: -8px;"><span>Limpiar</span></button>
+            </div>
+            <span class="lbl">Mover a</span>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 6px;">
+              <sc-for list="{{selCols}}" as="c" hint-placeholder-count="3">
+                <button type="button" class="btn btn-s btn-sm" onClick="{{c.onClick}}" disabled="{{c.off}}" style="width: 100%;"><span>{{c.name}}</span></button>
+              </sc-for>
+            </div>
+            <button type="button" class="btn btn-g btn-sm btn-d" onClick="{{onBulkDel}}" style="align-self: flex-start; margin-left: -8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span>Borrar</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{bulkConfirm}}" hint-placeholder-val="{{ false }}">
+            <span style="font-size: 15px; font-weight: 500; color: #FF6B6B;">{{bulkQ}}</span>
+            <span style="font-size: 14px; line-height: 20px; color: #A7AEB8; overflow-wrap: anywhere;">{{bulkTitles}}</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <button type="button" class="btn btn-s btn-d" onClick="{{onBulkYes}}"><span>{{bulkYes}}</span></button>
+              <button type="button" class="btn btn-g" onClick="{{onBulkNo}}"><span>Cancelar</span></button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- Línea de estado (Deshacer / Reintentar en línea) -->
+      <sc-if value="{{stBoardOn}}" hint-placeholder-val="{{ false }}">
+        <div class="t-fade" role="status" style="display: flex; align-items: flex-start; gap: 10px; min-width: 0; font-size: 14px; line-height: 20px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{stBoard.iconStyleM}}"><path d="{{stBoard.icon}}"></path></svg>
+          <span style="flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px;">
+            <span style="{{stBoard.textStyle}}">{{stBoard.text}}</span>
+            <sc-if value="{{stBoard.hasAct}}" hint-placeholder-val="{{ true }}"><button type="button" class="lnk" onClick="{{stBoard.onAct}}" style="min-height: 32px;">{{stBoard.act}}</button></sc-if>
+          </span>
+          <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{stBoard.onClose}}" style="margin: -12px -12px -12px 0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </sc-if>
+
+      <!-- NUEVA COLUMNA (en línea) -->
+      <sc-if value="{{colFormOn}}" hint-placeholder-val="{{ false }}">
+        <section class="t-fade" aria-label="Nueva columna" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #14171B; border: 1px solid #262B32; border-radius: 10px;">
+          <span class="eb">Nueva columna</span>
+          <input class="{{cf.inCls}}" data-colform="1" type="text" value="{{cf.text}}" onInput="{{cf.onInput}}" onKeyDown="{{cf.onKey}}" placeholder="Ej. En revisión" aria-label="Nombre de la columna">
+          <sc-if value="{{cf.hasErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #FF6B6B;">{{cf.err}}</span></sc-if>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button type="button" class="btn btn-p" onClick="{{cf.onSave}}"><span>Crear columna</span></button>
+            <button type="button" class="btn btn-g" onClick="{{cf.onCancel}}"><span>Cancelar</span></button>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- ALTA / EDICIÓN (una columna) -->
+      <sc-if value="{{formOn}}" hint-placeholder-val="{{ false }}">
+        <section class="t-fade" aria-label="{{f.title}}" style="display: flex; flex-direction: column; gap: 18px; padding: 16px; background: #14171B; border: 1px solid #262B32; border-radius: 10px; min-width: 0;">
+          <header style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+            <span class="eb">{{f.eyebrow}}</span>
+            <h2 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; overflow-wrap: anywhere;">{{f.title}}</h2>
+          </header>
+
+          <sc-if value="{{f.isNew}}" hint-placeholder-val="{{ true }}">
+            <div role="group" aria-label="Visibilidad" style="display: flex; flex-direction: column; gap: 8px;">
+              <button type="button" class="opt" aria-pressed="{{f.visTeam}}" onClick="{{f.onVisTeam}}" style="height: auto; min-height: 56px; padding: 8px 12px; justify-content: flex-start; gap: 12px; white-space: normal;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span style="display: flex; flex-direction: column; align-items: flex-start; text-align: left;"><span style="font-size: 15px; color: #ECEEF1;">Tarea de equipo</span><span style="font-size: 13px; font-weight: 400; color: #7C8592;">Visible en el espacio compartido</span></span>
+              </button>
+              <button type="button" class="opt" aria-pressed="{{f.visPriv}}" onClick="{{f.onVisPriv}}" style="height: auto; min-height: 56px; padding: 8px 12px; justify-content: flex-start; gap: 12px; white-space: normal;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span style="display: flex; flex-direction: column; align-items: flex-start; text-align: left;"><span style="font-size: 15px; color: #ECEEF1;">Mi tarea</span><span style="font-size: 13px; font-weight: 400; color: #7C8592;">Solo visible para vos</span></span>
+              </button>
+            </div>
+          </sc-if>
+          <sc-if value="{{f.isEdit}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; font-size: 14px; color: #A7AEB8;">{{f.visText}}. La visibilidad no se cambia al editar.</p>
+          </sc-if>
+
+          <label style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+            <span class="lbl">Título</span>
+            <input class="{{f.titleCls}}" data-f-title="1" type="text" value="{{f.titulo}}" onInput="{{f.onTitulo}}" onKeyDown="{{f.onEnter}}" placeholder="Ej. Revisar proyector de 4to B" aria-invalid="{{f.titleInvalid}}">
+            <sc-if value="{{f.hasTitleErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #FF6B6B;">{{f.titleErr}}</span></sc-if>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+            <span class="lbl">Descripción</span>
+            <textarea class="in" rows="4" onInput="{{f.onDesc}}" placeholder="Qué pasa, dónde y qué hay que hacer">{{f.desc}}</textarea>
+          </label>
+          <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+            <span class="lbl">Responsables</span>
+            <div role="group" aria-label="Responsables" style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <sc-for list="{{f.people}}" as="p" hint-placeholder-count="2">
+                <button type="button" class="opt" aria-pressed="{{p.on}}" onClick="{{p.onClick}}">
+                  <svg class="ok" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+                  {{p.label}}
+                </button>
+              </sc-for>
+            </div>
+            <span style="font-size: 13px; color: #7C8592;">Asignado a: <span style="color: #A7AEB8;">{{f.resumen}}</span>. Les llega un aviso a los asignados con mail.</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="lbl">Prioridad</span>
+            <div role="group" aria-label="Prioridad" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+              <sc-for list="{{f.prios}}" as="o" hint-placeholder-count="3"><button type="button" class="opt" aria-pressed="{{o.on}}" onClick="{{o.onClick}}" style="justify-content: center;">{{o.label}}</button></sc-for>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span class="lbl">Turno</span>
+            <div role="group" aria-label="Turno" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+              <sc-for list="{{f.turnos}}" as="o" hint-placeholder-count="4"><button type="button" class="opt" aria-pressed="{{o.on}}" onClick="{{o.onClick}}" style="justify-content: center;">{{o.label}}</button></sc-for>
+            </div>
+          </div>
+          <label style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+            <span class="lbl">Tipo</span>
+            <input class="in" type="text" value="{{f.tipo}}" onInput="{{f.onTipo}}" onKeyDown="{{f.onEnter}}" placeholder="Soporte, Aula, Agenda…">
+            <span style="display: flex; flex-wrap: wrap; gap: 0 16px;">
+              <sc-for list="{{f.tipos}}" as="o" hint-placeholder-count="3"><button type="button" class="lnk" onClick="{{o.onClick}}" style="color: #A7AEB8; font-weight: 400;">{{o.label}}</button></sc-for>
+            </span>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+            <span class="lbl">Vencimiento</span>
+            <input class="{{f.dueCls}}" data-f-due="1" type="text" inputmode="numeric" maxlength="5" value="{{f.vence}}" onInput="{{f.onVence}}" onKeyDown="{{f.onEnter}}" placeholder="DD/MM" aria-invalid="{{f.dueInvalid}}" style="font-family: 'Geist Mono', ui-monospace, monospace;">
+            <span style="display: flex; flex-wrap: wrap; gap: 0 16px;">
+              <sc-for list="{{f.dates}}" as="o" hint-placeholder-count="3"><button type="button" class="lnk" onClick="{{o.onClick}}" style="color: #A7AEB8; font-weight: 400;">{{o.label}}</button></sc-for>
+            </span>
+            <sc-if value="{{f.hasDueErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #FF6B6B;">{{f.dueErr}}</span></sc-if>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+            <span class="lbl">Nota</span>
+            <textarea class="in" rows="3" onInput="{{f.onNota}}" placeholder="Algo para el que la retome">{{f.nota}}</textarea>
+          </label>
+          <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+            <span class="lbl">Adjuntos</span>
+            <sc-for list="{{f.files}}" as="a" hint-placeholder-count="0">
+              <div style="display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 44px; padding-left: 12px; border: 1px solid #262B32; border-radius: 6px;">
+                <a href="#" style="flex: 1; min-width: 0; font-size: 14px; text-decoration: none; overflow-wrap: anywhere;">{{a.name}}</a>
+                <button type="button" class="ib" aria-label="{{a.removeLabel}}" onClick="{{a.onRemove}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+              </div>
+            </sc-for>
+            <button type="button" class="btn btn-s" onClick="{{f.onUpload}}" disabled="{{f.up}}" style="align-self: flex-start;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.234 20.252 21 12.3M16 6l-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486"></path></svg>
+              <span>{{f.upLabel}}</span>
+            </button>
+            <span style="font-size: 13px; color: #7C8592;">PNG, JPG, WEBP, GIF, PDF, TXT, DOC, XLS · hasta 10 MB</span>
+          </div>
+          <footer style="display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid #262B32;">
+            <button type="button" class="btn btn-p" onClick="{{f.onSave}}" style="width: 100%;"><span>{{f.saveLabel}}</span></button>
+            <button type="button" class="btn btn-g" onClick="{{f.onCancel}}" style="width: 100%;"><span>Cancelar</span></button>
+            <span style="font-size: 13px; color: #7C8592;">{{f.hint}}</span>
+          </footer>
+        </section>
+      </sc-if>
+
+      <!-- TABLERO / PRIORIDAD: una columna a la vez; se cambia con el selector o deslizando -->
+      <sc-if value="{{listOn}}" hint-placeholder-val="{{ true }}">
+        <section aria-label="{{boardTitle}}" style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+          <sc-if value="{{colErrOn}}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 8px 0; font-size: 15px; color: #FF6B6B;">
+              No se pudieron cargar las columnas.
+              <button type="button" class="btn btn-s" onClick="{{onRetryCols}}"><span>Reintentar</span></button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{loadingOn}}" hint-placeholder-val="{{ false }}">
+            <div aria-busy="true" aria-label="Cargando columnas" style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;"><div class="sk" style="height: 44px;"></div><div class="sk" style="height: 44px; animation-delay: 80ms;"></div><div class="sk" style="height: 44px; animation-delay: 160ms;"></div></div>
+              <div class="sk" style="height: 128px; animation-delay: 120ms;"></div>
+              <div class="sk" style="height: 104px; animation-delay: 200ms;"></div>
+              <div class="sk" style="height: 88px; animation-delay: 280ms;"></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{lanesOn}}" hint-placeholder-val="{{ true }}">
+            <div class="lsw" role="group" aria-label="Columna">
+              <sc-for list="{{switcher}}" as="w" hint-placeholder-count="3">
+                <button type="button" aria-pressed="{{w.on}}" aria-label="{{w.label}}" onClick="{{w.onClick}}">
+                  <span class="ell">{{w.name}}</span>
+                  <span class="mono" style="font-size: 12px; color: #7C8592; flex: none;">{{w.count}}</span>
+                </button>
+              </sc-for>
+            </div>
+
+            <div class="{{lanesCls}}">
+              <sc-for list="{{lanes}}" as="c" hint-placeholder-count="1">
+                <section class="{{c.cls}}" data-col="{{c.key}}" aria-label="{{c.aria}}" onPointerDown="{{onSwDown}}" onPointerUp="{{onSwUp}}" onPointerCancel="{{onSwCancel}}">
+                  <header style="display: flex; align-items: center; gap: 8px; min-height: 44px; min-width: 0;">
+                    <h3 style="margin: 0; flex: 1; min-width: 0; font-size: 16px; line-height: 22px; font-weight: 600; overflow-wrap: anywhere;">{{c.name}} <span class="mono" style="font-size: 13px; font-weight: 400; color: #7C8592;">{{c.count}}</span></h3>
+                    <span class="mono nw" style="font-size: 12px; color: #7C8592;">{{c.pos}}</span>
+                    <sc-if value="{{c.isCol}}" hint-placeholder-val="{{ true }}">
+                      <button type="button" class="ib" aria-label="{{c.editLabel}}" aria-expanded="{{c.editExp}}" onClick="{{c.onEdit}}" disabled="{{c.editOff}}" style="margin-right: -10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"></path></svg>
+                      </button>
+                    </sc-if>
+                  </header>
+
+                  <sc-if value="{{c.editing}}" hint-placeholder-val="{{ false }}">
+                    <div class="t-fade" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; background: #14171B; border: 1px solid #262B32; border-radius: 10px; min-width: 0;">
+                      <label style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                        <span class="lbl">Nombre</span>
+                        <input class="{{c.ce.inCls}}" data-coledit="1" type="text" value="{{c.ce.text}}" onInput="{{c.ce.onInput}}" onKeyDown="{{c.ce.onKey}}" aria-label="Nombre de la columna">
+                      </label>
+                      <sc-if value="{{c.ce.hasErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #FF6B6B;">{{c.ce.err}}</span></sc-if>
+                      <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                        <button type="button" class="ckh" role="checkbox" aria-checked="{{c.ce.doneOn}}" aria-label="Columna de cierre" onClick="{{c.ce.onDone}}" style="margin: -14px -6px -14px -14px;">
+                          <span class="ck"><svg class="ck-t" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5"></path></svg></span>
+                        </button>
+                        <span style="font-size: 14px; line-height: 20px; color: #A7AEB8;">Columna de cierre: sus tareas cuentan como hechas</span>
+                      </div>
+                      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+                        <button type="button" class="btn btn-s btn-sm" onClick="{{c.ce.onLeft}}" disabled="{{c.ce.noLeft}}" style="width: 100%;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M15 18l-6-6 6-6"></path></svg>
+                          <span>Antes</span>
+                        </button>
+                        <button type="button" class="btn btn-s btn-sm" onClick="{{c.ce.onRight}}" disabled="{{c.ce.noRight}}" style="width: 100%;">
+                          <span>Después</span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M9 18l6-6-6-6"></path></svg>
+                        </button>
+                      </div>
+                      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button type="button" class="btn btn-p" onClick="{{c.ce.onSave}}"><span>Guardar</span></button>
+                        <button type="button" class="btn btn-g" onClick="{{c.ce.onCancel}}"><span>Cancelar</span></button>
+                      </div>
+                      <sc-if value="{{c.ce.notDel}}" hint-placeholder-val="{{ true }}">
+                        <button type="button" class="btn btn-g btn-sm btn-d" onClick="{{c.ce.onDel}}" disabled="{{c.ce.lastCol}}" style="align-self: flex-start; margin-left: -8px;"><span>{{c.ce.delLabelM}}</span></button>
+                      </sc-if>
+                      <sc-if value="{{c.ce.del}}" hint-placeholder-val="{{ false }}">
+                        <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid #262B32;">
+                          <span style="font-size: 14px; color: #FF6B6B;">{{c.ce.delText}}</span>
+                          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <button type="button" class="btn btn-s btn-d" onClick="{{c.ce.onDelYes}}"><span>Eliminar columna</span></button>
+                            <button type="button" class="btn btn-g" onClick="{{c.ce.onDelNo}}"><span>Cancelar</span></button>
+                          </div>
+                        </div>
+                      </sc-if>
+                      <span style="font-size: 13px; color: #7C8592;">Renombrarla cambia el estado de sus tareas.</span>
+                    </div>
+                  </sc-if>
+
+                  <sc-for list="{{c.tasks}}" as="t" hint-placeholder-count="1">
+                    <article class="{{t.cls}}" data-card="{{t.id}}" style="{{t.delay}}" aria-label="{{t.aria}}" onClick="{{t.onClick}}">
+                      <div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+                        <sc-if value="{{t.selectable}}" hint-placeholder-val="{{ true }}">
+                          <button type="button" class="ckh" role="checkbox" aria-checked="{{t.selStr}}" aria-label="{{t.selLabel}}" onClick="{{t.onSel}}" style="margin: -11px -6px -14px -14px;">
+                            <span class="ck"><svg class="ck-t" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5"></path></svg></span>
+                          </button>
+                        </sc-if>
+                        <button type="button" class="ttl" onClick="{{t.onOpen}}" style="{{t.titleStyle}}">{{t.title}}</button>
+                      </div>
+                      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; font-size: 13px; line-height: 18px; color: #A7AEB8; min-width: 0;">
+                        <span class="nw">{{t.who}}</span>
+                        <span class="nw" style="{{t.prioStyle}}">{{t.prio}}</span>
+                        <span class="nw">{{t.tipo}}</span>
+                        <sc-if value="{{t.hasTurno}}" hint-placeholder-val="{{ false }}"><span class="nw">{{t.turno}}</span></sc-if>
+                        <sc-if value="{{t.hasDue}}" hint-placeholder-val="{{ true }}"><span class="mono nw" style="{{t.dueStyle}}">{{t.due}}</span></sc-if>
+                        <sc-if value="{{t.isPrivate}}" hint-placeholder-val="{{ false }}">
+                          <span class="nw" style="display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Privada</span>
+                        </sc-if>
+                      </div>
+                      <sc-if value="{{t.hasDesc}}" hint-placeholder-val="{{ true }}">
+                        <p class="{{t.descCls}}" data-nodrag="1" onClick="{{t.onDescTap}}" aria-expanded="{{t.descExp}}" style="margin: 0; font-size: 14px; line-height: 20px; color: #A7AEB8; cursor: pointer;">{{t.desc}}</p>
+                      </sc-if>
+                      <sc-if value="{{t.hasNote}}" hint-placeholder-val="{{ false }}">
+                        <div data-nodrag="1" onClick="{{t.onNoteTap}}" aria-expanded="{{t.noteExp}}" style="display: flex; gap: 8px; min-width: 0; font-size: 13px; line-height: 18px; cursor: pointer;">
+                          <span class="nw" style="color: #7C8592; flex: none;">Nota</span>
+                          <span class="{{t.noteCls}}" style="flex: 1; color: #A7AEB8; white-space: pre-wrap;">{{t.noteShown}}</span>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{t.hasItems}}" hint-placeholder-val="{{ false }}">
+                        <div data-nodrag="1" style="display: flex; flex-direction: column; padding-top: 4px; border-top: 1px solid #262B32; min-width: 0;">
+                          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px;">
+                            <span class="lbl" style="color: #7C8592;">Subtareas</span>
+                            <span class="mono" style="font-size: 13px; color: #A7AEB8;">{{t.ratio}}</span>
+                          </div>
+                          <sc-for list="{{t.items}}" as="i" hint-placeholder-count="3">
+                            <div class="sub-row">
+                              <button type="button" class="ckh" role="checkbox" aria-checked="{{i.on}}" aria-label="{{i.label}}" onClick="{{i.onToggle}}" disabled="{{i.locked}}" style="margin: 0 -14px;">
+                                <span class="ck"><svg class="ck-t" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5"></path></svg></span>
+                              </button>
+                              <span class="{{i.cls}}" onClick="{{i.onTap}}" aria-expanded="{{i.exp}}" style="{{i.textStyleM}}">{{i.text}}</span>
+                              <button type="button" class="ib" aria-label="{{i.removeLabel}}" onClick="{{i.onRemove}}" disabled="{{i.locked}}" style="margin-right: -12px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                              </button>
+                            </div>
+                          </sc-for>
+                          <sc-if value="{{t.hasMoreItems}}" hint-placeholder-val="{{ false }}">
+                            <button type="button" class="lnk" onClick="{{t.onMoreItems}}" style="align-self: flex-start;">{{t.moreItemsText}}</button>
+                          </sc-if>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{t.stOn}}" hint-placeholder-val="{{ false }}">
+                        <div class="t-fade" role="status" data-nodrag="1" style="display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; font-size: 13px; line-height: 18px; color: #A7AEB8;">
+                          <span>{{t.st.text}}</span>
+                          <sc-if value="{{t.st.hasAct}}" hint-placeholder-val="{{ true }}"><button type="button" class="lnk" onClick="{{t.st.onAct}}">{{t.st.act}}</button></sc-if>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{t.adding}}" hint-placeholder-val="{{ false }}">
+                        <div data-nodrag="1" style="display: flex; gap: 8px; min-width: 0;">
+                          <input class="in" data-addsub="{{t.id}}" type="text" value="{{t.addText}}" onInput="{{t.onAddInput}}" onKeyDown="{{t.onAddKey}}" onBlur="{{t.onAddBlur}}" placeholder="¿Qué falta hacer?" aria-label="{{t.addLabel}}">
+                          <button type="button" class="btn btn-s btn-sm" onClick="{{t.onAddSubmit}}"><span>Agregar</span></button>
+                        </div>
+                      </sc-if>
+
+                      <div style="display: flex; align-items: center; gap: 2px; min-width: 0; margin: -4px -8px -10px;">
+                        <button type="button" class="foot-b" aria-label="{{t.comLabel}}" onClick="{{t.onOpen}}">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                          <span class="mono">{{t.comN}}</span>
+                        </button>
+                        <sc-if value="{{t.hasFiles}}" hint-placeholder-val="{{ false }}">
+                          <button type="button" class="foot-b" aria-label="{{t.fileLabel}}" onClick="{{t.onOpen}}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.234 20.252 21 12.3M16 6l-8.414 8.586a2 2 0 0 0 0 2.828 2 2 0 0 0 2.828 0l8.414-8.586a4 4 0 0 0 0-5.656 4 4 0 0 0-5.656 0l-8.415 8.585a6 6 0 1 0 8.486 8.486"></path></svg>
+                            <span class="mono">{{t.fileN}}</span>
+                          </button>
+                        </sc-if>
+                        <span style="flex: 1 1 auto;"></span>
+                        <sc-if value="{{t.canAddBtn}}" hint-placeholder-val="{{ true }}">
+                          <button type="button" class="foot-b" onClick="{{t.onAddOpen}}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+                            Subtarea
+                          </button>
+                        </sc-if>
+                      </div>
+                    </article>
+                  </sc-for>
+
+                  <sc-if value="{{c.empty}}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; align-items: center; justify-content: center; min-height: 96px; border: 1px dashed #262B32; border-radius: 10px; font-size: 14px; color: #7C8592;">{{c.emptyTextM}}</div>
+                  </sc-if>
+                  <sc-if value="{{c.hasMore}}" hint-placeholder-val="{{ false }}">
+                    <button type="button" class="btn btn-s" onClick="{{c.onMore}}" style="width: 100%;"><span>{{c.moreText}}</span></button>
+                  </sc-if>
+                </section>
+              </sc-for>
+            </div>
+            <p style="margin: 0; font-size: 13px; line-height: 18px; color: #7C8592;">{{boardHint}}</p>
+          </sc-if>
+        </section>
+
+        <!-- ANALÍTICA DE ASISTENTES (solo Equipo): filas-tarjeta -->
+        <sc-if value="{{showAnalytics}}" hint-placeholder-val="{{ true }}">
+          <section aria-labelledby="tv2m-people-title" style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px; min-width: 0;">
+            <header style="display: flex; flex-direction: column; gap: 2px;">
+              <span class="eb">Asistentes</span>
+              <h2 id="tv2m-people-title" style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600;">Carga del equipo</h2>
+              <span style="font-size: 13px; color: #7C8592;">Cuenta las tareas del espacio Equipo</span>
+            </header>
+            <sc-for list="{{people}}" as="p" hint-placeholder-count="2">
+              <article style="display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid #262B32; border-radius: 10px; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                  <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+                    <span style="font-size: 16px; font-weight: 500; overflow-wrap: anywhere;">{{p.name}}</span>
+                    <span style="font-size: 13px; color: #7C8592;">{{p.turnoNote}}</span>
+                  </span>
+                  <svg width="36" height="36" viewBox="0 0 32 32" role="img" aria-label="{{p.ringLabel}}" style="flex: none;">
+                    <circle cx="16" cy="16" r="13" fill="none" stroke="#262B32" stroke-width="3"></circle>
+                    <circle cx="16" cy="16" r="13" fill="none" stroke="#A7AEB8" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{p.dash}}" transform="rotate(-90 16 16)" style="{{p.arcStyle}}"></circle>
+                  </svg>
+                  <span class="mono" style="font-size: 15px; min-width: 44px; text-align: right;">{{p.pct}}</span>
+                </div>
+                <dl style="margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;">
+                  <div style="display: flex; flex-direction: column; min-width: 0;"><dt class="ell" style="font-size: 12px; color: #7C8592;">Asignadas</dt><dd class="mono" style="margin: 0; font-size: 16px;">{{p.assigned}}</dd></div>
+                  <div style="display: flex; flex-direction: column; min-width: 0;"><dt class="ell" style="font-size: 12px; color: #7C8592;">Pendientes</dt><dd class="mono" style="margin: 0; font-size: 16px; color: #A7AEB8;">{{p.pending}}</dd></div>
+                  <div style="display: flex; flex-direction: column; min-width: 0;"><dt class="ell" style="font-size: 12px; color: #7C8592;">En proceso</dt><dd class="mono" style="margin: 0; font-size: 16px; color: #A7AEB8;">{{p.progress}}</dd></div>
+                  <div style="display: flex; flex-direction: column; min-width: 0;"><dt class="ell" style="font-size: 12px; color: #7C8592;">Hechas</dt><dd class="mono" style="margin: 0; font-size: 16px; color: #A7AEB8;">{{p.done}}</dd></div>
+                </dl>
+              </article>
+            </sc-for>
+            <sc-if value="{{hasOther}}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13px; color: #7C8592;">{{otherText}}</p></sc-if>
+          </section>
+        </sc-if>
+      </sc-if>
+
+      <!-- PÁGINA DE LA TAREA -->
+      <sc-if value="{{detailOn}}" hint-placeholder-val="{{ false }}">
+        <article class="t-fade" aria-labelledby="tv2m-detail-title" style="display: flex; flex-direction: column; gap: 24px; min-width: 0;">
+          <header style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+            <span class="eb" style="white-space: normal;">{{d.eyebrow}}</span>
+            <h2 id="tv2m-detail-title" style="{{d.titleStyleM}}">{{d.title}}</h2>
+            <span style="font-size: 13px; color: #7C8592;">{{d.created}}</span>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px;">
+              <button type="button" class="btn btn-s" onClick="{{d.onEdit}}" disabled="{{consulta}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"></path></svg>
+                <span>Editar</span>
+              </button>
+              <sc-if value="{{d.notDelConfirm}}" hint-placeholder-val="{{ true }}">
+                <button type="button" class="btn btn-g btn-d" onClick="{{d.onDel}}" disabled="{{consulta}}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  <span>Borrar</span>
+                </button>
+              </sc-if>
+            </div>
+            <sc-if value="{{d.delConfirm}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px;">
+                <span style="font-size: 14px; color: #FF6B6B;">¿Borrar esta tarea? Vas a poder deshacerlo.</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                  <button type="button" class="btn btn-s btn-d" onClick="{{d.onDelYes}}"><span>Borrar tarea</span></button>
+                  <button type="button" class="btn btn-g" onClick="{{d.onDelNo}}"><span>Cancelar</span></button>
+                </div>
+              </div>
+            </sc-if>
+          </header>
+
+          <sc-if value="{{stDetailOn}}" hint-placeholder-val="{{ false }}">
+            <div class="t-fade" role="status" style="display: flex; align-items: flex-start; gap: 10px; min-width: 0; font-size: 14px; line-height: 20px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{stDetail.iconStyleM}}"><path d="{{stDetail.icon}}"></path></svg>
+              <span style="flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px;">
+                <span style="{{stDetail.textStyle}}">{{stDetail.text}}</span>
+                <sc-if value="{{stDetail.hasAct}}" hint-placeholder-val="{{ true }}"><button type="button" class="lnk" onClick="{{stDetail.onAct}}" style="min-height: 32px;">{{stDetail.act}}</button></sc-if>
+              </span>
+              <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{stDetail.onClose}}" style="margin: -12px -12px -12px 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </div>
+          </sc-if>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span class="lbl">Columna</span>
+            <div role="group" aria-label="Mover a la columna" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 8px;">
+              <sc-for list="{{d.cols}}" as="o" hint-placeholder-count="3"><button type="button" class="opt" aria-pressed="{{o.on}}" onClick="{{o.onClick}}" disabled="{{o.off}}" style="justify-content: center; min-width: 0;"><span class="ell">{{o.name}}</span></button></sc-for>
+            </div>
+          </div>
+
+          <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid #262B32; border-radius: 10px; overflow: hidden;">
+            <sc-for list="{{d.facts}}" as="x" hint-placeholder-count="6">
+              <div style="{{x.cellM}}">
+                <dt style="font-size: 12px; line-height: 16px; color: #7C8592;">{{x.label}}</dt>
+                <dd style="{{x.styleM}}">{{x.value}}</dd>
+              </div>
+            </sc-for>
+          </dl>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span class="lbl">Descripción</span>
+            <p style="{{d.descStyle}}">{{d.desc}}</p>
+          </div>
+
+          <section aria-label="Subtareas" style="display: flex; flex-direction: column; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 8px; height: 32px;">
+              <span class="lbl" style="flex: 1;">Subtareas</span>
+              <span class="mono" style="font-size: 13px; color: #A7AEB8;">{{d.ratio}}</span>
+            </div>
+            <sc-for list="{{d.items}}" as="i" hint-placeholder-count="0">
+              <div class="sub-row" style="border-bottom: 1px solid #1B1F24;">
+                <button type="button" class="ckh" role="checkbox" aria-checked="{{i.on}}" aria-label="{{i.label}}" onClick="{{i.onToggle}}" disabled="{{i.locked}}" style="margin: 0 -14px;">
+                  <span class="ck"><svg class="ck-t" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5"></path></svg></span>
+                </button>
+                <span style="{{i.textStyleD}}">{{i.text}}</span>
+                <button type="button" class="ib" aria-label="{{i.removeLabel}}" onClick="{{i.onRemove}}" disabled="{{i.locked}}" style="margin-right: -12px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+              </div>
+            </sc-for>
+            <sc-if value="{{d.noItems}}" hint-placeholder-val="{{ true }}"><span style="font-size: 14px; color: #7C8592;">Sin subtareas.</span></sc-if>
+            <sc-if value="{{d.adding}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; gap: 8px; margin-top: 8px; min-width: 0;">
+                <input class="in" data-addsub="{{d.id}}" type="text" value="{{d.addText}}" onInput="{{d.onAddInput}}" onKeyDown="{{d.onAddKey}}" onBlur="{{d.onAddBlur}}" placeholder="¿Qué falta hacer?" aria-label="Nueva subtarea">
+                <button type="button" class="btn btn-s" onClick="{{d.onAddSubmit}}"><span>Agregar</span></button>
+              </div>
+            </sc-if>
+            <sc-if value="{{d.canAddBtn}}" hint-placeholder-val="{{ true }}">
+              <button type="button" class="btn btn-g" onClick="{{d.onAddOpen}}" style="align-self: flex-start; margin: 4px 0 0 -8px; padding: 0 12px 0 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+                <span>Subtarea</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{d.doneNoAdd}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #7C8592; margin-top: 4px;">La tarea está hecha: no se suman subtareas.</span></sc-if>
+          </section>
+
+          <section aria-label="Nota" style="display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 8px; min-height: 44px;">
+              <span class="lbl" style="flex: 1;">Nota</span>
+              <sc-if value="{{d.notNoteEdit}}" hint-placeholder-val="{{ true }}"><button type="button" class="btn btn-g btn-sm" onClick="{{d.onNoteEdit}}" disabled="{{consulta}}" style="margin-right: -12px;"><span>{{d.noteBtn}}</span></button></sc-if>
+            </div>
+            <sc-if value="{{d.notNoteEdit}}" hint-placeholder-val="{{ true }}"><p style="{{d.noteStyle}}">{{d.note}}</p></sc-if>
+            <sc-if value="{{d.noteEdit}}" hint-placeholder-val="{{ false }}">
+              <textarea class="in" rows="5" onInput="{{d.onNoteInput}}" aria-label="Nota de la tarea">{{d.noteText}}</textarea>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <button type="button" class="btn btn-p" onClick="{{d.onNoteSave}}"><span>Guardar nota</span></button>
+                <button type="button" class="btn btn-g" onClick="{{d.onNoteCancel}}"><span>Cancelar</span></button>
+              </div>
+            </sc-if>
+          </section>
+
+          <section aria-label="Comentarios" style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 8px; height: 32px;">
+              <span class="lbl">Comentarios</span>
+              <span class="mono" style="font-size: 13px; color: #7C8592;">{{d.comN}}</span>
+            </div>
+            <sc-for list="{{d.comments}}" as="k" hint-placeholder-count="0">
+              <article style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 12px; border-bottom: 1px solid #1B1F24;">
+                <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px;"><span style="font-size: 14px; font-weight: 600;">{{k.author}}</span><span class="mono" style="font-size: 12px; color: #7C8592;">{{k.date}}</span></div>
+                <p style="margin: 0; font-size: 15px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere;">{{k.body}}</p>
+              </article>
+            </sc-for>
+            <sc-if value="{{d.noComments}}" hint-placeholder-val="{{ true }}"><span style="font-size: 14px; color: #7C8592;">Todavía no hay comentarios.</span></sc-if>
+            <sc-if value="{{canEdit}}" hint-placeholder-val="{{ true }}">
+              <textarea class="in" rows="3" onInput="{{d.onComInput}}" placeholder="Escribí un comentario" aria-label="Nuevo comentario">{{d.comText}}</textarea>
+              <button type="button" class="btn btn-s" onClick="{{d.onComSave}}" style="align-self: flex-start;"><span>Comentar</span></button>
+            </sc-if>
+          </section>
+
+          <section aria-label="Adjuntos" style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+            <span class="lbl">Adjuntos</span>
+            <sc-for list="{{d.files}}" as="a" hint-placeholder-count="0">
+              <a href="#" style="display: flex; align-items: center; min-height: 44px; font-size: 14px; text-decoration: none; overflow-wrap: anywhere;">{{a.name}}</a>
+            </sc-for>
+            <sc-if value="{{d.noFiles}}" hint-placeholder-val="{{ true }}"><span style="font-size: 14px; color: #7C8592;">Sin adjuntos. Se suman desde Editar.</span></sc-if>
+          </section>
+        </article>
+      </sc-if>
+
+    </div>
+  </main>
+
+  <!-- BARRA INFERIOR: Inicio, Préstamos, Escanear, Agenda, Más (Tareas vive en Más) -->
+  <nav class="bnav" aria-label="Navegación principal">
+    <a href="#" style="color: #A7AEB8;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+      <span class="nw">Inicio</span>
+    </a>
+    <a href="#" style="color: #A7AEB8;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg>
+      <span class="ell" style="max-width: 100%;">Préstamos</span>
+    </a>
+    <a href="#" style="color: #ECEEF1;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg>
+      <span class="nw">Escanear</span>
+    </a>
+    <a href="#" style="color: #A7AEB8;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      <span class="nw">Agenda</span>
+    </a>
+    <a href="#" aria-current="page" style="color: #5B9BFF;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      <span class="nw">Más</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000},"consulta":{"editor":"boolean","default":false},"estado":{"editor":"enum","options":["normal","+ abierto","cargando","error de columnas","falla al mover"],"default":"normal"}}'>
+class Component extends DCLogic {
+icons() {
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    ok: 'M20 6 9 17l-5-5',
+    err: C(12, 12, 10) + 'M12 8v4M12 16h.01',
+    info: C(12, 12, 10) + 'M12 16v-4M12 8h.01'
+  };
+}
+seed() {
+  // Datos reales de NFPT (tasks, task_items, task_columns, allowed_users y quick_links de la base local, solo lectura).
+  // Sin comentarios ni adjuntos en la base: esos bloques arrancan vacíos.
+  const cols = [
+    { id: 4, name: 'Pendiente', done: false },
+    { id: 5, name: 'En proceso', done: false },
+    { id: 6, name: 'Hecha', done: true }
+  ];
+  const it = (id, texto, on) => ({ id: id, texto: texto, on: on });
+  const tasks = [
+    { id: 'TK1778511349323', ts: 1778511349323, titulo: 'Probar audio 5to F', desc: 'No le andaban los tomacorrientes de los parlantes, me solucionaron el ticket pero las maestras me dijeron que no funciona. Probar pls', resp: ['Bauti'], prio: 'Media', turno: 'Sin turno', tipo: 'Aula', vence: '12/05', nota: '', vis: 'team', owner: '', col: 4, by: 'Bauti', at: '11/05/2026 11:55', items: [], comments: [], files: [] },
+    { id: 'TK1778080222094', ts: 1778080222094, titulo: 'Inventario', desc: 'Actualizar el inventario de todos los recursos - Lau', resp: ['Bauti'], prio: 'Media', turno: 'Sin turno', tipo: 'Soporte', vence: '29/05', nota: 'Puse ambos, Bau y Equi.\n-equi: estoy cargando las tablets, hay que sacarle todas las etiquetas de atras y numerarlas (11/15?)\n-Bau: Si queres seguir el inventario hacelo en un spread. Podes completar este si queres, ya tiene algunos datos no se que tan confiables pq pueden cambiar. [link a la planilla]', vis: 'team', owner: '', col: 5, by: 'Bauti', at: '06/05/2026 12:10', items: [it(1, 'Tablets', true), it(3, 'Dash Robot', true), it(4, 'Beebot', false), it(5, 'Bluebot', true), it(6, 'Mouses disponibles maker/ofi', false), it(7, 'Filamento 3D', false), it(8, 'Arduino', true)], comments: [], files: [] },
+    { id: 'TK1778265805663', ts: 1778265805663, titulo: 'Encontrar los microfonos corbateros', desc: '', resp: ['Bauti', 'Equi'], prio: 'Urgente', turno: 'Sin turno', tipo: 'encontrar', vence: '12/05', nota: "los tenia la tana¡¿¡¿'??¿", vis: 'team', owner: '', col: 6, by: 'Equi', at: '08/05/2026 15:43', items: [], comments: [], files: [] },
+    { id: 'TK1778046144779', ts: 1778046144779, titulo: 'mastro - zapatilla 6to S', desc: 'SACAR EL COSO METIDO EN LA ZAPATILLA(danger...)', resp: ['Bauti'], prio: 'Media', turno: 'Sin turno', tipo: 'Soporte', vence: '', nota: 'DANGER... URGENTE', vis: 'team', owner: '', col: 6, by: 'Bauti', at: '06/05/2026 02:42', items: [], comments: [], files: [] }
+  ];
+  const people = [{ name: 'Bauti', turno: 'Mañana' }, { name: 'Equi', turno: 'Tarde' }];
+  const links = ['UC - Hoja Equipamientos', 'Listas EP', 'Listas ES', 'Hosking', 'Tiknology / InvGate', 'Drive TIC', 'Drive recursos presentaciones/pantalla'];
+  return { cols: cols, tasks: tasks, people: people, links: links };
+}
+q(sel) { try { return document.querySelector(sel); } catch (e) { return null; } }
+bindDoc() {
+  if (this._bound) return;
+  this._bound = true;
+  const self = this;
+  try {
+    // GooeyMenu.tsx: tocar afuera o Escape cierran el abanico.
+    document.addEventListener('click', e => {
+      if (!self._gooIsOpen) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('.t-goo-anchor')) return;
+      if (self._setGoo) self._setGoo(false);
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && self._onEsc) self._onEsc(e); });
+  } catch (err) {}
+}
+renderVals() {
+  const self = this;
+  this.bindDoc();
+  const s = this.state || {};
+  const P = this.props || {};
+  const consulta = !!P.consulta;
+  const canEdit = !consulta;
+  const estado = P.estado || 'normal';
+  const set = p => self.setState(p);
+  const cur = () => self.state || {};
+  const val = e => (e && e.target ? e.target.value : '');
+  const stop = e => { if (e && e.stopPropagation) e.stopPropagation(); };
+  const D = this.seed();
+  const I = this.icons();
+  const OP = 'Bauti';
+  const TODAY = { d: 19, m: 10 };
+  const pad = n => (n < 10 ? '0' : '') + n;
+  const CIRC = 2 * Math.PI * 13;
+  const PAGE = 8;
+  const focusEl = q => setTimeout(() => { const el = self.q(q); if (el && el.focus) { try { el.focus(); } catch (e) {} } }, 60);
+  const fmtNow = () => { const n = new Date(); return pad(n.getDate()) + '/' + pad(n.getMonth() + 1) + '/' + n.getFullYear() + ' ' + pad(n.getHours()) + ':' + pad(n.getMinutes()); };
+  const ACC = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+  const norm = x => String(x || '').toLowerCase().normalize('NFD').replace(ACC, '');
+
+  const cols = s.cols || D.cols;
+  const tasks = s.tasks || D.tasks;
+  const curTasks = () => cur().tasks || D.tasks;
+  const curCols = () => cur().cols || D.cols;
+  const space = s.space || 'team';
+  const tab = s.tab || 'board';
+  const sel = s.sel || {};
+  const run = s.run || 0;
+  const moving = !!s.moving;
+
+  const colById = {};
+  cols.forEach(c => { colById[c.id] = c; });
+  const colOf = t => colById[t.col] || cols[0];
+  const colName = id => (curCols().find(c => c.id === id) || { name: '—' }).name;
+  const isDone = t => !!(colOf(t) && colOf(t).done);
+  const inSpace = (t, sp) => sp === 'team' ? t.vis !== 'private' : ((t.vis === 'private' && t.owner === OP) || t.resp.indexOf(OP) >= 0);
+  const qn = norm(s.q).trim();
+  const matches = t => !qn || norm([t.titulo, t.desc, t.nota, t.tipo, t.resp.join(' '), t.items.map(i => i.texto).join(' ')].join(' ')).indexOf(qn) >= 0;
+  const sortT = list => list.slice().sort((a, b) => ((isDone(a) ? 1 : 0) - (isDone(b) ? 1 : 0)) || (b.ts - a.ts));
+  const visible = sortT(tasks.filter(t => inSpace(t, space) && matches(t)));
+  const mapTask = (id, fn) => curTasks().map(x => (x.id === id ? fn(Object.assign({}, x)) : x));
+
+  const dueInfo = t => {
+    if (!t.vence) return null;
+    const p = t.vence.split('/');
+    const k = (+p[1]) * 100 + (+p[0]);
+    const today = TODAY.m * 100 + TODAY.d;
+    if (isDone(t)) return { text: 'Vence ' + t.vence, style: 'color: #7C8592;', over: false };
+    if (k < today) return { text: 'Venció ' + t.vence, style: 'color: #FF6B6B;', over: true };
+    if (k === today) return { text: 'Vence hoy', style: 'color: #F5C04E;', over: false };
+    return { text: 'Vence ' + t.vence, style: 'color: #A7AEB8;', over: false };
+  };
+
+  // ---- Mobile: el texto cortado se despliega en línea al tocarlo (regla 4) ----
+  const unc = s.unc || {};
+  const tapFor = key => ({ open: !!unc[key], onTap: e => { stop(e); const u = Object.assign({}, cur().unc || {}); u[key] = !u[key]; set({ unc: u }); } });
+
+  // ---- Línea de estado en línea (Deshacer / Reintentar), nunca toast ----
+  const setStatus = (where, text, tone, act, fn) => {
+    const id = Date.now() + Math.random();
+    self._act = fn || null;
+    set({ status: { id: id, where: where, text: text, tone: tone || 'info', act: act || '' } });
+    clearTimeout(self._stt);
+    self._stt = setTimeout(() => { const st = cur().status; if (st && st.id === id) set({ status: null }); }, 10000);
+  };
+  const stView = where => {
+    const st = s.status;
+    if (!st || st.where !== where) return null;
+    const tone = st.tone;
+    const col = tone === 'err' ? '#FF6B6B' : tone === 'ok' ? '#5BD68A' : '#A7AEB8';
+    return {
+      text: st.text,
+      textStyle: tone === 'err' ? 'color: #FF6B6B;' : 'color: #ECEEF1;',
+      icon: tone === 'err' ? I.err : tone === 'ok' ? I.ok : I.info,
+      iconStyleM: 'flex: none; margin-top: 2px; color: ' + col + ';',
+      hasAct: !!st.act, act: st.act,
+      onAct: () => { const f = self._act; self._act = null; set({ status: null }); if (f) f(); },
+      onClose: () => set({ status: null })
+    };
+  };
+
+  // ---- "+" gooey (GooeyMenu.tsx: abre; al cerrar, el amague de 700 ms) ----
+  const gooOpen = canEdit && (s.gooOpen !== undefined ? s.gooOpen : estado === '+ abierto');
+  const isGooOpen = () => { const st = cur(); return canEdit && (st.gooOpen !== undefined ? st.gooOpen : estado === '+ abierto'); };
+  const setGoo = next => {
+    if (isGooOpen() === next) return;
+    clearTimeout(self._gt);
+    if (next) { set({ gooOpen: true, gooAnt: false, gooCap: '' }); return; }
+    set({ gooOpen: false, gooAnt: true });
+    self._gt = setTimeout(() => set({ gooAnt: false }), 750);
+  };
+  self._gooIsOpen = gooOpen;
+  self._setGoo = setGoo;
+
+  // ---- Vista: lista / detalle / edición ----
+  let view = s.view || null;
+  const vt = view ? tasks.find(t => t.id === view.id) : null;
+  if (view && !vt) view = null;
+  const mode = view ? view.mode : 'list';
+
+  const switchView = patch => {
+    const st = cur();
+    const ns = patch.space || st.space || 'team';
+    const nt = patch.tab || st.tab || 'board';
+    if (ns === (st.space || 'team') && nt === (st.tab || 'board')) return;
+    set(Object.assign({}, patch, { run: (st.run || 0) + 1, adding: null, addText: '', colEdit: null, pageN: {} }));
+  };
+  const openDetail = id => set({ view: { mode: 'detail', id: id }, adding: null, addText: '', delConfirm: false, noteEdit: false, comText: '', form: null, colForm: null, status: null });
+
+  // ---- Selección (cuadradito; con algo marcado, tocar una tarjeta suma o saca) ----
+  const toggleSel = id => { const n = Object.assign({}, cur().sel || {}); if (n[id]) delete n[id]; else n[id] = true; set({ sel: n, anchor: id, bulkConfirm: false }); };
+
+  // ---- Mover (optimista, uno a la vez, rollback con Reintentar) ----
+  const moveTask = (ids, cid, bulk) => {
+    const st = cur();
+    if (st.moving) return false;
+    const before = curTasks();
+    const prev = {};
+    before.forEach(x => { if (ids.indexOf(x.id) >= 0) prev[x.id] = x.col; });
+    const target = curCols().find(c => c.id === cid);
+    if (!target) return false;
+    const changed = ids.filter(id => prev[id] !== undefined && prev[id] !== cid);
+    if (!changed.length) { if (bulk) set({ sel: {}, anchor: null }); return false; }
+    const patch = { tasks: before.map(x => (changed.indexOf(x.id) >= 0 ? Object.assign({}, x, { col: cid }) : x)), moving: true };
+    if (bulk) { patch.sel = {}; patch.anchor = null; }
+    set(patch);
+    clearTimeout(self._mv);
+    self._mv = setTimeout(() => {
+      const where = cur().view && cur().view.mode === 'detail' ? 'detail' : 'board';
+      if (estado === 'falla al mover') {
+        const t0 = before.find(x => x.id === changed[0]);
+        set({ moving: false, tasks: curTasks().map(x => (changed.indexOf(x.id) >= 0 ? Object.assign({}, x, { col: prev[x.id] }) : x)) });
+        setStatus(where, 'No se pudo mover «' + t0.titulo + '» a «' + target.name + '». Volvió a «' + colName(prev[t0.id]) + '».', 'err', 'Reintentar', () => moveTask(changed, cid, bulk));
+        return;
+      }
+      set({ moving: false });
+      if (bulk) setStatus('board', changed.length + (changed.length === 1 ? ' tarea en «' : ' tareas en «') + target.name + '».', 'ok', 'Deshacer', () => set({ tasks: curTasks().map(x => (changed.indexOf(x.id) >= 0 ? Object.assign({}, x, { col: prev[x.id] }) : x)) }));
+    }, 450);
+    return true;
+  };
+
+  // ---- Borrar (soft delete) con Deshacer en línea ----
+  const deleteTasks = ids => {
+    const before = curTasks();
+    const gone = before.filter(x => ids.indexOf(x.id) >= 0);
+    if (!gone.length) return;
+    const ns = Object.assign({}, cur().sel || {});
+    ids.forEach(id => { delete ns[id]; });
+    const st = cur();
+    const patch = { tasks: before.filter(x => ids.indexOf(x.id) < 0), sel: ns, bulkConfirm: false, delConfirm: false };
+    if (st.view && ids.indexOf(st.view.id) >= 0) { patch.view = null; patch.form = null; }
+    set(patch);
+    setStatus('board', gone.length === 1 ? 'Borraste «' + gone[0].titulo + '».' : 'Borraste ' + gone.length + ' tareas.', 'info', 'Deshacer', () => set({ tasks: curTasks().concat(gone) }));
+  };
+
+  // ---- Subtareas ----
+  const addSub = id => {
+    const text = String(cur().addText || '').trim();
+    if (!text) return;
+    set({ tasks: mapTask(id, x => { x.items = x.items.concat([{ id: Date.now(), texto: text, on: false }]); return x; }), addText: '' });
+  };
+  const subHandlers = t => ({
+    adding: canEdit && s.adding === t.id,
+    addText: s.addText || '',
+    addLabel: 'Nueva subtarea para «' + t.titulo + '»',
+    onAddOpen: e => { stop(e); set({ adding: t.id, addText: '' }); focusEl('[data-addsub="' + t.id + '"]'); },
+    onAddInput: e => set({ addText: val(e) }),
+    onAddKey: e => {
+      if (!e) return;
+      if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); addSub(t.id); }
+      else if (e.key === 'Escape') { stop(e); set({ adding: null, addText: '' }); }
+    },
+    onAddBlur: () => { setTimeout(() => { const st = cur(); if (st.adding === t.id && !String(st.addText || '').trim()) set({ adding: null }); }, 150); },
+    onAddSubmit: e => { stop(e); addSub(t.id); focusEl('[data-addsub="' + t.id + '"]'); }
+  });
+  const itemView = (t, i, where) => {
+    const tp = tapFor('i' + t.id + ':' + i.id);
+    const color = i.on ? '#7C8592' : '#ECEEF1';
+    return {
+      text: i.texto,
+      on: i.on ? 'true' : 'false',
+      cls: tp.open ? '' : 'ell',
+      exp: tp.open ? 'true' : 'false',
+      onTap: tp.onTap,
+      textStyleM: 'flex: 1; min-width: 0; font-size: 15px; line-height: 20px; color: ' + color + ';' + (tp.open ? ' overflow-wrap: anywhere;' : ''),
+      textStyleD: 'flex: 1; min-width: 0; font-size: 15px; line-height: 20px; overflow-wrap: anywhere; color: ' + color + ';',
+      label: 'Subtarea: ' + i.texto,
+      removeLabel: 'Quitar la subtarea «' + i.texto + '»',
+      locked: consulta,
+      onToggle: e => { stop(e); if (consulta) return; set({ tasks: mapTask(t.id, x => { x.items = x.items.map(y => (y.id === i.id ? Object.assign({}, y, { on: !y.on }) : y)); return x; }) }); },
+      onRemove: e => {
+        stop(e);
+        if (consulta) return;
+        set({ tasks: mapTask(t.id, x => { x.items = x.items.filter(y => y.id !== i.id); return x; }) });
+        // Deshacer: la vuelve a crear con el mismo texto, al final y sin completar (como hoy).
+        setStatus(where, 'Quitaste «' + i.texto + '».', 'info', 'Deshacer', () => set({ tasks: mapTask(t.id, x => { x.items = x.items.concat([{ id: Date.now(), texto: i.texto, on: false }]); return x; }) }));
+      }
+    };
+  };
+  const moveColBy = (id, dir) => {
+    const list = curCols().slice();
+    const i = list.findIndex(c => c.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    const tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+    set({ cols: list, mcol: 'c' + id, mdir: dir < 0 ? 'l' : 'r', mrun: (cur().mrun || 0) + 1 });
+  };
+
+  // ---- Escape (teclado externo) ----
+  self._onEsc = () => {
+    const st = cur();
+    if (isGooOpen()) { setGoo(false); return; }
+    if (st.bulkConfirm) { set({ bulkConfirm: false }); return; }
+    if (st.colEdit) { set({ colEdit: null }); return; }
+    if (st.colForm) { set({ colForm: null }); return; }
+    if (st.adding) { set({ adding: null, addText: '' }); return; }
+    if (Object.keys(st.sel || {}).length) { set({ sel: {}, anchor: null }); return; }
+    if (st.delConfirm) { set({ delConfirm: false }); }
+  };
+
+  // ---- Tarjeta ----
+  const card = (t, idx) => {
+    const done = isDone(t);
+    const selected = !!sel[t.id];
+    const due = dueInfo(t);
+    const total = t.items.length;
+    const dn = t.items.filter(i => i.on).length;
+    const LIM = 5;
+    const showAll = !!(s.subMore || {})[t.id];
+    const sub = subHandlers(t);
+    const st = stView('card:' + t.id);
+    const noteFlat = String(t.nota || '').replace(/\s+/g, ' ').trim();
+    const tD = tapFor('d' + t.id);
+    const tN = tapFor('n' + t.id);
+    return Object.assign({
+      id: t.id,
+      cls: 'card t-item' + (selected ? ' is-sel' : ''),
+      delay: 'animation-delay: ' + Math.min(idx, 8) * 30 + 'ms;',
+      aria: t.titulo + (done ? ', hecha' : ''),
+      selectable: canEdit,
+      selStr: selected ? 'true' : 'false',
+      selLabel: 'Seleccionar «' + t.titulo + '»',
+      onSel: e => { stop(e); toggleSel(t.id); },
+      title: t.titulo,
+      titleStyle: 'color: ' + (done ? '#A7AEB8' : '#ECEEF1') + ';',
+      who: t.resp.join(', ') || 'Sin asignar',
+      prio: t.prio,
+      prioStyle: t.prio === 'Urgente' && !done ? 'color: #FF6B6B;' : '',
+      tipo: t.tipo,
+      hasTurno: !!t.turno && t.turno !== 'Sin turno',
+      turno: t.turno,
+      hasDue: !!due, due: due ? due.text : '', dueStyle: due ? due.style : '',
+      isPrivate: t.vis === 'private',
+      hasDesc: !!t.desc, desc: t.desc,
+      descCls: tD.open ? '' : 'cl2', descExp: tD.open ? 'true' : 'false', onDescTap: tD.onTap,
+      hasNote: !!noteFlat,
+      noteCls: tN.open ? '' : 'ell', noteExp: tN.open ? 'true' : 'false', onNoteTap: tN.onTap,
+      noteShown: tN.open ? t.nota : noteFlat,
+      hasItems: total > 0,
+      ratio: dn + '/' + total,
+      items: (showAll ? t.items : t.items.slice(0, LIM)).map(i => itemView(t, i, 'card:' + t.id)),
+      hasMoreItems: total > LIM,
+      moreItemsText: showAll ? 'Ver menos' : 'Ver ' + (total - LIM) + ' más',
+      onMoreItems: e => { stop(e); const m = Object.assign({}, cur().subMore || {}); m[t.id] = !m[t.id]; set({ subMore: m }); },
+      stOn: !!st, st: st || {},
+      canAddBtn: canEdit && !done && !sub.adding,
+      comN: String(t.comments.length),
+      comLabel: t.comments.length + (t.comments.length === 1 ? ' comentario' : ' comentarios') + ' en «' + t.titulo + '»',
+      hasFiles: t.files.length > 0, fileN: String(t.files.length),
+      fileLabel: t.files.length + ' adjuntos en «' + t.titulo + '»',
+      onOpen: e => {
+        stop(e);
+        if (self._justSwiped) return;
+        if (canEdit && Object.keys(cur().sel || {}).length) { toggleSel(t.id); return; }
+        openDetail(t.id);
+      },
+      onClick: e => {
+        if (self._justSwiped) return;
+        const tg = e && e.target;
+        if (tg && tg.closest && tg.closest('button, input, textarea, a, [data-nodrag]')) return;
+        if (canEdit && Object.keys(cur().sel || {}).length) { toggleSel(t.id); return; }
+        openDetail(t.id);
+      }
+    }, sub);
+  };
+
+  // ---- Carriles: una columna a la vez ----
+  const pageN = s.pageN || {};
+  const ce = s.colEdit || null;
+  const patchCE = p => { const x = cur().colEdit; if (x) set({ colEdit: Object.assign({}, x, p) }); };
+  const saveCE = () => {
+    const x = cur().colEdit;
+    if (!x) return;
+    const name = String(x.text || '').trim();
+    if (!name) { patchCE({ err: 'Poné un nombre.' }); return; }
+    const list = curCols();
+    if (list.some(c => c.id !== x.id && norm(c.name) === norm(name))) { patchCE({ err: 'Ya hay una columna con ese nombre.' }); return; }
+    set({ cols: list.map(c => (c.id === x.id ? Object.assign({}, c, { name: name, done: !!x.done }) : c)), colEdit: null });
+  };
+  const deleteCol = id => {
+    const list = curCols();
+    if (list.length <= 1) return;
+    const c = list.find(x => x.id === id);
+    const target = list.find(x => x.id !== id);
+    const moved = curTasks().filter(t => t.col === id).map(t => t.id);
+    set({ cols: list.filter(x => x.id !== id), tasks: curTasks().map(t => (t.col === id ? Object.assign({}, t, { col: target.id }) : t)), colEdit: null, mcol: 'c' + target.id });
+    setStatus('board', 'Eliminaste «' + c.name + '».' + (moved.length ? ' ' + moved.length + (moved.length === 1 ? ' tarea pasó' : ' tareas pasaron') + ' a «' + target.name + '».' : ''), 'info', 'Deshacer', () => set({ cols: list, tasks: curTasks().map(t => (moved.indexOf(t.id) >= 0 ? Object.assign({}, t, { col: id }) : t)) }));
+  };
+  const laneFrom = (key, name, list, c, idx, total) => {
+    const isCol = !!c;
+    const shownN = pageN[key] || PAGE;
+    const editing = isCol && !!ce && ce.id === c.id;
+    const ci = isCol ? cols.findIndex(x => x.id === c.id) : -1;
+    const n = list.length;
+    const dir = s.mdir === 'l' ? 'l' : 'r';
+    return {
+      key: key, name: name, isCol: isCol,
+      count: String(n),
+      pos: (idx + 1) + ' de ' + total,
+      aria: name + ', ' + n + (n === 1 ? ' tarea' : ' tareas'),
+      cls: 'lane m-' + dir + ((s.mrun || 0) % 2 ? 'b' : 'a'),
+      editLabel: 'Editar la columna «' + name + '»',
+      editOff: consulta,
+      editExp: editing ? 'true' : 'false',
+      onEdit: () => { if (consulta || !isCol) return; if (editing) { set({ colEdit: null }); return; } set({ colEdit: { id: c.id, text: c.name, done: !!c.done, err: '', del: false } }); },
+      editing: editing,
+      ce: editing ? {
+        text: ce.text, err: ce.err, hasErr: !!ce.err,
+        inCls: 'in' + (ce.err ? ' bad' : ''),
+        doneOn: ce.done ? 'true' : 'false',
+        onDone: () => patchCE({ done: !cur().colEdit.done }),
+        onInput: e => patchCE({ text: val(e), err: '' }),
+        onKey: e => { if (!e) return; if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); saveCE(); } else if (e.key === 'Escape') { stop(e); set({ colEdit: null }); } },
+        onSave: saveCE,
+        onCancel: () => set({ colEdit: null }),
+        noLeft: ci <= 0, noRight: ci >= cols.length - 1,
+        onLeft: () => moveColBy(c.id, -1), onRight: () => moveColBy(c.id, 1),
+        lastCol: cols.length <= 1,
+        delLabelM: cols.length <= 1 ? 'Única columna: no se elimina' : 'Eliminar columna',
+        notDel: !ce.del, del: !!ce.del,
+        delText: (function () { const tgt = cols.find(x => x.id !== c.id); const k = tasks.filter(t => t.col === c.id).length; return k ? 'Sus ' + k + (k === 1 ? ' tarea pasa' : ' tareas pasan') + ' a «' + (tgt ? tgt.name : '') + '».' : 'No tiene tareas.'; })(),
+        onDel: () => patchCE({ del: true }),
+        onDelYes: () => deleteCol(c.id),
+        onDelNo: () => patchCE({ del: false })
+      } : {},
+      tasks: list.slice(0, shownN).map((t, i) => card(t, i)),
+      empty: n === 0,
+      emptyTextM: isCol ? (qn ? 'Sin resultados en esta columna' : 'No hay tareas en esta columna') : 'Sin tareas',
+      hasMore: n > shownN,
+      moreText: 'Ver ' + Math.min(PAGE, n - shownN) + ' más (' + (n - shownN) + ' restantes)',
+      onMore: () => { const pn = Object.assign({}, cur().pageN || {}); pn[key] = (pn[key] || PAGE) + PAGE; set({ pageN: pn }); }
+    };
+  };
+  const laneDefs = tab === 'board'
+    ? cols.map(c => ({ key: 'c' + c.id, name: c.name, list: visible.filter(t => colOf(t).id === c.id), c: c }))
+    : ['Urgente', 'Media', 'Baja'].map(n => ({ key: 'p' + n, name: n, list: visible.filter(t => !isDone(t) && (t.prio || 'Media') === n), c: null }));
+  const keys = laneDefs.map(l => l.key);
+  const mkey = keys.indexOf(s.mcol) >= 0 ? s.mcol : (keys[0] || '');
+  const mi = keys.indexOf(mkey);
+  const lanes = laneDefs.filter(l => l.key === mkey).map(l => laneFrom(l.key, l.name, l.list, l.c, mi, keys.length));
+  const goLane = j => { if (j < 0 || j >= keys.length || j === mi) return; set({ mcol: keys[j], mdir: j < mi ? 'l' : 'r', mrun: (cur().mrun || 0) + 1, colEdit: null }); };
+  const flat = [];
+  lanes.forEach(l => l.tasks.forEach(t => flat.push(t.id)));
+
+  // Paneo táctil: deslizar a los costados cambia de columna.
+  const swDown = e => { if (!e) return; self._sw = { x: e.clientX, y: e.clientY }; };
+  const swUp = e => {
+    const w = self._sw;
+    self._sw = null;
+    if (!w || !e) return;
+    const dx = e.clientX - w.x, dy = e.clientY - w.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    self._justSwiped = true;
+    setTimeout(() => { self._justSwiped = false; }, 80);
+    goLane(mi + (dx < 0 ? 1 : -1));
+  };
+
+  // ---- Selección: barra que reemplaza a la cabecera ----
+  const selIds = Object.keys(sel).filter(id => tasks.some(t => t.id === id));
+  const selN = selIds.length;
+  const visSel = flat.filter(id => sel[id]).length;
+  const selOn = canEdit && selN > 0 && mode === 'list';
+
+  // ---- Formulario de tarea ----
+  const F = s.form || null;
+  const newDraft = vis => ({ vis: vis, titulo: '', desc: '', resp: [OP], prio: 'Media', turno: 'Sin turno', tipo: '', vence: '', nota: '', files: [] });
+  const openCreate = vis => {
+    setGoo(false);
+    const sp = vis === 'private' ? 'my' : 'team';
+    const st = cur();
+    const patch = { form: { id: null, d: newDraft(vis), err: {} }, colForm: null, view: null, sel: {}, bulkConfirm: false };
+    if ((st.space || 'team') !== sp) { patch.space = sp; patch.run = (st.run || 0) + 1; patch.pageN = {}; }
+    set(patch);
+    focusEl('[data-f-title]');
+  };
+  const openEdit = id => {
+    const t = curTasks().find(x => x.id === id);
+    if (!t || consulta) return;
+    set({ form: { id: id, d: { vis: t.vis, titulo: t.titulo, desc: t.desc, resp: t.resp.filter(n => n !== 'Sin asignar'), prio: t.prio, turno: t.turno, tipo: t.tipo, vence: t.vence, nota: t.nota, files: t.files.slice() }, err: {} }, view: { mode: 'edit', id: id }, status: null });
+    focusEl('[data-f-title]');
+  };
+  const patchD = p => {
+    const x = cur().form;
+    if (!x) return;
+    const err = Object.assign({}, x.err);
+    if (p.titulo !== undefined) err.titulo = '';
+    if (p.vence !== undefined) err.vence = '';
+    set({ form: Object.assign({}, x, { d: Object.assign({}, x.d, p), err: err }) });
+  };
+  const closeForm = () => { const x = cur().form; set({ form: null, view: x && x.id ? { mode: 'detail', id: x.id } : null }); };
+  const validDate = v => {
+    if (!v) return '';
+    if (!/^\d{2}\/\d{2}$/.test(v)) return 'Formato inválido. Usá DD/MM.';
+    const dd = +v.slice(0, 2), mm = +v.slice(3);
+    const dim = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (mm < 1 || mm > 12 || dd < 1 || dd > dim[mm - 1]) return 'Esa fecha no existe.';
+    return '';
+  };
+  const saveForm = () => {
+    const x = cur().form;
+    if (!x) return;
+    const d = x.d;
+    const err = {};
+    if (!String(d.titulo || '').trim()) err.titulo = 'Poné un título.';
+    const ve = validDate(d.vence);
+    if (ve) err.vence = ve;
+    if (err.titulo || err.vence) { set({ form: Object.assign({}, x, { err: err }) }); focusEl(err.titulo ? '[data-f-title]' : '[data-f-due]'); return; }
+    const resp = d.resp.length ? d.resp.slice() : ['Sin asignar'];
+    if (x.id) {
+      set({ tasks: mapTask(x.id, y => Object.assign(y, { titulo: d.titulo.trim(), desc: d.desc, resp: resp, prio: d.prio, turno: d.turno, tipo: d.tipo || 'Soporte', vence: d.vence, nota: d.nota, files: d.files })), form: null, view: { mode: 'detail', id: x.id } });
+      setStatus('detail', 'Guardaste los cambios.', 'ok');
+      return;
+    }
+    const ts = Date.now();
+    const first = curCols()[0];
+    const nt = { id: 'TK' + ts, ts: ts, titulo: d.titulo.trim(), desc: d.desc, resp: resp, prio: d.prio, turno: d.turno, tipo: d.tipo || 'Soporte', vence: d.vence, nota: d.nota, vis: d.vis, owner: OP, col: first.id, by: OP, at: fmtNow(), items: [], comments: [], files: d.files };
+    const st = cur();
+    set({ tasks: [nt].concat(curTasks()), form: null, run: (st.run || 0) + 1, mcol: 'c' + first.id });
+    if (d.vis === 'private' && (st.space || 'team') === 'team') setStatus('board', 'Creaste «' + nt.titulo + '» en «' + first.name + '». Es privada: está en Mis tareas.', 'ok', 'Ver Mis tareas', () => switchView({ space: 'my' }));
+    else setStatus('board', 'Creaste «' + nt.titulo + '» en «' + first.name + '».', 'ok', 'Deshacer', () => set({ tasks: curTasks().filter(y => y.id !== nt.id) }));
+  };
+  let f = {};
+  if (F) {
+    const d = F.d;
+    const names = [OP, 'Equi'].concat(d.resp.filter(n => n !== OP && n !== 'Equi'));
+    const ch = d.resp;
+    const resumen = ch.length === 0 ? 'Sin asignar' : ch.length === 1 ? ch[0] : ch.slice(0, -1).join(', ') + ' y ' + ch[ch.length - 1];
+    const optList = (arr, key) => arr.map(o => ({ label: o, on: d[key] === o ? 'true' : 'false', onClick: () => { const p = {}; p[key] = o; patchD(p); } }));
+    const tomorrow = TODAY.d + 1;
+    f = {
+      isNew: !F.id, isEdit: !!F.id,
+      eyebrow: F.id ? 'Editar tarea' : (d.vis === 'private' ? 'Nueva tarea privada' : 'Nueva tarea de equipo'),
+      title: F.id ? (d.titulo || 'Sin título') : (d.titulo.trim() || 'Nueva tarea'),
+      visTeam: d.vis !== 'private' ? 'true' : 'false', visPriv: d.vis === 'private' ? 'true' : 'false',
+      onVisTeam: () => patchD({ vis: 'team' }), onVisPriv: () => patchD({ vis: 'private' }),
+      visText: d.vis === 'private' ? 'Mi tarea: solo visible para vos' : 'Tarea de equipo: visible en el espacio compartido',
+      titulo: d.titulo, onTitulo: e => patchD({ titulo: val(e) }),
+      titleCls: 'in' + (F.err.titulo ? ' bad' : ''), titleInvalid: F.err.titulo ? 'true' : 'false',
+      hasTitleErr: !!F.err.titulo, titleErr: F.err.titulo || '',
+      desc: d.desc, onDesc: e => patchD({ desc: val(e) }),
+      nota: d.nota, onNota: e => patchD({ nota: val(e) }),
+      people: names.map(n => ({ label: n + (n === OP ? ' (vos)' : ''), on: ch.indexOf(n) >= 0 ? 'true' : 'false', onClick: () => { const r = cur().form.d.resp; patchD({ resp: r.indexOf(n) >= 0 ? r.filter(y => y !== n) : r.concat([n]) }); } })),
+      resumen: resumen,
+      prios: optList(['Baja', 'Media', 'Urgente'], 'prio'),
+      turnos: optList(['Sin turno', 'Mañana', 'Tarde', 'Todo el día'], 'turno'),
+      tipo: d.tipo, onTipo: e => patchD({ tipo: val(e) }),
+      tipos: ['Soporte', 'Aula', 'Agenda'].map(o => ({ label: o, onClick: () => patchD({ tipo: o }) })),
+      vence: d.vence,
+      onVence: e => { let v = val(e).replace(/\D/g, '').slice(0, 4); if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2); patchD({ vence: v }); },
+      dueCls: 'in' + (F.err.vence ? ' bad' : ''), dueInvalid: F.err.vence ? 'true' : 'false',
+      hasDueErr: !!F.err.vence, dueErr: F.err.vence || '',
+      dates: [
+        { label: 'Hoy ' + pad(TODAY.d) + '/' + pad(TODAY.m), onClick: () => patchD({ vence: pad(TODAY.d) + '/' + pad(TODAY.m) }) },
+        { label: 'Mañana ' + pad(tomorrow) + '/' + pad(TODAY.m), onClick: () => patchD({ vence: pad(tomorrow) + '/' + pad(TODAY.m) }) },
+        { label: 'Sin fecha', onClick: () => patchD({ vence: '' }) }
+      ],
+      files: d.files.map((a, i) => ({ name: a.name, removeLabel: 'Quitar ' + a.name, onRemove: () => { const fl = cur().form.d.files.slice(); fl.splice(i, 1); patchD({ files: fl }); } })),
+      up: !!F.up, upLabel: F.up ? 'Subiendo…' : 'Adjuntar archivo',
+      onUpload: () => {
+        const x = cur().form;
+        if (!x || x.up) return;
+        set({ form: Object.assign({}, x, { up: true }) });
+        setTimeout(() => { const y = cur().form; if (!y) return; set({ form: Object.assign({}, y, { up: false, d: Object.assign({}, y.d, { files: y.d.files.concat([{ name: '[archivo adjunto ' + (y.d.files.length + 1) + ']' }]) }) }) }); }, 900);
+      },
+      onEnter: e => { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); saveForm(); } },
+      onSave: saveForm, onCancel: closeForm,
+      saveLabel: F.id ? 'Guardar cambios' : 'Crear tarea',
+      hint: F.id ? 'Los cambios se guardan al tocar Guardar.' : 'Arranca en «' + cols[0].name + '».'
+    };
+  }
+
+  // ---- Nueva columna (en línea) ----
+  const CF = s.colForm || null;
+  const saveColForm = () => {
+    const x = cur().colForm;
+    if (!x) return;
+    const name = String(x.text || '').trim();
+    if (!name) { set({ colForm: Object.assign({}, x, { err: 'Poné un nombre.' }) }); return; }
+    const list = curCols();
+    if (list.some(c => norm(c.name) === norm(name))) { set({ colForm: Object.assign({}, x, { err: 'Ya hay una columna «' + name + '».' }) }); return; }
+    const nc = { id: Date.now(), name: name, done: false };
+    set({ cols: list.concat([nc]), colForm: null, tab: 'board', mcol: 'c' + nc.id, mdir: 'r', mrun: (cur().mrun || 0) + 1 });
+    setStatus('board', 'Creaste la columna «' + name + '».', 'ok', 'Deshacer', () => set({ cols: curCols().filter(c => c.id !== nc.id) }));
+  };
+  const cf = CF ? {
+    text: CF.text, err: CF.err, hasErr: !!CF.err,
+    inCls: 'in' + (CF.err ? ' bad' : ''),
+    onInput: e => set({ colForm: { text: val(e), err: '' } }),
+    onKey: e => { if (!e) return; if (e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); saveColForm(); } else if (e.key === 'Escape') { stop(e); set({ colForm: null }); } },
+    onSave: saveColForm,
+    onCancel: () => set({ colForm: null })
+  } : {};
+
+  // ---- Detalle ----
+  let d = {};
+  if (vt && mode === 'detail') {
+    const t = vt;
+    const done = isDone(t);
+    const due = dueInfo(t);
+    const sub = subHandlers(t);
+    const fact = (label, value, extra, i) => ({
+      label: label, value: value,
+      styleM: 'margin: 2px 0 0; font-size: 15px; line-height: 20px; overflow-wrap: anywhere;' + (extra || ''),
+      cellM: 'display: flex; flex-direction: column; min-width: 0; padding: 10px 12px;' + (i % 2 === 0 ? ' border-right: 1px solid #262B32;' : '') + (i < 4 ? ' border-bottom: 1px solid #262B32;' : '')
+    });
+    d = Object.assign({}, sub, {
+      id: t.id,
+      eyebrow: colOf(t).name + ' · ' + t.id,
+      title: t.titulo,
+      titleStyleM: 'margin: 0; font-size: 22px; line-height: 28px; font-weight: 600; overflow-wrap: anywhere; color: ' + (done ? '#A7AEB8' : '#ECEEF1') + ';',
+      created: 'Creada por ' + t.by + ' · ' + t.at,
+      onEdit: () => openEdit(t.id),
+      notDelConfirm: !s.delConfirm, delConfirm: !!s.delConfirm,
+      onDel: () => set({ delConfirm: true }),
+      onDelYes: () => deleteTasks([t.id]),
+      onDelNo: () => set({ delConfirm: false }),
+      cols: cols.map(c => ({ name: c.name, on: c.id === colOf(t).id ? 'true' : 'false', off: consulta || moving, onClick: () => moveTask([t.id], c.id, false) })),
+      desc: t.desc || 'Sin descripción.',
+      descStyle: 'margin: 0; font-size: 16px; line-height: 24px; white-space: pre-wrap; overflow-wrap: anywhere; color: ' + (t.desc ? '#ECEEF1' : '#7C8592') + ';',
+      ratio: t.items.length ? t.items.filter(i => i.on).length + '/' + t.items.length : '',
+      items: t.items.map(i => itemView(t, i, 'detail')),
+      noItems: t.items.length === 0,
+      canAddBtn: canEdit && !done && !sub.adding,
+      doneNoAdd: canEdit && done,
+      noteEdit: !!s.noteEdit, notNoteEdit: !s.noteEdit,
+      noteBtn: t.nota ? 'Editar nota' : 'Agregar nota',
+      note: t.nota || 'Sin nota.',
+      noteStyle: 'margin: 0; font-size: 15px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; color: ' + (t.nota ? '#ECEEF1' : '#7C8592') + ';',
+      noteText: s.noteText || '',
+      onNoteEdit: () => { if (consulta) return; set({ noteEdit: true, noteText: t.nota }); },
+      onNoteInput: e => set({ noteText: val(e) }),
+      onNoteSave: () => { set({ tasks: mapTask(t.id, x => Object.assign(x, { nota: cur().noteText || '' })), noteEdit: false }); setStatus('detail', 'Guardaste la nota.', 'ok'); },
+      onNoteCancel: () => set({ noteEdit: false }),
+      comN: String(t.comments.length),
+      comments: t.comments,
+      noComments: t.comments.length === 0,
+      comText: s.comText || '',
+      onComInput: e => set({ comText: val(e) }),
+      onComSave: () => addCom(t.id),
+      facts: [
+        fact('Visibilidad', t.vis === 'private' ? 'Privada (solo vos)' : 'Equipo', '', 0),
+        fact('Responsables', t.resp.join(', ') || 'Sin asignar', '', 1),
+        fact('Prioridad', t.prio, t.prio === 'Urgente' && !done ? ' color: #FF6B6B;' : '', 2),
+        fact('Turno', t.turno || 'Sin turno', t.turno && t.turno !== 'Sin turno' ? '' : ' color: #7C8592;', 3),
+        fact('Tipo', t.tipo || 'Soporte', '', 4),
+        fact('Vencimiento', due ? due.text : 'Sin fecha', " font-family: 'Geist Mono', ui-monospace, monospace; font-size: 14px; " + (due ? due.style : 'color: #7C8592;'), 5)
+      ],
+      files: t.files,
+      noFiles: t.files.length === 0
+    });
+  }
+  function addCom(id) {
+    const body = String(cur().comText || '').trim();
+    if (!body) return;
+    set({ tasks: mapTask(id, x => { x.comments = x.comments.concat([{ author: OP, date: fmtNow(), body: body }]); return x; }), comText: '' });
+  }
+
+  // ---- Analítica de asistentes (solo Equipo) ----
+  const team = tasks.filter(t => inSpace(t, 'team'));
+  const isStd = t => ['Pendiente', 'En proceso'].indexOf(colOf(t).name) >= 0 || isDone(t);
+  const people = D.people.map(p => {
+    const as = team.filter(t => t.resp.indexOf(p.name) >= 0 || t.resp.indexOf('Ambos') >= 0 || t.resp.indexOf('Compartida') >= 0);
+    const pend = as.filter(t => colOf(t).name === 'Pendiente' && !isDone(t)).length;
+    const prog = as.filter(t => colOf(t).name === 'En proceso' && !isDone(t)).length;
+    const dn = as.filter(t => isDone(t)).length;
+    const pct = as.length ? Math.round(dn / as.length * 100) : null;
+    const len = pct === null ? 0 : CIRC * pct / 100;
+    return {
+      name: p.name,
+      turnoNote: as.length ? 'Turno ' + p.turno.toLowerCase() : 'Turno ' + p.turno.toLowerCase() + ' · Sin tareas asignadas.',
+      assigned: String(as.length), pending: String(pend), progress: String(prog), done: String(dn),
+      pct: pct === null ? '—' : pct + '%',
+      dash: len.toFixed(1) + ' ' + CIRC.toFixed(1),
+      arcStyle: len > 0 ? '' : 'opacity: 0;',
+      ringLabel: pct === null ? p.name + ': sin tareas' : p.name + ': ' + dn + ' de ' + as.length + ' hechas'
+    };
+  });
+  const otherN = team.filter(t => !isStd(t)).length;
+
+  const loading = estado === 'cargando';
+  const colErr = estado === 'error de columnas' && !s.retried;
+  const openN = visible.filter(t => !isDone(t)).length;
+  const doneN = visible.length - openN;
+  const overN = visible.filter(t => { const x = dueInfo(t); return x && x.over; }).length;
+  const listOn = mode === 'list';
+  const caps = { team: 'Nueva tarea de equipo', mine: 'Nueva tarea privada', col: 'Nueva columna' };
+  const half = on => 'transform: translateX(' + (on ? 'calc(100% + 2px)' : '0') + ');';
+
+  return {
+    context: mode === 'list' ? (space === 'team' ? 'Equipo' : 'Mis tareas') + ' · ' + (tab === 'board' ? 'Tablero' : 'Prioridad') : (vt ? vt.titulo : ''),
+    consulta: consulta,
+    canEdit: canEdit,
+
+    quickOn: !!s.quick,
+    quickExp: s.quick ? 'true' : 'false',
+    quickBtnStyle: s.quick ? 'background: #1B1F24; color: #ECEEF1;' : '',
+    onQuick: () => set({ quick: !cur().quick }),
+    links: D.links.map(n => ({ name: n })),
+
+    backOn: mode !== 'list',
+    backLabel: mode === 'edit' ? 'Volver a la tarea' : 'Tareas TIC',
+    onBack: () => { if (mode === 'edit') { closeForm(); return; } set({ view: null, form: null, delConfirm: false, noteEdit: false, status: null }); },
+
+    toolOn: listOn && !selOn,
+    tbarCls: 'tbar' + (gooOpen ? ' goo-room' : ''),
+    boardEyebrow: tab === 'board' ? 'Tablero' : 'Prioridad',
+    mHeadTitle: space === 'team' ? 'Equipo' : 'Mis tareas',
+    tabPill: half(tab === 'priority'),
+    tabBoardOn: tab === 'board' ? 'true' : 'false',
+    tabPrioOn: tab === 'priority' ? 'true' : 'false',
+    onTabBoard: () => switchView({ tab: 'board' }),
+    onTabPrio: () => switchView({ tab: 'priority' }),
+    spacePill: half(space === 'my'),
+    spTeamOn: space === 'team' ? 'true' : 'false',
+    spMyOn: space === 'my' ? 'true' : 'false',
+    onSpTeam: () => switchView({ space: 'team' }),
+    onSpMy: () => switchView({ space: 'my' }),
+    teamN: String(tasks.filter(t => inSpace(t, 'team') && !isDone(t)).length),
+    myN: String(tasks.filter(t => inSpace(t, 'my') && !isDone(t)).length),
+
+    gooCls: 't-goo-anchor' + (s.gooAnt ? ' is-anticipating' : ''),
+    gooOpenStr: gooOpen ? 'true' : 'false',
+    gooTab: gooOpen ? '0' : '-1',
+    gooLabel: gooOpen ? 'Cerrar acciones' : 'Crear: tarea o columna',
+    gooCap: s.gooCap ? caps[s.gooCap] : 'Equipo · Privada · Columna',
+    onGoo: e => { stop(e); setGoo(!isGooOpen()); },
+    onGooTeam: () => openCreate('team'),
+    onGooMine: () => openCreate('private'),
+    onGooColumn: () => { setGoo(false); set({ colForm: { text: '', err: '' }, form: null, view: null }); focusEl('[data-colform]'); },
+    onCapTeam: () => set({ gooCap: 'team' }),
+    onCapMine: () => set({ gooCap: 'mine' }),
+    onCapCol: () => set({ gooCap: 'col' }),
+    onCapOff: () => set({ gooCap: '' }),
+
+    q: s.q || '',
+    hasQ: !!qn,
+    qText: visible.length + (visible.length === 1 ? ' resultado para «' : ' resultados para «') + String(s.q || '').trim() + '»',
+    onQ: e => set({ q: val(e), pageN: {} }),
+    onQKey: e => { if (e && e.key === 'Escape' && cur().q) { stop(e); set({ q: '' }); } },
+    onClearQ: () => set({ q: '' }),
+
+    sumOpen: openN + (openN === 1 ? ' abierta' : ' abiertas'),
+    sumDone: doneN + (doneN === 1 ? ' hecha' : ' hechas'),
+    hasOver: overN > 0,
+    noOver: overN === 0,
+    sumOver: overN + (overN === 1 ? ' vencida' : ' vencidas'),
+
+    selOn: selOn,
+    selNotConfirm: !s.bulkConfirm,
+    bulkConfirm: !!s.bulkConfirm,
+    selAll: flat.length && visSel === flat.length ? 'true' : (visSel ? 'mixed' : 'false'),
+    onSelAll: () => {
+      const all = flat.length && visSel === flat.length;
+      const n = Object.assign({}, cur().sel || {});
+      flat.forEach(id => { if (all) delete n[id]; else n[id] = true; });
+      set({ sel: n });
+    },
+    selText: selN + (selN === 1 ? ' seleccionada' : ' seleccionadas'),
+    selHidden: selN - visSel > 0,
+    selHiddenText: (selN - visSel) + ' en otras columnas o vistas',
+    selCols: cols.map(c => ({ name: c.name, off: moving, onClick: () => moveTask(selIds, c.id, true) })),
+    onBulkDel: () => set({ bulkConfirm: true }),
+    onClearSel: () => set({ sel: {}, anchor: null, bulkConfirm: false }),
+    bulkQ: '¿Borrar ' + selN + (selN === 1 ? ' tarea?' : ' tareas?'),
+    bulkTitles: tasks.filter(t => sel[t.id]).map(t => t.titulo).join(' · '),
+    bulkYes: 'Borrar ' + selN + (selN === 1 ? ' tarea' : ' tareas'),
+    onBulkYes: () => deleteTasks(selIds),
+    onBulkNo: () => set({ bulkConfirm: false }),
+
+    stBoardOn: listOn && !!stView('board'),
+    stBoard: stView('board') || {},
+    stDetailOn: !!stView('detail'),
+    stDetail: stView('detail') || {},
+
+    colFormOn: listOn && !!CF && canEdit,
+    cf: cf,
+    formOn: !!F && canEdit && (mode === 'edit' || mode === 'list'),
+    f: f,
+
+    listOn: listOn,
+    boardTitle: tab === 'board' ? 'Tablero' : 'Prioridad',
+    colErrOn: colErr,
+    onRetryCols: () => set({ retried: true }),
+    loadingOn: loading && !colErr,
+    lanesOn: !loading && !colErr,
+    switcher: laneDefs.map((l, j) => ({ name: l.name, count: String(l.list.length), on: l.key === mkey ? 'true' : 'false', label: l.name + ', ' + l.list.length + (l.list.length === 1 ? ' tarea' : ' tareas'), onClick: () => goLane(j) })),
+    lanesCls: run % 2 ? 'run-b' : 'run-a',
+    lanes: lanes,
+    onSwDown: swDown,
+    onSwUp: swUp,
+    onSwCancel: () => { self._sw = null; },
+    boardHint: tab === 'board'
+      ? (canEdit ? 'Deslizá a los costados para cambiar de columna. Para mover tareas, marcalas con el cuadradito o abrilas y elegí la columna.' : 'Modo consulta: deslizá a los costados para cambiar de columna.')
+      : 'Solo tareas abiertas. Deslizá a los costados para cambiar de prioridad.',
+    showAnalytics: listOn && space === 'team',
+    people: people,
+    hasOther: otherN > 0,
+    otherText: otherN + (otherN === 1 ? ' tarea está' : ' tareas están') + ' en columnas propias: suman a Asignadas, no a Pendientes ni En proceso.',
+
+    detailOn: mode === 'detail' && !!vt,
+    d: d
+  };
+}
+}
+</script>
+</body>
+</html>

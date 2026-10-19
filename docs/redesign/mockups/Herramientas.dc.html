@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Herramientas auxiliares</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input{font-family:inherit}
+.nv:hover,.ib:hover,.gh:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.sec:hover{border-color:#4A515C !important}
+.pri:hover{background:#8DBBFF !important}
+.fld:focus-within{border-color:#5B9BFF !important}
+input::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.fld input:focus-visible{outline:none}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+
+/* Menú lateral (Menu-A): 232px; rail de 56px bajo 1100px; oculto bajo 768px */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}.sb-head{justify-content:center}.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}.sb-grpt{display:none}.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}.sb-user{padding:0;justify-content:center}.sb-hide{display:none !important}
+}
+
+/* Contenido y barra superior */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.pad{flex:1;display:flex;flex-direction:column;gap:20px;min-width:0;padding:24px 32px 32px;box-sizing:border-box}
+.bnav{display:none}
+@media (max-width:1023px){.tb-ctx{display:none !important}}
+@media (max-width:767px){
+.sb{display:none}.tb{padding:0 8px 0 16px}.tb-collapse{display:none !important}.tb-btn-t{display:none !important}
+.pad{padding:16px 16px 24px}
+.bnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:sticky;bottom:0;height:64px;border-top:1px solid #262B32;background:#0D0F12}
+}
+
+/* Herramientas: pasos a la izquierda + resultado a la derecha (bajan cuando no entran) */
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;padding:2px;background:#14171B;border:1px solid #262B32;border-radius:6px}
+.tl{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.tl-steps{flex:1 1 340px;max-width:420px;min-width:0}
+.tl-out{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:16px}
+@media (max-width:1199px) and (min-width:1100px),(max-width:1023px){.tl-steps{max-width:none;flex-basis:100%}}
+.step{display:flex;gap:12px;padding:16px;border-top:1px solid #262B32}
+.step:first-child{border-top:0}
+.step-n{flex:none;width:20px;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;line-height:20px;color:#7C8592}
+.step-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+.tbl{container-type:inline-size;container-name:tbl}
+.trow{display:grid;align-items:center;gap:12px;min-height:40px;padding:0 16px;border-top:1px solid #262B32;box-sizing:border-box;font-size:13px}
+.thead{min-height:36px;font-size:12px;font-weight:500;color:#7C8592}
+.c5{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,.6fr) minmax(0,.9fr)}
+.c6{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1.5fr) minmax(0,.7fr) minmax(0,.5fr) minmax(0,.8fr)}
+.c4{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr) minmax(0,1.2fr)}
+.td-l{display:none}
+@container tbl (max-width:559px){
+.thead{display:none}
+.trow{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:4px;padding:10px 16px}
+.td-l{display:block;font-size:11px;color:#7C8592}
+}
+.form2{display:flex;flex-wrap:wrap;gap:16px 20px}
+.form2 > .f-col{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:6px}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 900px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- MENÚ LATERAL (Menu-A, Herramientas activo) -->
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="ib sb-sede" aria-label="Cambiar de sede: Northfield Puertos">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; color: #ECEEF1; box-sizing: border-box;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Northfield Puertos</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide ell" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <sc-for list="{{navGroups}}" as="ng" hint-placeholder-count="4">
+        <div class="sb-grp">
+          <div class="sb-grpt">{{ng.title}}</div>
+          <sc-for list="{{ng.items}}" as="n" hint-placeholder-count="4">
+            <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+              <span style="{{n.bar}}"></span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+              <span class="sb-txt sb-hide">{{n.label}}</span>
+              <span class="sb-cnt sb-hide">{{n.count}}</span>
+            </a>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nv nvi" aria-label="Configuración" style="color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div class="sb-user">
+        <span aria-label="Bauti G., Jefe TIC" style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #ECEEF1; box-sizing: border-box;">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+        <button type="button" class="ib sb-hide" aria-label="Opciones de cuenta" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="tb">
+      <button type="button" class="ib tb-collapse" aria-label="Contraer menú (Ctrl B)" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <h1 class="ell" style="margin: 0; flex: 0 1 auto; font-size: 16px; line-height: 24px; font-weight: 600;">Herramientas</h1>
+      <span class="tb-ctx" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-ctx ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">{{tabCtx}}</span>
+      <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+      <button type="button" class="sec nw" aria-label="Abrir el Asistente" style="flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5"></path></svg>
+        <span class="tb-btn-t">Asistente</span>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <div class="pad">
+      <!-- Solapas + estado del proveedor de mail (texto, sin pastillas) -->
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;">
+        <div class="tabs" role="tablist" aria-label="Herramientas">
+          <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+            <button type="button" role="tab" class="nw" aria-selected="{{t.sel}}" onClick="{{t.onClick}}" style="{{t.style}}">{{t.label}}</button>
+          </sc-for>
+        </div>
+        <div class="wrap" style="flex: 1 1 260px; justify-content: flex-end; gap: 4px 12px; font-size: 13px;">
+          <span class="nw" style="color: #A7AEB8;">Mail: SMTP · envío real</span>
+          <span class="nw" style="color: #F5C04E;">Resend no configurado: se usa SMTP</span>
+        </div>
+      </div>
+
+      <!-- ===================== TARJETAS GLIFING / SANTILLANA ===================== -->
+      <sc-if value="{{isCards}}" hint-placeholder-val="{{ true }}">
+        <div class="tl" role="tabpanel" aria-label="Tarjetas de acceso">
+          <section class="card tl-steps" aria-label="Pasos">
+            <div class="step">
+              <span class="step-n">1</span>
+              <div class="step-b">
+                <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Tipo de tarjeta</h2>
+                <div class="tabs" role="radiogroup" aria-label="Tipo de tarjeta" style="align-self: flex-start; background: #0D0F12;">
+                  <sc-for list="{{kinds}}" as="k" hint-placeholder-count="2">
+                    <button type="button" role="radio" class="nw" aria-checked="{{k.sel}}" onClick="{{k.onClick}}" style="{{k.style}}">{{k.label}}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-n">2</span>
+              <div class="step-b">
+                <h2 style="margin: 0; font-size: 14px; font-weight: 600;">CSV de alumnos</h2>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span style="font-size: 12px; color: #7C8592;">Columnas obligatorias, en este orden</span>
+                  <code class="ell" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8; padding: 6px 8px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px;">Username,Nombre,Apellido,Grupo,Contraseña</code>
+                </div>
+                <sc-if value="{{cardsNoFile}}" hint-placeholder-val="{{ false }}">
+                  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px; border: 1px dashed #353B44; border-radius: 6px;">
+                    <span style="flex: 1 1 160px; min-width: 0; font-size: 13px; line-height: 19px; color: #A7AEB8;">Arrastrá el .csv acá o elegilo.</span>
+                    <button type="button" class="sec nw" onClick="{{onCardsUpload}}" style="height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">Subir CSV</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{cardsHasFile}}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 4px 4px 12px; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4M8 13h2M14 13h2M8 17h2M14 17h2"></path></svg>
+                    <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column;">
+                      <span class="ell" style="font-size: 14px;">[archivo].csv</span>
+                      <span class="ell" style="{{cardsFileMetaStyle}}">{{cardsFileMeta}}</span>
+                    </span>
+                    <button type="button" class="gh nw" onClick="{{onCardsChange}}" style="flex: none; height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer;">Cambiar</button>
+                  </div>
+                </sc-if>
+                <a href="#" class="nw" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; text-decoration: none;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+                  {{templateLabel}}
+                </a>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-n">3</span>
+              <div class="step-b">
+                <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Generar e imprimir</h2>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div aria-hidden="true" style="flex: none; width: 34px; height: 46px; padding: 3px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 2px; border: 1px solid #353B44; border-radius: 2px; box-sizing: border-box;">
+                    <span style="border: 1px dashed #353B44;"></span><span style="border: 1px dashed #353B44;"></span><span style="border: 1px dashed #353B44;"></span><span style="border: 1px dashed #353B44;"></span>
+                    <span style="border: 1px dashed #353B44;"></span><span style="border: 1px dashed #353B44;"></span><span style="border: 1px dashed #353B44;"></span><span style="border: 1px dashed #353B44;"></span>
+                  </div>
+                  <span style="flex: 1; min-width: 0; font-size: 13px; line-height: 19px; color: #A7AEB8;">Hoja A4, 8 tarjetas (2 × 4) con el fondo de la plantilla y borde para recortar.</span>
+                </div>
+                <button type="button" class="pri nw" onClick="{{onGenerate}}" aria-disabled="{{genDisabledAria}}" style="{{genStyle}}">{{genLabel}}</button>
+                <sc-if value="{{genDone}}" hint-placeholder-val="{{ false }}">
+                  <div role="status" style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px;">
+                    <span style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD68A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M20 6 9 17l-5-5"></path></svg>
+                      <span>{{genDoneText}}</span>
+                    </span>
+                    <a href="#" target="_blank" rel="noreferrer" class="nw" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; text-decoration: none; box-sizing: border-box;">
+                      Abrir para imprimir
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+                    </a>
+                    <span style="font-size: 12px; line-height: 18px; color: #7C8592;">Se abre con tu clic, así el navegador no la bloquea. Disponible 30 min.</span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </section>
+
+          <div class="tl-out">
+            <sc-if value="{{cardsErr}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" class="card" style="display: flex; flex-direction: column; gap: 6px; padding: 16px;">
+                <span style="font-size: 14px; font-weight: 500; color: #FF6B6B;">Faltan columnas obligatorias: Grupo</span>
+                <span style="font-size: 13px; line-height: 19px; color: #A7AEB8;">Revisá el encabezado del CSV o bajá la plantilla y pegá los datos ahí.</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{cardsOk}}" hint-placeholder-val="{{ true }}">
+              <section class="card tbl" aria-label="Vista previa del CSV">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-height: 52px; padding: 10px 16px; box-sizing: border-box;">
+                  <h2 class="nw" style="margin: 0; font-size: 14px; font-weight: 600;">Vista previa</h2>
+                  <span style="flex: 1 1 auto; font-size: 13px; color: #7C8592;">Mostrando 10 de [N] filas</span>
+                  <button type="button" class="gh nw" aria-pressed="{{showPassAria}}" onClick="{{onTogglePass}}" style="height: 32px; padding: 0 10px; background: transparent; border: 1px solid #262B32; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer;">{{passBtn}}</button>
+                </div>
+                <div class="trow thead c5">
+                  <span>Username</span><span>Nombre</span><span>Apellido</span><span>Grupo</span><span>Contraseña</span>
+                </div>
+                <sc-for list="{{cardRows}}" as="r" hint-placeholder-count="10">
+                  <div class="trow c5">
+                    <span style="min-width: 0;"><span class="td-l">Username</span><span class="ell" style="display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px;">{{r.u}}</span></span>
+                    <span style="min-width: 0;"><span class="td-l">Nombre</span><span class="ell" style="display: block;">[Nombre]</span></span>
+                    <span style="min-width: 0;"><span class="td-l">Apellido</span><span class="ell" style="display: block;">[Apellido]</span></span>
+                    <span style="min-width: 0;"><span class="td-l">Grupo</span><span class="ell" style="display: block; color: #A7AEB8;">[Grupo]</span></span>
+                    <span style="min-width: 0;"><span class="td-l">Contraseña</span><span class="ell" style="display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{r.p}}</span></span>
+                  </div>
+                </sc-for>
+                <div style="min-height: 40px; padding: 10px 16px; border-top: 1px solid #262B32; box-sizing: border-box; font-size: 12px; color: #7C8592;">Las tarjetas se generan con todas las filas, no solo con estas 10.</div>
+              </section>
+            </sc-if>
+            <sc-if value="{{cardsEmpty}}" hint-placeholder-val="{{ false }}">
+              <div class="card" style="padding: 24px 16px; font-size: 14px; line-height: 22px; color: #A7AEB8;">Cuando subas el CSV vas a ver acá las primeras 10 filas para revisarlas antes de generar.</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===================== CREDENCIALES 365 ===================== -->
+      <sc-if value="{{isCreds}}" hint-placeholder-val="{{ false }}">
+        <div class="tl" role="tabpanel" aria-label="Credenciales 365">
+          <section class="card tl-steps" aria-label="Pasos">
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-bottom: 1px solid #262B32;">
+              <span style="font-size: 14px; font-weight: 500; color: #F5C04E;">Envío real: los mails salen de verdad</span>
+              <span style="font-size: 13px; line-height: 19px; color: #A7AEB8;">Revisá los destinatarios antes de enviar. Para probar sin mandar nada, pasá a modo prueba en Correo (SMTP).</span>
+            </div>
+            <div class="step">
+              <span class="step-n">1</span>
+              <div class="step-b">
+                <h2 style="margin: 0; font-size: 14px; font-weight: 600;">CSV de cuentas</h2>
+                <code style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; line-height: 18px; color: #A7AEB8; padding: 6px 8px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px; overflow-wrap: anywhere;">Nombre para mostrar,Nombre de usuario,mail,Contraseña,Sede,Licencias</code>
+                <div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 4px 4px 12px; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4M8 13h2M14 13h2M8 17h2M14 17h2"></path></svg>
+                  <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column;">
+                    <span class="ell" style="font-size: 14px;">[cuentas].csv</span>
+                    <span class="ell" style="font-size: 12px; color: #7C8592;">[N] filas detectadas</span>
+                  </span>
+                  <button type="button" class="gh nw" style="flex: none; height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer;">Cambiar</button>
+                </div>
+                <a href="#" class="nw" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; text-decoration: none;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+                  Descargar plantilla (credenciales 365)
+                </a>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-n">2</span>
+              <div class="step-b">
+                <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Validar</h2>
+                <button type="button" class="sec nw" onClick="{{onPreview}}" style="align-self: flex-start; height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">{{previewLabel}}</button>
+                <sc-if value="{{previewed}}" hint-placeholder-val="{{ true }}">
+                  <dl style="margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;"><dt style="font-size: 12px; color: #7C8592;">Total</dt><dd style="margin: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 20px;">[N]</dd></div>
+                    <div style="display: flex; flex-direction: column; gap: 2px;"><dt style="font-size: 12px; color: #7C8592;">Válidas</dt><dd style="margin: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 20px;">[N]</dd></div>
+                    <div style="display: flex; flex-direction: column; gap: 2px;"><dt style="font-size: 12px; color: #7C8592;">Inválidas</dt><dd style="margin: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 20px; color: #FF6B6B;">[N]</dd></div>
+                  </dl>
+                </sc-if>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-n">3</span>
+              <div class="step-b">
+                <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Enviar</h2>
+                <button type="button" class="pri nw" onClick="{{onAskSend}}" aria-disabled="{{sendDisabledAria}}" aria-expanded="{{confirmSendAria}}" style="{{sendStyle}}">Enviar correos</button>
+                <span style="font-size: 12px; line-height: 18px; color: #7C8592;">{{sendHint}}</span>
+                <sc-if value="{{confirmSend}}" hint-placeholder-val="{{ false }}">
+                  <div role="alert" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px;">
+                    <span style="font-size: 14px; font-weight: 500;">Enviar credenciales reales</span>
+                    <span style="font-size: 13px; line-height: 19px; color: #A7AEB8;">Vas a mandar usuario y contraseña por mail a [N] destinatarios. [N] filas se descartan por inválidas.</span>
+                    <div class="wrap">
+                      <button type="button" class="sec nw" onClick="{{onSend}}" style="height: 36px; padding: 0 14px; background: #14171B; border: 1px solid #353B44; border-radius: 6px; color: #FF6B6B; font-size: 14px; font-weight: 600; cursor: pointer;">Enviar a [N]</button>
+                      <button type="button" class="gh nw" onClick="{{onCancelSend}}" style="height: 36px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; font-weight: 500; cursor: pointer;">Cancelar</button>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{sent}}" hint-placeholder-val="{{ false }}">
+                  <div role="status" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px;">
+                    <dl style="margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+                      <div style="display: flex; flex-direction: column; gap: 2px;"><dt style="font-size: 12px; color: #7C8592;">Enviados</dt><dd style="margin: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 20px;">[N]</dd></div>
+                      <div style="display: flex; flex-direction: column; gap: 2px;"><dt style="font-size: 12px; color: #7C8592;">Prueba</dt><dd style="margin: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 20px;">[N]</dd></div>
+                      <div style="display: flex; flex-direction: column; gap: 2px;"><dt style="font-size: 12px; color: #7C8592;">Errores</dt><dd style="margin: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 20px; color: #FF6B6B;">[N]</dd></div>
+                    </dl>
+                    <a href="#" class="nw" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; text-decoration: none; box-sizing: border-box;">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+                      Descargar reporte CSV
+                    </a>
+                    <span style="font-size: 12px; line-height: 18px; color: #7C8592;">Mail, usuario, nombre, estado (OK / PRUEBA / ERROR) y detalle. Se puede bajar durante 30 min.</span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </section>
+
+          <div class="tl-out">
+            <section class="card tbl" aria-label="Filas válidas">
+              <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-height: 48px; padding: 14px 16px 10px; box-sizing: border-box;">
+                <h2 class="nw" style="margin: 0; font-size: 14px; font-weight: 600;">Filas válidas</h2>
+                <span style="font-size: 13px; color: #7C8592;">primeras 10 de [N] · contraseña oculta</span>
+              </div>
+              <div class="trow thead c6">
+                <span class="ell">Nombre para mostrar</span><span>Usuario</span><span>Mail</span><span>Contraseña</span><span>Sede</span><span>Licencias</span>
+              </div>
+              <sc-for list="{{credRows}}" as="c" hint-placeholder-count="6">
+                <div class="trow c6">
+                  <span style="min-width: 0;"><span class="td-l">Nombre</span><span class="ell" style="display: block;">[Nombre Apellido]</span></span>
+                  <span style="min-width: 0;"><span class="td-l">Usuario</span><span class="ell" style="display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px;">{{c.u}}</span></span>
+                  <span style="min-width: 0;"><span class="td-l">Mail</span><span class="ell" style="display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">[mail@dominio]</span></span>
+                  <span style="min-width: 0;"><span class="td-l">Contraseña</span><span style="display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">****</span></span>
+                  <span style="min-width: 0;"><span class="td-l">Sede</span><span class="ell" style="display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">NFPT</span></span>
+                  <span style="min-width: 0;"><span class="td-l">Licencias</span><span class="ell" style="display: block; color: #A7AEB8;">[Licencia]</span></span>
+                </div>
+              </sc-for>
+            </section>
+            <section class="card tbl" aria-label="Filas inválidas">
+              <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-height: 48px; padding: 14px 16px 10px; box-sizing: border-box;">
+                <h2 class="nw" style="margin: 0; font-size: 14px; font-weight: 600;">Filas inválidas</h2>
+                <span style="font-size: 13px; color: #7C8592;">no se envían · corregilas en el CSV y volvé a subirlo</span>
+              </div>
+              <div class="trow thead c4">
+                <span>Nombre</span><span>Usuario</span><span>Mail</span><span>Motivo</span>
+              </div>
+              <sc-for list="{{badRows}}" as="b" hint-placeholder-count="3">
+                <div class="trow c4">
+                  <span style="min-width: 0;"><span class="td-l">Nombre</span><span class="ell" style="display: block;">[Nombre Apellido]</span></span>
+                  <span style="min-width: 0;"><span class="td-l">Usuario</span><span class="ell" style="display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{b.u}}</span></span>
+                  <span style="min-width: 0;"><span class="td-l">Mail</span><span class="ell" style="display: block; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{b.m}}</span></span>
+                  <span style="min-width: 0;"><span class="td-l">Motivo</span><span class="ell" style="display: block; color: #FF6B6B;">{{b.why}}</span></span>
+                </div>
+              </sc-for>
+            </section>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===================== DESCARGAS .BAT ===================== -->
+      <sc-if value="{{isDl}}" hint-placeholder-val="{{ false }}">
+        <div role="tabpanel" aria-label="Descargas" style="display: flex; flex-direction: column; gap: 12px; max-width: 880px;">
+          <section class="card" style="overflow: hidden;">
+            <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-height: 48px; padding: 14px 16px 10px; box-sizing: border-box;">
+              <h2 style="margin: 0; font-size: 14px; font-weight: 600;">Scripts para las PC</h2>
+              <span style="font-size: 13px; color: #7C8592;">Se descargan; no se ejecutan desde la web</span>
+            </div>
+            <sc-for list="{{dls}}" as="d" hint-placeholder-count="2">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-height: 64px; padding: 10px 16px; border-top: 1px solid #262B32; box-sizing: border-box;">
+                <span style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: #1B1F24; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box; color: #A7AEB8;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l6-6-6-6M12 19h8"></path></svg>
+                </span>
+                <span style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                  <span class="ell" style="font-size: 14px; font-weight: 500;">{{d.t}}</span>
+                  <span class="ell" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{d.file}}</span>
+                </span>
+                <sc-if value="{{d.ok}}" hint-placeholder-val="{{ true }}">
+                  <a href="#" download="" class="sec nw" style="flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; text-decoration: none; box-sizing: border-box;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+                    Descargar
+                  </a>
+                </sc-if>
+                <sc-if value="{{d.checking}}" hint-placeholder-val="{{ false }}">
+                  <span class="nw" role="status" style="flex: none; font-size: 13px; color: #A7AEB8;">Verificando…</span>
+                </sc-if>
+                <sc-if value="{{d.missing}}" hint-placeholder-val="{{ false }}">
+                  <span style="flex: 1 1 100%; min-width: 0; padding-left: 48px; box-sizing: border-box; font-size: 13px; line-height: 19px; color: #F5C04E;">Archivo no cargado en el servidor. Hay que subirlo a public/downloads en el próximo deploy.</span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </section>
+          <p style="margin: 0; font-size: 13px; line-height: 19px; color: #7C8592;">Antes de mostrar Descargar se verifica que el archivo exista. Si no está, la fila lo dice en vez de ofrecer un botón que falla.</p>
+        </div>
+      </sc-if>
+
+      <!-- ===================== CORREO (SMTP) ===================== -->
+      <sc-if value="{{isMail}}" hint-placeholder-val="{{ false }}">
+        <section class="card" role="tabpanel" aria-label="Correo (SMTP)" style="max-width: 880px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 16px; border-bottom: 1px solid #262B32;">
+            <div style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <h2 style="margin: 0; font-size: 16px; font-weight: 600;">Envío de correos</h2>
+              <span style="font-size: 13px; line-height: 19px; color: #A7AEB8;">Configuración global de todas las sedes. Pisa al .env. Solo Superadmin puede guardarla.</span>
+            </div>
+            <button type="button" class="gh nw" aria-expanded="{{helpAria}}" onClick="{{onToggleHelp}}" style="flex: none; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; background: transparent; border: 1px solid #262B32; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer;">
+              ¿Cómo completarla?
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{helpChevron}}"><path d="m6 9 6 6 6-6"></path></svg>
+            </button>
+          </div>
+          <sc-if value="{{helpOpen}}" hint-placeholder-val="{{ false }}">
+            <ol style="margin: 0; padding: 14px 16px 14px 36px; border-bottom: 1px solid #262B32; background: #0D0F12; font-size: 13px; line-height: 21px; color: #A7AEB8; columns: 2 300px; column-gap: 32px;">
+              <li>Usá una cuenta institucional autorizada para enviar correos.</li>
+              <li>SMTP es el servicio que permite enviar emails desde la app.</li>
+              <li>Para Microsoft 365 suele usarse <code style="font-family: 'Geist Mono', ui-monospace, monospace; color: #ECEEF1;">smtp.office365.com</code>.</li>
+              <li>El puerto habitual para Microsoft 365 es <code style="font-family: 'Geist Mono', ui-monospace, monospace; color: #ECEEF1;">587</code>.</li>
+              <li>SMTP User debe ser el mail completo de la cuenta emisora.</li>
+              <li>La contraseña debe ser una contraseña de aplicación o clave SMTP autorizada.</li>
+              <li>Si la cuenta tiene doble factor, puede requerir contraseña de aplicación.</li>
+              <li>En Microsoft 365 puede ser necesario habilitar SMTP AUTH desde administración.</li>
+              <li>Primero usá Modo prueba y revisá la vista previa/reporte.</li>
+              <li>Recién después pasá a Modo real.</li>
+              <li>La contraseña no se muestra en claro. No la subas a GitHub ni la compartas.</li>
+            </ol>
+          </sc-if>
+          <div style="display: flex; flex-direction: column; gap: 16px; padding: 16px;">
+            <div class="form2">
+              <div class="f-col">
+                <label for="m-srv" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Servidor SMTP</label>
+                <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;"><input id="m-srv" type="text" value="smtp.gmail.com" placeholder="smtp.gmail.com" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px;"></div>
+              </div>
+              <div class="f-col">
+                <label for="m-port" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Puerto</label>
+                <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;"><input id="m-port" type="text" inputmode="numeric" value="587" placeholder="465" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px;"></div>
+                <span style="font-size: 12px; color: #7C8592;">Con 465 la conexión es segura desde el inicio.</span>
+              </div>
+              <div class="f-col">
+                <label for="m-user" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Usuario SMTP</label>
+                <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;"><input id="m-user" type="text" value="[usuario]@gmail.com" placeholder="usuario@dominio.com" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px;"></div>
+              </div>
+              <div class="f-col">
+                <label for="m-pass" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Contraseña de aplicación</label>
+                <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;"><input id="m-pass" type="password" autocomplete="new-password" value="" placeholder="Guardada (••••[xy]). Dejá vacío para conservar." style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 13px; text-overflow: ellipsis;"></div>
+              </div>
+              <div class="f-col">
+                <label for="m-from" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Remitente</label>
+                <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;"><input id="m-from" type="text" value="TechAsset Bot &lt;techassetbot@gmail.com&gt;" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 13px; text-overflow: ellipsis;"></div>
+              </div>
+              <div class="f-col">
+                <label for="m-subj" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Asunto del mail de credenciales</label>
+                <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;"><input id="m-subj" type="text" value="Credenciales de acceso" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 13px;"></div>
+              </div>
+              <div class="f-col">
+                <label for="m-ms" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Link de ingreso a Microsoft</label>
+                <div class="fld" style="display: flex; align-items: center; height: 36px; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;"><input id="m-ms" type="text" value="" placeholder="https://login.microsoftonline.com/" style="flex: 1; min-width: 0; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px;"></div>
+                <span style="font-size: 12px; color: #7C8592;">Es el botón “Ingresar a la plataforma” del mail.</span>
+              </div>
+              <div class="f-col">
+                <span id="m-mode" style="font-size: 13px; font-weight: 500; color: #A7AEB8;">Modo de envío</span>
+                <div class="tabs" role="radiogroup" aria-labelledby="m-mode" style="align-self: flex-start; background: #0D0F12;">
+                  <sc-for list="{{modes}}" as="m" hint-placeholder-count="2">
+                    <button type="button" role="radio" class="nw" aria-checked="{{m.sel}}" onClick="{{m.onClick}}" style="{{m.style}}">{{m.label}}</button>
+                  </sc-for>
+                </div>
+                <span style="{{modeHintStyle}}">{{modeHint}}</span>
+              </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-top: 16px; border-top: 1px solid #262B32;">
+              <sc-if value="{{mailSaved}}" hint-placeholder-val="{{ false }}">
+                <span role="status" style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5BD68A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+                  Configuración guardada.
+                </span>
+              </sc-if>
+              <span style="flex: 1 1 auto;"></span>
+              <button type="button" class="pri nw" onClick="{{onSaveMail}}" style="height: 36px; padding: 0 14px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Guardar configuración</button>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+    </div>
+
+    <nav class="bnav" aria-label="Navegación principal">
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 12px;"><span class="nw">Inicio</span></a>
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 12px;"><span class="nw">Préstamos</span></a>
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 12px;"><span class="nw">Escanear</span></a>
+      <a href="#" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #A7AEB8; text-decoration: none; font-size: 12px;"><span class="nw">Agenda</span></a>
+      <a href="#" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #ECEEF1; text-decoration: none; font-size: 12px;"><span class="nw">Más</span></a>
+    </nav>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const set = p => self.setState(p);
+  const I = this.icons();
+  const mk = (k, label, count) => {
+    const on = k === 'tools';
+    return {
+      label: label, d: I[k], count: count || '', current: on ? 'page' : 'false',
+      style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;',
+      bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;'
+    };
+  };
+  const seg = on => 'height: 32px; padding: 0 12px; border-radius: 4px; font-size: 13px; cursor: pointer; box-sizing: border-box; ' + (on ? 'background: #262B32; border: 1px solid #353B44; color: #ECEEF1; font-weight: 500;' : 'background: transparent; border: 1px solid transparent; color: #A7AEB8;');
+
+  const tab = s.tab || 'cards';
+  const TABS = [['cards', 'Tarjetas de acceso', 'Glifing y Santillana, listas para imprimir'], ['creds', 'Credenciales 365', 'Envío masivo de usuario y contraseña por mail'], ['dl', 'Descargas', 'Scripts .bat para las PC'], ['mail', 'Correo (SMTP)', 'Desde dónde salen los mails de la app']];
+  const cur = TABS.find(t => t[0] === tab) || TABS[0];
+
+  // Tarjetas
+  const kind = s.kind || 'glifing';
+  const csv = s.csv || 'ok';
+  const gen = s.gen || '';
+  const kName = kind === 'santillana' ? 'Santillana' : 'Glifing';
+  const showPass = !!s.showPass;
+  const genDisabled = csv !== 'ok' || gen === 'busy';
+
+  // Credenciales
+  const pv = s.pv === undefined ? true : s.pv;
+  const sendState = s.send || '';
+
+  // Correo
+  const real = s.real === undefined ? true : s.real;
+
+  return {
+    navGroups: [
+      { title: 'Operación', items: [mk('home', 'Inicio'), mk('loans', 'Préstamos', '[N]'), mk('devices', 'Dispositivos'), mk('agenda', 'Agenda TIC'), mk('rooms', 'Estado aulas')] },
+      { title: 'Gestión', items: [mk('tasks', 'Tareas TIC', '[N]'), mk('tickets', 'Tickets'), mk('reminders', 'Recordatorios'), mk('history', 'Historial')] },
+      { title: 'Inventario y datos', items: [mk('inventory', 'Inventario TIC'), mk('analytics', 'Analítica'), mk('cash', 'Caja chica')] },
+      { title: 'Recursos', items: [mk('knowledge', 'Base de conocimiento'), mk('tools', 'Herramientas'), mk('links', 'Accesos rápidos')] }
+    ],
+    tabCtx: cur[2],
+    tabs: TABS.map(t => ({ label: t[1], sel: t[0] === tab ? 'true' : 'false', style: seg(t[0] === tab), onClick: () => set({ tab: t[0] }) })),
+    isCards: tab === 'cards', isCreds: tab === 'creds', isDl: tab === 'dl', isMail: tab === 'mail',
+
+    kinds: [['glifing', 'Glifing'], ['santillana', 'Santillana']].map(k => ({ label: k[1], sel: k[0] === kind ? 'true' : 'false', style: seg(k[0] === kind), onClick: () => set({ kind: k[0], gen: '' }) })),
+    templateLabel: 'Descargar plantilla CSV (' + kName + ')',
+    cardsNoFile: csv === 'none',
+    cardsHasFile: csv !== 'none',
+    cardsFileMeta: csv === 'err' ? 'No se puede usar: faltan columnas' : '[N] filas detectadas correctamente',
+    cardsFileMetaStyle: 'font-size: 12px; color: ' + (csv === 'err' ? '#FF6B6B' : '#7C8592') + ';',
+    onCardsUpload: () => { const n = (s.up || 0) + 1; set({ up: n, csv: n % 2 === 1 ? 'err' : 'ok', gen: '' }); },
+    onCardsChange: () => set({ csv: 'none', gen: '' }),
+    cardsErr: csv === 'err',
+    cardsOk: csv === 'ok',
+    cardsEmpty: csv === 'none',
+    showPassAria: showPass ? 'true' : 'false',
+    passBtn: showPass ? 'Ocultar contraseñas' : 'Mostrar contraseñas',
+    onTogglePass: () => set({ showPass: !showPass }),
+    cardRows: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => ({ u: '[usuario ' + i + ']', p: showPass ? '[contraseña]' : '••••••' })),
+    genLabel: gen === 'busy' ? 'Generando…' : 'Generar tarjetas ' + kName,
+    genDisabledAria: genDisabled ? "true" : "false",
+    genStyle: 'align-self: flex-start; height: 36px; padding: 0 14px; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; ' + (genDisabled && gen !== 'busy' ? 'background: #1B1F24; color: #7C8592; cursor: not-allowed;' : 'background: #5B9BFF; color: #0D0F12; cursor: pointer;'),
+    onGenerate: () => { if (genDisabled) return; set({ gen: 'busy' }); setTimeout(() => self.setState({ gen: 'done' }), 900); },
+    genDone: gen === 'done',
+    genDoneText: 'Tarjetas ' + kName + ' listas para [N] usuarios.',
+
+    previewLabel: pv ? 'Volver a validar' : 'Generar vista previa',
+    onPreview: () => set({ pv: true, send: '' }),
+    previewed: pv,
+    sendDisabledAria: (!pv || sendState === "done") ? "true" : "false",
+    sendStyle: 'align-self: flex-start; height: 36px; padding: 0 14px; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; ' + (!pv || sendState === 'done' ? 'background: #1B1F24; color: #7C8592; cursor: not-allowed;' : 'background: #5B9BFF; color: #0D0F12; cursor: pointer;'),
+    sendHint: !pv ? 'Primero validá el CSV: así sabés a cuántos les llega.' : 'Solo un administrador de la sede puede enviar. Se pide confirmación porque el envío es real.',
+    onAskSend: () => { if (pv && sendState !== 'done') set({ send: sendState === 'confirm' ? '' : 'confirm' }); },
+    confirmSend: sendState === 'confirm',
+    confirmSendAria: sendState === 'confirm' ? 'true' : 'false',
+    onSend: () => set({ send: 'done' }),
+    onCancelSend: () => set({ send: '' }),
+    sent: sendState === 'done',
+    credRows: [1, 2, 3, 4, 5, 6].map(i => ({ u: '[usuario ' + i + ']' })),
+    badRows: [
+      { u: '[usuario]', m: '[mail sin @]', why: 'mail inválido' },
+      { u: '—', m: '[mail@dominio]', why: 'usuario vacío' },
+      { u: '[usuario]', m: '[mail@dominio]', why: 'contraseña vacía' }
+    ],
+
+    dls: [
+      { t: 'Activación Windows / Office', file: 'activacion-windows-office.bat', ok: true, checking: false, missing: false },
+      { t: 'Reinicio historial WIFI + limpieza DNS', file: 'reinicio-historial-y-dns.bat', ok: true, checking: false, missing: false }
+    ],
+
+    helpOpen: !!s.help,
+    helpAria: s.help ? 'true' : 'false',
+    helpChevron: 'flex: none; transform: rotate(' + (s.help ? '180' : '0') + 'deg);',
+    onToggleHelp: () => set({ help: !s.help }),
+    modes: [[false, 'Prueba (no envía)'], [true, 'Real (envía)']].map(m => ({ label: m[1], sel: m[0] === real ? 'true' : 'false', style: seg(m[0] === real), onClick: () => set({ real: m[0], mailSaved: false }) })),
+    modeHint: real ? 'Los mails de credenciales e invitaciones salen de verdad.' : 'No se manda nada: se registra y se ve en el reporte.',
+    modeHintStyle: 'font-size: 12px; color: ' + (real ? '#F5C04E' : '#7C8592') + ';',
+    mailSaved: !!s.mailSaved,
+    onSaveMail: () => set({ mailSaved: true })
+  };
+}
+}
+</script>
+</body>
+</html>

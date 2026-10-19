@@ -1,0 +1,1419 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Inventario TIC</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+.nv:hover,.ib:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.hv:hover{background:#1B1F24 !important}
+input::placeholder,textarea::placeholder{color:#7C8592}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.fld:focus-within{border-color:#5B9BFF !important}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.eyb{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;line-height:16px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592}
+
+/* Botones */
+.btn,.btnp,.btng{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none;max-width:100%;text-decoration:none}
+.btn{background:#1B1F24;border:1px solid #353B44;color:#ECEEF1}
+.btn:hover{background:#22272E}
+.btnp{background:#5B9BFF;border:1px solid #5B9BFF;color:#0D0F12;font-weight:600}
+.btnp:hover{background:#8DBBFF;border-color:#8DBBFF;color:#0D0F12}
+.btng{background:transparent;border:1px solid transparent;color:#A7AEB8}
+.btng:hover{background:#1B1F24;color:#ECEEF1}
+.sm{height:30px;padding:0 10px;font-size:13px}
+[aria-disabled="true"]{opacity:.45;cursor:not-allowed !important}
+.kbd{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;line-height:16px;padding:0 5px;border:1px solid #353B44;border-radius:4px;color:#A7AEB8;font-weight:400}
+.lk{display:inline-flex;align-items:center;height:28px;padding:0 6px;background:transparent;border:0;border-radius:4px;color:#5B9BFF;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.lk:hover{color:#8DBBFF}
+
+/* Segmentados y chips (sin puntos, conteo en mono texto-3) */
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;background:#0D0F12;border:1px solid #262B32;border-radius:6px;min-width:0;box-sizing:border-box}
+.sgb{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:0;border-radius:4px;background:transparent;color:#A7AEB8;font-size:13px;cursor:pointer;white-space:nowrap}
+.sgb:hover{color:#ECEEF1}
+.sgb[aria-pressed="true"]{background:#1B1F24;color:#ECEEF1;font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid #262B32;border-radius:6px;background:transparent;color:#A7AEB8;font-size:13px;cursor:pointer;white-space:nowrap;box-sizing:border-box;flex:none;max-width:100%}
+.chip:hover{border-color:#353B44}
+.chip[aria-pressed="true"]{background:#1B1F24;border-color:#353B44;color:#ECEEF1;font-weight:500}
+.cnt{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592;font-weight:400;font-variant-numeric:tabular-nums}
+
+.card{background:#14171B;border:1px solid #262B32;border-radius:10px;box-sizing:border-box;min-width:0}
+.inp{height:36px;width:100%;min-width:0;padding:0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:14px;box-sizing:border-box;outline:none}
+.inp:focus{border-color:#5B9BFF}
+.ta{min-height:72px;padding:8px 10px;resize:vertical;line-height:20px;height:auto}
+.lbl{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px;font-weight:500;color:#A7AEB8}
+.stl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-height:40px;padding:4px 4px 4px 12px;border:1px solid #262B32;border-radius:6px;font-size:13px;color:#A7AEB8;box-sizing:border-box;background:#0D0F12}
+
+/* Menú lateral (Menu-A): 232px; rail de 56px bajo 1100px; oculto bajo 768px */
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+.sb-user{display:flex;align-items:center;gap:10px;height:44px;padding:0 4px 0 8px}
+@media (max-width:1099px){
+.sb{width:56px}
+.sb-head{justify-content:center}
+.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}
+.sb-search{width:40px;padding:0;justify-content:center}
+.sb-nav{gap:8px}
+.sb-grpt{display:none}
+.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}
+.sb-user{padding:0;justify-content:center}
+.sb-hide{display:none !important}
+}
+
+/* Contenido */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.pad{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0;padding:24px 32px 32px;box-sizing:border-box}
+.ph{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px}
+.ph-l{flex:1 1 320px;min-width:0}
+.ph-a{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.kpis{display:flex;flex-wrap:wrap;gap:8px}
+.kpi{flex:1 1 136px;min-width:0;min-height:72px;display:flex;align-items:center;gap:12px;padding:10px 14px;box-sizing:border-box;background:#14171B;border:1px solid #262B32;border-radius:10px;color:#ECEEF1;text-align:left;cursor:pointer}
+.kpi:hover{border-color:#353B44}
+.kpi[aria-pressed="true"]{background:#1B1F24;border-color:#353B44}
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.srch{flex:1 1 260px;min-width:0;max-width:420px;height:36px;display:flex;align-items:center;gap:8px;padding:0 4px 0 10px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;color:#7C8592}
+.body2{display:flex;gap:24px;align-items:flex-start}
+.tree{flex:0 0 216px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.tri{display:flex;align-items:center;gap:2px;min-width:0;border-radius:6px}
+.trb{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#A7AEB8;font-size:14px;text-align:left;cursor:pointer}
+.trb:hover{background:#1B1F24;color:#ECEEF1}
+.trb[aria-current="true"]{background:#1B1F24;color:#ECEEF1;font-weight:500}
+.mainc{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:12px}
+@media (max-width:1099px){
+.body2{flex-direction:column}
+.tree{flex:none;width:100%;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px 12px}
+}
+@media (max-width:767px){.sb{display:none}.tb{padding:0 16px}.tb-collapse{display:none !important}.pad{padding:16px}}
+@media (max-width:899px){.tb-ctx{display:none !important}}
+@media (max-width:639px){.tb-btn-t{display:none !important}}
+
+/* Tabla de ítems: filas-tarjeta cuando el contenedor es angosto */
+.tw{container-type:inline-size;container-name:tw;overflow:hidden}
+.thd,.tr{display:grid;grid-template-columns:32px minmax(0,2fr) minmax(0,1.3fr) 76px 112px 92px 64px 16px;align-items:center;gap:12px;padding:0 16px;box-sizing:border-box;width:100%}
+.thd{height:36px;font-size:12px;font-weight:500;color:#7C8592;border-bottom:1px solid #262B32}
+.tr{min-height:52px;padding-top:8px;padding-bottom:8px;margin:0;background:transparent;border:0;border-bottom:1px solid #262B32;color:#ECEEF1;text-align:left;cursor:pointer;font-size:14px}
+.tr:hover{background:#1B1F24}
+.tr[aria-expanded="true"]{background:#1B1F24;border-bottom-color:#1B1F24}
+.det{padding:16px 16px 20px 60px;border-bottom:1px solid #262B32;background:#14171B;display:flex;flex-direction:column;gap:20px;box-sizing:border-box}
+.det-g{display:flex;flex-wrap:wrap;gap:20px 24px;align-items:flex-start}
+.det-i{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.det-c{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.dl{margin:12px 0 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
+.dl dt{font-size:12px;color:#7C8592;margin:0}
+.dl dd{margin:2px 0 0;font-size:13px;color:#ECEEF1;min-width:0}
+.sec{display:flex;flex-direction:column;gap:10px;border-top:1px solid #262B32;padding-top:16px}
+.idg{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 16px}
+.urow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;min-height:44px;padding:6px 0;border-bottom:1px solid #262B32;box-sizing:border-box}
+.ufrm{display:flex;flex-direction:column;gap:12px;padding:14px;background:#0D0F12;border:1px solid #262B32;border-radius:10px}
+.fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 16px}
+.full{grid-column:1 / -1}
+.stp{display:flex;align-items:center;height:36px;background:#0D0F12;border:1px solid #353B44;border-radius:6px;box-sizing:border-box;min-width:0}
+.stp button{width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;background:transparent;border:0;color:#A7AEB8;cursor:pointer;border-radius:6px}
+.stp input{flex:1 1 auto;min-width:0;width:100%;height:34px;background:transparent;border:0;outline:none;color:#ECEEF1;font-size:14px;text-align:center;font-family:'Geist Mono',ui-monospace,monospace}
+@container tw (max-width:640px){
+.thd{display:none}
+.tr{grid-template-columns:32px minmax(0,1fr) auto 16px;grid-template-areas:"th nm st ch" "th ct cd ch";row-gap:4px}
+.c-th{grid-area:th;align-self:start}.c-nm{grid-area:nm}.c-ct{grid-area:ct}.c-st{grid-area:st;align-items:flex-end;text-align:right}.c-cd{grid-area:cd;text-align:right}.c-ch{grid-area:ch}
+.c-sg,.c-rv{display:none !important}
+.det{padding-left:16px}
+}
+
+/* Tarjetas */
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:12px}
+.ic{display:flex;flex-direction:column;gap:8px;padding:12px;background:#14171B;border:1px solid #262B32;border-radius:10px;text-align:left;color:#ECEEF1;cursor:pointer;min-width:0;box-sizing:border-box;font-size:14px}
+.ic:hover{border-color:#353B44}
+.ic[aria-expanded="true"]{background:#1B1F24;border-color:#353B44}
+.detc{border:1px solid #262B32;border-radius:10px;padding:16px 16px 20px}
+
+/* Recorrido de revisión */
+.rv{padding:20px 24px;display:flex;flex-direction:column;gap:16px;outline:none}
+.rv:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.rate{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:8px}
+.rb{display:flex;align-items:center;justify-content:space-between;gap:10px;height:56px;padding:0 14px;background:#1B1F24;border:1px solid #353B44;border-radius:6px;color:#ECEEF1;font-size:16px;font-weight:500;cursor:pointer;min-width:0;box-sizing:border-box}
+.rb:hover{border-color:#7C8592}
+@media (max-width:1023px){.rate{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1200px; display: flex; align-items: stretch; overflow-x: clip; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; font-variant-numeric: tabular-nums;">
+
+  <!-- MENÚ LATERAL (Menu-A, Inventario TIC activo) -->
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="ib sb-sede" aria-label="Cambiar de sede: Northfield Puertos">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; color: #ECEEF1; box-sizing: border-box;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Northfield Puertos</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">NFPT</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide ell" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide nw" style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <div class="sb-grp">
+        <div class="sb-grpt">Operación</div>
+        <sc-for list="{{ops}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Gestión</div>
+        <sc-for list="{{mgmt}}" as="n" hint-placeholder-count="4">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Inventario y datos</div>
+        <sc-for list="{{data}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Recursos</div>
+        <sc-for list="{{res}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nv nvi" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nv nvi" aria-label="Configuración" style="color: #A7AEB8;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div class="sb-user">
+        <span aria-label="Bauti G., Jefe TIC" style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #ECEEF1; box-sizing: border-box;">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+        <button type="button" class="ib sb-hide" aria-label="Opciones de cuenta" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- TOPBAR: título + contexto; Asistente, campana, ayuda -->
+    <header class="tb">
+      <button type="button" class="ib tb-collapse" aria-label="Contraer menú (Ctrl B)" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18M16 15l-3-3 3-3"></path></svg>
+      </button>
+      <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Inventario TIC</h1>
+      <span class="tb-ctx" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-ctx ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">{{tbCtx}}</span>
+      <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+      <button type="button" class="btn" aria-label="Asistente">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2M20 14h2M15 13v2M9 13v2"></path></svg>
+        <span class="tb-btn-t">Asistente</span>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <div class="pad">
+
+      <!-- ENCABEZADO DE SECCIÓN + ACCIONES -->
+      <div class="ph">
+        <div class="ph-l">
+          <div class="eyb">Inventario y datos · NFPT</div>
+          <h2 style="margin: 2px 0 0; font-size: 20px; line-height: 28px; font-weight: 600;">Equipos y recursos</h2>
+          <p class="ell" style="margin: 2px 0 0; font-size: 13px; color: #7C8592;">Revisado = condición cargada hace menos de 92 días. Vale igual para equipos y recursos.</p>
+        </div>
+        <div class="ph-a">
+          <button type="button" class="btn" aria-disabled="{{roStr}}" onClick="{{onReviewOpen}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"></path></svg>
+            Revisar condición
+          </button>
+          <button type="button" class="btn" aria-expanded="{{ie.expanded}}" aria-controls="inv-ie" onClick="{{ie.onToggle}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"></path></svg>
+            Importar / exportar
+          </button>
+          <button type="button" class="btnp" aria-disabled="{{roStr}}" onClick="{{onAddOpen}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>
+            Agregar recurso
+          </button>
+        </div>
+      </div>
+
+      <sc-if value="{{ro}}" hint-placeholder-val="{{ false }}">
+        <div class="stl" role="status" style="color: #A7AEB8;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><rect width="14" height="10" x="5" y="11" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+          <span class="ell" style="flex: 1 1 auto;">Modo consulta: podés mirar y exportar. Revisar, importar, agregar y editar quedan deshabilitados.</span>
+        </div>
+      </sc-if>
+
+      <!-- Importar / exportar: se despliega en línea -->
+      <sc-if value="{{ie.show}}" hint-placeholder-val="{{ false }}">
+        <div id="inv-ie" class="card" style="padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+            <button type="button" class="btn sm" onClick="{{ie.onExport}}">Exportar CSV<span class="cnt">{{ie.count}}</span></button>
+            <button type="button" class="btn sm" onClick="{{ie.onTemplate}}">Descargar plantilla</button>
+            <button type="button" class="btn sm" aria-disabled="{{roStr}}" onClick="{{ie.onImport}}">Importar CSV…</button>
+            <span style="flex: 1 1 320px; min-width: 0; font-size: 12px; line-height: 18px; color: #7C8592;">Exporta lo filtrado. Importar coincide por nombre: si una fila no trae foto o condición se conservan las cargadas, y una condición en el CSV cuenta como revisión de hoy.</span>
+          </div>
+          <sc-if value="{{ie.hasMsg}}" hint-placeholder-val="{{ false }}">
+            <div class="stl" role="status">
+              <span style="flex: 1 1 260px; min-width: 0;">{{ie.msg}}</span>
+              <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{ie.onMsgClose}}" style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 4px; color: #7C8592; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{topMsg.show}}" hint-placeholder-val="{{ false }}">
+        <div class="stl" role="status">
+          <span style="flex: 1 1 260px; min-width: 0;">{{topMsg.text}}</span>
+          <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{topMsg.onClose}}" style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 4px; color: #7C8592; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+        </div>
+      </sc-if>
+
+      <!-- RECORRIDO DE REVISIÓN (en línea, empuja el contenido) -->
+      <sc-if value="{{rv.show}}" hint-placeholder-val="{{ false }}">
+        <section class="card rv" tabindex="0" autofocus="autofocus" aria-label="Recorrido de revisión de condición" onKeyDown="{{rv.onKey}}">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;">
+            <div class="eyb" style="flex: 1 1 200px; min-width: 0;">Recorrido de revisión</div>
+            <div style="display: flex; align-items: center; gap: 10px; flex: none;">
+              <svg width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="{{rv.ringAria}}" style="flex: none;"><circle cx="16" cy="16" r="14.5" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="16" cy="16" r="14.5" fill="none" stroke="{{rv.ringColor}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{rv.ringDash}}" stroke-opacity="{{rv.ringOp}}" transform="rotate(-90 16 16)"></circle></svg>
+              <span style="display: flex; flex-direction: column; line-height: 18px;">
+                <span class="mono nw" style="font-size: 14px; color: #ECEEF1;">{{rv.pos}}</span>
+                <span class="nw" style="font-size: 12px; color: #7C8592;">{{rv.withCond}}</span>
+              </span>
+            </div>
+            <button type="button" class="btng" onClick="{{rv.onExit}}">Salir<span class="kbd">Esc</span></button>
+          </div>
+
+          <sc-if value="{{rv.active}}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+              <span class="nw" style="font-size: 12px; color: #A7AEB8;">{{rv.kind}}</span>
+              <span class="ell" style="font-size: 28px; line-height: 36px; font-weight: 600;">{{rv.nombre}}</span>
+              <span class="ell mono" style="font-size: 13px; color: #A7AEB8;">{{rv.detalle}}</span>
+              <span class="ell" style="font-size: 12px; color: #7C8592;">{{rv.last}}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 12px; font-weight: 500; color: #A7AEB8;">{{rv.clsLabel}} <span style="font-weight: 400; color: #7C8592;">· se guarda junto con la condición</span></span>
+              <div class="chips" role="group" aria-label="{{rv.clsLabel}}">
+                <sc-for list="{{rv.clsOpts}}" as="o" hint-placeholder-count="8">
+                  <button type="button" class="chip" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}">{{o.label}}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div class="rate" role="group" aria-label="Calificar condición">
+              <sc-for list="{{rv.rates}}" as="b" hint-placeholder-count="4">
+                <button type="button" class="rb" aria-disabled="{{b.dis}}" onClick="{{b.onClick}}"><span class="ell" style="{{b.style}}">{{b.label}}</span><span class="kbd">{{b.kbd}}</span></button>
+              </sc-for>
+              <button type="button" class="rb" onClick="{{rv.onSkip}}" style="background: transparent; border-color: #262B32; color: #A7AEB8;"><span class="nw">Saltar</span><span class="kbd">S</span></button>
+            </div>
+            <sc-if value="{{rv.hasErr}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="font-size: 13px; color: #FF6B6B;">No se pudo guardar. Probá de nuevo.</div>
+            </sc-if>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-height: 28px;">
+              <sc-if value="{{rv.hasLast}}" hint-placeholder-val="{{ false }}">
+                <span role="status" style="display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 4px; min-width: 0; font-size: 13px; color: #A7AEB8;">{{rv.lastTxt}}<button type="button" class="lk" onClick="{{rv.onUndo}}">Deshacer</button></span>
+              </sc-if>
+              <span class="ell" style="flex: 1 1 240px; font-size: 12px; color: #7C8592;">{{rv.next}}</span>
+              <span style="flex: 1 1 260px; min-width: 0; font-size: 12px; line-height: 18px; color: #7C8592;">1–4 califican · S salta · Esc sale (no actúan mientras escribís)</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{rv.done}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;">
+              <div style="flex: 1 1 280px; min-width: 0;">
+                <div style="font-size: 20px; line-height: 28px; font-weight: 600;">{{rv.doneTitle}}</div>
+                <sc-if value="{{rv.hasQueue}}" hint-placeholder-val="{{ true }}">
+                  <div style="margin-top: 2px; font-size: 14px; color: #A7AEB8;"><span class="mono" style="color: #ECEEF1;">{{rv.ratedTxt}}</span> ítems calificados en esta pasada. La lista de abajo ya muestra las condiciones nuevas.</div>
+                </sc-if>
+              </div>
+              <button type="button" class="btnp" onClick="{{rv.onExit}}">Cerrar</button>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <!-- AGREGAR RECURSO (formulario en línea) -->
+      <sc-if value="{{f.isAdd}}" hint-placeholder-val="{{ false }}">
+        <section class="card" aria-label="Agregar recurso" onKeyDown="{{f.onKey}}" style="padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Agregar recurso</h3>
+            <span style="font-size: 12px; color: #7C8592;">Foto y nombre son obligatorios. Enter guarda, Esc cancela.</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-start;">
+            <div style="flex: none; display: flex; flex-direction: column; gap: 8px; width: 120px;">
+              <div style="{{f.photoStyle}}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+                <span class="nw" style="font-size: 12px;">{{f.photoTxt}}</span>
+              </div>
+              <button type="button" class="btn sm" onClick="{{f.onPhoto}}">{{f.photoBtn}}</button>
+              <span style="font-size: 11px; line-height: 16px; color: #7C8592;">PNG, JPG o WEBP</span>
+            </div>
+            <div class="fg" style="flex: 1 1 480px; min-width: 0;">
+              <label class="lbl full">Nombre *<input class="inp" type="text" autocomplete="off" value="{{f.nombre}}" onInput="{{f.onNombre}}" onChange="{{f.onNombre}}" placeholder="Ej. Placa Arduino Uno"></label>
+              <div class="lbl full"><span>Categoría</span>
+                <div class="chips" role="group" aria-label="Categoría">
+                  <sc-for list="{{f.cats}}" as="o" hint-placeholder-count="10"><button type="button" class="chip" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}">{{o.label}}</button></sc-for>
+                </div>
+              </div>
+              <label class="lbl">Subcategoría<input class="inp" type="text" autocomplete="off" value="{{f.sub}}" onInput="{{f.onSub}}" onChange="{{f.onSub}}" placeholder="Opcional"></label>
+              <div class="lbl"><span>Cantidad</span>
+                <div class="stp fld"><button type="button" aria-label="Restar uno" onClick="{{f.onCantMinus}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button><input type="text" inputmode="numeric" aria-label="Cantidad" value="{{f.cant}}" onInput="{{f.onCant}}" onChange="{{f.onCant}}"><button type="button" aria-label="Sumar uno" onClick="{{f.onCantPlus}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button></div>
+              </div>
+              <label class="lbl">Unidad<input class="inp" type="text" autocomplete="off" value="{{f.unidad}}" onInput="{{f.onUnidad}}" onChange="{{f.onUnidad}}" placeholder="unidades"></label>
+              <div class="lbl"><span>Stock mínimo</span>
+                <div class="stp fld"><button type="button" aria-label="Restar uno" onClick="{{f.onMinMinus}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button><input type="text" inputmode="numeric" aria-label="Stock mínimo" value="{{f.min}}" onInput="{{f.onMin}}" onChange="{{f.onMin}}"><button type="button" aria-label="Sumar uno" onClick="{{f.onMinPlus}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button></div>
+              </div>
+              <sc-if value="{{f.hasSub}}" hint-placeholder-val="{{ false }}">
+                <div class="full" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span style="font-size: 12px; color: #7C8592;">Subcategorías usadas:</span><sc-for list="{{f.subs}}" as="o" hint-placeholder-count="2"><button type="button" class="chip" onClick="{{o.onClick}}">{{o.label}}</button></sc-for></div>
+              </sc-if>
+              <div class="lbl full"><span>Condición</span>
+                <div class="chips" role="group" aria-label="Condición">
+                  <sc-for list="{{f.conds}}" as="o" hint-placeholder-count="5"><button type="button" class="chip" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button></sc-for>
+                </div>
+              </div>
+              <label class="lbl full">Observaciones<textarea class="inp ta" rows="3" value="{{f.obs}}" onInput="{{f.onObs}}" onChange="{{f.onObs}}" placeholder="Opcional"></textarea></label>
+            </div>
+          </div>
+          <sc-if value="{{f.hasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size: 13px; color: #FF6B6B;">{{f.err}}</div></sc-if>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button type="button" class="btnp" onClick="{{f.onSave}}">{{f.saveLabel}}</button>
+            <button type="button" class="btng" onClick="{{f.onCancel}}">Cancelar</button>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- KPIs = filtros (tocar de nuevo los apaga) -->
+      <div class="kpis" role="group" aria-label="Filtros rápidos">
+        <sc-for list="{{kpis}}" as="t" hint-placeholder-count="7">
+          <button type="button" class="kpi" aria-pressed="{{t.pressed}}" onClick="{{t.onClick}}" aria-label="{{t.aria}}">
+            <sc-if value="{{t.hasRing}}" hint-placeholder-val="{{ false }}">
+              <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true" style="flex: none;"><circle cx="16" cy="16" r="14.5" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="16" cy="16" r="14.5" fill="none" stroke="{{t.ringColor}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{t.ringDash}}" stroke-opacity="{{t.ringOp}}" transform="rotate(-90 16 16)"></circle></svg>
+            </sc-if>
+            <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <span class="ell" style="{{t.labelStyle}}">{{t.label}}</span>
+              <span style="display: flex; align-items: baseline; gap: 8px; min-width: 0;">
+                <span class="mono nw" style="{{t.nStyle}}">{{t.n}}</span>
+                <span class="ell" style="{{t.subStyle}}">{{t.sub}}</span>
+              </span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{kpiBanner.show}}" hint-placeholder-val="{{ false }}">
+        <div class="stl" role="status">
+          <span style="flex: 1 1 200px; min-width: 0;">{{kpiBanner.text}}</span>
+          <button type="button" class="lk" onClick="{{kpiBanner.onClear}}">Quitar filtro</button>
+        </div>
+      </sc-if>
+
+      <!-- Barra de herramientas -->
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div class="tools">
+          <div class="seg" role="group" aria-label="Qué mostrar">
+            <sc-for list="{{segs}}" as="b" hint-placeholder-count="3">
+              <button type="button" class="sgb" aria-pressed="{{b.pressed}}" onClick="{{b.onClick}}">{{b.label}}<span class="cnt">{{b.count}}</span></button>
+            </sc-for>
+          </div>
+          <label class="srch fld">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+            <span class="vh" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0);">Buscar en el inventario</span>
+            <input type="text" autocomplete="off" spellcheck="false" value="{{q}}" onInput="{{onQ}}" onChange="{{onQ}}" placeholder="Nombre, etiqueta, modelo… (touch 34, D1436, sensor)" style="flex: 1 1 auto; min-width: 0; width: 100%; height: 34px; padding: 0; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px; text-overflow: ellipsis;">
+            <sc-if value="{{hasQ}}" hint-placeholder-val="{{ false }}">
+              <button type="button" class="ib" aria-label="Limpiar búsqueda" onClick="{{onQClear}}" style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 4px; color: #A7AEB8; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </sc-if>
+          </label>
+          <span aria-hidden="true" style="flex: 1 1 0; min-width: 0;"></span>
+          <div class="seg" role="group" aria-label="Vista">
+            <button type="button" class="sgb" aria-pressed="{{vTable}}" onClick="{{onViewTable}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18M3 12h18M3 19h18"></path></svg>Tabla</button>
+            <button type="button" class="sgb" aria-pressed="{{vGrid}}" onClick="{{onViewGrid}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>Tarjetas</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;">
+          <span class="nw" style="font-size: 12px; font-weight: 500; color: #7C8592;">Condición</span>
+          <div class="chips" role="group" aria-label="Filtrar por condición">
+            <sc-for list="{{condChips}}" as="c" hint-placeholder-count="6">
+              <button type="button" class="chip" aria-pressed="{{c.pressed}}" onClick="{{c.onClick}}" style="{{c.style}}">{{c.label}}<span class="cnt">{{c.count}}</span></button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- ÁRBOL + LISTADO -->
+      <div class="body2">
+        <nav class="tree" aria-label="Categorías">
+          <div class="tri">
+            <span aria-hidden="true" style="width: 24px; flex: none;"></span>
+            <button type="button" class="trb" aria-current="{{treeAll.current}}" onClick="{{treeAll.onClick}}"><span class="ell" style="flex: 1 1 auto;">Todo el inventario</span><span class="cnt">{{treeAll.count}}</span></button>
+          </div>
+          <sc-for list="{{tree}}" as="g" hint-placeholder-count="6">
+            <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+              <div class="tri">
+                <sc-if value="{{g.hasSubs}}" hint-placeholder-val="{{ false }}">
+                  <button type="button" class="ib" aria-expanded="{{g.expanded}}" aria-label="{{g.caretLabel}}" onClick="{{g.onCaret}}" style="width: 24px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: 0; border-radius: 6px; color: #7C8592; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{g.caretStyle}}"><path d="M9 18l6-6-6-6"></path></svg></button>
+                </sc-if>
+                <sc-if value="{{g.noSubs}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="width: 24px; flex: none;"></span></sc-if>
+                <button type="button" class="trb" aria-current="{{g.current}}" onClick="{{g.onPick}}"><span class="ell" style="flex: 1 1 auto;">{{g.label}}</span><span class="cnt">{{g.count}}</span></button>
+              </div>
+              <sc-if value="{{g.showSubs}}" hint-placeholder-val="{{ false }}">
+                <sc-for list="{{g.subs}}" as="u" hint-placeholder-count="3">
+                  <div class="tri" style="padding-left: 24px;">
+                    <button type="button" class="trb" aria-current="{{u.current}}" onClick="{{u.onPick}}" style="font-size: 13px;"><span class="ell" style="flex: 1 1 auto;">{{u.label}}</span><span class="cnt">{{u.count}}</span></button>
+                  </div>
+                </sc-for>
+              </sc-if>
+            </div>
+          </sc-for>
+        </nav>
+
+        <section class="mainc" aria-label="Listado">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 32px;">
+            <nav aria-label="Ubicación en el inventario" style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; min-width: 0; flex: 1 1 auto;">
+              <button type="button" class="lk" onClick="{{crumb.onRoot}}" style="{{crumb.rootStyle}}">Categorías</button>
+              <sc-if value="{{crumb.hasCat}}" hint-placeholder-val="{{ true }}">
+                <span aria-hidden="true" style="color: #353B44;">/</span>
+                <button type="button" class="lk" onClick="{{crumb.onCat}}" style="{{crumb.catStyle}}">{{crumb.cat}}</button>
+              </sc-if>
+              <sc-if value="{{crumb.hasSub}}" hint-placeholder-val="{{ false }}">
+                <span aria-hidden="true" style="color: #353B44;">/</span>
+                <span class="ell" style="padding: 0 6px; font-size: 13px; font-weight: 500; color: #ECEEF1;">{{crumb.sub}}</span>
+              </sc-if>
+            </nav>
+            <span class="mono nw" style="font-size: 12px; color: #7C8592;">{{crumb.count}}</span>
+          </div>
+
+          <sc-if value="{{subChips.show}}" hint-placeholder-val="{{ false }}">
+            <div class="chips" role="group" aria-label="Subcategorías">
+              <sc-for list="{{subChips.list}}" as="c" hint-placeholder-count="4">
+                <button type="button" class="chip" aria-pressed="{{c.pressed}}" onClick="{{c.onClick}}">{{c.label}}<span class="cnt">{{c.count}}</span></button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{listMsg.show}}" hint-placeholder-val="{{ false }}">
+            <div class="stl" role="status">
+              <span class="ell" style="flex: 1 1 200px;">{{listMsg.text}}</span>
+              <button type="button" class="lk" onClick="{{listMsg.onUndo}}">Deshacer</button>
+              <button type="button" class="ib" aria-label="Cerrar aviso" onClick="{{listMsg.onClose}}" style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 4px; color: #7C8592; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </div>
+          </sc-if>
+
+          <!-- Portada de categorías (sin selección ni filtros) -->
+          <sc-if value="{{showPortada}}" hint-placeholder-val="{{ false }}">
+            <div class="cg">
+              <sc-for list="{{catCards}}" as="c" hint-placeholder-count="6">
+                <button type="button" class="ic" onClick="{{c.onOpen}}" aria-label="{{c.aria}}">
+                  <span style="display: flex; align-items: baseline; gap: 8px; min-width: 0;"><span class="ell" style="flex: 1 1 auto; font-size: 16px; font-weight: 600;">{{c.label}}</span><span class="mono nw" style="font-size: 20px;">{{c.total}}</span></span>
+                  <span class="ell" style="font-size: 12px; color: #A7AEB8;">{{c.mix}}</span>
+                  <span style="display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px;"><span class="nw" style="{{c.probStyle}}">{{c.prob}}</span><span class="nw" style="color: #A7AEB8;">{{c.rev}}</span></span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+            <div class="card" style="padding: 32px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;">
+              <span style="font-size: 14px; color: #ECEEF1;">No hay nada para este filtro.</span>
+              <span style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;"><sc-if value="{{emptyAlt.show}}" hint-placeholder-val="{{ false }}"><button type="button" class="btn sm" onClick="{{emptyAlt.onClick}}">{{emptyAlt.label}}</button></sc-if><button type="button" class="btng sm" onClick="{{onClearAll}}">Quitar filtros</button></span>
+            </div>
+          </sc-if>
+
+          <!-- LISTADO: tabla o tarjetas. En las dos, el detalle se abre en línea debajo del ítem y empuja el resto -->
+          <sc-if value="{{showList}}" hint-placeholder-val="{{ true }}">
+            <div class="tw" style="{{listWrapStyle}}">
+              <sc-if value="{{isTable}}" hint-placeholder-val="{{ true }}">
+              <div class="thd" aria-hidden="true">
+                <span class="c-th">Foto</span><span class="c-nm">Nombre</span><span class="c-ct">Categoría</span><span class="c-sg">Seguimiento</span><span class="c-st">Stock / vida</span><span class="c-cd">Condición</span><span class="c-rv">Revisión</span><span class="c-ch"></span>
+              </div>
+              <sc-for list="{{rowsA}}" as="r" hint-placeholder-count="5">
+                <button type="button" class="tr" aria-expanded="{{r.expanded}}" aria-label="{{r.aria}}" onClick="{{r.onOpen}}">
+                  <span class="c-th mono" style="width: 32px; height: 32px; border-radius: 6px; background: #0D0F12; border: 1px solid #262B32; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #A7AEB8;">{{r.thumb}}</span>
+                  <span class="c-nm" style="min-width: 0; display: flex; flex-direction: column; gap: 2px;"><span class="ell" style="font-weight: 500;">{{r.nombre}}</span><span class="ell" style="{{r.detStyle}}">{{r.detalle}}</span></span>
+                  <span class="c-ct ell" style="font-size: 13px; color: #A7AEB8;">{{r.catTxt}}</span>
+                  <span class="c-sg nw" style="font-size: 13px; color: #A7AEB8;">{{r.segTxt}}</span>
+                  <span class="c-st" style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span class="mono nw" style="{{r.stockStyle}}">{{r.stock}}</span><span class="nw" style="{{r.stockSubStyle}}">{{r.stockSub}}</span></span>
+                  <span class="c-cd nw" style="{{r.condStyle}}">{{r.condTxt}}</span>
+                  <span class="c-rv nw" style="{{r.revStyle}}">{{r.revTxt}}</span>
+                  <svg class="c-ch" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{r.chevStyle}}"><path d="M6 9l6 6 6-6"></path></svg>
+                </button>
+              </sc-for>
+              </sc-if>
+              <sc-if value="{{isGrid}}" hint-placeholder-val="{{ false }}">
+                <div class="cg">
+                  <sc-for list="{{cardsA}}" as="c" hint-placeholder-count="6">
+                    <button type="button" class="ic" aria-expanded="{{c.expanded}}" aria-label="{{c.aria}}" onClick="{{c.onOpen}}">
+                      <span class="mono ell" style="height: 72px; border-radius: 6px; background: #0D0F12; border: 1px solid #262B32; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0 8px; font-size: 16px; color: #A7AEB8;">{{c.thumb}}</span>
+                      <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span class="ell" style="font-weight: 500;">{{c.nombre}}</span><span class="ell" style="{{c.detStyle}}">{{c.detalle}}</span></span>
+                      <span style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0;"><span class="mono nw" style="{{c.stockStyle}}">{{c.stock}}</span><span class="nw" style="{{c.condStyle}}">{{c.condTxt}}</span></span>
+                      <span style="display: flex; flex-wrap: wrap; gap: 2px 10px; min-height: 16px;"><sc-for list="{{c.flags}}" as="g" hint-placeholder-count="1"><span class="nw" style="{{g.style}}">{{g.t}}</span></sc-for></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{det.show}}" hint-placeholder-val="{{ true }}">
+                <div class="det" role="region" aria-label="{{det.aria}}" onKeyDown="{{det.onKey}}" style="{{det.wrapStyle}}">
+                  <sc-if value="{{det.viewMode}}" hint-placeholder-val="{{ true }}">
+                    <div class="det-g">
+                      <div style="flex: none; display: flex; flex-direction: column; gap: 8px; width: 112px;">
+                        <div style="{{det.photoStyle}}">{{det.photoTxt}}</div>
+                        <sc-if value="{{det.isRes}}" hint-placeholder-val="{{ true }}">
+                          <button type="button" class="btn sm" aria-disabled="{{roStr}}" onClick="{{det.onPhoto}}">{{det.photoBtn}}</button>
+                        </sc-if>
+                      </div>
+                      <div class="det-i">
+                        <div class="eyb ell">{{det.eyebrow}}</div>
+                        <div class="ell" style="font-size: 20px; line-height: 28px; font-weight: 600;">{{det.nombre}}</div>
+                        <div class="ell" style="{{det.detStyle}}">{{det.detalle}}</div>
+                        <dl class="dl">
+                          <sc-for list="{{det.dl}}" as="d" hint-placeholder-count="4">
+                            <div style="min-width: 0;"><dt>{{d.k}}</dt><dd class="ell" style="{{d.style}}">{{d.v}}</dd></div>
+                          </sc-for>
+                        </dl>
+                      </div>
+                      <div class="det-c">
+                        <span style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Condición</span>
+                        <div class="chips" role="group" aria-label="Condición">
+                          <sc-for list="{{det.condOpts}}" as="o" hint-placeholder-count="5">
+                            <button type="button" class="chip" aria-pressed="{{o.pressed}}" aria-disabled="{{o.dis}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button>
+                          </sc-for>
+                        </div>
+                        <span style="font-size: 12px; line-height: 18px; color: #7C8592;">{{det.condHelp}}</span>
+                        <sc-if value="{{det.hasMsg}}" hint-placeholder-val="{{ false }}">
+                          <div class="stl" role="status"><span class="ell" style="flex: 1 1 160px;">{{det.msg}}</span></div>
+                        </sc-if>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                          <sc-if value="{{det.isDev}}" hint-placeholder-val="{{ false }}"><a href="#" class="btn">Ver ficha</a></sc-if>
+                          <sc-if value="{{det.isRes}}" hint-placeholder-val="{{ true }}">
+                            <button type="button" class="btn" aria-disabled="{{roStr}}" onClick="{{det.onEdit}}">Editar</button>
+                            <button type="button" class="btn" aria-disabled="{{roStr}}" aria-expanded="{{det.hideAskStr}}" onClick="{{det.onHideAsk}}" style="color: #FF6B6B;">Ocultar</button>
+                          </sc-if>
+                          <button type="button" class="btng" onClick="{{det.onClose}}">Cerrar<span class="kbd">Esc</span></button>
+                        </div>
+                        <sc-if value="{{det.hideAsk}}" hint-placeholder-val="{{ false }}">
+                          <div class="stl" role="alertdialog" aria-label="Confirmar ocultar" style="border-color: #353B44;">
+                            <span style="flex: 1 1 220px; min-width: 0; color: #ECEEF1;">{{det.hideTxt}}</span>
+                            <button type="button" class="btn sm" onClick="{{det.onHide}}" style="color: #FF6B6B;">Ocultar</button>
+                            <button type="button" class="btng sm" onClick="{{det.onHideCancel}}">Cancelar</button>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </div>
+
+                    <sc-if value="{{det.isDev}}" hint-placeholder-val="{{ false }}">
+                      <div class="sec">
+                        <div class="eyb">Identificación</div>
+                        <div class="idg">
+                          <div style="min-width: 0;"><div style="font-size: 12px; color: #7C8592;">Etiqueta</div><div class="mono ell" style="margin-top: 2px; font-size: 13px;">{{det.et}}</div></div>
+                          <div style="min-width: 0;"><div style="font-size: 12px; color: #7C8592;">Número de serie</div><div class="mono ell" style="{{det.snStyle}}">{{det.sn}}</div></div>
+                          <div style="min-width: 0;"><div style="font-size: 12px; color: #7C8592;">MAC</div><div class="mono ell" style="{{det.macStyle}}">{{det.mac}}</div></div>
+                          <div style="min-width: 0;">
+                            <label for="inv-tv" style="font-size: 12px; color: #7C8592;">TeamViewer ID</label>
+                            <div style="margin-top: 4px; display: flex; gap: 6px; min-width: 0;">
+                              <input id="inv-tv" class="inp mono" type="text" autocomplete="off" value="{{det.tv}}" onInput="{{det.onTv}}" onChange="{{det.onTv}}" placeholder="No aplica en Chrome OS" style="height: 30px; font-size: 13px;">
+                              <button type="button" class="btn sm" aria-disabled="{{det.tvDis}}" onClick="{{det.onTvSave}}">Guardar</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{det.isRes}}" hint-placeholder-val="{{ true }}">
+                      <div class="sec">
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;">
+                          <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Unidades</h3>
+                          <span class="ell" style="flex: 1 1 200px; font-size: 13px; color: #A7AEB8;">{{det.uSummary}}<span style="color: #F5C04E;">{{det.uFalla}}</span></span>
+                          <sc-if value="{{det.canCreateN}}" hint-placeholder-val="{{ true }}"><button type="button" class="btn sm" onClick="{{det.onCreateN}}">{{det.createNLabel}}</button></sc-if>
+                          <sc-if value="{{det.canEditUnits}}" hint-placeholder-val="{{ true }}"><button type="button" class="btn sm" onClick="{{det.onAddUnit}}">Agregar unidad</button></sc-if>
+                        </div>
+                        <sc-if value="{{det.noUnits}}" hint-placeholder-val="{{ true }}">
+                          <p style="margin: 0; font-size: 13px; line-height: 20px; color: #7C8592;">Detallá cada unidad solo si necesitás seguir su número, una falla puntual, SN, MAC o TeamViewer. El recurso sigue siendo uno solo; “Con falla” cuenta las unidades en Regular o Malo.</p>
+                        </sc-if>
+                        <div style="display: flex; flex-direction: column;">
+                          <sc-for list="{{det.unitsA}}" as="u" hint-placeholder-count="0">
+                            <div class="urow">
+                              <span class="mono nw" style="width: 40px; flex: none; font-size: 13px; color: #ECEEF1;">{{u.num}}</span>
+                              <span class="nw" style="{{u.condStyle}}">{{u.condTxt}}</span>
+                              <span class="ell" style="{{u.descStyle}}">{{u.desc}}</span>
+                              <span class="mono ell" style="flex: 1 1 220px; font-size: 12px; color: #7C8592;">{{u.ids}}</span>
+                              <sc-if value="{{u.canEdit}}" hint-placeholder-val="{{ true }}"><button type="button" class="btng sm" aria-expanded="{{u.editing}}" onClick="{{u.onEdit}}">{{u.editLabel}}</button></sc-if>
+                            </div>
+                          </sc-for>
+                          <sc-if value="{{uf.show}}" hint-placeholder-val="{{ false }}">
+                            <div class="ufrm" onKeyDown="{{uf.onKey}}" style="margin: 8px 0;">
+                              <div class="fg">
+                                <label class="lbl">Número<input class="inp mono" type="text" inputmode="numeric" autocomplete="off" value="{{uf.n}}" onInput="{{uf.onN}}" onChange="{{uf.onN}}" placeholder="Automático"></label>
+                                <label class="lbl">Descripción<input class="inp" type="text" autocomplete="off" value="{{uf.d}}" onInput="{{uf.onD}}" onChange="{{uf.onD}}" placeholder="Ej: no carga"></label>
+                                <label class="lbl">SN<input class="inp mono" type="text" autocomplete="off" value="{{uf.sn}}" onInput="{{uf.onSn}}" onChange="{{uf.onSn}}"></label>
+                                <label class="lbl">MAC<input class="inp mono" type="text" autocomplete="off" value="{{uf.mac}}" onInput="{{uf.onMac}}" onChange="{{uf.onMac}}"></label>
+                                <label class="lbl">TeamViewer<input class="inp mono" type="text" autocomplete="off" value="{{uf.tv}}" onInput="{{uf.onTv}}" onChange="{{uf.onTv}}" placeholder="No aplica en Chrome OS"></label>
+                                <div class="lbl full"><span>Condición</span>
+                                  <div class="chips" role="group" aria-label="Condición de la unidad">
+                                    <sc-for list="{{uf.conds}}" as="o" hint-placeholder-count="5"><button type="button" class="chip" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button></sc-for>
+                                  </div>
+                                </div>
+                              </div>
+                              <sc-if value="{{uf.ask}}" hint-placeholder-val="{{ false }}">
+                                <div class="stl" role="alertdialog" aria-label="Confirmar quitar unidad" style="border-color: #353B44;">
+                                  <span style="flex: 1 1 200px; min-width: 0; color: #ECEEF1;">{{uf.askTxt}}</span>
+                                  <button type="button" class="btn sm" onClick="{{uf.onRemove}}" style="color: #FF6B6B;">Quitar</button>
+                                  <button type="button" class="btng sm" onClick="{{uf.onAskCancel}}">Cancelar</button>
+                                </div>
+                              </sc-if>
+                              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <button type="button" class="btnp sm" onClick="{{uf.onSave}}">Guardar unidad</button>
+                                <button type="button" class="btng sm" onClick="{{uf.onCancel}}">Cancelar</button>
+                                <span aria-hidden="true" style="flex: 1 1 0;"></span>
+                                <sc-if value="{{uf.isEdit}}" hint-placeholder-val="{{ false }}"><button type="button" class="btng sm" onClick="{{uf.onAsk}}" style="color: #FF6B6B;">Quitar unidad</button></sc-if>
+                              </div>
+                            </div>
+                          </sc-if>
+                          <sc-for list="{{det.unitsB}}" as="u" hint-placeholder-count="0">
+                            <div class="urow">
+                              <span class="mono nw" style="width: 40px; flex: none; font-size: 13px; color: #ECEEF1;">{{u.num}}</span>
+                              <span class="nw" style="{{u.condStyle}}">{{u.condTxt}}</span>
+                              <span class="ell" style="{{u.descStyle}}">{{u.desc}}</span>
+                              <span class="mono ell" style="flex: 1 1 220px; font-size: 12px; color: #7C8592;">{{u.ids}}</span>
+                              <sc-if value="{{u.canEdit}}" hint-placeholder-val="{{ true }}"><button type="button" class="btng sm" aria-expanded="{{u.editing}}" onClick="{{u.onEdit}}">{{u.editLabel}}</button></sc-if>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </sc-if>
+
+                  <!-- Editar recurso: mismo formulario, dentro de la ficha -->
+                  <sc-if value="{{f.isEdit}}" hint-placeholder-val="{{ false }}">
+                    <div onKeyDown="{{f.onKey}}" style="display: flex; flex-direction: column; gap: 16px;">
+                      <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;">
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Editar recurso</h3>
+                        <span style="font-size: 12px; color: #7C8592;">Una foto cargada se puede cambiar, no quitar. Cambiar la condición cuenta como revisión.</span>
+                      </div>
+                      <div style="display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-start;">
+                        <div style="flex: none; display: flex; flex-direction: column; gap: 8px; width: 120px;">
+                          <div style="{{f.photoStyle}}">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+                            <span class="nw" style="font-size: 12px;">{{f.photoTxt}}</span>
+                          </div>
+                          <button type="button" class="btn sm" onClick="{{f.onPhoto}}">{{f.photoBtn}}</button>
+                          <span style="font-size: 11px; line-height: 16px; color: #7C8592;">Obligatoria · PNG, JPG o WEBP</span>
+                        </div>
+                        <div class="fg" style="flex: 1 1 420px; min-width: 0;">
+                          <label class="lbl full">Nombre *<input class="inp" type="text" autocomplete="off" value="{{f.nombre}}" onInput="{{f.onNombre}}" onChange="{{f.onNombre}}"></label>
+                          <div class="lbl full"><span>Categoría</span>
+                            <div class="chips" role="group" aria-label="Categoría">
+                              <sc-for list="{{f.cats}}" as="o" hint-placeholder-count="10"><button type="button" class="chip" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}">{{o.label}}</button></sc-for>
+                            </div>
+                          </div>
+                          <label class="lbl">Subcategoría<input class="inp" type="text" autocomplete="off" value="{{f.sub}}" onInput="{{f.onSub}}" onChange="{{f.onSub}}" placeholder="Opcional"></label>
+                          <div class="lbl"><span>Cantidad</span>
+                            <div class="stp fld"><button type="button" aria-label="Restar uno" onClick="{{f.onCantMinus}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button><input type="text" inputmode="numeric" aria-label="Cantidad" value="{{f.cant}}" onInput="{{f.onCant}}" onChange="{{f.onCant}}"><button type="button" aria-label="Sumar uno" onClick="{{f.onCantPlus}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button></div>
+                          </div>
+                          <label class="lbl">Unidad<input class="inp" type="text" autocomplete="off" value="{{f.unidad}}" onInput="{{f.onUnidad}}" onChange="{{f.onUnidad}}"></label>
+                          <div class="lbl"><span>Stock mínimo</span>
+                            <div class="stp fld"><button type="button" aria-label="Restar uno" onClick="{{f.onMinMinus}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button><input type="text" inputmode="numeric" aria-label="Stock mínimo" value="{{f.min}}" onInput="{{f.onMin}}" onChange="{{f.onMin}}"><button type="button" aria-label="Sumar uno" onClick="{{f.onMinPlus}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button></div>
+                          </div>
+                          <sc-if value="{{f.hasSub}}" hint-placeholder-val="{{ false }}">
+                            <div class="full" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;"><span style="font-size: 12px; color: #7C8592;">Subcategorías usadas:</span><sc-for list="{{f.subs}}" as="o" hint-placeholder-count="2"><button type="button" class="chip" onClick="{{o.onClick}}">{{o.label}}</button></sc-for></div>
+                          </sc-if>
+                          <div class="lbl full"><span>Condición</span>
+                            <div class="chips" role="group" aria-label="Condición">
+                              <sc-for list="{{f.conds}}" as="o" hint-placeholder-count="5"><button type="button" class="chip" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}</button></sc-for>
+                            </div>
+                          </div>
+                          <label class="lbl full">Observaciones<textarea class="inp ta" rows="3" value="{{f.obs}}" onInput="{{f.onObs}}" onChange="{{f.onObs}}" placeholder="Opcional"></textarea></label>
+                        </div>
+                      </div>
+                      <sc-if value="{{f.hasErr}}" hint-placeholder-val="{{ false }}"><div role="alert" style="font-size: 13px; color: #FF6B6B;">{{f.err}}</div></sc-if>
+                      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button type="button" class="btnp" onClick="{{f.onSave}}">{{f.saveLabel}}</button>
+                        <button type="button" class="btng" onClick="{{f.onCancel}}">Cancelar</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{isTable}}" hint-placeholder-val="{{ true }}">
+              <sc-for list="{{rowsB}}" as="r" hint-placeholder-count="2">
+                <button type="button" class="tr" aria-expanded="{{r.expanded}}" aria-label="{{r.aria}}" onClick="{{r.onOpen}}">
+                  <span class="c-th mono" style="width: 32px; height: 32px; border-radius: 6px; background: #0D0F12; border: 1px solid #262B32; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #A7AEB8;">{{r.thumb}}</span>
+                  <span class="c-nm" style="min-width: 0; display: flex; flex-direction: column; gap: 2px;"><span class="ell" style="font-weight: 500;">{{r.nombre}}</span><span class="ell" style="{{r.detStyle}}">{{r.detalle}}</span></span>
+                  <span class="c-ct ell" style="font-size: 13px; color: #A7AEB8;">{{r.catTxt}}</span>
+                  <span class="c-sg nw" style="font-size: 13px; color: #A7AEB8;">{{r.segTxt}}</span>
+                  <span class="c-st" style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span class="mono nw" style="{{r.stockStyle}}">{{r.stock}}</span><span class="nw" style="{{r.stockSubStyle}}">{{r.stockSub}}</span></span>
+                  <span class="c-cd nw" style="{{r.condStyle}}">{{r.condTxt}}</span>
+                  <span class="c-rv nw" style="{{r.revStyle}}">{{r.revTxt}}</span>
+                  <svg class="c-ch" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{r.chevStyle}}"><path d="M6 9l6 6 6-6"></path></svg>
+                </button>
+              </sc-for>
+              </sc-if>
+              <sc-if value="{{isGridB}}" hint-placeholder-val="{{ false }}">
+                <div class="cg">
+                  <sc-for list="{{cardsB}}" as="c" hint-placeholder-count="3">
+                    <button type="button" class="ic" aria-expanded="{{c.expanded}}" aria-label="{{c.aria}}" onClick="{{c.onOpen}}">
+                      <span class="mono ell" style="height: 72px; border-radius: 6px; background: #0D0F12; border: 1px solid #262B32; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0 8px; font-size: 16px; color: #A7AEB8;">{{c.thumb}}</span>
+                      <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span class="ell" style="font-weight: 500;">{{c.nombre}}</span><span class="ell" style="{{c.detStyle}}">{{c.detalle}}</span></span>
+                      <span style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0;"><span class="mono nw" style="{{c.stockStyle}}">{{c.stock}}</span><span class="nw" style="{{c.condStyle}}">{{c.condTxt}}</span></span>
+                      <span style="display: flex; flex-wrap: wrap; gap: 2px 10px; min-height: 16px;"><sc-for list="{{c.flags}}" as="g" hint-placeholder-count="1"><span class="nw" style="{{g.style}}">{{g.t}}</span></sc-for></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{pager.show}}" hint-placeholder-val="{{ false }}">
+                <div style="{{pager.style}}"> display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 16px; box-sizing: border-box; font-size: 12px; color: #7C8592;">
+                  <span class="mono nw" style="flex: 1 1 auto;">{{pager.txt}}</span>
+                  <button type="button" class="btn sm" onClick="{{pager.onMore}}">{{pager.moreLabel}}</button>
+                  <button type="button" class="btng sm" onClick="{{pager.onAll}}">Ver todos</button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200},"estado":{"editor":"enum","options":["edición","consulta","recorrido abierto","recorrido terminado"],"default":"edición"}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+seed() {
+  // Base local (data/techasset.db, sede NFPT, solo lectura): GET /api/devices (equipos con vida útil) e inventory_items (recursos).
+  // [etiqueta, alias, clase de activo, marca, modelo, SN, % vida consumida, renovación]
+  const DEV = [["D0109","Plani 9","Chromebook","Samsung","XE500C12","5937E",11,"2030-05-10"],["D0110","Plani 5","Chromebook","Samsung","XE500C12","9942B",11,"2030-05-10"],["D0111","Plani 6","Chromebook","Samsung","XE500C12","6614J",11,"2030-05-10"],["D0112","Plani 1","Chromebook","Samsung","XE500C12","9541V",11,"2030-05-10"],["D0116","Plani 3","Chromebook","Samsung","XE500C12","7163Z",11,"2030-05-10"],["D0117","Plani 10","Chromebook","Samsung","XE500C12","9882T",11,"2030-05-10"],["D0118","Plani 7","Chromebook","Samsung","XE500C12","9804",11,"2030-05-10"],["D0159","Touch 9","Chromebook","Lenovo","Chromebook C340-11","PF2SC1TR",11,"2030-05-10"],["D0160","Touch 14","Chromebook","Lenovo","Chromebook C340-11","PF2VMWHA",11,"2030-05-10"],["D0161","Touch 11","Chromebook","Lenovo","Chromebook C340-11","PF2PHMKV",11,"2030-05-10"],["D0162","Touch 20","Chromebook","Lenovo","Chromebook C340-11","PF2THBCS",11,"2030-05-10"],["D0163","Touch 16","Chromebook","Lenovo","Chromebook C340-11","PF2Y3526",11,"2030-05-10"],["D0164","Touch 8","Chromebook","Lenovo","Chromebook C340-11","PF2TCQ75",11,"2030-05-10"],["D0165","Touch 18","Chromebook","Lenovo","Chromebook C340-11","PF2WM2B0",11,"2030-05-10"],["D0166","Touch 5","Chromebook","Lenovo","Chromebook C340-11","PF2SBZNP",11,"2030-05-10"],["D0168","Touch 3","Chromebook","Lenovo","Chromebook C340-11","PF32YGC6",11,"2030-05-10"],["D0169","Touch 6","Chromebook","Lenovo","Chromebook C340-11","PF2VMRPZ",11,"2030-05-10"],["D0172","Touch 7","Chromebook","Lenovo","Chromebook C340-11","PF2PT7J9",11,"2030-05-10"],["D0173","Touch 4","Chromebook","Lenovo","Chromebook C340-11","PF2PJKZK",11,"2030-05-10"],["D0174","Touch 2","Chromebook","Lenovo","Chromebook C340-11","PF2YCVYJ",11,"2030-05-10"],["D0175","Touch 21","Chromebook","Lenovo","Chromebook C340-11","PF2TEGCR",11,"2030-05-10"],["D0176","Touch 13","Chromebook","Lenovo","Chromebook C340-11","PF2PTABK",11,"2030-05-10"],["D0178","Touch 17","Chromebook","Lenovo","Chromebook C340-11","PF2VFBVQ",11,"2030-05-10"],["D0179","Touch 12","Chromebook","Lenovo","Chromebook C340-11","P209RSKC",11,"2030-05-10"],["D0180","Touch 19","Chromebook","Lenovo","Chromebook C340-11","PF2PTJ0D",11,"2030-05-10"],["D0182","Touch 15","Chromebook","Lenovo","Chromebook C340-11","PF2TDXWL",11,"2030-05-10"],["D0184","Touch 1","Chromebook","Lenovo","Chromebook C340-11","PF2QBYNN",11,"2030-05-10"],["D0185","Touch 10","Chromebook","Lenovo","Chromebook C340-11","PF2WM2CG",11,"2030-05-10"],["D0189","Plani 8","Chromebook","Samsung","XE500C12","3476L",11,"2030-05-10"],["D0248","Plani 11","Chromebook","Samsung","XE500C12","2715L",11,"2030-05-10"],["D0689","Touch 22","Chromebook","Samsung","XE520QAB'K04US","3VW29FNRB06567",11,"2030-05-10"],["D0690","Touch 27","Chromebook","Samsung","XE520QAB'K04US","3VW29FNR801057",11,"2030-05-10"],["D0691","Touch 30","Chromebook","Samsung","XE520QAB'K04US","3VW29FNRB04057",11,"2030-05-10"],["D0692","Touch 23","Chromebook","Samsung","XE520QAB'K04US","3VW29FHRB01637",11,"2030-05-10"],["D0693","Touch 29","Chromebook","Samsung","XE520QAB'K04US","3VW29FNRB01560",11,"2030-05-10"],["D0694","Touch 24","Chromebook","Samsung","XE520QAB'K04US","3VW29FHRB00051",11,"2030-05-10"],["D0695","Touch 28","Chromebook","Samsung","XE520QAB'K04US","3VW29FNRB02533T",11,"2030-05-10"],["D0696","Touch 26","Chromebook","Samsung","XE520QAB'K04US","3VW29FNR800805",11,"2030-05-10"],["D0697","Touch 25","Chromebook","Samsung","XE520QAB'K04US","3VW29FNRB01879",11,"2030-05-10"],["D0750","Dell 7","Notebook","Dell","VOSTRO 14 - 3405","C9NX3G3",9,"2031-05-10"],["D0753","Dell 1","Notebook","Dell","VOSTRO 14 - 3405","4238ZJ3",9,"2031-05-10"],["D0754","Dell 6","Notebook","Dell","VOSTRO 14 - 3405","H3JRXF3",9,"2031-05-10"],["D0755","Dell 4","Notebook","Dell","VOSTRO 14 - 3405","9VGV3G3",9,"2031-05-10"],["D0756","Dell 5","Notebook","Dell","VOSTRO 14 - 3405","7BDQXF3",9,"2031-05-10"],["D0757","Dell 2","Notebook","Dell","VOSTRO 14 - 3405","5Q3W3G3",9,"2031-05-10"],["D0828","Dell 3","Notebook","Dell","VOSTRO 14 - 3405","J89N3G3",9,"2031-05-10"],["D0847","Tablet 8","Tablet","","","",11,"2030-05-10"],["D0848","Tablet 14","Tablet","","","",11,"2030-05-10"],["D0849","Tablet 7","Tablet","","","",11,"2030-05-10"],["D0851","Tablet 12","Tablet","","","",11,"2030-05-07"],["D0852","Tablet 5","Tablet","","","",11,"2030-05-10"],["D0853","Tablet 9","Tablet","","","",11,"2030-05-10"],["D0854","Tablet 2","Tablet","","","",11,"2030-05-10"],["D0855","Tablet 6","Tablet","","","",11,"2030-05-10"],["D0856","Tablet 10","Tablet","","","",11,"2030-05-10"],["D1257","Tablet 3","Tablet","","","",11,"2030-05-10"],["D1258","Tablet 1","Tablet","","","",11,"2030-05-10"],["D1259","Tablet 13","Tablet","","","",11,"2030-05-10"],["D1265","Tablet 11","Tablet","","","",11,"2030-05-10"],["D1266","Tablet 4","Tablet","","","",11,"2030-05-10"],["D1337","TIC 4","Chromebook","Acer","Chromebook CB315-3H","NXATDAA00E329024D07611",11,"2030-05-10"],["D1338","TIC 3","Chromebook","Acer","Chromebook CB315-3H","NXATDAA00E327053E77611",11,"2030-05-10"],["D1388","TIC 1","Chromebook","Acer","Chromebook CB315-3H","NXATDAA00E3310E1B57611",11,"2030-05-10"],["D1391","TIC 2","Chromebook","Acer","Chromebook CB315-3H","NXATDAA00E327053E47611",11,"2030-05-10"],["D1433","Touch 31","Chromebook","ACER","R841(L)T series","NXAA5AA0041210C2D97600",11,"2030-05-10"],["D1434","Touch 32","Chromebook","ACER","R841(L)T series","NXAA5AA004138244ED7600",11,"2030-05-10"],["D1435","Touch 33","Chromebook","ACER","R841(L)T series","NXAA5AA00413910B1B7600",11,"2030-05-10"],["D1436","Touch 34","Chromebook","ACER","R841(L)T series","NXAA5AA004138244B57600",11,"2030-05-10"],["D1437","Touch 35","Chromebook","ACER","R841(L)T series","NXAA5AA0041372D9797600",11,"2030-05-10"],["D1438","Touch 36","Chromebook","ACER","R841(L)T series","NXAA5AA004138244217600",11,"2030-05-10"],["D1439","Touch 37","Chromebook","ACER","R841(L)T series","NXAA5AA0041210C3137600",11,"2030-05-10"],["D1440","Touch 38","Chromebook","ACER","R841(L)T series","NXAA5AA0041210BF097600",11,"2030-05-10"],["D1441","Touch 39","Chromebook","ACER","R841(L)T series","NXAA5AA00411719F4B7600",11,"2030-05-10"],["D1442","Touch 40","Chromebook","ACER","R841(L)T series","NXAA5AA0041372D95F7600",11,"2030-05-10"],["D1546","Plani 2","Chromebook","samsung","XE500C12","1bef9fcg505702",11,"2030-05-10"],["D1547","Plani 4","Chromebook","samsung","XE500C12","0gx591egb12110",11,"2030-05-10"]];
+  // [id, nombre, categoría, cantidad] — todos con unidad "unidades", stock mínimo 3, sin foto ni condición cargada.
+  const RES = [[19,"Adaptador batería 9v","Componentes",11],[32,"Botonera","Componentes",6],[22,"Botones pulsadores","Componentes",9],[29,"Breadboard power supply","Arduino",8],[7,"Buzzers","Componentes",20],[6,"Capacitores","Componentes",26],[11,"Control","Otro",16],[10,"Diodos","Componentes",16],[27,"Display 7 segmentos","Electrónica",8],[8,"Display LCD","Electrónica",17],[21,"Display múltiple 7 segmentos","Electrónica",10],[41,"DK-Nano-003 v3.0","Arduino",1],[37,"Elego 1","Robótica",3],[4,"Fotoresistencias","Sensores",34],[39,"Full color RGB","Electrónica",2],[26,"Joysticks","Componentes",8],[1,"LEDs","Componentes",0],[23,"Matriz LED","Electrónica",9],[43,"Mega ADK","Arduino",1],[18,"Motor amarillo","Robótica",11],[36,"Pack NFCs (pin, tarjeta y receptor)","Componentes",5],[42,"Placa Arduino Nano v3","Arduino",1],[30,"Placa Arduino Uno","Arduino",8],[20,"Placa con fotoresistencia","Sensores",11],[40,"Placa WiFi","Arduino",1],[13,"Protoboard","Electrónica",14],[14,"Push button","Componentes",14],[34,"Reloj de tiempo real","Electrónica",6],[33,"Relé con placa","Electrónica",6],[24,"Relé sin placa","Electrónica",9],[25,"Resistencia giratoria 10K","Componentes",9],[28,"Resistencia giratoria B10K","Componentes",8],[2,"Resistencias","Componentes",0],[38,"Sensor de gas","Sensores",2],[17,"Sensor de humedad","Sensores",13],[31,"Sensor de nivel de agua","Sensores",7],[35,"Sensor de sonido","Sensores",6],[16,"Sensor infrarrojo","Sensores",13],[3,"Sensores de distancia","Sensores",34],[5,"Servomotores","Robótica",31],[15,"Step motor","Robótica",13],[9,"Stepper motor drive board","Arduino",17],[12,"Transistores","Componentes",15]];
+  return { DEV: DEV, RES: RES };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const P = this.props || {};
+  const estado = String(P.estado || 'edición');
+  const ro = estado === 'consulta';
+  const roStr = ro ? 'true' : 'false';
+  const set = p => self.setState(p);
+  const val = e => (e && e.target ? e.target.value : '');
+  const I = this.icons();
+  const B = this.seed();
+  const T1 = '#ECEEF1', T2 = '#A7AEB8', T3 = '#7C8592', WARN = '#F5C04E', BAD = '#FF6B6B';
+  const coll = (a, b) => String(a).localeCompare(String(b), 'es', { numeric: true, sensitivity: 'base' });
+  const uniq = arr => arr.filter((v, i, a) => a.indexOf(v) === i);
+  const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+  const CONDS = ['Excelente', 'Bueno', 'Regular', 'Malo'];
+  const condColor = c => (c === 'Regular' ? WARN : c === 'Malo' ? BAD : c ? T2 : T3);
+  const ASSET = ['Tablet', 'Notebook', 'Chromebook', 'Cámara', 'Proyector', 'Router', 'Impresora', 'Otro'];
+  const FORM_CATS = ['Arduino', 'Robótica', 'Electrónica', 'Sensores', 'Cables', 'Cargadores', 'Componentes', 'Herramientas', 'Filamento 3D', 'Otro'];
+  const fmtDate = iso => { const p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : '—'; };
+  const ringOf = (p, size) => {
+    const r = (size - 3) / 2, c = 2 * Math.PI * r;
+    return { dash: (c * Math.max(0, Math.min(100, p)) / 100).toFixed(1) + ' ' + c.toFixed(1), color: p <= 0 ? BAD : p <= 20 ? WARN : T2, op: p > 0 ? '1' : '0' };
+  };
+
+  // ---------- Estado ----------
+  const seg = s.seg || 'recurso';
+  const kpi = s.kpi || '';
+  const q = s.q || '';
+  const cond = s.cond || '';
+  const view = s.view || 'table';
+  const selCat = s.selCat !== undefined ? s.selCat : 'Arduino';
+  const selSub = s.selSub || '';
+  const expanded = s.expanded || ['Arduino'];
+  const open = s.open !== undefined ? s.open : 'i:30';
+  const conds = s.conds || {};
+  const classes = s.classes || {};
+  const tvs = s.tvs || {};
+  const units = s.units || {};
+  const hidden = s.hidden || {};
+  const edits = s.edits || {};
+  const extra = s.extra || [];
+  const limit = s.limit || 20;
+  const reviewInit = estado === 'recorrido abierto' ? { i: 0, rated: 0 } : estado === 'recorrido terminado' ? { i: 99999, rated: null } : null;
+  const review = s.review !== undefined ? s.review : reviewInit;
+
+  // ---------- Entradas (equipos + recursos) ----------
+  const all = [];
+  B.DEV.forEach(d => {
+    const key = 'd:' + d[0];
+    const c = conds[key];
+    all.push({ key: key, kind: 'equipo', et: d[0], nombre: d[1], marca: d[3], modelo: d[4], detalle: [d[0], d[3], d[4]].filter(Boolean).join(' · '), cat: classes[key] || d[2], sub: d[4] || d[3] || '', cond: c ? c.c : '', at: c ? c.at : '', vida: d[6], venc: false, renov: d[7], sn: d[5], mac: '', tv: tvs[key] || '' });
+  });
+  B.RES.concat(extra).forEach(r => {
+    const key = 'i:' + r[0];
+    const e = edits[key] || {};
+    const c = conds[key];
+    all.push({ key: key, id: r[0], kind: 'recurso', nombre: e.nombre || r[1], detalle: e.obs || '', cat: classes[key] || e.categoria || r[2], sub: e.sub || '', cond: c ? c.c : '', at: c ? c.at : '', cant: e.cant !== undefined ? e.cant : r[3], unidad: e.unidad || 'unidades', min: e.min !== undefined ? e.min : 3, foto: !!e.foto || !!r[4], units: units[key] || [] });
+  });
+  const entries = all.filter(x => !hidden[x.key]);
+  entries.forEach(x => {
+    x.bajo = x.kind === 'recurso' && x.cant <= x.min;
+    x.fresh = !!(x.cond && x.at);
+    x.prob = x.cond === 'Regular' || x.cond === 'Malo';
+  });
+  const byKey = {};
+  all.forEach(x => { byKey[x.key] = x; });
+  const eq = entries.filter(x => x.kind === 'equipo');
+  const rs = entries.filter(x => x.kind === 'recurso');
+  const K = {
+    equipos: eq.length, recursos: rs.length, total: entries.length,
+    malos: entries.filter(x => x.prob).length,
+    vencidos: eq.filter(x => x.venc).length,
+    bajo: rs.filter(x => x.bajo).length,
+    sinStock: rs.filter(x => x.cant <= 0).length,
+    sinFoto: rs.filter(x => !x.foto).length,
+    rev: entries.filter(x => x.fresh).length,
+    conCond: entries.filter(x => x.cond).length
+  };
+  const pct = K.total ? Math.round(K.rev / K.total * 100) : 0;
+
+  // ---------- Filtros ----------
+  const nq = norm(q);
+  const segOk = x => seg === 'todo' || x.kind === seg;
+  const kpiOk = x => !kpi || (kpi === 'malos' ? x.prob : kpi === 'vencidos' ? x.venc : kpi === 'bajoStock' ? x.bajo : kpi === 'sinFoto' ? (x.kind === 'recurso' && !x.foto) : kpi === 'aRevisar' ? !x.fresh : true);
+  const qOk = x => !nq || [x.nombre, x.detalle, x.cat, x.sub, x.cond, x.et].some(v => norm(v).indexOf(nq) >= 0);
+  const condOk = x => !cond || (cond === 'Sin revisar' ? !x.cond : x.cond === cond);
+  const base = entries.filter(x => segOk(x) && kpiOk(x) && qOk(x));
+  const filtered = base.filter(condOk);
+  const sortEntries = arr => arr.slice().sort((a, b) => coll(a.cat, b.cat) || (a.sub ? 1 : 0) - (b.sub ? 1 : 0) || coll(a.sub, b.sub) || coll(a.nombre, b.nombre));
+
+  const gmap = {};
+  filtered.forEach(x => {
+    const g = gmap[x.cat] || (gmap[x.cat] = { cat: x.cat, items: [], subs: {} });
+    g.items.push(x);
+    (g.subs[x.sub] = g.subs[x.sub] || []).push(x);
+  });
+  const groups = Object.keys(gmap).sort(coll).map(k => gmap[k]);
+  const showPortada = !selCat && !nq && !kpi && !cond;
+  const listItems = showPortada ? [] : sortEntries(filtered.filter(x => !selCat || (x.cat === selCat && (!selSub || x.sub === selSub))));
+  const visible = listItems.slice(0, limit);
+
+  const resetList = { open: '', limit: 20, hideAsk: '', unitEdit: null, detMsg: '', form: (s.form && s.form.mode === 'add') ? s.form : null };
+
+  // ---------- Menú ----------
+  const nav = (k, label, count) => {
+    const on = k === 'inventory';
+    return { label: label, d: I[k], count: count || '', current: on ? 'page' : 'false', style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;', bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;' };
+  };
+
+  // ---------- KPIs ----------
+  const toggleKpi = (id, segFor) => {
+    if (kpi === id) set(Object.assign({}, resetList, { kpi: '' }));
+    else set(Object.assign({}, resetList, { kpi: id, seg: segFor, selCat: '', selSub: '' }));
+  };
+  const rRev = ringOf(pct, 32);
+  const kp = (o) => {
+    const pressed = !!o.pressed;
+    return {
+      label: o.label, n: o.n, sub: o.sub || '', pressed: pressed ? 'true' : 'false',
+      aria: o.label + ': ' + o.n + (o.sub ? ', ' + o.sub : '') + (pressed ? '. Filtro activo' : ''),
+      labelStyle: 'font-size: 13px; font-weight: 500; color: ' + (pressed ? T1 : T2) + ';',
+      nStyle: 'font-size: 20px; line-height: 28px; color: ' + (o.color || T1) + ';',
+      subStyle: 'font-size: 12px; color: ' + (o.subColor || T3) + ';',
+      hasRing: !!o.ring, ringDash: o.ring ? o.ring.dash : '', ringColor: o.ring ? o.ring.color : T2, ringOp: o.ring ? o.ring.op : '0',
+      onClick: o.onClick
+    };
+  };
+  const kpis = [
+    kp({ label: 'Equipos', n: K.equipos, pressed: seg === 'equipo' && !kpi, onClick: () => set(Object.assign({}, resetList, { seg: 'equipo', kpi: '', selCat: '', selSub: '' })) }),
+    kp({ label: 'Recursos', n: K.recursos, pressed: seg === 'recurso' && !kpi, onClick: () => set(Object.assign({}, resetList, { seg: 'recurso', kpi: '', selCat: '', selSub: '' })) }),
+    kp({ label: 'Regular o malo', n: K.malos, color: K.malos > 0 ? WARN : T1, pressed: kpi === 'malos', onClick: () => toggleKpi('malos', 'todo') }),
+    kp({ label: 'Vida útil vencida', n: K.vencidos, color: K.vencidos > 0 ? BAD : T1, pressed: kpi === 'vencidos', onClick: () => toggleKpi('vencidos', 'equipo') }),
+    kp({ label: 'Bajo stock', n: K.bajo, color: K.bajo > 0 ? WARN : T1, sub: K.sinStock ? K.sinStock + ' sin stock' : '', subColor: BAD, pressed: kpi === 'bajoStock', onClick: () => toggleKpi('bajoStock', 'recurso') }),
+    kp({ label: 'Sin foto', n: K.sinFoto, color: K.sinFoto > 0 ? WARN : T1, pressed: kpi === 'sinFoto', onClick: () => toggleKpi('sinFoto', 'recurso') }),
+    kp({ label: 'Revisado', n: pct + ' %', color: pct <= 0 ? BAD : pct <= 20 ? WARN : T1, sub: K.rev + ' de ' + K.total, ring: rRev, pressed: kpi === 'aRevisar', onClick: () => toggleKpi('aRevisar', 'todo') })
+  ];
+  const KPI_LABELS = { malos: 'Mostrando solo lo que está Regular o Malo.', vencidos: 'Mostrando solo lo que tiene la vida útil vencida.', bajoStock: 'Mostrando solo los recursos en bajo stock (cantidad igual o menor al mínimo).', sinFoto: 'Mostrando solo los recursos sin foto.', aRevisar: 'Mostrando lo que no se revisa hace más de 3 meses (o nunca).' };
+
+  // ---------- Segmento, búsqueda, vista, condición ----------
+  const segs = [['recurso', 'Recursos', K.recursos], ['equipo', 'Equipos', K.equipos], ['todo', 'Todo', K.total]].map(o => ({
+    label: o[1], count: o[2], pressed: seg === o[0] ? 'true' : 'false',
+    onClick: () => set(Object.assign({}, resetList, { seg: o[0], kpi: '', selCat: '', selSub: '' }))
+  }));
+  const condCount = c => base.filter(x => (c === 'Sin revisar' ? !x.cond : x.cond === c)).length;
+  const condChips = [['', 'Toda', base.length]].concat(CONDS.concat(['Sin revisar']).map(c => [c, c, condCount(c)])).map(o => ({
+    label: o[1], count: o[2], pressed: cond === o[0] ? 'true' : 'false',
+    style: 'color: ' + (cond === o[0] ? T1 : (o[0] === 'Regular' ? WARN : o[0] === 'Malo' ? BAD : T2)) + ';',
+    onClick: () => set(Object.assign({}, resetList, { cond: o[0] }))
+  }));
+
+  // ---------- Árbol ----------
+  const tree = groups.map(g => {
+    const subs = Object.keys(g.subs).filter(Boolean).sort(coll);
+    const isExp = expanded.indexOf(g.cat) >= 0;
+    return {
+      label: g.cat, count: g.items.length, hasSubs: subs.length > 0, noSubs: subs.length === 0,
+      expanded: isExp ? 'true' : 'false', showSubs: isExp && subs.length > 0,
+      caretLabel: (isExp ? 'Contraer ' : 'Expandir ') + g.cat,
+      caretStyle: 'transition: transform .15s ease; transform: rotate(' + (isExp ? 90 : 0) + 'deg);',
+      current: selCat === g.cat && !selSub ? 'true' : 'false',
+      onCaret: () => set({ expanded: isExp ? expanded.filter(c => c !== g.cat) : expanded.concat([g.cat]) }),
+      onPick: () => set(Object.assign({}, resetList, { selCat: g.cat, selSub: '' })),
+      subs: subs.map(sb => ({ label: sb, count: g.subs[sb].length, current: selCat === g.cat && selSub === sb ? 'true' : 'false', onPick: () => set(Object.assign({}, resetList, { selCat: g.cat, selSub: sb })) }))
+    };
+  });
+  const treeAll = { count: filtered.length, current: !selCat ? 'true' : 'false', onClick: () => set(Object.assign({}, resetList, { selCat: '', selSub: '' })) };
+
+  const selGroup = gmap[selCat];
+  const selSubs = selGroup ? Object.keys(selGroup.subs).filter(Boolean).sort(coll) : [];
+  const subChips = {
+    show: !!selCat && selSubs.length > 0,
+    list: selSubs.map(sb => ({ label: sb, count: selGroup.subs[sb].length, pressed: selSub === sb ? 'true' : 'false', onClick: () => set(Object.assign({}, resetList, { selSub: selSub === sb ? '' : sb })) }))
+  };
+  const crumb = {
+    hasCat: !!selCat, hasSub: !!selSub, cat: selCat, sub: selSub,
+    rootStyle: 'color: ' + (selCat ? '#5B9BFF' : T1) + ';',
+    catStyle: 'color: ' + (selSub ? '#5B9BFF' : T1) + ';',
+    count: showPortada ? groups.length + ' categorías' : listItems.length + (listItems.length === 1 ? ' ítem' : ' ítems'),
+    onRoot: () => set(Object.assign({}, resetList, { selCat: '', selSub: '' })),
+    onCat: () => set(Object.assign({}, resetList, { selSub: '' }))
+  };
+  const catCards = groups.map(g => {
+    const ne = g.items.filter(x => x.kind === 'equipo').length, nr = g.items.length - ne;
+    const prob = g.items.filter(x => x.prob).length;
+    const arev = g.items.filter(x => !x.fresh).length;
+    return {
+      label: g.cat, total: g.items.length,
+      mix: ne && nr ? ne + ' equipos, ' + nr + ' recursos' : ne ? ne + (ne === 1 ? ' equipo' : ' equipos') : nr + (nr === 1 ? ' recurso' : ' recursos'),
+      prob: prob ? prob + ' con problema' : '', probStyle: 'color: ' + WARN + ';',
+      rev: arev ? arev + ' a revisar' : 'Todo revisado',
+      aria: 'Abrir ' + g.cat + ', ' + g.items.length + ' ítems',
+      onOpen: () => set(Object.assign({}, resetList, { selCat: g.cat, selSub: '', expanded: uniq(expanded.concat([g.cat])) }))
+    };
+  });
+
+  // ---------- Filas / tarjetas ----------
+  const thumbOf = x => {
+    if (x.kind === 'equipo') { const m = String(x.nombre).match(/^(\S)\S*\s+(\d+)/); return m ? (m[1] + m[2]).toUpperCase() : x.et.slice(-4); }
+    if (x.foto) return 'FOTO';
+    const w = String(x.nombre).replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+    return (((w[0] || '')[0] || '') + ((w[1] || '')[0] || '')).toUpperCase();
+  };
+  const stockOf = x => {
+    if (x.kind === 'equipo') return { v: x.vida + ' %', vs: 'font-size: 13px; color: ' + (x.venc ? BAD : T2) + ';', sub: x.venc ? 'Vencida' : 'renueva ' + String(x.renov).slice(0, 4), ss: 'font-size: 12px; color: ' + (x.venc ? BAD : T3) + ';' };
+    const zero = x.cant <= 0;
+    return { v: x.cant + ' / mín. ' + x.min, vs: 'font-size: 13px; color: ' + (zero ? BAD : x.bajo ? WARN : T2) + ';', sub: zero ? 'Sin stock' : x.bajo ? 'Bajo stock' : '', ss: 'font-size: 12px; color: ' + (zero ? BAD : WARN) + ';' };
+  };
+  const revOf = x => (x.at ? { t: 'Hoy', s: T2, long: 'Revisado hoy' } : x.cond ? { t: '+3 meses', s: WARN, long: 'Hace más de 3 meses' } : { t: 'Nunca', s: T3, long: 'Nunca revisado' });
+  const openRow = x => {
+    const isOpen = open === x.key;
+    set({ open: isOpen ? '' : x.key, hideAsk: '', unitEdit: null, detMsg: '', form: (s.form && s.form.mode === 'add') ? s.form : null, tvKey: '', tvDraft: undefined });
+  };
+  const rowOf = x => {
+    const st = stockOf(x), rv = revOf(x), isOpen = open === x.key;
+    return {
+      key: x.key, nombre: x.nombre, thumb: thumbOf(x),
+      detalle: x.kind === 'equipo' ? x.detalle : x.detalle,
+      detStyle: 'font-size: 12px; color: ' + T3 + ';' + (x.kind === 'equipo' ? " font-family: 'Geist Mono', ui-monospace, monospace;" : ''),
+      catTxt: x.cat + (x.sub ? ' › ' + x.sub : ''),
+      segTxt: x.kind === 'equipo' ? 'Individual' : 'Stock',
+      stock: st.v, stockStyle: st.vs, stockSub: st.sub, stockSubStyle: st.ss,
+      condTxt: x.cond || 'Sin revisar', condStyle: 'font-size: 13px; color: ' + condColor(x.cond) + ';',
+      revTxt: rv.t, revStyle: 'font-size: 13px; color: ' + rv.s + ';',
+      expanded: isOpen ? 'true' : 'false',
+      chevStyle: 'flex: none; transition: transform .15s ease; transform: rotate(' + (isOpen ? 180 : 0) + 'deg);',
+      aria: (isOpen ? 'Cerrar el detalle de ' : 'Abrir el detalle de ') + x.nombre,
+      onOpen: () => openRow(x)
+    };
+  };
+  const cardOf = x => {
+    const st = stockOf(x), isOpen = open === x.key;
+    const flags = [];
+    if (x.kind === 'recurso' && x.cant <= 0) flags.push(['Sin stock', BAD]); else if (x.bajo) flags.push(['Bajo stock', WARN]);
+    if (x.venc) flags.push(['Vida útil vencida', BAD]);
+    if (x.cond && !x.fresh) flags.push(['Revisar', WARN]);
+    if (x.kind === 'recurso' && !x.foto) flags.push(['Sin foto', T3]);
+    if (x.kind === 'recurso' && x.units.length) { const fl = x.units.filter(u => u.c === 'Regular' || u.c === 'Malo').length; flags.push([x.units.length + ' detalladas' + (fl ? ' · ' + fl + ' con falla' : ''), T2]); }
+    return {
+      nombre: x.nombre, thumb: x.kind === 'equipo' ? x.nombre : thumbOf(x),
+      detalle: x.kind === 'equipo' ? x.et : (x.detalle || x.cat),
+      detStyle: 'font-size: 12px; color: ' + T3 + ';' + (x.kind === 'equipo' ? " font-family: 'Geist Mono', ui-monospace, monospace;" : ''),
+      stock: st.v, stockStyle: st.vs,
+      condTxt: x.cond || 'Sin revisar', condStyle: 'font-size: 12px; color: ' + condColor(x.cond) + ';',
+      flags: flags.map(f => ({ t: f[0], style: 'font-size: 12px; color: ' + f[1] + ';' })),
+      expanded: isOpen ? 'true' : 'false', aria: (isOpen ? 'Cerrar el detalle de ' : 'Abrir el detalle de ') + x.nombre,
+      onOpen: () => openRow(x)
+    };
+  };
+  const openIdx = visible.findIndex(x => x.key === open);
+  const visA = openIdx >= 0 ? visible.slice(0, openIdx + 1) : visible;
+  const visB = openIdx >= 0 ? visible.slice(openIdx + 1) : [];
+  const isTable = view === 'table';
+  const pager = {
+    show: !showPortada && listItems.length > visible.length,
+    txt: 'Mostrando ' + visible.length + ' de ' + listItems.length,
+    moreLabel: 'Ver ' + Math.min(20, listItems.length - visible.length) + ' más',
+    onMore: () => set({ limit: limit + 20 }),
+    onAll: () => set({ limit: 9999 }),
+    style: isTable ? 'min-height: 48px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 16px; box-sizing: border-box; font-size: 12px; color: #7C8592;' : 'display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12px; color: #7C8592;'
+  };
+
+  // ---------- Formulario de recurso (alta en línea / edición dentro de la ficha) ----------
+  const f0 = s.form || null;
+  let f = { isAdd: false, isEdit: false };
+  if (f0) {
+    const upd = p => set({ form: Object.assign({}, f0, p, { err: '' }) });
+    const num = v => Math.max(0, parseInt(v, 10) || 0);
+    const save = () => {
+      const nombre = String(f0.nombre || '').trim();
+      if (!f0.foto) return set({ form: Object.assign({}, f0, { err: 'Subí una foto del recurso: es obligatoria.' }) });
+      if (!nombre) return set({ form: Object.assign({}, f0, { err: 'Escribí el nombre del recurso.' }) });
+      const cant = num(f0.cant), min = num(f0.min);
+      if (f0.mode === 'add') {
+        const id = 1001 + extra.length, key = 'i:' + id;
+        const ed = Object.assign({}, edits); ed[key] = { sub: f0.sub, unidad: f0.unidad || 'unidades', min: min, obs: f0.obs, foto: true };
+        const nc = Object.assign({}, conds); if (f0.cond) nc[key] = { c: f0.cond, at: 'hoy' };
+        set({ form: null, extra: extra.concat([[id, nombre, f0.cat, cant, true]]), edits: ed, conds: nc, seg: seg === 'equipo' ? 'recurso' : seg, kpi: '', cond: '', q: '', selCat: f0.cat, selSub: '', expanded: uniq(expanded.concat([f0.cat])), open: key, detMsg: 'Se agregó ' + nombre + '.', limit: 9999 });
+      } else {
+        const key = f0.key, x = byKey[key];
+        const ed = Object.assign({}, edits); ed[key] = Object.assign({}, edits[key] || {}, { nombre: nombre, categoria: f0.cat, sub: f0.sub, cant: cant, unidad: f0.unidad || 'unidades', min: min, obs: f0.obs, foto: true });
+        const ncl = Object.assign({}, classes); ncl[key] = f0.cat;
+        const nc = Object.assign({}, conds); if (x && f0.cond !== x.cond) nc[key] = { c: f0.cond, at: f0.cond ? 'hoy' : '' };
+        set({ form: null, edits: ed, classes: ncl, conds: nc, detMsg: 'Cambios guardados.', selCat: selCat ? f0.cat : selCat, selSub: '' });
+      }
+    };
+    const catList = uniq(FORM_CATS.concat(entries.filter(x => x.kind === 'recurso').map(x => x.cat))).sort(coll);
+    const subSug = uniq(entries.filter(x => x.kind === 'recurso' && x.cat === f0.cat && x.sub).map(x => x.sub)).sort(coll);
+    f = {
+      isAdd: f0.mode === 'add', isEdit: f0.mode === 'edit',
+      saveLabel: f0.mode === 'add' ? 'Agregar recurso' : 'Guardar cambios',
+      nombre: f0.nombre, sub: f0.sub, cant: f0.cant, unidad: f0.unidad, min: f0.min, obs: f0.obs,
+      onNombre: e => upd({ nombre: val(e) }), onSub: e => upd({ sub: val(e) }), onCant: e => upd({ cant: val(e).replace(/[^0-9]/g, '') }),
+      onUnidad: e => upd({ unidad: val(e) }), onMin: e => upd({ min: val(e).replace(/[^0-9]/g, '') }), onObs: e => upd({ obs: val(e) }),
+      onCantMinus: () => upd({ cant: String(Math.max(0, num(f0.cant) - 1)) }), onCantPlus: () => upd({ cant: String(num(f0.cant) + 1) }),
+      onMinMinus: () => upd({ min: String(Math.max(0, num(f0.min) - 1)) }), onMinPlus: () => upd({ min: String(num(f0.min) + 1) }),
+      cats: catList.map(c => ({ label: c, pressed: c === f0.cat ? 'true' : 'false', onClick: () => upd({ cat: c, sub: c === f0.cat ? f0.sub : '' }) })),
+      conds: [''].concat(CONDS).map(c => ({ label: c || 'Sin revisar', pressed: c === f0.cond ? 'true' : 'false', style: 'color: ' + (c === f0.cond ? T1 : condColor(c) === T3 ? T2 : condColor(c)) + ';', onClick: () => upd({ cond: c }) })),
+      hasSub: subSug.length > 0, subs: subSug.map(sb => ({ label: sb, onClick: () => upd({ sub: sb }) })),
+      photoTxt: f0.foto ? 'Foto cargada' : 'Sin foto', photoBtn: f0.foto ? 'Cambiar foto' : 'Subir foto',
+      photoStyle: 'width: 112px; height: 112px; box-sizing: border-box; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: #0D0F12; color: ' + (f0.foto ? T2 : T3) + '; border: 1px ' + (f0.foto ? 'solid #353B44' : 'dashed ' + (f0.err && !f0.foto ? BAD : '#353B44')) + ';',
+      onPhoto: () => upd({ foto: true }),
+      hasErr: !!f0.err, err: f0.err,
+      onSave: save, onCancel: () => set({ form: null }),
+      onKey: e => {
+        if (!e) return;
+        if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { if (e.preventDefault) e.preventDefault(); save(); }
+        else if (e.key === 'Escape') { if (e.stopPropagation) e.stopPropagation(); set({ form: null }); }
+      }
+    };
+  }
+  const onAddOpen = () => {
+    if (ro) return;
+    set({ form: { mode: 'add', nombre: '', cat: selCat && FORM_CATS.indexOf(selCat) >= 0 ? selCat : 'Arduino', sub: '', cant: '1', unidad: 'unidades', min: '3', cond: '', obs: '', foto: false, err: '' }, ieOpen: false });
+  };
+
+  // ---------- Detalle del ítem abierto ----------
+  const xo = open ? byKey[open] : null;
+  let det = { show: false };
+  let uf = { show: false };
+  if (xo && !hidden[xo.key] && openIdx >= 0) {
+    const isRes = xo.kind === 'recurso';
+    const st = stockOf(xo), rv = revOf(xo);
+    const editing = !!(f0 && f0.mode === 'edit' && f0.key === xo.key);
+    const setCond = c => {
+      if (ro) return;
+      const nc = Object.assign({}, conds);
+      nc[xo.key] = { c: c, at: c ? 'hoy' : (isRes ? 'hoy' : (conds[xo.key] ? conds[xo.key].at : '')) };
+      if (!c && !isRes) nc[xo.key].at = '';
+      set({ conds: nc, detMsg: xo.nombre + ': ' + (c || 'Sin revisar') + '.' });
+    };
+    const dl = isRes ? [
+      { k: 'Stock', v: st.v + ' ' + xo.unidad, style: "font-family: 'Geist Mono', ui-monospace, monospace; color: " + (xo.cant <= 0 ? BAD : xo.bajo ? WARN : T1) + ';' },
+      { k: 'Bajo stock', v: xo.cant <= 0 ? 'Sí, sin stock' : xo.bajo ? 'Sí' : 'No', style: 'color: ' + (xo.cant <= 0 ? BAD : xo.bajo ? WARN : T1) + ';' },
+      { k: 'Seguimiento', v: 'Por stock', style: 'color: ' + T1 + ';' },
+      { k: 'Revisión', v: rv.long, style: 'color: ' + (rv.s === T3 ? T2 : rv.s) + ';' }
+    ] : [
+      { k: 'Vida útil', v: xo.venc ? 'Vencida' : xo.vida + ' % consumida', style: 'color: ' + (xo.venc ? BAD : T1) + ';' },
+      { k: 'Renovación', v: fmtDate(xo.renov), style: "font-family: 'Geist Mono', ui-monospace, monospace; color: " + T1 + ';' },
+      { k: 'Seguimiento', v: 'Individual', style: 'color: ' + T1 + ';' },
+      { k: 'Revisión', v: rv.long, style: 'color: ' + (rv.s === T3 ? T2 : rv.s) + ';' }
+    ];
+    const us = isRes ? xo.units : [];
+    const ue = (s.unitEdit && s.unitEdit.key === xo.key) ? s.unitEdit : null;
+    const falla = us.filter(u => u.c === 'Regular' || u.c === 'Malo').length;
+    const setUnits = arr => { const nu = Object.assign({}, units); nu[xo.key] = arr; return nu; };
+    const unitRow = (u, i) => {
+      const isEd = !!(ue && ue.idx === i);
+      return {
+        num: '#' + u.n, condTxt: u.c || 'Sin revisar', condStyle: 'width: 88px; flex: none; font-size: 13px; color: ' + condColor(u.c) + ';',
+        desc: u.d || 'Sin observaciones', descStyle: 'flex: 1 1 160px; font-size: 13px; color: ' + (u.d ? T1 : T3) + ';',
+        ids: 'SN ' + (u.sn || '—') + ' · MAC ' + (u.mac || '—') + ' · TeamViewer ' + (u.tv || '—'),
+        canEdit: !ro, editing: isEd ? 'true' : 'false', editLabel: isEd ? 'Cerrar' : 'Editar',
+        onEdit: () => set({ unitEdit: isEd ? null : { key: xo.key, idx: i, d: { n: String(u.n), c: u.c, d: u.d, sn: u.sn, mac: u.mac, tv: u.tv }, ask: false } })
+      };
+    };
+    const uRows = us.map(unitRow);
+    const splitAt = ue ? (ue.idx >= 0 ? ue.idx + 1 : uRows.length) : uRows.length;
+    if (ue) {
+      const updU = p => set({ unitEdit: Object.assign({}, ue, { d: Object.assign({}, ue.d, p) }) });
+      const maxN = us.reduce((m, u) => Math.max(m, u.n), 0);
+      const saveU = () => {
+        const n = parseInt(ue.d.n, 10) || (ue.idx >= 0 ? us[ue.idx].n : maxN + 1);
+        const nu = { n: n, c: ue.d.c || '', d: ue.d.d || '', sn: ue.d.sn || '', mac: ue.d.mac || '', tv: ue.d.tv || '' };
+        const arr = us.slice(); if (ue.idx >= 0) arr[ue.idx] = nu; else arr.push(nu);
+        set({ units: setUnits(arr), unitEdit: null, detMsg: 'Unidad #' + n + ' guardada.' });
+      };
+      uf = {
+        show: true, isEdit: ue.idx >= 0, ask: !!ue.ask,
+        askTxt: '¿Quitar la unidad #' + (ue.idx >= 0 ? us[ue.idx].n : '') + '? El recurso y sus otras unidades no cambian.',
+        n: ue.d.n, d: ue.d.d, sn: ue.d.sn, mac: ue.d.mac, tv: ue.d.tv,
+        onN: e => updU({ n: val(e).replace(/[^0-9]/g, '') }), onD: e => updU({ d: val(e) }), onSn: e => updU({ sn: val(e) }), onMac: e => updU({ mac: val(e) }), onTv: e => updU({ tv: val(e) }),
+        conds: [''].concat(CONDS).map(c => ({ label: c || 'Sin revisar', pressed: c === (ue.d.c || '') ? 'true' : 'false', style: 'color: ' + (c === (ue.d.c || '') ? T1 : condColor(c) === T3 ? T2 : condColor(c)) + ';', onClick: () => updU({ c: c }) })),
+        onSave: saveU, onCancel: () => set({ unitEdit: null }),
+        onAsk: () => set({ unitEdit: Object.assign({}, ue, { ask: true }) }),
+        onAskCancel: () => set({ unitEdit: Object.assign({}, ue, { ask: false }) }),
+        onRemove: () => { const n = us[ue.idx].n; set({ units: setUnits(us.filter((u, j) => j !== ue.idx)), unitEdit: null, detMsg: 'Unidad #' + n + ' quitada.' }); },
+        onKey: e => {
+          if (!e) return;
+          if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') { if (e.preventDefault) e.preventDefault(); saveU(); }
+          else if (e.key === 'Escape') { if (e.stopPropagation) e.stopPropagation(); set({ unitEdit: null }); }
+        }
+      };
+    }
+    const tvDraft = (s.tvKey === xo.key && s.tvDraft !== undefined) ? s.tvDraft : (xo.tv || '');
+    const tvChanged = tvDraft !== xo.tv;
+    const nCreate = Math.min(xo.cant || 0, 60);
+    det = {
+      show: true, isRes: isRes, isDev: !isRes, viewMode: !editing,
+      wrapStyle: isTable ? '' : 'padding: 16px 16px 20px; background: #14171B; border: 1px solid #353B44; border-radius: 10px;',
+      aria: 'Detalle de ' + xo.nombre,
+      eyebrow: xo.cat + ' · ' + (xo.sub || 'sin subcategoría'),
+      nombre: xo.nombre, detalle: isRes ? (xo.detalle || 'Sin observaciones') : xo.detalle,
+      detStyle: 'font-size: 12px; color: ' + T3 + ';' + (isRes ? '' : " font-family: 'Geist Mono', ui-monospace, monospace;"),
+      photoTxt: isRes ? (xo.foto ? 'Foto' : 'Sin foto') : xo.nombre,
+      photoStyle: 'width: 112px; height: 112px; flex: none; box-sizing: border-box; border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px; background: #0D0F12; border: 1px ' + (isRes && !xo.foto ? 'dashed' : 'solid') + ' #353B44; color: ' + (isRes ? T3 : T2) + '; font-size: ' + (isRes ? 12 : 16) + "px;" + (isRes ? '' : " font-family: 'Geist Mono', ui-monospace, monospace;"),
+      photoBtn: xo.foto ? 'Cambiar foto' : 'Subir foto',
+      onPhoto: () => { if (!ro) set({ form: { mode: 'edit', key: xo.key, nombre: xo.nombre, cat: xo.cat, sub: xo.sub, cant: String(xo.cant), unidad: xo.unidad, min: String(xo.min), cond: xo.cond, obs: xo.detalle, foto: xo.foto, err: '' } }); },
+      dl: dl,
+      condOpts: [''].concat(CONDS).map(c => ({ dis: roStr, label: c || 'Sin revisar', pressed: c === xo.cond ? 'true' : 'false', style: 'color: ' + (c === xo.cond ? T1 : condColor(c) === T3 ? T2 : condColor(c)) + ';', onClick: () => setCond(c) })),
+      condHelp: ro ? 'Modo consulta: la condición no se puede cambiar.' : isRes ? 'Se guarda al tocarla. En recursos cuenta como revisión aunque elijas la misma.' : 'Se guarda al tocarla y actualiza la fecha de revisión del equipo.',
+      hasMsg: !!s.detMsg, msg: s.detMsg || '',
+      onEdit: () => { if (!ro) set({ form: { mode: 'edit', key: xo.key, nombre: xo.nombre, cat: xo.cat, sub: xo.sub, cant: String(xo.cant), unidad: xo.unidad, min: String(xo.min), cond: xo.cond, obs: xo.detalle, foto: xo.foto, err: '' }, hideAsk: '' }); },
+      hideAsk: s.hideAsk === xo.key, hideAskStr: s.hideAsk === xo.key ? 'true' : 'false',
+      hideTxt: '¿Ocultar ' + xo.nombre + ' del inventario? Deja de aparecer en listas y conteos.',
+      onHideAsk: () => { if (!ro) set({ hideAsk: s.hideAsk === xo.key ? '' : xo.key }); },
+      onHideCancel: () => set({ hideAsk: '' }),
+      onHide: () => { const h = Object.assign({}, hidden); h[xo.key] = true; set({ hidden: h, open: '', hideAsk: '', detMsg: '', listMsg: { text: xo.nombre + ' se ocultó del inventario.', key: xo.key } }); },
+      onClose: () => set({ open: '', hideAsk: '', unitEdit: null, detMsg: '' }),
+      onKey: e => { if (e && e.key === 'Escape' && !(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA'))) set({ open: '', hideAsk: '', unitEdit: null, detMsg: '' }); },
+      et: xo.et || '', sn: xo.sn || '—', mac: xo.mac || '—',
+      snStyle: 'margin-top: 2px; font-size: 13px; color: ' + (xo.sn ? T1 : T3) + ';',
+      macStyle: 'margin-top: 2px; font-size: 13px; color: ' + (xo.mac ? T1 : T3) + ';',
+      tv: tvDraft, tvDis: (ro || !tvChanged) ? 'true' : 'false',
+      onTv: e => set({ tvKey: xo.key, tvDraft: val(e) }),
+      onTvSave: () => { if (ro || !tvChanged) return; const nt = Object.assign({}, tvs); nt[xo.key] = tvDraft; set({ tvs: nt, tvDraft: undefined, tvKey: '', detMsg: 'TeamViewer ID guardado.' }); },
+      uSummary: us.length ? us.length + (us.length === 1 ? ' unidad cargada' : ' unidades cargadas') : 'Todavía no se detalló ninguna unidad',
+      uFalla: us.length && falla ? ' · ' + falla + ' con falla' : '',
+      noUnits: us.length === 0,
+      canEditUnits: !ro,
+      canCreateN: !ro && us.length === 0 && (xo.cant || 0) > 1,
+      createNLabel: 'Crear las ' + nCreate,
+      onCreateN: () => { const arr = []; for (let i = 1; i <= nCreate; i++) arr.push({ n: i, c: '', d: '', sn: '', mac: '', tv: '' }); set({ units: setUnits(arr), detMsg: nCreate + ' unidades creadas, numeradas del 1 al ' + nCreate + '.' }); },
+      onAddUnit: () => set({ unitEdit: { key: xo.key, idx: -1, d: { n: '', c: '', d: '', sn: '', mac: '', tv: '' }, ask: false } }),
+      unitsA: uRows.slice(0, splitAt), unitsB: uRows.slice(splitAt)
+    };
+  }
+
+  // ---------- Recorrido de revisión ----------
+  const computeQueue = () => {
+    const qe = eq.slice().sort((a, b) => (a.at ? 1 : 0) - (b.at ? 1 : 0) || coll(a.et, b.et)).map(x => x.key);
+    const qr = rs.slice().sort((a, b) => (a.cond ? 1 : 0) - (b.cond ? 1 : 0) || coll(a.nombre, b.nombre)).map(x => x.key);
+    return qe.concat(qr);
+  };
+  let rv = { show: false };
+  if (review) {
+    const qk = review.keys || computeQueue();
+    const done = review.i >= qk.length;
+    const cur = done ? null : byKey[qk[review.i]];
+    const rRing = ringOf(K.total ? Math.round(K.conCond / K.total * 100) : 0, 32);
+    const exit = () => set({ review: null, topMsg: review.rated ? 'Recorrido cerrado: ' + review.rated + (review.rated === 1 ? ' ítem calificado' : ' ítems calificados') + ' en esta pasada.' : '' });
+    const skip = () => { if (!done) set({ review: Object.assign({}, review, { keys: qk, i: review.i + 1, cls: '', err: false }) }); };
+    const rate = c => {
+      if (ro || !cur) return;
+      const nc = Object.assign({}, conds); nc[cur.key] = { c: c, at: 'hoy' };
+      const ncl = Object.assign({}, classes);
+      const prevCls = Object.prototype.hasOwnProperty.call(classes, cur.key) ? classes[cur.key] : undefined;
+      ncl[cur.key] = review.cls || cur.cat;
+      set({ conds: nc, classes: ncl, review: { keys: qk, i: review.i + 1, rated: (review.rated || 0) + 1, cls: '', last: { i: review.i, key: cur.key, nombre: cur.nombre, c: c, prev: conds[cur.key] || null, prevCls: prevCls } } });
+    };
+    const undo = () => {
+      const l = review.last; if (!l) return;
+      const nc = Object.assign({}, conds); if (l.prev) nc[l.key] = l.prev; else delete nc[l.key];
+      const ncl = Object.assign({}, classes); if (l.prevCls !== undefined) ncl[l.key] = l.prevCls; else delete ncl[l.key];
+      set({ conds: nc, classes: ncl, review: { keys: qk, i: l.i, rated: Math.max(0, (review.rated || 0) - 1), cls: '', last: null } });
+    };
+    const clsList = cur ? (cur.kind === 'equipo' ? ASSET : uniq(FORM_CATS.concat(rs.map(x => x.cat))).sort(coll)) : [];
+    const clsSel = review.cls || (cur ? cur.cat : '');
+    const nextNames = qk.slice(review.i + 1, review.i + 5).map(k => byKey[k] ? byKey[k].nombre : '').filter(Boolean);
+    rv = {
+      show: true, active: !done, done: done,
+      pos: done ? qk.length + ' de ' + qk.length : (review.i + 1) + ' de ' + qk.length,
+      withCond: K.conCond + ' con condición cargada',
+      ringDash: rRing.dash, ringColor: rRing.color, ringOp: rRing.op,
+      ringAria: K.conCond + ' de ' + K.total + ' con condición cargada',
+      kind: cur ? (cur.kind === 'equipo' ? 'Equipo · ' + cur.et : 'Recurso · ' + cur.cat) : '',
+      nombre: cur ? cur.nombre : '',
+      detalle: cur ? (cur.kind === 'equipo' ? [cur.marca, cur.modelo].filter(Boolean).join(' · ') || 'Sin marca ni modelo cargados' : cur.cant + ' / mín. ' + cur.min + ' ' + cur.unidad) : '',
+      last: cur ? (cur.at ? 'Última revisión: hoy (' + cur.cond + ')' : cur.cond ? 'Última revisión: hace más de 3 meses (' + cur.cond + ')' : 'Nunca revisado') : '',
+      clsLabel: cur && cur.kind === 'recurso' ? 'Categoría' : 'Clase de activo',
+      clsOpts: clsList.map(c => ({ label: c, pressed: c === clsSel ? 'true' : 'false', onClick: () => set({ review: Object.assign({}, review, { keys: qk, cls: c }) }) })),
+      rates: CONDS.map((c, i) => ({ label: c, kbd: String(i + 1), dis: roStr, style: 'color: ' + (c === 'Regular' ? WARN : c === 'Malo' ? BAD : T1) + ';', onClick: () => rate(c) })),
+      hasErr: !!review.err,
+      hasLast: !!review.last, lastTxt: review.last ? review.last.nombre + ' quedó ' + review.last.c + '.' : '',
+      onUndo: undo,
+      next: nextNames.length ? 'Siguen: ' + nextNames.join(' · ') + (qk.length - review.i - 1 > nextNames.length ? ' …' : '') : '',
+      ratedTxt: review.rated === null || review.rated === undefined ? '[N]' : String(review.rated),
+      hasQueue: qk.length > 0,
+      doneTitle: qk.length ? 'Recorrido terminado' : 'No hay nada para revisar en esta sede.',
+      onSkip: skip, onExit: exit,
+      onKey: e => {
+        if (!e || e.ctrlKey || e.metaKey || e.altKey) return;
+        const tg = e.target && e.target.tagName;
+        if (tg === 'INPUT' || tg === 'TEXTAREA' || tg === 'SELECT') return;
+        const k = e.key;
+        if (k === '1' || k === '2' || k === '3' || k === '4') { if (e.preventDefault) e.preventDefault(); rate(CONDS[+k - 1]); }
+        else if (k === 's' || k === 'S') { if (e.preventDefault) e.preventDefault(); skip(); }
+        else if (k === 'Escape') { if (e.preventDefault) e.preventDefault(); exit(); }
+      }
+    };
+  }
+
+  // ---------- Importar / exportar ----------
+  const ie = {
+    show: !!s.ieOpen, expanded: s.ieOpen ? 'true' : 'false',
+    count: filtered.length,
+    hasMsg: !!s.ieMsg, msg: s.ieMsg || '',
+    onToggle: () => set({ ieOpen: !s.ieOpen, ieMsg: '' }),
+    onExport: () => set({ ieMsg: 'Se descargó inventario-2026-10-16.csv con ' + filtered.length + ' ítems (lo filtrado, no solo la categoría abierta).' }),
+    onTemplate: () => set({ ieMsg: 'Se descargó plantilla-inventario-tic.csv (2 filas de ejemplo).' }),
+    onImport: () => { if (!ro) set({ ieMsg: 'Importado [archivo].csv: leídos [N] · nuevos [N] · actualizados [N] · fotos y condiciones conservadas [N] · omitidos [N] · errores [N].' }); },
+    onMsgClose: () => set({ ieMsg: '' })
+  };
+  const lm = s.listMsg || null;
+
+  const __out = {
+    ops: [nav('home', 'Inicio'), nav('loans', 'Préstamos', '[N]'), nav('devices', 'Dispositivos'), nav('agenda', 'Agenda TIC'), nav('rooms', 'Estado aulas')],
+    mgmt: [nav('tasks', 'Tareas TIC', '2'), nav('tickets', 'Tickets'), nav('reminders', 'Recordatorios'), nav('history', 'Historial')],
+    data: [nav('inventory', 'Inventario TIC'), nav('analytics', 'Analítica'), nav('cash', 'Caja chica')],
+    res: [nav('knowledge', 'Base de conocimiento'), nav('tools', 'Herramientas'), nav('links', 'Accesos rápidos')],
+    tbCtx: 'NFPT · ' + K.equipos + ' equipos · ' + K.recursos + ' recursos',
+    ro: ro, roStr: roStr,
+    onReviewOpen: () => { if (!ro) set({ review: { i: 0, rated: 0, keys: computeQueue() }, form: null, ieOpen: false, topMsg: '' }); },
+    onAddOpen: onAddOpen,
+    ie: ie,
+    topMsg: { show: !!s.topMsg, text: s.topMsg || '', onClose: () => set({ topMsg: '' }) },
+    rv: rv, f: f, det: det, uf: uf,
+    kpis: kpis,
+    kpiBanner: { show: !!kpi, text: KPI_LABELS[kpi] || '', onClear: () => set(Object.assign({}, resetList, { kpi: '' })) },
+    segs: segs,
+    q: q, hasQ: !!q,
+    onQ: e => { const v = val(e); if (v !== q) set(Object.assign({}, resetList, { q: v })); },
+    onQClear: () => set(Object.assign({}, resetList, { q: '' })),
+    vTable: isTable ? 'true' : 'false', vGrid: isTable ? 'false' : 'true',
+    onViewTable: () => set({ view: 'table' }), onViewGrid: () => set({ view: 'grid', form: (s.form && s.form.mode === 'add') ? s.form : null, unitEdit: null }),
+    condChips: condChips,
+    tree: tree, treeAll: treeAll,
+    crumb: crumb, subChips: subChips,
+    listMsg: {
+      show: !!lm, text: lm ? lm.text : '',
+      onUndo: () => { if (!lm) return; const h = Object.assign({}, hidden); delete h[lm.key]; set({ hidden: h, listMsg: null, open: lm.key, detMsg: 'Se volvió a mostrar.' }); },
+      onClose: () => set({ listMsg: null })
+    },
+    showPortada: showPortada, catCards: catCards,
+    isEmpty: !showPortada && listItems.length === 0,
+    emptyAlt: (() => { const n = entries.filter(x => kpiOk(x) && qOk(x) && condOk(x)).length; return { show: (seg !== 'todo' || !!selCat) && n > 0, label: 'Ver ' + n + (n === 1 ? ' resultado' : ' resultados') + ' en todo el inventario', onClick: () => set(Object.assign({}, resetList, { seg: 'todo', selCat: '', selSub: '' })) }; })(),
+    onClearAll: () => set(Object.assign({}, resetList, { kpi: '', cond: '', q: '', selCat: '', selSub: '' })),
+    showList: !showPortada && listItems.length > 0,
+    isTable: isTable, isGrid: !isTable, isGridB: !isTable && visB.length > 0,
+    listWrapStyle: isTable ? 'background: #14171B; border: 1px solid #262B32; border-radius: 10px; overflow: hidden; box-sizing: border-box;' : 'display: flex; flex-direction: column; gap: 12px;',
+    rowsA: isTable ? visA.map(rowOf) : [], rowsB: isTable ? visB.map(rowOf) : [],
+    cardsA: isTable ? [] : visA.map(cardOf), cardsB: isTable ? [] : visB.map(cardOf),
+    pager: pager
+  };
+  /*__fill__*/
+  const __REQ = ["ops","mgmt","data","res","tbCtx","roStr","onReviewOpen","ie.expanded","ie.onToggle","onAddOpen","ro","ie.show","ie.onExport","ie.count","ie.onTemplate","ie.onImport","ie.hasMsg","ie.msg","ie.onMsgClose","topMsg.show","topMsg.text","topMsg.onClose","rv.show","rv.onKey","rv.ringAria","rv.ringColor","rv.ringDash","rv.ringOp","rv.pos","rv.withCond","rv.onExit","rv.active","rv.kind","rv.nombre","rv.detalle","rv.last","rv.clsLabel","rv.clsOpts","rv.rates","rv.onSkip","rv.hasErr","rv.hasLast","rv.lastTxt","rv.onUndo","rv.next","rv.done","rv.doneTitle","rv.hasQueue","rv.ratedTxt","f.isAdd","f.onKey","f.photoStyle","f.photoTxt","f.onPhoto","f.photoBtn","f.nombre","f.onNombre","f.cats","f.sub","f.onSub","f.onCantMinus","f.cant","f.onCant","f.onCantPlus","f.unidad","f.onUnidad","f.onMinMinus","f.min","f.onMin","f.onMinPlus","f.hasSub","f.subs","f.conds","f.obs","f.onObs","f.hasErr","f.err","f.onSave","f.saveLabel","f.onCancel","kpis","kpiBanner.show","kpiBanner.text","kpiBanner.onClear","segs","q","onQ","hasQ","onQClear","vTable","onViewTable","vGrid","onViewGrid","condChips","treeAll.current","treeAll.onClick","treeAll.count","tree","crumb.onRoot","crumb.rootStyle","crumb.hasCat","crumb.onCat","crumb.catStyle","crumb.cat","crumb.hasSub","crumb.sub","crumb.count","subChips.show","subChips.list","listMsg.show","listMsg.text","listMsg.onUndo","listMsg.onClose","showPortada","catCards","isEmpty","emptyAlt.show","emptyAlt.onClick","emptyAlt.label","onClearAll","showList","listWrapStyle","isTable","rowsA","isGrid","cardsA","det.show","det.aria","det.onKey","det.wrapStyle","det.viewMode","det.photoStyle","det.photoTxt","det.isRes","det.onPhoto","det.photoBtn","det.eyebrow","det.nombre","det.detStyle","det.detalle","det.dl","det.condOpts","det.condHelp","det.hasMsg","det.msg","det.isDev","det.onEdit","det.hideAskStr","det.onHideAsk","det.onClose","det.hideAsk","det.hideTxt","det.onHide","det.onHideCancel","det.et","det.snStyle","det.sn","det.macStyle","det.mac","det.tv","det.onTv","det.tvDis","det.onTvSave","det.uSummary","det.uFalla","det.canCreateN","det.onCreateN","det.createNLabel","det.canEditUnits","det.onAddUnit","det.noUnits","det.unitsA","uf.show","uf.onKey","uf.n","uf.onN","uf.d","uf.onD","uf.sn","uf.onSn","uf.mac","uf.onMac","uf.tv","uf.onTv","uf.conds","uf.ask","uf.askTxt","uf.onRemove","uf.onAskCancel","uf.onSave","uf.onCancel","uf.isEdit","uf.onAsk","det.unitsB","f.isEdit","rowsB","isGridB","cardsB","pager.show","pager.style","pager.txt","pager.onMore","pager.moreLabel","pager.onAll"];
+  const __LISTS = ["ops","mgmt","data","res","rv.clsOpts","rv.rates","f.cats","f.subs","f.conds","kpis","segs","condChips","tree","subChips.list","catCards","rowsA","cardsA","det.dl","det.condOpts","det.unitsA","uf.conds","det.unitsB","rowsB","cardsB"];
+  __REQ.forEach(p => { const parts = p.split('.'); let o = __out; for (let i = 0; i < parts.length - 1; i++) { if (o[parts[i]] === null || typeof o[parts[i]] !== 'object') o[parts[i]] = {}; o = o[parts[i]]; } const k = parts[parts.length - 1]; if (o[k] === undefined || o[k] === null) o[k] = __LISTS.indexOf(p) >= 0 ? [] : ''; });
+  return __out;
+/*__end__*/
+}
+}
+</script>
+</body>
+</html>

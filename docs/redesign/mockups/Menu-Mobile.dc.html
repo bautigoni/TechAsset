@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Menú mobile</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input{font-family:inherit}
+.tl:hover{border-color:#353B44 !important}
+a:focus-visible,button:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+input:focus-visible{outline:2px solid #5B9BFF;outline-offset:0}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px;">
+
+  <!-- BARRA SUPERIOR -->
+  <header style="height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 8px; border-bottom: 1px solid #262B32; box-sizing: border-box;">
+    <button type="button" aria-label="Cambiar de sede: Northfield Puertos" style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; cursor: pointer;">
+      <span style="width: 28px; height: 28px; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500;">NF</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; font-weight: 500;">NFPT</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+    </button>
+    <div style="flex: 1;"></div>
+    <button type="button" aria-label="Buscar o ir a" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+    </button>
+    <button type="button" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+      <span style="position: absolute; top: 6px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+    </button>
+  </header>
+
+  <!-- INICIO -->
+  <section aria-label="Inicio" style="height: 712px; overflow: hidden; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+    <div>
+      <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Viernes 16 oct</div>
+      <h1 style="margin: 4px 0 0; font-size: 28px; line-height: 36px; font-weight: 600;">Inicio</h1>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 12px;">
+        <div style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Préstamos activos</div>
+        <div style="margin-top: 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 28px; line-height: 32px; font-variant-numeric: tabular-nums;">[N]</div>
+      </div>
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 12px;">
+        <div style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Préstamos · último año</div>
+        <div style="margin-top: 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 28px; line-height: 32px; font-variant-numeric: tabular-nums;">1019</div>
+      </div>
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 12px;">
+        <div style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Parque activo</div>
+        <div style="margin-top: 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 28px; line-height: 32px; font-variant-numeric: tabular-nums;">142</div>
+      </div>
+      <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 12px;">
+        <div style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Regular o malo</div>
+        <div style="margin-top: 6px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 28px; line-height: 32px; font-variant-numeric: tabular-nums;">32</div>
+      </div>
+    </div>
+    <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-bottom: 1px solid #262B32;">
+        <h2 style="margin: 0; font-size: 14px; font-weight: 600; flex: 1;">Agenda de hoy</h2>
+        <a href="#" style="font-size: 13px; text-decoration: none; padding: 12px 0;">Ver agenda</a>
+      </div>
+      <div style="padding: 12px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #262B32;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #A7AEB8; flex: 1;">[hh:mm–hh:mm]</span>
+          <span style="font-size: 12px; font-weight: 500; color: #5BD68A; background: rgba(91,214,138,.12); border-radius: 999px; padding: 2px 8px;">Entregado</span>
+        </div>
+        <span style="font-size: 14px;">[Actividad en curso] · [Aula]</span>
+      </div>
+      <div style="padding: 12px; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #A7AEB8; flex: 1;">[hh:mm–hh:mm]</span>
+          <span style="font-size: 12px; font-weight: 500; color: #F5C04E; background: rgba(245,192,78,.12); border-radius: 999px; padding: 2px 8px;">Pendiente</span>
+        </div>
+        <span style="font-size: 14px;">[Próxima actividad] · [Aula]</span>
+      </div>
+    </div>
+    <div style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <h2 style="margin: 0; font-size: 14px; font-weight: 600; flex: 1;">Préstamos por hora</h2>
+        <span style="font-size: 12px; color: #7C8592;">último año</span>
+      </div>
+      <div role="img" aria-label="Préstamos por hora: pico a las 08:00 con 20, segundo a las 13:00 con 12" style="display: flex; align-items: flex-end; gap: 6px; height: 104px;">
+        <sc-for list="{{hours}}" as="h" hint-placeholder-count="9">
+          <div style="flex: 1; min-width: 0; height: 104px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px;">
+            <div style="{{h.barStyle}}"></div>
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;">{{h.label}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOJA "MÁS" -->
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 76px; background: rgba(8,9,11,.68);" aria-hidden="true"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="mas-titulo" style="position: absolute; left: 0; right: 0; bottom: 76px; background: #14171B; border-top: 1px solid #353B44; border-radius: 10px 10px 0 0; box-shadow: 0 -12px 40px rgba(0,0,0,.4); display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: center; padding: 8px 0 0;" aria-hidden="true"><span style="width: 36px; height: 4px; border-radius: 2px; background: #353B44;"></span></div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 0 4px 0 16px; height: 48px;">
+        <h2 id="mas-titulo" style="margin: 0; flex: 1; font-size: 16px; font-weight: 600;">Más secciones</h2>
+        <button type="button" onClick="{{closeSheet}}" aria-label="Cerrar" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div style="padding: 0 16px 4px;">
+        <label style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; background: #1B1F24; border: 1px solid #262B32; border-radius: 6px; color: #7C8592; box-sizing: border-box;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+          <input type="search" placeholder="Buscar equipo, persona o sección" aria-label="Buscar equipo, persona o sección" style="flex: 1; min-width: 0; height: 40px; background: transparent; border: 0; color: #ECEEF1; font-size: 16px;">
+        </label>
+      </div>
+
+      <nav aria-label="Más secciones" style="padding: 4px 16px 12px; display: flex; flex-direction: column;">
+        <div style="padding: 12px 0 8px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Operación</div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <sc-for list="{{ops}}" as="n" hint-placeholder-count="2">
+            <a href="#" class="tl" style="position: relative; height: 68px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; background: #1B1F24; border: 1px solid #262B32; border-radius: 10px; text-decoration: none; color: #ECEEF1; box-sizing: border-box;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"></path></svg>
+              <span style="font-size: 13px; font-weight: 500; line-height: 16px;">{{n.label}}</span>
+              <span style="position: absolute; top: 8px; right: 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{n.count}}</span>
+            </a>
+          </sc-for>
+        </div>
+        <div style="padding: 16px 0 8px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Gestión</div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <sc-for list="{{mgmt}}" as="n" hint-placeholder-count="4">
+            <a href="#" class="tl" style="position: relative; height: 68px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; background: #1B1F24; border: 1px solid #262B32; border-radius: 10px; text-decoration: none; color: #ECEEF1; box-sizing: border-box;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"></path></svg>
+              <span style="font-size: 13px; font-weight: 500; line-height: 16px;">{{n.label}}</span>
+              <span style="position: absolute; top: 8px; right: 10px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8;">{{n.count}}</span>
+            </a>
+          </sc-for>
+        </div>
+        <div style="padding: 16px 0 8px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Inventario y datos</div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <sc-for list="{{data}}" as="n" hint-placeholder-count="3">
+            <a href="#" class="tl" style="position: relative; height: 68px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; background: #1B1F24; border: 1px solid #262B32; border-radius: 10px; text-decoration: none; color: #ECEEF1; box-sizing: border-box;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"></path></svg>
+              <span style="font-size: 13px; font-weight: 500; line-height: 16px;">{{n.label}}</span>
+            </a>
+          </sc-for>
+        </div>
+        <div style="padding: 16px 0 8px; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Recursos</div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <sc-for list="{{res}}" as="n" hint-placeholder-count="3">
+            <a href="#" class="tl" style="position: relative; height: 68px; display: flex; flex-direction: column; justify-content: space-between; padding: 10px; background: #1B1F24; border: 1px solid #262B32; border-radius: 10px; text-decoration: none; color: #ECEEF1; box-sizing: border-box;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"></path></svg>
+              <span style="font-size: 13px; font-weight: 500; line-height: 16px;">{{n.label}}</span>
+            </a>
+          </sc-for>
+        </div>
+      </nav>
+
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 8px 10px 16px; border-top: 1px solid #262B32;">
+        <span style="width: 32px; height: 32px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">BG</span>
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span style="font-size: 12px; color: #7C8592;">Jefe TIC · Northfield Puertos</span>
+        </span>
+        <a href="#" aria-label="Configuración" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: #A7AEB8;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        </a>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- BARRA INFERIOR -->
+  <nav aria-label="Navegación principal" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; padding: 0 4px 16px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #0D0F12; border-top: 1px solid #262B32;">
+    <a href="#" aria-current="{{homeCurrent}}" style="{{homeStyle}}">
+      <span style="{{homeBar}}"></span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+      Inicio
+    </a>
+    <a href="#" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #A7AEB8; font-size: 12px; font-weight: 500;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10"></path></svg>
+      Préstamos
+    </a>
+    <button type="button" aria-label="Escanear equipo para prestar o devolver" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: transparent; border: 0; padding: 0; color: #ECEEF1; font-size: 12px; font-weight: 500; cursor: pointer;">
+      <span style="width: 52px; height: 36px; display: flex; align-items: center; justify-content: center; background: #5B9BFF; color: #0D0F12; border-radius: 6px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"></path></svg>
+      </span>
+      Escanear
+    </button>
+    <a href="#" style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: #A7AEB8; font-size: 12px; font-weight: 500;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      Agenda
+    </a>
+    <button type="button" onClick="{{toggleSheet}}" aria-expanded="{{sheetExpanded}}" aria-haspopup="dialog" style="{{moreStyle}}">
+      <span style="{{moreBar}}"></span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>
+      Más
+    </button>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8'
+  };
+}
+isOpen() { return !(this.state && this.state.sheet === false); }
+toggleSheet() { this.setState({ sheet: !this.isOpen() }); }
+closeSheet() { this.setState({ sheet: false }); }
+renderVals() {
+  const I = this.icons();
+  const open = this.isOpen();
+  const it = (k, label, count) => ({ label: label, d: I[k], count: count || '' });
+  const tab = 'position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; background: transparent; border: 0; padding: 0; cursor: pointer; font-size: 12px; font-weight: 500;';
+  const bar = 'position: absolute; top: -1px; left: 50%; width: 24px; margin-left: -12px; height: 2px; border-radius: 2px; background: #5B9BFF;';
+  return {
+    sheetOpen: open,
+    sheetExpanded: open ? 'true' : 'false',
+    toggleSheet: () => this.toggleSheet(),
+    closeSheet: () => this.closeSheet(),
+    homeCurrent: 'page',
+    homeStyle: tab + (open ? ' color: #A7AEB8;' : ' color: #ECEEF1;'),
+    homeBar: open ? 'display: none;' : bar,
+    moreStyle: tab + (open ? ' color: #ECEEF1;' : ' color: #A7AEB8;'),
+    moreBar: open ? bar : 'display: none;',
+    ops: [it('devices', 'Dispositivos'), it('rooms', 'Estado aulas')],
+    mgmt: [it('tasks', 'Tareas TIC', '2'), it('tickets', 'Tickets'), it('reminders', 'Recordatorios'), it('history', 'Historial')],
+    data: [it('inventory', 'Inventario TIC'), it('analytics', 'Analítica'), it('cash', 'Caja chica')],
+    res: [it('knowledge', 'Base de conocimiento'), it('tools', 'Herramientas'), it('links', 'Accesos rápidos')],
+    hours: [['08', 20], ['09', 9], ['10', 11], ['11', 4], ['12', 3], ['13', 12], ['14', 4], ['15', 3], ['16', 3]].map(h => ({
+      label: h[0],
+      barStyle: 'width: 100%; max-width: 20px; height: ' + Math.round(h[1] / 20 * 80) + 'px; background: #5B9BFF; border-radius: 2px 2px 0 0;'
+    }))
+  };
+}
+}
+</script>
+</body>
+</html>

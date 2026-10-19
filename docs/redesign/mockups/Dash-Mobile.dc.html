@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Inicio mobile — Escaneo con cámara</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input{font-family:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+input:focus-visible{outline:2px solid #5B9BFF;outline-offset:0}
+</style>
+</helmet>
+<div style="width: 1330px; height: 844px; display: flex; gap: 80px; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px; overflow: hidden;">
+
+  <!-- ===================== TELÉFONO A: INICIO ===================== -->
+  <div aria-label="Inicio mobile" style="position: relative; width: 390px; height: 844px; flex: none; overflow: hidden; background: #0D0F12; border: 1px solid #262B32; box-sizing: border-box;">
+
+    <header style="height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 4px 0 16px; border-bottom: 1px solid #262B32; box-sizing: border-box; min-width: 0;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+        <h1 style="margin: 0; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Inicio</h1>
+        <span style="font-size: 12px; color: #7C8592; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">NFPT · Vie 16/10 · Turno mañana</span>
+      </div>
+      <button type="button" aria-label="Asistente" style="flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"></path></svg>
+      </button>
+      <button type="button" aria-label="Notificaciones, [N] sin leer" style="flex: none; height: 44px; padding: 0 8px; display: flex; align-items: center; gap: 4px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer; white-space: nowrap;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px;">[N]</span>
+      </button>
+    </header>
+
+    <main style="height: 712px; overflow: hidden; padding: 12px 16px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;">
+
+      <!-- Barra de acción -->
+      <div style="display: flex; gap: 8px; flex: none; min-width: 0;">
+        <label style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box; color: #A7AEB8;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg>
+          <input type="search" placeholder="Escaneá o escribí: touch 34" aria-label="Escaneá o escribí un equipo: touch 34, D1436, plani 5" style="flex: 1; min-width: 0; height: 44px; background: transparent; border: 0; color: #ECEEF1; font-size: 16px; outline: none; text-overflow: ellipsis;">
+        </label>
+        <button type="button" aria-label="Escanear con la cámara" style="width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+        </button>
+      </div>
+
+      <!-- Contadores -->
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: none;">
+        <sc-for list="{{tilesA}}" as="t" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{t.pressed}}" aria-expanded="{{t.expanded}}" style="{{t.style}}">
+            <span style="{{t.nStyle}}">{{t.n}}</span>
+            <span style="display: flex; align-items: center; gap: 4px; min-width: 0;">
+              <span style="{{t.labelStyle}}">{{t.label}}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{t.chevStyle}}"><path d="{{t.chev}}"></path></svg>
+            </span>
+            <span style="{{t.bar}}"></span>
+          </button>
+        </sc-for>
+      </div>
+
+      <!-- Categorías: anillos, envuelven en filas -->
+      <div role="group" aria-label="Libres ahora por tipo" style="flex: none; display: flex; flex-wrap: wrap; gap: 8px; min-width: 0;">
+        <sc-for list="{{rings}}" as="o" hint-placeholder-count="5">
+          <button type="button" style="{{o.style}}">
+            <svg width="32" height="32" viewBox="0 0 36 36" aria-hidden="true" style="flex: none;"><circle cx="18" cy="18" r="15" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="{{o.arc}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{o.dash}}" transform="rotate(-90 18 18)"></circle></svg>
+            <span style="min-width: 0; display: flex; flex-direction: column; line-height: 16px; text-align: left;">
+              <span style="{{o.nameStyle}}">{{o.name}}</span>
+              <span style="white-space: nowrap;"><span style="{{o.freeStyle}}">{{o.free}}</span><span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #7C8592;"> de {{o.total}}</span></span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+
+      <!-- Afuera ahora -->
+      <section aria-labelledby="af-a" style="flex: none; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+        <h2 id="af-a" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Afuera ahora</h2>
+        <div role="tablist" aria-label="Filtro de la lista" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: 36px; padding: 2px; background: #14171B; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+          <button type="button" role="tab" aria-selected="true" style="min-width: 0; border: 0; border-radius: 4px; background: #1B1F24; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Prestados <span style="font-family: 'Geist Mono', ui-monospace, monospace; color: #7C8592;">23</span></button>
+          <button type="button" role="tab" aria-selected="false" style="min-width: 0; border: 0; border-radius: 4px; background: transparent; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Disponibles <span style="font-family: 'Geist Mono', ui-monospace, monospace; color: #7C8592;">118</span></button>
+          <button type="button" role="tab" aria-selected="false" style="min-width: 0; border: 0; border-radius: 4px; background: transparent; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Todos</button>
+        </div>
+        <sc-for list="{{out}}" as="r" hint-placeholder-count="2">
+          <div style="height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 12px; background: #14171B; border: 1px solid #262B32; border-radius: 10px; box-sizing: border-box; min-width: 0;">
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <div style="display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap;">
+                <span style="flex: none; font-size: 15px; font-weight: 600;">{{r.alias}}</span>
+                <span style="min-width: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592; overflow: hidden; text-overflow: ellipsis;">{{r.tag}}</span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 6px; min-width: 0; font-size: 12px; color: #A7AEB8; white-space: nowrap;">
+                <span style="{{r.ageStyle}}">{{r.age}}</span>
+                <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis;">{{r.who}}</span>
+              </div>
+            </div>
+            <button type="button" style="height: 44px; padding: 0 14px; flex: none; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;">Devolver</button>
+          </div>
+        </sc-for>
+        <a href="#" style="height: 36px; display: flex; align-items: center; justify-content: center; font-size: 13px; text-decoration: none; white-space: nowrap;">Ver los 23 afuera</a>
+      </section>
+
+      <!-- Ahora (pestañas) -->
+      <section aria-labelledby="ah-a" style="flex: none; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+        <div style="display: flex; align-items: baseline; gap: 8px; min-width: 0;">
+          <h2 id="ah-a" style="margin: 0; flex: 1; min-width: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap;">Ahora</h2>
+          <span style="flex: none; font-size: 12px; color: #A7AEB8; white-space: nowrap;">Recreo <span style="font-family: 'Geist Mono', ui-monospace, monospace;">09:55–10:10</span></span>
+        </div>
+        <div role="tablist" aria-label="Ahora" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: 36px; padding: 2px; background: #14171B; border: 1px solid #262B32; border-radius: 6px; box-sizing: border-box;">
+          <button type="button" role="tab" aria-selected="true" style="min-width: 0; border: 0; border-radius: 4px; background: #1B1F24; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">Agenda</button>
+          <button type="button" role="tab" aria-selected="false" style="min-width: 0; border: 0; border-radius: 4px; background: transparent; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">Tareas <span style="font-family: 'Geist Mono', ui-monospace, monospace; color: #7C8592;">2</span></button>
+          <button type="button" role="tab" aria-selected="false" style="min-width: 0; border: 0; border-radius: 4px; background: transparent; color: #A7AEB8; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;">Notas <span style="font-family: 'Geist Mono', ui-monospace, monospace; color: #7C8592;">2</span></button>
+        </div>
+        <div style="padding: 12px; background: #14171B; border: 1px solid #262B32; border-radius: 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap;">
+            <span style="flex: none; font-size: 12px; color: #A7AEB8;">En curso</span>
+            <span style="flex: 1; min-width: 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #A7AEB8; overflow: hidden; text-overflow: ellipsis;">09:05–09:55</span>
+            <span style="flex: none; font-size: 12px; color: #F5C04E;">Sin entregar</span>
+          </div>
+          <div style="font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Matific grupo total <span style="font-weight: 400; color: #A7AEB8;">· Aula · 25 Touch</span></div>
+        </div>
+      </section>
+    </main>
+
+    <nav aria-label="Navegación principal" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; padding: 0 4px 16px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #0D0F12; border-top: 1px solid #262B32;">
+      <sc-for list="{{navHome}}" as="n" hint-placeholder-count="5">
+        <a href="#" aria-current="{{n.current}}" style="{{n.style}}">
+          <span style="{{n.bar}}"></span>
+          <span style="{{n.iconWrap}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"></path></svg></span>
+          {{n.label}}
+        </a>
+      </sc-for>
+    </nav>
+  </div>
+
+  <!-- ===================== TELÉFONO B: RESULTADO DEL ESCANEO, EN LÍNEA ===================== -->
+  <div aria-label="Inicio mobile: resultado del escaneo con la cámara" style="position: relative; width: 390px; height: 844px; flex: none; overflow: hidden; background: #0D0F12; border: 1px solid #262B32; box-sizing: border-box;">
+
+    <header style="height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 4px 0 16px; border-bottom: 1px solid #262B32; box-sizing: border-box; min-width: 0;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+        <span style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Inicio</span>
+        <span style="font-size: 12px; color: #7C8592; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">NFPT · Vie 16/10 · Turno mañana</span>
+      </div>
+      <button type="button" aria-label="Asistente" style="flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"></path></svg>
+      </button>
+      <button type="button" aria-label="Notificaciones, [N] sin leer" style="flex: none; height: 44px; padding: 0 8px; display: flex; align-items: center; gap: 4px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer; white-space: nowrap;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px;">[N]</span>
+      </button>
+    </header>
+
+    <main style="height: 712px; overflow: hidden; padding: 12px 16px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;">
+
+      <!-- Barra de acción con el resultado abierto debajo (empuja el contenido) -->
+      <div style="flex: none; background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 8px; display: flex; flex-direction: column; min-width: 0;">
+        <div style="display: flex; gap: 8px; min-width: 0;">
+          <label style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; background: #1B1F24; border: 1px solid #5B9BFF; border-radius: 6px; box-sizing: border-box; color: #A7AEB8; white-space: nowrap;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg>
+            <input type="search" value="D1436" aria-label="Equipo leído con la cámara" style="flex: 1; min-width: 0; height: 44px; background: transparent; border: 0; color: #ECEEF1; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 16px; outline: none;">
+            <span style="flex: none; font-size: 12px; color: #7C8592;">cámara</span>
+          </label>
+          <button type="button" aria-label="Limpiar y cerrar el resultado" style="width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <section role="region" aria-labelledby="res-tit" style="margin-top: 8px; padding: 12px 4px 4px; border-top: 1px solid #262B32; display: flex; flex-direction: column; gap: 14px; min-width: 0;">
+          <div style="display: flex; align-items: baseline; gap: 10px; min-width: 0; white-space: nowrap;">
+            <h2 id="res-tit" style="margin: 0; flex: none; font-size: 28px; line-height: 36px; font-weight: 600;">Touch 34</h2>
+            <span style="flex: none; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 14px; color: #A7AEB8;">D1436</span>
+            <span style="flex: 1; min-width: 0; text-align: right; font-size: 14px; color: #A7AEB8; overflow: hidden; text-overflow: ellipsis;">Prestado</span>
+          </div>
+          <dl style="margin: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); row-gap: 8px; column-gap: 12px; font-size: 14px; line-height: 20px;">
+            <dt style="color: #7C8592; font-size: 13px; white-space: nowrap;">Quién</dt>
+            <dd style="margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Alex C. <span style="color: #A7AEB8;">· Alumno</span></dd>
+            <dt style="color: #7C8592; font-size: 13px; white-space: nowrap;">Dónde</dt>
+            <dd style="margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">5F <span style="color: #A7AEB8;">· Aula 3B</span></dd>
+            <dt style="color: #7C8592; font-size: 13px; white-space: nowrap;">Desde</dt>
+            <dd style="margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span style="font-family: 'Geist Mono', ui-monospace, monospace;">07:20</span> <span style="color: #A7AEB8;">· hace 2 h</span></dd>
+            <dt style="color: #7C8592; font-size: 13px; white-space: nowrap;">Motivo</dt>
+            <dd style="margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Préstamo autorizado</dd>
+          </dl>
+          <button type="button" style="height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #5B9BFF; color: #0D0F12; border: 0; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg>
+            Devolver
+          </button>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+            <button type="button" style="min-width: 0; height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #1B1F24; color: #ECEEF1; border: 1px solid #353B44; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; overflow: hidden;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              Escanear otro
+            </button>
+            <button type="button" style="min-width: 0; height: 44px; background: #1B1F24; color: #ECEEF1; border: 1px solid #353B44; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; overflow: hidden;">Ver ficha</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Lo de abajo queda empujado -->
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: none;">
+        <sc-for list="{{tilesA}}" as="t" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{t.pressed}}" aria-expanded="{{t.expanded}}" style="{{t.style}}">
+            <span style="{{t.nStyle}}">{{t.n}}</span>
+            <span style="display: flex; align-items: center; gap: 4px; min-width: 0;">
+              <span style="{{t.labelStyle}}">{{t.label}}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{t.chevStyle}}"><path d="{{t.chev}}"></path></svg>
+            </span>
+            <span style="{{t.bar}}"></span>
+          </button>
+        </sc-for>
+      </div>
+    </main>
+
+    <nav aria-label="Navegación principal" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; padding: 0 4px 16px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #0D0F12; border-top: 1px solid #262B32;">
+      <sc-for list="{{navScan}}" as="n" hint-placeholder-count="5">
+        <a href="#" aria-current="{{n.current}}" style="{{n.style}}">
+          <span style="{{n.bar}}"></span>
+          <span style="{{n.iconWrap}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"></path></svg></span>
+          {{n.label}}
+        </a>
+      </sc-for>
+    </nav>
+  </div>
+
+  <!-- ===================== TELÉFONO C: DISPONIBLES → ELEGIR TIPO, EN LÍNEA ===================== -->
+  <div aria-label="Inicio mobile: elegir tipo de los disponibles" style="position: relative; width: 390px; height: 844px; flex: none; overflow: hidden; background: #0D0F12; border: 1px solid #262B32; box-sizing: border-box;">
+
+    <header style="height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 4px 0 16px; border-bottom: 1px solid #262B32; box-sizing: border-box; min-width: 0;">
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+        <span style="font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Inicio</span>
+        <span style="font-size: 12px; color: #7C8592; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">NFPT · Vie 16/10 · Turno mañana</span>
+      </div>
+      <button type="button" aria-label="Asistente" style="flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z"></path></svg>
+      </button>
+      <button type="button" aria-label="Notificaciones, [N] sin leer" style="flex: none; height: 44px; padding: 0 8px; display: flex; align-items: center; gap: 4px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer; white-space: nowrap;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px;">[N]</span>
+      </button>
+    </header>
+
+    <main style="height: 712px; overflow: hidden; padding: 12px 16px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; gap: 8px; flex: none; min-width: 0;">
+        <label style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box; color: #A7AEB8;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 7v10M12 7v10M17 7v10"></path></svg>
+          <input type="search" placeholder="Escaneá o escribí: touch 34" aria-label="Escaneá o escribí un equipo" style="flex: 1; min-width: 0; height: 44px; background: transparent; border: 0; color: #ECEEF1; font-size: 16px; outline: none; text-overflow: ellipsis;">
+        </label>
+        <button type="button" aria-label="Escanear con la cámara" style="width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; cursor: pointer;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+        </button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex: none;">
+        <sc-for list="{{tilesC}}" as="t" hint-placeholder-count="3">
+          <button type="button" aria-pressed="{{t.pressed}}" aria-expanded="{{t.expanded}}" style="{{t.style}}">
+            <span style="{{t.nStyle}}">{{t.n}}</span>
+            <span style="display: flex; align-items: center; gap: 4px; min-width: 0;">
+              <span style="{{t.labelStyle}}">{{t.label}}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{t.chevStyle}}"><path d="{{t.chev}}"></path></svg>
+            </span>
+            <span style="{{t.bar}}"></span>
+          </button>
+        </sc-for>
+      </div>
+
+      <!-- Selector de tipo, en línea debajo de los contadores -->
+      <section aria-labelledby="tipo-tit" style="flex: none; background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+        <div style="display: flex; align-items: baseline; gap: 8px; min-width: 0;">
+          <h2 id="tipo-tit" style="margin: 0; flex: 1; min-width: 0; font-size: 15px; line-height: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Elegí un tipo</h2>
+          <span style="flex: none; font-size: 12px; color: #7C8592; white-space: nowrap;">libres ahora / total</span>
+        </div>
+        <div role="listbox" aria-label="Tipos de equipo" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+          <sc-for list="{{types}}" as="o" hint-placeholder-count="7">
+            <button type="button" role="option" aria-selected="{{o.selected}}" aria-disabled="{{o.disabled}}" style="{{o.style}}">
+              <svg width="32" height="32" viewBox="0 0 36 36" aria-hidden="true" style="flex: none;"><circle cx="18" cy="18" r="15" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="{{o.arc}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{o.dash}}" transform="rotate(-90 18 18)"></circle></svg>
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 18px; text-align: left;">
+                <span style="{{o.nameStyle}}">{{o.name}}</span>
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span style="{{o.freeStyle}}">{{o.free}}</span><span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: #7C8592;"> de {{o.total}}</span></span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-labelledby="af-c" style="flex: none; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+        <h2 id="af-c" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap;">Afuera ahora</h2>
+        <div style="height: 36px; background: #14171B; border: 1px solid #262B32; border-radius: 6px;"></div>
+      </section>
+    </main>
+
+    <nav aria-label="Navegación principal" style="position: absolute; left: 0; right: 0; bottom: 0; height: 76px; padding: 0 4px 16px; box-sizing: border-box; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: #0D0F12; border-top: 1px solid #262B32;">
+      <sc-for list="{{navHome}}" as="n" hint-placeholder-count="5">
+        <a href="#" aria-current="{{n.current}}" style="{{n.style}}">
+          <span style="{{n.bar}}"></span>
+          <span style="{{n.iconWrap}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.d}}"></path></svg></span>
+          {{n.label}}
+        </a>
+      </sc-for>
+    </nav>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1330,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+  const MONO = '\'Geist Mono\', ui-monospace, monospace';
+  const C = 2 * Math.PI * 15;
+  const DOWN = 'm6 9 6 6 6-6';
+  const UP = 'm18 15-6-6-6 6';
+  const tileBase = 'position: relative; min-width: 0; box-sizing: border-box; border-radius: 10px; text-align: left; display: flex; overflow: hidden; color: #ECEEF1; cursor: pointer; font-family: inherit; white-space: nowrap;';
+  const tile = (n, label, o) => {
+    const opts = o || {};
+    const layout = opts.wide
+      ? ' grid-column: span 2; height: 48px; padding: 0 12px; flex-direction: row; align-items: center; gap: 10px;'
+      : ' height: 60px; padding: 8px 12px; flex-direction: column; justify-content: center;';
+    return {
+      n: n, label: label,
+      pressed: opts.active ? 'true' : 'false',
+      expanded: opts.chev ? (opts.chev === UP ? 'true' : 'false') : 'false',
+      style: tileBase + layout + (opts.active ? ' background: #1B1F24; border: 1px solid #353B44;' : ' background: #14171B; border: 1px solid #262B32;'),
+      nStyle: 'flex: none; font-family: ' + MONO + '; font-size: ' + (opts.wide ? '20px' : '24px') + '; line-height: 28px; font-variant-numeric: tabular-nums;' + (opts.warn ? ' color: #F5C04E;' : ''),
+      labelStyle: 'min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: ' + (opts.wide ? '13px' : '12px') + '; font-weight: 500; color: ' + (opts.active ? '#ECEEF1' : '#A7AEB8') + ';',
+      chev: opts.chev || '',
+      chevStyle: opts.chev ? 'flex: none; color: #A7AEB8;' : 'display: none;',
+      bar: opts.active ? 'position: absolute; left: 12px; right: 12px; bottom: 0; height: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;'
+    };
+  };
+  const ring = (name, free, total, o) => {
+    const opts = o || {};
+    const f = free / total;
+    const off = free === 0;
+    const warn = !off && f <= 0.2;
+    const tone = off ? '#FF6B6B' : warn ? '#F5C04E' : '#A7AEB8';
+    const base = opts.option
+      ? 'min-width: 0; height: 52px; padding: 0 10px 0 8px; border-radius: 6px;'
+      : 'flex: none; height: 44px; padding: 0 12px 0 6px; border-radius: 6px;';
+    return {
+      name: name, free: String(free), total: String(total),
+      selected: 'false',
+      disabled: off ? 'true' : 'false',
+      dash: (f * C).toFixed(1) + ' ' + C.toFixed(1),
+      arc: off ? 'none' : tone,
+      freeStyle: 'font-family: ' + MONO + '; font-size: 15px; font-variant-numeric: tabular-nums; color: ' + (off || warn ? tone : '#ECEEF1') + ';',
+      nameStyle: 'font-size: ' + (opts.option ? '14px' : '12px') + '; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: ' + (off ? '#7C8592' : opts.option ? '#ECEEF1' : '#A7AEB8') + ';',
+      style: base + ' box-sizing: border-box; display: flex; align-items: center; gap: 8px; font-family: inherit; color: #ECEEF1; white-space: nowrap;'
+        + (opts.wide ? ' grid-column: span 2;' : '')
+        + (off ? ' background: transparent; border: 1px dashed #353B44; cursor: default;' : ' background: #1B1F24; border: 1px solid #262B32; cursor: pointer;')
+    };
+  };
+  const D = {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    scan: 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10',
+    agenda: 'M8 2v4M16 2v4M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM3 10h18',
+    more: 'M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1zM4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z'
+  };
+  const navItem = (k, label, current) => ({
+    label: label, d: D[k],
+    current: current ? 'page' : 'false',
+    style: 'position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; font-size: 12px; font-weight: 500; white-space: nowrap; color: ' + (current || k === 'scan' ? '#ECEEF1' : '#A7AEB8') + ';',
+    bar: current ? 'position: absolute; top: -1px; left: 50%; width: 24px; margin-left: -12px; height: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;',
+    iconWrap: k === 'scan' ? 'width: 52px; height: 36px; display: flex; align-items: center; justify-content: center; background: #5B9BFF; color: #0D0F12; border-radius: 6px;' : 'display: flex;'
+  });
+  const nav = (cur) => [navItem('home', 'Inicio', cur === 'home'), navItem('loans', 'Préstamos'), navItem('scan', 'Escanear', cur === 'scan'), navItem('agenda', 'Agenda'), navItem('more', 'Más')];
+  const age = (tone) => 'flex: none; font-family: ' + MONO + '; font-size: 12px; color: ' + (tone === 'bad' ? '#FF6B6B' : tone === 'warn' ? '#F5C04E' : '#A7AEB8') + ';';
+  return {
+    tilesA: [tile('118', 'Disponibles', { chev: DOWN }), tile('23', 'Prestados', { active: true }), tile('3', 'Más de 1 día afuera', { wide: true, warn: true })],
+    tilesC: [tile('118', 'Disponibles', { active: true, chev: UP }), tile('23', 'Prestados'), tile('3', 'Más de 1 día afuera', { wide: true, warn: true })],
+    rings: [ring('Touch', 18, 25), ring('TIC', 9, 12), ring('Plani', 4, 6), ring('Dell', 7, 8), ring('Cartelitos', 26, 30)],
+    types: [
+      ring('Todos los tipos', 118, 142, { option: true, wide: true }),
+      ring('Touch', 18, 25, { option: true }), ring('TIC', 9, 12, { option: true }),
+      ring('Plani', 4, 6, { option: true }), ring('Dell', 7, 8, { option: true }),
+      ring('Tablet', 0, 14, { option: true }), ring('Cartelitos', 26, 30, { option: true })
+    ],
+    out: [
+      { alias: 'Dell 2', tag: 'D0757', age: '08:52', ageStyle: age(), who: 'Ame W. · Sala de profesores' },
+      { alias: 'TIC 3', tag: 'D1338', age: '1 día', ageStyle: age('warn'), who: 'Lu P. · DOE' }
+    ],
+    navScan: nav('scan'),
+    navHome: nav('home')
+  };
+}
+}
+</script>
+</body>
+</html>

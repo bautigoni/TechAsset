@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Estado de aulas — Desktop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:#5B9BFF}a:hover{color:#8DBBFF}
+button,input,textarea{font-family:inherit}
+.nv:hover,.ib:hover,.gh:hover{background:#1B1F24 !important;color:#ECEEF1 !important}
+.sg:hover{color:#ECEEF1 !important}
+.li:hover{background:#1B1F24 !important}
+.rm:hover{outline:1px solid #8DBBFF;outline-offset:1px}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #5B9BFF;outline-offset:2px}
+.fld:focus-within{border-color:#5B9BFF !important}
+input::placeholder,textarea::placeholder{color:#7C8592}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.sb{width:232px;flex:none;display:flex;flex-direction:column;border-right:1px solid #262B32;box-sizing:border-box;background:#0D0F12}
+.sb-head{height:56px;flex:none;display:flex;align-items:center;padding:0 8px;border-bottom:1px solid #262B32;box-sizing:border-box}
+.sb-sede{display:flex;align-items:center;gap:10px;width:100%;min-width:0;height:40px;padding:0 8px;background:transparent;border:0;border-radius:6px;color:#ECEEF1;cursor:pointer;text-align:left}
+.sb-sw{padding:12px 12px 4px;flex:none}
+.sb-search{display:flex;align-items:center;gap:8px;width:100%;height:32px;padding:0 8px 0 10px;background:#14171B;border:1px solid #262B32;border-radius:6px;color:#7C8592;cursor:pointer;font-size:13px;text-align:left;box-sizing:border-box}
+.sb-nav{flex:1;min-height:0;padding:4px 8px 8px;display:flex;flex-direction:column;gap:12px}
+.sb-grp{display:flex;flex-direction:column;gap:2px}
+.sb-grpt{padding:8px 12px 4px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7C8592;white-space:nowrap}
+.nvi{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px 0 12px;border-radius:6px;position:relative;text-decoration:none;font-size:14px;line-height:20px;box-sizing:border-box}
+.sb-txt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-cnt{flex:none;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:#7C8592}
+.sb-foot{flex:none;border-top:1px solid #262B32;padding:8px;display:flex;flex-direction:column;gap:4px}
+@media (max-width:1099px){
+.sb{width:56px}.sb-head{justify-content:center}.sb-sede{width:40px;padding:0;justify-content:center}
+.sb-sw{padding:12px 8px 4px}.sb-search{width:40px;padding:0;justify-content:center}
+.sb-grpt,.sb-hide{display:none !important}.sb-grp + .sb-grp{border-top:1px solid #262B32;padding-top:8px}
+.nvi{width:40px;padding:0;justify-content:center}
+}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.tb{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 24px 0 16px;border-bottom:1px solid #262B32;box-sizing:border-box;min-width:0}
+.pad{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0;padding:20px 24px 32px;box-sizing:border-box}
+.aw{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:20px;align-items:start}
+@media (max-width:1180px){.aw{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:767px){.sb{display:none}.pad{padding:16px}.tb{padding:0 16px}.tb-ctx,.tb-t{display:none !important}}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 1660px; display: flex; background: #0D0F12; color: #ECEEF1; font-family: Geist, system-ui, sans-serif; font-size: 14px;">
+
+  <!-- MENÚ LATERAL (Menu-A) -->
+  <aside class="sb" aria-label="Menú principal">
+    <div class="sb-head">
+      <button type="button" class="sb-sede ib" aria-label="{{sede.aria}}">
+        <span class="mono" style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #ECEEF1;">NF</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">{{sede.name}}</span>
+          <span class="mono" style="font-size: 12px; color: #7C8592;">{{sede.code}}</span>
+        </span>
+        <svg class="sb-hide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8592" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"></path></svg>
+      </button>
+    </div>
+    <div class="sb-sw">
+      <button type="button" class="sb-search" aria-label="Buscar o ir a una sección (Ctrl K)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+        <span class="sb-hide" style="flex: 1;">Buscar o ir a…</span>
+        <span class="sb-hide mono" style="font-size: 11px; color: #A7AEB8; padding: 1px 5px; border: 1px solid #353B44; border-radius: 4px;">Ctrl K</span>
+      </button>
+    </div>
+    <nav class="sb-nav" aria-label="Secciones">
+      <div class="sb-grp">
+        <div class="sb-grpt">Operación</div>
+        <sc-for list="{{nav.ops}}" as="n" hint-placeholder-count="5">
+          <a href="#" class="nvi nv" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Gestión</div>
+        <sc-for list="{{nav.mgmt}}" as="n" hint-placeholder-count="4">
+          <a href="#" class="nvi nv" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Inventario y datos</div>
+        <sc-for list="{{nav.data}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nvi nv" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="sb-grp">
+        <div class="sb-grpt">Recursos</div>
+        <sc-for list="{{nav.res}}" as="n" hint-placeholder-count="3">
+          <a href="#" class="nvi nv" style="{{n.style}}" aria-current="{{n.current}}" aria-label="{{n.label}}">
+            <span style="{{n.bar}}"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{n.d}}"></path></svg>
+            <span class="sb-txt sb-hide">{{n.label}}</span>
+            <span class="sb-cnt sb-hide">{{n.count}}</span>
+          </a>
+        </sc-for>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <a href="#" class="nvi nv" style="color: #A7AEB8;" aria-label="Configuración">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="sb-txt sb-hide">Configuración</span>
+      </a>
+      <div style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 4px 0 8px;">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 6px; background: #1B1F24; border: 1px solid #353B44; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #ECEEF1;" aria-label="Bauti G., Jefe TIC">BG</span>
+        <span class="sb-hide" style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 16px;">
+          <span class="ell" style="font-size: 13px; font-weight: 600;">Bauti G.</span>
+          <span class="ell" style="font-size: 12px; color: #7C8592;">Jefe TIC</span>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENIDO -->
+  <main class="main">
+    <header class="tb">
+      <h1 class="nw" style="margin: 0; flex: none; font-size: 16px; line-height: 24px; font-weight: 600;">Estado de aulas</h1>
+      <span class="tb-ctx" aria-hidden="true" style="flex: none; color: #353B44;">/</span>
+      <span class="tb-ctx ell" style="flex: 0 1 auto; font-size: 13px; color: #A7AEB8;">{{top.ctx}}</span>
+      <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+      <button type="button" class="nw" aria-label="Abrir el Asistente" style="flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path><path d="M8 12h.01M12 12h.01M16 12h.01"></path></svg>
+        <span class="tb-t">Asistente</span>
+      </button>
+      <button type="button" class="ib" aria-label="Notificaciones, [N] sin leer" style="position: relative; width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+        <span class="mono" style="position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 999px; background: #5B9BFF; color: #0D0F12; font-size: 10px; font-weight: 500; line-height: 16px; text-align: center;">[N]</span>
+      </button>
+      <button type="button" class="ib" aria-label="Ayuda" style="width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path></svg>
+      </button>
+    </header>
+
+    <div class="pad">
+
+      <!-- CONTROLES: sede + planta + categorías -->
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-width: 0;">
+        <div role="group" aria-label="Sede" style="display: flex; flex-wrap: wrap; gap: 4px; padding: 3px; background: #14171B; border: 1px solid #262B32; border-radius: 8px; min-width: 0;">
+          <sc-for list="{{sites}}" as="o" hint-placeholder-count="2">
+            <button type="button" class="sg nw" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}<span class="mono" style="font-size: 12px; color: #7C8592;">{{o.code}}</span></button>
+          </sc-for>
+        </div>
+        <div role="group" aria-label="Planta" style="display: flex; flex-wrap: wrap; gap: 4px; padding: 3px; background: #14171B; border: 1px solid #262B32; border-radius: 8px; min-width: 0;">
+          <sc-for list="{{floorBtns}}" as="o" hint-placeholder-count="4">
+            <button type="button" class="sg nw" aria-pressed="{{o.pressed}}" aria-disabled="{{o.disabled}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.label}}<span class="mono" style="font-size: 12px; color: #7C8592;">{{o.count}}</span></button>
+          </sc-for>
+        </div>
+        <span aria-hidden="true" style="flex: 1 1 0; min-width: 0;"></span>
+        <button type="button" class="nw" aria-expanded="{{cats.open}}" onClick="{{cats.onToggle}}" style="flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>
+          Categorías de equipamiento
+        </button>
+      </div>
+
+      <!-- ADMINISTRAR CATEGORÍAS (en línea, empuja el contenido) -->
+      <sc-if value="{{cats.show}}" hint-placeholder-val="{{ false }}">
+        <section aria-label="Categorías de equipamiento" style="background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px;">
+            <div style="flex: 1 1 320px; min-width: 0;">
+              <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Solo administradores de la sede</div>
+              <h2 style="margin: 4px 0 0; font-size: 20px; font-weight: 600;">Categorías de equipamiento</h2>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #A7AEB8;">Cada categoría es una fila de la ficha del aula. Borrar una no toca el historial.</p>
+            </div>
+            <button type="button" class="gh nw" onClick="{{cats.onToggle}}" style="height: 36px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">Cerrar</button>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 0 24px;">
+            <sc-for list="{{cats.rows}}" as="c" hint-placeholder-count="9">
+              <div style="display: flex; align-items: center; gap: 4px; min-height: 40px; border-bottom: 1px solid #262B32; min-width: 0;">
+                <button type="button" class="ib" aria-label="{{c.upLabel}}" aria-disabled="{{c.first}}" style="{{c.upStyle}}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"></path></svg>
+                </button>
+                <button type="button" class="ib" aria-label="{{c.downLabel}}" aria-disabled="{{c.last}}" style="{{c.downStyle}}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+                </button>
+                <span class="ell" style="flex: 1 1 auto; font-size: 14px; font-weight: 500; padding-left: 4px;">{{c.label}}</span>
+                <span class="nw" style="flex: none; font-size: 12px; color: #7C8592;">Todos los estados</span>
+                <button type="button" class="gh nw" aria-label="{{c.editLabel}}" style="flex: none; height: 28px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer;">Editar</button>
+                <button type="button" class="gh nw" aria-label="{{c.delLabel}}" style="flex: none; height: 28px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer;">Eliminar</button>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+            <label for="cat-new" class="vh">Nombre de la categoría nueva</label>
+            <div class="fld" style="flex: 0 1 320px; min-width: 0; height: 36px; display: flex; align-items: center; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+              <input id="cat-new" type="text" placeholder="Nombre de la categoría" style="flex: 1; min-width: 0; height: 34px; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px;">
+            </div>
+            <button type="button" class="nw" style="height: 36px; padding: 0 14px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">Crear categoría</button>
+            <span class="ell" style="flex: 1 1 200px; font-size: 12px; color: #7C8592;">Editar abre la fila en el lugar: nombre y estados admitidos. Eliminar pide confirmación en la misma fila.</span>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- RESUMEN DE LA PLANTA (cada indicador filtra el plano y la lista) -->
+      <div role="group" aria-label="Resumen de la planta. Cada indicador filtra el plano y la lista." style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; min-width: 0;">
+        <button type="button" aria-pressed="{{sum.okPressed}}" onClick="{{sum.okClick}}" style="{{sum.okStyle}}">
+          <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true" style="flex: none;"><circle cx="18" cy="18" r="15" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="18" cy="18" r="15" fill="none" stroke="{{sum.ringColor}}" stroke-width="3" stroke-linecap="{{sum.ringCap}}" stroke-dasharray="{{sum.ringDash}}" transform="rotate(-90 18 18)"></circle></svg>
+          <span style="display: flex; flex-direction: column; align-items: flex-start; line-height: 18px; min-width: 0;">
+            <span class="nw" style="font-size: 13px; color: #A7AEB8;">Aulas OK</span>
+            <span class="nw"><span class="mono" style="font-size: 16px; color: #ECEEF1;">{{sum.ok}}</span><span class="mono" style="font-size: 13px; color: #7C8592;"> de {{sum.total}}</span></span>
+          </span>
+        </button>
+        <sc-for list="{{sum.items}}" as="m" hint-placeholder-count="6">
+          <button type="button" class="nw" aria-pressed="{{m.pressed}}" onClick="{{m.onClick}}" style="{{m.style}}">
+            <span style="font-size: 13px; color: #A7AEB8;">{{m.label}}</span>
+            <span class="mono" style="{{m.numStyle}}">{{m.n}}</span>
+          </button>
+        </sc-for>
+        <sc-if value="{{sum.hasFilter}}" hint-placeholder-val="{{ false }}">
+          <button type="button" class="gh nw" onClick="{{sum.clear}}" style="height: 52px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer;">Quitar filtro</button>
+        </sc-if>
+      </div>
+
+      <div class="aw">
+
+        <!-- PLANO + LISTA -->
+        <section aria-label="{{plan.aria}}" style="min-width: 0; background: #14171B; border: 1px solid #262B32; border-radius: 10px; display: flex; flex-direction: column;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 16px 12px; min-width: 0;">
+            <div style="flex: 1 1 200px; min-width: 0;">
+              <div class="mono ell" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">{{plan.cap}}</div>
+              <h2 class="ell" style="margin: 2px 0 0; font-size: 20px; line-height: 28px; font-weight: 600;">{{plan.title}}</h2>
+            </div>
+            <div aria-label="Referencias" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 12px; min-width: 0;">
+              <span class="nw" style="color: #7C8592;">OK sin marca</span>
+              <span class="nw" style="display: inline-flex; align-items: center; gap: 6px; color: #F5C04E;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"></path></svg>Con observaciones</span>
+              <span class="nw" style="display: inline-flex; align-items: center; gap: 6px; color: #FF6B6B;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.86 2h8.28L22 7.86v8.28L16.14 22H7.86L2 16.14V7.86L7.86 2zM15 9l-6 6M9 9l6 6"></path></svg>Problema</span>
+              <span class="nw" style="display: inline-flex; align-items: center; gap: 6px; color: #7C8592;"><span aria-hidden="true" style="width: 12px; height: 10px; border: 1px dashed #7C8592; border-radius: 2px; box-sizing: border-box;"></span>Sin revisar</span>
+            </div>
+          </div>
+
+          <div style="padding: 0 16px; min-width: 0;">
+            <div style="{{plan.boxStyle}}">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block;">
+                <path d="{{plan.bodyD}}" fill="#14171B" stroke="#353B44" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+                <path d="{{plan.corrD}}" fill="#14171B" stroke="none"></path>
+                <path d="{{plan.decoD}}" fill="#14171B" stroke="#262B32" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+                <path d="{{plan.lineD}}" fill="none" stroke="#262B32" stroke-width="1" vector-effect="non-scaling-stroke"></path>
+              </svg>
+              <sc-for list="{{plan.labels}}" as="d" hint-placeholder-count="6">
+                <span aria-hidden="true" style="{{d.style}}">{{d.l}}</span>
+              </sc-for>
+              <sc-for list="{{plan.rooms}}" as="r" hint-placeholder-count="12">
+                <button type="button" class="rm" style="{{r.style}}" aria-label="{{r.aria}}" aria-pressed="{{r.pressed}}" onClick="{{r.onClick}}">
+                  <span style="{{r.lstyle}}">{{r.l}}</span>
+                  <sc-if value="{{r.icon}}" hint-placeholder-val="{{ false }}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="{{r.ic}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; top: 3px; right: 3px;"><path d="{{r.iconD}}"></path></svg>
+                  </sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <p style="margin: 0; padding: 10px 16px 0; font-size: 12px; color: #7C8592;">Clic en un aula para abrir su ficha a la derecha. Con Tab recorrés las aulas en orden; Enter abre, Esc cierra la ficha.</p>
+
+          <!-- LISTA DE AULAS -->
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;">
+            <div style="display: flex; align-items: baseline; gap: 8px;">
+              <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Aulas de {{plan.title}}</h3>
+              <span class="mono" style="font-size: 12px; color: #7C8592;">{{plan.listCount}}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 4px 8px; min-width: 0;">
+              <sc-for list="{{plan.list}}" as="r" hint-placeholder-count="12">
+                <button type="button" class="li" aria-pressed="{{r.pressed}}" aria-label="{{r.aria}}" onClick="{{r.onClick}}" style="{{r.liStyle}}">
+                  <span class="mono ell" style="flex: 0 1 auto; font-size: 13px; color: #ECEEF1;">{{r.name}}</span>
+                  <span aria-hidden="true" style="flex: 1 1 0; min-width: 4px;"></span>
+                  <span class="ell" style="{{r.stStyle}}">{{r.st}}</span>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{plan.listEmpty}}" hint-placeholder-val="{{ false }}">
+              <p style="margin: 0; font-size: 13px; color: #A7AEB8;">Ningún aula de esta planta coincide con el filtro.</p>
+            </sc-if>
+          </div>
+        </section>
+
+        <!-- FICHA EN LÍNEA (columna derecha; debajo del plano en anchos chicos) -->
+        <sc-if value="{{noSel}}" hint-placeholder-val="{{ false }}">
+          <aside aria-label="Ficha del aula" style="min-width: 0; background: #14171B; border: 1px solid #262B32; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 8px;">
+            <div class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">Ficha del aula</div>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 600;">Elegí un aula</h2>
+            <p style="margin: 0; font-size: 14px; line-height: 20px; color: #A7AEB8;">Tocá un aula en el plano o en la lista. La ficha se abre acá, sin tapar el plano.</p>
+          </aside>
+        </sc-if>
+        <sc-if value="{{hasSel}}" hint-placeholder-val="{{ true }}">
+          <aside aria-label="{{f.aria}}" style="min-width: 0; background: #14171B; border: 1px solid #262B32; border-radius: 10px; display: flex; flex-direction: column;">
+
+            <!-- Encabezado -->
+            <div style="padding: 16px 12px 16px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #262B32;">
+              <div style="display: flex; align-items: flex-start; gap: 8px; min-width: 0;">
+                <div style="flex: 1 1 auto; min-width: 0;">
+                  <div class="mono ell" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7C8592;">{{f.eyebrow}}</div>
+                  <h2 class="ell" style="margin: 2px 0 0; font-size: 20px; line-height: 28px; font-weight: 600;">{{f.name}}</h2>
+                </div>
+                <button type="button" class="ib" aria-label="Cerrar ficha (Esc)" onClick="{{f.onClose}}" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; cursor: pointer;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; padding-right: 8px;">
+                <span class="nw" style="{{f.stStyle}}">{{f.st}}</span>
+                <span class="ell" style="flex: 1 1 120px; font-size: 13px; color: #A7AEB8;">{{f.issues}}</span>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; padding-right: 8px;">
+                <button type="button" class="nw" aria-expanded="{{f.ticketOpen}}" onClick="{{f.onTicket}}" style="height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 500; cursor: pointer;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2"></path></svg>
+                  Crear ticket
+                </button>
+                <button type="button" class="gh nw" aria-label="{{f.askLabel}}" style="height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+                  Preguntar al Asistente
+                </button>
+              </div>
+            </div>
+
+            <!-- Crear ticket (en línea) -->
+            <sc-if value="{{f.ticketOpen}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #262B32; background: #1B1F24;">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 600;">Nuevo ticket para {{f.name}}</h3>
+                <label for="tk-title" style="font-size: 12px; font-weight: 500; color: #A7AEB8;">Título</label>
+                <div class="fld" style="height: 36px; display: flex; align-items: center; padding: 0 10px; background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                  <input id="tk-title" type="text" value="{{f.ticketTitle}}" style="flex: 1; min-width: 0; height: 34px; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px;">
+                </div>
+                <div role="group" aria-label="Prioridad" style="display: flex; flex-wrap: wrap; gap: 4px;">
+                  <sc-for list="{{f.prio}}" as="o" hint-placeholder-count="4">
+                    <button type="button" class="sg nw" aria-pressed="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.l}}</button>
+                  </sc-for>
+                </div>
+                <p style="margin: 0; font-size: 12px; color: #7C8592;">Queda vinculado al aula y aparece en Incidentes.</p>
+                <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px;">
+                  <button type="button" class="gh nw" onClick="{{f.onTicket}}" style="height: 36px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">Cancelar</button>
+                  <button type="button" class="nw" onClick="{{f.onTicketSave}}" style="height: 36px; padding: 0 14px; background: #5B9BFF; border: 0; border-radius: 6px; color: #0D0F12; font-size: 14px; font-weight: 600; cursor: pointer;">Crear ticket</button>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{f.ticketDone}}" hint-placeholder-val="{{ false }}">
+              <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 10px 20px; border-bottom: 1px solid #262B32; font-size: 13px;">
+                <span class="ell" style="flex: 1 1 200px; color: #A7AEB8;">Ticket [#N] creado y vinculado a {{f.name}}.</span>
+                <a href="#" class="nw">Ver ticket</a>
+              </div>
+            </sc-if>
+
+            <!-- Equipamiento -->
+            <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #262B32;">
+              <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                <h3 class="nw" style="margin: 0; font-size: 14px; font-weight: 600;">Equipamiento</h3>
+                <span class="mono" style="font-size: 12px; color: #7C8592;">{{f.eqCount}}</span>
+                <span aria-hidden="true" style="flex: 1 1 0;"></span>
+                <button type="button" class="gh nw" aria-expanded="{{f.editEq}}" onClick="{{f.onEditEq}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer;">{{f.editEqLabel}}</button>
+              </div>
+              <sc-if value="{{f.editEq}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px;">
+                  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px;">
+                    <sc-for list="{{f.cats}}" as="c" hint-placeholder-count="9">
+                      <button type="button" role="checkbox" aria-checked="{{c.checked}}" aria-disabled="{{c.locked}}" onClick="{{c.onClick}}" style="{{c.style}}">
+                        <span aria-hidden="true" style="{{c.box}}">
+                          <sc-if value="{{c.on}}" hint-placeholder-val="{{ true }}">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0F12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                          </sc-if>
+                        </span>
+                        <span class="ell">{{c.label}}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <p style="margin: 0; font-size: 12px; color: #7C8592;">Las que sumás arrancan en Sin revisar. Tiene que quedar al menos un equipo.</p>
+                </div>
+              </sc-if>
+              <sc-for list="{{f.equip}}" as="e" hint-placeholder-count="4">
+                <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+                  <div style="display: flex; align-items: baseline; gap: 8px; min-width: 0;">
+                    <span class="ell" style="flex: 0 1 auto; font-size: 14px; font-weight: 500;">{{e.label}}</span>
+                    <span class="mono ell" style="flex: 1 1 0; font-size: 12px; color: #7C8592;">{{e.was}}</span>
+                  </div>
+                  <div role="radiogroup" aria-label="{{e.aria}}" style="display: flex; flex-wrap: wrap; gap: 4px; padding: 3px; background: #0D0F12; border: 1px solid #262B32; border-radius: 8px;">
+                    <sc-for list="{{e.opts}}" as="o" hint-placeholder-count="5">
+                      <button type="button" role="radio" class="sg nw" aria-checked="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.l}}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <!-- Observaciones + guardar -->
+            <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #262B32;">
+              <label for="obs" style="font-size: 14px; font-weight: 600;">Observaciones</label>
+              <div class="fld" style="background: #0D0F12; border: 1px solid #353B44; border-radius: 6px; padding: 8px 10px; box-sizing: border-box;">
+                <textarea id="obs" rows="3" placeholder="Algo que el próximo tenga que saber de esta aula" onInput="{{f.onObs}}" style="display: block; width: 100%; min-height: 60px; resize: vertical; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px; line-height: 20px; box-sizing: border-box; padding: 0; scrollbar-width: none;">{{f.obs}}</textarea>
+              </div>
+              <span class="ell" style="font-size: 12px; color: #7C8592;">Última actualización <span class="mono">{{f.upd}}</span> · {{f.op}}</span>
+              <sc-if value="{{f.savedMsg}}" hint-placeholder-val="{{ false }}">
+                <div role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px;">
+                  <span class="ell" style="flex: 1 1 200px; color: #A7AEB8;">{{f.savedText}}</span>
+                  <button type="button" class="nw" onClick="{{f.onUndo}}" style="height: 28px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #5B9BFF; font-size: 13px; font-weight: 500; cursor: pointer;">Deshacer</button>
+                </div>
+              </sc-if>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px;">
+                <span class="ell" style="{{f.dirtyStyle}}">{{f.dirtyText}}</span>
+                <button type="button" class="gh nw" onClick="{{f.onCancel}}" aria-disabled="{{f.clean}}" style="height: 36px; padding: 0 12px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 14px; cursor: pointer;">Descartar</button>
+                <button type="button" class="nw" onClick="{{f.onSave}}" aria-disabled="{{f.clean}}" style="{{f.saveStyle}}">Guardar cambios</button>
+              </div>
+            </div>
+
+            <!-- Diagnóstico IA -->
+            <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #262B32;">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0;">
+                <div style="flex: 1 1 160px; min-width: 0;">
+                  <h3 class="ell" style="margin: 0; font-size: 14px; font-weight: 600;">Diagnóstico del aula</h3>
+                  <span class="ell" style="display: block; font-size: 12px; color: #7C8592;">Lo arma la IA solo cuando lo pedís</span>
+                </div>
+                <button type="button" class="nw" onClick="{{f.onDiag}}" style="height: 32px; padding: 0 12px; background: #1B1F24; border: 1px solid #353B44; border-radius: 6px; color: #ECEEF1; font-size: 13px; font-weight: 500; cursor: pointer;">{{f.diagBtn}}</button>
+              </div>
+              <sc-if value="{{f.diag}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true" style="flex: none;"><circle cx="20" cy="20" r="17" fill="none" stroke="#262B32" stroke-width="3"></circle><circle cx="20" cy="20" r="17" fill="none" stroke="{{f.dg.ring}}" stroke-width="3" stroke-linecap="round" stroke-dasharray="{{f.dg.dash}}" transform="rotate(-90 20 20)"></circle></svg>
+                    <div style="display: flex; flex-direction: column; line-height: 20px; min-width: 0;">
+                      <span class="nw"><span class="mono" style="font-size: 20px; color: #ECEEF1;">{{f.dg.score}}</span><span class="mono" style="font-size: 13px; color: #7C8592;"> / 100</span><span style="font-size: 14px; color: #A7AEB8;"> · {{f.dg.status}}</span></span>
+                      <span class="ell" style="font-size: 12px; color: #7C8592;">Generado hoy <span class="mono">11:52</span> · Bauti G.</span>
+                    </div>
+                  </div>
+                  <p style="margin: 0; font-size: 14px; line-height: 20px; color: #ECEEF1;">{{f.dg.summary}}</p>
+                  <sc-for list="{{f.dg.lists}}" as="g" hint-placeholder-count="4">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                      <span style="font-size: 12px; font-weight: 500; color: #7C8592;">{{g.t}}</span>
+                      <sc-for list="{{g.items}}" as="it" hint-placeholder-count="2">
+                        <span style="{{it.style}}">{{it.t}}</span>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+
+            <!-- Incidentes -->
+            <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #262B32;">
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <h3 class="nw" style="margin: 0; font-size: 14px; font-weight: 600;">Incidentes</h3>
+                <span class="ell" style="font-size: 12px; color: #7C8592;">tickets vinculados al aula</span>
+              </div>
+              <dl style="margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;">
+                <sc-for list="{{f.kpis}}" as="k" hint-placeholder-count="4">
+                  <div style="min-width: 0;">
+                    <dt class="ell" style="font-size: 12px; color: #7C8592;">{{k.l}}</dt>
+                    <dd class="mono ell" style="{{k.style}}">{{k.v}}</dd>
+                  </div>
+                </sc-for>
+              </dl>
+              <sc-if value="{{f.incEmpty}}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0; font-size: 13px; color: #A7AEB8;">Esta aula todavía no tiene incidentes vinculados.</p>
+              </sc-if>
+              <sc-if value="{{f.ticketDone}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span style="font-size: 12px; color: #7C8592;">Problemas frecuentes: <span style="color: #A7AEB8;">Hardware</span> <span class="mono">1</span></span>
+                  <a href="#" class="li" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 8px; margin: 0 -8px; border-radius: 6px; text-decoration: none; color: #ECEEF1; min-width: 0;">
+                    <span style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+                      <span class="ell" style="font-size: 14px;"><span class="mono" style="color: #A7AEB8;">[#N]</span> · {{f.ticketTitle}}</span>
+                      <span class="ell" style="font-size: 12px; color: #7C8592;">Hardware · {{f.ticketPrio}} · hoy <span class="mono">11:52</span></span>
+                    </span>
+                    <span class="nw" style="flex: none; font-size: 13px; color: #F5C04E;">No hecho</span>
+                  </a>
+                </div>
+              </sc-if>
+            </div>
+
+            <!-- Recordatorios del aula -->
+            <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid #262B32;">
+              <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                <h3 class="nw" style="margin: 0; font-size: 14px; font-weight: 600;">Recordatorios</h3>
+                <span aria-hidden="true" style="flex: 1 1 0;"></span>
+                <button type="button" class="gh nw" aria-expanded="{{f.remAdd}}" onClick="{{f.onRemAdd}}" style="height: 32px; padding: 0 10px; background: transparent; border: 0; border-radius: 6px; color: #A7AEB8; font-size: 13px; cursor: pointer;">Agregar</button>
+              </div>
+              <sc-for list="{{f.rems}}" as="m" hint-placeholder-count="1">
+                <div style="display: flex; align-items: center; gap: 10px; min-height: 40px; min-width: 0;">
+                  <button type="button" role="checkbox" aria-checked="{{m.checked}}" aria-label="{{m.aria}}" onClick="{{m.onClick}}" style="width: 32px; height: 32px; flex: none; margin-left: -8px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; cursor: pointer;">
+                    <span aria-hidden="true" style="{{m.box}}">
+                      <sc-if value="{{m.done}}" hint-placeholder-val="{{ false }}">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0D0F12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                      </sc-if>
+                    </span>
+                  </button>
+                  <span class="ell" style="{{m.tStyle}}">{{m.t}}</span>
+                  <span class="mono nw" style="{{m.wStyle}}">{{m.w}}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{f.remEmpty}}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0; font-size: 13px; color: #A7AEB8;">Sin recordatorios vinculados.</p>
+              </sc-if>
+              <sc-if value="{{f.remAdd}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #0D0F12; border: 1px solid #262B32; border-radius: 6px;">
+                  <label for="rem-t" class="vh">Qué hay que recordar</label>
+                  <div class="fld" style="height: 36px; display: flex; align-items: center; padding: 0 10px; background: #14171B; border: 1px solid #353B44; border-radius: 6px; box-sizing: border-box;">
+                    <input id="rem-t" type="text" placeholder="Qué hay que recordar" style="flex: 1; min-width: 0; height: 34px; background: transparent; border: 0; outline: none; color: #ECEEF1; font-size: 14px;">
+                  </div>
+                  <div role="radiogroup" aria-label="Cuándo" style="display: flex; flex-wrap: wrap; gap: 4px;">
+                    <sc-for list="{{f.remWhen}}" as="o" hint-placeholder-count="3">
+                      <button type="button" role="radio" class="sg nw" aria-checked="{{o.pressed}}" onClick="{{o.onClick}}" style="{{o.style}}">{{o.l}}</button>
+                    </sc-for>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                    <a href="#" class="ell" style="flex: 1 1 140px; font-size: 13px;">Otra fecha u hora</a>
+                    <button type="button" class="nw" onClick="{{f.onRemSave}}" style="height: 32px; padding: 0 12px; background: #5B9BFF; border: 0; border-radius: 6px; color: #0D0F12; font-size: 13px; font-weight: 600; cursor: pointer;">Guardar</button>
+                  </div>
+                </div>
+              </sc-if>
+              <a href="#" class="nw" style="align-self: flex-start; font-size: 13px;">Ver todos en Recordatorios</a>
+            </div>
+
+            <!-- Historial -->
+            <div style="padding: 8px 12px 12px;">
+              <button type="button" class="gh" aria-expanded="{{f.histOpen}}" onClick="{{f.onHist}}" style="width: 100%; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 8px; background: transparent; border: 0; border-radius: 6px; color: #ECEEF1; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left;">
+                <span class="nw">Historial de cambios</span>
+                <span class="mono" style="font-size: 12px; font-weight: 400; color: #7C8592;">{{f.histCount}}</span>
+                <span aria-hidden="true" style="flex: 1 1 0;"></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A7AEB8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{f.histChev}}"><path d="M6 9l6 6 6-6"></path></svg>
+              </button>
+              <sc-if value="{{f.histOpen}}" hint-placeholder-val="{{ false }}">
+                <ol style="margin: 4px 0 0; padding: 0 8px; list-style: none; display: flex; flex-direction: column;">
+                  <sc-for list="{{f.hist}}" as="h" hint-placeholder-count="6">
+                    <li style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 2px 12px; padding: 8px 0; border-top: 1px solid #262B32; font-size: 13px;">
+                      <span class="mono nw" style="color: #7C8592;">{{h.ts}}</span>
+                      <span style="min-width: 0; color: #A7AEB8;"><span style="color: #ECEEF1; font-weight: 500;">{{h.campo}}</span> {{h.de}} → <span style="color: #ECEEF1;">{{h.a}}</span> · {{h.op}}</span>
+                    </li>
+                  </sc-for>
+                </ol>
+              </sc-if>
+            </div>
+          </aside>
+        </sc-if>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1660}}'>
+class Component extends DCLogic {
+icons() {
+  const R = (x, y, w, h, r) => 'M' + (x + r) + ' ' + y + 'h' + (w - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + 'v' + (h - 2 * r) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + r + 'h' + (-(w - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + (-r) + ' ' + (-r) + 'v' + (-(h - 2 * r)) + 'a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + (-r) + 'z';
+  const C = (cx, cy, r) => 'M' + (cx - r) + ' ' + cy + 'a' + r + ' ' + r + ' 0 1 0 ' + (2 * r) + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0';
+  return {
+    home: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+    loans: 'M2 9l3-3 3 3M13 18H7a2 2 0 0 1-2-2V6M22 15l-3 3-3-3M11 6h6a2 2 0 0 1 2 2v10',
+    devices: 'M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8M10 19v-4M7 19h5' + R(16, 12, 6, 10, 2),
+    agenda: R(3, 4, 18, 18, 2) + 'M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
+    rooms: 'M14 22v-4a2 2 0 1 0-4 0v4M18 10l3.447 1.724a1 1 0 0 1 .553.894V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7.382a1 1 0 0 1 .553-.894L6 10M18 5v17M4 6l7.106-3.553a2 2 0 0 1 1.788 0L20 6M6 5v17' + C(12, 9, 2),
+    tasks: R(8, 2, 8, 4, 1) + 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 14l2 2 4-4',
+    tickets: 'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2ZM13 5v2M13 17v2M13 11v2',
+    reminders: C(12, 13, 8) + 'M12 9v4l2 2M5 3L2 6M22 6l-3-3',
+    history: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2',
+    inventory: 'M7.5 4.27l9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7l8.7 5 8.7-5M12 22V12',
+    analytics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
+    cash: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4',
+    knowledge: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
+    tools: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+    links: 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8',
+    tri: 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01',
+    oct: 'M7.86 2h8.28L22 7.86v8.28L16.14 22H7.86L2 16.14V7.86L7.86 2zM15 9l-6 6M9 9l6 6'
+  };
+}
+// Geometría tomada de src/components/classrooms/models/* (IDs = room_key de la base, sin cambios).
+// k: r = aula clickeable, d = espacio no clickeable, c = pasillo, p = patio/terraza, x = bloque punteado,
+// z = bloque angosto con texto vertical, s = escalera (con escalones), b = baños (con artefactos), poly = polígono.
+plans() {
+  const R = (id, l, x, y, w, h, k, o) => Object.assign({ id: id, l: l, x: x, y: y, w: w, h: h, k: k || 'r' }, o || {});
+  const S = (x, y, w, h, n, dir) => R('', '', x, y, w, h, 's', { n: n, dir: dir });
+  const B = (x, y, w, h) => R('', 'Baños', x, y, w, h, 'b');
+  return {
+    NFPT: [
+      { key: 'planta', label: 'Planta baja', W: 1000, H: 1150, cap: 'Escuela Primaria · NFPT', body: [], items: [
+        R('pasillo_horiz', '', 108, 118, 892, 32, 'c'), R('pasillo_col', '', 108, 118, 32, 687, 'c'),
+        R('pasillo_pre1ero', '', 140, 340, 94, 120, 'c'), R('pasillo_zoom_com', '', 502, 832, 44, 250, 'c'),
+        R('room_Patio_Primaria', 'Patio Primaria', 234, 260, 766, 572, 'p'),
+        R('room_Banos_1', 'Baños', 0, 0, 108, 118, 'd'), R('room_Directores', 'Directores', 0, 118, 108, 52, 'd'),
+        R('room_Salita', 'Administración', 0, 170, 108, 58, 'd'), R('room_Preceptoria_2', 'Prec. 2', 852, 0, 148, 30, 'd'),
+        R('room_Drama', 'Drama', 704, 0, 148, 118, 'd'), R('room_Musica', 'Música', 852, 30, 148, 88, 'd'),
+        R('room_Banos_2', 'Baños', 874, 150, 126, 110, 'd'), R('room_Hall_Entrada', 'Hall\n+ entrada', 0, 228, 108, 232, 'd'),
+        R('room_Escalera', 'Escalera', 140, 260, 94, 80, 's', { n: 6, dir: 'h' }),
+        R('room_Kiosco', 'Kiosco', 0, 832, 108, 76, 'd'), R('room_Front', 'Front', 0, 908, 108, 84, 'd'),
+        R('room_Comedor', 'Comedor', 546, 832, 294, 250, 'd'), R('room_Zoom_exit', '', 225, 1082, 115, 60, 'd'),
+        R('room_3ero_N', '3ero N', 112, 0, 148, 118), R('room_5to_N', '5to N', 260, 0, 148, 118),
+        R('room_5to_F', '5to F', 408, 0, 148, 118), R('room_5to_S', '5to S', 556, 0, 148, 118),
+        R('room_3ero_F', '3ero F', 112, 150, 127, 110), R('room_3ero_S', '3ero S', 239, 150, 127, 110),
+        R('room_4to_N', '4to N', 366, 150, 127, 110), R('room_4to_F', '4to F', 493, 150, 127, 110),
+        R('room_4to_S', '4to S', 620, 150, 127, 110), R('room_Arte', 'Arte', 747, 150, 127, 110),
+        R('room_2do_N', '2do N', 0, 460, 108, 115), R('room_2do_F', '2do F', 0, 575, 108, 115), R('room_2do_S', '2do S', 0, 690, 108, 115),
+        R('room_1ero_N', '1ero N', 140, 460, 94, 115), R('room_1ero_F', '1ero F', 140, 575, 94, 115), R('room_1ero_S', '1ero S', 140, 690, 94, 115),
+        R('room_Zoom', 'Zoom', 112, 892, 390, 190)
+      ] },
+      { key: 'primero', label: '1er piso', W: 1020, H: 830, cap: 'Secundaria · NFPT', body: [[0, 0, 1020, 375], [0, 420, 340, 410]], items: [
+        R('pp_corr', 'Pasillo / circulación', 165, 135, 855, 75, 'c'),
+        R('pp_Banos', 'Baños', 0, 0, 165, 170, 'd'), R('pp_DOE', 'DOE', 0, 240, 165, 135, 'd'),
+        R('pp_Escalera', 'Pasillo', 165, 210, 130, 165, 'c'), R('pp_Pasillo', 'Pasillo', 605, 210, 60, 165, 'c'),
+        R('pp_TIC', 'Sala TIC', 182, 420, 158, 95, 'd'),
+        R('pp_Direccion', 'Dirección', 0, 170, 165, 70),
+        R('pp_2N', '2N', 165, 0, 130, 135), R('pp_2F', '2F', 295, 0, 120, 135), R('pp_2S', '2S', 415, 0, 120, 135),
+        R('pp_Precep', 'Precep', 535, 0, 130, 135), R('pp_3N', '3N', 665, 0, 120, 135), R('pp_5S', '5S', 785, 0, 115, 135), R('pp_5F', '5F', 900, 0, 120, 135),
+        R('pp_Lab', 'Lab', 295, 210, 120, 165), R('pp_Maker', 'Maker', 415, 210, 120, 165), R('pp_SalaProfs', 'Sala\nprofes', 535, 210, 70, 165),
+        R('pp_3F', '3F', 665, 210, 120, 165), R('pp_6F', '6F', 785, 210, 115, 165), R('pp_6N', '6N', 900, 210, 120, 165),
+        R('pp_1F', '1F', 0, 420, 165, 130), R('pp_1N', '1N', 0, 550, 165, 130), R('pp_6F2', '6F (T)', 0, 680, 165, 150),
+        R('pp_1S', '1S', 182, 515, 158, 120), R('pp_6S', '6S', 182, 635, 158, 100), R('pp_6N2', '6N (T)', 182, 735, 158, 95)
+      ] },
+      { key: 'segundo', label: 'Segundo piso', W: 1320, H: 830, cap: 'Secundaria · NFPT', body: [], items: [
+        R('sector_1er_piso', '1er piso', 0, 0, 0, 0, 'poly', { pts: '0,0 980,0 980,230 830,230 830,320 380,320 380,830 0,830', lx: 440, ly: 170 }),
+        R('escalera_1er_piso', 'Escalera', 0, 0, 0, 0, 'poly', { pts: '700,320 700,430 980,430 980,230 830,230 830,320', lx: 840, ly: 380 }),
+        R('pasillo_precep_1er_piso', 'Pasillo / precep', 980, 140, 190, 90, 'd'),
+        R('4N', '4N', 980, 0, 190, 140), R('4F', '4F', 1170, 0, 150, 140), R('4S', '4S', 1170, 140, 150, 180), R('3S', '3S', 980, 230, 190, 90)
+      ] },
+      { key: 'inicial', label: 'Nivel inicial', off: true }
+    ],
+    NFND: [
+      { key: 'planta', label: 'Planta baja', W: 1024, H: 560, cap: 'Bloque 3 · Primaria y Secundaria · NFND', body: ['100,108 356,108 356,14 556,14 556,108 984,108 984,462 100,462'], items: [
+        R('', '', 100, 300, 372, 30, 'c'), R('', '', 566, 300, 406, 30, 'c'), R('', 'Entrada · nivel primario y secundario', 100, 430, 872, 32, 'c'),
+        S(212, 100, 48, 128, 7, 'h'), S(428, 232, 40, 92, 6, 'v'), S(690, 280, 66, 88, 6, 'h'), S(882, 210, 66, 100, 7, 'v'),
+        B(212, 236, 150, 96), B(476, 194, 148, 122),
+        R('nd_pb_2S_EP', '2°S EP', 118, 118, 90, 70), R('nd_pb_2F_EP', '2°F EP', 264, 118, 90, 70), R('nd_pb_2N_EP', '2°N EP', 118, 216, 90, 78),
+        R('nd_pb_1S_EP', '1°S EP', 366, 220, 100, 74), R('nd_pb_1F_EP', '1°F EP', 118, 350, 90, 72), R('nd_pb_1N_EP', '1°N EP', 214, 350, 92, 72),
+        R('nd_pb_agora', 'Ágora', 372, 18, 168, 150), R('nd_pb_blooming', 'Blooming', 490, 356, 78, 84),
+        R('nd_pb_5N_ES', '5°N ES', 566, 92, 96, 66), R('nd_pb_5F_ES', '5°F ES', 680, 92, 100, 66), R('nd_pb_5S_ES', '5°S ES', 712, 192, 100, 70),
+        R('nd_pb_under', 'Under', 820, 146, 152, 96), R('nd_pb_6N_ES', '6°N ES', 748, 356, 94, 66), R('nd_pb_6F_ES', '6°F ES', 866, 326, 96, 76)
+      ] },
+      { key: 'primero', label: '1er piso', W: 1024, H: 560, cap: 'Bloque 3 · Primaria y Secundaria · NFND', body: ['88,172 88,434 926,434 926,72 534,72 534,172', '88,92 358,92 358,188 88,188'], items: [
+        R('', 'Circulación', 100, 300, 810, 26, 'c'), R('', '', 330, 174, 200, 24, 'c'), R('', 'Terraza', 270, 442, 360, 64, 'p'),
+        S(200, 88, 48, 100, 7, 'h'), S(628, 188, 52, 96, 6, 'v'), S(842, 270, 50, 84, 6, 'h'), S(48, 280, 46, 96, 7, 'v'),
+        B(256, 188, 88, 100), B(536, 188, 86, 100),
+        R('nd_p1_3F_EP', '3°F EP', 100, 100, 94, 72), R('nd_p1_3N_EP', '3°N EP', 252, 100, 94, 72), R('nd_p1_3S_EP', '3°S EP', 100, 200, 94, 68),
+        R('nd_p1_5N_EP', '5°N EP', 348, 198, 82, 68), R('nd_p1_TICS', 'TICS', 442, 198, 82, 68),
+        R('nd_p1_2N_ES', '2do N ES', 548, 88, 86, 64), R('nd_p1_2F_ES', '2do F ES', 688, 92, 86, 64), R('nd_p1_2S_ES', '2do S ES', 716, 188, 86, 66),
+        R('nd_p1_4N_EP', '4°N EP', 96, 356, 82, 76), R('nd_p1_4NF_EP', '4°NF EP', 186, 356, 82, 76), R('nd_p1_4S_EP', '4°S EP', 276, 356, 82, 76),
+        R('nd_p1_5F_EP', '5°F EP', 366, 356, 82, 76), R('nd_p1_5S_EP', '5°S EP', 456, 356, 82, 76),
+        R('nd_p1_1N_ES', '1ro N ES', 584, 356, 82, 76), R('nd_p1_1F_ES', '1ro F ES', 706, 356, 82, 76), R('nd_p1_1S_ES', '1ro S ES', 828, 356, 82, 76)
+      ] },
+      { key: 'segundo', label: '2do piso', W: 1024, H: 560, cap: 'Bloque 3 · Primaria y Secundaria · NFND', body: ['88,182 88,456 932,456 932,100 534,100 534,182', '88,120 420,120 420,210 88,210'], items: [
+        R('', 'Circulación', 100, 326, 832, 26, 'c'), R('', 'Terraza', 270, 464, 360, 62, 'p'),
+        S(200, 128, 48, 94, 7, 'h'), S(638, 206, 52, 100, 6, 'v'), S(850, 300, 50, 84, 6, 'h'), S(48, 300, 46, 96, 7, 'v'),
+        B(250, 206, 92, 100), B(540, 206, 90, 110),
+        R('nd_p2_dirEP', 'Dir. EP', 250, 142, 70, 56, 'd'), R('nd_p2_TICs2', 'TICs', 330, 142, 80, 56, 'd'),
+        R('nd_p2_staffEP', 'Staff EP', 286, 378, 80, 78, 'x'), R('nd_p2_dirSec', 'Dir. Secundaria', 382, 378, 40, 78, 'z'), R('nd_p2_staffES', 'Staff ES', 848, 378, 84, 78, 'x'),
+        R('nd_p2_TICS', 'TICS', 100, 150, 88, 64), R('nd_p2_6S_EP', '6°S EP', 100, 230, 88, 68), R('nd_p2_lab', 'Laboratorio', 360, 206, 166, 112),
+        R('nd_p2_4N_ES', '4to N ES', 548, 120, 86, 64), R('nd_p2_4F_ES', '4to F ES', 704, 120, 86, 66), R('nd_p2_4S_ES', '4to S ES', 716, 222, 86, 68),
+        R('nd_p2_6N_EP', '6°N EP', 96, 378, 84, 78), R('nd_p2_6F_EP', '6°F EP', 190, 378, 84, 78),
+        R('nd_p2_3N_ES', '3ro N ES', 476, 378, 84, 78), R('nd_p2_3F_ES', '3ro F ES', 600, 378, 84, 78), R('nd_p2_3S_ES', '3ro S ES', 724, 378, 84, 78)
+      ] },
+      { key: 'inicial', label: 'Nivel inicial', W: 1140, H: 345, cap: 'Nivel inicial · NFND', body: [], items: [
+        R('nd_ini_corr_h', '', 20, 165, 1100, 22, 'c'), R('nd_ini_esc', 'Escalera', 30, 200, 95, 115, 's', { n: 6, dir: 'v' }),
+        R('nd_ini_dirStaff', 'Dir. Staff NI', 1020, 40, 100, 115, 'd'), R('nd_ini_recepcion', 'Recepción / Dir. NI', 430, 200, 130, 115, 'd'),
+        R('nd_ini_K1y2', 'K 1y2', 30, 40, 110, 115), R('nd_ini_K2F', 'K2 F', 145, 40, 110, 115), R('nd_ini_K2N', 'K2 N', 260, 40, 110, 115),
+        R('nd_ini_SUM', 'SUM', 375, 40, 110, 115), R('nd_ini_K3Taller', 'K3 Taller', 560, 40, 110, 115),
+        R('nd_ini_K4N', 'K4 N', 675, 40, 110, 115), R('nd_ini_K4F', 'K4 F', 790, 40, 110, 115), R('nd_ini_K4S', 'K4 S', 905, 40, 110, 115),
+        R('nd_ini_K3N', 'K3 N', 145, 200, 110, 115), R('nd_ini_K3F', 'K3 F', 260, 200, 110, 115),
+        R('nd_ini_K5S', 'K5 S', 675, 200, 110, 115), R('nd_ini_K5F', 'K5 F', 790, 200, 110, 115), R('nd_ini_K5N', 'K5 N', 905, 200, 110, 115)
+      ] },
+      { key: 'artes', label: 'SUM / Artes', W: 680, H: 640, cap: 'Edificio SUM / Artes · NFND', body: [], items: [
+        R('nd_art_corr_v', '', 400, 30, 20, 590, 'c'),
+        R('nd_art_SUM', 'SUM', 40, 300, 340, 300), R('nd_art_music', 'Música', 435, 30, 210, 115), R('nd_art_arte', 'Arte', 435, 160, 175, 105),
+        R('nd_art_esceno', 'Escenografía', 435, 280, 175, 105), R('nd_art_blooming', 'Blooming Inicial', 435, 400, 175, 100), R('nd_art_drama', 'Drama', 435, 515, 175, 105)
+      ] }
+    ]
+  };
+}
+// Base local (data/techasset.db, solo lectura): classrooms + classroom_history de NFPT. NFND no tiene filas cargadas.
+db() {
+  const four = [['proyector', 'OK'], ['nuc', 'OK'], ['monitor', 'OK'], ['tecladoMouse', 'OK']];
+  const eq = {
+    room_Zoom: [['tele', 'OK']], room_Arte: [['notebook', 'OK'], ['proyector', 'OK']],
+    pp_Direccion: [['tele', 'OK']], pp_Precep: [['tecladoMouse', 'OK'], ['notebook', 'OK'], ['monitor', 'OK']],
+    pp_Lab: [['notebook', 'OK'], ['proyector', 'OK']], pp_Maker: [['proyector', 'OK']],
+    pp_6F: [['proyector', 'OK'], ['nuc', 'En reparación'], ['monitor', 'OK'], ['tecladoMouse', 'OK']]
+  };
+  const upd = {};
+  const put = (ts, op, ids) => ids.forEach(id => { upd[id] = [ts, op]; });
+  put('06/05/2026 02:41', 'Bauti', ['room_3ero_N', 'room_5to_N']);
+  put('07/05/2026 08:49', 'Bauti', ['room_5to_F']);
+  put('08/05/2026 11:40', 'Bauti', ['3S']);
+  put('10/05/2026 02:20', 'admin', ['room_5to_S', 'room_3ero_F', 'room_3ero_S', 'room_4to_N', 'room_4to_F', 'room_4to_S', 'room_Arte']);
+  put('10/05/2026 02:21', 'admin', ['room_2do_N', 'room_2do_F', 'room_2do_S', 'room_1ero_N', 'room_1ero_F', 'room_1ero_S', 'room_Zoom', 'pp_3N', 'pp_5S', 'pp_5F']);
+  put('10/05/2026 02:22', 'admin', ['pp_2N', 'pp_2F', 'pp_2S', 'pp_Precep', 'pp_Lab', 'pp_Maker', 'pp_SalaProfs', 'pp_3F', 'pp_6F', 'pp_6N']);
+  put('10/05/2026 02:23', 'admin', ['pp_Direccion', 'pp_1F', 'pp_1N', 'pp_6F2', 'pp_1S', 'pp_6S', 'pp_6N2', '4N', '4F', '4S']);
+  return {
+    eq: id => eq[id] || four,
+    st: { pp_6F: 'Problema' },
+    upd: upd,
+    histN: { pp_Direccion: 7, pp_Maker: 7 }
+  };
+}
+renderVals() {
+  const self = this;
+  const s = this.state || {};
+  const set = p => self.setState(p);
+  const I = this.icons();
+  const MONO = "font-family: 'Geist Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums;";
+  const site = s.site || 'NFPT';
+  const ALL = this.plans();
+  const floors = ALL[site];
+  const fkey = s.floor || 'primero';
+  const fl = floors.find(x => x.key === fkey && !x.off) || floors[0];
+  const D = this.db();
+  const saved = s.saved || {};
+  const drafts = s.drafts || {};
+  const obsMap = s.obs || {};
+  const sel = s.sel === undefined ? 'pp_6F' : s.sel;
+  const filter = s.filter || null;
+  const CAT = { proyector: 'Proyector', nuc: 'NUC', monitor: 'Monitor', tecladoMouse: 'Teclado/Mouse', tele: 'Tele', notebook: 'Notebook', parlantes: 'Parlantes', conectividad: 'Conectividad', otro: 'Otro' };
+  const CK = Object.keys(CAT);
+  const STATES = ['OK', 'Con falla', 'No tiene', 'En reparación', 'Sin revisar'];
+
+  const baseEq = id => saved[id] || (site === 'NFPT' ? D.eq(id) : CK.slice(0, 4).map(k => [k, 'Sin revisar']));
+  const eqOf = id => drafts[id] || baseEq(id);
+  const calc = eq => {
+    if (!eq.length) return 'Sin revisar';
+    if (eq.some(e => e[1] === 'En reparación')) return 'Problema';
+    if (eq.some(e => e[1] === 'Con falla' || e[1] === 'Sin revisar')) return 'Con observaciones';
+    return 'OK';
+  };
+  const statusOf = id => saved[id] ? calc(saved[id]) : (site === 'NFPT' ? (D.st[id] || 'OK') : 'Sin revisar');
+  const issuesOf = eq => eq.filter(e => e[1] !== 'OK' && e[1] !== 'No tiene').map(e => CAT[e[0]] + ' ' + e[1].toLowerCase());
+  const stColor = st => st === 'Problema' ? '#FF6B6B' : st === 'Con observaciones' ? '#F5C04E' : st === 'Sin revisar' ? '#7C8592' : '#A7AEB8';
+  const itemColor = st => st === 'En reparación' ? '#FF6B6B' : st === 'Con falla' ? '#F5C04E' : '#ECEEF1';
+  const broken = (id, k) => baseEq(id).some(e => e[0] === k && (e[1] === 'Con falla' || e[1] === 'En reparación'));
+
+  // ---- Menú lateral ----
+  const navMk = (k, label, count) => {
+    const on = k === 'rooms';
+    return {
+      label: label, d: I[k], count: count || '', current: on ? 'page' : 'false',
+      style: on ? 'background: #1B1F24; color: #ECEEF1; font-weight: 500;' : 'color: #A7AEB8;',
+      bar: on ? 'position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: #5B9BFF;' : 'display: none;'
+    };
+  };
+  const nav = {
+    ops: [navMk('home', 'Inicio'), navMk('loans', 'Préstamos', '[N]'), navMk('devices', 'Dispositivos'), navMk('agenda', 'Agenda TIC'), navMk('rooms', 'Estado aulas')],
+    mgmt: [navMk('tasks', 'Tareas TIC', '[N]'), navMk('tickets', 'Tickets'), navMk('reminders', 'Recordatorios'), navMk('history', 'Historial')],
+    data: [navMk('inventory', 'Inventario TIC'), navMk('analytics', 'Analítica'), navMk('cash', 'Caja chica')],
+    res: [navMk('knowledge', 'Base de conocimiento'), navMk('tools', 'Herramientas'), navMk('links', 'Accesos rápidos')]
+  };
+  const SITE_NAME = { NFPT: 'Northfield Puertos', NFND: 'Northfield Nordelta' };
+
+  // ---- Segmentados ----
+  const segStyle = (on, off) => 'display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 6px; font-size: 14px; cursor: ' + (off ? 'default' : 'pointer') + '; box-sizing: border-box; ' +
+    (on ? 'background: #1B1F24; border: 1px solid #353B44; color: #ECEEF1; font-weight: 500;' : 'background: transparent; border: 1px solid transparent; color: ' + (off ? '#7C8592' : '#A7AEB8') + ';');
+  const sites = ['NFPT', 'NFND'].map(c => ({
+    label: SITE_NAME[c], code: c, pressed: c === site ? 'true' : 'false', style: segStyle(c === site),
+    onClick: () => set({ site: c, floor: c === 'NFPT' ? 'primero' : 'planta', sel: null, filter: null, ticketOpen: false, ticketDone: false, editEq: false, remAdd: false, histOpen: false, diag: false })
+  }));
+  const floorBtns = floors.map(x => {
+    const on = !x.off && x.key === fl.key;
+    return {
+      label: x.label, count: x.off ? 'Próximamente' : String(x.items.filter(i => i.k === 'r').length),
+      pressed: on ? 'true' : 'false', disabled: x.off ? 'true' : 'false', style: segStyle(on, x.off),
+      onClick: () => { if (!x.off) set({ floor: x.key, sel: null, filter: null, ticketOpen: false, ticketDone: false, editEq: false, remAdd: false, histOpen: false, diag: false }); }
+    };
+  });
+
+  // ---- Resumen + filtros ----
+  const roomsHere = fl.items.filter(i => i.k === 'r');
+  const cnt = { ok: 0, obs: 0, prob: 0, sin: 0, proy: 0, nuc: 0, mon: 0 };
+  const match = {};
+  roomsHere.forEach(r => {
+    const st = statusOf(r.id);
+    const m = { ok: st === 'OK', obs: st === 'Con observaciones', prob: st === 'Problema', sin: st === 'Sin revisar', proy: broken(r.id, 'proyector'), nuc: broken(r.id, 'nuc'), mon: broken(r.id, 'monitor') };
+    Object.keys(m).forEach(k => { if (m[k]) cnt[k] += 1; });
+    match[r.id] = m;
+  });
+  const total = roomsHere.length;
+  const toggleF = k => () => set({ filter: filter === k ? null : k });
+  const chipStyle = on => 'display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 14px; background: ' + (on ? '#1B1F24' : '#14171B') + '; border: 1px solid ' + (on ? '#5B9BFF' : '#262B32') + '; border-radius: 10px; cursor: pointer; color: #ECEEF1; box-sizing: border-box;';
+  const ratio = total ? cnt.ok / total : 0;
+  const CIRC = 2 * Math.PI * 15;
+  const sumItems = [
+    ['obs', 'Con observaciones', '#F5C04E'], ['prob', 'Con problema', '#FF6B6B'], ['sin', 'Sin revisar', '#A7AEB8'],
+    ['proy', 'Proyectores con falla', '#FF6B6B'], ['nuc', 'NUC con falla', '#FF6B6B'], ['mon', 'Monitores con falla', '#FF6B6B']
+  ].map(a => ({
+    label: a[1], n: String(cnt[a[0]]), pressed: filter === a[0] ? 'true' : 'false', onClick: toggleF(a[0]), style: chipStyle(filter === a[0]),
+    numStyle: 'font-size: 16px; color: ' + (cnt[a[0]] > 0 ? a[2] : '#A7AEB8') + ';'
+  }));
+  const sum = {
+    ok: String(cnt.ok), total: String(total), okPressed: filter === 'ok' ? 'true' : 'false', okClick: toggleF('ok'), okStyle: chipStyle(filter === 'ok'),
+    ringDash: (ratio * CIRC).toFixed(2) + ' ' + CIRC.toFixed(2), ringCap: ratio > 0 ? 'round' : 'butt',
+    ringColor: ratio === 0 ? '#FF6B6B' : ratio <= 0.2 ? '#F5C04E' : '#A7AEB8',
+    items: sumItems, hasFilter: !!filter, clear: () => set({ filter: null })
+  };
+
+  // ---- Plano (coordenadas normalizadas a 0–100) ----
+  const W = fl.W, H = fl.H;
+  const px = v => +(v / W * 100).toFixed(3);
+  const py = v => +(v / H * 100).toFixed(3);
+  const rd = (x, y, w, h) => 'M' + px(x) + ' ' + py(y) + 'H' + px(x + w) + 'V' + py(y + h) + 'H' + px(x) + 'Z';
+  const pd = pts => 'M' + pts.split(' ').map(p => { const a = p.split(','); return px(+a[0]) + ' ' + py(+a[1]); }).join('L') + 'Z';
+  const box = (x, y, w, h) => 'left: ' + px(x) + '%; top: ' + py(y) + '%; width: ' + px(w) + '%; height: ' + py(h) + '%;';
+  let bodyD = '', corrD = '', decoD = '', lineD = '';
+  const labels = [];
+  const LBL = 'position: absolute; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 0 4px; overflow: hidden; pointer-events: none; text-align: center; color: #7C8592; ' + MONO + ' font-size: 11px; line-height: 14px; white-space: pre-line;';
+  (fl.body || []).forEach(b => { bodyD += typeof b === 'string' ? pd(b) : rd(b[0], b[1], b[2], b[3]); });
+  fl.items.forEach(i => {
+    if (i.k === 'c') { corrD += rd(i.x, i.y, i.w, i.h); if (i.l) labels.push({ l: i.l, style: LBL + box(i.x, i.y, i.w, i.h) + ' font-size: 10px; letter-spacing: .08em;' }); }
+    else if (i.k === 'p' || i.k === 'x') { labels.push({ l: i.l, style: LBL + box(i.x, i.y, i.w, i.h) + ' border: 1px dashed #353B44; border-radius: 3px;' + (i.k === 'p' ? ' font-size: 13px;' : '') }); }
+    else if (i.k === 'd') { decoD += rd(i.x + 2, i.y + 2, i.w - 4, i.h - 4); if (i.l) labels.push({ l: i.l, style: LBL + box(i.x, i.y, i.w, i.h) }); }
+    else if (i.k === 'z') { decoD += rd(i.x + 2, i.y + 2, i.w - 4, i.h - 4); labels.push({ l: i.l, style: LBL + box(i.x, i.y, i.w, i.h) + ' writing-mode: vertical-rl; transform: rotate(180deg); font-size: 10px; padding: 4px 0;' }); }
+    else if (i.k === 'poly') { decoD += pd(i.pts); labels.push({ l: i.l, style: LBL + 'left: ' + px(i.lx) + '%; top: ' + py(i.ly) + '%; transform: translate(-50%, -50%); padding: 0; white-space: nowrap;' + (i.id === 'sector_1er_piso' ? ' font-size: 13px;' : '') }); }
+    else if (i.k === 's') {
+      decoD += rd(i.x + 2, i.y + 2, i.w - 4, i.h - 4);
+      for (let n = 1; n < i.n; n += 1) {
+        if (i.dir === 'h') { const xx = i.x + i.w / i.n * n; lineD += 'M' + px(xx) + ' ' + py(i.y + 6) + 'V' + py(i.y + i.h - 6); }
+        else { const yy = i.y + i.h / i.n * n; lineD += 'M' + px(i.x + 6) + ' ' + py(yy) + 'H' + px(i.x + i.w - 6); }
+      }
+      if (i.l) labels.push({ l: i.l, style: LBL + box(i.x, i.y, i.w, i.h) + ' font-size: 10px;' });
+    }
+    else if (i.k === 'b') {
+      decoD += rd(i.x + 2, i.y + 2, i.w - 4, i.h - 4);
+      const fw = 14, fh = 10, g = (i.w - 16 - 3 * fw) / 2;
+      for (let n = 0; n < 3; n += 1) lineD += rd(i.x + 8 + n * (fw + g), i.y + i.h - fh - 8, fw, fh);
+      labels.push({ l: 'Baños', style: LBL + box(i.x, i.y, i.w, i.h) + ' align-items: flex-start; padding-top: 6px; font-size: 10px;' });
+    }
+  });
+  const MAXH = 540;
+  const maxW = Math.round(MAXH * W / H);
+  const boxStyle = 'position: relative; width: 100%; max-width: ' + maxW + 'px; aspect-ratio: ' + W + ' / ' + H + '; margin: 0 auto; background: #0D0F12; border-radius: 6px; overflow: hidden;';
+
+  const pick = id => () => set({ sel: id, ticketOpen: false, ticketDone: false, editEq: false, remAdd: false, histOpen: false, diag: false, savedMsg: null });
+  const rooms = roomsHere.map(r => {
+    const st = statusOf(r.id);
+    const on = r.id === sel;
+    const dim = filter && !match[r.id][filter];
+    const iss = issuesOf(baseEq(r.id));
+    let border = '1px solid #353B44', color = '#A7AEB8', weight = '400';
+    if (st === 'Problema') { border = '1.5px solid #FF6B6B'; color = '#ECEEF1'; }
+    else if (st === 'Con observaciones') { border = '1.5px solid #F5C04E'; color = '#ECEEF1'; }
+    else if (st === 'Sin revisar') { border = '1px dashed #7C8592'; color = '#7C8592'; }
+    if (on) { border = '2px solid #5B9BFF'; color = '#ECEEF1'; weight = '600'; }
+    const multi = r.l.indexOf('\n') >= 0;
+    return {
+      id: r.id, l: r.l,
+      aria: r.l.replace('\n', ' ') + ', ' + st + (iss.length ? ', ' + iss.join(', ') : ''),
+      pressed: on ? 'true' : 'false', onClick: pick(r.id),
+      style: 'position: absolute; ' + box(r.x + 2, r.y + 2, r.w - 4, r.h - 4) + ' box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 0 4px; margin: 0; min-width: 0; overflow: hidden; background: #1B1F24; border: ' + border + '; border-radius: 3px; color: ' + color + '; font-weight: ' + weight + '; cursor: pointer;' + (dim ? ' opacity: .35;' : ''),
+      lstyle: MONO + ' font-size: 12px; line-height: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; ' + (multi ? 'white-space: pre-line; text-align: center;' : 'white-space: nowrap;'),
+      icon: st === 'Problema' || st === 'Con observaciones', iconD: st === 'Problema' ? I.oct : I.tri, ic: stColor(st),
+      st: st, iss: iss
+    };
+  });
+  const list = rooms.filter(r => !filter || match[r.id][filter]).map(r => {
+    const on = r.id === sel;
+    const stText = r.st === 'Problema' && r.iss.length ? 'Problema · ' + r.iss.join(', ') : r.st;
+    return {
+      name: r.l.replace('\n', ' '), st: stText, aria: r.aria, pressed: r.pressed, onClick: r.onClick,
+      stStyle: 'flex: 0 1 auto; font-size: 12px; color: ' + stColor(r.st) + ';',
+      liStyle: 'display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; background: ' + (on ? '#1B1F24' : 'transparent') + '; border: 1px solid ' + (on ? '#5B9BFF' : '#262B32') + '; border-radius: 6px; cursor: pointer; text-align: left; min-width: 0; box-sizing: border-box;'
+    };
+  });
+  const plan = {
+    cap: fl.cap, title: fl.label, aria: 'Plano de ' + fl.label + ', ' + SITE_NAME[site],
+    bodyD: bodyD || 'M0 0', corrD: corrD || 'M0 0', decoD: decoD || 'M0 0', lineD: lineD || 'M0 0',
+    labels: labels, rooms: rooms, boxStyle: boxStyle,
+    list: list, listCount: String(list.length), listEmpty: list.length === 0
+  };
+
+  // ---- Ficha ----
+  const fr = sel ? roomsHere.find(r => r.id === sel) : null;
+  let f = {};
+  if (fr) {
+    const id = fr.id;
+    const name = fr.l.replace('\n', ' ');
+    const base = baseEq(id);
+    const cur = eqOf(id);
+    const dirtyN = cur.filter(e => { const b = base.find(x => x[0] === e[0]); return !b || b[1] !== e[1]; }).length + base.filter(b => !cur.find(e => e[0] === b[0])).length;
+    const dirty = dirtyN > 0;
+    const stNow = dirty ? calc(cur) : statusOf(id);
+    const iss = issuesOf(cur);
+    const setDraft = eq => { const d = Object.assign({}, drafts); d[id] = eq; set({ drafts: d, savedMsg: null }); };
+    const equip = cur.map(e => ({
+      label: CAT[e[0]],
+      aria: 'Estado de ' + CAT[e[0]],
+      was: (() => { const b = base.find(x => x[0] === e[0]); return b && b[1] !== e[1] ? 'antes: ' + b[1] : (!b ? 'nuevo' : ''); })(),
+      opts: STATES.map(o => {
+        const on = e[1] === o;
+        return {
+          l: o, pressed: on ? 'true' : 'false',
+          style: 'display: inline-flex; align-items: center; height: 30px; padding: 0 10px; border-radius: 6px; font-size: 13px; cursor: pointer; box-sizing: border-box; ' +
+            (on ? 'background: #1B1F24; border: 1px solid #353B44; font-weight: 500; color: ' + itemColor(o) + ';' : 'background: transparent; border: 1px solid transparent; color: #A7AEB8;'),
+          onClick: () => setDraft(cur.map(x => x[0] === e[0] ? [x[0], o] : x))
+        };
+      })
+    }));
+    const cats = CK.map(k => {
+      const on = cur.some(e => e[0] === k);
+      const locked = on && cur.length === 1;
+      return {
+        label: CAT[k], on: on, checked: on ? 'true' : 'false', locked: locked ? 'true' : 'false',
+        style: 'display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 6px; background: transparent; border: 0; border-radius: 6px; color: ' + (locked ? '#7C8592' : '#ECEEF1') + '; font-size: 14px; cursor: ' + (locked ? 'default' : 'pointer') + '; text-align: left; min-width: 0;',
+        box: 'width: 16px; height: 16px; flex: none; box-sizing: border-box; border-radius: 4px; display: flex; align-items: center; justify-content: center; ' + (on ? 'background: #ECEEF1; border: 1px solid #ECEEF1;' : 'background: transparent; border: 1px solid #353B44;') + (locked ? ' opacity: .6;' : ''),
+        onClick: () => { if (locked) return; setDraft(on ? cur.filter(e => e[0] !== k) : cur.concat([[k, 'Sin revisar']])); }
+      };
+    });
+    const u = site === 'NFPT' ? (D.upd[id] || ['—', '']) : ['—', ''];
+    const savedNow = saved[id];
+    const savedTs = savedNow ? ['16/10/2026 11:52', 'Bauti G.'] : u;
+    // Historial: alta inicial de cada equipo (como está en classroom_history) + lo guardado en esta sesión.
+    let hist = [];
+    if (site === 'NFPT') {
+      const ts = u[0].slice(0, 5) + ' ' + u[0].slice(11);
+      const orig = D.eq(id);
+      hist = orig.map(e => ({ ts: ts, campo: CAT[e[0]], de: 'Sin revisar', a: e[1], op: u[1] }));
+      if (D.histN[id] === 7) hist.unshift({ ts: ts, campo: 'Equipamiento', de: 'lista anterior', a: orig.map(e => CAT[e[0]]).join(', '), op: u[1] });
+      hist.unshift({ ts: ts, campo: 'Estado general', de: 'Con observaciones', a: D.st[id] || 'OK', op: u[1] });
+    }
+    (s.log && s.log[id] ? s.log[id] : []).forEach(h => hist.unshift(h));
+    const histN = site === 'NFPT' ? (D.histN[id] || 6) + (s.log && s.log[id] ? s.log[id].length : 0) : (s.log && s.log[id] ? s.log[id].length : 0);
+    // Diagnóstico: mismo cálculo que el reporte local del server (localHealthReport) sobre el equipamiento guardado.
+    const bad = base.filter(e => e[1] !== 'OK' && e[1] !== 'No tiene');
+    const open = s.ticketDone ? 1 : 0;
+    const score = Math.max(10, 100 - bad.length * 12 - open * 7);
+    const dgStatus = score >= 85 ? 'Saludable' : score >= 65 ? 'Atención' : 'Crítico';
+    const DC = 2 * Math.PI * 17;
+    const line = (t, c) => ({ t: t, style: 'font-size: 13px; line-height: 20px; color: ' + (c || '#A7AEB8') + ';' });
+    const dg = {
+      score: String(score), status: dgStatus,
+      ring: score / 100 <= 0.2 ? '#F5C04E' : '#A7AEB8',
+      dash: (score / 100 * DC).toFixed(2) + ' ' + DC.toFixed(2),
+      summary: name + ' tiene ' + open + (open === 1 ? ' incidente abierto' : ' incidentes abiertos') + ' y ' + bad.length + (bad.length === 1 ? ' componente' : ' componentes') + ' para revisar.',
+      lists: [
+        { t: 'Problemas recurrentes', items: [line('Sin problemas repetidos.', '#7C8592')] },
+        { t: 'Puntos positivos', items: base.filter(e => e[1] === 'OK').slice(0, 4).map(e => line(CAT[e[0]] + ' funciona bien')) },
+        { t: 'Riesgos', items: bad.length ? bad.map(e => line(CAT[e[0]] + ': ' + e[1], itemColor(e[1]))) : [line('Ninguno marcado.', '#7C8592')] },
+        { t: 'Acciones preventivas', items: [line(bad.length ? 'Revisar el equipamiento marcado antes de la próxima clase' : 'Mantener la revisión periódica'), line(open ? 'Resolver y documentar los incidentes abiertos' : 'Seguir registrando incidentes por aula')] }
+      ]
+    };
+    const diagOn = s.diag === undefined ? id === 'pp_6F' : s.diag;
+    const prioSel = s.prio || 'Media';
+    const prio = ['Baja', 'Media', 'Alta', 'Urgente'].map(p => ({ l: p, pressed: p === prioSel ? 'true' : 'false', style: segStyle(p === prioSel), onClick: () => set({ prio: p }) }));
+    const kpis = [
+      { l: 'Abiertos', v: String(open), style: 'margin: 2px 0 0; font-size: 16px; color: ' + (open ? '#F5C04E' : '#ECEEF1') + ';' },
+      { l: 'Cerrados', v: '0', style: 'margin: 2px 0 0; font-size: 16px; color: #ECEEF1;' },
+      { l: 'Total', v: String(open), style: 'margin: 2px 0 0; font-size: 16px; color: #ECEEF1;' },
+      { l: 'Último', v: open ? '16/10' : '—', style: 'margin: 2px 0 0; font-size: 16px; color: #ECEEF1;' }
+    ];
+    // Recordatorios vinculados (mismo recordatorio que aparece en la pantalla Recordatorios).
+    const remsAll = s.rems || { pp_6F: [{ t: 'Revisar NUC de 6F', w: 'hoy 10:30', over: true, done: false }] };
+    const myRems = remsAll[id] || [];
+    const rems = myRems.map((m, ix) => ({
+      t: m.t, w: m.done ? 'hecho' : m.w, done: m.done, checked: m.done ? 'true' : 'false',
+      aria: (m.done ? 'Marcar como pendiente: ' : 'Completar: ') + m.t,
+      box: 'width: 16px; height: 16px; box-sizing: border-box; border-radius: 4px; display: flex; align-items: center; justify-content: center; ' + (m.done ? 'background: #ECEEF1; border: 1px solid #ECEEF1;' : 'background: transparent; border: 1px solid #353B44;'),
+      tStyle: 'flex: 1 1 auto; font-size: 14px; color: ' + (m.done ? '#7C8592' : '#ECEEF1') + ';' + (m.done ? ' text-decoration: line-through;' : ''),
+      wStyle: 'flex: none; font-size: 12px; color: ' + (m.over && !m.done ? '#FF6B6B' : '#7C8592') + ';',
+      onClick: () => { const all = Object.assign({}, remsAll); all[id] = myRems.map((x, j) => j === ix ? Object.assign({}, x, { done: !x.done }) : x); set({ rems: all }); }
+    }));
+    const whenSel = s.remWhen || 'En 1 hora';
+    const remWhen = ['En 1 hora', 'Mañana 08:00', 'Lunes 08:00'].map(w => ({ l: w, pressed: w === whenSel ? 'true' : 'false', style: segStyle(w === whenSel), onClick: () => set({ remWhen: w }) }));
+    const WHEN = { 'En 1 hora': 'hoy 12:52', 'Mañana 08:00': 'sáb 08:00', 'Lunes 08:00': 'lun 08:00' };
+    f = {
+      aria: 'Ficha del aula ' + name,
+      eyebrow: fl.label + ' · ' + id,
+      name: name,
+      st: stNow, stStyle: 'font-size: 14px; font-weight: 600; color: ' + (stNow === 'OK' ? '#ECEEF1' : stColor(stNow)) + ';',
+      issues: dirty ? (iss.length ? iss.join(', ') + ' · al guardar' : 'todo en orden · al guardar') : (iss.length ? iss.join(', ') : (stNow === 'Sin revisar' ? 'nadie revisó esta aula todavía' : 'todo el equipamiento en orden')),
+      askLabel: 'Preguntar al Asistente sobre ' + name,
+      onClose: () => set({ sel: null }),
+      ticketOpen: !!s.ticketOpen, onTicket: () => set({ ticketOpen: !s.ticketOpen }),
+      ticketTitle: name + (iss.length ? ' · ' + iss[0] : ' · revisar equipamiento'),
+      ticketPrio: prioSel, prio: prio,
+      onTicketSave: () => set({ ticketOpen: false, ticketDone: true }),
+      ticketDone: !!s.ticketDone,
+      eqCount: String(cur.length),
+      editEq: !!s.editEq, editEqLabel: s.editEq ? 'Listo' : 'Editar equipamiento', onEditEq: () => set({ editEq: !s.editEq }),
+      cats: cats, equip: equip,
+      obs: obsMap[id] || '', onObs: ev => { const o = Object.assign({}, obsMap); o[id] = ev && ev.target ? ev.target.value : ''; set({ obs: o }); },
+      upd: savedTs[0], op: savedTs[1] || '—',
+      clean: dirty ? 'false' : 'true',
+      dirtyText: dirty ? dirtyN + (dirtyN === 1 ? ' cambio sin guardar' : ' cambios sin guardar') : 'Sin cambios',
+      dirtyStyle: 'flex: 1 1 120px; font-size: 13px; color: ' + (dirty ? '#F5C04E' : '#7C8592') + ';',
+      saveStyle: 'height: 36px; padding: 0 14px; background: #5B9BFF; border: 0; border-radius: 6px; color: #0D0F12; font-size: 14px; font-weight: 600; cursor: ' + (dirty ? 'pointer' : 'default') + ';' + (dirty ? '' : ' opacity: .45;'),
+      onCancel: () => { if (!dirty) return; const d = Object.assign({}, drafts); delete d[id]; set({ drafts: d }); },
+      onSave: () => {
+        if (!dirty) return;
+        const d = Object.assign({}, drafts); delete d[id];
+        const sv = Object.assign({}, saved); const prev = saved[id]; sv[id] = cur;
+        const lg = Object.assign({}, s.log || {});
+        const rows = cur.filter(e => { const b = base.find(x => x[0] === e[0]); return !b || b[1] !== e[1]; }).map(e => { const b = base.find(x => x[0] === e[0]); return { ts: '16/10 11:52', campo: CAT[e[0]], de: b ? b[1] : 'no estaba', a: e[1], op: 'Bauti G.' }; });
+        if (calc(cur) !== statusOf(id)) rows.unshift({ ts: '16/10 11:52', campo: 'Estado general', de: statusOf(id), a: calc(cur), op: 'Bauti G.' });
+        lg[id] = rows.concat(lg[id] || []);
+        set({ drafts: d, saved: sv, log: lg, editEq: false, savedMsg: { id: id, prev: prev || null, st: calc(cur), n: rows.length } });
+      },
+      savedMsg: !!(s.savedMsg && s.savedMsg.id === id),
+      savedText: s.savedMsg ? 'Cambios guardados. ' + name + ' quedó en ' + s.savedMsg.st + '; el plano ya lo muestra.' : '',
+      onUndo: () => {
+        if (!s.savedMsg) return;
+        const sv = Object.assign({}, saved);
+        if (s.savedMsg.prev) sv[id] = s.savedMsg.prev; else delete sv[id];
+        const lg = Object.assign({}, s.log || {}); lg[id] = (lg[id] || []).slice(s.savedMsg.n);
+        set({ saved: sv, log: lg, savedMsg: null });
+      },
+      diag: diagOn, diagBtn: diagOn ? 'Volver a generar' : 'Generar análisis', onDiag: () => set({ diag: true }), dg: dg,
+      kpis: kpis, incEmpty: !s.ticketDone,
+      rems: rems, remEmpty: myRems.length === 0, remAdd: !!s.remAdd, onRemAdd: () => set({ remAdd: !s.remAdd }), remWhen: remWhen,
+      onRemSave: () => { const all = Object.assign({}, remsAll); all[id] = myRems.concat([{ t: 'Revisar ' + name, w: WHEN[whenSel], over: false, done: false }]); set({ rems: all, remAdd: false }); },
+      histOpen: !!s.histOpen, onHist: () => set({ histOpen: !s.histOpen }),
+      histCount: String(histN), hist: hist.slice(0, 20),
+      histChev: 'flex: none; transform: rotate(' + (s.histOpen ? '180' : '0') + 'deg);'
+    };
+  }
+
+  const catRows = CK.map((k, ix) => {
+    const iconBtn = off => 'width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 6px; color: ' + (off ? '#353B44' : '#A7AEB8') + '; cursor: ' + (off ? 'default' : 'pointer') + ';';
+    return {
+      label: CAT[k], first: ix === 0 ? 'true' : 'false', last: ix === CK.length - 1 ? 'true' : 'false',
+      upLabel: 'Subir ' + CAT[k], downLabel: 'Bajar ' + CAT[k], editLabel: 'Editar ' + CAT[k], delLabel: 'Eliminar ' + CAT[k],
+      upStyle: iconBtn(ix === 0), downStyle: iconBtn(ix === CK.length - 1)
+    };
+  });
+
+  return {
+    nav: nav,
+    sede: { name: SITE_NAME[site], code: site, aria: 'Cambiar de sede: ' + SITE_NAME[site] },
+    top: { ctx: SITE_NAME[site] + ' · ' + fl.label + ' · ' + total + ' aulas' },
+    sites: sites, floorBtns: floorBtns,
+    cats: { show: !!s.cats, open: s.cats ? 'true' : 'false', onToggle: () => set({ cats: !s.cats }), rows: catRows },
+    sum: sum, plan: plan,
+    noSel: !fr, hasSel: !!fr, f: f
+  };
+}
+}
+</script>
+</body>
+</html>

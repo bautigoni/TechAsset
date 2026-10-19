@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Ingresar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D0F12}
+a{color:var(--link,#5B9BFF)}a:hover{color:var(--linkh,#8DBBFF)}
+button,input{font-family:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--focus,#5B9BFF);outline-offset:2px}
+input:focus-visible{outline:2px solid var(--focus,#5B9BFF);outline-offset:0}
+input::placeholder{color:var(--t3)}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.nw{white-space:nowrap}
+.ell{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.mark{width:28px;height:28px;flex:none;border-radius:6px;background:var(--el);border:1px solid var(--ls);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;font-weight:500;color:var(--t1)}
+.seg{display:inline-flex;gap:2px;padding:2px;background:var(--sf);border:1px solid var(--ln);border-radius:6px;box-sizing:border-box;max-width:100%}
+.sg{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;padding:0 10px;border:0;border-radius:4px;background:transparent;color:var(--t2);font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;min-width:0}
+.sg:hover{color:var(--t1)}
+.sg.on{background:var(--el);color:var(--t1);box-shadow:inset 0 0 0 1px var(--ls)}
+.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;padding:2px;background:var(--bg);border:1px solid var(--ln);border-radius:6px}
+.tab{height:32px;border:0;border-radius:4px;background:transparent;color:var(--t2);font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tab.on{background:var(--el);color:var(--t1);box-shadow:inset 0 0 0 1px var(--ls)}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:10px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px}
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lbl{font-size:13px;line-height:18px;font-weight:500;color:var(--t2)}
+.hint{font-size:12px;line-height:18px;color:var(--t3)}
+.inp{height:40px;width:100%;min-width:0;box-sizing:border-box;padding:0 12px;background:var(--bg);border:1px solid var(--ls);border-radius:6px;color:var(--t1);font-size:14px}
+.inp:hover{border-color:var(--t3)}
+.fld{display:flex;align-items:center;height:40px;box-sizing:border-box;background:var(--bg);border:1px solid var(--ls);border-radius:6px;min-width:0}
+.fld:focus-within{outline:2px solid var(--focus);outline-offset:0}
+.fld input{flex:1;min-width:0;height:38px;padding:0 12px;background:transparent;border:0;color:var(--t1);font-size:14px;outline:none}
+.fld button{flex:none;height:32px;margin-right:4px;padding:0 10px;background:transparent;border:0;border-radius:4px;color:var(--t2);font-size:13px;cursor:pointer;white-space:nowrap}
+.fld button:hover{background:var(--el);color:var(--t1)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;box-sizing:border-box;width:100%;overflow:hidden;text-overflow:ellipsis}
+.bp{background:#5B9BFF;color:#0D0F12;border:0;font-weight:600}.bp:hover{background:#8DBBFF}
+.bs{background:var(--el);color:var(--t1);border:1px solid var(--ls)}.bs:hover{border-color:var(--t3)}
+.lnk{padding:0;background:none;border:0;color:var(--link);font-size:13px;cursor:pointer;text-align:left}
+.lnk:hover{color:var(--linkh)}
+.or{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--t3)}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--ln)}
+.msg{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:19px}
+.shake{animation:shake .32s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}}
+</style>
+</helmet>
+<div style="{{root}}">
+
+  <!-- Barra superior: marca y tema -->
+  <header style="height: 64px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 32px; box-sizing: border-box;">
+    <span class="mark" aria-hidden="true">TA</span>
+    <span class="nw" style="font-size: 15px; font-weight: 600;">TechAsset</span>
+    <span aria-hidden="true" style="flex: 1 1 0; min-width: 8px;"></span>
+    <div class="seg" role="radiogroup" aria-label="Tema">
+      <sc-for list="{{themes}}" as="t" hint-placeholder-count="3">
+        <button type="button" role="radio" aria-checked="{{t.checked}}" class="{{t.cls}}" onClick="{{t.onClick}}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none;"><path d="{{t.d}}"></path></svg>
+          {{t.label}}
+        </button>
+      </sc-for>
+    </div>
+  </header>
+
+  <main style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 16px 48px; box-sizing: border-box;">
+    <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 24px;">
+
+      <sc-if value="{{fromSede}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--ln); border-radius: 10px; min-width: 0;">
+          <span class="mark" aria-hidden="true" style="width: 36px; height: 36px;">NF</span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 18px;">
+            <span class="ell" style="font-size: 13px; color: var(--t2);">Entrás a</span>
+            <span class="ell" style="font-size: 14px; font-weight: 600;">Northfield Puertos <span class="mono" style="font-weight: 400; color: var(--t3);">NFPT</span></span>
+          </span>
+          <button type="button" class="lnk nw" onClick="{{onDefaultSede}}">Usar mi sede por defecto</button>
+        </div>
+      </sc-if>
+
+      <div>
+        <h1 style="margin: 0; font-size: 28px; line-height: 36px; font-weight: 600;">{{title}}</h1>
+        <p style="margin: 6px 0 0; font-size: 14px; line-height: 21px; color: var(--t2);">{{subtitle}}</p>
+      </div>
+
+      <sc-if value="{{showTabs}}" hint-placeholder-val="{{ true }}">
+        <div class="tabs" role="tablist" aria-label="Cómo querés entrar">
+          <button type="button" role="tab" aria-selected="{{tabLogin.sel}}" class="{{tabLogin.cls}}" onClick="{{toLogin}}">Ingresar</button>
+          <button type="button" role="tab" aria-selected="{{tabReg.sel}}" class="{{tabReg.cls}}" onClick="{{toRegister}}">Tengo un código</button>
+        </div>
+      </sc-if>
+
+      <form class="card" aria-label="{{title}}">
+
+        <sc-if value="{{msg.show}}" hint-placeholder-val="{{ false }}">
+          <div class="{{msg.cls}}" role="{{msg.role}}" style="{{msg.style}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 1px;"><path d="{{msg.d}}"></path></svg>
+            <span style="flex: 1; min-width: 0;">{{msg.text}}</span>
+          </div>
+        </sc-if>
+
+        <!-- INGRESAR -->
+        <sc-if value="{{isLogin}}" hint-placeholder-val="{{ true }}">
+          <div class="f"><label class="lbl" for="lg-m">Mail</label><input id="lg-m" class="inp" type="email" inputmode="email" autocomplete="email" placeholder="nombre@northfield.edu.ar" value="{{mail}}"></div>
+          <div class="f">
+            <label class="lbl" for="lg-p">Contraseña</label>
+            <div class="fld"><input id="lg-p" type="{{pwType}}" autocomplete="current-password" minlength="6"><button type="button" aria-pressed="{{pwPressed}}" onClick="{{onTogglePw}}">{{pwBtn}}</button></div>
+          </div>
+          <button type="button" class="lnk" onClick="{{onForgot}}">Olvidé mi contraseña o es mi primera vez</button>
+          <button type="button" class="btn bp" onClick="{{onLogin}}">Ingresar</button>
+          <div class="or" aria-hidden="true">o</div>
+          <button type="button" class="btn bs">Continuar con Google</button>
+        </sc-if>
+
+        <!-- REGISTRO CON CÓDIGO -->
+        <sc-if value="{{isRegister}}" hint-placeholder-val="{{ false }}">
+          <div class="f"><label class="lbl" for="rg-c">Código de invitación</label><input id="rg-c" class="inp mono" autocomplete="off" autocapitalize="characters" placeholder="TA-XXXX-XXXX" value="{{code}}" style="text-transform: uppercase; letter-spacing: .04em;"><span class="hint">{{codeHint}}</span></div>
+          <div class="f"><label class="lbl" for="rg-n">Nombre</label><input id="rg-n" class="inp" autocomplete="name" placeholder="Como te van a ver los demás"></div>
+          <div class="f"><label class="lbl" for="rg-m">Mail</label><input id="rg-m" class="inp" type="email" inputmode="email" autocomplete="email" placeholder="nombre@northfield.edu.ar"><span class="hint">Si la invitación es para un mail puntual, tiene que ser ese.</span></div>
+          <div class="f">
+            <label class="lbl" for="rg-p">Contraseña</label>
+            <div class="fld"><input id="rg-p" type="{{pwType}}" autocomplete="new-password" minlength="6"><button type="button" aria-pressed="{{pwPressed}}" onClick="{{onTogglePw}}">{{pwBtn}}</button></div>
+            <span class="hint">Mínimo 6 caracteres.</span>
+          </div>
+          <button type="button" class="btn bp" onClick="{{onRegister}}">Crear cuenta</button>
+        </sc-if>
+
+        <!-- ELEGÍ TU CONTRASEÑA (link de un solo uso) -->
+        <sc-if value="{{isPassword}}" hint-placeholder-val="{{ false }}">
+          <div class="f">
+            <label class="lbl" for="pw-1">Contraseña nueva</label>
+            <div class="fld"><input id="pw-1" type="{{pwType}}" autocomplete="new-password" minlength="6"><button type="button" aria-pressed="{{pwPressed}}" onClick="{{onTogglePw}}">{{pwBtn}}</button></div>
+            <span class="hint">Mínimo 6 caracteres.</span>
+          </div>
+          <div class="f"><label class="lbl" for="pw-2">Repetila</label><input id="pw-2" class="inp" type="{{pwType}}" autocomplete="new-password" minlength="6"></div>
+          <button type="button" class="btn bp" onClick="{{onSavePw}}">Guardar contraseña</button>
+          <button type="button" class="lnk" onClick="{{toLogin}}">Volver a ingresar</button>
+        </sc-if>
+      </form>
+
+      <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 19px; color: var(--t3);">
+        <span>{{footA}}</span>
+        <span>Cada sede ve solo sus datos.</span>
+      </div>
+    </div>
+  </main>
+
+  <footer style="height: 48px; flex: none; display: flex; align-items: center; padding: 0 32px; font-size: 12px; color: var(--t3); box-sizing: border-box;">
+    <span class="nw">TechAsset · Equipo TIC Northfield</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900},"pantalla":{"editor":"enum","options":["Ingresar","Ingresar desde link de sede","Sesión vencida","Registro con código","Elegí tu contraseña"],"default":"Ingresar"}}'>
+class Component extends DCLogic {
+st() { return this.state || {}; }
+set(o) { this.setState(o); }
+renderVals() {
+  const s = this.st();
+  const pant = (this.props && this.props.pantalla) || 'Ingresar';
+  const initMode = pant === 'Registro con código' ? 'register' : pant === 'Elegí tu contraseña' ? 'password' : 'login';
+  const mode = s.mode || initMode;
+  const theme = s.theme || 'dark';
+  const pal = theme === 'light'
+    ? { bg: '#F4F5F7', sf: '#FFFFFF', el: '#EEF0F3', ln: '#DDE1E6', ls: '#C9CED6', t1: '#14171B', t2: '#4A515C', t3: '#626A75', link: '#2F6FDB', linkh: '#1F57B5', focus: '#2F6FDB', ok: '#1E8A4C', bad: '#C93B3B', warn: '#9A6A00' }
+    : { bg: '#0D0F12', sf: '#14171B', el: '#1B1F24', ln: '#262B32', ls: '#353B44', t1: '#ECEEF1', t2: '#A7AEB8', t3: '#7C8592', link: '#5B9BFF', linkh: '#8DBBFF', focus: '#5B9BFF', ok: '#5BD68A', bad: '#FF6B6B', warn: '#F5C04E' };
+  const vars = Object.keys(pal).map(k => '--' + k + ': ' + pal[k] + ';').join(' ');
+  const root = vars + ' width: 100%; min-height: 900px; display: flex; flex-direction: column; background: var(--bg); color: var(--t1); font-family: Geist, system-ui, sans-serif; font-size: 14px; overflow-x: clip;';
+
+  const icons = {
+    moon: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z',
+    sun: 'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41',
+    monitor: 'M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 21h8M12 17v4',
+    alert: 'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M12 8v4M12 16h.01',
+    mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7',
+    check: 'M20 6 9 17l-5-5',
+    clock: 'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M12 6v6l4 2'
+  };
+  const tm = (k, label, d) => ({ label: label, d: d, checked: theme === k ? 'true' : 'false', cls: theme === k ? 'sg on' : 'sg', onClick: () => this.set({ theme: k }) });
+  const themes = [tm('dark', 'Oscuro', icons.moon), tm('light', 'Claro', icons.sun), tm('system', 'Sistema', icons.monitor)];
+
+  // Mensaje en línea (error, aviso o éxito), según estado
+  let msg = { show: false };
+  const mk = (kind, text, d) => ({
+    show: true, text: text, d: d,
+    role: kind === 'bad' ? 'alert' : 'status',
+    cls: 'msg' + (kind === 'bad' ? ' shake' : ''),
+    style: 'color: ' + (kind === 'bad' ? 'var(--bad)' : kind === 'ok' ? 'var(--t1)' : 'var(--t2)') + ';'
+  });
+  if (s.err) msg = mk('bad', s.err, icons.alert);
+  else if (s.info) msg = mk('info', s.info, icons.mail);
+  else if (s.ok) msg = Object.assign(mk('ok', s.ok, icons.check), { style: 'color: var(--t1);' });
+  else if (pant === 'Sesión vencida' && mode === 'login') msg = Object.assign(mk('info', 'Tu sesión venció. Volvé a ingresar.', icons.clock), { style: 'color: var(--warn);' });
+
+  const titles = { login: 'Entrá a TechAsset', register: 'Creá tu cuenta', password: 'Elegí tu contraseña' };
+  const subs = {
+    login: 'Préstamos, equipos, agenda y tareas del equipo TIC.',
+    register: 'Con el código que te pasó el Jefe TIC de tu sede. Tu rol ya viene en la invitación.',
+    password: 'Este link sirve una sola vez y vence a la hora de pedirlo.'
+  };
+  const fromLink = s.codeFromLink === undefined ? (pant === 'Registro con código') : s.codeFromLink;
+
+  return {
+    root: root,
+    themes: themes,
+    fromSede: pant === 'Ingresar desde link de sede' && mode === 'login' && !s.defaultSede,
+    onDefaultSede: () => this.set({ defaultSede: true }),
+    title: titles[mode],
+    subtitle: subs[mode],
+    showTabs: mode !== 'password',
+    tabLogin: { sel: mode === 'login' ? 'true' : 'false', cls: mode === 'login' ? 'tab on' : 'tab' },
+    tabReg: { sel: mode === 'register' ? 'true' : 'false', cls: mode === 'register' ? 'tab on' : 'tab' },
+    toLogin: () => this.set({ mode: 'login', err: '', info: '', ok: mode === 'password' ? 'Listo, ya podés entrar con tu nueva contraseña.' : '' }),
+    toRegister: () => this.set({ mode: 'register', err: '', info: '', ok: '' }),
+    isLogin: mode === 'login',
+    isRegister: mode === 'register',
+    isPassword: mode === 'password',
+    msg: msg,
+    mail: s.mail || '',
+    pwType: s.showPw ? 'text' : 'password',
+    pwBtn: s.showPw ? 'Ocultar' : 'Mostrar',
+    pwPressed: s.showPw ? 'true' : 'false',
+    onTogglePw: () => this.set({ showPw: !s.showPw }),
+    onForgot: () => this.set({ err: '', ok: '', info: 'Si el mail tiene acceso a TechAsset, te llega un link para elegir tu contraseña. Revisá tu casilla (y spam).' }),
+    onLogin: () => this.set({ info: '', ok: '', err: 'Mail o contraseña incorrectos.', n: (s.n || 0) + 1 }),
+    onRegister: () => this.set({ mode: 'login', err: '', info: '', ok: 'Cuenta creada. Ya podés iniciar sesión con tu mail.', mail: '[tu mail]' }),
+    onSavePw: () => this.set({ err: 'Las contraseñas no coinciden.', info: '', ok: '' }),
+    code: fromLink ? '[CÓDIGO DEL LINK]' : '',
+    codeHint: fromLink ? 'Lo tomamos del link de tu invitación.' : 'Te llega por mail o te lo pasa el Jefe TIC.',
+    footA: mode === 'register' ? '¿Ya tenés cuenta? Tocá Ingresar.' : '¿No tenés cuenta? Pedile un código de invitación al Jefe TIC de tu sede.'
+  };
+}
+}
+</script>
+</body>
+</html>
