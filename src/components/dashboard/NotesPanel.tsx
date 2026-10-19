@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Star, Trash2 } from 'lucide-react';
+import { Star, StickyNote, Trash2 } from 'lucide-react';
 import type { InternalNote } from '../../types';
-import { Button, EmptyState, ErrorState, IconButton, Input, SkeletonText, cx, useStatusLine } from '../../ui';
+import { Button, ErrorState, IconButton, Input, SkeletonText, cx, useStatusLine } from '../../ui';
+import { DashEmpty } from './DashEmpty';
 import { createInternalNote, fetchInternalNotes, updateInternalNote } from '../../services/operationsApi';
 import { TIME_HM, dayKeyAr, formatDate, todayKeyAr } from '../../utils/formatters';
 
@@ -151,7 +152,13 @@ export function NotesPanel({ operator, readOnly, onCount }: { operator: string; 
             </article>
           );
         })}
-        {items !== null && !notes.length && !loadError && <EmptyState compact title="Nadie dejó notas hoy." />}
+        {items !== null && !notes.length && !loadError && (
+          <DashEmpty
+            icon={<StickyNote size={18} strokeWidth={1.6} />}
+            title="Nadie dejó notas hoy"
+            description={readOnly ? undefined : 'Escribí abajo lo que tu compañero tiene que saber del turno.'}
+          />
+        )}
       </div>
       {status.element && <div className="dash-status dash-status--in">{status.element}</div>}
       {!readOnly && (

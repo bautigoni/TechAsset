@@ -218,8 +218,11 @@ export function Dashboard(props: DashboardProps) {
         onType={pickType}
       />
 
+      {/* Cuerpo: "Afuera ahora" + "Últimos movimientos" en una columna y
+          "Ahora" en la otra; cada columna fluye sola hasta el final, así
+          ninguna deja un hueco arriba de un bloque (ver dashboard.css §3). */}
       <div className="dash-body">
-        <div ref={listRef} className="dash-col-l dash-anchor">
+        <div ref={listRef} className="dash-area-list dash-anchor">
           <OutList
             devices={devices}
             counts={counts}
@@ -242,9 +245,10 @@ export function Dashboard(props: DashboardProps) {
             onProfile={onProfile}
             onCopy={device => void copyTag(device)}
             onShortcuts={() => { setHelp(true); scrollTo(barRef.current); }}
+            onStartLend={() => { scrollTo(barRef.current); window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 60); }}
           />
         </div>
-        <div className="dash-col-r">
+        <div className="dash-area-now">
           <NowColumn
             agenda={agenda}
             tasks={tasks}
@@ -258,9 +262,10 @@ export function Dashboard(props: DashboardProps) {
             onOpenTask={task => onOpenTask(String(task.id))}
           />
         </div>
+        <div className="dash-area-moves">
+          <RecentMoves items={movements} canHistory={canOpen('history')} onHistory={() => onNavigate('history')} />
+        </div>
       </div>
-
-      <RecentMoves items={movements} canHistory={canOpen('history')} onHistory={() => onNavigate('history')} />
     </section>
   );
 }

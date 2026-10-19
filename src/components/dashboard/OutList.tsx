@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, House, SearchX, Undo2 } from 'lucide-react';
 import type { Device } from '../../types';
 import {
-  Button, Checkbox, EmptyState, ErrorState, Input, Kbd, Segmented, SelectionHeader, SkeletonRows, StatusText, TruncatedText,
+  Button, Checkbox, ErrorState, Input, Kbd, Segmented, SelectionHeader, SkeletonRows, StatusText, TruncatedText,
   cx, icons, useInlineConfirm, useSelection, type StatusMessage
 } from '../../ui';
 import { aliasOf, fichaFields, filterList, initialOf, loanOf, sinceOf, stateText, whereOf, type Counts, type ListFilter } from './dashModel';
 import type { LoanActions } from './useLoanActions';
 import { normalizeText } from '../../utils/formatters';
+import { Collapse, keepScrollOnShrink, pinAnchor } from './Collapse';
+import { DashEmpty } from './DashEmpty';
 
 const FIRST_PAGE = 12;
 const PAGE = 20;
@@ -34,6 +36,8 @@ export type OutListProps = {
   onProfile: (device: Device) => void;
   onCopy: (device: Device) => void;
   onShortcuts: () => void;
+  /** Lleva a la barra de acción para prestar (estado vacío). */
+  onStartLend: () => void;
 };
 
 /**
@@ -43,12 +47,13 @@ export type OutListProps = {
  * que los cartelitos de Préstamos) y la selección REEMPLAZA el encabezado.
  */
 export function OutList(props: OutListProps) {
-  const { devices, counts, filter, type, query, loading, error, updatedLabel, retrying, readOnly, actions, status, onFilter, onType, onQuery, onRetry, onLend, onEdit, onProfile, onCopy, onShortcuts } = props;
+  const { devices, counts, filter, type, query, loading, error, updatedLabel, retrying, readOnly, actions, status, onFilter, onType, onQuery, onRetry, onLend, onEdit, onProfile, onCopy, onShortcuts, onStartLend } = props;
   const [shown, setShown] = useState(FIRST_PAGE);
   const [open, setOpen] = useState<string | null>(null);
   const selection = useSelection();
   const confirm = useInlineConfirm();
   const listRef = useRef<HTMLUListElement | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
 
   const list = useMemo(() => filterList(devices, filter, type, query), [devices, filter, type, query]);
   const visible = list.slice(0, shown);
@@ -86,6 +91,8 @@ export function OutList(props: OutListProps) {
     const pointer = (event.nativeEvent as PointerEvent).pointerType;
     if (target.closest('.ui-trunc.is-cut') && (pointer === 'touch' || pointer === 'pen')) return;
     if (!readOnly && loanOf(device) !== 'blocked' && selection.handleClick(device.etiqueta, event, order)) return;
+    // La fila tocada queda quieta aunque arriba se cierre otra ficha.
+    pinAnchor(event.currentTarget as HTMLElement);
     setOpen(current => (current === device.etiqueta ? null : device.etiqueta));
   };
 
@@ -109,12 +116,32 @@ export function OutList(props: OutListProps) {
   const allOn = allVisible.length > 0 && allVisible.every(tag => selection.isSelected(tag));
   const someOn = allVisible.some(tag => selection.isSelected(tag));
 
-  const emptyText = query.trim() || type
-    ? 'No hay equipos para este filtro.'
-    : filter === 'loaned' ? 'Todo en casa: no hay equipos prestados.'
-      : filter === 'overdue' ? 'Nada atrasado: todo lo prestado salió hoy.'
-        : filter === 'available' ? 'No hay equipos libres ahora.'
-          : 'No hay equipos en esta sede.';
+  const filtered = Boolean(query.trim() || type);
+  const empty: EmptyInfo = filtered
+    ? {
+      icon: 'search',
+      title: 'Nada coincide con el filtro',
+      desc: query.trim() ? `No hay equipos para “${query.trim()}”${type ? ` en ${type}` : ''}.` : `No hay equipos de tipo ${type} en esta lista.`,
+      actions: [{ label: 'Limpiar el filtro', onClick: () => { onQuery(''); onType(''); } }]
+    }
+    : filter === 'loaned' ? {
+      icon: 'home',
+      title: 'Todo en casa',
+      desc: counts.available ? `No hay equipos prestados · ${counts.available} ${counts.available === 1 ? 'disponible' : 'disponibles'} para prestar.` : 'No hay equipos prestados.',
+      actions: [
+        ...(!readOnly && counts.available ? [{ label: 'Prestar un equipo', primary: true, onClick: onStartLend }] : []),
+        ...(counts.available ? [{ label: 'Ver disponibles', onClick: () => onFilter('available') }] : [])
+      ]
+    }
+      : filter === 'overdue' ? { icon: 'home', title: 'Nada atrasado', desc: 'Todo lo prestado salió hoy.', actions: [{ label: 'Ver prestados', onClick: () => onFilter('loaned') }] }
+        : filter === 'available' ? {
+          icon: 'back',
+          title: 'No hay equipos libres ahora',
+          desc: counts.loaned ? `${counts.loaned} ${counts.loaned === 1 ? 'está prestado' : 'están prestados'}.` : 'Ningún equipo se puede prestar en este momento.',
+          actions: counts.loaned ? [{ label: 'Ver prestados', onClick: () => onFilter('loaned') }] : []
+        }
+          : { icon: 'search', title: 'No hay equipos en esta sede', desc: 'Se cargan desde Dispositivos o con la importación de inventario.', actions: [] };
+  const hasRows = !loading && visible.length > 0;
 
   const header = (
     <div className="dash-list-head">
@@ -124,7 +151,7 @@ export function OutList(props: OutListProps) {
         ariaLabel="Filtrar la lista"
         className="dash-tabs"
         value={filter === 'overdue' ? 'loaned' : (filter as 'loaned' | 'available' | 'all')}
-        onChange={value => onFilter(value)}
+        onChange={value => { keepScrollOnShrink(sectionRef.current); onFilter(value); }}
         options={[
           { value: 'loaned', label: 'Prestados', count: counts.loaned },
           { value: 'available', label: 'Disponibles', count: counts.available },
@@ -148,7 +175,7 @@ export function OutList(props: OutListProps) {
   );
 
   return (
-    <section className={cx('dash-card', 'dash-list', readOnly && 'is-readonly')} aria-labelledby="afuera-titulo" data-dash="afuera">
+    <section ref={sectionRef} className={cx('dash-card', 'dash-list', readOnly && 'is-readonly', !hasRows && 'is-empty')} aria-labelledby="afuera-titulo" data-dash="afuera">
       <SelectionHeader
         count={selection.count}
         onClear={() => { confirm.cancel(); selection.clear(); }}
@@ -172,7 +199,7 @@ export function OutList(props: OutListProps) {
       {error && <ErrorState className="dash-block-error" message="No se pudo actualizar la lista" updatedAt={updatedLabel} onRetry={onRetry} retrying={retrying} />}
       {status.element && <div className="dash-status dash-status--in">{status.element}</div>}
 
-      <div className="dash-cols" aria-hidden="true">
+      {hasRows && <div className="dash-cols" aria-hidden="true">
         {!readOnly && (
           <Checkbox
             className="dash-col-check"
@@ -185,10 +212,10 @@ export function OutList(props: OutListProps) {
         )}
         <span className="dash-cols-main"><span>Equipo</span><span>Quién</span><span>Dónde</span><span>Desde</span></span>
         <span className="dash-cols-act">{readOnly ? '' : 'Acción'}</span>
-      </div>
+      </div>}
 
       {loading ? <SkeletonRows rows={5} className="dash-list-skel" /> : (
-        <ul className={cx('dash-rows', readOnly && 'is-readonly')} ref={listRef} onKeyDown={onListKey} aria-label="Equipos">
+        <ul className={cx('dash-rows', readOnly && 'is-readonly')} hidden={!visible.length} ref={listRef} onKeyDown={onListKey} aria-label="Equipos">
           {visible.map(device => (
             <Row
               key={device.etiqueta}
@@ -210,19 +237,39 @@ export function OutList(props: OutListProps) {
           ))}
         </ul>
       )}
-      {!loading && !visible.length && <EmptyState className="dash-list-empty" title={emptyText} />}
+      {!loading && !visible.length && <ListEmpty info={empty} />}
 
-      <div className="dash-list-foot">
-        <span className="ui-mono dash-nw">{visible.length} de {list.length}</span>
-        <span className="dash-list-help dash-only-wide">
-          <Kbd>Ctrl</Kbd> / <Kbd>⌘</Kbd> / <Kbd>Shift</Kbd> + clic marca varias · clic abre la ficha
-        </span>
-        <Button size="sm" variant="ghost" className="dash-only-wide" onClick={onShortcuts}><Kbd>?</Kbd> Atajos</Button>
-        <span className="dash-grow" />
-        {remaining > 0 && <Button size="sm" variant="secondary" onClick={() => setShown(value => value + PAGE)}>Ver {Math.min(PAGE, remaining)} más</Button>}
-        {remaining > PAGE && <Button size="sm" variant="ghost" onClick={() => setShown(list.length)}>Ver todos</Button>}
-      </div>
+      {/* El pie (cuántas, atajos de selección, Ver más) solo tiene sentido con filas. */}
+      {hasRows && (
+        <div className="dash-list-foot">
+          <span className="ui-mono dash-nw">{visible.length} de {list.length}</span>
+          {!readOnly && (
+            <span className="dash-list-help dash-only-wide">
+              <Kbd>Ctrl</Kbd> / <Kbd>⌘</Kbd> / <Kbd>Shift</Kbd> + clic marca varias · clic abre la ficha
+            </span>
+          )}
+          <Button size="sm" variant="ghost" className="dash-only-wide" onClick={onShortcuts}><Kbd>?</Kbd> Atajos</Button>
+          <span className="dash-grow" />
+          {remaining > 0 && <Button size="sm" variant="secondary" onClick={() => setShown(value => value + PAGE)}>Ver {Math.min(PAGE, remaining)} más</Button>}
+          {remaining > PAGE && <Button size="sm" variant="ghost" onClick={() => setShown(list.length)}>Ver todos</Button>}
+        </div>
+      )}
     </section>
+  );
+}
+
+type EmptyInfo = { icon: 'home' | 'search' | 'back'; title: string; desc: string; actions: Array<{ label: string; primary?: boolean; onClick: () => void }> };
+
+/** Estado vacío compacto: ícono sobrio, una frase y la acción siguiente. */
+function ListEmpty({ info }: { info: EmptyInfo }) {
+  const Icon = info.icon === 'home' ? House : info.icon === 'back' ? Undo2 : SearchX;
+  return (
+    <DashEmpty
+      icon={<Icon size={18} strokeWidth={1.6} />}
+      title={info.title}
+      description={info.desc}
+      actions={info.actions.length ? info.actions.map(action => <Button key={action.label} size="sm" variant={action.primary ? 'secondary' : 'ghost'} onClick={action.onClick}>{action.label}</Button>) : undefined}
+    />
   );
 }
 
@@ -277,13 +324,13 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
               <>
                 <span className="dash-initial" aria-hidden="true">{initialOf(device.prestadoA)}</span>
                 <span className="dash-c-stack">
-                  <TruncatedText className="dash-person">{device.prestadoA || 'Sin persona'}</TruncatedText>
+                  <TruncatedText className="dash-person" lines={2}>{device.prestadoA || 'Sin persona'}</TruncatedText>
                   <span className="dash-sub">{[device.rol || '—', personCount > 1 ? `${personCount} equipos` : ''].filter(Boolean).join(' · ')}</span>
                 </span>
               </>
             ) : <StatusText tone={st.tone} strong={st.tone !== 'normal'}>{st.text}</StatusText>}
           </span>
-          <span className="dash-c-where"><TruncatedText className="dash-where">{where}</TruncatedText></span>
+          <span className="dash-c-where"><TruncatedText className="dash-where" lines={2}>{where}</TruncatedText></span>
           <span className="dash-c-since">
             {state === 'loaned' ? (
               <>
@@ -300,8 +347,8 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
           <ChevronDown size={16} strokeWidth={1.6} aria-hidden="true" className={cx('dash-row-chev', open && 'is-open')} />
         </span>
       </div>
-      {open && (
-        <div className="dash-ficha ui-enter" role="region" aria-label={`Ficha de ${alias}`}>
+      <Collapse open={open}>
+        <div className="dash-ficha" role="region" aria-label={`Ficha de ${alias}`}>
           <dl className="dash-kv">
             {fichaFields(device).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}
           </dl>
@@ -315,7 +362,7 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
             <Button size="sm" variant="ghost" onClick={onClose}>Cerrar</Button>
           </div>
         </div>
-      )}
+      </Collapse>
     </li>
   );
 }

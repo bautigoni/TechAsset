@@ -15,6 +15,12 @@
   gap: var(--g-s-3);
   min-width: 0;
   padding: var(--g-s-4) var(--dash-pad-x) var(--g-s-6);
+  /* Piso de scroll (Collapse.tsx): alto extra temporal para que plegar algo
+     cerca del final no recorte el scroll ni mueva el encabezado tocado. */
+  padding-bottom: calc(var(--g-s-6) + var(--dash-floor, 0px));
+  /* El cuerpo reparte sus columnas según el ancho real del Inicio (con o sin
+     menú, con o sin asistente), no según la ventana. */
+  container: dash / inline-size;
   color: var(--g-text);
   font-family: var(--g-font);
   font-size: var(--g-fs-base);
@@ -53,7 +59,8 @@
   border-bottom: 1px solid var(--g-line);
 }
 .dash-card-head > .dash-h3 { flex: 0 1 auto; }
-.dash-card-meta { flex: 1 1 4rem; min-width: 0; overflow: hidden; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); text-overflow: ellipsis; white-space: nowrap; }
+/* El dato del encabezado no se corta: si no entra, baja de renglón (la cabecera envuelve). */
+.dash-card-meta { flex: 1 1 auto; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); white-space: nowrap; }
 .dash-link { color: var(--g-accent); }
 
 /* Línea de estado (Deshacer / Reintentar) debajo de donde pasó la acción. */
@@ -322,12 +329,41 @@
 .dash-type-nums b { color: var(--g-text); font-size: var(--g-fs-md); font-weight: var(--g-fw-medium); }
 @media (max-width: 767px) { .dash-type { flex: 1 1 6.5rem; } }
 
-/* ── 3. Cuerpo en dos columnas (la de la derecha baja si no entra) ── */
-.dash-body { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--dash-gap); min-width: 0; margin-top: var(--g-s-2); }
-/* La lista necesita ~640 px para la grilla de columnas: si no entra al lado de
-   "Ahora", "Ahora" baja (y ahí reparte sus tarjetas en columnas). */
-.dash-col-l { flex: 999 1 40rem; min-width: 0; }
-.dash-col-r { flex: 1 1 20rem; min-width: 0; }
+/* ── 3. Cuerpo: columnas que fluyen solas (nunca un hueco entre bloques) ──
+   Nada ocupa todo el ancho DEBAJO de dos columnas: cada columna termina al
+   final de la página, así la más corta no deja espacio en blanco arriba de
+   otro bloque (pedido del dueño, REGLAS-UX "sin huecos").
+   - Ancho (≥ 60rem de Inicio): [Afuera ahora + Últimos movimientos] | [Ahora].
+     La fila 1 mide lo que la lista; la 2 (1fr) absorbe lo que "Ahora" tenga de
+     más, debajo de los movimientos (fin de la columna, no un hueco).
+   - Medio (44–60rem): la lista a todo el ancho y debajo [Ahora] | [movimientos].
+   - Angosto: una columna (lista, Ahora, movimientos). */
+.dash-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "list" "now" "moves";
+  align-items: start;
+  gap: var(--dash-gap);
+  min-width: 0;
+  margin-top: var(--g-s-2);
+}
+.dash-area-list { grid-area: list; min-width: 0; }
+.dash-area-now { grid-area: now; min-width: 0; }
+.dash-area-moves { grid-area: moves; min-width: 0; }
+@container dash (min-width: 44rem) {
+  .dash-body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "list list" "now moves";
+  }
+}
+@container dash (min-width: 60rem) {
+  .dash-body {
+    grid-template-columns: minmax(0, 1fr) clamp(20rem, 30%, 27rem);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "list now" "moves now";
+  }
+}
 
 /* Afuera ahora */
 .dash-list { container: dashlist / inline-size; display: flex; flex-direction: column; }
@@ -390,7 +426,9 @@
 .dash-list.is-readonly .dash-cols, .dash-list.is-readonly .dash-row-line { grid-template-columns: minmax(0, 1fr) auto; }
 .dash-cols-main, .dash-row-main {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.3fr) minmax(0, 1fr) 6.5rem;
+  /* Equipo (alias corto + etiqueta) cede ancho a Quién y Dónde, que además
+     pueden ir en 2 renglones antes de cortarse. */
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.3fr) minmax(0, 1.25fr) 6.5rem;
   align-items: center;
   gap: var(--g-s-3);
   min-width: 0;
@@ -460,7 +498,35 @@
 .dash-list.is-readonly .dash-ficha { padding-left: var(--g-s-4); }
 .dash-ficha-acts { gap: var(--g-s-2); }
 .dash-list-skel { padding: var(--g-s-3) var(--g-s-4); }
-.dash-list-empty { padding: var(--g-s-7) var(--g-s-4); }
+/* Estado vacío diseñado y compacto: ícono sobrio + frase + acción siguiente.
+   En ancho va en una línea; si no entra, las acciones bajan (nunca se aprietan). */
+.dash-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--g-s-2) var(--g-s-3);
+  min-width: 0;
+  padding: var(--g-s-4);
+}
+.dash-empty--flat { padding: var(--g-s-3) var(--g-s-4) var(--g-s-4); border-top: 1px solid var(--g-line); }
+.dash-empty-icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--g-s-7);
+  height: var(--g-s-7);
+  border: 1px solid var(--g-line);
+  border-radius: var(--g-radius);
+  color: var(--g-text-2);
+}
+.dash-empty-text { display: flex; flex: 1 1 14rem; flex-direction: column; gap: 2px; min-width: 0; }
+.dash-empty-title { color: var(--g-text); font-size: var(--g-fs-base); font-weight: var(--g-fw-medium); line-height: 1.25rem; }
+.dash-empty-desc { color: var(--g-text-2); font-size: var(--g-fs-sm); line-height: 1.125rem; overflow-wrap: anywhere; }
+.dash-empty-acts { display: flex; flex-wrap: wrap; gap: var(--g-s-2); margin-left: auto; }
+@container dashlist (max-width: 479px) {
+  .dash-empty-acts { flex: 1 1 100%; margin-left: calc(var(--g-s-7) + var(--g-s-3)); }
+}
 .dash-list-foot {
   display: flex;
   flex-wrap: wrap;
@@ -498,9 +564,12 @@
 @container dashlist (max-width: 419px) { .dash-tabs .ui-seg-count { display: none; } }
 
 /* ── Columna "Ahora" ── */
+/* Una sola columna siempre: "Ahora" ya es una columna del cuerpo (o la mitad,
+   o todo el ancho angosto). Repartir sus tarjetas en dos columnas dejaba
+   huecos debajo de la más corta. */
 .dash-now {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--g-s-3);
   min-width: 0;
@@ -518,9 +587,9 @@
 .dash-recess.is-active { color: var(--g-text); }
 .dash-agenda .dash-card-head .dash-h3 { flex: 1 1 auto; }
 .dash-agenda-main { display: flex; flex-direction: column; gap: 2px; padding: var(--g-s-3) var(--g-s-4); }
-.dash-agenda-top { display: flex; align-items: center; gap: var(--g-s-2); min-width: 0; }
+.dash-agenda-top { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--g-s-2); min-width: 0; }
 .dash-agenda-top .ui-eyebrow { flex: none; white-space: nowrap; }
-.dash-agenda-top .ui-stext { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--g-fs-sm); }
+.dash-agenda-top .ui-stext { flex: 0 1 auto; min-width: 0; font-size: var(--g-fs-sm); }
 .dash-agenda-top .ui-mono { flex: none; white-space: nowrap; }
 .dash-agenda-title { margin-top: var(--g-s-1); font-size: var(--g-fs-md); font-weight: var(--g-fw-semibold); line-height: 1.375rem; overflow-wrap: anywhere; }
 .dash-agenda-main > .dash-sub { font-size: var(--g-fs-sm); line-height: 1.125rem; color: var(--g-text-2); }
@@ -535,7 +604,9 @@
   padding: 0 var(--g-s-4);
   border-top: 1px solid var(--g-line);
 }
-.dash-agenda-next-name { min-width: 0; overflow: hidden; font-size: var(--g-fs-sm); text-overflow: ellipsis; white-space: nowrap; }
+.dash-agenda-next li { padding-block: var(--g-s-1); }
+/* Curso arriba, actividad abajo: cada uno es su propia caja (nada se pisa al bajar de renglón). */
+.dash-agenda-next-name { display: flex; flex-direction: column; min-width: 0; font-size: var(--g-fs-sm); line-height: 1.125rem; overflow-wrap: anywhere; }
 .dash-agenda-next-name b { font-weight: var(--g-fw-medium); }
 
 .dash-task-list { margin: 0; padding: 0; list-style: none; }
@@ -556,14 +627,15 @@
   cursor: pointer;
   touch-action: manipulation;
 }
-.dash-task:hover:not(:disabled) { background: var(--g-raised); }
-.dash-task:disabled { cursor: default; }
+.dash-task:hover:not(.is-static) { background: var(--g-raised); }
+.dash-task.is-static { cursor: default; }
 .dash-task:focus-visible { outline: 2px solid var(--g-focus); outline-offset: -2px; }
 .dash-task-text { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; line-height: 1.125rem; }
-.dash-task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-task-text .dash-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Sin elipsis: el título y sus datos usan el ancho y bajan de renglón. */
+.dash-task-title { overflow-wrap: anywhere; }
+.dash-task-text .dash-sub { overflow-wrap: anywhere; }
 .dash-task-chev { flex: none; color: var(--g-text-3); }
-.dash-tasks .ui-empty, .dash-agenda .ui-empty, .dash-notes .ui-empty { padding: var(--g-s-4); }
+.dash-notes-body > .dash-empty { padding: var(--g-s-1); }
 
 .dash-notes { display: flex; flex-direction: column; }
 .dash-notes-body { display: flex; flex-direction: column; justify-content: flex-end; gap: var(--g-s-2); min-width: 0; padding: var(--g-s-3); }
@@ -611,7 +683,7 @@
 .dash-notes-form .ui-control { background: var(--g-bg); }
 
 /* ── 4. Últimos movimientos ── */
-.dash-moves { container: dashmoves / inline-size; margin-top: var(--g-s-2); }
+.dash-moves { container: dashmoves / inline-size; }
 .dash-moves .dash-card-head { padding-left: var(--g-s-2); border-bottom: 0; }
 .dash-disclose {
   display: inline-flex;
@@ -635,37 +707,53 @@
 .dash-disclose-chev { flex: none; color: var(--g-text-3); }
 .dash-disclose-chev.is-closed { transform: rotate(-90deg); }
 @media (prefers-reduced-motion: no-preference) { .dash-disclose-chev { transition: transform var(--g-dur) var(--g-ease); } }
+/* Una grilla común para todas las filas (subgrid): la hora y el tipo miden lo
+   que su texto más largo, la descripción se queda con el resto (hasta 2
+   renglones) y el operador va al final. Nada se corta mientras haya espacio. */
 .dash-moves-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(var(--dash-move-rows, 5), auto);
-  grid-auto-flow: column;
-  column-gap: var(--g-s-6);
+  grid-template-columns: max-content max-content minmax(0, 1fr) fit-content(10rem);
+  column-gap: var(--g-s-4);
   margin: 0;
-  padding: 0 var(--g-s-4) var(--g-s-2);
+  padding: 0 var(--g-s-4) var(--g-s-1);
   list-style: none;
 }
 .dash-move {
   display: grid;
-  grid-template-columns: 4.75rem 6.5rem minmax(0, 1fr) auto;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: var(--g-s-3);
   min-width: 0;
-  min-height: 2.25rem;
+  min-height: 2.5rem;
+  padding-block: var(--g-s-1);
   border-top: 1px solid var(--g-line);
 }
-.dash-move-time { white-space: nowrap; }
-.dash-move-kind { display: flex; align-items: center; gap: var(--g-s-1); min-width: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); }
-.dash-move-kind-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-move-desc { font-size: var(--g-fs-sm); }
-.dash-move-op { max-width: 7rem; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
-@container dashmoves (max-width: 759px) {
-  .dash-moves-list { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-flow: row; }
+.dash-move-time { color: var(--g-text-3); font-size: var(--g-fs-xs); line-height: 1rem; white-space: nowrap; }
+.dash-move-kind { display: flex; align-items: center; gap: var(--g-s-1); min-width: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); line-height: 1.125rem; white-space: nowrap; }
+.dash-move-kind > svg { flex: none; }
+.dash-move-desc { font-size: var(--g-fs-sm); line-height: 1.125rem; overflow-wrap: anywhere; }
+.dash-move-op { min-width: 0; overflow: hidden; color: var(--g-text-2); font-size: var(--g-fs-xs); line-height: 1rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.dash-collapse { min-width: 0; }
+
+/* Angosto: filas apiladas (tipo · operador · hora arriba, descripción abajo). */
+@container dashmoves (max-width: 539px) {
+  .dash-moves-list { grid-template-columns: minmax(0, 1fr); padding-inline: var(--g-s-3); }
+  .dash-move {
+    grid-column: auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "kind op time" "desc desc desc";
+    gap: 2px var(--g-s-3);
+    min-height: var(--ui-touch);
+    padding-block: var(--g-s-2);
+  }
+  .dash-move-kind { grid-area: kind; white-space: normal; }
+  .dash-move-op { grid-area: op; max-width: 9rem; }
+  .dash-move-time { grid-area: time; text-align: right; }
+  .dash-move-desc { grid-area: desc; }
 }
-@container dashmoves (max-width: 479px) {
-  .dash-move { grid-template-columns: auto var(--g-s-4) minmax(0, 1fr) auto; gap: var(--g-s-2); min-height: var(--ui-touch); }
-  .dash-move-kind-text { display: none; }
-  .dash-move-op { max-width: 4.5rem; }
+@container dashmoves (max-width: 339px) {
+  .dash-move { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "kind time" "desc desc" "op op"; }
+  .dash-move-op { max-width: none; text-align: left; }
 }
 
 /* ── Cierre del día: DailyClosureSection de Préstamos (clases lo-*).

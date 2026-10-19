@@ -29,6 +29,7 @@ import { knowledgeCanvasTests } from './tests/knowledgeCanvas.mjs';
 import { toolsTests } from './tests/tools.mjs';
 import { settingsTests } from './tests/settings.mjs';
 import { shellTests } from './tests/shell.mjs';
+import { inicioTests } from './tests/inicio.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
 
 const args = process.argv.slice(2);
@@ -77,6 +78,7 @@ let server;
 let browser;
 let layout = {};
 let mobile = {};
+let inicio = {};
 let buildInfo = {};
 try {
   let t = Date.now();
@@ -114,6 +116,8 @@ try {
   await functionalTests(ctx);
   await inventoryTests(ctx);
   await tasksTests(ctx);
+  console.log('\nInicio: huecos, truncados y plegado (l)');
+  inicio = await inicioTests(ctx);
   console.log('\nAsistente (k)');
   await assistantTests(ctx);
   await ticketsTests(ctx);
@@ -185,7 +189,8 @@ const out = {
   },
   results,
   layout,
-  mobile
+  mobile,
+  inicio
 };
 fs.writeFileSync(path.join(root, 'e2e', 'last-run.json'), JSON.stringify(out, null, 2));
 console.log(`Detalle completo en e2e/last-run.json`);

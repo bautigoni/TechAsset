@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Coffee } from 'lucide-react';
+import { CalendarDays, ChevronRight, Coffee, ListChecks } from 'lucide-react';
 import type { AgendaItem, AgendaState, TaskItem } from '../../types';
-import { Button, EmptyState, Segmented, StatusText, cx, useStatusLine } from '../../ui';
+import { Button, Segmented, StatusText, cx, useStatusLine } from '../../ui';
+import { DashEmpty } from './DashEmpty';
 import { getRecessSchedules } from '../../services/schedulesApi';
 import { minutesFromTime } from '../../utils/dates';
 import { nowMinutesAr, todayKeyAr } from '../../utils/formatters';
 import { isOverdue } from '../../utils/dates';
 import { errorMessage } from '../layout/Feedback';
+import { clickableProps } from '../../utils/a11y';
 import { agendaNow, isAgendaToday, isMine, topTasks } from './agendaNow';
 import { NotesPanel } from './NotesPanel';
 
@@ -174,10 +176,11 @@ function AgendaCard({ agenda, nowMinutes, readOnly, canOpen, onSave, onOpen }: {
           )}
         </div>
       ) : (
-        <EmptyState
-          compact
+        <DashEmpty
+          icon={<CalendarDays size={18} strokeWidth={1.6} />}
           title={now.pendingTodayCount ? `${now.pendingTodayCount} pendiente${now.pendingTodayCount === 1 ? '' : 's'} en agenda hoy` : 'Sin actividades hoy'}
-          action={canOpen ? <Button size="sm" variant="ghost" onClick={onOpen}>Ver la semana</Button> : undefined}
+          description={now.pendingTodayCount ? undefined : 'No hay entregas ni clases con equipos por delante.'}
+          actions={canOpen ? <Button size="sm" variant="ghost" onClick={onOpen}>Ver la semana</Button> : undefined}
         />
       )}
       {status.element && <div className="dash-status dash-status--in">{status.element}</div>}
@@ -186,7 +189,7 @@ function AgendaCard({ agenda, nowMinutes, readOnly, canOpen, onSave, onOpen }: {
           {now.later.map(item => (
             <li key={item.id}>
               <span className="ui-mono dash-sub">{item.desde}</span>
-              <span className="dash-agenda-next-name"><b>{item.curso || item.actividad}</b> <span className="dash-sub">{item.curso ? item.actividad : ''}</span></span>
+              <span className="dash-agenda-next-name"><b>{item.curso || item.actividad}</b>{item.curso && item.actividad ? <span className="dash-sub">{item.actividad}</span> : null}</span>
               <span className="ui-mono dash-sub">{item.cantidad ? `${item.cantidad} ${item.tipoDispositivo}` : ''}</span>
             </li>
           ))}
@@ -219,7 +222,8 @@ function TasksCard({ top, operator, canOpen, onOpenTasks, onOpenTask }: {
             const due = task.fechaVencimiento ? task.fechaVencimiento.split('-').reverse().slice(0, 2).join('/') : '';
             return (
               <li key={task.id}>
-                <button type="button" className="dash-task" disabled={!canOpen} onClick={() => onOpenTask(task)} aria-label={`Abrir la tarea ${task.titulo}`}>
+                {/* Fila clickeable (no <button>): el título baja de renglón en vez de cortarse. */}
+                <div className={cx('dash-task', !canOpen && 'is-static')} {...(canOpen ? clickableProps(() => onOpenTask(task), `Abrir la tarea ${task.titulo}`) : {})}>
                   <span className="dash-task-text">
                     <span className="dash-task-title">{task.titulo}</span>
                     <span className="dash-sub">
@@ -230,12 +234,12 @@ function TasksCard({ top, operator, canOpen, onOpenTasks, onOpenTask }: {
                     </span>
                   </span>
                   <ChevronRight size={16} strokeWidth={1.6} aria-hidden="true" className="dash-task-chev" />
-                </button>
+                </div>
               </li>
             );
           })}
         </ul>
-      ) : <EmptyState compact title="No hay tareas abiertas." />}
+      ) : <DashEmpty icon={<ListChecks size={18} strokeWidth={1.6} />} title="No hay tareas abiertas" description="Las del equipo y las tuyas aparecen acá por prioridad." />}
     </section>
   );
 }
