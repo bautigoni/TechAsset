@@ -109,7 +109,8 @@ function scan() {
     const rel = path.relative(root, file).split(path.sep).join('/');
     if (EXEMPT.some(rx => rx.test(rel))) continue;
     if (!/\.(tsx?|jsx?|css)$/.test(rel)) continue;
-    const source = fs.readFileSync(file, 'utf8');
+    // CRLF y LF tienen que dar la misma huella (git en Windows convierte al hacer checkout).
+    const source = fs.readFileSync(file, 'utf8').replace(/\r\n?/g, '\n');
     const lines = source.split('\n');
     lines.forEach((line, index) => {
       for (const rule of RULES) {

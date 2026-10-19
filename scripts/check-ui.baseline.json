@@ -660,13 +660,13 @@
     {
       "rule": "title-tooltip",
       "file": "src/components/dashboard/Dashboard.tsx",
-      "text": "<input title=\"Buscar D1433, Touch 31, touch31, Plani 5...\"\r",
+      "text": "<input title=\"Buscar D1433, Touch 31, touch31, Plani 5...\"",
       "count": 1
     },
     {
       "rule": "title-tooltip",
       "file": "src/components/devices/DevicesPage.tsx",
-      "text": "<input title=\"Buscar D1433, Touch 31, touch31, Plani 5...\"\r",
+      "text": "<input title=\"Buscar D1433, Touch 31, touch31, Plani 5...\"",
       "count": 1
     },
     {
@@ -690,25 +690,25 @@
     {
       "rule": "title-tooltip",
       "file": "src/components/knowledge/KnowledgePage.tsx",
-      "text": "<iframe title={selected.title}\r",
+      "text": "<iframe title={selected.title}",
       "count": 1
     },
     {
       "rule": "title-tooltip",
       "file": "src/components/layout/GooeyMenu.tsx",
-      "text": "<button title={item.label}\r",
+      "text": "<button title={item.label}",
       "count": 1
     },
     {
       "rule": "title-tooltip",
       "file": "src/components/loans/DeviceChipsPanel.tsx",
-      "text": "<button title={bloqueado\r",
+      "text": "<button title={bloqueado",
       "count": 1
     },
     {
       "rule": "title-tooltip",
       "file": "src/components/loans/PhotoPassPanel.tsx",
-      "text": "<button title={bloqueado\r",
+      "text": "<button title={bloqueado",
       "count": 1
     },
     {
