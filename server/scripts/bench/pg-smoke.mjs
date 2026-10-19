@@ -151,6 +151,16 @@ try {
   const note = await call('POST', '/api/internal-notes', { texto: 'nota smoke', importante: false });
   check('notas con localDate', note.status === 200 && /^\d{4}-\d{2}-\d{2}$/.test(note.json?.item?.localDate || ''), note.text.slice(0, 200));
 
+  // Asistente: tablas assistant_audit / ai_usage_daily en Postgres.
+  const aiStatus = await call('GET', '/api/asistente/status');
+  check('asistente: status', aiStatus.status === 200, aiStatus.text.slice(0, 200));
+  const undoMissing = await call('POST', '/api/asistente/deshacer', { actionId: 999999 });
+  check('asistente: deshacer inexistente da 404', undoMissing.status === 404, undoMissing.text.slice(0, 200));
+  if (aiStatus.json?.provider === 'anthropic' && aiStatus.json?.hasApiKey) {
+    const chat = await call('POST', '/api/asistente/chat', { messages: [{ role: 'user', content: '¿Cuántos equipos hay prestados?' }] });
+    check('asistente: chat real (uso diario + auditoría en Postgres)', chat.status === 200 && chat.json?.reply, chat.text.slice(0, 200));
+  }
+
   // Errores de SQL en el log del server.
   const sqlErrors = serverLog.split('\n').filter(line => /syntax error|does not exist|operator does not|invalid input|ERROR:/i.test(line));
   check('sin errores de SQL en el log', !sqlErrors.length, sqlErrors.slice(0, 5).join(' | '));
