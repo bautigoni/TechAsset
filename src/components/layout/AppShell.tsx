@@ -11,7 +11,6 @@ import { navItem, type NavItem } from './nav';
 import { plainText } from './notifText';
 import { Sidebar, type NavCounts } from './Sidebar';
 import { Topbar, type StripKey } from './Topbar';
-import { scrollAppToTop } from '../../utils/scroll';
 
 const AssistantPanel = lazyView('assistant', () => import('../assistant/AssistantPanel'), 'AssistantPanel');
 // Ctrl K, franjas y "Más": un chunk aparte, precargado en idle (ver abajo).
@@ -26,10 +25,6 @@ const MoreView = lazyView('shell-more', loadPanels, 'MoreView');
 const MobileNav = lazyView('shell-tabbar', loadPanels, 'MobileNav');
 const PANEL_CHUNKS = ['shell-tabbar', 'shell-palette', 'shell-quick', 'shell-notif', 'shell-account', 'shell-sites', 'shell-more'];
 
-/** Lugar reservado mientras baja el chunk de las franjas (casi nunca se ve). */
-function StripFallback() {
-  return <section className="shell-strip shell-strip--loading" aria-busy="true" />;
-}
 
 const COLLAPSED_KEY = 'techasset_sidebar_collapsed';
 const MOBILE_MAX = 767;     // < 768: sin menú lateral, barra inferior
@@ -127,7 +122,11 @@ export function AppShell(props: AppShellProps) {
   const isMobile = width <= MOBILE_MAX;
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [strip, setStrip] = useState<StripKey | null>(null);
+  // Desde que se abre la primera franja quedan montadas (vacías si están
+  // cerradas) para poder animar el cierre; antes no se monta nada.
+  const [stripsOn, setStripsOn] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantMounted, setAssistantMounted] = useState(false);
   const [question, setQuestion] = useState<{ text: string; nonce: number } | null>(null);
@@ -158,13 +157,13 @@ export function AppShell(props: AppShellProps) {
   }, []);
 
   const toggleStrip = useCallback((key: StripKey, trigger?: HTMLElement | null) => {
+    setStripsOn(true);
     setStrip(currentStrip => {
       if (currentStrip === key) return null;
       triggerRef.current = trigger || (document.activeElement as HTMLElement | null);
       // En mobile el asistente ocupa el lugar del contenido: la franja lo reemplaza.
       if (window.innerWidth < ASST_COLUMN_MIN) setAssistantOpen(false);
-      // La franja aparece arriba del contenido: si estabas abajo, se sube a verla.
-      scrollAppToTop();
+      // La franja vive en la cabecera fija: se ve siempre, sin mover la página.
       return key;
     });
   }, []);
@@ -338,50 +337,54 @@ export function AppShell(props: AppShellProps) {
               <button type="button" className="shell-link-btn" onClick={onExitImpersonation}>Salir del modo</button>
             </div>
           )}
+          {/* Franjas en línea (accesos, campana, sede, cuenta, Ctrl K): en la
+              cabecera fija, se abren y cierran con alto suave (Collapse). */}
+          <div className="shell-strips">
+          {stripsOn && (
+          <Suspense fallback={null}>
+            <CommandPalette
+              open={strip === 'palette'}
+              devices={devices}
+              navItems={navItems}
+              links={links}
+              consultationMode={consultationMode}
+              canAsk
+              canManageLinks={hasQuickAccess}
+              onGoView={onNavigate}
+              onJumpToDevice={onJumpToDevice}
+              onLoan={onLoan}
+              onProfile={onProfile}
+              onAsk={text => { setQuestion(current => ({ text, nonce: (current?.nonce || 0) + 1 })); openAssistant(); }}
+              onManageLinks={() => onNavigate('quickaccess')}
+              onClose={() => closeStrip(true)}
+            />
+          <QuickStrip open={strip === 'quick'} links={links} onManage={hasQuickAccess ? () => onNavigate('quickaccess') : undefined} onClose={() => closeStrip(true)} />
+          <NotifStrip open={strip === 'notif'} items={notifications} unread={unread} onOpen={openNotification} onMarkAll={() => void markAllRead()} onClose={() => closeStrip(true)} />
+            <AccountStrip
+              open={strip === 'account'}
+              user={user}
+              roleLabel={roleLabel}
+              siteLabel={siteInfo?.nombre ? `${activeSite} · ${siteInfo.nombre}` : activeSite}
+              onSettings={navItems.some(item => item.key === 'settings') && view !== 'settings' ? () => onNavigate('settings') : undefined}
+              onLogout={() => void onLogout()}
+              onClose={() => closeStrip(true)}
+            />
+          {canSwitchSites && <SitesStrip open={strip === 'sites'} sites={sites} activeSite={activeSite} onPick={pickSite} onClose={() => closeStrip(true)} />}
+          </Suspense>
+          )}
+          </div>
           <StatusOutlet className="shell-status" />
         </div>
 
-        {/* Lo único que scrollea: franjas + contenido. La barra superior, el
-            menú, la columna del asistente y la barra inferior quedan quietos y
-            nunca se superponen al contenido. */}
+        {/* Lo único que scrollea: el contenido. La barra superior (con sus
+            franjas), el menú, la columna del asistente y la barra inferior
+            quedan quietos y nunca se superponen al contenido. */}
         <div className="shell-scroll" ref={scrollRef} hidden={assistantView}>
-        <Suspense fallback={<StripFallback />}>
-        {strip === 'palette' && (
-          <CommandPalette
-            devices={devices}
-            navItems={navItems}
-            links={links}
-            consultationMode={consultationMode}
-            canAsk
-            canManageLinks={hasQuickAccess}
-            onGoView={onNavigate}
-            onJumpToDevice={onJumpToDevice}
-            onLoan={onLoan}
-            onProfile={onProfile}
-            onAsk={text => { setQuestion(current => ({ text, nonce: (current?.nonce || 0) + 1 })); openAssistant(); }}
-            onManageLinks={() => onNavigate('quickaccess')}
-            onClose={() => closeStrip(true)}
-          />
-        )}
-        {strip === 'quick' && <QuickStrip links={links} onManage={hasQuickAccess ? () => onNavigate('quickaccess') : undefined} onClose={() => closeStrip(true)} />}
-        {strip === 'notif' && <NotifStrip items={notifications} unread={unread} onOpen={openNotification} onMarkAll={() => void markAllRead()} onClose={() => closeStrip(true)} />}
-        {strip === 'account' && (
-          <AccountStrip
-            user={user}
-            roleLabel={roleLabel}
-            siteLabel={siteInfo?.nombre ? `${activeSite} · ${siteInfo.nombre}` : activeSite}
-            onSettings={navItems.some(item => item.key === 'settings') && view !== 'settings' ? () => onNavigate('settings') : undefined}
-            onLogout={() => void onLogout()}
-            onClose={() => closeStrip(true)}
-          />
-        )}
-        {strip === 'sites' && canSwitchSites && <SitesStrip sites={sites} activeSite={activeSite} onPick={pickSite} onClose={() => closeStrip(true)} />}
-        </Suspense>
-
         <main className="shell-main" id="main">
-          {showMore && (
+          {stripsOn && (
             <Suspense fallback={null}>
             <MoreView
+              open={showMore}
               items={navItems}
               active={view}
               onNavigate={next => { setMoreOpen(false); onNavigate(next); }}
@@ -398,7 +401,7 @@ export function AppShell(props: AppShellProps) {
             />
             </Suspense>
           )}
-          <div className="shell-view" hidden={showMore}>{children}</div>
+          <div className="shell-view">{children}</div>
         </main>
         </div>
 
@@ -429,7 +432,7 @@ export function AppShell(props: AppShellProps) {
           onNavigate={next => { setMoreOpen(false); setAssistantOpen(false); onNavigate(next); }}
           onPrefetch={onPrefetch}
           onScan={() => { setMoreOpen(false); setAssistantOpen(false); onScan(); }}
-          onToggleMore={() => { setAssistantOpen(false); setStrip(null); setMoreOpen(value => !value); scrollAppToTop(); }}
+          onToggleMore={() => { setAssistantOpen(false); setStrip(null); setStripsOn(true); setMoreOpen(value => !value); }}
           counts={counts}
         />
         </Suspense>

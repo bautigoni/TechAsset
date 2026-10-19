@@ -1,4 +1,4 @@
-import { useRef, useState, type FocusEvent, type MouseEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type FocusEvent, type MouseEvent } from 'react';
 import { ChevronsUpDown, Ellipsis, Search } from 'lucide-react';
 import type { AuthUser, SiteInfo, ViewKey } from '../../types';
 import { Tooltip } from '../../ui/Tooltip';
@@ -23,6 +23,9 @@ type SidebarProps = {
   onToggleStrip: (strip: 'sites' | 'account' | 'palette', trigger: HTMLElement) => void;
 };
 
+/** Densidad del menú según el alto disponible (se mide; ver shell.css). */
+const DENSITIES = ['full', 'tight', 'compact', 'scroll'];
+
 export function initialsOf(text: string) {
   return text.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
 }
@@ -44,10 +47,30 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
   const [tip, setTip] = useState<{ anchor: HTMLElement; label: string } | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
 
+  // Densidad (ver DENSITIES) y degradé de la lista: el ResizeObserver avisa al
+  // observar (antes de pintar) y cada vez que cambia el alto o el modo (rail).
+  useLayoutEffect(() => {
+    const nav = navRef.current!;
+    const list = nav.querySelector<HTMLElement>('.shell-nav-groups')!;
+    const edges = () => {
+      list.toggleAttribute('data-fade-top', list.scrollTop > 1);
+      list.toggleAttribute('data-fade-bottom', list.scrollTop + list.clientHeight < list.scrollHeight - 1);
+    };
+    const observer = new ResizeObserver(() => {
+      for (const value of DENSITIES) {
+        nav.dataset.density = value;
+        if (list.scrollHeight <= list.clientHeight + 1) break;
+      }
+      edges();
+    });
+    observer.observe(nav);
+    list.onscroll = edges;
+    return () => observer.disconnect();
+  }, [items.length]);
+
   // El tooltip del rail solo existe si el rail está a la vista (si no, el
-  // nombre ya se lee al lado del ícono).
-  const isRail = () => Boolean(navRef.current?.closest('.shell')?.matches('[data-nav="rail"]'));
-  const showTip = (anchor: HTMLElement, label: string) => { if (isRail()) setTip({ anchor, label }); };
+  // nombre ya se lee al lado del ícono); Configuración (ícono solo) lo tiene siempre.
+  const showTip = (anchor: HTMLElement, label: string) => { if (anchor.matches('[data-nav="rail"] *, .shell-nav-config')) setTip({ anchor, label }); };
   const hideTip = () => setTip(null);
 
   const itemProps = (item: NavItem) => ({
@@ -58,7 +81,7 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
     onTouchStart: () => onPrefetch?.(item.key)
   });
 
-  const renderItem = (item: NavItem) => {
+  const renderItem = (item: NavItem, extra = '') => {
     const Icon = item.Icon;
     const isActive = active === item.key;
     const count = counts[item.key];
@@ -66,7 +89,7 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
       <button
         key={item.key}
         type="button"
-        className={`shell-nav-item${isActive ? ' is-active' : ''}`}
+        className={`shell-nav-item${extra}${isActive ? ' is-active' : ''}`}
         aria-current={isActive ? 'page' : undefined}
         aria-label={count ? `${item.label}, ${count}` : item.label}
         data-view={item.key}
@@ -127,23 +150,25 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
         </button>
       </div>
 
-      <nav className="shell-nav-groups" aria-label="Secciones">
+      <nav className="shell-nav-groups ui-scroll-fade" aria-label="Secciones">
         {groups.map(group => (
           <div className="shell-nav-group" key={group.key} role="group" aria-label={group.label}>
             <div className="shell-nav-group-label g-eyebrow" aria-hidden="true">{group.label}</div>
-            {group.items.map(renderItem)}
+            {group.items.map(item => renderItem(item))}
           </div>
         ))}
       </nav>
 
+      {/* Pie: una sola fila (usuario · Configuración · cuenta) para que la
+          lista tenga lugar; nunca se superpone a la lista: va debajo, con su borde. */}
       <div className="shell-nav-foot">
-        {settings && renderItem(settings)}
         <div className="shell-user">
           <span className="shell-avatar" aria-hidden="true">{initialsOf(displayName)}</span>
           <span className="shell-user-text">
             <span className="shell-user-name">{displayName}</span>
             <span className="shell-user-role">{roleLabel}</span>
           </span>
+          {settings && renderItem(settings, ' shell-nav-config')}
           <button
             type="button"
             className="shell-icon-btn shell-user-more"

@@ -4,9 +4,15 @@ import { groupNavItems, type NavItem } from './nav';
 import { initialsOf, type NavCounts } from './Sidebar';
 import { TenantLogo } from './TenantLogo';
 import { TruncatedText } from '../../ui/Truncated';
+import { Collapse } from '../../ui/Collapse';
 
-/** Vista "Más" (mobile): todas las secciones agrupadas, la sede, buscar y la cuenta. */
-export function MoreView({ items, active, onNavigate, onPrefetch, counts, user, roleLabel, sites, activeSite, canSwitchSites, onOpenSites, onOpenPalette, onOpenAccount }: {
+/**
+ * "Más" (mobile): todas las secciones agrupadas, la sede, buscar y la cuenta.
+ * Se despliega arriba del contenido con Collapse (alto suave; si estabas
+ * abajo, te lleva hasta él) y al cerrarse lo que estabas mirando no salta.
+ */
+export function MoreView({ open, items, active, onNavigate, onPrefetch, counts, user, roleLabel, sites, activeSite, canSwitchSites, onOpenSites, onOpenPalette, onOpenAccount }: {
+  open: boolean;
   items: NavItem[];
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
@@ -26,6 +32,13 @@ export function MoreView({ items, active, onNavigate, onPrefetch, counts, user, 
   const settings = items.find(item => item.key === 'settings');
   const displayName = user.nombre || user.email || 'Usuario';
   return (
+    <Collapse
+      open={open}
+      appear
+      // Al cerrar queda quieto el contenido de la vista (si se ve); al abrir, Collapse lo trae a la vista.
+      anchor={() => (open ? null : document.querySelector<HTMLElement>('.shell-view'))}
+      outerClassName="shell-more-wrap"
+    >
     <section id="shell-more" className="shell-more" aria-label="Más secciones" data-scanner-ignore="">
       <button type="button" className="shell-more-search" onClick={onOpenPalette}>
         <Search size={16} strokeWidth={1.6} aria-hidden="true" />
@@ -83,5 +96,6 @@ export function MoreView({ items, active, onNavigate, onPrefetch, counts, user, 
         </div>
       </div>
     </section>
+    </Collapse>
   );
 }

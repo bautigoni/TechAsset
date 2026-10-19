@@ -1,19 +1,39 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { Check, ExternalLink, LogOut, X } from 'lucide-react';
+import { Bell, Check, ExternalLink, LogOut, X, Zap } from 'lucide-react';
 import type { AuthUser, QuickLink, SiteInfo } from '../../types';
 import type { AppNotification } from '../../services/notificationsApi';
 import { setAppearance, useAppearance, type ThemePref } from '../../utils/theme';
 import { Button } from '../../ui/Button';
 import { TruncatedText } from '../../ui/Truncated';
+import { EmptyState } from '../../ui/Data';
+import { Collapse } from '../../ui/Collapse';
+import { useScrollEdges } from '../../ui/scrollEdges';
 import { groupLinks } from '../tools/quickLinks';
 import { plainText, timeAgo } from './notifText';
 import { TenantLogo } from './TenantLogo';
 
 /**
  * Franjas en línea debajo de la barra superior (reemplazan a los popovers de
- * accesos rápidos, campana, sede y cuenta). Empujan el contenido; una a la
- * vez; Esc o el botón que la abrió la cierran (lo maneja AppShell).
+ * accesos rápidos, campana, sede y cuenta). Viven en la cabecera fija (no en
+ * el área que scrollea): siempre se ven sin mover la página, se abren y se
+ * cierran con Collapse (alto suave) y el contenido baja animado. Una a la
+ * vez; Esc o el botón que la abrió la cierran (lo maneja AppShell). Alto
+ * máximo ≈ 40 % de la pantalla: si hay más, el cuerpo scrollea por dentro sin
+ * barra y con degradé.
  */
+// Lo que se ancla es el contenido de la página (.shell-scroll > main): si
+// estabas scrolleado, lo que mirabas queda quieto mientras la franja crece o se
+// achica arriba; arriba de todo, el contenido baja animado.
+const pageContent = () => document.querySelector<HTMLElement>('.shell-scroll > .shell-main');
+
+export function StripCollapse({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <Collapse open={open} appear unmountOnClose anchor={pageContent} reserve="auto" reveal={false} outerClassName="shell-strip-wrap">
+      {children}
+    </Collapse>
+  );
+}
+
 export function Strip({ id, title, actions, onClose, children, className = '' }: {
   id: string;
   title: ReactNode;
@@ -22,6 +42,7 @@ export function Strip({ id, title, actions, onClose, children, className = '' }:
   children: ReactNode;
   className?: string;
 }) {
+  const bodyRef = useScrollEdges<HTMLDivElement>();
   return (
     <section id={id} className={`shell-strip ${className}`.trim()} aria-label={typeof title === 'string' ? title : undefined} data-scanner-ignore="">
       <div className="shell-strip-head">
@@ -31,39 +52,56 @@ export function Strip({ id, title, actions, onClose, children, className = '' }:
           <X size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </div>
-      <div className="shell-strip-body">{children}</div>
+      <div className="shell-strip-body ui-scroll-fade" ref={bodyRef}>{children}</div>
     </section>
   );
 }
 
 /* ── Accesos rápidos ─────────────────────────────────────────────────── */
 
-export function QuickStrip({ links, onManage, onClose }: { links: QuickLink[]; onManage?: () => void; onClose: () => void }) {
+/**
+ * Los accesos fluyen en columnas que usan todo el ancho (multicolumna de
+ * 240 px): cada grupo arranca con su nombre y sigue en la columna de al lado
+ * si no entra; título y descripción hasta 2 renglones (tooltip si igual se
+ * cortan). Nunca una columna angosta con media franja vacía.
+ */
+export function QuickStrip({ open, links, onManage, onClose }: { open: boolean; links: QuickLink[]; onManage?: () => void; onClose: () => void }) {
   const groups = groupLinks(links);
   return (
-    <Strip id="shell-strip-quick" title="Accesos rápidos" onClose={onClose} actions={onManage && <Button size="sm" variant="ghost" onClick={onManage}>Administrar</Button>}>
-      {!links.length && <p className="shell-strip-empty">Todavía no hay accesos cargados.</p>}
-      <div className="shell-quick-groups">
-        {groups.map(([categoria, rows]) => (
-          <div className="shell-quick-group" key={categoria}>
-            <div className="g-eyebrow">{categoria}</div>
-            <ul className="shell-quick-list">
-              {rows.map(link => (
-                <li key={link.id}>
-                  <a className="shell-quick-link" href={link.url} target="_blank" rel="noreferrer" onClick={onClose}>
-                    <span className="shell-quick-text">
-                      <TruncatedText className="shell-quick-title">{link.titulo}</TruncatedText>
-                      {link.descripcion && <TruncatedText className="shell-quick-desc">{link.descripcion}</TruncatedText>}
-                    </span>
-                    <ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
-                  </a>
-                </li>
-              ))}
-            </ul>
+    <StripCollapse open={open}>
+      <Strip id="shell-strip-quick" title="Accesos rápidos" onClose={onClose} actions={onManage && links.length > 0 && <Button size="sm" variant="ghost" onClick={onManage}>Administrar</Button>}>
+        {!links.length ? (
+          <EmptyState
+            compact
+            icon={<Zap size={18} strokeWidth={1.6} />}
+            title="Todavía no hay accesos cargados."
+            description="Sumá los links que más usás: Drive, planillas, la mesa de ayuda."
+            action={onManage && <Button size="sm" variant="secondary" onClick={onManage}>Agregar accesos</Button>}
+          />
+        ) : (
+          <div className="shell-quick">
+            {groups.map(([categoria, rows]) => (
+              <section className="shell-quick-group" key={categoria} aria-label={categoria}>
+                <h3 className="g-eyebrow shell-quick-cat">{categoria}</h3>
+                <ul className="shell-quick-list">
+                  {rows.map(link => (
+                    <li key={link.id} className="shell-quick-item">
+                      <a className="shell-quick-link" href={link.url} target="_blank" rel="noreferrer" onClick={onClose}>
+                        <span className="shell-quick-text">
+                          <TruncatedText className="shell-quick-title" lines={2}>{link.titulo}</TruncatedText>
+                          {link.descripcion && <TruncatedText className="shell-quick-desc" lines={2}>{link.descripcion}</TruncatedText>}
+                        </span>
+                        <ExternalLink size={14} strokeWidth={1.6} aria-hidden="true" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
           </div>
-        ))}
-      </div>
-    </Strip>
+        )}
+      </Strip>
+    </StripCollapse>
   );
 }
 
@@ -71,7 +109,8 @@ export function QuickStrip({ links, onManage, onClose }: { links: QuickLink[]; o
 
 const SHOW_FIRST = 6;
 
-export function NotifStrip({ items, unread, onOpen, onMarkAll, onClose }: {
+export function NotifStrip({ open, items, unread, onOpen, onMarkAll, onClose }: {
+  open: boolean;
   items: AppNotification[];
   unread: number;
   onOpen: (item: AppNotification) => void;
@@ -81,13 +120,14 @@ export function NotifStrip({ items, unread, onOpen, onMarkAll, onClose }: {
   const [all, setAll] = useState(false);
   const shown = all ? items : items.slice(0, SHOW_FIRST);
   return (
+    <StripCollapse open={open}>
     <Strip
       id="shell-strip-notif"
       title={unread ? <>Notificaciones <span className="shell-strip-count g-num">{unread} sin leer</span></> : 'Notificaciones'}
       onClose={onClose}
       actions={unread > 0 && <Button size="sm" variant="ghost" onClick={onMarkAll}>Marcar todas</Button>}
     >
-      {items.length === 0 && <p className="shell-strip-empty">No tenés notificaciones.</p>}
+      {items.length === 0 && <EmptyState compact icon={<Bell size={18} strokeWidth={1.6} />} title="No tenés notificaciones." description="Cuando te asignen una tarea, entre un ticket o haya una novedad, aparece acá." />}
       <ul className="shell-notif-list">
         {shown.map(item => (
           // La fila entera abre; el botón (una línea) es el control accesible y
@@ -110,6 +150,7 @@ export function NotifStrip({ items, unread, onOpen, onMarkAll, onClose }: {
         </div>
       )}
     </Strip>
+    </StripCollapse>
   );
 }
 
@@ -121,7 +162,8 @@ const THEME_OPTIONS: Array<{ value: ThemePref; label: string }> = [
   { value: 'system', label: 'Sistema' }
 ];
 
-export function AccountStrip({ user, roleLabel, siteLabel, onSettings, onLogout, onClose }: {
+export function AccountStrip({ open, user, roleLabel, siteLabel, onSettings, onLogout, onClose }: {
+  open: boolean;
   user: AuthUser;
   roleLabel: string;
   siteLabel: string;
@@ -132,6 +174,7 @@ export function AccountStrip({ user, roleLabel, siteLabel, onSettings, onLogout,
   const { theme } = useAppearance();
   const [leaving, setLeaving] = useState(false);
   return (
+    <StripCollapse open={open}>
     <Strip id="shell-strip-account" title="Tu cuenta" onClose={onClose}>
       <div className="shell-account">
         <dl className="shell-account-facts">
@@ -159,13 +202,15 @@ export function AccountStrip({ user, roleLabel, siteLabel, onSettings, onLogout,
         </div>
       </div>
     </Strip>
+    </StripCollapse>
   );
 }
 
 /* ── Sede (superadmin con más de una) ───────────────────────────────── */
 
-export function SitesStrip({ sites, activeSite, onPick, onClose }: { sites: SiteInfo[]; activeSite: string; onPick: (code: string) => void; onClose: () => void }) {
+export function SitesStrip({ open, sites, activeSite, onPick, onClose }: { open: boolean; sites: SiteInfo[]; activeSite: string; onPick: (code: string) => void; onClose: () => void }) {
   return (
+    <StripCollapse open={open}>
     <Strip id="shell-strip-sites" title="Cambiar de sede" onClose={onClose}>
       <ul className="shell-sites">
         {sites.map(site => {
@@ -191,5 +236,6 @@ export function SitesStrip({ sites, activeSite, onPick, onClose }: { sites: Site
         })}
       </ul>
     </Strip>
+    </StripCollapse>
   );
 }

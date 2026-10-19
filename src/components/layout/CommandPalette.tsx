@@ -4,7 +4,9 @@ import type { Device, QuickLink, ViewKey } from '../../types';
 import { matchesSmartSearch, resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { getOperationalAlias } from '../../utils/classifyDevice';
 import { getDeviceStateKey } from '../../utils/deviceState';
-import { fold } from '../../ui/util';
+import { fold, keepInView } from '../../ui/util';
+import { useScrollEdges } from '../../ui/scrollEdges';
+import { StripCollapse } from './ShellStrips';
 import type { NavItem } from './nav';
 
 /**
@@ -40,7 +42,8 @@ const MAX_PER_GROUP = 6;
 const STATE_TEXT: Record<string, string> = { available: 'Disponible', loaned: 'Prestado', missing: 'No encontrado', out: 'Fuera de servicio' };
 const COMMAND = /^(prest(?:ar|a|ale|á|ále)|pr[eé]stamo|devolv(?:er|e|é)|devoluci[oó]n|ficha|ver)\s+(.+)$/i;
 
-export function CommandPalette({ devices, navItems, links, consultationMode, canAsk, canManageLinks, onGoView, onJumpToDevice, onLoan, onProfile, onAsk, onManageLinks, onClose }: {
+export function CommandPalette({ open, devices, navItems, links, consultationMode, canAsk, canManageLinks, onGoView, onJumpToDevice, onLoan, onProfile, onAsk, onManageLinks, onClose }: {
+  open: boolean;
   devices: Device[];
   navItems: NavItem[];
   links: QuickLink[];
@@ -58,10 +61,15 @@ export function CommandPalette({ devices, navItems, links, consultationMode, can
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useScrollEdges<HTMLDivElement>();
   const hasLoans = navItems.some(item => item.key === 'loans');
 
-  useEffect(() => { inputRef.current?.focus({ preventScroll: true }); }, []);
+  // Cada vez que se abre (también si se reabre mientras se cerraba): vacía y con el foco en el campo.
+  useEffect(() => {
+    if (!open) return;
+    setQuery('');
+    inputRef.current?.focus({ preventScroll: true });
+  }, [open]);
 
   const entries = useMemo<Entry[]>(() => {
     const q = query.trim();
@@ -128,11 +136,11 @@ export function CommandPalette({ devices, navItems, links, consultationMode, can
   useEffect(() => { setActive(0); }, [query]);
   const safeActive = Math.min(active, Math.max(0, entries.length - 1));
 
-  // El activo siempre a la vista dentro de la franja (sin mover la página).
+  // El activo siempre a la vista dentro de la lista (sin mover la página ni la franja).
   useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-index="${safeActive}"]`);
-    el?.scrollIntoView?.({ block: 'nearest' });
-  }, [safeActive]);
+    const list = listRef.current;
+    keepInView(list, list?.querySelector<HTMLElement>(`[data-index="${safeActive}"]`) || null);
+  }, [safeActive, listRef]);
 
   const runEntry = (entry: Entry | undefined) => {
     if (!entry) return;
@@ -153,6 +161,7 @@ export function CommandPalette({ devices, navItems, links, consultationMode, can
   const activeId = entries[safeActive] ? `shell-pal-${entries[safeActive].id}` : undefined;
 
   return (
+    <StripCollapse open={open}>
     <section className="shell-strip shell-palette" aria-label="Buscar o ir a" data-scanner-ignore="">
       <div className="shell-pal-field">
         <Search size={16} strokeWidth={1.6} aria-hidden="true" />
@@ -177,7 +186,7 @@ export function CommandPalette({ devices, navItems, links, consultationMode, can
           <X size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </div>
-      <div className="shell-pal-results" id="shell-pal-list" role="listbox" aria-label="Resultados" ref={listRef}>
+      <div className="shell-pal-results ui-scroll-fade" id="shell-pal-list" role="listbox" aria-label="Resultados" ref={listRef}>
         {groups.map(({ group, items }) => (
           <div className="shell-pal-group" key={group} role="group" aria-label={GROUP_LABEL[group]}>
             <div className="g-eyebrow shell-pal-group-label" aria-hidden="true">{GROUP_LABEL[group]}</div>
@@ -211,6 +220,7 @@ export function CommandPalette({ devices, navItems, links, consultationMode, can
         {canManageLinks && <button type="button" className="shell-link-btn" onClick={() => { onManageLinks(); onClose(); }}>Administrar accesos</button>}
       </div>
     </section>
+    </StripCollapse>
   );
 }
 

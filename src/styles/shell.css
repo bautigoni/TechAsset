@@ -7,8 +7,10 @@
      .shell[data-asst="column|view|closed"]
    Nada flota: las franjas y el asistente empujan el contenido.
    La app ocupa la ventana (100dvh) y lo único que scrollea es .shell-scroll
-   (franjas + contenido): la barra superior, el menú, la columna del
+   (el contenido): la barra superior con sus franjas, el menú, la columna del
    asistente y la barra inferior quedan quietos y nunca tapan el contenido.
+   Las franjas abren y cierran con Collapse (src/ui/Collapse.tsx): alto suave,
+   y si estabas scrolleado lo que mirabas no se mueve.
    ================================================================ */
 
 .shell {
@@ -166,19 +168,58 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 .shell-search-label { flex: 1; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .shell-search-kbd { flex: none; }
 
+/* La lista ocupa lo que queda entre el buscador y el pie y termina ANTES del
+   pie (que tiene su borde): nada se le superpone. La densidad (data-density,
+   Sidebar.tsx) se elige midiendo, la primera en la que entran todos los ítems:
+     full    → nombres de grupo y "Buscar o ir a…" arriba;
+     tight   → el buscador pasa a la barra superior (lupa);
+     compact → líneas finas en vez de nombres de grupo;
+     scroll  → ni así entran (ventanas muy bajas): la lista scrollea en su zona,
+               sin barra, con degradé, y su alto es un múltiplo exacto del alto
+               de un ítem (con snap): nunca se ve un ítem a medias. */
+.shell-nav {
+  --shell-nav-pitch: 32px;
+  --shell-nav-foot-h: 61px;
+}
+@media (pointer: coarse) {
+  .shell-nav { --shell-nav-pitch: 44px; }
+  .shell-nav-item { height: 44px; }
+}
 .shell-nav-groups {
+  --ui-fade: var(--g-s-4);
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: var(--g-s-1) var(--g-s-2) var(--g-s-2);
+  padding: var(--g-s-1) var(--g-s-2);
   display: flex;
   flex-direction: column;
-  gap: var(--g-s-3);
-  mask-image: linear-gradient(to bottom, transparent 0, black 8px, black calc(100% - 16px), transparent 100%);
+  gap: 6px;
 }
-.shell-nav-group { display: flex; flex-direction: column; gap: 2px; }
-.shell-nav-group-label { padding: var(--g-s-2) var(--g-s-3) var(--g-s-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shell-nav-group { flex: none; display: flex; flex-direction: column; gap: 1px; }
+.shell-nav-group-label { padding: var(--g-s-1) var(--g-s-3) 2px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shell .shell-nav:not([data-density="full"]) .shell-nav-search { display: none; }
+.shell-nav:is([data-density="compact"], [data-density="scroll"]) .shell-nav-groups { gap: 0; }
+.shell-nav:is([data-density="compact"], [data-density="scroll"]) .shell-nav-group-label { display: none; }
+.shell-nav[data-density="compact"] .shell-nav-group + .shell-nav-group::before {
+  content: '';
+  display: block;
+  flex: none;
+  height: 1px;
+  margin: 3px var(--g-s-3);
+  background: var(--g-line);
+}
+.shell-nav[data-density="scroll"] .shell-nav-groups {
+  flex: 0 1 auto;
+  max-height: round(down, calc(100% - var(--g-topbar-h) - var(--shell-nav-foot-h) - env(safe-area-inset-bottom)), var(--shell-nav-pitch));
+  padding-block: 0;
+  scroll-snap-type: y mandatory;
+}
+.shell-nav[data-density="scroll"] .shell-nav-group { gap: 0; }
+.shell-nav[data-density="scroll"] .shell-nav-item { scroll-snap-align: start; }
+/* Sin separadores (el paso tiene que ser exacto): la línea va dentro del primer ítem del grupo. */
+.shell .shell-nav[data-density="scroll"] .shell-nav-group + .shell-nav-group::before { display: none; }
+.shell-nav[data-density="scroll"] .shell-nav-group + .shell-nav-group > .shell-nav-item:first-of-type { box-shadow: inset 0 1px var(--g-line); }
+/* Con el buscador fuera del menú, la lupa aparece en la barra superior. */
+.shell:not([data-nav="none"]):has(.shell-nav:not([data-density="full"])) .shell-topbar .shell-mobile-only { display: inline-flex; }
 
 .shell-nav-item {
   position: relative;
@@ -219,6 +260,7 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 
 .shell-nav-foot {
   flex: none;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: var(--g-s-1);
@@ -226,7 +268,14 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
   padding-bottom: calc(var(--g-s-2) + env(safe-area-inset-bottom));
   border-top: 1px solid var(--g-line);
 }
-.shell-user { display: flex; align-items: center; gap: 10px; min-width: 0; height: 44px; padding: 0 var(--g-s-1) 0 var(--g-s-2); }
+.shell-user { display: flex; align-items: center; gap: var(--g-s-1); min-width: 0; height: 44px; padding: 0 0 0 var(--g-s-2); }
+.shell-user .shell-avatar { margin-right: 6px; }
+/* Configuración: ícono en la fila del usuario (nombre en aria-label y tooltip). */
+.shell-nav-item.shell-nav-config { width: 36px; height: 36px; flex: none; justify-content: center; padding: 0; }
+.shell-nav-config .shell-nav-label { display: none; }
+.shell-nav-item.shell-nav-config.is-active { color: var(--g-accent); }
+.shell-nav-item.shell-nav-config.is-active::before { display: none; }
+@media (pointer: coarse) { .shell-nav-item.shell-nav-config { width: 44px; height: 44px; } }
 .shell-user-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 .shell-user-name,
 .shell-user-role { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -236,23 +285,27 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 /* Rail de 56 px: ícono solo; nombres en aria-label y en el tooltip. */
 .shell[data-nav="rail"] .shell-nav-head { justify-content: center; padding: 0; }
 .shell[data-nav="rail"] .shell-site { width: 40px; justify-content: center; padding: 0; }
-.shell[data-nav="rail"] :is(.shell-site-text, .shell-site-chevron, .shell-search-label, .shell-search-kbd, .shell-nav-label, .shell-nav-count, .shell-nav-group-label, .shell-user-text, .shell-user .shell-avatar) { display: none; }
+.shell[data-nav="rail"] .shell-nav :is(.shell-site-text, .shell-site-chevron, .shell-search-label, .shell-search-kbd, .shell-nav-label, .shell-nav-count, .shell-nav-group-label, .shell-user-text, .shell-user .shell-avatar) { display: none; }
 .shell[data-nav="rail"] .shell-nav-search { padding: var(--g-s-3) 0 var(--g-s-1); display: flex; justify-content: center; }
 .shell[data-nav="rail"] .shell-search-btn { width: 40px; height: 28px; justify-content: center; padding: 0; }
-.shell[data-nav="rail"] .shell-nav-groups { align-items: center; gap: 0; padding: var(--g-s-1) 0 var(--g-s-2); }
+.shell[data-nav="rail"] .shell-nav-groups { align-items: center; gap: 0; padding: var(--g-s-1) 0; }
 .shell[data-nav="rail"] .shell-nav-group { align-items: center; }
 .shell[data-nav="rail"] .shell-nav-group + .shell-nav-group::before {
   content: '';
   display: block;
+  flex: none;
   width: 24px;
   height: 1px;
   margin: 6px 0;
   background: var(--g-line);
 }
+.shell[data-nav="rail"] .shell-nav[data-density="compact"] .shell-nav-group + .shell-nav-group::before { margin: 3px 0; }
 .shell[data-nav="rail"] .shell-nav-item { width: 40px; height: 32px; justify-content: center; padding: 0; }
 .shell[data-nav="rail"] .shell-nav-item.is-active::before { left: -8px; }
 .shell[data-nav="rail"] .shell-nav-foot { align-items: center; }
-.shell[data-nav="rail"] .shell-user { justify-content: center; padding: 0; height: 40px; }
+.shell[data-nav="rail"] .shell-nav { --shell-nav-foot-h: 93px; }
+@media (pointer: coarse) { .shell[data-nav="rail"] .shell-nav { --shell-nav-foot-h: 109px; } }
+.shell[data-nav="rail"] .shell-user { flex-direction: column; justify-content: center; gap: var(--g-s-1); padding: 0; height: auto; }
 
 /* ── Cuerpo: cabecera fija, franja, contenido y asistente ─────────── */
 
@@ -411,18 +464,28 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 
 /* ── Franjas en línea ─────────────────────────────────────────────── */
 
+/* En la cabecera fija (no scrollean con la página). Alto máximo ≈ 40 % de la
+   pantalla (Ctrl K, 60 %); si hay más, el cuerpo scrollea por dentro sin
+   barra y con degradé. El contenido se alinea con el de las pantallas. */
+.shell-strips { min-width: 0; }
 .shell-strip {
+  --shell-strip-max: max(240px, 40dvh);
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  padding: var(--g-s-3) var(--g-s-5) var(--g-s-4) var(--g-s-4);
+  max-height: var(--shell-strip-max);
+  padding: var(--g-s-3) var(--g-s-6) var(--g-s-4);
   border-bottom: 1px solid var(--g-line);
   background: var(--g-surface);
-  animation: shell-strip-in var(--g-dur) var(--g-ease) both;
 }
-.shell[data-nav="none"] .shell-strip { padding: var(--g-s-3); }
-.shell-strip--loading { min-height: 120px; }
-@keyframes shell-strip-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.shell-palette { --shell-strip-max: max(280px, 60dvh); }
+.shell[data-nav="none"] .shell-strip {
+  --shell-strip-max: max(220px, calc(100dvh - var(--g-topbar-h) - env(safe-area-inset-top) - var(--shell-tabbar-h) - 120px));
+  padding: var(--g-s-3);
+}
 
-.shell-strip-head { display: flex; align-items: center; gap: var(--g-s-2); min-height: 36px; margin-bottom: var(--g-s-2); }
+.shell-strip-head { flex: none; display: flex; align-items: center; gap: var(--g-s-2); min-height: 36px; margin-bottom: var(--g-s-2); }
+.shell-strip-body { flex: 1 1 auto; min-height: 0; min-width: 0; }
 .shell-strip-title {
   flex: 1;
   min-width: 0;
@@ -439,16 +502,20 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 .shell-strip-empty { margin: var(--g-s-2) 0; color: var(--g-text-3); font-size: var(--g-fs-sm); }
 .shell-strip-more { margin-top: var(--g-s-2); }
 
-/* Accesos rápidos */
-.shell-quick-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: var(--g-s-3) var(--g-s-5); }
+/* Accesos rápidos: columnas de 240 px que usan todo el ancho; cada grupo
+   arranca con su nombre y sigue en la columna de al lado (nada de una
+   columna angosta con media franja vacía). */
+.shell-quick { columns: 240px auto; column-gap: var(--g-s-5); }
 .shell-quick-group { min-width: 0; }
-.shell-quick-group > .g-eyebrow { padding: 0 var(--g-s-2) var(--g-s-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shell-quick-cat { margin: 0; padding: var(--g-s-1) var(--g-s-2) 2px; break-after: avoid; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shell-quick-group + .shell-quick-group .shell-quick-cat { margin-top: var(--g-s-2); }
+.shell-quick-item { break-inside: avoid; }
 .shell-quick-list,
 .shell-notif-list,
 .shell-sites { list-style: none; margin: 0; padding: 0; }
 .shell-quick-link {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--g-s-2);
   min-width: 0;
   padding: 6px var(--g-s-2);
@@ -457,12 +524,10 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
   text-decoration: none;
 }
 .shell-quick-link:hover { background: var(--g-raised); }
-.shell-quick-link > svg { flex: none; color: var(--g-text-3); }
-.shell-quick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.shell-quick-title,
-.shell-quick-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.shell-quick-title { font-size: var(--g-fs-base); }
-.shell-quick-desc { font-size: var(--g-fs-xs); color: var(--g-text-3); }
+.shell-quick-link > svg { flex: none; margin-top: 3px; color: var(--g-text-3); }
+.shell-quick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.shell-quick-title { font-size: var(--g-fs-base); line-height: 1.3; overflow-wrap: anywhere; }
+.shell-quick-desc { font-size: var(--g-fs-xs); line-height: 1.35; color: var(--g-text-3); overflow-wrap: anywhere; }
 
 /* Notificaciones */
 .shell-notif-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 2px var(--g-s-4); }
@@ -592,7 +657,12 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 .shell-pal-input::placeholder { color: var(--g-text-3); }
 @media (max-width: 599px) { .shell-pal-field > .ui-kbd { display: none; } }
 
+.shell-pal-field { flex: none; }
+.shell-pal-foot { flex: none; }
 .shell-pal-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: var(--g-s-3) var(--g-s-5);
@@ -690,6 +760,7 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 }
 .shell-tab-scan { color: var(--g-text); }
 
+.shell-more-wrap { border-bottom: 1px solid var(--g-line); }
 .shell-more { padding: var(--g-s-3) var(--g-s-3) var(--g-s-5); display: flex; flex-direction: column; gap: var(--g-s-4); }
 .shell-more-search {
   display: flex;
@@ -753,6 +824,5 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 body.has-tabbar .install-banner { bottom: calc(72px + env(safe-area-inset-bottom)); }
 
 @media (prefers-reduced-motion: reduce) {
-  .shell-strip { animation: none; }
   .shell-icon-btn, .shell-nav-item, .shell-assistant-btn { transition: none; }
 }
