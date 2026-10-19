@@ -81,6 +81,23 @@ No afirmes que una funcionalidad fue probada si realmente no lo fue. Si una regl
 
 Prioridad: primero funcionalidad, previsibilidad, accesibilidad y robustez; después los detalles estéticos. Una interfaz visualmente atractiva que se comporta mal está mal hecha.
 
+## Agregado del dueño (19/10): abrir y cerrar secciones
+
+Ejemplo que marcó: en Préstamos, al cerrar "Cartelitos de fotos" la página saltó y el encabezado que tocó quedó ~200 px más abajo. **Eso no puede pasar.**
+- Toda sección, grupo, ficha o panel que se despliega **se abre y se cierra con una transición suave de alto** (se pliega hacia arriba, hacia su encabezado), nunca de golpe. Con `prefers-reduced-motion: reduce` es instantáneo.
+- **El encabezado que se tocó queda fijo en la pantalla**, bajo el cursor: se mueve lo de abajo, nunca la página. Si al cerrar el documento se acorta y el navegador tendría que recortar el scroll, se compensa para que el encabezado no se desplace (por ejemplo, conservando el alto con un espaciador que se libera suavemente, o ajustando `scrollTop` en el mismo frame).
+- Lo mismo al abrir: lo que aparece crece hacia abajo desde el encabezado; si queda fuera de vista, se lleva suavemente hasta él (`scrollIntoView({ block: 'nearest', behavior: 'smooth' })`, instantáneo con reduced motion).
+- Implementación única en `src/ui` (componente/hook de colapso compartido) usada por TODA la app; nada de colapsos caseros con `display: none`.
+
+## Agregado del dueño (19/10): sin huecos, sin truncar con espacio, vacíos diseñados
+
+Ejemplos que marcó: (1) la franja de Accesos rápidos mostraba una columna angosta con más de media franja vacía, truncando títulos, y empujaba la página de golpe; (2) en el Inicio, "Afuera ahora" vacío dejaba un hueco enorme hasta "Últimos movimientos" (columnas desbalanceadas), el estado vacío era una línea de texto suelta, y los movimientos truncaban textos ("Dispositivo e…") con espacio de sobra; (3) el menú lateral mostraba "Historial" cortado/medio tapado al pie.
+- **Nunca huecos grandes vacíos** por desbalance de columnas o por alturas fijas: el layout se reacomoda (las columnas fluyen, lo de abajo sube, o la sección vacía se compacta).
+- **Nunca truncar si hay espacio**: el texto usa el ancho disponible (o 2 líneas); la elipsis es solo el último recurso cuando de verdad no entra (y entonces con tooltip).
+- **Usar el ancho**: paneles y listas se distribuyen en grilla responsive; nada de una columna angosta con la mitad vacía.
+- **Estados vacíos diseñados**: compactos, con un ícono o ilustración sobria, una frase clara y, si corresponde, la acción siguiente; no una línea de texto perdida en una tarjeta alta.
+- **Ningún ítem de una lista o menú puede verse cortado o medio tapado** por otro bloque.
+
 ## Cómo se aplica en este proyecto (checklist técnico por pantalla)
 
 - **Sin saltos**: abrir/cerrar un panel en línea no mueve lo que está arriba del punto de interacción; si lo abierto queda fuera de vista, se hace `scrollIntoView({ block: 'nearest' })` (respetando `prefers-reduced-motion`); al cerrar, el foco vuelve al disparador y la posición se conserva.
