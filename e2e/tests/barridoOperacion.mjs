@@ -143,13 +143,22 @@ export function barridoProbe(rootSelector) {
 async function anchoredDuring(page, selector, act, ms = 520) {
   await page.evaluate(sel => {
     const el = document.querySelector(sel);
-    const out = { deltas: [], docY: [] };
+    const out = { deltas: [], shifts: [], hidden: 0, docY: [] };
+    const sc = document.querySelector(".shell-scroll");
+    const sc0 = sc ? sc.scrollTop : 0;
     window.__bxo = out;
     if (!el) { out.missing = true; return; }
     const top0 = el.getBoundingClientRect().top;
     const tick = () => {
       if (out.stop) return;
-      if (el.isConnected) out.deltas.push(el.getBoundingClientRect().top - top0);
+      if (el.isConnected) {
+        const r = el.getBoundingClientRect();
+        out.deltas.push(r.top - top0);
+        // Movimiento por layout (sin contar el scroll suave que trae lo abierto a la vista).
+        out.shifts.push(r.top - top0 + ((sc ? sc.scrollTop : 0) - sc0));
+        const area = sc ? sc.getBoundingClientRect() : { top: 0, bottom: innerHeight };
+        if (r.bottom < area.top || r.top > area.bottom) out.hidden += 1;
+      }
       out.docY.push(window.scrollY);
       requestAnimationFrame(() => setTimeout(tick));
     };
@@ -157,7 +166,7 @@ async function anchoredDuring(page, selector, act, ms = 520) {
   }, selector);
   await act();
   await sleep(ms);
-  const out = await page.evaluate(() => { const o = window.__bxo; o.stop = true; return { missing: Boolean(o.missing), max: Math.max(0, ...o.deltas.map(Math.abs)), docY: Math.max(0, ...o.docY), frames: o.deltas.length }; });
+  const out = await page.evaluate(() => { const o = window.__bxo; o.stop = true; return { missing: Boolean(o.missing), max: Math.max(0, ...o.deltas.map(Math.abs)), shift: Math.max(0, ...o.shifts.map(Math.abs)), hidden: o.hidden, docY: Math.max(0, ...o.docY), frames: o.deltas.length }; });
   assert(!out.missing, `no está ${selector}`);
   return out;
 }
@@ -361,7 +370,9 @@ export async function barridoOperacionTests({ browser, base, api, admin, release
       const sel = '.cls-sheet .ui-disclosure-btn';
       const open = await anchoredDuring(page, sel, () => clickSel(page, sel));
       const close = await anchoredDuring(page, sel, () => clickSel(page, sel));
-      assert(open.max <= 2 && close.max <= 2, `el encabezado se movió ${open.max} / ${close.max} px`);
+      // Al abrir, si el historial no entra se lo trae a la vista (scroll suave, REGLAS-UX): vale
+      // mientras el encabezado no se corra por layout y siga a la vista. Al cerrar, quieto.
+      assert(open.shift <= 2 && !open.hidden && close.max <= 2, `el encabezado se movió ${open.shift} (abrir, sin el scroll que trae lo abierto${open.hidden ? "; quedó fuera de la vista" : ""}) / ${close.max} px (cerrar)`);
     });
 
     // ── 4. Recordatorios ───────────────────────────────────────────────────

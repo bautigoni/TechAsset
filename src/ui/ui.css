@@ -64,11 +64,14 @@
 .ui-collapse-clip { min-height: 0; min-width: 0; overflow: hidden; }
 .ui-collapse[data-state="open"] > .ui-collapse-clip { overflow: visible; }
 .ui-collapse[data-state="closed"] > .ui-collapse-clip { visibility: hidden; }
-/* Dentro de un flex/grid con gap, cerrado deja un gap de más: la pantalla le
-   pasa su gap (`.padre > .ui-collapse { --ui-collapse-gap: … }`) y el colapso
-   cerrado se lo come; al abrir lo recupera con la misma transición. No se
-   hereda a los colapsos de adentro. */
-.ui-collapse { --ui-collapse-gap: 0px; }
+/* Gap del padre: dentro de un flex/grid con gap, un colapso cerrado dejaría un
+   gap de más. UN solo mecanismo: `--ui-collapse-gap` = el gap del padre, que la
+   pantalla pasa por CSS (`.padre > .ui-collapse { --ui-collapse-gap: … }` o en
+   su outerClassName) o con la prop `gap` de <Collapse>. Cerrado, un margen
+   negativo se lo come; al abrir lo recupera con la misma transición del alto.
+   La base va con especificidad 0 (:where) para que cualquier regla de pantalla
+   gane, y no se hereda a los colapsos de adentro. */
+:where(.ui-collapse) { --ui-collapse-gap: 0px; }
 .ui-collapse:is([data-state="closed"], [data-state="closing"]) { margin-top: calc(-1 * var(--ui-collapse-gap)); }
 @media (prefers-reduced-motion: no-preference) {
   .ui-collapse { transition: grid-template-rows var(--ui-collapse-dur) var(--g-ease), margin-top var(--ui-collapse-dur) var(--g-ease); }
