@@ -16,7 +16,7 @@ Autodeploy verificado el 19/10/2026: la VM de producción se actualiza solo a ma
 | 6. Agenda, Horarios, Aulas, Recordatorios | ✅ | 3544f44, 5b7c197 | e2e, pg-smoke |
 | 7. Tareas, Tickets, Sugerencias, Conocimiento, Canvas | ✅ | 95600e6, 91e60a6, 76a5094 | e2e, pg-smoke |
 | 8. Analítica, Configuración, Herramientas, Accesos, Caja chica | ✅ | 09af8da, 89ac766, cd99ff3 | e2e 131/132 (1 intermitente), pg-smoke 118/118, layout 23/23 |
-| 9. Login, PWA, limpieza | pendiente | — | — |
+| 9. Login, PWA, limpieza | ✅ | de88adf, 7f3b287, d33aead, b0562a9, f2e7716, 60f53d6, adb9754 (+ docs) | e2e completo (lg y pwa nuevos), css-diff 280/280 sin diferencias, pg 117/117, CSS inicial 44,4→14,9 kB gzip, JS entrada 98,7→95,8 kB (vite) |
 | Asistente IA (Claude Haiku 5.5 + dictado del navegador) | ✅ server + panel | 3d69e9f, 82cc56f, 6cf22d0 | evals 38/38, pg 39/39, e2e 60/60 |
 | Pasadas de rendimiento 1/2/3 | pendiente | — | — |
 | Búsqueda rápida de personas | pendiente | — | — |
