@@ -71,8 +71,9 @@ button.auth-brand:focus-visible { outline: 2px solid var(--g-focus); outline-off
   display: flex;
   justify-content: center;
   /* Arriba y no centrado en alto: al abrir un campo o un aviso, lo de arriba
-     (las pestañas que se tocaron) no se mueve. */
-  padding: clamp(var(--g-s-5), 8vh, 96px) var(--g-s-4) var(--g-s-7);
+     (las pestañas que se tocaron) no se mueve. Arriba, el espaciado del
+     sistema y nada más: sin una franja vacía bajo la barra (pedido del dueño). */
+  padding: var(--g-s-6) var(--g-s-4) var(--g-s-7);
   min-width: 0;
 }
 .auth-column {
@@ -127,7 +128,8 @@ button.auth-brand:focus-visible { outline: 2px solid var(--g-focus); outline-off
   height: 32px;
   min-width: 0;
   border: 0;
-  border-radius: 4px;
+  /* Dentro del marco de 2 px de .auth-tabs: el radio del marco menos su padding. */
+  border-radius: calc(var(--g-radius-sm) - 2px);
   background: transparent;
   color: var(--g-text-2);
   font: inherit;
@@ -178,7 +180,7 @@ button.auth-brand:focus-visible { outline: 2px solid var(--g-focus); outline-off
   margin-right: calc(-1 * var(--g-s-2));
   padding: 0 var(--g-s-2);
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--g-radius-sm);
   background: transparent;
   color: var(--g-text-2);
   font: inherit;
@@ -203,7 +205,7 @@ button.auth-brand:focus-visible { outline: 2px solid var(--g-focus); outline-off
   touch-action: manipulation;
 }
 .auth-link:hover { color: var(--g-accent-hover); text-decoration: underline; text-underline-offset: 2px; }
-.auth-link:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: 2px; }
+.auth-link:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: var(--g-radius-sm); }
 .auth-link:disabled { color: var(--g-text-3); cursor: default; text-decoration: none; }
 .auth-site .auth-link { align-self: center; white-space: nowrap; }
 .auth-fields--tight { gap: 0; }
@@ -227,7 +229,6 @@ button.auth-brand:focus-visible { outline: 2px solid var(--g-focus); outline-off
 .auth-foot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
 /* ── Landing ── */
-.auth--wide .auth-main { padding-top: clamp(var(--g-s-5), 6vh, 72px); }
 .landing { width: 100%; max-width: 960px; min-width: 0; display: flex; flex-direction: column; gap: var(--g-s-7); }
 .landing-hero { display: flex; flex-direction: column; align-items: flex-start; gap: var(--g-s-4); max-width: 640px; }
 .landing-hero h1 { margin: 0; font-size: var(--g-fs-2xl); line-height: 1.1; font-weight: var(--g-fw-semibold); letter-spacing: -.02em; }

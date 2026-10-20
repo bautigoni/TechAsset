@@ -36,6 +36,95 @@ async function openCanvas(page, base) {
 
 const zoomLabel = page => page.$eval('.cv-zoom-pct', el => el.textContent.trim());
 
+/* ── Revisión UX 10 (20/10): nada cambia de alto de golpe y vecinos parejos ── */
+
+/**
+ * Toca `trigger` (con pointerdown, como el mouse) y mide cuadro a cuadro el alto
+ * de `watch` y cuánto se movió el disparador. Corre con la animación prendida.
+ */
+export async function watchHeight(page, { trigger, watch, ms = 900 }) {
+  return page.evaluate(async (triggerSel, watchSel, duration) => {
+    const el = typeof triggerSel === 'string' ? document.querySelector(triggerSel) : null;
+    const box = document.querySelector(watchSel);
+    if (!el || !box) return { error: `no está ${el ? watchSel : triggerSel}` };
+    const frame = () => new Promise(resolve => requestAnimationFrame(() => resolve()));
+    const top0 = el.getBoundingClientRect().top;
+    const heights = [Math.round(box.getBoundingClientRect().height)];
+    let moved = 0;
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    el.click();
+    const until = performance.now() + duration;
+    while (performance.now() < until) {
+      await frame();
+      const current = document.querySelector(watchSel);
+      if (!current) break;
+      heights.push(Math.round(current.getBoundingClientRect().height));
+      if (el.isConnected) moved = Math.max(moved, Math.abs(el.getBoundingClientRect().top - top0));
+    }
+    return { heights, moved: Math.round(moved * 10) / 10 };
+  }, trigger, watch, ms);
+}
+
+/** Pasó por valores intermedios (no saltó del alto viejo al nuevo en un cuadro). */
+export function smooth(heights) {
+  const start = heights[0];
+  const end = heights[heights.length - 1];
+  if (Math.abs(end - start) < 24) return { ok: true, start, end, steps: 0 };
+  const lo = Math.min(start, end) + 4;
+  const hi = Math.max(start, end) - 4;
+  const steps = heights.filter(h => h > lo && h < hi).length;
+  return { ok: steps >= 3, start, end, steps };
+}
+
+/**
+ * Cajas vecinas de una fila (botones, campos, chips, kbd, tarjetas) con distinta
+ * altura. Por cada hijo de un flex/grid en fila toma su caja visible (él o su
+ * descendiente con borde o fondo más grande) y compara las que comparten renglón.
+ */
+export function unevenRows({ scope, ignore = '' }) {
+  const root = document.querySelector(scope);
+  if (!root) return [`no está ${scope}`];
+  const visible = el => (el.checkVisibility ? el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : el.getClientRects().length > 0);
+  const inert = el => el.closest('[inert], [aria-hidden="true"], .ui-collapse:not([data-state="open"]), [data-ux-ignore]') || (ignore && el.closest(ignore));
+  const boxy = el => {
+    const s = getComputedStyle(el);
+    if (s.position === 'absolute' || s.position === 'fixed') return false;
+    return (parseFloat(s.borderTopWidth) > 0 && parseFloat(s.borderBottomWidth) > 0) || s.backgroundColor !== 'rgba(0, 0, 0, 0)';
+  };
+  const describe = el => `${el.tagName.toLowerCase()}.${String(el.className).trim().split(/\s+/).slice(0, 2).join('.')} "${(el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 24)}"`;
+  const pick = start => {
+    let best = null;
+    const walk = (node, depth) => {
+      if (!visible(node) || inert(node)) return;
+      if (boxy(node)) {
+        const r = node.getBoundingClientRect();
+        if (!best || r.width * r.height > best.r.width * best.r.height) best = { el: node, r };
+        return;
+      }
+      if (depth < 3) for (const child of node.children) walk(child, depth + 1);
+    };
+    walk(start, 0);
+    return best;
+  };
+  const out = new Set();
+  for (const parent of root.querySelectorAll('*')) {
+    if (!visible(parent) || inert(parent) || parent.closest('svg')) continue;
+    const s = getComputedStyle(parent);
+    if (!/(flex|grid)/.test(s.display) || (s.display.includes('flex') && s.flexDirection.startsWith('column'))) continue;
+    const kids = [...parent.children].map(pick).filter(item => item && item.r.height > 8 && item.r.width > 8);
+    for (let i = 0; i < kids.length; i += 1) {
+      for (let j = i + 1; j < kids.length; j += 1) {
+        const a = kids[i];
+        const b = kids[j];
+        const shared = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+        if (shared < Math.min(a.r.height, b.r.height) * 0.5) continue;
+        if (Math.abs(a.r.height - b.r.height) > 2) out.add(`${describe(a.el)} ${Math.round(a.r.height)} px vs ${describe(b.el)} ${Math.round(b.r.height)} px`);
+      }
+    }
+  }
+  return [...out].slice(0, 10);
+}
+
 export async function knowledgeCanvasTests({ browser, base, api, apiConsulta, admin, consulta, releaseVersion, test, track = () => {} }) {
   // Módulos prendidos en la copia.
   const settings = (await api.get('/api/site-settings')).data.settings || {};
@@ -342,6 +431,152 @@ export async function knowledgeCanvasTests({ browser, base, api, apiConsulta, ad
         return 'altas deshabilitadas, campos de solo lectura, zoom OK, 403';
       } finally {
         await ro.context.close();
+      }
+    });
+
+    await test('cv', 'Canvas', 'El lienzo llena el área visible (sin franja al pie ni scroll de página) y al cambiar el tamaño lo del centro sigue en el centro', async () => {
+      const center = () => page.evaluate(() => {
+        const board = document.querySelector('.cv-board');
+        const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\) scale\(([\d.]+)\)/.exec(document.querySelector('.cv-origin').style.transform);
+        const [x, y, z] = m.slice(1).map(Number);
+        return { wx: (board.clientWidth / 2 - x) / z, wy: (board.clientHeight / 2 - y) / z };
+      });
+      const fit = () => page.evaluate(() => {
+        const s = document.querySelector('.shell-scroll');
+        const page = document.querySelector('.cv-page').getBoundingClientRect();
+        return { overflow: s.scrollHeight - s.clientHeight, gapBelow: Math.round(s.getBoundingClientRect().bottom - page.bottom), board: document.querySelector('.cv-board').offsetHeight };
+      });
+      const rows = [];
+      for (const [width, height] of [[1440, 900], [1920, 1080], [1024, 700], [390, 780]]) {
+        await page.setViewport({ width, height });
+        await openCanvas(page, base);
+        await sleep(400);
+        const f = await fit();
+        assert(f.overflow <= 1 || f.board <= 290, `${width}×${height}: la página scrollea ${f.overflow} px con un lienzo de ${f.board} px`);
+        assert(f.gapBelow <= 2, `${width}×${height}: franja vacía de ${f.gapBelow} px debajo del canvas`);
+        rows.push(`${width}: ${f.board} px`);
+      }
+      await page.setViewport({ width: 1440, height: 900 });
+      await openCanvas(page, base);
+      await sleep(400);
+      const before = await center();
+      await page.setViewport({ width: 1024, height: 640 });
+      await sleep(500);
+      const after = await center();
+      const drift = Math.hypot(after.wx - before.wx, after.wy - before.wy);
+      assert(drift <= 2, `Al achicar la ventana el centro se corrió ${drift.toFixed(1)} px del lienzo.`);
+      await page.setViewport({ width: 1366, height: 900 });
+      return `${rows.join(' · ')} · centro quieto (${drift.toFixed(1)} px)`;
+    });
+
+    await test('cv', 'Canvas', 'Barra, zoom y botones del lienzo: vecinos de la misma altura (390 a 1920)', async () => {
+      const problems = [];
+      for (const width of [390, 1024, 1440, 1920]) {
+        await page.setViewport({ width, height: 900 });
+        await openCanvas(page, base);
+        await sleep(300);
+        for (const item of await page.evaluate(unevenRows, { scope: '.cv-page', ignore: '.cv-board' })) problems.push(`${width}: ${item}`);
+      }
+      await page.setViewport({ width: 1366, height: 900 });
+      assert(!problems.length, problems.join('\n'));
+      return 'parejos';
+    });
+
+    await test('kb', 'Conocimiento', 'Elegir categoría y otra ficha: la lista y el lector cambian de alto suave, con el control tocado quieto; vecinos parejos', async () => {
+      const smoothCtx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1366, height: 900 } });
+      try {
+        await openKnowledge(smoothCtx.page, base);
+        await until(() => smoothCtx.page.$$eval(ROW, rows => rows.length > 5), { message: 'filas' });
+        // "Proyectores" tiene 1 artículo: la lista se acorta de ~30 filas a 1.
+        const chip = await smoothCtx.page.evaluate(() => {
+          const el = [...document.querySelectorAll('.kb-cat')].find(node => /^Proyectores/.test(node.textContent || ''));
+          el?.setAttribute('data-e2e-chip', '');
+          return Boolean(el);
+        });
+        assert(chip, 'No está la categoría Proyectores');
+        const toCat = await watchHeight(smoothCtx.page, { trigger: '[data-e2e-chip]', watch: '.kb-results', ms: 1500 });
+        assert(!toCat.error, toCat.error);
+        const s1 = smooth(toCat.heights);
+        assert(s1.ok, `La lista saltó de ${s1.start} a ${s1.end} px sin pasar por el medio (${s1.steps} cuadros intermedios).`);
+        assert(toCat.moved <= 2, `El chip se movió ${toCat.moved} px.`);
+        // Otra ficha (el lector cambia de alto): también suave.
+        await smoothCtx.page.evaluate(() => document.querySelector('.kb-cat')?.click());
+        await until(() => smoothCtx.page.$$eval(ROW, rows => rows.length > 5), { message: 'todas otra vez' });
+        await sleep(400);
+        await smoothCtx.page.evaluate(() => {
+          const rows = [...document.querySelectorAll('a.kb-row')];
+          const target = rows.find(row => /Relleno/.test(row.textContent || '') && !row.classList.contains('is-current'));
+          target?.setAttribute('data-e2e-row', '');
+        });
+        const toRow = await watchHeight(smoothCtx.page, { trigger: '[data-e2e-row]', watch: '.kb-main-box', ms: 1500 });
+        const s2 = smooth(toRow.heights);
+        assert(s2.ok, `El lector saltó de ${s2.start} a ${s2.end} px de golpe.`);
+        // Vecinos parejos en la lista, el lector y el editor (lista y lector son maestro/detalle: alturas propias).
+        const uneven = [];
+        for (const width of [390, 1440]) {
+          await smoothCtx.page.setViewport({ width, height: 900 });
+          await sleep(300);
+          for (const item of await smoothCtx.page.evaluate(unevenRows, { scope: '.kb-page', ignore: '.kb-rich' })) {
+            if (!/section\.kb-list .* vs (article|section)\.kb-card/.test(item)) uneven.push(`${width}: ${item}`);
+          }
+        }
+        await clickText(smoothCtx.page, '.kb-list button', /^Nuevo artículo$/);
+        await smoothCtx.page.waitForSelector('.kb-editor');
+        const tags = await smoothCtx.page.$('.kb-editor .ui-tags input');
+        await tags.type('uno,dos,tres,cuatro,cinco,seis,siete,');
+        for (const item of await smoothCtx.page.evaluate(unevenRows, { scope: '.kb-editor', ignore: '.kb-rich' })) uneven.push(`editor: ${item}`);
+        assert(!uneven.length, uneven.join('\n'));
+        return `lista ${s1.start}→${s1.end} px en ${s1.steps} cuadros · lector ${s2.start}→${s2.end} px · chip quieto`;
+      } finally {
+        await smoothCtx.context.close();
+      }
+    });
+
+    await test('rec', 'Recordatorios', 'Cambiar de filtro o "Solo los míos": la lista crece y se achica suave, el segmentado queda quieto (también al final de la página); vecinos parejos', async () => {
+      const current = (await api.get('/api/site-settings')).data.settings || {};
+      const mods = new Set([...(Array.isArray(current['modules.enabled']) ? current['modules.enabled'] : []), 'reminders']);
+      await api.patch('/api/site-settings', { settings: { 'modules.enabled': [...mods] } });
+      for (let i = 0; i < 6; i += 1) {
+        await api.post('/api/reminders', { title: `Suave e2e ${stamp} ${i}`, remindAt: new Date(Date.now() + (i + 2) * 86400000).toISOString(), priority: 'Media' });
+      }
+      const remCtx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1366, height: 640 } });
+      try {
+        await gotoView(remCtx.page, base, 'reminders');
+        await remCtx.page.waitForSelector('.rem-results .rem-group', { timeout: 20000 });
+        await sleep(400);
+        const mark = rx => remCtx.page.evaluate((src, flags) => {
+          document.querySelectorAll('[data-e2e-seg]').forEach(node => node.removeAttribute('data-e2e-seg'));
+          const el = [...document.querySelectorAll('.rem-filters .ui-seg-item')].find(node => new RegExp(src, flags).test(node.textContent || ''));
+          el?.setAttribute('data-e2e-seg', '');
+          return Boolean(el);
+        }, rx.source, rx.flags);
+        const report = [];
+        // Arriba: Pendientes → Hoy (se achica) → Todos (crece).
+        for (const rx of [/^Hoy/, /^Todos/, /^Pendientes/]) {
+          assert(await mark(rx), `No está el filtro ${rx}`);
+          const result = await watchHeight(remCtx.page, { trigger: '[data-e2e-seg]', watch: '.rem-results' });
+          const s = smooth(result.heights);
+          assert(s.ok, `${rx}: la lista saltó de ${s.start} a ${s.end} px de golpe (${s.steps} cuadros intermedios).`);
+          assert(result.moved <= 2, `${rx}: el segmentado se movió ${result.moved} px.`);
+          report.push(`${s.start}→${s.end}`);
+          await sleep(200);
+        }
+        // Al final de la página: achicar la lista no corre el segmentado (se reserva el alto al pie).
+        await remCtx.page.evaluate(() => { const s = document.querySelector('.shell-scroll'); s.scrollTop = 120; });
+        await sleep(150);
+        assert(await mark(/^Hoy/), 'No está Hoy');
+        const scrolled = await watchHeight(remCtx.page, { trigger: '[data-e2e-seg]', watch: '.rem-results' });
+        assert(scrolled.moved <= 2, `Scrolleado, el segmentado se movió ${scrolled.moved} px al achicarse la lista.`);
+        const uneven = [];
+        for (const width of [390, 1366]) {
+          await remCtx.page.setViewport({ width, height: 800 });
+          await sleep(300);
+          for (const item of await remCtx.page.evaluate(unevenRows, { scope: '.rem' })) uneven.push(`${width}: ${item}`);
+        }
+        assert(!uneven.length, uneven.join('\n'));
+        return `${report.join(' · ')} px · scrolleado ${scrolled.moved} px`;
+      } finally {
+        await remCtx.context.close();
       }
     });
   } finally {

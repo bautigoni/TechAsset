@@ -7,7 +7,7 @@ import {
 import { getTasks } from '../../services/tasksApi';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
-import { Button, Collapse, ErrorState, FileDrop, IconButton, Skeleton, cx, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, ErrorState, FileDrop, IconButton, Skeleton, cx, icons, scrollParentOf, useStatusLine } from '../../ui';
 import { CanvasNode, type NodeActions } from './CanvasNode';
 import {
   HOME, NOTE_COLORS, SAVE_DELAY, TYPE_LABEL, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP, clampZoom, errorText, fitView, freeSpot, initialView, readFileAsDataUrl,
@@ -18,6 +18,8 @@ import '../../styles/screens/canvas.css';
 const POLL_MS = 30_000;
 const ACCEPT = 'image/*,.pdf,.docx,.xlsx,.txt';
 const MAX_MB = 7;
+/** Alto mínimo del lienzo (px): en un celu chico la página scrollea un poco antes que achicarlo más. */
+const BOARD_MIN = 288;
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -66,6 +68,46 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
   useAssistantContext({ type: 'canvas', id: site, label: `Canvas de ${site}`, data: { elementos: items.length } });
 
   useEffect(() => { saveView(site, view); }, [site, view]);
+
+  /* ── Tamaño del lienzo ──────────────────────────────────────────────────
+     Llena el alto que queda en el área visible (antes era
+     `100dvh - 19rem` fijo: dejaba una franja vacía al pie o se metía debajo
+     de la barra inferior en el celu). Y si cambia de tamaño (rotar, achicar la
+     ventana, abrir el asistente), lo que estaba en el centro sigue en el centro. */
+  const pageRef = useRef<HTMLElement | null>(null);
+  const [boardH, setBoardH] = useState<number | null>(null);
+  const boardMissing = loadState === 'error';
+  useEffect(() => {
+    const board = boardRef.current;
+    const page = pageRef.current;
+    if (!board || !page || typeof ResizeObserver === 'undefined') return undefined;
+    const scroller = scrollParentOf(page);
+    let size = { w: board.clientWidth, h: board.clientHeight };
+    const fill = () => {
+      const top = scroller.getBoundingClientRect().top;
+      // Lo que se abre arriba del lienzo ("Archivo", una línea de estado) lo achica
+      // en vez de empujar la página: lienzo y barra siguen a la vista.
+      const box = board.getBoundingClientRect();
+      const boardTop = box.top - top + scroller.scrollTop;
+      const below = page.getBoundingClientRect().bottom - box.bottom;
+      const next = Math.max(BOARD_MIN, Math.floor(scroller.clientHeight - boardTop - below));
+      setBoardH(current => (current === next ? current : next));
+    };
+    const observer = new ResizeObserver(() => {
+      const w = board.clientWidth;
+      const h = board.clientHeight;
+      if (w !== size.w || h !== size.h) {
+        const dx = (w - size.w) / 2;
+        const dy = (h - size.h) / 2;
+        size = { w, h };
+        setView(current => ({ ...current, x: Math.round(current.x + dx), y: Math.round(current.y + dy) }));
+      }
+      fill();
+    });
+    for (const el of [board, scroller, page]) observer.observe(el);
+    fill();
+    return () => observer.disconnect();
+  }, [boardMissing]);
 
   /* ── Guardado diferido (450 ms por nodo) ──────────────────────────────── */
   const refreshSaveState = useCallback(() => {
@@ -483,13 +525,14 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
   const boardStyle = {
     '--cv-grid': `${grid}px`,
     '--cv-gx': `${((view.x % grid) + grid) % grid}px`,
-    '--cv-gy': `${((view.y % grid) + grid) % grid}px`
+    '--cv-gy': `${((view.y % grid) + grid) % grid}px`,
+    ...(boardH ? { '--cv-board-h': `${boardH}px` } : {})
   } as React.CSSProperties;
   const saveText = saveState === 'saving' ? 'Guardando…' : saveState === 'error' ? 'No se pudo guardar' : saveState === 'saved' ? 'Guardado' : 'Todo guardado';
   const count = items.length;
 
   return (
-    <section className="cv-page" aria-label="Canvas">
+    <section ref={pageRef} className="cv-page" aria-label="Canvas">
       <div className="cv-head">
         <span className="cv-eyebrow">Pizarra compartida · {site}</span>
         <span className="cv-count g-num">{loadState === 'loading' ? '' : `${count} ${count === 1 ? 'elemento' : 'elementos'}`}</span>

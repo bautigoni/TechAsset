@@ -38,9 +38,10 @@
 
 /* ── Borrador recuperable (fila entera) ─────────────────────────────────── */
 
+.kb-draftnote-wrap { flex: 1 1 100%; --ui-collapse-gap: var(--g-s-5); }
+.kb-page.is-narrow > .kb-draftnote-wrap { flex: none; --ui-collapse-gap: var(--g-s-4); }
 .kb-draftnote {
   display: flex;
-  flex: 1 1 100%;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--g-s-2) var(--g-s-4);
@@ -104,6 +105,8 @@
 .kb-cat-n { flex: none; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
 
 .kb-list > .ui-status { margin: 0 var(--g-s-4) var(--g-s-3); }
+/* Resultados: cambian de alto suave al filtrar (useSmoothHeight). */
+.kb-results { display: flex; flex-direction: column; min-width: 0; }
 .kb-pad { margin: 0 var(--g-s-4) var(--g-s-4); }
 
 .kb-rows { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--g-line); }
@@ -177,7 +180,7 @@
   min-width: 0;
   padding: var(--g-s-4);
 }
-.kb-rows + .kb-empty, .kb-list > .kb-empty { border-top: 1px solid var(--g-line); }
+.kb-rows + .kb-empty, .kb-list > .kb-empty, .kb-results > .kb-empty { border-top: 1px solid var(--g-line); }
 .kb-empty-icon {
   display: inline-flex;
   flex: none;
@@ -293,8 +296,10 @@
 .kb-leave { min-width: 0; }
 
 .kb-form { display: flex; flex-direction: column; gap: var(--g-s-4); min-width: 0; }
-.kb-two { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--g-s-4); min-width: 0; }
-.kb-two > * { flex: 1 1 15rem; min-width: 0; }
+/* Categoría y Tags uno debajo del otro: los tags crecen en renglones y, lado a
+   lado, dejaban dos campos vecinos de distinta altura (regla del dueño). */
+.kb-two { display: flex; flex-direction: column; gap: var(--g-s-4); min-width: 0; }
+.kb-two > * { min-width: 0; }
 .kb-label { color: var(--g-text-2); font-size: var(--g-fs-xs); font-weight: var(--g-fw-medium); line-height: 1rem; }
 .kb-req { color: var(--g-text-3); }
 .kb-body-field { display: flex; flex-direction: column; gap: var(--g-s-2); min-width: 0; }
@@ -358,3 +363,4 @@
   .kb-draftnote-actions { width: 100%; }
   .kb-draftnote-actions .ui-btn { flex: 1 1 0; }
 }
+.kb-main-box { display: flex; flex-direction: column; min-width: 0; }

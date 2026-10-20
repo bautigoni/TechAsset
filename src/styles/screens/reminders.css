@@ -39,6 +39,9 @@
 .rem-list-col { grid-area: list; display: flex; flex-direction: column; gap: var(--g-s-4); min-width: 0; }
 /* Colapsos de la lista (línea de estado): cerrados no dejan gap. */
 .rem-list-col > .ui-collapse { --ui-collapse-gap: var(--g-s-4); }
+/* Grupos, vacío y "Ver completados": cambian de alto suave al filtrar (useSmoothHeight). */
+.rem-results { display: flex; flex-direction: column; gap: var(--g-s-4); min-width: 0; }
+.rem-results:empty { display: none; }
 /* Arriba de la lista, el espacio hasta ella viaja adentro del colapso: se abre y se cierra con el alta, sin salto. */
 .rem-form-card { margin-bottom: var(--g-s-4); }
 @container (min-width: 64rem) {

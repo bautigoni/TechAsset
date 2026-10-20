@@ -51,7 +51,8 @@
 
 .cv-board.infinite-canvas {
   position: relative;
-  height: clamp(26rem, calc(100dvh - 19rem), 56rem);
+  /* --cv-board-h: el alto que queda en el área visible (CanvasPage lo mide); esto es solo el primer cuadro. */
+  height: var(--cv-board-h, clamp(26rem, calc(100dvh - 19rem), 56rem));
   overflow: hidden;
   border: 1px solid var(--g-line);
   border-radius: var(--g-radius);
@@ -311,7 +312,7 @@
   .cv-add .ui-btn-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .cv-tools { flex: 1 1 100%; justify-content: space-between; }
 
-  .cv-board.infinite-canvas { height: clamp(22rem, calc(100dvh - 22rem), 40rem); }
+  .cv-board.infinite-canvas { height: var(--cv-board-h, clamp(22rem, calc(100dvh - 22rem), 40rem)); }
 }
 
 @media (max-width: 479px) {

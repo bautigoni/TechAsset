@@ -8,6 +8,7 @@ import { IconPlus } from '../../ui/icons';
 import { errorMessage } from '../layout/Feedback';
 import { dayKeyAr } from '../../utils/formatters';
 import { focusQuietly } from '../../utils/reveal';
+import { useSmoothHeight } from '../../hooks/useSmoothHeight';
 import { EMPTY_DRAFT, ReminderForm, draftFromReminder, payloadFromDraft, type Person, type ReminderDraft } from './ReminderForm';
 import { WhenField } from './WhenField';
 import { formatWhen, isValidLocal, localToIso, nextHourLocal, priorityTone, relatedTypeLabel, relativeWhen, type ReminderRow } from './reminderUtils';
@@ -110,6 +111,9 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
   if (filter === 'today') push('today', 'Hoy', pending.filter(isToday).sort(byDate));
   if (filter === 'next') push('next', 'Próximos', [...nextList].sort(byDate));
   if (filter === 'done' || filter === 'all' || (filter === 'pend' && showDone)) push('done', 'Completados', [...done].sort(byDone), 'muted');
+  // Cambiar de filtro, "Solo los míos", completar o borrar: la lista cambia de alto suave
+  // (no aparece ni se va "una caja de la nada") y el control tocado queda quieto.
+  const [results, hold] = useSmoothHeight<HTMLDivElement>(`${loading}|${Boolean(loadError)}|${groups.map(group => `${group.key}:${group.rows.map(row => row.id).join(',')}`).join(';')}`);
 
   // ── Acciones (cada una con su Deshacer) ───────────────────────────────
   const restore = async (item: ReminderRow, previous: Snapshot, message: string) => {
@@ -173,7 +177,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
           </p>
         </div>
         <div className="rem-head-actions">
-          <Checkbox label="Solo los míos" checked={mineOnly} onCheckedChange={setMineOnly} />
+          <Checkbox label="Solo los míos" checked={mineOnly} onCheckedChange={next => { hold(); setMineOnly(next); }} />
           <Button ref={newButtonRef} variant="primary" icon={<IconPlus size={16} />} aria-expanded={formOpen} aria-controls="rem-new" disabled={consultationMode} onClick={() => { ensurePeople(); setFormOpen(open => !open); }}>
             Nuevo recordatorio
           </Button>
@@ -183,7 +187,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
       <Segmented<Filter>
         ariaLabel="Mostrar"
         value={filter}
-        onChange={next => { setFilter(next); setShowDone(false); }}
+        onChange={next => { hold(); setFilter(next); setShowDone(false); }}
         className="rem-filters"
         options={[
           { value: 'pend', label: 'Pendientes', count: counts.pend },
@@ -219,6 +223,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
 
         <section className="rem-list-col" aria-label="Lista de recordatorios">
           <StatusSlot status={status} />
+          <div ref={results} className="rem-results">
           {loadError && <ErrorState message={loadError} retrying={retrying} onRetry={async () => { setRetrying(true); await load(); setRetrying(false); }} />}
           {loading ? (
             <div className="rem-card"><SkeletonRows rows={4} /></div>
@@ -264,6 +269,7 @@ export function RemindersPage({ consultationMode }: { consultationMode: boolean 
           {!loading && filter === 'pend' && !showDone && done.length > 0 && (
             <Button variant="ghost" className="rem-self-start" onClick={event => { const at = event.currentTarget; anchored(() => setShowDone(true), at); }}>Ver completados <span className="rem-count">{done.length}</span></Button>
           )}
+          </div>
         </section>
       </div>
     </section>

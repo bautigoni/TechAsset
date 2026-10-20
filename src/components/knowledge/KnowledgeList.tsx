@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { BookOpen, Paperclip, Search, SearchX } from 'lucide-react';
 import type { KnowledgeArticle } from '../../types';
 import { Button, ErrorState, IconButton, Input, SkeletonText, TruncatedText, cx, icons } from '../../ui';
+import { useSmoothHeight } from '../../hooks/useSmoothHeight';
 import { articleDate, categoryOf, excerpt, routeUrl } from './knowledgeModel';
 
 const hrefFor = (id: number) => routeUrl({ kind: 'read', id });
@@ -37,6 +38,8 @@ export function KnowledgeList({
   const chips = [{ name: '', label: 'Todas', count: all }, ...categories.map(item => ({ name: item.name, label: item.name, count: item.count }))];
   if (category && !categories.some(item => item.name === category)) chips.push({ name: category, label: category, count: 0 });
   const filtering = Boolean(q.trim() || category);
+  // Filtrar, buscar o "Ver más" cambian el alto de la lista suave, con el control tocado quieto.
+  const [results, hold] = useSmoothHeight<HTMLDivElement>(`${items.map(item => item.id).join(',')}|${loading && !items.length}|${error}|${hasMore}`);
 
   return (
     <section className="kb-list" aria-label="Artículos" hidden={hidden}>
@@ -73,7 +76,7 @@ export function KnowledgeList({
                 type="button"
                 className={cx('kb-cat', category === chip.name && 'is-on')}
                 aria-pressed={category === chip.name}
-                onClick={() => onCategory(chip.name)}
+                onClick={event => { hold(event.currentTarget); onCategory(chip.name); }}
               >
                 <span className="kb-cat-label">{chip.label}</span>
                 <span className="kb-cat-n g-num">{chip.count}</span>
@@ -85,6 +88,7 @@ export function KnowledgeList({
 
       {status}
 
+      <div ref={results} className="kb-results">
       {error && !items.length ? (
         <ErrorState className="kb-pad" message={`No se pudo cargar la base: ${error}`} onRetry={onRetry} />
       ) : loading && !items.length ? (
@@ -155,6 +159,7 @@ export function KnowledgeList({
         </div>
       )}
       {error && items.length > 0 && <ErrorState className="kb-pad" message={error} onRetry={onRetry} />}
+      </div>
     </section>
   );
 }

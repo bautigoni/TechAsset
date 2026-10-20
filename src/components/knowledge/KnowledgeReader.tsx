@@ -75,7 +75,9 @@ export function KnowledgeReader({ article, consultationMode, onEdit, onDelete, o
             onConfirm={() => void remove()}
             onCancel={() => { setConfirming(false); deleteRef.current?.focus({ preventScroll: true }); }}
           />
-          {error && <p className="kb-error" role="alert">{error}</p>}
+          <Collapse open={Boolean(error)} anchor={false} reveal={false} gap="var(--g-s-2)">
+            <p className="kb-error" role="alert">{error}</p>
+          </Collapse>
         </div>
       </Collapse>
 

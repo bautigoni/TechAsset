@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { Bold, ExternalLink, Heading, Italic, List } from 'lucide-react';
 import { uploadKnowledgeAttachment } from '../../services/knowledgeApi';
-import { Button, Combobox, FileDrop, IconButton, Input, TagInput, TruncatedText, cx, icons, useStatusLine, type FileDropItem } from '../../ui';
+import { Button, Collapse, Combobox, FileDrop, IconButton, Input, TagInput, TruncatedText, cx, icons, useStatusLine, type FileDropItem } from '../../ui';
 import { hasArticleContent, sanitizeArticleHtml } from './sanitize';
 import { errorText, fileKind, guessMime, readFileAsDataUrl, writeDraft, type KbAttachment, type KbDraft } from './knowledgeModel';
 
@@ -324,7 +324,8 @@ export function KnowledgeEditor({ draft, startDirty = false, siteCode, categorie
             <span className="kb-label">Adjuntos</span>
             <span className="kb-count g-num">{attachments.length}</span>
           </div>
-          {kept.length > 0 && (
+          {/* Al quitar el último adjunto guardado la lista se pliega (no desaparece de golpe). */}
+          <Collapse open={kept.length > 0} lazy={false} anchor={false} reveal={false} gap="var(--g-s-2)">
             <ul className="kb-att-list">
               {kept.map(file => (
                 <li key={file.url} className="kb-att-row">
@@ -343,7 +344,7 @@ export function KnowledgeEditor({ draft, startDirty = false, siteCode, categorie
                 </li>
               ))}
             </ul>
-          )}
+          </Collapse>
           <FileDrop
             multiple
             accept={ACCEPT}

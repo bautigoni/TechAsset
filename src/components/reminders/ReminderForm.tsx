@@ -136,7 +136,9 @@ export function ReminderForm({ mode, draft, onChange, people, peopleError, onSub
         </Collapse>
       </div>
       {mode === 'create' && <PushBox />}
-      {error && <ErrorState message={error} />}
+      <Collapse open={Boolean(error)} anchor={false} gap="var(--g-s-4)">
+        <ErrorState message={error} />
+      </Collapse>
       <div className="rem-actions rem-actions-end">
         <Button variant="ghost" disabled={busy} onClick={onCancel}>Cancelar</Button>
         <Button type="submit" variant="primary" loading={busy} loadingLabel="Guardando…" disabled={disabled}>{mode === 'create' ? 'Guardar recordatorio' : 'Guardar cambios'}</Button>
@@ -214,7 +216,9 @@ export function PushBox() {
         {state === 'off' && <Button size="sm" variant="ghost" loading={busy} onClick={() => void activate()}>Activar push</Button>}
         {state === 'on' && <Button size="sm" variant="ghost" loading={busy} onClick={() => void test()}>Probar aviso</Button>}
       </div>
-      {message && <span className={cx('rem-para', `rem-tone-${message.tone}`)} role="status">{message.text}</span>}
+      <Collapse open={Boolean(message)} anchor={false} reveal={false} gap="var(--g-s-1)">
+        <span className={cx('rem-para', message && `rem-tone-${message.tone}`)} role="status">{message?.text}</span>
+      </Collapse>
       <span className="rem-help">En iPhone el push llega solo si agregaste TechAsset a la pantalla de inicio (Compartir › Agregar a inicio, iOS 16.4 o más) y activaste las notificaciones desde ahí.</span>
     </div>
   );

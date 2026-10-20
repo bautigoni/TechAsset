@@ -14,6 +14,7 @@ import { root, COOKIE_NAME } from '../lib/env.mjs';
 import { assert, openContext, pathname, sleep, typeInto, until } from '../lib/browser.mjs';
 import { NAV_ITEM } from './functional.mjs';
 import { formatProbe, probeView } from '../lib/ux-probe.mjs';
+import { smooth, unevenRows, watchHeight } from './knowledgeCanvas.mjs';
 
 const outDir = path.join(root, 'e2e', '.out', 'etapa9');
 const SUBMIT = '#auth-form button[type="submit"]';
@@ -258,6 +259,73 @@ export async function authTests({ browser, base, api, releaseVersion, test, trac
         for (let i = 0; i < 12; i += 1) { await sleep(30); drift = Math.max(drift, Math.abs((await tabTop()) - before)); }
         assert(drift <= 2, `las pestañas se movieron ${drift.toFixed(1)} px al cambiar de modo`);
         return 'not_authorized, tema y theme-color, sin scroll horizontal 360–1920, sonda UX en 0, pestañas quietas';
+      } finally {
+        await ctx.context.close().catch(() => {});
+      }
+    });
+
+    // Revisión UX 10 (20/10): sin franja vacía bajo la barra, vecinos parejos y nada que aparezca de golpe.
+    await test('lg', 'Login', 'Sin franja vacía arriba (≤ 32 px de la barra al primer bloque) y vecinos parejos: landing, ingreso, registro, contraseña y sede (360–1920, oscuro y claro)', async () => {
+      const ctx = await openContext(browser, { base, token: '', releaseVersion, viewport: { width: 1440, height: 900 } });
+      try {
+        const p = ctx.page;
+        const problems = [];
+        const firstInk = () => p.evaluate(() => {
+          const bar = document.querySelector('.auth-top').getBoundingClientRect().bottom;
+          const main = document.querySelector('.auth-main');
+          const range = document.createRange();
+          let first = Infinity;
+          const walker = document.createTreeWalker(main, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            if (n.nodeType === 3) {
+              if (!n.textContent.trim() || n.parentElement.closest('.ui-collapse:not([data-state="open"]), [aria-hidden="true"]')) continue;
+              range.selectNodeContents(n);
+              const r = range.getBoundingClientRect();
+              if (r.height) first = Math.min(first, r.top);
+            } else if (!n.closest('.ui-collapse:not([data-state="open"])')) {
+              const s = getComputedStyle(n);
+              if (parseFloat(s.borderTopWidth) > 0 || s.backgroundColor !== 'rgba(0, 0, 0, 0)') { const r = n.getBoundingClientRect(); if (r.height) first = Math.min(first, r.top); }
+            }
+          }
+          return Math.round(first - bar);
+        });
+        for (const url of ['/', '/login', '/register?code=TA-E2E-0001', '/login?password=token-de-prueba', '/sede/NFPT/tasks/1']) {
+          await p.goto(`${base}${url}`, { waitUntil: 'domcontentloaded' });
+          await p.waitForSelector('.auth-main');
+          await sleep(300);
+          for (const width of [360, 768, 1024, 1440, 1920]) {
+            await p.setViewport({ width, height: width < 768 ? 800 : width >= 1600 ? 1080 : 900 });
+            await sleep(120);
+            for (const theme of ['dark', 'light']) {
+              await setTheme(p, theme);
+              const gap = await firstInk();
+              if (gap > 32) problems.push(`${url} ${width} ${theme}: ${gap} px vacíos bajo la barra`);
+              for (const item of await p.evaluate(unevenRows, { scope: '.auth' })) problems.push(`${url} ${width} ${theme}: ${item}`);
+            }
+          }
+        }
+        assert(!problems.length, `${problems.length} problemas:\n${[...new Set(problems)].slice(0, 10).join('\n')}`);
+        return '5 pantallas × 5 anchos × 2 temas';
+      } finally {
+        await ctx.context.close().catch(() => {});
+      }
+    });
+
+    await test('lg', 'Login', '"Volver a ingresar" desde "Elegí tu contraseña": las pestañas y el link entran y salen con alto suave', async () => {
+      const ctx = await openContext(browser, { base, token: '', releaseVersion, viewport: { width: 1366, height: 900 } });
+      try {
+        const p = ctx.page;
+        await p.goto(`${base}/login?password=token-de-prueba`, { waitUntil: 'domcontentloaded' });
+        await p.waitForSelector('.auth-back');
+        await sleep(300);
+        const tabs = await watchHeight(p, { trigger: '.auth-back', watch: '.auth-column > .ui-collapse:has(.auth-tabs)', ms: 700 });
+        assert(!tabs.error, tabs.error);
+        const s = smooth(tabs.heights);
+        assert(s.end > 20, `Las pestañas no volvieron (${s.end} px).`);
+        assert(s.ok, `Las pestañas aparecieron de golpe: ${s.start} → ${s.end} px sin cuadros intermedios.`);
+        assert(await visible(p, '#auth-tab-login'), 'No se ven las pestañas después de volver.');
+        assert(!(await visible(p, '.auth-back')), '"Volver a ingresar" sigue a la vista en Ingresar.');
+        return `pestañas ${s.start} → ${s.end} px en ${s.steps} cuadros`;
       } finally {
         await ctx.context.close().catch(() => {});
       }

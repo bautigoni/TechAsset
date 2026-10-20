@@ -7,6 +7,7 @@ import {
 } from '../../services/knowledgeApi';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
+import { useSmoothHeight } from '../../hooks/useSmoothHeight';
 import { Button, Collapse, InlineConfirm, Skeleton, SkeletonText, cx, icons, useStatusLine } from '../../ui';
 import { appScroller } from '../../utils/scroll';
 import { KnowledgeList } from './KnowledgeList';
@@ -297,6 +298,12 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
   /* ── Borrador recuperable ────────────────────────────────────────────── */
   const draftOpen = Boolean(seed);
   const showStored = stored && !draftOpen && !consultationMode;
+  // Lo último que se mostró: el aviso sigue dibujado mientras se pliega.
+  const shownStored = useRef(stored);
+  if (stored) shownStored.current = stored;
+  // Otra ficha, el editor o un vacío en la columna principal: cambia de alto suave
+  // (en angosto es otra página, sin animar).
+  const [mainBox] = useSmoothHeight<HTMLDivElement>(`${route.kind}|${shownId ?? ''}|${shownState}|${shown ? 1 : 0}|${seed ? 1 : 0}`, !narrow);
   const resumeDraft = () => {
     if (!stored) return;
     const target: KbRoute & { kind: 'edit' | 'new' } = stored.id ? { kind: 'edit', id: stored.id } : { kind: 'new' };
@@ -397,17 +404,20 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
 
   return (
     <section ref={rootRef} className={cx('kb-page', narrow && 'is-narrow')} aria-label="Base de conocimiento">
-      {showStored && (
-        <div className="kb-draftnote" role="status">
-          <span className="kb-draftnote-text">
-            Tenés un borrador sin guardar{stored?.title ? <> de <b>«{stored.title}»</b></> : null} · {ago(stored!.savedAt)}.
-          </span>
-          <span className="kb-draftnote-actions">
-            <Button size="sm" variant="primary" onClick={resumeDraft}>Seguir editando</Button>
-            <Button size="sm" variant="ghost" onClick={discardStored}>Descartar</Button>
-          </span>
-        </div>
-      )}
+      {/* Descartar o retomar el borrador lo pliega suave (no desaparece de golpe). */}
+      <Collapse open={Boolean(showStored)} outerClassName="kb-draftnote-wrap" anchor={false} reveal={false} unmountOnClose>
+        {shownStored.current && (
+          <div className="kb-draftnote" role="status">
+            <span className="kb-draftnote-text">
+              Tenés un borrador sin guardar{shownStored.current.title ? <> de <b>«{shownStored.current.title}»</b></> : null} · {ago(shownStored.current.savedAt)}.
+            </span>
+            <span className="kb-draftnote-actions">
+              <Button size="sm" variant="primary" onClick={resumeDraft}>Seguir editando</Button>
+              <Button size="sm" variant="ghost" onClick={discardStored}>Descartar</Button>
+            </span>
+          </div>
+        )}
+      </Collapse>
 
       {showList && (
         <KnowledgeList
@@ -440,7 +450,7 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
             </div>
           )}
           {mainStatus.element}
-          {main}
+          <div ref={mainBox} className="kb-main-box">{main}</div>
         </div>
       )}
     </section>

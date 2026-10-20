@@ -266,12 +266,13 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
           </div>
         )}
 
-        {!isPassword && (
+        {/* Al pasar a "Elegí tu contraseña" (y al volver) las pestañas se pliegan suave, no desaparecen de golpe. */}
+        <Collapse open={!isPassword} lazy={false} anchor={false} reveal={false}>
           <div className="auth-tabs" role="tablist" aria-label="Cómo querés entrar" onKeyDown={onTabKey}>
             <button ref={node => { tabRefs.current[0] = node; }} type="button" role="tab" id="auth-tab-login" aria-controls="auth-form" aria-selected={isLogin} tabIndex={isLogin ? 0 : -1} className={isLogin ? 'is-on' : ''} onClick={() => switchTo('login')}>Ingresar</button>
             <button ref={node => { tabRefs.current[1] = node; }} type="button" role="tab" id="auth-tab-register" aria-controls="auth-form" aria-selected={isRegister} tabIndex={isRegister ? 0 : -1} className={isRegister ? 'is-on' : ''} onClick={() => switchTo('register')}>Tengo un código</button>
           </div>
-        )}
+        </Collapse>
 
         <form
           id="auth-form"
@@ -376,11 +377,11 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
             </Button>
           </Collapse>
 
-          {isPassword && (
-            <button type="button" className="auth-link auth-back" onClick={() => { setPasswordToken(''); setPasswordRepeat(''); clear(); onMode('login'); }}>
+          <Collapse open={isPassword} className="auth-fields auth-fields--tight" anchor={false} reveal={false} lazy={false}>
+            <button type="button" className="auth-link auth-back" disabled={!isPassword} onClick={() => { setPasswordToken(''); setPasswordRepeat(''); clear(); onMode('login'); }}>
               Volver a ingresar
             </button>
-          )}
+          </Collapse>
         </form>
 
         <div className="auth-notes">
