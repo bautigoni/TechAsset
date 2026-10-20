@@ -361,7 +361,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
         await clickWithModifier(page, await passChip(page, free), modifier);
         await sleep(150);
         assert(await selectModeOn(page, PASS_STACK), `${modifier}: no se prendió el modo selección.`);
-        assert(!(await page.$(`${PASS_STACK} .lo-pass-form`)), `${modifier}: abrió el formulario de entrega.`);
+        assert(!(await page.$(`${PASS_STACK} .lo-pass-form, [role="dialog"]`)), `${modifier}: abrió el formulario de entrega.`);
         const bar = await barText(page, PASS_STACK);
         assert(/Entregar 1/.test(bar), `${modifier}: barra "${bar}"`);
         details.push(`${modifier} ok`);

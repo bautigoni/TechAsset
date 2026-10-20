@@ -36,6 +36,7 @@ import { shellTests } from './tests/shell.mjs';
 import { inicioTests } from './tests/inicio.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
 import { operacionTests } from './tests/operacion.mjs';
+import { prestamosUxTests } from './tests/prestamosUx.mjs';
 import { barridoOperacionTests } from './tests/barridoOperacion.mjs';
 import { uxRecursosTests } from './tests/uxRecursos.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
@@ -144,6 +145,8 @@ try {
   await analyticsTests(ctx);
   console.log('\nOperación: plegables, huecos, truncados y acciones (op)');
   await operacionTests(ctx);
+  console.log('\nPréstamos: revisión UX (pux)');
+  await prestamosUxTests(ctx);
   console.log('\nBarrido UX: agenda, horarios, aulas, recordatorios, tareas, tickets y sugerencias (bxo)');
   barridoOperacion = await barridoOperacionTests(ctx);
   await uxRecursosTests(ctx);
