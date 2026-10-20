@@ -37,6 +37,7 @@ import { canvasRouter } from './routes/canvas.routes.js';
 import { historyRouter } from './routes/history.routes.js';
 import { scheduleReminderCheck, startNotificationWorkers } from './services/notifications.service.js';
 import { invalidateDeviceInventoryCache } from './services/deviceInventory.service.js';
+import { bumpTasksVersion } from './services/tasksCache.service.js';
 import { authMiddleware, getUserSession, invalidateSessionCache, isSuperadmin, normalizeSiteCode, requireEditor, requireModuleEditor } from './services/siteContext.service.js';
 
 getDb();
@@ -152,9 +153,17 @@ app.use('/api', requireEditor);
 // Cualquier escritura de equipos/préstamos invalida el inventario cacheado de
 // la sede, aunque la ruta no lo haga explícitamente (metadata, vida útil...).
 const INVENTORY_WRITE_PATHS = /^\/(devices|device-groups|lifecycle|loans)\b/;
+const TASK_WRITE_PATHS = /^\/(tasks|task-columns|asistente)\b/;
 app.use('/api', (req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD' && INVENTORY_WRITE_PATHS.test(req.path)) {
     res.on('finish', () => invalidateDeviceInventoryCache('write', req.siteCode));
+  }
+  // Ídem la lista de tareas cacheada (GET /api/tasks): tareas, subtareas,
+  // comentarios, columnas y el asistente (crea tareas y deshace borrados).
+  // Se invalida antes y después: un GET que llegue mientras tanto no guarda la vieja.
+  if (req.method !== 'GET' && req.method !== 'HEAD' && TASK_WRITE_PATHS.test(req.path)) {
+    bumpTasksVersion();
+    res.on('finish', bumpTasksVersion);
   }
   next();
 });

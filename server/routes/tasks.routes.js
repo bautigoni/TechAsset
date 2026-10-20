@@ -7,6 +7,7 @@ import { getDb, nowIso, buildTaskContext, rowToTask, rowToTaskItem } from '../db
 import { canEditModule, requireSite } from '../services/siteContext.service.js';
 import { sendWithEtag } from '../services/etag.service.js';
 import { notifySiteAdmins, notifyUser } from '../services/notifications.service.js';
+import { getCachedTaskRows } from '../services/tasksCache.service.js';
 
 export const tasksRouter = Router();
 const STATES = new Set(['Pendiente', 'En proceso', 'Hecha']);
@@ -24,10 +25,15 @@ tasksRouter.get('/tasks', (req, res) => {
   const email = String(req.user?.email || '').toLowerCase();
   const name = String(req.user?.nombre || '').toLowerCase();
   const space = String(req.query.space || 'all');
-  // Contexto precargado: 3 consultas para toda la lista en vez de 3 por tarea.
-  const ctx = buildTaskContext(siteCode);
-  const rows = getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? ORDER BY fecha_creacion DESC").all(siteCode)
-    .map(row => rowToTask(row, ctx))
+  // Lista armada por sede en caché (se invalida con cada escritura, ver
+  // tasksCache.service): el poll de 30 s sin cambios no toca la base. Al
+  // armarla, contexto precargado: 3 consultas para toda la lista en vez de 3 por tarea.
+  const all = getCachedTaskRows(siteCode, () => {
+    const ctx = buildTaskContext(siteCode);
+    return getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? ORDER BY fecha_creacion DESC").all(siteCode)
+      .map(row => rowToTask(row, ctx));
+  });
+  const rows = all
     .filter(task => canSeeTask(task, email))
     .filter(task => space === 'team' ? task.visibility === 'team' : space === 'my' ? isMine(task, email, name) : true)
     .sort((a, b) => Number(a.done) - Number(b.done) || String(b.fechaCreacion || '').localeCompare(String(a.fechaCreacion || '')));
