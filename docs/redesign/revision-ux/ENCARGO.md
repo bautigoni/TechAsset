@@ -27,3 +27,13 @@ Pedido del dueño, con dos capturas en esta carpeta:
 - Hay otro agente midiendo rendimiento en paralelo: no cambies `perf/`, ni toques lógica de datos/fetch/caché salvo que sea la causa de un problema visual.
 - Commits en español con `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`, sin push.
 - Informe: tabla de hallazgos (pantalla, ancho/tema, problema, regla que rompe, causa, arreglo, commit), pruebas nuevas, resultados de verificación, y cambios compartidos sugeridos.
+
+## Agregado del dueño (20/10, mientras corría la revisión)
+
+> "HAY MUCHAS veces que tocás un botón y esperás que algo se abra smooth, pero no, se abre de una todo tosco, como el asistente de IA (horrendo el logo y la caja toda cuadrada, la estética me gusta que sea todo más redondo si lo podés hacer, usá la estética de ELEVENLABS que la amo)"
+
+Para TODOS los revisores, en sus pantallas:
+
+- **Nada se abre "de golpe".** Todo lo que aparece o desaparece por tocar algo (secciones, fichas debajo de filas, formularios en línea, confirmaciones, listas de sugerencias, filtros, "Ver más", paneles, detalles, resultados, mensajes de error/éxito) entra y sale con transición suave: `Collapse` (alto + opacidad) o `anchored(...)`, con el control tocado quieto. Buscá activamente `{cond && <...>}`, `hidden`, `display: none`, cambios de clase que muestran/ocultan sin transición, y cambios de contenido que saltan de alto (cargando → datos) — pasalos a la primitiva. Respetando `prefers-reduced-motion` (ahí: sin animación, pero sin saltos de scroll).
+- Probá cada disparador de tu pantalla mirando cuadro a cuadro (capturas cada ~16 ms o `requestAnimationFrame` midiendo el alto del contenido nuevo): si pasa de 0 al alto final en un cuadro, está mal.
+- **Estética redonda (ElevenLabs)**: la hace un agente aparte ("estética"), dueño de los tokens de forma (radios, botones píldora, campos, tarjetas) en `src/styles/tokens.css` y `src/ui/*`, y del asistente completo (columna, panel, logo, compositor). **No cambies radios ni la forma de los componentes compartidos**; si tu pantalla tiene radios propios escritos a mano (px sueltos en su CSS), pasalos a los tokens de radio (`--radius-*` o los que existan en `TOKENS.md`) para que hereden la estética nueva.
