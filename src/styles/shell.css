@@ -174,32 +174,42 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
      full    → nombres de grupo y "Buscar o ir a…" arriba;
      tight   → el buscador pasa a la barra superior (lupa);
      compact → líneas finas en vez de nombres de grupo;
+     dense   → (solo mouse) ítems de 28 px: a 1366×625 (laptop con la barra
+               del navegador) entra todo sin scrollear;
      scroll  → ni así entran (ventanas muy bajas): la lista scrollea en su zona,
-               sin barra, con degradé, y su alto es un múltiplo exacto del alto
-               de un ítem (con snap): nunca se ve un ítem a medias. */
+               sin barra, y su alto es un múltiplo exacto del alto de un ítem
+               (con snap): nunca se ve un ítem a medias.
+   La lista lleva aire arriba y abajo (--shell-nav-pad) en todas las densidades:
+   el resaltado del ítem activo, el hover y el foco del primer y del último ítem
+   nunca tocan el borde de la cabecera ni el del pie (el "Inicio cortado arriba"
+   era el resaltado pegado al borde con la lista en scroll, sin relleno). */
 .shell-nav {
   --shell-nav-pitch: 32px;
   --shell-nav-foot-h: 61px;
+  --shell-nav-pad: var(--g-s-2);
 }
 @media (pointer: coarse) {
   .shell-nav { --shell-nav-pitch: 44px; }
   .shell-nav-item { height: 44px; }
 }
 .shell-nav-groups {
-  --ui-fade: var(--g-s-4);
   flex: 1;
   min-height: 0;
-  padding: var(--g-s-1) var(--g-s-2);
+  /* Margen (no relleno): el aire queda FUERA de la zona que scrollea, así
+     ningún ítem asoma a medias en él cuando la lista scrollea. */
+  margin-block: var(--shell-nav-pad);
+  padding: 0 var(--g-s-2);
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 .shell-nav-group { flex: none; display: flex; flex-direction: column; gap: 1px; }
 .shell-nav-group-label { padding: var(--g-s-1) var(--g-s-3) 2px; line-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shell-nav-group:first-child > .shell-nav-group-label { padding-top: 0; }
 .shell .shell-nav:not([data-density="full"]) .shell-nav-search { display: none; }
-.shell-nav:is([data-density="compact"], [data-density="scroll"]) .shell-nav-groups { gap: 0; }
-.shell-nav:is([data-density="compact"], [data-density="scroll"]) .shell-nav-group-label { display: none; }
-.shell-nav[data-density="compact"] .shell-nav-group + .shell-nav-group::before {
+.shell-nav:is([data-density="compact"], [data-density="dense"], [data-density="scroll"]) .shell-nav-groups { gap: 0; }
+.shell-nav:is([data-density="compact"], [data-density="dense"], [data-density="scroll"]) .shell-nav-group-label { display: none; }
+.shell-nav:is([data-density="compact"], [data-density="dense"]) .shell-nav-group + .shell-nav-group::before {
   content: '';
   display: block;
   flex: none;
@@ -207,12 +217,23 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
   margin: 3px var(--g-s-3);
   background: var(--g-line);
 }
+@media (pointer: fine) {
+  .shell .shell-nav[data-density="dense"] .shell-nav-group { gap: 0; }
+  .shell .shell-nav[data-density="dense"] .shell-nav-item { height: 28px; }
+}
 .shell-nav[data-density="scroll"] .shell-nav-groups {
   flex: 0 1 auto;
-  max-height: round(down, calc(100% - var(--g-topbar-h) - var(--shell-nav-foot-h) - env(safe-area-inset-bottom)), var(--shell-nav-pitch));
-  padding-block: 0;
+  /* Alto = N ítems exactos + los dos bordes de la pista (border-box). */
+  max-height: calc(round(down, calc(100% - var(--g-topbar-h) - var(--shell-nav-foot-h) - env(safe-area-inset-bottom) - 2 * var(--shell-nav-pad) - 2px), var(--shell-nav-pitch)) + 2px);
   scroll-snap-type: y mandatory;
+  border-block: 1px solid transparent;
 }
+/* Pista de "hay más": una línea en el borde de la lista (fuera de la zona que
+   scrollea), nunca un degradé encima de un ítem: con la máscara de
+   .ui-scroll-fade el primer o el último ítem a la vista quedaban medio borrados. */
+.shell .shell-nav[data-density="scroll"] .shell-nav-groups { -webkit-mask-image: none; mask-image: none; }
+.shell .shell-nav[data-density="scroll"] .shell-nav-groups[data-fade-top] { border-top-color: var(--g-line); }
+.shell .shell-nav[data-density="scroll"] .shell-nav-groups[data-fade-bottom] { border-bottom-color: var(--g-line); }
 .shell-nav[data-density="scroll"] .shell-nav-group { gap: 0; }
 .shell-nav[data-density="scroll"] .shell-nav-item { scroll-snap-align: start; }
 /* Sin separadores (el paso tiene que ser exacto): la línea va dentro del primer ítem del grupo. */
@@ -288,7 +309,7 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 .shell[data-nav="rail"] .shell-nav :is(.shell-site-text, .shell-site-chevron, .shell-search-label, .shell-search-kbd, .shell-nav-label, .shell-nav-count, .shell-nav-group-label, .shell-user-text, .shell-user .shell-avatar) { display: none; }
 .shell[data-nav="rail"] .shell-nav-search { padding: var(--g-s-3) 0 var(--g-s-1); display: flex; justify-content: center; }
 .shell[data-nav="rail"] .shell-search-btn { width: 40px; height: 28px; justify-content: center; padding: 0; }
-.shell[data-nav="rail"] .shell-nav-groups { align-items: center; gap: 0; padding: var(--g-s-1) 0; }
+.shell[data-nav="rail"] .shell-nav-groups { align-items: center; gap: 0; padding: 0; }
 .shell[data-nav="rail"] .shell-nav-group { align-items: center; }
 .shell[data-nav="rail"] .shell-nav-group + .shell-nav-group::before {
   content: '';
@@ -299,11 +320,10 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
   margin: 6px 0;
   background: var(--g-line);
 }
-.shell[data-nav="rail"] .shell-nav[data-density="compact"] .shell-nav-group + .shell-nav-group::before { margin: 3px 0; }
-/* Rail que scrollea: sin relleno arriba/abajo, si no el snap deja el primer
-   ítem 4 px cortado (el paso deja de ser exacto). */
-.shell[data-nav="rail"] .shell-nav[data-density="scroll"] .shell-nav-groups { padding-block: 0; }
+.shell[data-nav="rail"] .shell-nav:is([data-density="compact"], [data-density="dense"]) .shell-nav-group + .shell-nav-group::before { margin: 3px 0; }
 .shell[data-nav="rail"] .shell-nav-item { width: 40px; height: 32px; justify-content: center; padding: 0; }
+/* En touch el rail mantiene los 44 px (y el paso del snap, --shell-nav-pitch, coincide). */
+@media (pointer: coarse) { .shell[data-nav="rail"] .shell-nav-item { height: 44px; } }
 .shell[data-nav="rail"] .shell-nav-item.is-active::before { left: -8px; }
 .shell[data-nav="rail"] .shell-nav-foot { align-items: center; }
 .shell[data-nav="rail"] .shell-nav { --shell-nav-foot-h: 93px; }
@@ -447,6 +467,10 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 }
 @media (pointer: coarse) and (max-width: 899px) { .shell-assistant-btn { width: 44px; height: 44px; border-color: transparent; background: transparent; color: var(--g-text-2); } }
 
+/* La cuenta: el avatar ocupa todo el botón y mide lo mismo que su vecino con
+   caja (Asistente, 36 px): nada de una caja de 28 al lado de una de 36. */
+.shell-icon-btn.shell-account-btn { padding: 0; }
+.shell-account-btn .shell-avatar { width: 36px; height: 36px; }
 .shell-bell-count {
   font-family: var(--g-font-mono);
   font-size: var(--g-fs-xs);
@@ -681,11 +705,13 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 .shell-pal-results {
   flex: 1 1 auto;
   min-height: 0;
+  margin-top: var(--g-s-3);
+}
+.shell-pal-grid {
   align-content: start;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: var(--g-s-3) var(--g-s-5);
-  margin-top: var(--g-s-3);
 }
 .shell-pal-group { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .shell-pal-group-label { padding: 0 var(--g-s-2) var(--g-s-1); }

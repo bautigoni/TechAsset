@@ -8,6 +8,7 @@ import { Button } from '../../ui/Button';
 import { TruncatedText } from '../../ui/Truncated';
 import { EmptyState } from '../../ui/Data';
 import { Collapse } from '../../ui/Collapse';
+import { AutoHeight } from '../../ui/AutoHeight';
 import { useScrollEdges } from '../../ui/scrollEdges';
 import { StatusLine, clearStatus, useStatusOutlet } from '../../ui/Status';
 import { groupLinks } from '../tools/quickLinks';
@@ -54,7 +55,9 @@ export function Strip({ id, title, actions, onClose, children, className = '' }:
           <X size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </div>
-      <div className="shell-strip-body ui-scroll-fade" ref={bodyRef}>{children}</div>
+      {/* El contenido que cambia con la franja abierta ("Ver anteriores", accesos
+          que llegan) cambia de alto suave, nunca de golpe. */}
+      <div className="shell-strip-body ui-scroll-fade" ref={bodyRef}><AutoHeight>{children}</AutoHeight></div>
     </section>
   );
 }

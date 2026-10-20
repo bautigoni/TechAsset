@@ -4,7 +4,7 @@ import type { AssistantContext } from '../../services/assistantApi';
 import type { AppNotification } from '../../services/notificationsApi';
 import { useNotifications } from '../../hooks/useNotifications';
 import { lazyView, prefetchViewsWhenIdle } from '../../utils/lazyView';
-import { StatusOutlet, pushStatus } from '../../ui/Status';
+import { pushStatus } from '../../ui/Status';
 import { isEditableTarget } from '../../hooks/useGlobalScanner';
 import { useQuickLinks } from '../tools/quickLinks';
 import { navItem, type NavItem } from './nav';
@@ -435,8 +435,9 @@ export function AppShell(props: AppShellProps) {
           </Suspense>
           )}
           </div>
-          {/* Línea de estado global: entra y sale con alto suave (hasta que llega el chunk, la simple). */}
-          <Suspense fallback={<StatusOutlet className="shell-status" />}><ShellStatus /></Suspense>
+          {/* Línea de estado global: entra y sale con alto suave. Sin fallback: un aviso que llega antes
+              que el chunk (precargado en idle) espera en el store y entra animado, nunca de golpe. */}
+          <Suspense fallback={null}><ShellStatus /></Suspense>
         </div>
 
         {/* Lo único que scrollea: el contenido. La barra superior (con sus

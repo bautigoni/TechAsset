@@ -24,7 +24,7 @@ type SidebarProps = {
 };
 
 /** Densidad del menú según el alto disponible (se mide; ver shell.css). */
-const DENSITIES = ['full', 'tight', 'compact', 'scroll'];
+const DENSITIES = ['full', 'tight', 'compact', 'dense', 'scroll'];
 
 export function initialsOf(text: string) {
   return text.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
@@ -67,6 +67,19 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
     list.onscroll = edges;
     return () => observer.disconnect();
   }, [items.length]);
+
+  // Lista que scrollea (ventanas muy bajas): el ítem activo siempre a la vista,
+  // entero y debajo del relleno (a mano: scrollIntoView movería también el menú).
+  useLayoutEffect(() => {
+    const list = navRef.current?.querySelector<HTMLElement>('.shell-nav-groups');
+    const item = list?.querySelector<HTMLElement>('.shell-nav-item.is-active');
+    if (!list || !item || list.scrollHeight <= list.clientHeight + 1) return;
+    const pad = parseFloat(getComputedStyle(list).scrollPaddingTop) || 0;
+    const box = list.getBoundingClientRect();
+    const rect = item.getBoundingClientRect();
+    if (rect.top < box.top + pad) list.scrollTop -= box.top + pad - rect.top;
+    else if (rect.bottom > box.bottom - pad) list.scrollTop += rect.bottom - (box.bottom - pad);
+  }, [active]);
 
   // El tooltip del rail solo existe si el rail está a la vista (si no, el
   // nombre ya se lee al lado del ícono); Configuración (ícono solo) lo tiene siempre.

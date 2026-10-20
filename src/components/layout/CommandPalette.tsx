@@ -7,6 +7,7 @@ import { getDeviceStateKey } from '../../utils/deviceState';
 import { fold, keepInView } from '../../ui/util';
 import { useScrollEdges } from '../../ui/scrollEdges';
 import { StripCollapse } from './ShellStrips';
+import { AutoHeight } from '../../ui/AutoHeight';
 import type { NavItem } from './nav';
 
 /**
@@ -189,6 +190,8 @@ export function CommandPalette({ open, devices, navItems, links, consultationMod
         </button>
       </div>
       <div className="shell-pal-results ui-scroll-fade" id="shell-pal-list" role="listbox" aria-label="Resultados" ref={listRef}>
+        {/* Los resultados cambian de alto suave mientras tipeás (nunca de golpe). */}
+        <AutoHeight innerClassName="shell-pal-grid">
         {groups.map(({ group, items }) => (
           <div className="shell-pal-group" key={group} role="group" aria-label={GROUP_LABEL[group]}>
             <div className="g-eyebrow shell-pal-group-label" aria-hidden="true">{GROUP_LABEL[group]}</div>
@@ -216,6 +219,7 @@ export function CommandPalette({ open, devices, navItems, links, consultationMod
           </div>
         ))}
         {!entries.length && <p className="shell-strip-empty">Nada coincide con “{query.trim()}”.</p>}
+        </AutoHeight>
       </div>
       <div className="shell-pal-foot">
         <span className="shell-pal-keys"><kbd className="ui-kbd">↑</kbd><kbd className="ui-kbd">↓</kbd> moverse <kbd className="ui-kbd">Enter</kbd> abrir <kbd className="ui-kbd">Esc</kbd> cerrar</span>
