@@ -44,8 +44,10 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const [space, setSpace] = useState<Space>('team');
   const [tab, setTab] = useState<Tab>('board');
   const [query, setQuery] = useState('');
-  const [columns, setColumns] = useState<TaskColumn[]>([]);
-  const [columnsState, setColumnsState] = useState<ColumnsState>('loading');
+  // Las columnas llegan con la lista de tareas (useTasks): el tablero se dibuja
+  // al abrir; el pedido de abajo solo las refresca, sin esqueleto.
+  const [columns, setColumns] = useState<TaskColumn[]>(() => core.columns);
+  const [columnsState, setColumnsState] = useState<ColumnsState>(() => (core.columns.length ? 'ready' : 'loading'));
   const [route, setRoute] = useState<TaskRoute>(readTaskRoute);
   const [creating, setCreating] = useState<'team' | 'private' | null>(null);
   const [colForm, setColForm] = useState<{ name: string; error: string; saving: boolean } | null>(null);
@@ -66,7 +68,8 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const loadColumns = useCallback(async () => {
     try {
       const response = await getTaskColumns();
-      setColumns(response.items);
+      // Igual a lo que ya se ve (llegó con la lista): sin re-render del tablero.
+      setColumns(current => (JSON.stringify(current) === JSON.stringify(response.items) ? current : response.items));
       setColumnsState('ready');
     } catch {
       setColumnsState(current => (current === 'ready' ? current : 'error'));

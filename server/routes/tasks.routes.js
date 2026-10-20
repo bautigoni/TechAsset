@@ -7,7 +7,7 @@ import { getDb, nowIso, buildTaskContext, rowToTask, rowToTaskItem } from '../db
 import { canEditModule, requireSite } from '../services/siteContext.service.js';
 import { sendWithEtag } from '../services/etag.service.js';
 import { notifySiteAdmins, notifyUser } from '../services/notifications.service.js';
-import { getCachedTaskRows } from '../services/tasksCache.service.js';
+import { bumpTasksVersion, getCachedTaskRows } from '../services/tasksCache.service.js';
 
 export const tasksRouter = Router();
 const STATES = new Set(['Pendiente', 'En proceso', 'Hecha']);
@@ -28,16 +28,22 @@ tasksRouter.get('/tasks', (req, res) => {
   // Lista armada por sede en caché (se invalida con cada escritura, ver
   // tasksCache.service): el poll de 30 s sin cambios no toca la base. Al
   // armarla, contexto precargado: 3 consultas para toda la lista en vez de 3 por tarea.
-  const all = getCachedTaskRows(siteCode, () => {
+  const { tasks: all, columns } = getCachedTaskRows(siteCode, () => {
     const ctx = buildTaskContext(siteCode);
-    return getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? ORDER BY fecha_creacion DESC").all(siteCode)
-      .map(row => rowToTask(row, ctx));
+    return {
+      tasks: getDb().prepare("SELECT * FROM tasks WHERE eliminada=0 AND site_code=? ORDER BY fecha_creacion DESC").all(siteCode)
+        .map(row => rowToTask(row, ctx)),
+      // Las columnas activas viajan con la lista (mismo orden que GET /task-columns):
+      // Tareas dibuja el tablero al abrir sin esperar otro pedido.
+      columns: [...ctx.columnsById.values()].filter(row => Number(row.active) === 1)
+        .sort((a, b) => Number(a.position || 0) - Number(b.position || 0) || Number(a.id) - Number(b.id)).map(rowToColumn)
+    };
   });
   const rows = all
     .filter(task => canSeeTask(task, email))
     .filter(task => space === 'team' ? task.visibility === 'team' : space === 'my' ? isMine(task, email, name) : true)
     .sort((a, b) => Number(a.done) - Number(b.done) || String(b.fechaCreacion || '').localeCompare(String(a.fechaCreacion || '')));
-  sendWithEtag(req, res, { ok: true, items: rows, loadedAt: nowIso(), space }, { items: rows, space });
+  sendWithEtag(req, res, { ok: true, items: rows, columns, loadedAt: nowIso(), space }, { items: rows, columns, space });
 });
 
 tasksRouter.post('/tasks/upload', (req, res) => {
@@ -386,6 +392,7 @@ function ensureTaskColumns(siteCode, operator = '') {
   const ts = nowIso();
   const insert = getDb().prepare('INSERT INTO task_columns (site_code, name, color, position, is_done, active, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?) ON CONFLICT(site_code, name) DO UPDATE SET active=1');
   [['Pendiente', '#3b82f6', 0, 0], ['En proceso', '#f59e0b', 1, 0], ['Hecha', '#22c55e', 2, 1]].forEach(column => insert.run(siteCode, column[0], column[1], column[2], column[3], operator, ts, ts));
+  bumpTasksVersion();
 }
 
 function canSeeTask(task, email) {

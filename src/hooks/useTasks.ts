@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TaskItem } from '../types';
+import type { TaskColumn, TaskItem } from '../types';
 import { getTasks } from '../services/tasksApi';
 import { fetchShiftSettings } from '../services/operationsApi';
 import { isOverdue } from '../utils/dates';
@@ -7,6 +7,8 @@ import { getActiveSiteCode } from '../services/activeSite';
 
 export function useTasks(operator: string) {
   const [items, setItems] = useState<TaskItem[]>([]);
+  // Columnas activas de la sede (vienen con la lista): Tareas abre con el tablero ya armado.
+  const [columns, setColumns] = useState<TaskColumn[]>([]);
   const [shifts, setShifts] = useState({ morningOperator: '', afternoonOperator: '' });
   // Sede cuya lista ya llegó al menos una vez (para no decir "no existe" antes de cargar).
   const [loadedSite, setLoadedSite] = useState('');
@@ -50,10 +52,11 @@ export function useTasks(operator: string) {
         lastLoad.current = { site, at: Date.now() };
         setLoadedSite(site);
         if (pending.current > 0 || epoch.current !== startedAt) return;
-        const key = `${site}|${JSON.stringify(data.items)}`;
+        const key = `${site}|${JSON.stringify(data.items)}|${JSON.stringify(data.columns || null)}`;
         if (key === lastKey.current) return;
         lastKey.current = key;
         setItems(data.items);
+        if (data.columns) setColumns(data.columns);
       })
       .finally(() => { if (inFlight.current?.promise === promise) inFlight.current = null; });
     inFlight.current = { site, promise };
@@ -88,7 +91,7 @@ export function useTasks(operator: string) {
 
   // Las escrituras (mover, borrar, subtareas…) viven en el chunk de Tareas
   // (components/tasks/useTaskActions): acá queda solo lo que usa la app entera.
-  return { items, setItems, itemsRef, kpis, refresh, loaded, track, patchLocal, operator };
+  return { items, setItems, itemsRef, columns, kpis, refresh, loaded, track, patchLocal, operator };
 }
 
 export type TasksStore = ReturnType<typeof useTasks>;

@@ -1792,7 +1792,9 @@ export function buildTaskContext(siteCode) {
     itemsByTask.set(row.task_id, list);
   }
   const columnsById = new Map();
-  for (const row of getDb().prepare('SELECT id, name, color, position, is_done FROM task_columns WHERE site_code=?').all(site)) {
+  // Todas las columnas (también las inactivas, que una tarea vieja puede tener):
+  // GET /api/tasks arma además la lista de activas desde acá, sin otra consulta.
+  for (const row of getDb().prepare('SELECT * FROM task_columns WHERE site_code=?').all(site)) {
     columnsById.set(Number(row.id), row);
   }
   const commentsByTask = new Map();

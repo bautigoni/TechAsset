@@ -3,7 +3,7 @@ import { apiGet, apiSend } from './apiClient';
 
 export type TaskHistoryEntry = { id: number; task_id: string; timestamp: string; titulo: string; accion: string; responsable: string; estado_anterior: string; estado_nuevo: string; comentario: string; operador: string };
 
-export const getTasks = (space: 'all' | 'my' | 'team' = 'all') => apiGet<{ ok: true; items: TaskItem[]; loadedAt: string }>(`/api/tasks?space=${space}`);
+export const getTasks = (space: 'all' | 'my' | 'team' = 'all') => apiGet<{ ok: true; items: TaskItem[]; columns?: TaskColumn[]; loadedAt: string }>(`/api/tasks?space=${space}`);
 export const getTaskColumns = () => apiGet<{ ok: true; items: TaskColumn[] }>('/api/task-columns');
 export const createTaskColumn = (payload: Partial<TaskColumn>) => apiSend<{ ok: true; item: TaskColumn }>('/api/task-columns', 'POST', payload);
 export const updateTaskColumn = (id: number, payload: Partial<TaskColumn>) => apiSend<{ ok: true; item: TaskColumn }>(`/api/task-columns/${id}`, 'PATCH', payload);

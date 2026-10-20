@@ -4,8 +4,8 @@
  * La app pollea /api/tasks cada 30 s en cada pestaña abierta y casi siempre no
  * cambió nada; armarla cuesta 4 consultas (columnas, subtareas, comentarios y
  * tareas) y en producción cada una es un viaje sincrónico a Supabase que frena
- * el proceso entero. Acá se guarda la lista ya convertida (rowToTask) y se
- * reusa mientras no haya escrituras.
+ * el proceso entero. Acá se guarda la lista ya convertida (rowToTask), con las
+ * columnas activas, y se reusa mientras no haya escrituras.
  *
  * Invalidación: cualquier escritura que pase por la API de tareas, columnas o
  * el asistente sube la versión (hook en server/index.js, igual que el
@@ -24,7 +24,7 @@ export function bumpTasksVersion() {
   version += 1;
 }
 
-/** Lista de tareas de la sede (objetos de rowToTask) desde la caché o `build()`. */
+/** Lista de tareas de la sede (objetos de rowToTask) y sus columnas, desde la caché o `build()`. */
 export function getCachedTaskRows(siteCode, build) {
   const hit = cache.get(siteCode);
   if (hit && hit.version === version && Date.now() - hit.at < TTL_MS) return hit.rows;

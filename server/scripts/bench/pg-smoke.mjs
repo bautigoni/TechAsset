@@ -196,6 +196,11 @@ try {
   for (const titulo of ['Tarea 1', 'Tarea 2']) await call('POST', '/api/tasks', { titulo, estado: 'Pendiente', responsables: ['Smoke'] });
   const tasks = await call('GET', '/api/tasks?space=team');
   check('GET /tasks', tasks.status === 200 && tasks.json.items.length >= 2, tasks.text.slice(0, 200));
+  const taskCols = await call('GET', '/api/task-columns');
+  check('GET /tasks trae las columnas activas (pasada 2, igual que /task-columns)', JSON.stringify(tasks.json?.columns) === JSON.stringify(taskCols.json?.items), `${JSON.stringify(tasks.json?.columns).slice(0, 200)}`);
+  await call('POST', '/api/tasks', { titulo: 'Tarea 3 (caché)', estado: 'Pendiente', responsables: ['Smoke'] });
+  const tasksAfter = await call('GET', '/api/tasks?space=team');
+  check('la lista de tareas cacheada ve un alta al instante', tasksAfter.json?.items?.some(item => item.titulo === 'Tarea 3 (caché)'), tasksAfter.text.slice(0, 200));
   // Analítica (etapa 8a): una lectura de loan_events, una de tickets y una de tareas (GROUP BY + SUM CASE).
   const todayKey = new Date().toISOString().slice(0, 10);
   const an = await call('GET', `/api/analytics?from=2000-01-01&to=${todayKey}`);
