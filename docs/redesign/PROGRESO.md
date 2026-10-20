@@ -20,7 +20,8 @@ Autodeploy verificado el 19/10/2026: la VM de producción se actualiza solo a ma
 | Asistente IA (Claude Haiku 5.5 + dictado del navegador) | ✅ server + panel | 3d69e9f, 82cc56f, 6cf22d0 | evals 38/38, pg 39/39, e2e 60/60 |
 | Pasadas de rendimiento 1/2/3 | pendiente | — | — |
 | Búsqueda rápida de personas | pendiente | — | — |
-| Barrido REGLAS-UX (colapso compartido, sin huecos/truncados) en todas las pantallas | en curso: 4 frentes (infra/pruebas; Préstamos-Inicio-Dispositivos-Historial-Inventario; Agenda-Horarios-Aulas-Recordatorios-Tareas-Tickets; Conocimiento-Canvas-Analítica-Configuración-Herramientas-Accesos-Caja chica) | — | — |
+| Barrido REGLAS-UX (colapso compartido, sin huecos/truncados) en todas las pantallas | ✅ sonda UX bloqueante en 0 | 167dd5e, 938b7f4, 9085f22, 5ca267d | 3× e2e 265/265, pg 117/117 |
+| QA de lanzamiento: 5 usuarios nuevos (impaciente, escéptico, móvil 375px/3G, no nativo, destructor) en tenant de prueba QA aislado, lista por impacto, arreglo en un pase y re-corrida | pendiente (después del rendimiento) | — | — |
 | Auditoría 10 subagentes + correcciones + 2ª validación | pendiente | — | — |
 
 ## Decisiones tomadas en el camino
