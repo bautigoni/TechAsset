@@ -65,15 +65,23 @@ export function useSmoothHeight<T extends HTMLElement>(key: unknown) {
     style.transition = `height ${COLLAPSE_MS}ms var(--g-ease)`;
     style.height = `${next}px`;
     let timer = 0;
+    let finished = false;
+    // Termina la transición (o la corta un cambio nuevo). Una sola vez: si
+    // corriera de nuevo como limpieza del próximo cambio, mediría el alto ya
+    // nuevo y ese cambio arrancaría sin animación.
     const done = () => {
+      if (finished) return;
+      finished = true;
       window.clearTimeout(timer);
+      // El alto que se ve ahora (a mitad de camino si lo cortó otro cambio): de ahí arranca el próximo.
+      const seen = el.getBoundingClientRect().height;
       el.removeEventListener('transitionend', onEnd);
       style.transition = '';
       style.height = '';
       style.overflow = '';
       style.boxSizing = '';
       animating.current = false;
-      last.current = el.getBoundingClientRect().height;
+      last.current = seen;
     };
     const onEnd = (event: TransitionEvent) => { if (event.target === el && event.propertyName === 'height') done(); };
     el.addEventListener('transitionend', onEnd);

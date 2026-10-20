@@ -4,6 +4,10 @@
 // (JSON inválido), links viejos, gate de administración y que el encabezado no
 // salte al cerrar un panel en línea. Cada prueba verifica el efecto por API.
 import { assert, openContext, sleep, until } from '../lib/browser.mjs';
+import { settle } from '../lib/ux-probe.mjs';
+import { WIDTHS, recordFrames, smoothEnough, sweepLayout } from './cfgToolsChecks.mjs';
+
+const PANELS = ['cuenta', 'apariencia', 'notificaciones', 'turnos', 'modulos', 'roles', 'usuarios', 'invitaciones', 'prestamo', 'vida-util', 'sede', 'avanzado', 'sedes', 'mail'];
 
 async function openPanel(page, base, panel) {
   await page.goto(`${base}/sede/NFPT/settings/${panel}`, { waitUntil: 'domcontentloaded' });
@@ -180,6 +184,84 @@ export async function settingsTests({ browser, base, api, consulta, admin, relea
       const after = await top();
       assert(Math.abs(after - before) <= 1, `el encabezado se movió ${after - before} px`);
       return `${before} → ${after}`;
+    });
+    // ── Revisión UX 9 (20/10): huecos, recortes, alturas, aperturas suaves, borradores ──
+    await test('cfg', 'Configuración', 'Todos los paneles 360–1920 (oscuro y claro): sin hueco arriba, nada recortado, vecinos de igual alto, sin scroll horizontal', async () => {
+      const problems = [];
+      for (const panel of PANELS) {
+        await openPanel(page, base, panel);
+        await settle(page);
+        problems.push(...await sweepLayout(page, panel));
+      }
+      // La lista de secciones (angosto) es su propia página.
+      await page.setViewport({ width: 390, height: 800 });
+      await page.goto(`${base}/sede/NFPT/settings`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('.cfg-list', { timeout: 20000 });
+      problems.push(...await sweepLayout(page, 'lista', { widths: [360, 390, 600] }));
+      await page.setViewport({ width: 1366, height: 900 });
+      assert(!problems.length, problems.slice(0, 12).join('\n'));
+      return `${PANELS.length} paneles × ${WIDTHS.length} anchos × 2 temas`;
+    });
+
+    await test('cfg', 'Configuración', 'Nada aparece de golpe: filtro de Usuarios, Administrador en Roles y Eliminar rol (alto con transición, control quieto)', async () => {
+      const problems = [];
+      await page.setViewport({ width: 1440, height: 900 });
+      await openPanel(page, base, 'usuarios');
+      await settle(page);
+      const seg = label => () => page.evaluate(text => [...document.querySelectorAll('.cfg-toolbar [role=radio], .cfg-toolbar button')].find(node => node.textContent.trim().startsWith(text))?.click(), label);
+      for (const label of ['Admins', 'Todos']) {
+        const rec = await recordFrames(page, { target: '.cfg-tu', anchor: '.cfg-toolbar', act: seg(label) });
+        problems.push(...smoothEnough(rec, { label: `Usuarios › ${label}` }));
+      }
+      await openPanel(page, base, 'roles');
+      await page.evaluate(() => [...document.querySelectorAll('.cfg-acc-h button[aria-expanded="false"]')][0].click());
+      await sleep(600);
+      const body = '.ui-collapse[data-state="open"] .cfg-acc-b';
+      const admin = () => page.evaluate(sel => document.querySelector(`${sel} .cfg-checkf [role=checkbox]`).click(), body);
+      problems.push(...smoothEnough(await recordFrames(page, { target: body, anchor: `${body} .cfg-grid`, act: admin }), { label: 'Roles › Administrador' }));
+      problems.push(...smoothEnough(await recordFrames(page, { target: body, anchor: `${body} .cfg-grid`, act: admin }), { label: 'Roles › Administrador (vuelta)' }));
+      const del = () => page.evaluate(sel => [...document.querySelectorAll(`${sel} .cfg-acc-f button`)].find(node => node.textContent.trim() === 'Eliminar rol').click(), body);
+      const trigger = `${body} .cfg-acc-f > .ui-btn`;
+      problems.push(...smoothEnough(await recordFrames(page, { target: body, anchor: trigger, act: del }), { label: 'Roles › Eliminar rol' }));
+      const confirm = await page.$(`${body} .cfg-acc-f .ui-confirm`);
+      assert(confirm, 'Eliminar rol no abrió la confirmación en línea');
+      await page.evaluate(sel => [...document.querySelectorAll(`${sel} .ui-confirm button`)].find(node => /Cancelar/.test(node.textContent))?.click(), body);
+      assert(!problems.length, problems.join('\n'));
+      return 'filtro, administrador y eliminar: suaves y quietos';
+    });
+
+    await test('cfg', 'Configuración', 'Usuarios: pasar a editar otro no borra lo tipeado (avisa sin guardar); Cancelar lo reinicia', async () => {
+      await openPanel(page, base, 'usuarios');
+      await settle(page);
+      const [a, b] = await page.$$eval('[data-user-row]', list => list.slice(0, 2).map(node => node.dataset.userRow));
+      assert(a && b, 'hacen falta dos usuarios');
+      const rowA = `[data-user-row="${a}"]`;
+      const nameInput = () => page.evaluateHandle(sel => {
+        const form = document.querySelector(`${sel} .cfg-uform`);
+        const label = form && [...form.querySelectorAll('label.ui-label')].find(node => node.textContent.trim().startsWith('Nombre'));
+        return label ? document.getElementById(label.htmlFor) : null;
+      }, rowA).then(handle => handle.asElement());
+      await clickText(page, `${rowA} .cfg-urow-act button`, /^Editar$/);
+      await sleep(400);
+      const input = await until(nameInput, { message: 'campo Nombre del usuario A' });
+      const original = await input.evaluate(node => node.value);
+      await input.click({ clickCount: 3 });
+      await input.type(' e2e borrador');
+      await clickText(page, `[data-user-row="${b}"] .cfg-urow-act button`, /^Editar$/);
+      await sleep(500);
+      assert(/sin guardar/.test(await textOf(page, '.cfg-nav-i[data-panel="usuarios"]')), 'el menú de Configuración no marca Usuarios como sin guardar');
+      await clickText(page, `${rowA} .cfg-urow-act button`, /^Editar$/);
+      await sleep(500);
+      const kept = await (await nameInput()).evaluate(node => node.value);
+      assert(kept.endsWith('e2e borrador'), `se perdió lo tipeado: "${kept}"`);
+      await clickText(page, `${rowA} .cfg-uform button`, /^Cancelar$/);
+      await sleep(500);
+      await clickText(page, `${rowA} .cfg-urow-act button`, /^Editar$/);
+      await sleep(500);
+      const reset = await (await nameInput()).evaluate(node => node.value);
+      assert(reset === original, `Cancelar no reinició el formulario: "${reset}"`);
+      await clickText(page, `${rowA} .cfg-uform button`, /^Cancelar$/);
+      return `${a}: "${kept}" sobrevivió; Cancelar volvió a "${original}"`;
     });
   } finally {
     await context.close();

@@ -7,6 +7,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { assert, gotoView, openContext, sleep, until } from '../lib/browser.mjs';
+import { settle } from '../lib/ux-probe.mjs';
+import { WIDTHS, recordFrames, smoothEnough, sweepLayout } from './cfgToolsChecks.mjs';
 
 async function clickByText(page, selector, rx) {
   await until(() => page.evaluate((sel, src, flags) => {
@@ -255,6 +257,61 @@ export async function toolsTests({ browser, base, api, admin, consulta, releaseV
     });
   } finally {
     await context.close().catch(() => {});
+  }
+
+  // ── Revisión UX 9 (20/10): huecos, recortes, alturas y nada de golpe (con movimiento) ──
+  const motion = await openContext(browser, { base, token: admin.token, releaseVersion });
+  track(motion.page);
+  try {
+    const mp = motion.page;
+    mp.on('dialog', dialog => { void dialog.accept(); });
+    await test('tl', 'Herramientas y Accesos rápidos', '360–1920 (oscuro y claro, las tres solapas): sin hueco arriba, nada recortado, vecinos de igual alto, sin scroll horizontal', async () => {
+      const problems = [];
+      await gotoView(mp, base, 'tools');
+      await mp.waitForSelector('.tl-page [role=tablist]');
+      await settle(mp);
+      for (const tab of ['Tarjetas de acceso', 'Credenciales 365', 'Descargas']) {
+        await clickByText(mp, '.tl-page [role=tab]', new RegExp(`^${tab}$`));
+        await sleep(400);
+        problems.push(...await sweepLayout(mp, `Herramientas › ${tab}`));
+      }
+      await clickByText(mp, '.tl-page [role=tab]', /^Tarjetas de acceso$/);
+      await gotoView(mp, base, 'quickaccess');
+      await mp.waitForSelector('.qa-group, .tl-empty', { timeout: 20000 });
+      await settle(mp);
+      problems.push(...await sweepLayout(mp, 'Accesos rápidos'));
+      await mp.setViewport({ width: 1366, height: 900 });
+      assert(!problems.length, problems.slice(0, 12).join('\n'));
+      return `3 solapas + accesos × ${WIDTHS.length} anchos × 2 temas`;
+    });
+
+    await test('tl', 'Herramientas y Accesos rápidos', 'Nada aparece de golpe: cambiar de solapa, CSV con error y filtrar accesos (alto con transición, control quieto)', async () => {
+      const problems = [];
+      await mp.setViewport({ width: 1440, height: 900 });
+      await gotoView(mp, base, 'tools');
+      await mp.waitForSelector('.tl-panels');
+      await settle(mp);
+      const tab = name => () => mp.evaluate(text => [...document.querySelectorAll('.tl-page [role=tab]')].find(node => node.textContent.trim() === text).click(), name);
+      for (const name of ['Descargas', 'Tarjetas de acceso']) {
+        problems.push(...smoothEnough(await recordFrames(mp, { target: '.tl-panels', anchor: '.tl-tabs', act: tab(name) }), { label: `Solapa ${name}` }));
+      }
+      // CSV con columnas faltantes: el aviso reemplaza al vacío plegando uno y abriendo el otro.
+      const input = await mp.$('.tl-panel:not([hidden]) .ui-filedrop input[type=file]');
+      const bad = tmpFile('malo.csv', 'Username,Nombre\na,b');
+      const rec = await recordFrames(mp, { target: '.tl-panel:not([hidden]) .tl-out > .ui-collapse:nth-child(1)', anchor: '.tl-tabs', act: () => input.uploadFile(bad), ms: 1200 });
+      problems.push(...smoothEnough(rec, { label: 'Aviso de CSV con error' }));
+      fs.rmSync(path.dirname(bad), { recursive: true, force: true });
+      await gotoView(mp, base, 'quickaccess');
+      await mp.waitForSelector('.qa-groups');
+      await settle(mp);
+      const filter = async () => { await mp.click('.qa-filter input'); await mp.keyboard.type('zzzz-no-existe'); };
+      problems.push(...smoothEnough(await recordFrames(mp, { target: '.qa-groups', anchor: '.qa-head', act: filter, ms: 900 }), { label: 'Filtrar accesos' }));
+      assert(await mp.$('.qa-page .tl-empty'), 'el vacío del filtro no apareció');
+      assert(!problems.length, problems.join('\n'));
+      return 'solapas, aviso y filtro: suaves y quietos';
+    });
+  } finally {
+    await motion.context.close().catch(() => {});
   }
 
   const reader = await openContext(browser, { base, token: consulta.token, releaseVersion });

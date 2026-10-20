@@ -176,7 +176,7 @@ export function LinkTile({ link, editable, sorting, isFirst, isLast, editing, co
       <a className="qa-open" href={link.url} target="_blank" rel="noreferrer" aria-label={`${link.titulo} (abre en una pestaña nueva)`}>
         <span className="qa-icon" aria-hidden="true">{linkIcon(link.url)}</span>
         <span className="qa-text">
-          <TruncatedText className="qa-title" lines={2}>{link.titulo}</TruncatedText>
+          <TruncatedText className="qa-title" lines={3}>{link.titulo}</TruncatedText>
           {link.descripcion && <TruncatedText className="qa-desc" lines={2}>{link.descripcion}</TruncatedText>}
           <TruncatedText className="qa-domain" lines={2}>{domain}</TruncatedText>
         </span>
