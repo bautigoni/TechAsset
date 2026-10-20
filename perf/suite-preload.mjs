@@ -45,6 +45,10 @@ Database.prototype.exec = function exec(sql) {
 
 http.createServer((req, res) => {
   if (req.url === '/reset') stats.queries = 0;
+  // /gc (con node --expose-gc) junta basura antes de leer la memoria: la usa
+  // perf/soak.mjs para ver si el heap del server crece tras ráfagas.
+  if (req.url === '/gc' && typeof globalThis.gc === 'function') globalThis.gc();
   res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(stats));
+  const memory = process.memoryUsage();
+  res.end(JSON.stringify({ ...stats, rss: memory.rss, heapUsed: memory.heapUsed }));
 }).listen(Number(process.env.BENCH_STATS_PORT || 8099), '127.0.0.1');
