@@ -69,6 +69,7 @@ export async function pwaTests({ browser, base, admin, releaseVersion, test, tra
         await page.waitForSelector('.shell', { timeout: 15000 });
         await until(() => page.evaluate(() => /Sin conexión/.test(document.querySelector('.shell-status--offline')?.textContent || '')), { timeout: 8000, message: 'la línea "Sin conexión"' });
         fs.mkdirSync(outDir, { recursive: true });
+        await sleep(1200); // que terminen de entrar las líneas (Collapse) y los pedidos fallidos
         await page.screenshot({ path: path.join(outDir, 'pwa-sin-conexion-oscuro-1440.png') });
       } finally {
         await page.setOfflineMode(false);
@@ -85,6 +86,7 @@ export async function pwaTests({ browser, base, admin, releaseVersion, test, tra
       fs.writeFileSync(swFile, originalSw.replace(/const VERSION = '([^']+)'/, (_m, v) => `const VERSION = '${v}-e2e'`));
       await page.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r?.update()));
       await until(() => page.evaluate(() => /Hay una versión nueva/.test(document.querySelector('.shell-status--update')?.textContent || '') && Boolean(document.querySelector('.shell-status--update')?.closest('.ui-collapse[data-state="open"]'))), { timeout: 15000, message: 'el aviso de versión nueva' });
+      await sleep(500);
       await page.screenshot({ path: path.join(outDir, 'pwa-version-nueva-oscuro-1440.png') });
       const navigation = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 });
       await page.evaluate(() => [...document.querySelectorAll('.shell-status--update button')].find(b => /Actualizar/.test(b.textContent || ''))?.click());

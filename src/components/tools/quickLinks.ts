@@ -21,7 +21,10 @@ export function useQuickLinks(reloadKey = '') {
   // El error va a la línea de estado de la cabecera (antes, un toast flotante), con Reintentar.
   const reload = (): Promise<void> => fetchQuickLinks()
     .then(r => { if (r.ok) setLinks(r.items); })
-    .catch(reason => { pushStatus({ tone: 'bad', message: errorMessage(reason, 'No se pudieron cargar los accesos rápidos.'), retry: { onRetry: reload } }); });
+    .catch(reason => {
+      // Sin red ya lo dice la línea "Sin conexión" de la cabecera.
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      pushStatus({ tone: 'bad', message: errorMessage(reason, 'No se pudieron cargar los accesos rápidos.'), retry: { onRetry: reload } }); });
   useEffect(() => {
     void reload();
     fetchToolsConfig().then(c => setHandingUrl(c.handingTicketUrl || '')).catch(() => {});
