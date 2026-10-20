@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { config } from '../config.js';
 import { getAppSetting } from '../db.js';
 
@@ -30,6 +31,22 @@ function readMailSettings() {
   };
 }
 
+/**
+ * SOLO PARA PRUEBAS: el banco e2e necesita el link de contraseña que "llegaría
+ * por mail". Con NODE_ENV=test Y MAIL_CAPTURE_FILE (las dos, que en producción
+ * nunca están), el mail en modo prueba se agrega como una línea JSON a ese
+ * archivo. Sin esas dos variables no hace nada.
+ */
+function captureTestMail(mail) {
+  const file = process.env.MAIL_CAPTURE_FILE;
+  if (process.env.NODE_ENV !== 'test' || !file) return;
+  try {
+    fs.appendFileSync(file, `${JSON.stringify({ ...mail, at: new Date().toISOString() })}\n`);
+  } catch (error) {
+    console.warn('[mail/test-capture]', error?.message || error);
+  }
+}
+
 function settingsAreComplete(s) {
   return Boolean(s.server && s.user && s.appPassword && s.mailFrom);
 }
@@ -49,6 +66,7 @@ export async function sendMail({ to, subject, text, html, replyTo }) {
   const settings = readMailSettings();
   if (settings.modoPrueba) {
     console.info(`[mail/MODO_PRUEBA] subject="${safeSubject}" to=${recipients.join(',')} (no se envio, solo log)`);
+    captureTestMail({ to: recipients, subject: safeSubject, text });
     return { sent: false, mocked: true };
   }
 

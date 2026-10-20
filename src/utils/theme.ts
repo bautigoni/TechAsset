@@ -13,10 +13,10 @@ import { saveUserPrefs } from '../services/userPrefsApi';
  * script en línea; main.tsx llama a initAppearance). Se guardan en
  * localStorage y en /api/user/prefs (claves theme, density, textSize).
  *
- * Compatibilidad mientras quede CSS viejo:
- *   - claro también pone la clase `.theme-light` (≈56 overrides la leen);
- *   - `data-theme-profile` queda fijo en "classic" para que el shell clásico
- *     siga igual (la nav variante desaparece en la etapa 2).
+ * Claro también pone la clase `.theme-light` (la leen los pocos arreglos de
+ * legibilidad que quedan en nav-smart.css). Los 8 perfiles viejos
+ * (classic/smart × nav) ya no existen: solo se traducen al leer las claves
+ * guardadas (`themeFromLegacyProfile`).
  */
 export type ThemePref = 'dark' | 'light' | 'system';
 export type ResolvedTheme = 'dark' | 'light';
@@ -98,8 +98,6 @@ function applyToDocument(next: Appearance) {
   root.dataset.theme = resolved;
   root.dataset.density = next.density;
   root.dataset.textSize = next.textSize;
-  // Compat con el CSS viejo (se va en la etapa 2 / 9).
-  root.dataset.themeProfile = 'classic';
   root.classList.toggle('theme-light', resolved === 'light');
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', THEME_COLOR[resolved]);
@@ -131,7 +129,7 @@ export function initAppearance() {
 }
 
 /** Cambio del usuario: aplica, guarda local y en el server (fire and forget). */
-export function setAppearance(patch: Partial<Appearance>) {
+export function setAppearance(patch: Partial<Appearance>, { remote = true }: { remote?: boolean } = {}) {
   const next: Appearance = {
     theme: pick(patch.theme, THEMES) || current.theme,
     density: pick(patch.density, DENSITIES) || current.density,
@@ -143,8 +141,8 @@ export function setAppearance(patch: Partial<Appearance>) {
   applyAppearance(next);
   const changed: Partial<Appearance> = {};
   (Object.keys(patch) as Array<keyof Appearance>).forEach(key => { (changed as Record<string, string>)[key] = next[key]; });
-  // Si no hay sesión el 401 se ignora: el valor local ya quedó guardado.
-  saveUserPrefs(changed).catch(() => undefined);
+  // Sin sesión (landing, login) no se manda: no hay cuenta donde guardarlo.
+  if (remote) saveUserPrefs(changed).catch(() => undefined);
 }
 
 /**

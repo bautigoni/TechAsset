@@ -60,6 +60,10 @@ const LandingPage = lazyView('landing', () => import('./components/auth/LandingP
 export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
   const [authMode, setAuthMode] = useState<'landing' | 'login' | 'register'>(() => readAuthModeFromUrl());
+  // Adónde volver después de ingresar: el link con el que se llegó sin sesión
+  // (/sede/nfpt/tasks/12, un mail, una notificación) o la vista en la que
+  // estaba cuando venció la sesión. El login muestra "Entrás a <sede>".
+  const [returnTo, setReturnTo] = useState(() => (/^\/sede\/[^/]+/i.test(window.location.pathname) ? window.location.pathname : ''));
   const [search, setSearch] = useState('');
   // Etiqueta a resaltar (Ctrl K → "ir a la fila"); el nonce repite el salto.
   const [highlight, setHighlight] = useState<{ tag: string; nonce: number } | null>(null);
@@ -85,7 +89,7 @@ export function App() {
   const [activeSite, setActiveSite] = useState('');
   const [siteSettings, setSiteSettings] = useState<Record<string, unknown> | null>(null);
   const { operator, setOperator } = useOperator();
-  const { devices, filteredDevices, counts, sync, refresh, patchLocal, removeLocal } = useDevices(search, activeSite);
+  const { devices, filteredDevices, counts, sync, refresh, removeLocal } = useDevices(search, activeSite);
   const agenda = useAgenda(operator);
   const tasks = useTasks(operator);
   useScrollReveal([view, filteredDevices.length, agenda.items.length, tasks.items.length, movements.length]);
@@ -473,7 +477,10 @@ export function App() {
   useEffect(() => {
     const onExpired = () => {
       if (!user) return;
+      // Al volver a entrar, de nuevo donde estaba.
+      if (/^\/sede\/[^/]+/i.test(window.location.pathname)) setReturnTo(window.location.pathname);
       clearSessionCache();
+      clearApiCache();
       setUser(null);
       setSites([]);
       setActiveSite('');
@@ -493,6 +500,7 @@ export function App() {
     setActiveSite('');
     setView('dashboard');
     setAuthMode('landing');
+    setReturnTo('');
     clearSearch();
     window.history.replaceState(null, '', '/');
   };
@@ -582,19 +590,35 @@ export function App() {
         </Suspense>
       );
     }
-    return <Suspense fallback={null}><LoginPage mode={authMode} onMode={mode => {
-      setAuthMode(mode);
-      window.history.replaceState(null, '', mode === 'landing' ? '/' : `/${mode}`);
+    const linkSite = returnTo.match(/^\/sede\/([^/]+)/i)?.[1]?.toUpperCase().slice(0, 12) || '';
+    return <Suspense fallback={null}><LoginPage mode={authMode} linkSite={linkSite} onForgetLinkSite={() => setReturnTo('')} onMode={mode => {
+      if (mode === 'landing') setReturnTo('');
+      goMode(mode);
     }} onReady={session => {
+      // Volver al link (o a donde venció la sesión) si la sede es suya; si no, su sede por defecto.
+      const target = returnTo;
+      const wanted = target.match(/^\/sede\/([^/]+)/i)?.[1]?.toLowerCase();
+      const allowed = wanted ? session.sites.find(item => item.siteCode.toLowerCase() === wanted) : undefined;
+      const site = allowed || session.sites.find(item => item.isDefault) || session.sites[0];
+      let nextView: ViewKey = 'dashboard';
+      let nextDevice: { tag: string } | null = null;
+      if (allowed) {
+        // La vista (y su subruta: /tasks/12, /settings/usuarios) se lee de la URL, como al entrar con sesión.
+        window.history.replaceState(null, '', target);
+        nextView = readViewFromUrl() || 'dashboard';
+        const tag = nextView === 'devices' ? readDeviceTagFromUrl() : '';
+        nextDevice = tag ? { tag } : null;
+      }
+      setReturnTo('');
       setUser(session.user);
       setOperator(session.user.nombre || session.user.email);
       setSites(session.sites);
-      const site = session.sites.find(item => item.isDefault) || session.sites[0];
       setActiveSite(site.siteCode);
       // Recién logueado: dejar la sesión recordada para que el próximo ingreso
       // pinte de una en vez de esperar la verificación.
       writeSessionCache(session.user, session.sites);
-      setView('dashboard');
+      setDevicePage(nextDevice);
+      setView(nextView);
     }} /></Suspense>;
   }
 
@@ -728,5 +752,7 @@ function readAuthModeFromUrl(): 'landing' | 'login' | 'register' {
   const path = window.location.pathname.toLowerCase();
   if (path === '/login') return 'login';
   if (path === '/register') return 'register';
+  // Un link a una pantalla (mail, notificación, favorito) sin sesión: directo al ingreso.
+  if (/^\/sede\/[^/]+/.test(path)) return 'login';
   return 'landing';
 }

@@ -210,7 +210,11 @@ export async function startServer({ dbCopy, tmpDir, port, ai = false }) {
     UPLOADS_DIR: uploadsDir,
     APP_BASE_URL: `http://127.0.0.1:${port}`,
     TECHASSET_PUBLIC_URL: `http://127.0.0.1:${port}`,
-    DEBUG_DEVICE_PERF: ''
+    DEBUG_DEVICE_PERF: '',
+    // Los mails en modo prueba quedan en este archivo (solo con NODE_ENV=test):
+    // la prueba del login toma de ahí el link de contraseña (tests/auth.mjs).
+    NODE_ENV: 'test',
+    MAIL_CAPTURE_FILE: path.join(tmpDir, 'mails.jsonl')
   };
   const child = spawn(process.execPath, ['server/index.js'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
@@ -221,7 +225,7 @@ export async function startServer({ dbCopy, tmpDir, port, ai = false }) {
     if (child.exitCode !== null) throw new Error(`El server se cerró al arrancar:\n${log}`);
     try {
       const response = await fetch(`${base}/api/health`);
-      if (response.ok) return { child, base, getLog: () => log };
+      if (response.ok) return { child, base, getLog: () => log, mailFile: env.MAIL_CAPTURE_FILE };
     } catch { /* todavía no */ }
     await new Promise(resolve => setTimeout(resolve, 250));
   }
