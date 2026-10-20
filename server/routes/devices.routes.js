@@ -217,9 +217,18 @@ devicesRouter.get('/device-groups', async (req, res, next) => {
   try {
     const siteCode = requireSite(req);
     const { items } = await getMergedDevices({ siteCode });
+    const byTag = new Map();
+    for (const item of items) if (!byTag.has(normalizeTag(item.etiqueta))) byTag.set(normalizeTag(item.etiqueta), item);
+    // Miembros de todos los grupos en UNA consulta (antes, una por grupo).
+    const membersByGroup = new Map();
+    for (const row of getDb().prepare('SELECT group_id, device_tag FROM device_group_members WHERE site_code=? ORDER BY id').all(siteCode)) {
+      const list = membersByGroup.get(Number(row.group_id)) || [];
+      list.push(row.device_tag);
+      membersByGroup.set(Number(row.group_id), list);
+    }
     const groups = getDb().prepare('SELECT * FROM device_groups WHERE site_code=? AND active=1 ORDER BY name').all(siteCode).map(group => ({
       id:Number(group.id), name:group.name, description:group.description || '', classroomKey:group.classroom_key || '', createdBy:group.created_by || '',
-      members:getDb().prepare('SELECT device_tag FROM device_group_members WHERE site_code=? AND group_id=? ORDER BY id').all(siteCode, group.id).map(row => items.find(item => normalizeTag(item.etiqueta) === normalizeTag(row.device_tag)) || { etiqueta:row.device_tag, id:row.device_tag, estado:'Sin revisar' })
+      members:(membersByGroup.get(Number(group.id)) || []).map(tag => byTag.get(normalizeTag(tag)) || { etiqueta:tag, id:tag, estado:'Sin revisar' })
     }));
     res.json({ ok:true, items:groups });
   } catch (error) { next(error); }
@@ -520,6 +529,17 @@ devicesRouter.post('/devices/restore-batch', (req, res, next) => {
 });
 
 // Papelera: equipos borrados desde la app (ocultos, con historial intacto).
+// Contadores de los botones Grupos y Papelera de Dispositivos: UN pedido y UNA
+// consulta al abrir la pantalla (antes, las dos listas completas).
+devicesRouter.get('/devices/panel-counts', (req, res) => {
+  const siteCode = requireSite(req);
+  const row = getDb().prepare(`
+    SELECT (SELECT COUNT(*) FROM device_groups WHERE site_code=? AND active=1) AS group_count,
+           (SELECT COUNT(*) FROM hidden_devices WHERE site_code=?) AS trash_count
+  `).get(siteCode, siteCode);
+  res.json({ ok: true, groups: Number(row?.group_count) || 0, trash: Number(row?.trash_count) || 0 });
+});
+
 devicesRouter.get('/devices/deleted', (_req, res) => {
   const siteCode = requireSite(_req);
   const rows = getDb().prepare(`

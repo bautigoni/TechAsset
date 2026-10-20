@@ -155,6 +155,8 @@ export type DeletedDevice = { etiqueta: string; deletedAt: string; deletedBy: st
 
 /** Papelera: equipos borrados desde la app. */
 export const getDeletedDevices = () => apiGet<{ ok: true; items: DeletedDevice[] }>('/api/devices/deleted');
+/** Contadores de Grupos y Papelera (un pedido, una consulta). */
+export const getDevicePanelCounts = () => apiGet<{ ok: true; groups: number; trash: number }>('/api/devices/panel-counts');
 
 export function restoreDevice(etiqueta: string) {
   return apiSend<{ ok: true; etiqueta: string }>(`/api/devices/${encodeURIComponent(etiqueta)}/restore`, 'POST', {});

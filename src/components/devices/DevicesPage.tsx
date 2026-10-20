@@ -4,7 +4,7 @@ import {
   Button, Collapse, EmptyState, IconButton, InlineConfirm, Input, Kbd, SectionHeader, Segmented, SelectionHeader, SkeletonRows, StatusText, Table, TruncatedText,
   ageTone, icons, useSelection, useStatusLine, type Column, type SortState
 } from '../../ui';
-import { deleteDevicesBatch, getDeletedDevices, getDeviceGroups, restoreDevice, restoreDevicesBatch, updateDeviceStatus, updateDevicesStatusBatch, type DeviceBatchResponse } from '../../services/devicesApi';
+import { deleteDevicesBatch, getDevicePanelCounts, restoreDevice, restoreDevicesBatch, updateDeviceStatus, updateDevicesStatusBatch, type DeviceBatchResponse } from '../../services/devicesApi';
 import type { LoanBatchResponse } from '../../services/loansApi';
 import { getDeviceStateKey } from '../../utils/deviceState';
 import { loanAgeDays } from '../../utils/formatters';
@@ -86,11 +86,11 @@ export function DevicesPage(props: DevicesPageProps) {
   const listStatus = useStatusLine();
   const refresh = useCallback(async () => { await onImported?.(); }, [onImported]);
 
-  // Contadores de Grupos y Papelera: dos lecturas al abrir, después de pintar.
+  // Contadores de Grupos y Papelera: un pedido chico al abrir, después de pintar
+  // (antes, las dos listas completas). Si un panel ya informó su número, manda ese.
   useEffect(() => {
     const idle = window.setTimeout(() => {
-      getDeviceGroups().then(response => setCounts(current => ({ ...current, groups: response.items.length }))).catch(() => undefined);
-      getDeletedDevices().then(response => setCounts(current => ({ ...current, trash: response.items.length }))).catch(() => undefined);
+      getDevicePanelCounts().then(response => setCounts(current => ({ groups: current.groups ?? response.groups, trash: current.trash ?? response.trash }))).catch(() => undefined);
     }, 300);
     return () => window.clearTimeout(idle);
   }, []);
