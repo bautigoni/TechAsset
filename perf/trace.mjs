@@ -15,6 +15,8 @@
 // --net:      misma red simulada que perf/suite.mjs (40 ms, 10/5 Mbps).
 // --timeline: además, la línea de tiempo (pedidos y tareas ≥ 16 ms del hilo
 //   principal con su tipo de trabajo dominante), en ms desde el inicio.
+//   --min=<ms> cambia ese umbral (ej. --min=3 para ver los frames chicos).
+// --keep-trace=<archivo>: guarda la traza cruda (para abrirla en DevTools).
 // Muestra los tipos de evento con más tiempo propio y las funciones JS con más
 // muestras del profiler. Base: copia del snapshot (nunca la real).
 import { spawn } from 'node:child_process';
@@ -80,6 +82,19 @@ try {
   if (argv.includes('--net')) await page.emulateNetworkConditions({ download: (10 * 1e6) / 8, upload: (5 * 1e6) / 8, latency: 40 });
   const url = `${base}/sede/nfpt/${VIEW}`;
   const traceFile = path.join(tmpDir, 'trace.json');
+  // Marcas en la traza (blink.user_timing) cuando aparecen en el DOM el menú y
+  // la vista (sin esqueleto): se ven en --timeline como "usuario".
+  await page.evaluateOnNewDocument(() => {
+    const seen = new Set();
+    const mark = name => { if (!seen.has(name)) { seen.add(name); performance.mark('dom:' + name); } };
+    new MutationObserver(() => {
+      const nav = document.querySelector('nav,[role="navigation"]');
+      if (nav && nav.querySelectorAll('a,button').length >= 3) mark('menú');
+      const main = document.querySelector('main');
+      if (main && main.querySelector('[class*=skel]')) mark('esqueleto');
+      if (main && main.querySelector('section') && !main.querySelector('[class*=skel]')) mark('vista');
+    }).observe(document, { childList: true, subtree: true });
+  });
   const categories = ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8.execute', 'disabled-by-default-v8.cpu_profiler', 'blink.user_timing', 'loading'];
   if (ACTION === 'mutations') {
     // Qué sigue cambiando el DOM después de cargar (agrupado por elemento y por 250 ms).
@@ -179,6 +194,7 @@ try {
     console.log('frames', frames);
   }
   if (ACTION !== 'mutations') {
+  if (option('keep-trace', '')) fs.copyFileSync(traceFile, path.resolve(option('keep-trace', '')));
   const trace = JSON.parse(fs.readFileSync(traceFile, 'utf8'));
   const events = trace.traceEvents || trace;
   // Puede haber más de un CrRendererMain (la pestaña en blanco inicial, otra
@@ -230,10 +246,11 @@ try {
         const s = sends.get(e.args?.data?.requestId);
         if (s) lines.push([s.t, `red   ${String(ms(s.t)).padStart(5)} → ${String(ms(e.ts)).padStart(5)}  ${s.prio || ''} ${String(s.url).replace(base, '').slice(0, 90)}`]);
       }
+      if (String(e.cat || '').includes('blink.user_timing') && /^dom:/.test(e.name) && (e.ph === 'R' || e.ph === 'I' || e.ph === 'n' || e.ph === 'b')) lines.push([e.ts, `marca ${String(ms(e.ts)).padStart(5)}  ${e.name}`]);
       if (['firstContentfulPaint', 'firstPaint', 'domContentLoadedEventEnd', 'MarkDOMContent'].includes(e.name) && main && e.pid === main.pid) lines.push([e.ts, `marca ${String(ms(e.ts)).padStart(5)}  ${e.name}`]);
     }
     // Tareas de primer nivel ≥ 16 ms con su trabajo dominante (tiempo propio de los hijos).
-    const tasks = mainEvents.filter(e => (e.name === 'RunTask' || e.name === 'ThreadControllerImpl::RunTask') && e.dur >= 16000);
+    const tasks = mainEvents.filter(e => (e.name === 'RunTask' || e.name === 'ThreadControllerImpl::RunTask') && e.dur >= Number(option('min', 16)) * 1000);
     for (const task of tasks) {
       const inside = mainEvents.filter(e => e !== task && e.ts >= task.ts && e.ts + (e.dur || 0) <= task.ts + task.dur);
       const kinds = new Map();
