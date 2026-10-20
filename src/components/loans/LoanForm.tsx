@@ -1,4 +1,4 @@
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Device } from '../../types';
 import { parseScannedCode, resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { getDeviceNumber, getOperationalAlias, operationalTypeLabel } from '../../utils/classifyDevice';
@@ -68,11 +68,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   const [queue, setQueue] = useState<Array<{ id: string; etiqueta: string }>>([]);
   const [scanMessage, setScanMessage] = useState<Msg | null>(null);
   const [askExit, setAskExit] = useState(false);
-  // La persona vive en <PersonField> (memo): tipear re-renderiza solo el campo y
-  // su lista, no el formulario entero. Se lee al prestar (personField.get()).
-  const personField = useRef<PersonFieldHandle | null>(null);
-  const personValue = () => personField.current?.get() ?? '';
-  const setPerson = (value: string) => personField.current?.set(value);
+  const [person, setPerson] = useState('');
   const [role, setRole] = useState('');
   const [location, setLocation] = useState('');
   const [locationDetail, setLocationDetail] = useState('');
@@ -249,7 +245,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   };
 
   const validateLoanFields = () => {
-    if (!personValue().trim()) return 'Completá la persona que recibe el equipo.';
+    if (!person.trim()) return 'Completá la persona que recibe el equipo.';
     if (!role.trim() || role === 'Seleccionar rol') return 'Seleccioná un rol.';
     if (!location.trim() || location === 'Seleccionar ubicación') return 'Seleccioná una ubicación.';
     if (requiresSchoolCourse && (!schoolLevel.trim() || schoolLevel === 'Seleccionar nivel')) return 'Seleccioná si es EP o ES.';
@@ -266,7 +262,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   };
 
   const loanPayload = () => ({
-    person: personValue().trim(), role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment, accessories: loanAccessories
+    person: person.trim(), role, location, locationDetail, course, schoolLevel, reason, reasonDetail, comment, accessories: loanAccessories
   });
 
   // Deshacer: vuelve atrás lo recién hecho (re-presta con los mismos datos o deja libre).
@@ -286,7 +282,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
     const validation = validateLoanFields();
     if (validation) { showError(validation); return; }
     const device = selected;
-    const text = `${getOperationalAlias(device) || device.etiqueta} (${device.etiqueta}) prestado a ${personValue().trim()} · ${whereText()}`;
+    const text = `${getOperationalAlias(device) || device.etiqueta} (${device.etiqueta}) prestado a ${person.trim()} · ${whereText()}`;
     busyRef.current = true;
     setBusy(true);
     try {
@@ -338,7 +334,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
     const validation = validateLoanFields();
     if (validation) { showError(validation); return; }
     const targets = queueAvailable.map(device => device.etiqueta);
-    const who = personValue().trim();
+    const who = person.trim();
     const where = whereText();
     busyRef.current = true;
     setBusy(true);
@@ -512,13 +508,6 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
     void (continuous ? handleConfirmMultipleLoan() : handleLend());
   };
   const submitLend = () => void (continuous ? handleConfirmMultipleLoan() : handleLend());
-  // Callbacks estables para <PersonField> (memo) que llaman a la versión de este render.
-  const latest = useRef({ submitLend, applySuggestion, formError });
-  latest.current = { submitLend, applySuggestion, formError };
-  const onPersonEnter = useCallback(() => latest.current.submitLend(), []);
-  const onPersonPick = useCallback((item: LoanSuggestion) => latest.current.applySuggestion(item), []);
-  // Solo re-renderiza el formulario si había un error que borrar.
-  const onPersonEdit = useCallback(() => { if (latest.current.formError) setFormError(''); }, []);
   const nErr = queueDevices.length - queueAvailable.length;
 
   return (
@@ -691,15 +680,25 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
             <div className="lo-frow">
               <label htmlFor="lo-persona" className="lo-flabel">Persona</label>
               <div className="lo-fcontrol">
-                <PersonField
-                  ref={personField}
+                <SuggestInput<LoanSuggestion>
+                  id="lo-persona"
                   inputRef={personInputRef}
+                  value={person}
+                  onChange={next => { setPerson(next); setFormError(''); }}
                   placeholder={personPlaceholder}
+                  listLabel="Personas que ya pidieron equipos"
+                  footer="Enter elige la marcada. Completa rol, ubicación, curso y motivo más usados."
+                  fetcher={q => getLoanSuggestions(q).then(response => response.suggestions || [])}
                   local={searchLocalPeople}
                   onOpen={refreshPeople}
-                  onEdit={onPersonEdit}
-                  onPick={onPersonPick}
-                  onEnter={onPersonEnter}
+                  itemKey={item => item.persona}
+                  row={item => ({
+                    name: item.persona,
+                    hint: [item.rol, item.curso ? `${item.curso} · ${item.ubicacion}` : item.ubicacion, item.motivo].filter(Boolean).join(' · ') || 'sin datos previos',
+                    times: `${item.count}×`
+                  })}
+                  onPick={applySuggestion}
+                  onEnter={submitLend}
                 />
               </div>
             </div>
@@ -785,55 +784,6 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
 }
 
 /** Resultado en línea del equipo identificado: alias, etiqueta, estado y LA acción. */
-type PersonFieldHandle = { get: () => string; set: (value: string) => void };
-
-const fetchPersonSuggestions = (q: string) => getLoanSuggestions(q).then(response => response.suggestions || []);
-const personKey = (item: LoanSuggestion) => item.persona;
-const personRow = (item: LoanSuggestion) => ({
-  name: item.persona,
-  hint: [item.rol, item.curso ? `${item.curso} · ${item.ubicacion}` : item.ubicacion, item.motivo].filter(Boolean).join(' · ') || 'sin datos previos',
-  times: `${item.count}×`
-});
-
-/**
- * Campo Persona con sus sugerencias. Guarda su propio valor: cada tecla
- * re-renderiza solo este campo y su lista (antes, el formulario entero con sus
- * grupos de opciones). El formulario lo lee con get() al prestar y lo cambia con
- * set() (sugerencia elegida, limpiar). Todas las props son estables.
- */
-const PersonField = memo(forwardRef<PersonFieldHandle, {
-  inputRef: RefObject<HTMLInputElement | null>;
-  placeholder: string;
-  local: (q: string) => LoanSuggestion[] | null;
-  onOpen: () => void;
-  onEdit: () => void;
-  onPick: (item: LoanSuggestion) => void;
-  onEnter: () => void;
-}>(function PersonField({ inputRef, placeholder, local, onOpen, onEdit, onPick, onEnter }, ref) {
-  const [value, setValue] = useState('');
-  const valueRef = useRef(value);
-  valueRef.current = value;
-  useImperativeHandle(ref, () => ({ get: () => valueRef.current, set: next => { valueRef.current = next; setValue(next); } }), []);
-  return (
-    <SuggestInput<LoanSuggestion>
-      id="lo-persona"
-      inputRef={inputRef}
-      value={value}
-      onChange={next => { valueRef.current = next; setValue(next); onEdit(); }}
-      placeholder={placeholder}
-      listLabel="Personas que ya pidieron equipos"
-      footer="Enter elige la marcada. Completa rol, ubicación, curso y motivo más usados."
-      fetcher={fetchPersonSuggestions}
-      local={local}
-      onOpen={onOpen}
-      itemKey={personKey}
-      row={personRow}
-      onPick={onPick}
-      onEnter={onEnter}
-    />
-  );
-}));
-
 function FoundDevice({ device, state, busy, consultationMode, onReturn }: { device: Device; state: string; busy: boolean; consultationMode: boolean; onReturn: () => void }) {
   const alias = getOperationalAlias(device) || operationalTypeLabel(device);
   let stateText = device.estado || 'Sin estado';
