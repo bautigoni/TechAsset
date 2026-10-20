@@ -9,13 +9,20 @@ export function useNotifications(enabled: boolean) {
   const [toast, setToast] = useState<AppNotification | null>(null);
   const lastMaxId = useRef<number>(0);
   const primed = useRef(false);
+  const lastKey = useRef('');
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
     try {
       const res = await getNotifications();
-      setItems(res.items);
-      setUnread(res.unread);
+      // Poll cada 30 s que casi siempre trae lo mismo (304): sin cambios no se
+      // toca el estado, así no se re-renderiza todo lo que cuelga de la campana.
+      const key = `${res.unread}|${JSON.stringify(res.items)}`;
+      if (key !== lastKey.current) {
+        lastKey.current = key;
+        setItems(res.items);
+        setUnread(res.unread);
+      }
       const maxId = res.items.reduce((m, n) => Math.max(m, n.id), 0);
       // Toast solo para notificaciones realmente nuevas (no en la primera carga).
       if (primed.current && maxId > lastMaxId.current) {

@@ -58,17 +58,29 @@ function useOnline() {
   return online;
 }
 
-/** "Actualizado hace 12 s": lee la salud del inventario con su propio reloj (no re-renderiza la app). */
-function useUpdatedLabel() {
+/**
+ * "Actualizado hace 12 s": lee la salud del inventario. Con `live` se
+ * re-renderiza cada 5 s. Antes ese reloj vivía en Dashboard y re-renderizaba el
+ * Inicio ENTERO (barra, contadores, lista, columna Ahora) cada 5 s aunque no
+ * cambiara nada; ahora el reloj está solo en <UpdatedNote> y en la lista solo
+ * corre cuando hay un error a la vista.
+ */
+function useUpdatedLabel(live = true) {
   const [, setTick] = useState(0);
   useEffect(() => {
+    if (!live) return;
     const timer = window.setInterval(() => setTick(value => value + 1), 5000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [live]);
   const okAt = getDevicesHealth().okAt;
   if (!okAt) return '';
   const seconds = Math.max(0, Math.round((Date.now() - okAt) / 1000));
   return seconds < 60 ? `hace ${seconds} s` : agoText(Date.now() - okAt);
+}
+
+function UpdatedNote() {
+  const updated = useUpdatedLabel();
+  return updated ? <span className="dash-updated" role="status">Actualizado <span className="ui-mono">{updated}</span></span> : null;
 }
 
 /**
@@ -94,7 +106,6 @@ export function Dashboard(props: DashboardProps) {
   const closureBtnRef = useRef<HTMLButtonElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const online = useOnline();
-  const updated = useUpdatedLabel();
   const healthError = useSyncExternalStore(subscribeDevicesHealth, () => getDevicesHealth().error);
 
   const readOnly = consultationMode || !online;
@@ -104,6 +115,7 @@ export function Dashboard(props: DashboardProps) {
   const types = useMemo(() => typeStats(devices), [devices]);
   const loading = !devices.length && sync.state === 'loading';
   const listError = healthError || (sync.state === 'error' ? sync.message || 'Error' : '');
+  const updated = useUpdatedLabel(Boolean(listError));
 
   const actions = useLoanActions(devices, {
     onReturn: props.onReturn,
@@ -183,7 +195,7 @@ export function Dashboard(props: DashboardProps) {
         )}
         {consultationMode && <StatusText tone="muted" className="dash-nw"><icons.IconLock size={13} /> Solo lectura</StatusText>}
         <span className="dash-grow" />
-        {updated && <span className="dash-updated" role="status">Actualizado <span className="ui-mono">{updated}</span></span>}
+        <UpdatedNote />
         <Button
           variant="secondary"
           ref={closureBtnRef}
