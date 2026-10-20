@@ -433,6 +433,12 @@ function instrument(site, release) {
       B.mainPending = false;
       B.mainFrames.push(t);
       if (B.mainFrames.length > 600) B.mainFrames.splice(0, 300);
+      // "A la vista": primer frame (con cambio en <main>) sin pedidos de la
+      // acción en vuelo (las revalidaciones de fondo no cuentan) ni esqueletos
+      // dentro de la ventana. Chequeo barato (sin recorrer textos) para no
+      // cargar el hilo que se está midiendo.
+      const watch = B.readyWatch;
+      if (watch && !watch.at && t > watch.since && !B.api.some(record => record.start >= watch.since - 2 && !record.end && !record.bg) && !B.skeletonInView()) watch.at = t;
     }
   };
   new MutationObserver(records => {
@@ -474,6 +480,13 @@ function instrument(site, release) {
     return true;
   };
   B.visible = visible;
+  B.skeletonInView = () => {
+    for (const element of document.querySelectorAll('[class*="skel" i],[class*="shimmer" i],[aria-busy="true"]')) {
+      const rect = element.getBoundingClientRect();
+      if (rect.width >= 2 && rect.height >= 2 && rect.bottom > 0 && rect.top < innerHeight) return true;
+    }
+    return false;
+  };
 
   /** ¿Se ve algo "cargando"? Devuelve una descripción o ''. */
   B.loadingVisible = () => {
@@ -500,6 +513,7 @@ function instrument(site, release) {
    */
   B.waitSettled = ({ since = 0, quiet = 600, timeout = 25000, requireChange = true, requireShell = false } = {}) => new Promise(resolve => {
     const t0 = now();
+    B.readyWatch = { since, at: 0 };
     const apisSince = () => B.api.filter(record => record.start >= since - 2);
     const tick = () => {
       const t = now();
@@ -512,10 +526,13 @@ function instrument(site, release) {
       const summary = () => apisSince().map(record => ({ url: record.url, method: record.method, bg: record.bg, status: record.status, startMs: Math.round(record.start - since), ms: record.end ? Math.round(record.end - record.start) : null, bytes: record.bytes }));
       if (!pending.length && !loading && framed && t - lastChange >= quiet && (changed || !requireChange) && (B.shellAt || !requireShell)) {
         const settledAt = changed ? B.lastMutFrame : since;
-        resolve({ ok: true, ms: settledAt - since, firstChangeMs: firstMain ? firstMain - since : null, apis: summary() });
+        const readyAt = B.readyWatch && B.readyWatch.at ? Math.min(B.readyWatch.at, settledAt) : settledAt;
+        B.readyWatch = null;
+        resolve({ ok: true, ms: settledAt - since, readyMs: readyAt - since, firstChangeMs: firstMain ? firstMain - since : null, apis: summary() });
         return;
       }
       if (t - t0 > timeout) {
+        B.readyWatch = null;
         resolve({
           ok: false,
           reason: pending.length ? `pedidos sin terminar: ${pending.map(record => record.url).join(', ')}` : loading ? `sigue cargando: ${loading}` : requireShell && !B.shellAt ? 'la app no mostró navegación + main' : !changed ? 'la acción no cambió nada en pantalla' : 'el DOM no se aquietó',
@@ -879,6 +896,7 @@ async function measureLoad(page, { transfer = false } = {}) {
     fcp: interactive.fcp || null,
     shell: shellAt,
     dashboardData: content.ok ? content.ms : null,
+    dashboardReady: content.ok ? content.readyMs : null,
     tti: interactive.tti,
     tbt: interactive.tbt,
     dcl: interactive.dcl,
@@ -1271,7 +1289,7 @@ function summarize(meta) {
   for (const mode of ['cold', 'warm']) {
     const list = results.startup[mode];
     summary.startup[mode] = {
-      fcp: pickAny(list, 'fcp'), shell: pickAny(list, 'shell'), dashboardData: pickAny(list, 'dashboardData'),
+      fcp: pickAny(list, 'fcp'), shell: pickAny(list, 'shell'), dashboardData: pickAny(list, 'dashboardData'), dashboardReady: pickAny(list, 'dashboardReady'),
       tti: pickAny(list, 'tti'), tbt: pickAny(list, 'tbt'), dcl: pickAny(list, 'dcl'), longTaskMs: pickAny(list, 'longTaskMs'),
       transferKB: list[0]?.transferKB || null
     };
@@ -1280,6 +1298,7 @@ function summarize(meta) {
     summary.views[key] = {
       firstResponse: pickAny(results.views.first[key], 'firstChangeMs'), firstContent: pick(results.views.first[key], 'ms'),
       secondResponse: pickAny(results.views.second[key], 'firstChangeMs'), secondContent: pick(results.views.second[key], 'ms'),
+      firstReady: pick(results.views.first[key], 'readyMs'), secondReady: pick(results.views.second[key], 'readyMs'),
       failures: [...(results.views.first[key] || []), ...(results.views.second[key] || [])].filter(item => !item.ok).length
     };
   }
@@ -1316,6 +1335,7 @@ function markdown(meta, summary) {
   row(['---', '---:', '---:']);
   row(['FCP (primer pintado con contenido)', fmtN(s.cold.fcp), fmtN(s.warm.fcp)]);
   row(['App visible (navegación + main pintados)', fmtN(s.cold.shell), fmtN(s.warm.shell)]);
+  row(['Dashboard a la vista (sin pedidos en vuelo ni esqueletos en la ventana)', fmtN(s.cold.dashboardReady), fmtN(s.warm.dashboardReady)]);
   row(['Dashboard con datos (todos los pedidos terminados y pantalla quieta)', fmtN(s.cold.dashboardData), fmtN(s.warm.dashboardData)]);
   row(['Interactiva (TTI: 5 s sin tareas largas)', fmtN(s.cold.tti), fmtN(s.warm.tti)]);
   row(['TBT (FCP → TTI)', fmtN(s.cold.tbt), fmtN(s.warm.tbt)]);
@@ -1328,12 +1348,12 @@ function markdown(meta, summary) {
   lines.push('');
 
   lines.push('## Cambio de módulo', '');
-  lines.push('Click en la navegación → **respuesta** (primer frame con un cambio en `<main>`) y **contenido** (datos cargados y pantalla quieta). 1ª vez = primera visita en la sesión (puede bajar el chunk); 2ª = volver a una pantalla ya vista.', '');
-  row(['Pantalla', '1ª respuesta', '1ª contenido', '2ª respuesta', '2ª contenido', 'Fallas']);
-  row(['---', '---:', '---:', '---:', '---:', '---:']);
+  lines.push('Click en la navegación → **respuesta** (primer frame con un cambio en `<main>`), **a la vista** (primer frame con cambio en `<main>` sin pedidos de la acción en vuelo ni esqueletos dentro de la ventana: lo que se ve listo aunque abajo del pliegue sigan montándose secciones) y **contenido** (datos cargados y pantalla quieta). 1ª vez = primera visita en la sesión (puede bajar el chunk); 2ª = volver a una pantalla ya vista.', '');
+  row(['Pantalla', '1ª respuesta', '1ª a la vista', '1ª contenido', '2ª respuesta', '2ª a la vista', '2ª contenido', 'Fallas']);
+  row(['---', '---:', '---:', '---:', '---:', '---:', '---:', '---:']);
   for (const [key, name] of VIEWS) {
     const v = summary.views[key];
-    row([name, fmt(v.firstResponse), fmtN(v.firstContent), fmt(v.secondResponse), fmtN(v.secondContent), String(v.failures)]);
+    row([name, fmt(v.firstResponse), fmt(v.firstReady), fmtN(v.firstContent), fmt(v.secondResponse), fmt(v.secondReady), fmtN(v.secondContent), String(v.failures)]);
   }
   lines.push('');
 
