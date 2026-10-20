@@ -1,0 +1,143 @@
+{
+  "label": "04-pasada1",
+  "repo": "C:\\Users\\Usuario\\Downloads\\techasset\\.claude\\worktrees\\agent-a2b973c53ac59b620",
+  "commit": "f65843f pg-smoke: chequea directorio de personas, sugerencias, día anterior, opciones de cartelitos y recordatorio por evento",
+  "seconds": 60,
+  "runs": 3,
+  "latency": 15,
+  "cpu": 4,
+  "startup": [
+    {
+      "readyMs": 5390.8,
+      "queries": 267
+    },
+    {
+      "readyMs": 5307.3,
+      "queries": 266
+    },
+    {
+      "readyMs": 5173.8,
+      "queries": 266
+    }
+  ],
+  "serverIdle": [
+    2,
+    2,
+    2
+  ],
+  "views": {
+    "dashboard": {
+      "samples": [
+        {
+          "apiPerMin": 14,
+          "commitsPerMin": 11,
+          "scriptMsPerMin": 54.9,
+          "taskMsPerMin": 375.7,
+          "layoutsPerMin": 11,
+          "serverQueriesPerMin": 31
+        },
+        {
+          "apiPerMin": 14,
+          "commitsPerMin": 9,
+          "scriptMsPerMin": 45.9,
+          "taskMsPerMin": 323.4,
+          "layoutsPerMin": 9,
+          "serverQueriesPerMin": 32
+        },
+        {
+          "apiPerMin": 14,
+          "commitsPerMin": 11,
+          "scriptMsPerMin": 48.9,
+          "taskMsPerMin": 373,
+          "layoutsPerMin": 10,
+          "serverQueriesPerMin": 31
+        }
+      ],
+      "median": {
+        "apiPerMin": 14,
+        "commitsPerMin": 11,
+        "scriptMsPerMin": 48.9,
+        "taskMsPerMin": 373,
+        "layoutsPerMin": 10,
+        "serverQueriesPerMin": 31
+      }
+    },
+    "loans": {
+      "samples": [
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 13.8,
+          "taskMsPerMin": 143,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 25
+        },
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 14.9,
+          "taskMsPerMin": 130.2,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 27
+        },
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 13.3,
+          "taskMsPerMin": 121.2,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 26
+        }
+      ],
+      "median": {
+        "apiPerMin": 10,
+        "commitsPerMin": 0,
+        "scriptMsPerMin": 13.8,
+        "taskMsPerMin": 130.2,
+        "layoutsPerMin": 0,
+        "serverQueriesPerMin": 26
+      }
+    },
+    "devices": {
+      "samples": [
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 15.3,
+          "taskMsPerMin": 147.7,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 25
+        },
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 13.6,
+          "taskMsPerMin": 148.6,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 25
+        },
+        {
+          "apiPerMin": 8,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 12.4,
+          "taskMsPerMin": 123.5,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 27
+        }
+      ],
+      "median": {
+        "apiPerMin": 10,
+        "commitsPerMin": 0,
+        "scriptMsPerMin": 13.6,
+        "taskMsPerMin": 147.7,
+        "layoutsPerMin": 0,
+        "serverQueriesPerMin": 25
+      }
+    }
+  },
+  "summary": {
+    "startupReadyMs": 5307.3,
+    "startupQueries": 266,
+    "serverIdleQueriesPerMin": 2
+  }
+}
