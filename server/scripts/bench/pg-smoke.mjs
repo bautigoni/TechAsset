@@ -94,6 +94,15 @@ try {
   check('se ve prestado al instante', /prest/i.test(await estado('D9001') || ''));
   const lendBatch = await call('POST', '/api/loans/lend-batch', { etiquetas: ['D9002', 'D9003', 'D9999'], person: 'Grupo 5F', role: 'Alumno', location: 'DOE' });
   check('prestar en lote', lendBatch.json?.done === 2, lendBatch.text.slice(0, 200));
+  // Directorio de personas en memoria (pasada 1): se arma con lo prestado.
+  const peopleBefore = await call('GET', '/api/loans/people');
+  check('GET /loans/people (directorio)', peopleBefore.status === 200 && peopleBefore.json.people.some(p => p.persona === 'Ana') && peopleBefore.json.people.find(p => p.persona === 'Grupo 5F')?.count === 2, peopleBefore.text.slice(0, 200));
+  const suggest = await call('GET', '/api/loans/suggest?q=gru%205');
+  check('GET /loans/suggest (palabras, sin tildes)', suggest.status === 200 && suggest.json.suggestions[0]?.persona === 'Grupo 5F', suggest.text.slice(0, 200));
+  const previousDay = await call('GET', '/api/loans/previous-day');
+  check('GET /loans/previous-day (consulta indexada por día)', previousDay.status === 200 && Array.isArray(previousDay.json.items) && /^\d{4}-\d{2}-\d{2}$/.test(previousDay.json.date), previousDay.text.slice(0, 200));
+  const passOptions = await call('GET', '/api/photo-passes/options');
+  check('GET /photo-passes/options (UNION ALL)', passOptions.status === 200 && Array.isArray(passOptions.json.cursos) && passOptions.json.docentes.includes('Grupo 5F'), passOptions.text.slice(0, 200));
   const returnBatch = await call('POST', '/api/loans/return-batch', { etiquetas: ['D9001', 'D9002', 'D9003'] });
   check('devolver en lote', returnBatch.json?.done === 3, returnBatch.text.slice(0, 200));
   // Deshacer (línea de estado de Préstamos): devolución → vuelve prestado a la misma persona; préstamo → libre.
@@ -104,6 +113,16 @@ try {
   check('deshacer préstamo (queda libre)', undoLend.json?.done === 1 && !/prest/i.test(await estado('D9001') || ''), undoLend.text.slice(0, 200));
   const undoAgain = await call('POST', '/api/loans/undo', { etiqueta: 'D9001', action: 'lend' });
   check('deshacer dos veces no hace nada', undoAgain.json?.done === 0, undoAgain.text.slice(0, 200));
+  const peopleAfter = await call('GET', '/api/loans/people');
+  check('el directorio se rearma tras el Deshacer (Ana ya no tiene préstamos)', peopleAfter.status === 200 && !peopleAfter.json.people.some(p => p.persona === 'Ana'), peopleAfter.text.slice(0, 200));
+  // Recordatorios por evento (pasada 1): uno vencido avisa enseguida, sin esperar un tick.
+  const reminder = await call('POST', '/api/reminders', { title: 'Smoke vencido', remindAt: new Date(Date.now() - 60000).toISOString() });
+  let reminderNotified = false;
+  for (let i = 0; i < 20 && !reminderNotified; i += 1) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    reminderNotified = ((await call('GET', '/api/notifications')).json?.items || []).some(item => item.title === 'Recordatorio: Smoke vencido');
+  }
+  check('recordatorio vencido avisa al guardarlo (sin tick de 10 s)', reminder.status === 200 && reminderNotified, reminder.text.slice(0, 200));
   check('fuera de servicio no se presta', (await (async () => {
     await call('POST', '/api/devices/status', { etiqueta: 'D9004', estado: 'Fuera de servicio' });
     return (await call('POST', '/api/loans/lend', { etiqueta: 'D9004', person: 'X', role: 'Alumno', location: 'DOE' })).status;
