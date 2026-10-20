@@ -593,6 +593,19 @@ export function App() {
     prefetchViewsWhenIdle([...navKeys.split(',').filter(Boolean), 'assistant']);
   }, [navKeys, siteSettings, user]);
 
+  // Primer pintado de la app: la estructura (menú, barra, esqueleto) sale en un
+  // frame y la vista se arma en el siguiente. Al entrar todavía no hay datos (la
+  // vista dibujaría sus vacíos) y armarla junto con la estructura demoraba el
+  // primer pintado ~50 ms de JS + layout con CPU lenta. Solo la primera vez.
+  const hasUser = Boolean(user);
+  const [viewsOn, setViewsOn] = useState(false);
+  useEffect(() => {
+    if (!hasUser || viewsOn) return;
+    let timer = 0;
+    const frame = requestAnimationFrame(() => { timer = window.setTimeout(() => setViewsOn(true), 0); });
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
+  }, [hasUser, viewsOn]);
+
   // Nada mientras se resuelve la sesión. El pedido tarda ~170 ms: cualquier
   // cartel o placeholder alcanza a dibujarse y a irse, y ese parpadeo se nota
   // más que la espera. Queda el fondo de la página y listo.
@@ -675,6 +688,7 @@ export function App() {
           se redispara la animación de entrada. Sólo hay entrada: sostener el
           árbol viejo para animar la salida agrega espera, y en una app de
           trabajo la espera se siente como lentitud. */}
+      {!viewsOn ? <div className="view-enter"><section className="view active"><SkeletonView /></section></div> : (
       <div key={view} className="view-enter">
       <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
       {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={devices} sync={sync} agenda={agenda.items} tasks={tasks.items} movements={movements} siteSettings={siteSettings} scan={dashScan} canOpen={target => navItems.some(item => item.key === target)} onNavigate={navigate} onOpenTask={openTaskPage} onOpenLoans={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onLoanChanged={afterLoanChange} onRefresh={() => refresh({ force: true, wait: true })} onAgendaSave={agenda.save} />}
@@ -699,6 +713,7 @@ export function App() {
       {view === 'settings' && <SettingsPage key={activeSite} operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} isSiteAdmin={access.admin} activeSite={activeSite} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} onSwitchSite={changeSite} onLogout={handleLogout} />}
       </Suspense>
       </div>
+      )}
     </AppShell>
   );
 }

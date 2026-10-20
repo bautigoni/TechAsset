@@ -9,6 +9,7 @@
 // action=load:   traza la carga en frío de la vista (contexto nuevo).
 // action=warm:   carga una vez sin trazar y traza la recarga (caché HTTP y
 //   sesión recordada, como "inicio en caliente" de la suite).
+// action=more:   en Historial, traza el click en "Cargar más".
 // action=type:   en Préstamos, elige un equipo libre y traza el tipeo de
 //   --text (default "mic") en Persona, tecla por tecla.
 // --net:      misma red simulada que perf/suite.mjs (40 ms, 10/5 Mbps).
@@ -109,6 +110,14 @@ try {
     }
     await page.tracing.start({ path: traceFile, categories });
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+    await sleep(1500);
+    await page.tracing.stop();
+  } else if (ACTION === 'more') {
+    // Historial: traza el click en "Cargar más" (50 filas nuevas).
+    await page.goto(`${base}/sede/nfpt/history`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await sleep(1500);
+    await page.tracing.start({ path: traceFile, categories });
+    await page.evaluate(() => [...document.querySelectorAll('main button')].find(b => /^cargar más/i.test(b.textContent.trim()))?.click());
     await sleep(1500);
     await page.tracing.stop();
   } else if (ACTION === 'type') {
