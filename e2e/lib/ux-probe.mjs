@@ -30,7 +30,27 @@
 //                 otro elemento (topbar, barra inferior, algo sticky o flotante).
 //                 Se recorre el área que scrollea en pasos (`scrollSteps`, 6);
 //   fakeClickable cursor:pointer sin control, rol, tabindex ni handler de React
-//                 (o un control deshabilitado con cursor:pointer).
+//                 (o un control deshabilitado con cursor:pointer);
+//   clipped       (20/10) lo que se pinta de un elemento — caja, sombra exterior,
+//                 anillo de foco (medido enfocando uno de cada tipo con
+//                 :focus-visible, `sampleFocusRings`) y ::before/::after absolutos
+//                 (la rayita del ítem activo) — cortado > 1 px por un ancestro con
+//                 overflow ≠ visible; en un contenedor que scrollea solo cuenta el
+//                 borde donde el scroll llegó al tope ("Inicio" cortado arriba);
+//   topGap        (20/10) con el contenido arriba de todo, lo primero que se ve
+//                 empieza a > 32 px de la cabecera, o la primera fila es solo algo
+//                 chico a la derecha y el primer bloque de la izquierda arranca a
+//                 > maxGap (el hueco de la captura del dueño en el Inicio);
+//   mismatch      (20/10) vecinos de distinto tamaño: controles con caja en una
+//                 misma fila de un flex/grid con alturas distintas (> 1 px), o
+//                 tarjetas tipo mosaico (≤ 240 px) de una fila con distinto alto;
+//   modal         (20/10) ventanas emergentes (role=dialog, aria-modal, <dialog>)
+//                 o capas fijas que tapan > 25 % de la pantalla. Excepción: el
+//                 diálogo del cartelito (ALLOWED_DIALOG_NAME) y el tooltip.
+// `checkCollapsibles` además marca la apertura/cierre "de golpe": lo que el
+// disparador controla (aria-controls) pasa de su alto inicial al final en un
+// solo cuadro, sin valores intermedios (sin Collapse), con el movimiento prendido.
+// Pendientes conocidos de otras pantallas: KNOWN_PENDING + splitKnown (abajo).
 //
 // Elementos con `data-ux-ignore` (y lo que tengan adentro) no se miden: usalo
 // solo para lienzos/planos donde el espacio vacío es el contenido (Canvas, plano
@@ -38,10 +58,99 @@
 
 export const MAX_GAP = 48;
 
+/**
+ * Única ventana emergente permitida (excepción del dueño, CLAUDE.md, 20/10): el
+ * diálogo de entregar/devolver un cartelito (src/ui/Dialog.tsx). Se reconoce por
+ * su nombre accesible (aria-label o el título de aria-labelledby) con "cartelito".
+ * Cualquier otro diálogo, aria-modal o capa fija grande es un hallazgo (`modal`).
+ */
+export const ALLOWED_DIALOG_NAME = 'cartelito';
+const DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"], dialog[open], [aria-modal="true"]';
+
+/**
+ * PENDIENTES CONOCIDOS de pantallas de OTROS revisores (revisión UX 20/10).
+ * Las comprobaciones nuevas de la sonda (recortes por overflow, hueco arriba,
+ * vecinos de distinto tamaño, ventanas emergentes, apertura de golpe) son
+ * bloqueantes en TODAS las vistas; lo que encontraron al estrenarse en
+ * pantallas ajenas queda listado acá para que no rompa el e2e mientras cada
+ * dueño lo arregla. Cada caso se sigue informando (ux.mjs → "pendientes
+ * conocidos" en el reporte y en hallazgos.md). Cuando el dueño lo arregla,
+ * BORRÁ la línea (si no, un caso nuevo con el mismo selector pasaría sin avisar).
+ *
+ *   view:  regex sobre la clave de la vista en ux.mjs ('dashboard', 'loans',
+ *          'settings/usuarios', 'device:D1436', 'task:12', 'shell'…)
+ *   kind:  clipped | topGap | mismatch | modal | gaps | innerGaps | truncated |
+ *          cut | covered | fakeClickable | toggle
+ *   where: regex sobre el `where` de la muestra (o "disparador: problema" en toggle)
+ *   owner: quién lo arregla
+ */
+export const KNOWN_PENDING = [
+  // ── Inicio (revisor 2) ──
+  { view: /^dashboard$/, kind: 'topGap', where: /dash-top/, owner: 'revisor 2 (Inicio)', note: 'fila "Actualizado hace… · Cierre del día" sola a la derecha: 64 px muertos arriba a la izquierda (captura del dueño)' },
+  { view: /^dashboard$/, kind: 'mismatch', where: /dash-bar-btns/, owner: 'revisor 2 (Inicio)', note: 'a 390: botón cámara 36 px al lado de Prestar/Devolver 44 px' },
+  { view: /^dashboard$/, kind: 'mismatch', where: /dash-list-head/, owner: 'revisor 2 (Inicio)', note: 'Afuera ahora: segmentado sm 32 px al lado del filtro 36 px' },
+  // ── Operación: Dispositivos y Préstamos ──
+  { view: /^devices$/, kind: 'mismatch', where: /dv-list-head/, owner: 'revisor de Dispositivos', note: 'filtro 36 px al lado del segmentado sm 32 px' },
+  { view: /^devices$/, kind: 'toggle', where: /^Papelera.*de golpe/, owner: 'revisor de Dispositivos', note: 'con equipos en la papelera, abrirla salta 148 px (cargando → lista, sin transición); intermitente' },
+  { view: /^loans$/, kind: 'toggle', where: /^Cámara .*aria-expanded no cambió/, owner: 'revisor de Préstamos', note: 'a 390 claro "Cámara" no cambia aria-expanded / lo-camera no existe abierto' },
+  { view: /^loans$/, kind: 'toggle', where: /^Touch.*se movió/, owner: 'revisor de Préstamos', note: 'a 390 claro abrir el grupo Touch mueve el disparador 52 px' },
+  // ── Gestión: Aulas, Tickets ──
+  { view: /^classrooms$/, kind: 'clipped', where: /cls-room/, owner: 'revisor de Aulas', note: 'aulas del plano cortadas por el recuadro (classroom-model-canvas) con el zoom inicial' },
+  { view: /^ticket:/, kind: 'mismatch', where: /tkx-inline-add/, owner: 'revisor de Tickets', note: 'campo 36 px al lado del botón sm 32 px ("Agregar" del checklist)' },
+  // ── Recursos: Analítica, Configuración ──
+  { view: /^analytics$/, kind: 'innerGaps', where: /an-heatcard/, owner: 'revisor de Analítica', note: 'a 1024: franja vacía de 50 px en "Hora × día de la semana"' },
+  { view: /^settings$/, kind: 'clipped', where: /cfg-list-i/, owner: 'revisor de Configuración', note: 'a 390: el anillo de foco de cada ítem queda cortado por el overflow de la tarjeta (cfg-list-c)' },
+  { view: /^settings\/mail$/, kind: 'clipped', where: /cfg-acc-h/, owner: 'revisor de Configuración', note: '"Cómo completar esta configuración" cortado por el overflow de la tarjeta' },
+  { view: /^settings\/usuarios$/, kind: 'mismatch', where: /cfg-toolbar/, owner: 'revisor de Configuración', note: 'segmentados sm 32 px al lado del buscador 36 px' },
+  { view: /^settings\/prestamo$/, kind: 'mismatch', where: /cfg-add/, owner: 'revisor de Configuración', note: 'campo 36 px al lado del botón sm 32 px ("Agregar")' }
+];
+
+/** Saca de un resultado de probeView los pendientes conocidos de la vista. Devuelve { probe, known }. */
+export function splitKnown(viewKey, probe) {
+  if (!probe || probe.error) return { probe, known: [] };
+  const known = [];
+  const next = { ...probe, counts: { ...probe.counts } };
+  for (const kind of Object.keys(probe.counts || {})) {
+    const rules = KNOWN_PENDING.filter(rule => rule.kind === kind && rule.view.test(viewKey));
+    if (!rules.length || !Array.isArray(probe[kind])) continue;
+    const keep = [];
+    for (const item of probe[kind]) {
+      const text = `${item.where || ''}${item.by ? ` por ${item.by}` : ''}`;
+      const rule = rules.find(candidate => candidate.where.test(text));
+      if (rule) known.push({ kind, where: item.where, owner: rule.owner, note: rule.note || '' });
+      else keep.push(item);
+    }
+    // La muestra puede venir recortada (samples): se descuenta lo que se sacó de ella.
+    next.counts[kind] = Math.max(keep.length, probe.counts[kind] - (probe[kind].length - keep.length));
+    next[kind] = keep;
+  }
+  next.total = countTotal(next.counts);
+  return { probe: next, known };
+}
+
+/** Igual que splitKnown para el resultado de checkCollapsibles. */
+export function splitKnownToggles(viewKey, toggles) {
+  const rules = KNOWN_PENDING.filter(rule => rule.kind === 'toggle' && rule.view.test(viewKey));
+  if (!rules.length) return { toggles, known: [] };
+  const known = [];
+  const problems = [];
+  for (const item of toggles.problems) {
+    const rule = rules.find(candidate => candidate.where.test(`${item.trigger}: ${item.problem}`));
+    if (rule) known.push({ kind: 'toggle', where: `${item.trigger}: ${item.problem}`, owner: rule.owner, note: rule.note || '' });
+    else problems.push(item);
+  }
+  return { toggles: { ...toggles, problems }, known };
+}
+
 /** Sonda (se pasa a page.evaluate). `opts`: { scope, maxGap, ignore, samples, only }. */
 export function uxProbe(opts = {}) {
-  const { scope = '.shell-view', maxGap = 48, ignore = [], samples = 15, only = null } = opts;
+  const { scope = '.shell-view', maxGap = 48, ignore = [], samples = 15, only = null, dialogName = 'cartelito', dialogSel = '[role="dialog"], [role="alertdialog"], dialog[open], [aria-modal="true"]' } = opts;
   const want = key => !only || only.includes(key);
+  const allowedDialog = el => {
+    const ids = (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+    const name = el.getAttribute('aria-label') || ids.map(id => document.getElementById(id)?.textContent || '').join(' ');
+    return new RegExp(dialogName, 'i').test(name);
+  };
   const root = document.querySelector(scope);
   if (!root) return { error: `No está ${scope}` };
   // Para medir el layout cuenta todo lo que se ve (también lo aria-hidden, como una leyenda);
@@ -69,7 +178,7 @@ export function uxProbe(opts = {}) {
     const [r, g, b, a = 1] = match[1].split(/[ ,/]+/).filter(Boolean).map(Number);
     return { r, g, b, a };
   };
-  const out = { gaps: [], innerGaps: [], truncated: [], cut: [], covered: [], fakeClickable: [], underSticky: [] };
+  const out = { gaps: [], innerGaps: [], truncated: [], cut: [], covered: [], fakeClickable: [], clipped: [], topGap: [], mismatch: [], modal: [], underSticky: [] };
   const elements = [root, ...root.querySelectorAll('*')].filter(el => !ignored(el));
   const styleCache = new Map();
   const styleOf = el => { let s = styleCache.get(el); if (!s) { s = getComputedStyle(el); styleCache.set(el, s); } return s; };
@@ -117,6 +226,8 @@ export function uxProbe(opts = {}) {
     };
     for (const card of elements) {
       if (card === root || card.matches(INK) || card.matches('a, label, li, tr, td, th, p, span, b, strong, em, small, code, pre')) continue;
+      // El menú lateral es una columna del alto de la ventana (lista arriba, pie abajo), no una tarjeta.
+      if (card.matches('.shell-nav')) continue;
       if (!visible(card)) continue;
       const box = card.getBoundingClientRect();
       if (box.height < 96 || box.width < 120 || box.height > window.innerHeight * 1.5) continue;
@@ -227,6 +338,9 @@ export function uxProbe(opts = {}) {
       if (clipped) continue;
       const hit = document.elementFromPoint(cx, cy);
       if (!hit || hit === el || el.contains(hit)) continue;
+      // El diálogo del cartelito (la única ventana emergente permitida) tapa a propósito.
+      const dialog = hit.closest(dialogSel);
+      if (dialog && allowedDialog(dialog)) continue;
       if (hit.tagName === 'LABEL' && (hit.control === el || hit.contains(el))) continue;
       if (hit.contains(el) && styleOf(hit).pointerEvents !== 'none') {
         // El punto cae en un ancestro: el control no recibe el puntero ahí (p. ej. un hijo con pointer-events:none).
@@ -276,9 +390,302 @@ export function uxProbe(opts = {}) {
     }
   }
 
+  // ── (f) Recortado por un ancestro con overflow ───────────────────────────
+  // Lo que se pinta de un elemento (su caja, su sombra exterior, el anillo de
+  // foco que tendría con :focus-visible y sus ::before/::after absolutos, como
+  // la rayita del ítem activo) no puede quedar cortado por un ancestro con
+  // overflow distinto de visible (o contain: paint). Tolerancia: 1 px. En un
+  // contenedor que scrollea, cortar es normal salvo en el borde donde el scroll
+  // ya llegó a su tope (arriba con scrollTop 0, al fondo con el scroll al final):
+  // ahí lo cortado no se puede ver nunca (el "Inicio cortado arriba").
+  if (want('clipped')) {
+    const px = value => parseFloat(value) || 0;
+    const rings = window.__uxFocusRings || {};
+    const signature = el => `${el.tagName}|${typeof el.className === 'string' ? el.className.trim().split(/\s+/).filter(name => !/^(is-|has-)/.test(name)).sort().join('.') : ''}|${el.getAttribute('role') || ''}`;
+    const FOCUSABLE = 'button, a[href], [role="tab"], [role="option"], [role="button"], [tabindex="0"]';
+    const INK = 'button, input, textarea, select, img, svg, canvas, video, iframe, [role="checkbox"], [role="switch"], [role="img"], hr';
+    const shadowExtent = value => {
+      const ext = { top: 0, right: 0, bottom: 0, left: 0 };
+      if (!value || value === 'none') return ext;
+      for (const part of value.split(/,(?![^(]*\))/)) {
+        if (/\binset\b/.test(part)) continue;
+        const color = rgba(part);
+        if (color && color.a < 0.05) continue;
+        const nums = (part.replace(/[a-z-]+\([^)]*\)/gi, ' ').match(/-?[\d.]+px/g) || []).map(parseFloat);
+        const [x = 0, y = 0, blur = 0, spread = 0] = nums;
+        const reach = spread + blur * 0.5; // la cola de un desenfoque no se nota cortada
+        ext.top = Math.max(ext.top, reach - y);
+        ext.bottom = Math.max(ext.bottom, reach + y);
+        ext.left = Math.max(ext.left, reach - x);
+        ext.right = Math.max(ext.right, reach + x);
+      }
+      return ext;
+    };
+    const grow = (rect, ext) => ({ top: rect.top - Math.max(0, ext.top), bottom: rect.bottom + Math.max(0, ext.bottom), left: rect.left - Math.max(0, ext.left), right: rect.right + Math.max(0, ext.right) });
+    const hasText = el => [...el.childNodes].some(node => node.nodeType === 3 && node.textContent.trim());
+    const isPaintBox = el => {
+      const s = styleOf(el);
+      const bg = rgba(s.backgroundColor);
+      const borders = ['Top', 'Right', 'Bottom', 'Left'].some(side => px(s[`border${side}Width`]) >= 1 && (rgba(s[`border${side}Color`])?.a ?? 0) > 0.05);
+      return (bg && bg.a > 0.05) || borders || s.backgroundImage !== 'none';
+    };
+    // Ancestros que recortan (memo por elemento).
+    const clipMemo = new Map();
+    const clipList = el => {
+      if (clipMemo.has(el)) return clipMemo.get(el);
+      const parent = el.parentElement;
+      let list = [];
+      if (parent && parent !== document.documentElement && parent !== document.body) {
+        list = clipList(parent);
+        const s = styleOf(parent);
+        const paint = /\b(paint|strict|content)\b/.test(s.contain);
+        const textClip = s.textOverflow === 'ellipsis' || (s.webkitLineClamp && s.webkitLineClamp !== 'none'); // eso es "truncado"
+        const x = (s.overflowX !== 'visible' || paint) && !textClip;
+        const y = (s.overflowY !== 'visible' || paint) && !textClip;
+        if ((x || y) && (parent.clientWidth || parent.clientHeight)) list = [...list, { el: parent, x, y }];
+      }
+      clipMemo.set(el, list);
+      return list;
+    };
+    const flagged = new Map(); // elemento → clipper (para no repetir en los hijos)
+    const check = (el, paint, what, label) => {
+      const pos = styleOf(el).position;
+      if (pos === 'fixed') return;
+      const list = clipList(el);
+      for (let i = list.length - 1; i >= 0; i -= 1) {
+        const clip = list[i];
+        const c = clip.el;
+        if (pos === 'absolute' && el.offsetParent && c !== el.offsetParent && !c.contains(el.offsetParent)) continue;
+        const r = c.getBoundingClientRect();
+        const box = { left: r.left + c.clientLeft, top: r.top + c.clientTop };
+        box.right = box.left + c.clientWidth;
+        box.bottom = box.top + c.clientHeight;
+        // Del todo afuera: scrolleado fuera de la vista (no está "cortado", no se ve).
+        if (paint.right <= box.left + 1 || paint.left >= box.right - 1 || paint.bottom <= box.top + 1 || paint.top >= box.bottom - 1) return;
+        const cs = styleOf(c);
+        const scrollX = /auto|scroll/.test(cs.overflowX) && c.scrollWidth > c.clientWidth + 1;
+        const scrollY = /auto|scroll/.test(cs.overflowY) && c.scrollHeight > c.clientHeight + 1;
+        const sides = [];
+        if (clip.y) {
+          if (box.top - paint.top > 1 && (!scrollY || c.scrollTop <= 0)) sides.push(`arriba ${Math.round(box.top - paint.top)}px`);
+          if (paint.bottom - box.bottom > 1 && (!scrollY || c.scrollTop >= c.scrollHeight - c.clientHeight - 1)) sides.push(`abajo ${Math.round(paint.bottom - box.bottom)}px`);
+        }
+        if (clip.x) {
+          if (box.left - paint.left > 1 && (!scrollX || c.scrollLeft <= 0)) sides.push(`izquierda ${Math.round(box.left - paint.left)}px`);
+          if (paint.right - box.right > 1 && (!scrollX || c.scrollLeft >= c.scrollWidth - c.clientWidth - 1)) sides.push(`derecha ${Math.round(paint.right - box.right)}px`);
+        }
+        if (!sides.length) {
+          // Lo que sigue (los ancestros de afuera) solo puede recortar lo que este deja ver.
+          paint = { top: clip.y ? Math.max(paint.top, box.top) : paint.top, bottom: clip.y ? Math.min(paint.bottom, box.bottom) : paint.bottom, left: clip.x ? Math.max(paint.left, box.left) : paint.left, right: clip.x ? Math.min(paint.right, box.right) : paint.right };
+          continue;
+        }
+        for (let up = el.parentElement; up && up !== c; up = up.parentElement) if (flagged.get(up) === c) return;
+        flagged.set(el, c);
+        out.clipped.push({ where: label || where(el), what, side: sides.join(', '), by: where(c) });
+        return;
+      }
+    };
+    for (const el of elements) {
+      if (!visible(el)) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 2 || rect.height <= 2) continue; // sr-only y similares
+      const s = styleOf(el);
+      const focusable = el.matches(FOCUSABLE) && !el.matches(':disabled') && !inertish(el);
+      const ring = focusable ? rings[signature(el)] : null;
+      const own = el.matches(INK) || hasText(el) || isPaintBox(el);
+      const shadow = shadowExtent(s.boxShadow);
+      const outline = s.outlineStyle !== 'none' ? px(s.outlineWidth) + px(s.outlineOffset) : 0;
+      if (own) check(el, rect, 'caja');
+      if (!flagged.has(el)) {
+        const ext = { top: Math.max(shadow.top, outline), bottom: Math.max(shadow.bottom, outline), left: Math.max(shadow.left, outline), right: Math.max(shadow.right, outline) };
+        if (ext.top > 1 || ext.bottom > 1 || ext.left > 1 || ext.right > 1) check(el, grow(rect, ext), 'sombra/borde exterior');
+      }
+      if (!flagged.has(el) && ring && (ring.top > 1 || ring.bottom > 1 || ring.left > 1 || ring.right > 1)) check(el, grow(rect, ring), 'anillo de foco');
+      // ::before/::after absolutos (la rayita del ítem activo, un indicador).
+      if (!flagged.has(el) && s.position !== 'static') {
+        for (const pseudo of ['::before', '::after']) {
+          const ps = getComputedStyle(el, pseudo);
+          if (ps.content === 'none' || ps.display === 'none' || ps.position !== 'absolute' || ps.visibility === 'hidden') continue;
+          const w = px(ps.width);
+          const h = px(ps.height);
+          if (w < 1 || h < 1) continue;
+          const left0 = rect.left + px(s.borderLeftWidth);
+          const top0 = rect.top + px(s.borderTopWidth);
+          const innerW = el.clientWidth;
+          const innerH = el.clientHeight;
+          const left = ps.left !== 'auto' ? left0 + px(ps.left) : ps.right !== 'auto' ? left0 + innerW - px(ps.right) - w : null;
+          const top = ps.top !== 'auto' ? top0 + px(ps.top) : ps.bottom !== 'auto' ? top0 + innerH - px(ps.bottom) - h : null;
+          if (left === null || top === null) continue;
+          check(el, { left, top, right: left + w, bottom: top + h }, pseudo, `${where(el)}${pseudo}`);
+        }
+      }
+    }
+  }
+
+  // ── (g) Hueco entre la barra superior y el primer bloque ─────────────────
+  // Con el contenido arriba de todo: lo primero que se ve (texto, control,
+  // caja con fondo o borde) no puede empezar a más de TOP_GAP (32 px: el
+  // relleno de la página más el espaciado del sistema) de la cabecera. Y si la
+  // primera fila es solo algo chico a la derecha (un "Actualizado hace…" con un
+  // botón) y el primer bloque de la izquierda arranca a más de maxGap, ese
+  // espacio muerto arriba a la izquierda también es un hueco.
+  if (want('topGap')) {
+    const sc = root.closest('.shell-scroll');
+    if (sc && sc.scrollTop <= 1) {
+      const TOP_GAP = 32;
+      const top0 = sc.getBoundingClientRect().top;
+      const area = root.getBoundingClientRect();
+      const W = Math.max(1, Math.min(area.right, window.innerWidth) - area.left);
+      const limit = top0 + 320;
+      const pageBg = styleOf(sc).backgroundColor;
+      const INK = 'button, input, textarea, select, img, svg, canvas, video, iframe, [role="checkbox"], [role="switch"], [role="img"], hr';
+      const inks = [];
+      const range = document.createRange();
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const parent = node.parentElement;
+        if (!node.textContent.trim() || !parent || ignored(parent) || !visible(parent)) continue;
+        range.selectNodeContents(node);
+        const r = range.getBoundingClientRect();
+        if (r.height > 1 && r.width > 1 && r.top < limit && r.bottom > top0) inks.push({ r, el: parent });
+      }
+      for (const el of elements) {
+        if (el === root) continue;
+        const r = el.getBoundingClientRect();
+        if (r.top >= limit || r.bottom <= top0 || r.height <= 1 || r.width <= 1) continue;
+        let ink = el.matches(INK);
+        if (!ink) {
+          const s = styleOf(el);
+          const bg = rgba(s.backgroundColor);
+          const borders = ['Top', 'Right', 'Bottom', 'Left'].filter(side => parseFloat(s[`border${side}Width`]) >= 1 && (rgba(s[`border${side}Color`])?.a ?? 0) > 0.05).length;
+          ink = borders >= 3 || (bg && bg.a > 0.05 && s.backgroundColor !== pageBg);
+        }
+        if (ink && visible(el)) inks.push({ r, el });
+      }
+      if (inks.length) {
+        inks.sort((a, b) => a.r.top - b.r.top);
+        const first = inks[0];
+        const lead = Math.round(first.r.top - top0);
+        if (lead > TOP_GAP) out.topGap.push({ gap: lead, at: 'arriba de todo', where: where(first.el) });
+        else {
+          // Primera fila: lo que se cruza en alto con lo primero (hasta 64 px).
+          let rowBottom = Math.min(first.r.bottom, first.r.top + 64);
+          const row = [];
+          for (const item of inks) {
+            if (item.r.top >= rowBottom - 1) break;
+            row.push(item);
+            rowBottom = Math.max(rowBottom, Math.min(item.r.bottom, first.r.top + 64));
+          }
+          const xs = row.map(item => [Math.max(item.r.left, area.left), Math.min(item.r.right, area.left + W)]).filter(([l, r]) => r > l).sort((a, b) => a[0] - b[0]);
+          let covered = 0;
+          let end = -Infinity;
+          for (const [l, r] of xs) { if (l > end) { covered += r - l; end = r; } else if (r > end) { covered += r - end; end = r; } }
+          const startsRight = xs.length && xs[0][0] - area.left > W * 0.4;
+          if (startsRight && covered < W * 0.35) {
+            const next = inks.find(item => item.r.top >= rowBottom - 1 && item.r.left - area.left < W * 0.4);
+            const gap = next ? Math.round(next.r.top - top0) : 0;
+            if (gap > maxGap) out.topGap.push({ gap, at: 'arriba a la izquierda (la primera fila es solo algo a la derecha)', where: `${where(row[0].el)} → ${where(next.el)}` });
+          }
+        }
+      }
+    }
+  }
+
+  // ── (i) Ventanas emergentes / capas fijas ────────────────────────────────
+  // Nada de modales ni capas flotantes (CLAUDE.md), salvo el tooltip de texto
+  // truncado y el diálogo del cartelito. Se mira toda la página.
+  if (want('modal')) {
+    const area = window.innerWidth * window.innerHeight;
+    const seenModal = new Set();
+    for (const el of document.querySelectorAll(dialogSel)) {
+      if (!visible(el) || el.closest('[data-ux-ignore]')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4 || allowedDialog(el)) continue;
+      seenModal.add(el);
+      out.modal.push({ where: where(el), what: 'diálogo' });
+    }
+    for (const el of document.body.querySelectorAll('*')) {
+      if (seenModal.has(el)) continue;
+      const pos = styleOf(el).position;
+      if (pos !== 'fixed' && pos !== 'sticky') continue;
+      if (pos === 'sticky' || el.matches('[role="tooltip"], .ui-tooltip') || el.closest('[role="tooltip"], .ui-tooltip')) continue;
+      if (!visible(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width * r.height < area * 0.25) continue;
+      const dialog = el.closest(dialogSel) || el.querySelector(dialogSel);
+      if (dialog && allowedDialog(dialog)) continue;
+      out.modal.push({ where: where(el), what: 'capa fija grande' });
+    }
+  }
+
+  // ── (h) Vecinos de distinto tamaño ───────────────────────────────────────
+  // En una fila de un contenedor flex/grid: los controles con caja visible
+  // (botones, campos, segmentados, chips, kbd) tienen la misma altura, y las
+  // tarjetas de una misma fila, el mismo alto. Tolerancia: 1 px.
+  if (want('mismatch')) {
+    const CONTROL = 'button, [role="button"], [role="tab"], a[href], input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]), select, textarea, kbd, .ui-kbd, [role="combobox"], [role="group"], [role="radiogroup"], [role="tablist"]';
+    const SMALL = '[role="checkbox"], [role="switch"], [role="radio"], input[type="checkbox"], input[type="radio"], svg, img';
+    const bgOf = el => { for (let node = el; node; node = node.parentElement) { const c = rgba(styleOf(node).backgroundColor); if (c && c.a > 0.05) return styleOf(node).backgroundColor; } return ''; };
+    const boxed = el => {
+      const s = styleOf(el);
+      const borders = ['Top', 'Right', 'Bottom', 'Left'].filter(side => parseFloat(s[`border${side}Width`]) >= 1 && (rgba(s[`border${side}Color`])?.a ?? 0) > 0.05).length;
+      if (borders >= 3) return true;
+      const bg = rgba(s.backgroundColor);
+      return Boolean(bg && bg.a > 0.05 && s.backgroundColor !== bgOf(el.parentElement));
+    };
+    // La caja visible de un hijo: él mismo o, si es un envoltorio (o un botón) sin caja, su único hijo.
+    const visualOf = el => {
+      let node = el;
+      for (let i = 0; i < 4 && node && !boxed(node) && node.children.length === 1; i += 1) node = node.children[0];
+      return node;
+    };
+    for (const parent of elements) {
+      if (parent.children.length < 2 || !visible(parent)) continue;
+      const s = styleOf(parent);
+      const grid = s.display.includes('grid');
+      const flexRow = s.display.includes('flex') && s.flexDirection.startsWith('row');
+      if (!grid && !flexRow) continue;
+      const boxes = [];
+      for (const child of parent.children) {
+        if (ignored(child) || !inFlow(child) || !visible(child) || child.matches(SMALL)) continue;
+        const el = visualOf(child);
+        if (!el || ignored(el) || el.matches(SMALL) || !visible(el) || !boxed(el)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < 8 || r.height < 8) continue;
+        const control = r.height <= 64 && (el.matches(CONTROL) || Boolean(el.closest(CONTROL) && child.contains(el.closest(CONTROL))) || Boolean(el.querySelector('input, textarea, select, [role="combobox"]')));
+        // Tarjetas tipo mosaico (KPI, resúmenes): hasta 240 px. Lo más alto en una
+        // fila son columnas de layout (lista + lector, carriles, columnas que
+        // fluyen): eso lo cuida la regla de huecos, no la de alturas parejas.
+        const card = r.height > 64 && r.height <= 240;
+        if (control || card) boxes.push({ el, r, kind: control ? 'control' : 'card' });
+      }
+      if (boxes.length < 2) continue;
+      for (const kind of ['control', 'card']) {
+        const list = boxes.filter(box => box.kind === kind);
+        // Filas: los controles se cruzan en su centro; las tarjetas arrancan a la misma altura.
+        const rows = [];
+        for (const box of list) {
+          const mid = (box.r.top + box.r.bottom) / 2;
+          const row = rows.find(items => items.some(other => (kind === 'control'
+            ? mid > other.r.top && mid < other.r.bottom
+            : Math.abs(other.r.top - box.r.top) <= 2)));
+          if (row) row.push(box); else rows.push([box]);
+        }
+        for (const row of rows) {
+          if (row.length < 2) continue;
+          const heights = row.map(box => Math.round(box.r.height * 10) / 10);
+          const spread = Math.max(...heights) - Math.min(...heights);
+          if (spread > 1) out.mismatch.push({ spread: Math.round(spread), kind: kind === 'control' ? 'controles' : 'tarjetas', where: `${where(parent)}: ${row.slice(0, 4).map((box, i) => `${one(box.el)} ${heights[i]}px`).join(' · ')}` });
+        }
+      }
+    }
+  }
+
   const sortBy = (list, key) => list.sort((a, b) => (b[key] || 0) - (a[key] || 0));
   sortBy(out.gaps, 'gap');
   sortBy(out.innerGaps, 'gap');
+  sortBy(out.topGap, 'gap');
+  sortBy(out.mismatch, 'spread');
   const dedupe = list => { const seen = new Set(); return list.filter(item => { const key = item.where + (item.by || ''); if (seen.has(key)) return false; seen.add(key); return true; }); };
   const result = { counts: {} };
   for (const key of Object.keys(out)) {
@@ -307,10 +714,11 @@ const SCROLLER = '.shell-scroll';
  */
 export async function probeView(page, { scope = '.shell-view', maxGap = MAX_GAP, ignore = [], samples = 15, scrollSteps = 6, coverScope = 'body' } = {}) {
   await page.mouse.move(1, 1).catch(() => {}); // sin tooltips abiertos por el puntero
-  const base = await page.evaluate(uxProbe, { scope, maxGap, ignore, samples, only: ['gaps', 'innerGaps', 'truncated', 'fakeClickable'] });
+  await sampleFocusRings(page, scope);
+  const base = await page.evaluate(uxProbe, { scope, maxGap, ignore, samples, only: ['gaps', 'innerGaps', 'truncated', 'fakeClickable', 'topGap', 'mismatch', 'modal'] });
   if (base.error) return base;
-  const merged = { ...base, covered: [], cut: [], underSticky: [], counts: { ...base.counts, covered: 0, cut: 0, underSticky: 0 } };
-  const seen = { covered: new Set(), cut: new Set(), underSticky: new Set() };
+  const merged = { ...base, covered: [], cut: [], clipped: [], underSticky: [], counts: { ...base.counts, covered: 0, cut: 0, clipped: 0, underSticky: 0 } };
+  const seen = { covered: new Set(), cut: new Set(), clipped: new Set(), underSticky: new Set() };
   const positions = await page.evaluate((sel, steps) => {
     const sc = document.querySelector(sel);
     if (!sc) return [0];
@@ -326,11 +734,15 @@ export async function probeView(page, { scope = '.shell-view', maxGap = MAX_GAP,
     await page.evaluate((sel, top) => { const sc = document.querySelector(sel); if (sc) sc.scrollTop = top; }, SCROLLER, y);
     await new Promise(resolve => setTimeout(resolve, 60));
     const part = await page.evaluate(uxProbe, { scope: coverScope, maxGap, ignore, samples: 50, only: ['covered', 'truncated'] });
+    // Recortes: en el alcance de la vista, en cada posición (el borde de arriba
+    // cuenta con el scroll arriba y el de abajo con el scroll al fondo).
+    const clip = await page.evaluate(uxProbe, { scope, maxGap, ignore, samples: 50, only: ['clipped'] });
+    if (!clip.error) part.clipped = clip.clipped;
     if (part.error) continue;
     // `cut` sale del mismo recorrido que truncated (ver uxProbe).
-    for (const key of ['covered', 'cut', 'underSticky']) {
+    for (const key of ['covered', 'cut', 'clipped', 'underSticky']) {
       for (const item of part[key] || []) {
-        const id = item.where + (item.by || '');
+        const id = item.where + (item.by || '') + (item.what || '');
         if (seen[key].has(id)) continue;
         seen[key].add(id);
         merged[key].push(y ? { ...item, scrollTop: y } : item);
@@ -338,12 +750,65 @@ export async function probeView(page, { scope = '.shell-view', maxGap = MAX_GAP,
     }
   }
   await page.evaluate(sel => { const sc = document.querySelector(sel); if (sc) sc.scrollTop = 0; }, SCROLLER);
-  for (const key of ['covered', 'cut', 'underSticky']) {
+  for (const key of ['covered', 'cut', 'clipped', 'underSticky']) {
     merged.counts[key] = merged[key].length;
     merged[key] = merged[key].slice(0, samples);
   }
   merged.total = countTotal(merged.counts);
   return merged;
+}
+
+/**
+ * Anillo de foco de cada tipo de control (misma etiqueta, clases y rol) del
+ * alcance: enfoca uno de cada tipo con :focus-visible (después de una tecla,
+ * como alguien que navega con Tab), mide cuánto sobresale el outline o la
+ * sombra que suma el foco y lo deja en `window.__uxFocusRings` para la sonda
+ * de recortes. Devuelve el foco a donde estaba.
+ */
+export async function sampleFocusRings(page, scope = '.shell-view') {
+  // Una tecla que no hace nada: desde ahí el foco por script cuenta como de teclado.
+  await page.keyboard.press('Shift').catch(() => {});
+  await page.evaluate(sel => {
+    const root = document.querySelector(sel);
+    window.__uxFocusRings = {};
+    if (!root) return;
+    const px = value => parseFloat(value) || 0;
+    const signature = el => `${el.tagName}|${typeof el.className === 'string' ? el.className.trim().split(/\s+/).filter(name => !/^(is-|has-)/.test(name)).sort().join('.') : ''}|${el.getAttribute('role') || ''}`;
+    const shadowExt = value => {
+      const ext = { top: 0, right: 0, bottom: 0, left: 0 };
+      if (!value || value === 'none') return ext;
+      for (const part of value.split(/,(?![^(]*\))/)) {
+        if (/\binset\b/.test(part)) continue;
+        if (/rgba\([^)]*,\s*0\)/.test(part)) continue;
+        const [x = 0, y = 0, blur = 0, spread = 0] = (part.replace(/[a-z-]+\([^)]*\)/gi, ' ').match(/-?[\d.]+px/g) || []).map(parseFloat);
+        const reach = spread + blur * 0.5;
+        ext.top = Math.max(ext.top, reach - y); ext.bottom = Math.max(ext.bottom, reach + y);
+        ext.left = Math.max(ext.left, reach - x); ext.right = Math.max(ext.right, reach + x);
+      }
+      return ext;
+    };
+    const kinds = new Map();
+    for (const el of root.querySelectorAll('button, a[href], [role="tab"], [role="option"], [role="button"], [tabindex="0"]')) {
+      if (el.matches(':disabled') || el.closest('[inert], [aria-hidden="true"], .ui-collapse:not([data-state="open"])')) continue;
+      if (!(el.checkVisibility ? el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : el.getClientRects().length)) continue;
+      const key = signature(el);
+      if (!kinds.has(key)) kinds.set(key, el);
+    }
+    const before = document.activeElement;
+    for (const [key, el] of kinds) {
+      const base = shadowExt(getComputedStyle(el).boxShadow);
+      el.focus({ preventScroll: true });
+      if (document.activeElement !== el) continue;
+      const s = getComputedStyle(el);
+      const outline = s.outlineStyle !== 'none' && el.matches(':focus-visible') ? px(s.outlineWidth) + px(s.outlineOffset) : 0;
+      const shadow = shadowExt(s.boxShadow);
+      const ring = {};
+      for (const side of ['top', 'right', 'bottom', 'left']) ring[side] = Math.max(outline, shadow[side] > base[side] ? shadow[side] : 0);
+      window.__uxFocusRings[key] = ring;
+    }
+    if (before && before !== document.body && before.isConnected) before.focus({ preventScroll: true });
+    else document.activeElement?.blur?.();
+  }, scope).catch(() => {});
 }
 
 /** Tema oscuro/claro sin recargar (mismo efecto que Configuración › Apariencia). */
@@ -484,8 +949,18 @@ export async function checkCollapsibles(page, { scope = '.shell-view', exclude =
           const hi = Math.max(...p, 0);
           const smoothPanel = p.length > 0 && hi - lo > 40 && new Set(p.filter(value => value > lo + 2 && value < hi - 2)).size >= 2;
           const abrupt = change > 40 && steps.length > 0 && Math.max(...steps) >= change - 2 && !smoothPanel;
+          // Apertura/cierre de golpe del contenido controlado (aria-controls): su alto
+          // pasa del valor de partida al final en un solo cuadro (0 → todo), sin
+          // valores intermedios. Se mide con el movimiento prendido.
+          const all = out.panel;
+          const panelChange = Math.abs(all[all.length - 1] - all[0]);
+          const panelSteps = all.slice(1).map((value, i) => Math.abs(value - all[i])).filter(step => step > 0.5);
+          const panelJump = panelChange > 24 && panelSteps.length > 0 && Math.max(...panelSteps) >= panelChange - 2;
           return {
             abrupt,
+            panelJump,
+            panelFrom: all[0],
+            panelTo: all[all.length - 1],
             change,
             maxDelta: Math.round(Math.max(0, ...out.deltas.map(Math.abs)) * 10) / 10,
             maxShift: Math.round(Math.max(0, ...out.shifts.map(Math.abs)) * 10) / 10,
@@ -502,10 +977,23 @@ export async function checkCollapsibles(page, { scope = '.shell-view', exclude =
       };
       const first = await once();
       if (first.missing) continue;
+      // Abrió el diálogo del cartelito (la única ventana emergente permitida): se
+      // cierra con Esc y no se mide como colapso (lo prueba su propia suite).
+      const dialogOpen = await page.evaluate((sel, name) => [...document.querySelectorAll(sel)].some(el => {
+        const ids = (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+        const label = el.getAttribute('aria-label') || ids.map(id => document.getElementById(id)?.textContent || '').join(' ');
+        return el.getClientRects().length > 0 && new RegExp(name, 'i').test(label);
+      }), DIALOG_SELECTOR, ALLOWED_DIALOG_NAME);
+      if (dialogOpen) {
+        await page.keyboard.press('Escape');
+        await new Promise(resolve => setTimeout(resolve, settleMs));
+        items.push({ ...item, note: 'abre el diálogo del cartelito (excepción del dueño)' });
+        continue;
+      }
       const second = first.connected && first.after !== first.before ? await once() : null;
       const opened = first.before === 'false' ? first : second;
       const closed = first.before === 'false' ? second : first;
-      const pick = result => result && { maxDelta: result.maxDelta, maxShift: result.maxShift, leftView: result.leftView, maxDocY: result.maxDocY, change: result.change, abrupt: result.abrupt };
+      const pick = result => result && { maxDelta: result.maxDelta, maxShift: result.maxShift, leftView: result.leftView, maxDocY: result.maxDocY, change: result.change, abrupt: result.abrupt, panelJump: result.panelJump, panelFrom: result.panelFrom, panelTo: result.panelTo };
       item.opened = pick(opened);
       item.closed = pick(closed);
       const problems = [];
@@ -519,6 +1007,7 @@ export async function checkCollapsibles(page, { scope = '.shell-view', exclude =
         else if (label === 'abrir' && result.leftView) problems.push('al abrir el disparador quedó fuera de la vista');
         if (result.maxDocY > 0) problems.push(`al ${label} el documento scrolleó ${result.maxDocY} px`);
         if (result.abrupt) problems.push(`al ${label} el contenido cambió ${result.change} px de golpe (sin transición de alto)`);
+        else if (result.panelJump) problems.push(`al ${label} lo que controla pasó de ${result.panelFrom} a ${result.panelTo} px en un cuadro (de golpe, sin Collapse)`);
       }
       if (first.connected && !trigger.controls && !first.controls && !second?.controls) problems.push('sin aria-controls');
       else if (opened && opened === first && first.controls && !first.target) problems.push(`aria-controls=${first.controls} no existe abierto`);
@@ -553,6 +1042,10 @@ export function formatProbe(probe, toggles) {
   if (c.cut) parts.push(`${c.cut} cortados sin elipsis${first(probe.cut, item => item.where)}`);
   if (c.covered) parts.push(`${c.covered} controles tapados${first(probe.covered, item => `${item.where} por ${item.by}`)}`);
   if (c.fakeClickable) parts.push(`${c.fakeClickable} parecen clickeables${first(probe.fakeClickable, item => item.where)}`);
+  if (c.clipped) parts.push(`${c.clipped} recortados por un overflow${first(probe.clipped, item => `${item.where} (${item.what}, ${item.side}) por ${item.by}`)}`);
+  if (c.modal) parts.push(`${c.modal} ventanas emergentes o capas fijas${first(probe.modal, item => `${item.what} ${item.where}`)}`);
+  if (c.mismatch) parts.push(`${c.mismatch} filas con vecinos de distinto tamaño${first(probe.mismatch, item => `${item.kind} ${item.where}`)}`);
+  if (c.topGap) parts.push(`${c.topGap} huecos arriba${first(probe.topGap, item => `${item.gap}px ${item.at}: ${item.where}`)}`);
   if (toggles?.problems?.length) parts.push(`${toggles.problems.length} colapsables${first(toggles.problems, item => `${item.trigger}: ${item.problem}`)}`);
   return parts.join(' · ');
 }

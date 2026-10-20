@@ -3,6 +3,7 @@
 // franja de Accesos rápidos usa el ancho; ningún ítem del menú lateral queda
 // cortado o tapado por el bloque de abajo.
 import { assert, clickButton, gotoView, openContext, sleep, until } from '../lib/browser.mjs';
+import { formatProbe, probeView, setTheme } from '../lib/ux-probe.mjs';
 
 /**
  * Instala un muestreador por frame (después de pintar cada frame) que registra cuánto se movió en
@@ -179,7 +180,9 @@ export async function shellTests({ browser, base, api, admin, releaseVersion, te
   }
 
   // ── Menú lateral: ningún ítem cortado ni tapado ─────────────────────────────
-  for (const [width, height] of [[1440, 900], [1366, 768]]) {
+  // 1536×730: laptop 1920 al 125 % con la barra del navegador. (A 1366×625 la
+  // lista scrollea si la sede tiene todos los módulos: lo cubre la prueba de abajo.)
+  for (const [width, height] of [[1440, 900], [1366, 768], [1536, 730]]) {
     const ctx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width, height } });
     track(ctx.page);
     try {
@@ -207,6 +210,112 @@ export async function shellTests({ browser, base, api, admin, releaseVersion, te
         assert(!info.footItems, 'Hay controles del pie fuera de la pantalla.');
         assert(!info.scrolls, `A ${width}×${height} la lista no entra sin scroll.`);
         return `${info.count} ítems · densidad ${info.density}`;
+      });
+    } finally {
+      await ctx.context.close().catch(() => {});
+    }
+  }
+
+  // ── "Inicio cortado arriba" (captura del dueño, 20/10): el primer ítem del
+  //    menú, con su resaltado de activo, su rayita y su anillo de foco, entero
+  //    debajo de la cabecera, en expandido, rail y lista que scrollea, oscuro
+  //    y claro. Y nada del shell recortado por un overflow (sonda `clipped`). ──
+  for (const [width, height, collapsed] of [[1366, 625, false], [1280, 560, false], [1024, 640, false], [1024, 520, false], [1440, 900, true], [1920, 1080, false]]) {
+    const ctx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width, height } });
+    track(ctx.page);
+    try {
+      await test('sh', 'Shell', `Menú a ${width}×${height}${collapsed ? ' (contraído)' : ''}: "Inicio" entero arriba (resaltado, rayita y foco) y nada del shell recortado`, async () => {
+        const p = ctx.page;
+        await p.evaluateOnNewDocument(value => { try { localStorage.setItem('techasset_sidebar_collapsed', value ? '1' : '0'); } catch { /* sin storage */ } }, collapsed);
+        await gotoView(p, base, 'dashboard');
+        await p.waitForSelector('.shell-nav-groups .shell-nav-item.is-active', { timeout: 20000 });
+        await sleep(400);
+        const notes = [];
+        for (const theme of ['dark', 'light']) {
+          await setTheme(p, theme);
+          // Foco de teclado en el primer ítem: el anillo tiene que verse entero.
+          await p.keyboard.press('Shift');
+          await p.evaluate(() => document.querySelector('.shell-nav-groups .shell-nav-item')?.focus({ preventScroll: true }));
+          const info = await p.evaluate(() => {
+            const nav = document.querySelector('.shell-nav');
+            const list = nav.querySelector('.shell-nav-groups');
+            const head = nav.querySelector('.shell-nav-head').getBoundingClientRect();
+            const box = list.getBoundingClientRect();
+            const item = list.querySelector('.shell-nav-item');
+            const r = item.getBoundingClientRect();
+            const s = getComputedStyle(item);
+            const ring = s.outlineStyle !== 'none' ? parseFloat(s.outlineWidth) + parseFloat(s.outlineOffset) : 0;
+            const bar = getComputedStyle(item, '::before');
+            const barTop = bar.content !== 'none' ? r.top + parseFloat(bar.top) : r.top;
+            return {
+              mode: document.querySelector('.shell').dataset.nav,
+              density: nav.dataset.density,
+              focused: item.matches(':focus-visible'),
+              gapToHead: Math.round((Math.min(r.top - Math.max(0, ring), barTop) - head.bottom) * 10) / 10,
+              insideList: r.top - Math.max(0, ring) >= box.top - 0.5 && r.bottom + Math.max(0, ring) <= box.bottom + 0.5,
+              scrollTop: list.scrollTop
+            };
+          });
+          assert(info.focused, 'El primer ítem no tomó el foco de teclado.');
+          assert(info.gapToHead >= 4, `${theme}: el primer ítem (o su foco) queda pegado o cortado bajo la cabecera: ${info.gapToHead} px (${info.mode}, ${info.density}).`);
+          assert(info.insideList, `${theme}: el primer ítem (con su foco) se sale de la lista (${info.mode}, ${info.density}).`);
+          await p.evaluate(() => document.activeElement?.blur());
+          const probe = await probeView(p, { scope: '.shell', ignore: ['.shell-view'], scrollSteps: 0 });
+          assert(!probe.counts.clipped, `${theme}: recortados en el shell: ${formatProbe(probe)}`);
+          assert(!probe.counts.mismatch, `${theme}: vecinos de distinto tamaño en el shell: ${formatProbe(probe)}`);
+          notes.push(`${theme} ${info.mode}/${info.density} aire ${info.gapToHead} px`);
+        }
+        // Lista que scrollea: al fondo, el último ítem tampoco queda cortado.
+        const bottom = await p.evaluate(() => {
+          const list = document.querySelector('.shell-nav-groups');
+          if (list.scrollHeight <= list.clientHeight + 1) return null;
+          list.scrollTop = list.scrollHeight;
+          return true;
+        });
+        if (bottom) {
+          await sleep(450);
+          const probe = await probeView(p, { scope: '.shell-nav', scrollSteps: 0 });
+          assert(!probe.counts.clipped, `Con la lista al fondo: ${formatProbe(probe)}`);
+          notes.push('al fondo sin recortes');
+        }
+        await setTheme(p, 'dark');
+        return notes.join(' · ');
+      });
+    } finally {
+      await ctx.context.close().catch(() => {});
+    }
+  }
+
+  // ── Ctrl K: los resultados cambian de alto suave mientras se tipea ─────────
+  {
+    const ctx = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
+    track(ctx.page);
+    try {
+      await test('sh', 'Shell', 'Ctrl K: al tipear, la lista de resultados cambia de alto suave (no de golpe) y la barra de la vista no salta', async () => {
+        const p = ctx.page;
+        await gotoView(p, base, 'dashboard');
+        await p.waitForSelector('.shell-nav .shell-nav-item', { timeout: 20000 });
+        await sleep(800);
+        await p.keyboard.down('Control'); await p.keyboard.press('KeyK'); await p.keyboard.up('Control');
+        await until(() => p.evaluate(() => Boolean(document.activeElement?.matches('.shell-palette .shell-pal-input'))), { message: 'la paleta abierta' });
+        await sleep(450);
+        await p.evaluate(() => {
+          const el = document.querySelector('.shell-pal-results');
+          const out = { heights: [] };
+          window.__palWatch = out;
+          const tick = () => { if (out.stop) return; out.heights.push(Math.round(el.getBoundingClientRect().height)); requestAnimationFrame(() => setTimeout(tick)); };
+          tick();
+        });
+        await p.keyboard.type('zzzzqqq', { delay: 5 });
+        await sleep(450);
+        const { heights } = await p.evaluate(() => { window.__palWatch.stop = true; return window.__palWatch; });
+        const from = heights[0];
+        const to = heights[heights.length - 1];
+        assert(from - to > 40, `La lista no se achicó al no encontrar nada (${from} → ${to}).`);
+        const middle = heights.filter(h => h < from - 2 && h > to + 2);
+        assert(middle.length >= 2, `La lista cambió de alto de golpe (${heights.slice(0, 12).join(', ')}).`);
+        await p.keyboard.press('Escape');
+        return `${from} → ${to} px en ${middle.length + 1} cuadros`;
       });
     } finally {
       await ctx.context.close().catch(() => {});
@@ -312,7 +421,9 @@ export async function shellTests({ browser, base, api, admin, releaseVersion, te
         const measure = () => p.evaluate(() => {
           const nav = document.querySelector('.shell-nav');
           const list = nav.querySelector('.shell-nav-groups');
-          const box = list.getBoundingClientRect();
+          // La zona que se ve es la de adentro de los bordes (la lista que scrollea tiene la pista en el borde).
+          const outer = list.getBoundingClientRect();
+          const box = { top: outer.top + list.clientTop, bottom: outer.top + list.clientTop + list.clientHeight, left: outer.left, width: outer.width, height: list.clientHeight };
           const foot = nav.querySelector('.shell-nav-foot').getBoundingClientRect();
           const half = [];
           for (const el of list.querySelectorAll('.shell-nav-item')) {

@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { root } from '../lib/env.mjs';
 import { gotoView, openContext, sleep } from '../lib/browser.mjs';
-import { checkCollapsibles, countTotal, formatProbe, probeView, setTheme, settle } from '../lib/ux-probe.mjs';
+import { checkCollapsibles, countTotal, formatProbe, probeView, setTheme, settle, splitKnown, splitKnownToggles } from '../lib/ux-probe.mjs';
 import { NAV_ITEM } from './functional.mjs';
 
 export const UX_WIDTHS = [390, 1024, 1440];
@@ -101,7 +101,7 @@ export async function uxTests({ browser, base, api, admin, releaseVersion, test,
     const page = free.pop();
     try {
       await test('ux', `UX ${frontOf(target.kind)}`, `${target.label} (${UX_WIDTHS.join('/')} px, oscuro y claro)`, async () => {
-        const entry = { kind: target.kind, front: frontOf(target.kind), path: target.path, combos: {}, collapsibles: {} };
+        const entry = { kind: target.kind, front: frontOf(target.kind), path: target.path, combos: {}, collapsibles: {}, known: [] };
         report[target.key] = entry;
         const problems = [];
         for (const width of UX_WIDTHS) {
@@ -112,14 +112,19 @@ export async function uxTests({ browser, base, api, admin, releaseVersion, test,
           for (const theme of UX_THEMES) {
             await setTheme(page, theme);
             await sleep(120);
-            const probe = await probeView(page, { ignore: IGNORE_BY_KIND[target.kind] || [] });
+            // Pendientes conocidos de la vista (KNOWN_PENDING en ux-probe.mjs): se informan, no cortan.
+            const split = splitKnown(target.key, await probeView(page, { ignore: IGNORE_BY_KIND[target.kind] || [] }));
+            const probe = split.probe;
+            entry.known.push(...split.known.map(item => ({ ...item, combo: `${theme} ${width}` })));
             entry.combos[`${theme}-${width}`] = probe;
             const file = `${target.key.replace(/[^a-z0-9-]+/gi, '_')}-${theme}-${width}.png`;
             await page.screenshot({ path: path.join(outDir, file) }).catch(() => {});
             if (probe.error || probe.total) problems.push(`${theme} ${width}: ${formatProbe(probe)}`);
             // Colapsables: a 1440 en oscuro y a 390 en claro (abren/cierran con animación real).
             if ((width === 1440 && theme === 'dark') || (width === 390 && theme === 'light')) {
-              const toggles = await checkCollapsibles(page, { max: 8 });
+              const splitT = splitKnownToggles(target.key, await checkCollapsibles(page, { max: 8 }));
+              const toggles = splitT.toggles;
+              entry.known.push(...splitT.known.map(item => ({ ...item, combo: `${theme} ${width}` })));
               entry.collapsibles[`${theme}-${width}`] = toggles;
               if (toggles.problems.length) problems.push(`${theme} ${width}: ${formatProbe({ counts: {} }, toggles)}`);
               // Lo abierto/cerrado en la prueba no tiene que contaminar la otra pasada.
@@ -132,7 +137,8 @@ export async function uxTests({ browser, base, api, admin, releaseVersion, test,
         await setTheme(page, 'dark');
         const counts = summarize(entry);
         entry.counts = counts;
-        const line = Object.entries(counts).filter(([, value]) => value).map(([key, value]) => `${key === 'underSticky' ? 'bajo algo sticky (info)' : key} ${value}`).join(' · ') || 'limpia';
+        const knownLine = entry.known.length ? ` · ${new Set(entry.known.map(item => `${item.kind}|${item.where}`)).size} pendientes conocidos de otros (no cortan)` : '';
+        const line = (Object.entries(counts).filter(([, value]) => value).map(([key, value]) => `${key === 'underSticky' ? 'bajo algo sticky (info)' : key} ${value}`).join(' · ') || 'limpia') + knownLine;
         if (problems.length) throw new Error(`${line}\n         ${problems.slice(0, 4).join('\n         ')}`);
         return line;
       }, { baseline: !strict });
@@ -147,7 +153,7 @@ export async function uxTests({ browser, base, api, admin, releaseVersion, test,
     await (async () => {
       const page = pages[0];
       await test('ux', 'UX shell', 'Shell: cabecera, menú y barra inferior (390/1024/1440 px)', async () => {
-        const entry = { kind: 'shell', front: 'shell', combos: {}, collapsibles: {} };
+        const entry = { kind: 'shell', front: 'shell', combos: {}, collapsibles: {}, known: [] };
         report.shell = entry;
         const problems = [];
         for (const width of UX_WIDTHS) {
@@ -164,11 +170,13 @@ export async function uxTests({ browser, base, api, admin, releaseVersion, test,
               probe.counts[key] = probe[key].length;
             }
             probe.total = countTotal(probe.counts);
-            entry.combos[`${theme}-${width}`] = probe;
+            const shellSplit = splitKnown('shell', probe);
+            entry.known.push(...shellSplit.known.map(item => ({ ...item, combo: `${theme} ${width}` })));
+            entry.combos[`${theme}-${width}`] = shellSplit.probe;
             await page.screenshot({ path: path.join(outDir, `shell-${theme}-${width}.png`) }).catch(() => {});
-            if (probe.total) problems.push(`${theme} ${width}: ${formatProbe(probe)}`);
+            if (shellSplit.probe.total) problems.push(`${theme} ${width}: ${formatProbe(shellSplit.probe)}`);
           }
-          const toggles = await checkCollapsibles(page, { scope: '.shell', exclude: '.shell-main', max: 10 });
+          const toggles = splitKnownToggles('shell', await checkCollapsibles(page, { scope: '.shell', exclude: '.shell-main', max: 10 })).toggles;
           entry.collapsibles[`${width}`] = toggles;
           if (toggles.problems.length) problems.push(`${width}: ${formatProbe({ counts: {} }, toggles)}`);
         }
@@ -195,6 +203,10 @@ const LABELS = {
   cut: 'Texto cortado sin elipsis',
   covered: 'Control tapado',
   fakeClickable: 'Parece clickeable y no lo es',
+  clipped: 'Recortado por un overflow',
+  topGap: 'Hueco entre la barra superior y el primer bloque',
+  mismatch: 'Vecinos de distinto tamaño',
+  modal: 'Ventana emergente o capa fija',
   underSticky: '(info) Control bajo algo sticky al scrollear'
 };
 
@@ -224,11 +236,20 @@ export function findingsMarkdown(report) {
           found.get(id).combos.push(combo.replace('-', ' '));
         }
       }
-      if (!found.size) continue;
+      const known = new Map();
+      for (const item of entry.known || []) {
+        const id = `${item.kind}|${item.where}`;
+        if (!known.has(id)) known.set(id, { ...item, combos: [] });
+        known.get(id).combos.push(item.combo);
+      }
+      if (!found.size && !known.size) continue;
       lines.push(`### ${key} (\`/sede/NFPT/${entry.path || ''}\`)`, '');
       for (const item of found.values()) {
         const label = item.kind === 'toggle' ? 'Colapsable' : LABELS[item.kind];
         lines.push(`- **${label}** · \`${item.where.replace(/`/g, "'")}\`${item.detail ? ` — ${item.detail}` : ''} · ${[...new Set(item.combos)].join(', ')}`);
+      }
+      for (const item of known.values()) {
+        lines.push(`- (pendiente conocido, ${item.owner}) **${item.kind === 'toggle' ? 'Colapsable' : LABELS[item.kind] || item.kind}** · \`${String(item.where).replace(/`/g, "'")}\` · ${[...new Set(item.combos)].join(', ')}`);
       }
       lines.push('');
     }
@@ -237,7 +258,7 @@ export function findingsMarkdown(report) {
 }
 
 function summarize(entry) {
-  const counts = { gaps: 0, innerGaps: 0, truncated: 0, cut: 0, covered: 0, fakeClickable: 0, collapsibles: 0, underSticky: 0 };
+  const counts = { gaps: 0, innerGaps: 0, truncated: 0, cut: 0, covered: 0, fakeClickable: 0, clipped: 0, topGap: 0, mismatch: 0, modal: 0, collapsibles: 0, underSticky: 0 };
   for (const probe of Object.values(entry.combos)) {
     for (const key of Object.keys(counts)) if (key !== 'collapsibles') counts[key] += probe.counts?.[key] || 0;
   }
