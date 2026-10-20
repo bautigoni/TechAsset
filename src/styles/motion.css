@@ -30,38 +30,13 @@
   --m-ease: var(--ease-out);                        /* cubic-bezier(.22,1,.36,1) */
   --m-ease-entrance: cubic-bezier(0.16, 1, 0.3, 1); /* llegada confiada */
   --m-in: var(--duration-base);                     /* .22s */
-  --m-out: var(--duration-fast);                    /* .15s — salir es más rápido */
-  --m-slow: var(--duration-slow);                   /* .35s */
+  --m-out: var(--duration-fast);                   /* .35s */
   --m-blur: 2px;
-
-  /* modal */
-  --modal-open-dur: 250ms;
-  --modal-close-dur: 150ms;
-  --modal-scale: 0.96;
-  --modal-scale-close: 0.98;
-  --modal-ease: var(--m-ease);
-
-  /* toast */
-  --toast-open: 350ms;
-  --toast-close: 250ms;
-  --toast-distance: 16px;
-  --toast-blur: var(--m-blur);
-  --toast-scale: 0.97;
-  --toast-ease: var(--m-ease);
-
-  /* dropdown */
-  --dropdown-open-dur: 180ms;
-  --dropdown-close-dur: 120ms;
-  --dropdown-pre-scale: 0.96;
-  --dropdown-closing-scale: 0.98;
-  --dropdown-ease: var(--m-ease);
 
   /* tabs */
   --tabs-dur: 260ms;
-  --tabs-ease: var(--m-ease);
 
   /* toggle */
-  --toggle-dur: 320ms;
   --toggle-track: 180ms;
 
   /* esqueleto de carga */
@@ -74,27 +49,6 @@
   --stagger-col-dur: 420ms;
   --stagger-col-step: 60ms;
 
-  /* card resize */
-  --resize-dur: 300ms;
-  --resize-ease: var(--m-ease);
-
-  /* icon swap */
-  --icon-swap-dur: 220ms;
-  --icon-swap-blur: 3px;
-  --icon-swap-start-scale: 0.7;
-  --icon-swap-ease: var(--m-ease);
-
-  /* páginas lado a lado */
-  --page-slide-distance: 24px;
-  --page-slide-dur: 380ms;
-  --page-fade-dur: 260ms;
-  --page-blur: 3px;
-  --page-slide-ease: var(--m-ease-entrance);
-  --page-fade-ease: var(--m-ease);
-
-  /* barras de progreso */
-  --bar-dur: 520ms;
-
   /* tilde de éxito */
   --check-opacity-dur: 220ms;
   --check-rotate-dur: 420ms;
@@ -103,26 +57,6 @@
   --check-path-delay: 80ms;
   --check-rotate-from: -18deg;
   --check-blur-from: 4px;
-
-  /* badge de notificaciones */
-  --badge-pop-dur: 320ms;
-  --badge-fade-dur: 180ms;
-  --badge-pop-close-dur: 180ms;
-  --badge-fade-close-dur: 140ms;
-  --badge-blur: 3px;
-
-  /* texto que cambia */
-  --text-swap-dur: 180ms;
-  --text-swap-translate-y: 6px;
-  --text-swap-blur: 2px;
-  --text-swap-ease: var(--m-ease);
-
-  /* shimmer de carga */
-  --shimmer-base: var(--muted);
-  --shimmer-highlight: var(--text);
-  --shimmer-band: 55%;
-  --shimmer-dur: 1.8s;
-  --shimmer-ease: linear;
 
   /* dígitos */
   --digit-dur: 420ms;
@@ -144,77 +78,6 @@
   /* cambio de vista */
   --view-dur: 260ms;
   --view-distance: 8px;
-}
-
-/* ================================================================
-   1. MODAL — receta `modal`.
-   Aplicado en src/components/layout/Modal.tsx, que orquesta
-   .is-open / .is-closing. Como TODOS los modales de la app pasan
-   por ese componente, esta sola regla los anima a todos.
-   El backdrop entra aparte y más lento: primero oscurece, después
-   llega la tarjeta.
-   ================================================================ */
-/* OJO: todo esto engancha de `.t-modal`, no de `.modal` a secas. El estado
-   inicial es invisible (opacity 0), así que si colgara de `.modal` cualquier
-   componente que use esa clase sin manejar `.is-open` quedaría en blanco.
-   `.t-modal` es la manera de decir "yo orquesto las fases". */
-.modal.t-modal {
-  background: rgba(0, 0, 0, 0);
-  transition: background var(--modal-open-dur) var(--modal-ease);
-}
-.modal.t-modal.is-open { background: rgba(0, 0, 0, 0.58); }
-.modal.t-modal.is-closing {
-  background: rgba(0, 0, 0, 0);
-  transition: background var(--modal-close-dur) var(--modal-ease);
-}
-
-.modal.t-modal > .modal-card {
-  transform-origin: center;
-  transform: scale(var(--modal-scale));
-  opacity: 0;
-  filter: blur(var(--m-blur));
-  transition:
-    transform var(--modal-open-dur) var(--modal-ease),
-    opacity   var(--modal-open-dur) var(--modal-ease),
-    filter    var(--modal-open-dur) var(--modal-ease);
-}
-.modal.t-modal.is-open > .modal-card {
-  transform: scale(1);
-  opacity: 1;
-  filter: blur(0);
-  will-change: transform, opacity;
-}
-.modal.t-modal.is-closing > .modal-card {
-  transform: scale(var(--modal-scale-close));
-  opacity: 0;
-  filter: blur(var(--m-blur));
-  transition:
-    transform var(--modal-close-dur) var(--modal-ease),
-    opacity   var(--modal-close-dur) var(--modal-ease),
-    filter    var(--modal-close-dur) var(--modal-ease);
-}
-
-/* Par genérico para overlays que NO usan la estructura .modal/.modal-card
-   (ReleaseNotesModal, el popup de agenda). Sólo el overlay lleva la clase de
-   estado; la tarjeta de adentro la hereda por descendencia, así el llamador
-   maneja un solo string. El overlay se ocupa de la opacidad y la tarjeta sólo
-   de la escala: si las dos animaran opacidad, el fade se multiplicaría y la
-   tarjeta quedaría más transparente que el fondo. */
-.t-fade {
-  opacity: 0;
-  transition: opacity var(--modal-open-dur) var(--modal-ease);
-}
-.t-fade.is-open { opacity: 1; }
-.t-fade.is-closing { opacity: 0; transition-duration: var(--modal-close-dur); }
-
-.t-fade .t-pop {
-  transform: scale(var(--modal-scale));
-  transition: transform var(--modal-open-dur) var(--modal-ease);
-}
-.t-fade.is-open .t-pop { transform: scale(1); }
-.t-fade.is-closing .t-pop {
-  transform: scale(var(--modal-scale-close));
-  transition-duration: var(--modal-close-dur);
 }
 
 /* ================================================================
@@ -246,118 +109,10 @@
 }
 
 /* ================================================================
-   3. TOAST — receta `toast`. NotificationBell.
-   ================================================================ */
-/* `.notif-toast` traía un `animation: toastIn .2s ease` propio que pelea con
-   la transición de la receta: la animación gana sobre el estado inicial y el
-   toast entra dos veces. Se apaga acá, no en components.css, para que la
-   estética vieja siga intacta si algún día se saca .t-toast. */
-.t-toast { animation: none !important; }
-
-.t-toast {
-  opacity: 0;
-  transform: translateY(var(--toast-distance)) scale(var(--toast-scale));
-  filter: blur(var(--toast-blur));
-  transition:
-    opacity   var(--toast-close) var(--toast-ease),
-    transform var(--toast-close) var(--toast-ease),
-    filter    var(--toast-close) var(--toast-ease);
-}
-.t-toast.is-open {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  filter: blur(0);
-  will-change: transform, opacity;
-  transition:
-    opacity   var(--toast-open) var(--toast-ease),
-    transform var(--toast-open) var(--toast-ease),
-    filter    var(--toast-open) var(--toast-ease);
-}
-
-/* ================================================================
-   4. DROPDOWN / POPOVER — receta `menu-dropdown`.
-   Crece desde la esquina que lo disparó: eso es lo que hace legible
-   de dónde salió el menú.
-   ================================================================ */
-.t-dropdown {
-  transform-origin: top left;
-  transform: scale(var(--dropdown-pre-scale));
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    transform var(--dropdown-open-dur) var(--dropdown-ease),
-    opacity   var(--dropdown-open-dur) var(--dropdown-ease);
-}
-.t-dropdown[data-origin="top-right"]     { transform-origin: top right; }
-.t-dropdown[data-origin="top-center"]    { transform-origin: top center; }
-.t-dropdown[data-origin="bottom-left"]   { transform-origin: bottom left; }
-.t-dropdown[data-origin="bottom-center"] { transform-origin: bottom center; }
-.t-dropdown[data-origin="bottom-right"]  { transform-origin: bottom right; }
-.t-dropdown.is-open {
-  transform: scale(1);
-  opacity: 1;
-  pointer-events: auto;
-}
-.t-dropdown.is-closing {
-  transform: scale(var(--dropdown-closing-scale));
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    transform var(--dropdown-close-dur) var(--dropdown-ease),
-    opacity   var(--dropdown-close-dur) var(--dropdown-ease);
-}
-
-/* El menú de Inventario es un <details> nativo: no tiene estado en JS del que
-   colgarse, así que sólo lleva entrada, por keyframes. Salida no hay — el
-   browser cierra el <details> de una y no queda nada montado que animar. */
-.inv-menu details[open] > div {
-  animation: t-dropdown-in var(--dropdown-open-dur) var(--dropdown-ease) both;
-  transform-origin: top right;
-}
-@keyframes t-dropdown-in {
-  from { opacity: 0; transform: scale(var(--dropdown-pre-scale)); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-/* ================================================================
    6. TABS — receta `tabs-sliding`. La píldora viaja entre tabs en
    vez de saltar; el ancho y la posición los escribe JS inline.
    Se monta sobre la estética existente, no la reemplaza.
    ================================================================ */
-.t-tabs { position: relative; }
-/* Los tabs se apoyan sobre la píldora. Va PRIMERO para que la regla de la
-   píldora, que es más específica y viene después, no pueda perder: si el
-   `position: relative` de acá le gana, la píldora entra al flujo del flex y
-   aparece como una caja vacía de más adentro de la barra. */
-.t-tabs > * { position: relative; z-index: 1; }
-.t-tabs > .t-tabs-pill {
-  position: absolute;
-  left: 0;
-  width: 0;
-  background: var(--panel-2);
-  border-radius: 999px;
-  transform: translateX(0);
-  transition:
-    transform var(--tabs-dur) var(--tabs-ease),
-    width     var(--tabs-dur) var(--tabs-ease),
-    opacity   var(--tabs-dur) var(--tabs-ease);
-  will-change: transform, width;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/* Subnav de Tareas: el fondo que antes vivía en `button.active` pasa a la
-   píldora. Misma estética exacta — lo único que cambia es que ahora viaja. */
-.tasks-subnav.t-tabs > .t-tabs-pill {
-  background: rgba(59, 130, 246, .2);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .3);
-  border-radius: 10px;
-}
-.tasks-subnav.t-tabs button.active {
-  background: transparent;
-  box-shadow: none;
-}
-.tasks-subnav.t-tabs button { transition: color var(--tabs-dur) var(--tabs-ease); }
 
 /* ---- Esqueleto del tablero — receta `skeleton-reveal` -------------------
    El pulso va en los bloques hijos y no en el contenedor, así el contenedor
@@ -366,14 +121,12 @@
   0%, 100% { opacity: 1; }
   50%      { opacity: var(--pulse-min); }
 }
-.t-skel-col { display: grid; gap: 10px; align-content: start; }
 .t-skel-line,
 .t-skel-card {
   border-radius: 12px;
   background: var(--panel-2);
   animation: t-skel-pulse var(--pulse-dur) ease-in-out infinite;
 }
-.t-skel-head { height: 22px; width: 55%; border-radius: 8px; }
 .t-skel-card { height: 84px; }
 
 /* Esqueleto de página entera: es el reemplazo de los carteles "Cargando
@@ -391,220 +144,13 @@
   .t-skel-card { animation: none !important; }
 }
 
-/* ---- Tarjeta de tarea ----------------------------------------------------
-   Barra propia en vez del <progress> nativo (que se dibuja distinto en cada
-   browser y no toma el tema), y las cuatro acciones detrás de un solo menú:
-   sueltas se comían media tarjeta. */
-.task-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.task-progress b { color: var(--text); font-variant-numeric: tabular-nums; }
-.task-progress-track {
-  display: block;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--panel-2);
-  overflow: hidden;
-}
-/* scaleX y no width: hay una de estas por tarjeta y puede haber decenas en
-   pantalla, así que acá el costo de layout sí se nota. La pista recorta con
-   su propio radio, así que el relleno no necesita el suyo. */
-.task-progress-fill {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: var(--blue);
-  transform: scaleX(var(--task-progress, 0));
-  transform-origin: left center;
-  transition: transform var(--bar-dur) var(--ease-spring);
-}
-
-.task-add-trigger {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px 5px 8px;
-  border: 1px dashed var(--border);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  transition: color var(--m-in) var(--m-ease), border-color var(--m-in) var(--m-ease);
-}
-.task-add-trigger:hover { color: var(--text); border-color: var(--blue); }
-
-.task-card-menu { position: absolute; top: 10px; right: 10px; }
-.task-menu-trigger {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  transition: color var(--m-in) var(--m-ease), background var(--m-in) var(--m-ease);
-}
-.task-menu-trigger:hover { color: var(--text); background: var(--panel-2); }
-.task-menu {
-  position: absolute;
-  top: 32px;
-  right: 0;
-  z-index: 10;
-  min-width: 178px;
-  padding: 5px;
-  display: grid;
-  gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel);
-  box-shadow: 0 16px 44px rgba(0, 0, 0, .45);
-}
-.task-menu button {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--m-out) var(--m-ease);
-}
-.task-menu button:hover:not(:disabled) { background: var(--panel-2); }
-.task-menu button:disabled { opacity: .45; cursor: not-allowed; }
-.task-menu button.is-danger { color: var(--g-bad); }
-.task-menu button.is-danger:hover:not(:disabled) { background: rgba(239, 68, 68, .12); }
-.task-menu-count {
-  margin-left: auto;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--panel-2);
-  font-size: 11px;
-  color: var(--muted);
-}
-
 /* El título necesita lugar para que el menú no se le encime. */
 .task-card { position: relative; }
 .task-card > strong { padding-right: 34px; display: block; }
-
-/* "Ver más" al pie de cada columna. Discreto a propósito: es un escalón para
-   seguir, no una acción principal. */
-.column-show-more {
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color var(--m-in) var(--m-ease), background var(--m-in) var(--m-ease);
-}
-.column-show-more:hover {
-  border-color: var(--blue);
-  background: rgba(59, 130, 246, .08);
-}
-
-/* Barra de Tareas en tres partes: solapas a la izquierda, el "+" al medio y el
-   espacio a la derecha. Sin tarjeta de fondo — las píldoras ya se leen como
-   controles y la caja alrededor sólo agregaba peso visual. */
-/* Grid de tres columnas y no space-between: con tres bloques de anchos
-   distintos, space-between deja el del medio corrido hacia el lado del bloque
-   más angosto. Con `1fr auto 1fr` el "+" cae en el centro real de la barra,
-   sin importar cuánto midan las píldoras de los costados. */
-.tasks-compact-toolbar {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  padding-left: 0;
-  padding-right: 0;
-}
-.tasks-compact-toolbar > .tasks-subnav { justify-self: start; }
-.tasks-compact-toolbar > .tasks-primary-actions {
-  justify-self: center;
-  display: flex;
-  align-items: center;
-}
-.tasks-compact-toolbar > .task-space-toggle { justify-self: end; }
-
-@media (max-width: 720px) {
-  /* En pantallas angostas los tres bloques no entran en una fila: pasan a
-     dos, con el "+" acompañando al espacio. */
-  .tasks-compact-toolbar {
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-  }
-  .tasks-compact-toolbar > .task-space-toggle { grid-column: 1 / -1; justify-self: stretch; }
-}
-
-/* Espacio de tareas (Equipo / Mis tareas). Eran dos tarjetas con borde propio,
-   así que el estado activo saltaba de una a la otra. Ahora el grupo es un solo
-   control —igual que la subnav de abajo— y lo que se mueve es la píldora. */
-.task-space-toggle.t-tabs {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 3px;
-  gap: 3px;
-}
-.task-space-toggle.t-tabs button,
-.task-space-toggle.t-tabs button.active {
-  background: transparent;
-  border-color: transparent;
-  transition: color var(--tabs-dur) var(--tabs-ease);
-}
-.task-space-toggle.t-tabs > .t-tabs-pill {
-  background: rgba(59, 130, 246, .16);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .6);
-  border-radius: 13px;
-}
-
-/* Switch de login/registro: acá el activo se marca con subrayado, no con
-   fondo. La barra ahora se desliza entre las dos opciones en vez de saltar. */
-.auth-switch.t-tabs > .t-tabs-pill {
-  background: var(--accent);
-  border-radius: 2px;
-}
-.auth-switch.t-tabs button.active { border-bottom-color: transparent; }
-
-/* ================================================================
-   6b. TOGGLES — receta `toggle`.
-   El rebote corto al llegar sale de la curva spring que ya existía en
-   variables.css. Se aplica sobre las clases de switch que ya usa la
-   app, sin tocar el markup: así entran los dos sistemas de toggle
-   (el de checkbox y el de botón) de una.
-   ================================================================ */
-.switch-knob {
-  transition:
-    transform var(--toggle-dur) var(--ease-spring),
-    background var(--toggle-track) var(--m-ease);
-}
 .switch {
   transition:
     background var(--toggle-track) var(--m-ease),
     border-color var(--toggle-track) var(--m-ease);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .switch-knob { transition-duration: 1ms !important; }
 }
 
 /* ================================================================
@@ -660,11 +206,6 @@
    Sirve para que al cambiar de Tablero a Prioridad, o de Equipo a Mis
    tareas, el bloque no salte de una altura a la otra.
    ================================================================ */
-.t-resize {
-  transition:
-    width  var(--resize-dur) var(--resize-ease),
-    height var(--resize-dur) var(--resize-ease);
-}
 
 /* ================================================================
    6d. ENTRADA ESCALONADA DE LISTA.
@@ -719,33 +260,6 @@
 .t-stagger > .dragging { animation: none !important; }
 
 /* ================================================================
-   7b. TEXTO QUE CAMBIA — receta `text-states-swap`.
-   Lo monta el <Button> compartido cuando su label es un string, así
-   todo "Guardar → Guardando…" de la app se anima solo.
-   ================================================================ */
-.t-text-swap {
-  display: inline-block;
-  transform: translateY(0);
-  filter: blur(0);
-  opacity: 1;
-  transition:
-    transform var(--text-swap-dur) var(--text-swap-ease),
-    filter    var(--text-swap-dur) var(--text-swap-ease),
-    opacity   var(--text-swap-dur) var(--text-swap-ease);
-}
-.t-text-swap.is-exit {
-  transform: translateY(calc(var(--text-swap-translate-y) * -1));
-  filter: blur(var(--text-swap-blur));
-  opacity: 0;
-}
-.t-text-swap.is-enter-start {
-  transform: translateY(var(--text-swap-translate-y));
-  filter: blur(var(--text-swap-blur));
-  opacity: 0;
-  transition: none;
-}
-
-/* ================================================================
    7c. CARGANDO — receta `shimmer-text`.
    Una banda de luz barre las letras mientras se espera. Va sobre los
    textos de carga, que antes eran texto plano y quieto: sin señal de
@@ -754,44 +268,12 @@
    que el elemento necesita ese atributo además del contenido.
    ================================================================ */
 
-@keyframes t-shimmer {
-  0%   { background-position: 100% 0; }
-  100% { background-position: 0% 0; }
-}
-
 /* ================================================================
    7e. PÁGINAS LADO A LADO — receta `page-side-by-side`.
    Landing / Login / Registro comparten shell: en vez de reemplazarse
    de golpe, entran desde el lado del que vienen. La dirección la da
    data-page, así el movimiento cuenta hacia dónde vas.
    ================================================================ */
-
-/* ================================================================
-   7g. BARRAS DE PROGRESO.
-   Estaban sin transición: al cambiar el dato el relleno saltaba a su
-   nueva posición. Ahora fluye con la curva spring, que le da el
-   asentamiento corto al llegar — que es lo que se lee como líquido en
-   una barra.
-   Nota: el goo de blobs fusionándose es para un pulgar arrastrable
-   (un slider). Estas barras son de sólo lectura, no tienen pulgar,
-   así que ese filtro no tendría a qué agarrarse.
-
-   EXCEPCIÓN CONSCIENTE a la regla de no animar `width`: `.parque-bar`
-   es una barra segmentada en flex, donde el ancho ES el layout — con
-   `scaleX` los segmentos se superpondrían en vez de repartirse. Y en
-   las otras dos, `scaleX` deformaría el border-radius de las puntas.
-   El costo acá es acotado: son barras de 3 a 10px de alto, hay pocas
-   en pantalla y sólo se mueven cuando cambia el dato, no en loop.
-   ================================================================ */
-.inv-kpi-progress i b,
-.parque-bar i {
-  transition: width var(--bar-dur) var(--ease-spring);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .inv-kpi-progress i b,
-.parque-bar i { transition-duration: 1ms !important; }
-}
 
 /* ================================================================
    7f. SUCCESS CHECK — receta `success-check`.
@@ -1042,13 +524,6 @@
    que un cambio de estado siga siendo legible.
    ================================================================ */
 @media (prefers-reduced-motion: reduce) {
-  .modal.t-modal > .modal-card,
-  .t-toast,
-  .t-dropdown {
-    filter: none !important;
-    transform: none !important;
-    transition-duration: 1ms !important;
-  }
   .view-enter,
   .t-msg-enter,
   .t-digit-group.is-animating .t-digit,
@@ -1058,9 +533,6 @@
     transform: none !important;
     filter: none !important;
   }
-  .t-tabs-pill,
-  .t-resize,
-  .t-text-swap { transition: none !important; }
   .t-stagger > *,
   .t-stagger-x > * { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
 

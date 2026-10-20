@@ -80,31 +80,7 @@ html {
   }
 }
 
-.inline-kpi-filter {
-  cursor: pointer;
-}
-
 .stat-card.active {
   border-color: var(--blue);
   box-shadow: 0 0 0 1px rgba(59, 130, 246, .28) inset;
-}
-
-.empty-state {
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-  color: var(--muted);
-  display: grid;
-  min-height: 180px;
-  place-items: center;
-  padding: 18px;
-  text-align: center;
-  width: 100%;
-}
-
-.modal-card.wide {
-  width: min(920px, 100%);
-}
-
-.task-column.drag-over {
-  border-color: var(--blue);
 }

@@ -12,23 +12,12 @@
    Se borran en la etapa 9, cuando no quede CSS viejo que los lea.
    ================================================================ */
 :root {
-  /* Charts → series de Grafito */
-  --chart-1: var(--g-series-1);
-  --chart-2: var(--g-series-2);
-  --chart-3: var(--g-series-3);
-  --chart-4: var(--g-series-4);
-  --chart-5: var(--g-series-5);
-
-  /* Alto de la topbar sticky vieja. Lo usan los paneles que también son sticky
-     para no quedar tapados abajo del encabezado. Cambia en la etapa 2 (shell). */
-  --topbar-h: 62px;
 
   /* Tokens de transición (los lee motion.css para armar --m-*) */
   --ease-out: var(--g-ease);
   --ease-spring: var(--g-ease-spring);
   --duration-fast: .15s;
   --duration-base: .22s;
-  --duration-slow: .35s;
 
   /* Base */
   --bg: var(--g-bg);
@@ -38,37 +27,13 @@
   --text: var(--g-text);
   --muted: var(--g-text-2);
   --blue: var(--g-accent);
-  --green: var(--g-ok);
-  --yellow: var(--g-warn);
   --red: var(--g-bad);
   --radius: var(--g-radius);
 
   /* Superficies: planas, sin sombra ni brillo interno */
   --surface: var(--g-surface);
-  --surface-raised: var(--g-raised);
   --surface-border: var(--g-line);
-  --surface-border-strong: var(--g-line-strong);
   --surface-shadow: none;
   --surface-shadow-hover: none;
   --surface-inset: none;
-
-  /* Acento (antes solo existía en el perfil smart: auth.css lo usaba sin
-     fallback y en el oscuro quedaba sin definir) */
-  --accent: var(--g-accent);
-  --accent-soft: var(--g-raised);
-  --accent-light: var(--g-raised);
-
-  /* Vidrio → superficie plana */
-  --glass-bg: var(--g-surface);
-  --glass-border: var(--g-line);
-  --glass-shadow: none;
-  --glass-blur: 0px;
-
-  /* Cards */
-  --card-radius: var(--g-radius);
-  --card-shadow: none;
-
-  /* Neutros que usaba el tema B */
-  --navy-50: var(--g-raised);
-  --navy-100: var(--g-line);
 }

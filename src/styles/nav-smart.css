@@ -4,198 +4,20 @@
    etapa 2: el caparazón nuevo está en shell.css.
    ================================================================ */
 
-
 /* ── COMPAT CLARO: overrides del tema claro sobre CSS viejo ─
    Era el bloque del tema B "Smart Campus" (crema). Desde la etapa 1 del
    rediseño el claro es Grafito (tokens.css) y se activa con .theme-light;
    acá quedan solo los arreglos de legibilidad de reglas viejas con colores
    oscuros fijos, ya con tokens y sin degradés, sombras ni fondos tintados.
    Se borra pantalla por pantalla a medida que se migra. ── */
-:root.theme-light .card-head h3,
-:root.theme-light .stat-card strong,
-:root.theme-light .scan-preview-meta,
-:root.theme-light .task-card.task-state-hecha strong { color: var(--g-text); }
-:root.theme-light .operational-alias { color: var(--g-accent); }
-:root.theme-light .continuous-scan-panel {
-  background: var(--g-surface);
-  border-color: var(--g-line);
-}
+:root.theme-light .stat-card strong { color: var(--g-text); }
 
-/* Tabla de dispositivos */
-:root.theme-light .device-table .device-actions .mini-action-btn {
-  color: var(--g-text);
-  border-color: var(--g-line-strong);
-}
-:root.theme-light .device-table tbody td,
-:root.theme-light .device-table td.device-actions-cell { background: var(--g-surface) !important; }
-:root.theme-light .device-table thead th { background: var(--g-raised); }
-:root.theme-light .device-table tbody tr:hover td { background: var(--g-raised) !important; }
-
-/* Escaneo continuo */
-:root.theme-light .toggle-row { background: var(--g-raised); border-color: var(--g-line); }
-:root.theme-light .toggle-pill { background: var(--g-line-strong); }
-:root.theme-light .toggle-pill span { background: var(--g-surface); }
-:root.theme-light .toggle-row-button.active { border-color: var(--g-accent); background: var(--g-raised); }
-:root.theme-light .toggle-row-button.active .toggle-pill { background: var(--g-accent); }
-:root.theme-light .toggle-row-button.active .toggle-pill span { background: var(--g-on-accent); }
-:root.theme-light .continuous-scan-summary { color: var(--g-text-2); }
-
-/* Tareas: estados como texto coloreado, sin pastilla tintada */
-:root.theme-light .task-card.task-state-hecha {
-  background: var(--g-surface);
-  border-color: var(--g-line);
-  box-shadow: none;
-}
-:root.theme-light .task-state-pill-hecha { background: transparent; color: var(--g-ok); }
-:root.theme-light .task-state-pill-pendiente { background: transparent; color: var(--g-accent); }
-:root.theme-light .task-state-pill-en-proceso { background: transparent; color: var(--g-warn); }
-
-:root.theme-light .task-done-btn {
-  background: var(--g-accent) !important;
-  border-color: var(--g-accent) !important;
-}
-
-:root.theme-light .loan-filter-chips span {
-  background: var(--g-raised);
-  border-color: var(--g-line);
-  color: var(--g-text);
-}
-:root.theme-light .floor-btn.active,
-:root.theme-light .inventory-segmented button.is-active {
-  border-color: var(--g-accent);
-  background: var(--g-raised);
-  color: var(--g-text);
-}
-:root.theme-light .inventory-segmented { border-color: var(--g-line); }
-
-:root.theme-light .stat-card.active,
-:root.theme-light .stat-card.active-filter {
+:root.theme-light .stat-card.active {
   border-color: var(--g-accent) !important;
   background: var(--g-surface) !important;
   box-shadow: none !important;
-}
-
-/* Estado de la base: texto coloreado, sin fondo tintado */
-:root.theme-light .sync-status.ok { background: var(--g-surface); color: var(--g-ok); border-color: var(--g-line); }
-:root.theme-light .sync-status.error { background: var(--g-surface); color: var(--g-bad); border-color: var(--g-line); }
-:root.theme-light .sync-status.pending { background: var(--g-surface); color: var(--g-warn); border-color: var(--g-line); }
-
-:root.theme-light .day-btn.active {
-  background: var(--g-accent);
-  border-color: var(--g-accent);
-  box-shadow: none;
-  color: var(--g-on-accent);
-}
-:root.theme-light .agenda-tab.active {
-  color: var(--g-accent);
-  border-bottom-color: var(--g-accent);
-}
-:root.theme-light .ticket-chip.is-active {
-  background: var(--g-accent);
-  border-color: var(--g-accent);
-  color: var(--g-on-accent);
 }
 :root.theme-light .switch.is-on {
   background: var(--g-accent);
   border-color: var(--g-accent);
 }
-:root.theme-light .mini-action-btn:hover { border-color: var(--g-accent); }
-
-/* ── SELECTOR DE TEMA (Configuración › Apariencia) ───────────────
-   Tema (con vista previa real: .g-theme-dark / .g-theme-light redefinen los
-   tokens en el subárbol), Densidad y Tamaño de texto. */
-.settings-apariencia .appearance-label {
-  margin: 16px 0 10px;
-  font-size: 14px;
-  color: var(--g-text);
-}
-.settings-apariencia .card-head + .appearance-label { margin-top: 0; }
-
-.theme-option-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
-}
-
-.theme-card {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 12px;
-  border-radius: var(--g-radius);
-  border: 1px solid var(--g-line);
-  background: var(--g-surface);
-  color: var(--g-text);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color var(--g-dur) var(--g-ease);
-}
-.theme-card:hover { border-color: var(--g-line-strong); }
-.theme-card.selected { border-color: var(--g-accent); box-shadow: inset 0 0 0 1px var(--g-accent); }
-.theme-card strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.theme-card > span { font-size: 12px; color: var(--g-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.theme-preview {
-  display: flex;
-  gap: 6px;
-  height: 56px;
-  padding: 6px;
-  margin-bottom: 6px;
-  border-radius: var(--g-radius-sm);
-  background: var(--g-bg);
-  border: 1px solid var(--g-line);
-}
-.theme-preview.is-split { padding: 0; gap: 0; overflow: hidden; }
-.theme-preview-half {
-  display: flex;
-  flex: 1;
-  gap: 6px;
-  padding: 6px;
-  background: var(--g-bg);
-}
-.theme-preview .preview-sidebar {
-  width: 28%;
-  border-radius: 4px;
-  background: var(--g-surface);
-  border: 1px solid var(--g-line);
-}
-.theme-preview .preview-content {
-  flex: 1;
-  border-radius: 4px;
-  background: var(--g-surface);
-  border: 1px solid var(--g-line);
-  border-bottom: 3px solid var(--g-accent);
-}
-
-.style-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.style-chip {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-width: 0;
-  padding: 8px 14px;
-  border-radius: var(--g-radius-sm);
-  border: 1px solid var(--g-line-strong);
-  background: var(--g-surface);
-  color: var(--g-text-2);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: border-color var(--g-dur-fast) var(--g-ease), color var(--g-dur-fast) var(--g-ease);
-  text-align: left;
-}
-.style-chip small { font-weight: 500; font-size: 11px; color: var(--g-text-3); }
-.style-chip:hover { color: var(--g-text); border-color: var(--g-text-3); }
-.style-chip.active {
-  border-color: var(--g-accent);
-  color: var(--g-text);
-  box-shadow: inset 0 0 0 1px var(--g-accent);
-}
-.settings-apariencia > small.muted { display: block; margin-top: 14px; }
