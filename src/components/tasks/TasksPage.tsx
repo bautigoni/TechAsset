@@ -76,7 +76,19 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
       setColumnsState(current => (current === 'ready' ? current : 'error'));
     }
   }, []);
-  useEffect(() => { void loadColumns(); }, [loadColumns]);
+  // Si las columnas llegaron con la lista no se piden de nuevo al abrir (era un
+  // pedido más antes de "a la vista", pasada 3): se siguen de la lista, que se
+  // pollea. Solo se adopta lo nuevo si acá no se tocaron (un reordenar en curso
+  // no se pisa con una lista vieja).
+  useEffect(() => { if (!core.columns.length) void loadColumns(); }, [loadColumns]); // eslint-disable-line react-hooks/exhaustive-deps
+  const seenCoreColumns = useRef(core.columns);
+  useEffect(() => {
+    const previous = seenCoreColumns.current;
+    seenCoreColumns.current = core.columns;
+    if (!core.columns.length || previous === core.columns) return;
+    setColumns(current => (JSON.stringify(current) === JSON.stringify(previous) && JSON.stringify(current) !== JSON.stringify(core.columns) ? core.columns : current));
+    setColumnsState('ready');
+  }, [core.columns]);
   useEffect(() => {
     getSiteAssistants().then(response => setPeople(response.items.filter(item => item.name))).catch(() => setPeople([]));
   }, []);
