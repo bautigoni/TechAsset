@@ -20,7 +20,7 @@ function StatusFold({ item, open, onDismiss, onClosed, className, outerClassName
   outerClassName?: string;
 }) {
   return (
-    <Collapse open={open} appear gap="auto" className={className} outerClassName={outerClassName} onSettled={value => { if (!value) onClosed(); }}>
+    <Collapse open={open} appear gap="auto" className={className ? `ui-status-slot ${className}` : 'ui-status-slot'} outerClassName={outerClassName} onSettled={value => { if (!value) onClosed(); }}>
       <StatusLine {...item} key={item.key} onDismiss={onDismiss} />
     </Collapse>
   );

@@ -463,3 +463,69 @@ export function Collapse({ open, children, className, outerClassName, anchor, re
     </div>
   );
 }
+
+/* ── <AutoHeight> ──────────────────────────────────────────────────────── */
+
+export type AutoHeightProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
+  children: ReactNode;
+  /** Va al contenido (la capa que anima no lleva padding ni borde). */
+  innerClassName?: string;
+  /** El control recién tocado (si está fuera del contenido) queda quieto en pantalla (default true). */
+  anchor?: boolean;
+};
+
+/**
+ * Para contenido que cambia de alto sin abrirse ni cerrarse: un segmentado o
+ * pestañas que cambian la lista de abajo, "cargando → datos", un "Ver más".
+ * El alto viaja suave del anterior al nuevo (mismo tiempo y curva que
+ * Collapse) en vez de saltar, y el control tocado no se mueve. Con
+ * `prefers-reduced-motion: reduce`, instantáneo.
+ *
+ *   <Segmented … />
+ *   <AutoHeight>{lista según el segmento}</AutoHeight>
+ */
+export function AutoHeight({ children, className, innerClassName, anchor = true, ...rest }: AutoHeightProps) {
+  const outerRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    trackTriggers();
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner || typeof ResizeObserver === 'undefined') return;
+    let last = inner.getBoundingClientRect().height;
+    let timer = 0;
+    let hold: KeepInPlace = NOOP;
+    const settle = () => {
+      window.clearTimeout(timer);
+      outer.style.height = '';
+      outer.removeAttribute('data-animating');
+      hold.stop();
+      hold = NOOP;
+    };
+    // Después del layout y antes de pintar: el alto nuevo nunca se ve de golpe.
+    const observer = new ResizeObserver(() => {
+      const next = inner.getBoundingClientRect().height;
+      const from = outer.hasAttribute('data-animating') ? outer.getBoundingClientRect().height : last;
+      last = next;
+      if (Math.abs(next - from) < 1 || reducedMotion()) return;
+      if (anchor && hold === NOOP) {
+        const trigger = recentTrigger();
+        if (trigger && !inner.contains(trigger)) hold = keepInPlace(trigger, { duration: COLLAPSE_MS + 60, reserve: Math.max(0, from - next), watch: outer });
+      }
+      outer.removeAttribute('data-animating');
+      outer.style.height = `${from}px`;
+      void outer.offsetHeight;
+      outer.setAttribute('data-animating', '');
+      outer.style.height = `${next}px`;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(settle, (transitionMs(outer) || COLLAPSE_MS) + 40);
+    });
+    observer.observe(inner);
+    return () => { observer.disconnect(); settle(); };
+  }, [anchor]);
+  return (
+    <div ref={outerRef} className={cx('ui-autoheight', className)} {...rest}>
+      <div ref={innerRef} className={cx('ui-autoheight-inner', innerClassName)}>{children}</div>
+    </div>
+  );
+}

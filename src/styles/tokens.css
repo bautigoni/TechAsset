@@ -103,10 +103,26 @@
   --g-s-6: 32px;
   --g-s-7: 48px;
 
-  /* Forma */
-  --g-radius-sm: 6px;
-  --g-radius: 10px;
-  --g-radius-pill: 999px;
+  /* Forma (estética ElevenLabs traducida a Grafito, docs/redesign/ESTETICA-ELEVENLABS.md):
+     radios grandes y concéntricos. Un elemento adentro de otro lleva el radio
+     de afuera menos el espacio que los separa (tarjeta 16 → campo 12 → ítem 6). */
+  --g-radius-xs: 6px;        /* casillas, kbd, ítems chicos dentro de listas */
+  --g-radius-sm: 12px;       /* campos y controles rectangulares, chips de pantalla, tooltip */
+  --g-radius: 16px;          /* tarjetas */
+  --g-radius-lg: 20px;       /* paneles grandes (asistente, franjas), líneas de estado */
+  --g-radius-xl: 24px;       /* superficies de primer nivel (pop up) */
+  --g-radius-pill: 999px;    /* botones, insignias, segmentado, chips, compositor */
+  /* Semánticos: los componentes usan estos (cambiar la forma = cambiar acá). */
+  --g-radius-btn: var(--g-radius-pill);
+  --g-radius-field: var(--g-radius-sm);
+  --g-radius-card: var(--g-radius);
+  --g-radius-panel: var(--g-radius-lg);
+
+  /* Foco: anillo de 2 px que sigue el radio del control (outline). Adentro de
+     algo que recorta (lista que scrollea, tarjeta con overflow) el offset pasa
+     a negativo y el anillo se dibuja hacia adentro: nunca queda cortado. */
+  --g-focus-w: 2px;
+  --g-focus-offset: 2px;
 
   /* Tamaños */
   --g-control-h: 36px;
@@ -121,6 +137,8 @@
   --g-dur-fast: 120ms;
   --g-dur: 180ms;
   --g-dur-slow: 260ms;
+  /* Paneles que entran y salen (columna del asistente, vista propia en mobile). */
+  --g-dur-panel: 240ms;
 }
 
 /* ---------- Oscuro (default: también sin atributo) ----------
@@ -155,6 +173,10 @@ html[data-theme="dark"],
   --g-check-bg: #ECEEF1;
   --g-check-fg: #0D0F12;
   --g-shadow-tooltip: 0 6px 20px rgba(0, 0, 0, .35);
+  /* Marca del asistente (esfera): tres tonos del acento, sombreado tonal sin glow. */
+  --g-orb-hi: #A9CBFF;
+  --g-orb-mid: #5B9BFF;
+  --g-orb-lo: #2C5DB3;
 }
 
 /* ---------- Claro ---------- */
@@ -186,6 +208,9 @@ html[data-theme="light"],
   --g-check-bg: #14171B;
   --g-check-fg: #FFFFFF;
   --g-shadow-tooltip: 0 6px 20px rgba(20, 23, 27, .12);
+  --g-orb-hi: #8DB4F5;
+  --g-orb-mid: #2F6FE0;
+  --g-orb-lo: #1A4BA6;
 }
 
 /* ---------- Densidad ---------- */
@@ -211,6 +236,7 @@ html[data-text-size="xlarge"] { font-size: 19px; }
     --g-dur-fast: 0ms;
     --g-dur: 0ms;
     --g-dur-slow: 0ms;
+    --g-dur-panel: 0ms;
   }
 }
 

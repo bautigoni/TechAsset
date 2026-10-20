@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { Collapse } from './Collapse';
 import { FieldShell, useFieldIds, type FieldProps } from './Field';
 import { IconX } from './icons';
 import { cx, fold } from './util';
@@ -123,15 +124,14 @@ export function TagInput({ id: idProp, value, onChange, placeholder = 'Escribí 
           onPaste={onPaste}
         />
       </div>
-      {focused && pending.length > 0 && !disabled && !full && (
-        <div className="ui-tag-suggest" aria-label="Sugerencias">
-          {pending.map(item => (
-            <button key={item} type="button" className="ui-tag-option" onMouseDown={event => event.preventDefault()} onClick={() => add([item])}>
-              {item}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Sugerencias: entran y salen con alto suave (nada aparece de golpe). */}
+      <Collapse open={focused && pending.length > 0 && !disabled && !full} gap="auto" reveal={false} className="ui-tag-suggest" aria-label="Sugerencias">
+        {pending.map(item => (
+          <button key={item} type="button" className="ui-tag-option" onMouseDown={event => event.preventDefault()} onClick={() => add([item])}>
+            {item}
+          </button>
+        ))}
+      </Collapse>
       <span className="ui-sr" aria-live="polite">{announce}</span>
     </FieldShell>
   );

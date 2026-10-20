@@ -416,11 +416,10 @@ export function Combobox({ id: idProp, value, onChange, options, onSelect, place
             onKeyDown={onKeyDown}
           />
         </div>
-        {showList && (
-          <div className="ui-select-panel">
-            <Listbox id={listId} options={filtered} active={active} onActive={setActive} onPick={pick} maxVisible={maxVisible} emptyText={emptyText} label={typeof label === 'string' ? label : ariaLabel} />
-          </div>
-        )}
+        {/* Las sugerencias entran y salen con alto suave (el campo no se mueve). */}
+        <Collapse open={showList} unmountOnClose className="ui-select-panel">
+          <Listbox id={listId} options={filtered} active={active} onActive={setActive} onPick={pick} maxVisible={maxVisible} emptyText={emptyText} label={typeof label === 'string' ? label : ariaLabel} />
+        </Collapse>
       </div>
     </FieldShell>
   );

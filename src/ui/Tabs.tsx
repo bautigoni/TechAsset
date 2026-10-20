@@ -1,4 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { AutoHeight } from './Collapse';
 import { cx } from './util';
 
 export type TabItem<V extends string = string> = {
@@ -97,7 +98,8 @@ export function Tabs<V extends string = string>({ tabs, value, onChange, ariaLab
       </div>
       {children !== undefined && (
         <div role="tabpanel" id={`${base}-p`} aria-labelledby={`${base}-t${activeIndex}`} className="ui-tabpanel" tabIndex={0}>
-          {children}
+          {/* Cambiar de pestaña cambia el alto suave (la pestaña tocada no se mueve). */}
+          <AutoHeight>{children}</AutoHeight>
         </div>
       )}
     </div>
