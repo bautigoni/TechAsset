@@ -53,10 +53,12 @@ export function TruncatedText({ children, as: Tag = 'span', lines = 1, className
       const next = lines > 1 ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1;
       setCut(current => (current === next ? current : next));
     };
-    // El texto pudo cambiar sin que cambie el tamaño: se mide en el próximo frame.
-    const raf = requestAnimationFrame(check);
-    const stop = observe(el, check);
-    return () => { cancelAnimationFrame(raf); stop(); };
+    // Se mide SOLO desde el ResizeObserver: avisa una vez al empezar a
+    // observar (también al re-observar porque cambió el texto) y corre después
+    // del layout del frame, así leer scrollWidth no fuerza otro layout. Antes
+    // además se medía en un requestAnimationFrame, ANTES del layout: con 50
+    // textos cortados en el Inicio eran decenas de layouts forzados al arrancar.
+    return observe(el, check);
   }, [children, lines]);
 
   useEffect(() => {

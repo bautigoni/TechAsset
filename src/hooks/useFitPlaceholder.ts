@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 
 let canvas: CanvasRenderingContext2D | null = null;
 
@@ -23,6 +24,8 @@ export function useFitPlaceholder(options: string[], external?: RefObject<HTMLIn
   const own = useRef<HTMLInputElement | null>(null);
   const ref = external || own;
   const [index, setIndex] = useState(0);
+  const indexRef = useRef(index);
+  indexRef.current = index;
   const key = options.join('\u0000');
   const watched = useRef<{ el: HTMLInputElement | null; key: string; stop: () => void }>({ el: null, key: '', stop: () => {} });
 
@@ -40,9 +43,14 @@ export function useFitPlaceholder(options: string[], external?: RefObject<HTMLIn
       const room = input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 2;
       if (room <= 0) return;
       const fit = options.findIndex(option => textWidth(option, input) <= room);
-      setIndex(fit === -1 ? options.length - 1 : fit);
+      const next = fit === -1 ? options.length - 1 : fit;
+      // Desde el ResizeObserver (después del layout, antes de pintar): si cambia,
+      // se aplica en el acto para que no se vea un frame con el texto largo.
+      if (next !== indexRef.current) flushSync(() => setIndex(next));
     };
-    pick();
+    // Sin medir acá: el ResizeObserver avisa al empezar a observar, después del
+    // layout del frame. Medir en el layout effect forzaba un layout extra por
+    // campo justo al montar la pantalla.
     // Con la fuente web recién cargada el ancho del texto cambia.
     void document.fonts?.ready.then(pick);
     const observer = new ResizeObserver(pick);
