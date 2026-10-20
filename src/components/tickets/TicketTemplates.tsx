@@ -6,6 +6,7 @@ import { Button, EmptyState, ErrorState, Eyebrow, InlineConfirm, Input, Segmente
 import { StepList } from './StepList';
 import { Collapse } from '../../ui';
 import { PRIORIDADES, errorText } from './ticketUtils';
+import { ListItemMotion, useListMotion } from '../../utils/motion';
 
 type Draft = { title: string; description: string; priority: string; category: string; suggestedAssignee: string; checklist: string[]; tags: string[] };
 const EMPTY: Draft = { title: '', description: '', priority: 'Media', category: '', suggestedAssignee: '', checklist: [], tags: [] };
@@ -28,6 +29,7 @@ export function TicketTemplates({ templates, loadError, canEdit, onReload, onClo
   const [busy, setBusy] = useState(false);
   const status = useStatusLine();
   const newRef = useRef<HTMLButtonElement | null>(null);
+  const rows = useListMotion(templates, template => String(template.id));
 
   const remove = async (template: TicketTemplate) => {
     if (busy) return;
@@ -74,7 +76,9 @@ export function TicketTemplates({ templates, loadError, canEdit, onReload, onClo
       </div>
       <p className="tkx-para tkx-muted">Guardá incidentes frecuentes con prioridad, categoría, responsable sugerido, tags y checklist. Al cargar un ticket, elegís la plantilla y completa todo.</p>
       <StatusSlot status={status} />
-      {loadError && <ErrorState message={loadError} onRetry={() => void onReload()} />}
+      <Collapse open={Boolean(loadError)}>
+        <ErrorState message={loadError || 'No se pudieron cargar las plantillas.'} onRetry={() => void onReload()} />
+      </Collapse>
 
       <Collapse open={editing === 'new'} unmountOnClose>
         <TemplateForm
@@ -89,10 +93,14 @@ export function TicketTemplates({ templates, loadError, canEdit, onReload, onClo
         />
       </Collapse>
 
-      {templates.length ? (
+      {rows.entries.length ? (
         <ul className="tkx-tpl-list">
-          {templates.map(template => (
-            <li key={template.id} className="tkx-tpl">
+          {rows.entries.map(entry => {
+            const template = entry.item;
+            return (
+            <li key={entry.key}>
+            <ListItemMotion entry={entry} release={rows.release}>
+            <div className="tkx-tpl">
               <div className="tkx-tpl-head">
                 <span className="tkx-strong tkx-ell tkx-grow">{template.title}</span>
                 {canEdit && (
@@ -132,8 +140,11 @@ export function TicketTemplates({ templates, loadError, canEdit, onReload, onClo
                   }}
                 />
               </Collapse>
+            </div>
+            </ListItemMotion>
             </li>
-          ))}
+            );
+          })}
         </ul>
       ) : !loadError && editing !== 'new' ? (
         <EmptyState
@@ -187,7 +198,9 @@ function TemplateForm({ heading, initial, onSave, onCancel }: { heading: string;
         </div>
         <TagInput className="tkx-full" label="Tags" value={draft.tags} onChange={tags => set({ tags })} placeholder="tag, tag…" />
       </div>
-      {error && <ErrorState message={error} />}
+      <Collapse open={Boolean(error)}>
+        <ErrorState message={error || 'No se pudo guardar la plantilla.'} />
+      </Collapse>
       <div className="tkx-actions">
         <Button type="submit" size="sm" variant="primary" loading={saving} loadingLabel="Guardando…">{initial ? 'Guardar cambios' : 'Guardar plantilla'}</Button>
         <Button size="sm" variant="ghost" disabled={saving} onClick={onCancel}>Cancelar</Button>

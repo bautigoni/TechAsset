@@ -13,6 +13,7 @@ import {
 } from '../../ui';
 import { IconPlus, IconRetry, IconX } from '../../ui/icons';
 import { TruncatedText } from '../../ui/Truncated';
+import { ListItemMotion, smoothHeight, useListMotion } from '../../utils/motion';
 import {
   ESTADOS, errorText, externalLink, fileNameOf, isPdf, prioridadTone, shortDateTime, sourceLine, systemLabel, ticketNumber, ticketRoutePath,
   type LinkBases
@@ -142,6 +143,7 @@ export function TicketDetail({ id, tickets, classrooms, bases, canEdit, onOpen, 
 
   /* ── Descripción y archivo ── */
   const [descOpen, setDescOpen] = useState(false);
+  const descRef = useRef<HTMLParagraphElement | null>(null);
   const anchored = useAnchoredToggle();
   const [fileOpen, setFileOpen] = useState(false);
 
@@ -211,14 +213,16 @@ export function TicketDetail({ id, tickets, classrooms, bases, canEdit, onOpen, 
             </div>
             <p className="tkx-para">{item.aiSummary || 'El resumen se genera solo al registrar actividad. También podés pedirlo ahora.'}</p>
             {item.aiSummaryUpdatedAt && <span className="tkx-small tkx-muted">Actualizado {shortDateTime(item.aiSummaryUpdatedAt)}</span>}
-            {summaryError && <ErrorState message={summaryError} onRetry={() => void regenerate()} retrying={summaryBusy} />}
+            <Collapse open={Boolean(summaryError)}>
+              <ErrorState message={summaryError || 'No se pudo actualizar el resumen.'} onRetry={() => void regenerate()} retrying={summaryBusy} />
+            </Collapse>
           </section>
 
           <section className="tkx-sec" aria-labelledby={`tkx-desc-${id}`}>
             <div className="tkx-sec-head"><h3 id={`tkx-desc-${id}`}>Descripción</h3></div>
-            <p className="tkx-para tkx-pre">{!desc ? 'Sin descripción.' : descLong && !descOpen ? `${desc.slice(0, DESC_LONG).trimEnd()}…` : desc}</p>
+            <p ref={descRef} className="tkx-para tkx-pre">{!desc ? 'Sin descripción.' : descLong && !descOpen ? `${desc.slice(0, DESC_LONG).trimEnd()}…` : desc}</p>
             {descLong && (
-              <button type="button" className="tkx-link" aria-expanded={descOpen} onClick={event => { const at = event.currentTarget; anchored(() => setDescOpen(open => !open), at); }}>
+              <button type="button" className="tkx-link" aria-expanded={descOpen} onClick={event => { const at = event.currentTarget; anchored(() => smoothHeight(descRef.current, () => setDescOpen(open => !open)), at); }}>
                 {descOpen ? 'Mostrar menos' : 'Mostrar todo'}
               </button>
             )}
@@ -321,6 +325,7 @@ function Checklist({ ticketId, items, canEdit, onItems, reload }: {
   const status = useStatusLine();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const done = items.filter(item => item.done).length;
+  const rows = useListMotion(items, item => String(item.id));
   const mark = (itemId: number, on: boolean) => setPending(current => { const next = new Set(current); if (on) next.add(itemId); else next.delete(itemId); return next; });
 
   const toggle = async (target: TicketChecklistItem) => {
@@ -391,10 +396,14 @@ function Checklist({ ticketId, items, canEdit, onItems, reload }: {
         <h3 id={`tkx-check-${ticketId}`}>Checklist</h3>
         <span className="tkx-count">{items.length ? `${done}/${items.length}` : 'Sin pasos'}</span>
       </div>
-      {items.length > 0 && (
+      <Collapse open={rows.entries.length > 0} lazy={false}>
         <ul className="tkx-checklist">
-          {items.map(item => (
-            <li className="tkx-check-row" key={item.id}>
+          {rows.entries.map(entry => {
+            const item = entry.item;
+            return (
+            <li key={entry.key}>
+              <ListItemMotion entry={entry} release={rows.release}>
+              <div className="tkx-check-row">
               <Checkbox
                 checked={item.done}
                 disabled={!canEdit || pending.has(item.id)}
@@ -404,10 +413,13 @@ function Checklist({ ticketId, items, canEdit, onItems, reload }: {
                 className="tkx-grow"
               />
               {canEdit && <IconButton size="sm" label={`Quitar el paso ${item.text}`} icon={<IconX size={14} />} disabled={pending.has(item.id)} onClick={() => void remove(item)} />}
+              </div>
+              </ListItemMotion>
             </li>
-          ))}
+            );
+          })}
         </ul>
-      )}
+      </Collapse>
       <StatusSlot status={status} />
       {canEdit && (
         <form className="tkx-inline-add" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void add(); }}>
@@ -425,6 +437,7 @@ function Checklist({ ticketId, items, canEdit, onItems, reload }: {
 
 function Conversation({ ticketId, data, canEdit, reload, onChanged }: { ticketId: number; data: Detail; canEdit: boolean; reload: () => Promise<void>; onChanged: () => void }) {
   const [tab, setTab] = useState<'com' | 'act'>('com');
+  const comments = useListMotion(data.comments, comment => String(comment.id));
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -456,12 +469,16 @@ function Conversation({ ticketId, data, canEdit, reload, onChanged }: { ticketId
         options={[{ value: 'com', label: 'Comentarios', count: data.comments.length }, { value: 'act', label: 'Actividad', count: data.activity.length }]}
         size="sm"
       />
-      {tab === 'com' ? (
-        <>
-          {data.comments.length ? (
+      {/* Comentarios / Actividad: una se pliega mientras la otra se abre (sin salto de alto). */}
+      <Collapse open={tab === 'com'} lazy={false} className="tkx-tabpane">
+          {comments.entries.length ? (
             <ol className="tkx-comments">
-              {data.comments.map(comment => (
-                <li key={comment.id} className="tkx-comment">
+              {comments.entries.map(entry => {
+                const comment = entry.item;
+                return (
+                <li key={entry.key}>
+                <ListItemMotion entry={entry} release={comments.release}>
+                <div className="tkx-comment">
                   <span className="tkx-avatar" aria-hidden="true">{initials(comment.authorName || comment.authorEmail)}</span>
                   <div className="tkx-grow">
                     <div className="tkx-comment-head">
@@ -470,8 +487,11 @@ function Conversation({ ticketId, data, canEdit, reload, onChanged }: { ticketId
                     </div>
                     <p className="tkx-para tkx-pre">{comment.body}</p>
                   </div>
+                </div>
+                </ListItemMotion>
                 </li>
-              ))}
+                );
+              })}
             </ol>
           ) : <p className="tkx-muted tkx-para">Todavía no hay comentarios.</p>}
           {canEdit && (
@@ -483,8 +503,9 @@ function Conversation({ ticketId, data, canEdit, reload, onChanged }: { ticketId
               </div>
             </form>
           )}
-        </>
-      ) : data.activity.length ? (
+      </Collapse>
+      <Collapse open={tab === 'act'} className="tkx-tabpane">
+      {data.activity.length ? (
         <ol className="tkx-activity">
           {data.activity.map(entry => (
             <li key={entry.id}>
@@ -498,6 +519,7 @@ function Conversation({ ticketId, data, canEdit, reload, onChanged }: { ticketId
           ))}
         </ol>
       ) : <p className="tkx-muted tkx-para">Sin actividad registrada.</p>}
+      </Collapse>
     </section>
   );
 }
@@ -520,6 +542,7 @@ function Relations({ ticketId, current, related, tickets, canEdit, onOpen, onRel
   const [type, setType] = useState<'related' | 'parent'>('related');
   const [linking, setLinking] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const relRows = useListMotion(related, rel => String(rel.relationId));
   const status = useStatusLine();
   const options = useMemo(() => tickets
     .filter(item => item.id !== ticketId && !related.some(rel => rel.ticket.id === item.id))
@@ -578,17 +601,24 @@ function Relations({ ticketId, current, related, tickets, canEdit, onOpen, onRel
         <h3 id={`tkx-rel-${ticketId}`}>Relacionados</h3>
         <span className="tkx-count">{related.length}</span>
       </div>
-      {related.length ? (
+      {relRows.entries.length ? (
         <ul className="tkx-rels">
-          {related.map(rel => (
-            <li key={rel.relationId} className="tkx-rel">
+          {relRows.entries.map(entry => {
+            const rel = entry.item;
+            return (
+            <li key={entry.key}>
+            <ListItemMotion entry={entry} release={relRows.release}>
+            <div className="tkx-rel">
               <a className="tkx-rel-open" href={ticketRoutePath({ kind: 'detail', id: rel.ticket.id })} onClick={event => { if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return; event.preventDefault(); onOpen(rel.ticket.id); }} aria-label={`Abrir ${ROLE_LABEL[rel.role]} ${ticketNumber(rel.ticket)}: ${rel.ticket.titulo || 'sin título'}`}>
                 <span className="tkx-small tkx-muted tkx-ell">{ROLE_LABEL[rel.role]} · <span className="tkx-mono">{ticketNumber(rel.ticket)}</span></span>
                 <TruncatedText lines={2} className="tkx-rel-title">{rel.ticket.titulo || 'Sin título'}</TruncatedText>
               </a>
               {canEdit && <IconButton size="sm" label={`Desvincular ${ticketNumber(rel.ticket)}`} icon={<IconX size={14} />} loading={busyId === rel.relationId} onClick={() => void unlink(rel)} />}
+            </div>
+            </ListItemMotion>
             </li>
-          ))}
+            );
+          })}
         </ul>
       ) : <p className="tkx-muted tkx-para">Sin tickets vinculados.</p>}
       <StatusSlot status={status} />

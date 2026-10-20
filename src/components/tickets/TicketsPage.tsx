@@ -396,6 +396,50 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   const editingTicket = route.kind === 'edit' ? tickets.find(ticket => ticket.id === route.id) : undefined;
   const paneLabel = route.kind === 'new' || route.kind === 'edit' ? 'Formulario de ticket' : route.kind === 'templates' ? 'Plantillas' : 'Detalle del ticket';
 
+  const renderRow = (ticket: Ticket) => {
+    const key = String(ticket.id);
+    const checked = selection.selected.has(key);
+    const current = currentId === ticket.id;
+    const age = ticketAge(ticket);
+    const prio = prioridadTone(ticket.prioridad);
+    const meta = [ticket.classroom, (ticket.tags || []).slice(0, 3).join(', '), ticket.responsables?.length ? ticket.responsables.join(', ') : 'Sin responsable'].filter(Boolean).join(' · ');
+    return (
+      <div key={ticket.id} className={cx('tkx-row', current && 'is-current', checked && 'is-selected')} data-ticket-id={ticket.id}>
+        {canEdit && (
+          <Checkbox
+            className="tkx-row-check"
+            checked={checked}
+            ariaLabel={`Seleccionar ${ticketNumber(ticket)} ${ticket.titulo}`}
+            onCheckedChange={(_, event) => {
+              selection.setMode(true);
+              if (event.shiftKey) selection.selectRange(key, orderedKeys);
+              else selection.toggle(key);
+            }}
+          />
+        )}
+        <a className="tkx-row-open" href={ticketRoutePath({ kind: 'detail', id: ticket.id })} aria-current={current ? 'page' : undefined} onClick={event => { if (event.button !== 0) return; event.preventDefault(); onRowClick(ticket, event); }}>
+          <span className="tkx-row-line">
+            <span className="tkx-mono tkx-strong tkx-nowrap">{ticketNumber(ticket)}</span>
+            <span className="tkx-muted tkx-small tkx-nowrap">{sourceLabel(ticket.origen)}</span>
+            <span className="tkx-grow" />
+            {prio && <StatusText tone={prio} className="tkx-small">{ticket.prioridad}</StatusText>}
+            <StatusText tone={estadoTone(ticket.estado)} strong className="tkx-small">{ticket.estado}</StatusText>
+          </span>
+          <TruncatedText className="tkx-row-title" lines={2}>{ticket.titulo || 'Ticket sin título'}</TruncatedText>
+          <span className="tkx-row-line">
+            <TruncatedText className="tkx-row-meta">{meta}</TruncatedText>
+            {age.label && <StatusText tone={age.tone} className="tkx-small tkx-nowrap">{age.label}</StatusText>}
+          </span>
+        </a>
+        <a className="ui-icon-btn ui-btn--ghost ui-btn--sm tkx-row-ext" href={externalLink(ticket, bases)} target="_blank" rel="noreferrer" aria-label={`Abrir ${ticketNumber(ticket)} en ${systemLabel(ticket.origen)}`}>
+          <ExternalLink size={14} aria-hidden="true" />
+        </a>
+      </div>
+    );
+  };
+  /** Tandas de PAGE filas: la primera y la de cada Ver más. */
+  const pages = (list: Ticket[]) => Array.from({ length: Math.ceil(list.length / PAGE) }, (_, index) => list.slice(index * PAGE, (index + 1) * PAGE));
+
   const renderPane = () => {
     if (route.kind === 'list') {
       return <TicketsIdle tickets={tickets} onOpen={id => openPane({ kind: 'detail', id })} />;
@@ -543,47 +587,10 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           ) : (
             <div className="tkx-rows" onKeyDown={onListKeyDown}>
               {loadError && <ErrorState message={loadError} onRetry={() => void retry()} retrying={retrying} />}
-              {shown.map(ticket => {
-                const key = String(ticket.id);
-                const checked = selection.selected.has(key);
-                const current = currentId === ticket.id;
-                const age = ticketAge(ticket);
-                const prio = prioridadTone(ticket.prioridad);
-                const meta = [ticket.classroom, (ticket.tags || []).slice(0, 3).join(', '), ticket.responsables?.length ? ticket.responsables.join(', ') : 'Sin responsable'].filter(Boolean).join(' · ');
-                return (
-                  <div key={ticket.id} className={cx('tkx-row', current && 'is-current', checked && 'is-selected')} data-ticket-id={ticket.id}>
-                    {canEdit && (
-                      <Checkbox
-                        className="tkx-row-check"
-                        checked={checked}
-                        ariaLabel={`Seleccionar ${ticketNumber(ticket)} ${ticket.titulo}`}
-                        onCheckedChange={(_, event) => {
-                          selection.setMode(true);
-                          if (event.shiftKey) selection.selectRange(key, orderedKeys);
-                          else selection.toggle(key);
-                        }}
-                      />
-                    )}
-                    <a className="tkx-row-open" href={ticketRoutePath({ kind: 'detail', id: ticket.id })} aria-current={current ? 'page' : undefined} onClick={event => { if (event.button !== 0) return; event.preventDefault(); onRowClick(ticket, event); }}>
-                      <span className="tkx-row-line">
-                        <span className="tkx-mono tkx-strong tkx-nowrap">{ticketNumber(ticket)}</span>
-                        <span className="tkx-muted tkx-small tkx-nowrap">{sourceLabel(ticket.origen)}</span>
-                        <span className="tkx-grow" />
-                        {prio && <StatusText tone={prio} className="tkx-small">{ticket.prioridad}</StatusText>}
-                        <StatusText tone={estadoTone(ticket.estado)} strong className="tkx-small">{ticket.estado}</StatusText>
-                      </span>
-                      <TruncatedText className="tkx-row-title" lines={2}>{ticket.titulo || 'Ticket sin título'}</TruncatedText>
-                      <span className="tkx-row-line">
-                        <TruncatedText className="tkx-row-meta">{meta}</TruncatedText>
-                        {age.label && <StatusText tone={age.tone} className="tkx-small tkx-nowrap">{age.label}</StatusText>}
-                      </span>
-                    </a>
-                    <a className="ui-icon-btn ui-btn--ghost ui-btn--sm tkx-row-ext" href={externalLink(ticket, bases)} target="_blank" rel="noreferrer" aria-label={`Abrir ${ticketNumber(ticket)} en ${systemLabel(ticket.origen)}`}>
-                      <ExternalLink size={14} aria-hidden="true" />
-                    </a>
-                  </div>
-                );
-              })}
+              {/* La primera tanda va directo; cada "Ver más" suma una tanda que entra creciendo (nada de golpe). */}
+              {pages(shown).map((chunk, page) => (page === 0 ? chunk.map(renderRow) : (
+                <Collapse key={`page-${page}`} open appear anchor={false} reveal={false} className="tkx-rows-more">{chunk.map(renderRow)}</Collapse>
+              )))}
               {visible.length > shown.length && (
                 <div className="tkx-more">
                   <Button size="sm" variant="ghost" onClick={() => setLimit(current => current + PAGE)}>

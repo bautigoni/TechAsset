@@ -263,11 +263,14 @@ export function TicketForm({ initial, templates, classrooms, assistants, tickets
           hint={draft.origen === 'handing' ? 'No usa número: podés dejarlo vacío o escribir una referencia interna.' : 'Solo el número, sin # (ej. 2103).'}
           onValueChange={value => { setNumError(''); set({ numero: normalizeReference(value, draft.origen) }); }}
         />
+        {/* Mismo armado que el campo de al lado (rótulo, control y ayuda): sin hueco en la
+            columna y sin cambio de alto cuando aparece el link. */}
         <div className="ui-field">
           <span className="ui-label"><span className="ui-label-text">Probar link</span></span>
           {testLink
             ? <a className="ui-btn ui-btn--secondary tkx-linkbtn" href={testLink} target="_blank" rel="noreferrer"><span className="ui-btn-label">Abrir en {systemLabel(draft.origen)} ↗</span></a>
-            : <span className="ui-help ui-help--hint">Cargá la referencia para probar el link al sistema externo.</span>}
+            : <Button variant="secondary" className="tkx-linkbtn" disabled>Abrir en {systemLabel(draft.origen)} ↗</Button>}
+          <span className="ui-help ui-help--hint">{testLink ? 'Se abre en otra pestaña para comprobar la referencia.' : 'Cargá la referencia para probar el link al sistema externo.'}</span>
         </div>
         <Segmented<TicketState> label="Estado" value={draft.estado} onChange={estado => set({ estado })} options={ESTADOS.map(value => ({ value, label: value }))} />
         <Segmented label="Prioridad" value={draft.prioridad} onChange={prioridad => set({ prioridad })} options={PRIORIDADES.map(value => ({ value, label: value }))} />
@@ -313,7 +316,8 @@ export function TicketForm({ initial, templates, classrooms, assistants, tickets
         )}
         <div className="ui-field tkx-full">
           <span className="ui-label"><span className="ui-label-text">Ticket exportado (PDF o foto)</span></span>
-          {fileUrl && !replacing ? (
+          {/* Archivo cargado ↔ zona para subir: uno se pliega mientras el otro se abre. */}
+          <Collapse open={Boolean(fileUrl) && !replacing} lazy={false}>
             <div className="tkx-file">
               <span className="tkx-file-icon" aria-hidden="true">{isPdf(fileUrl) ? <span className="tkx-mono">PDF</span> : <IconFile size={16} />}</span>
               <span className="tkx-grow tkx-file-text">
@@ -326,8 +330,8 @@ export function TicketForm({ initial, templates, classrooms, assistants, tickets
                 <Button size="sm" variant="ghost" onClick={() => set({ imagenUrl: '' })}>Quitar</Button>
               </span>
             </div>
-          ) : (
-            <>
+          </Collapse>
+          <Collapse open={!fileUrl || replacing} className="tkx-field-block">
               <FileDrop
                 accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp"
                 maxSizeMB={MAX_MB}
@@ -336,9 +340,10 @@ export function TicketForm({ initial, templates, classrooms, assistants, tickets
                 hint="PDF, PNG, JPG o WEBP · hasta 7,5 MB"
                 label="Subir PDF o foto"
               />
-              {replacing && <Button size="sm" variant="ghost" onClick={() => setReplacing(false)}>Dejar el archivo actual</Button>}
-            </>
-          )}
+              <Collapse open={replacing}>
+                <Button size="sm" variant="ghost" onClick={() => setReplacing(false)}>Dejar el archivo actual</Button>
+              </Collapse>
+          </Collapse>
         </div>
       </div>
 
