@@ -217,7 +217,8 @@ try {
   await call('PATCH', `/api/agenda/${touchA.json?.item?.id}`, { estado: 'Cancelado' });
   const freed = await call('PATCH', `/api/agenda/${touchB.json?.item?.id}`, { desde: '18:30', hasta: '19:00' });
   check('agenda: una cancelada no ocupa lugar', freed.status === 200, freed.text.slice(0, 200));
-  const nextTuesday = (() => { const d = new Date(); d.setDate(d.getDate() + ((9 - d.getDay()) % 7 || 7)); return d.toISOString().slice(0, 10); })();
+  // Fecha local (no toISOString: de noche en Argentina ya es el día siguiente en UTC y caía en miércoles).
+  const nextTuesday = (() => { const d = new Date(); d.setDate(d.getDate() + ((9 - d.getDay()) % 7 || 7)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
   const dated = await call('POST', '/api/agenda', { fecha: nextTuesday, dia: 'Lunes', turno: 'Mañana', desde: '18:40', hasta: '18:50', curso: 'CapC', tipoDispositivo: 'Touch', cantidad: 10, estado: 'Pendiente' });
   check('agenda: con fecha choca con la semanal de ese día (y el día sale de la fecha)', dated.status === 409, dated.text.slice(0, 200));
   await call('DELETE', `/api/agenda/${touchB.json?.item?.id}`, {});
