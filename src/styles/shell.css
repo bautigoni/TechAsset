@@ -340,8 +340,16 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Fondo opaco (el mismo de .shell, no cambia nada a la vista): sin él Chrome
+     no compone el scroll de este contenedor en pantallas de densidad 1 (texto
+     LCD) y repinta + "layeriza" todo el contenido en cada frame. Medido en
+     Dispositivos con 387 filas: p50 35 → ver docs/redesign/bench/pasada1.md. */
+  background: var(--g-bg);
 }
 .shell-scroll[hidden] { display: none; }
+/* Durante el scroll el contenido no toma el puntero (AppShell): sin hover que
+   salte de fila en fila ni hit-test por frame. Vuelve 150 ms después. */
+.shell-scroll[data-scrolling] > * { pointer-events: none; }
 
 .shell-topbar {
   height: var(--g-topbar-h);

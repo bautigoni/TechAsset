@@ -153,6 +153,36 @@ export function AppShell(props: AppShellProps) {
     });
     return () => cancelAnimationFrame(raf);
   }, [keyboardOpen]);
+  // Mientras se scrollea con la rueda o el trackpad, el contenido no recibe el
+  // puntero (data-scrolling → pointer-events: none en shell.css) y vuelve
+  // 150 ms después del último frame de scroll. Con el puntero encima, cada
+  // frame movía el :hover de fila en fila: hit-test + repintado +
+  // re-"layerizado" de toda la lista (Dispositivos con 387 filas, ver
+  // docs/redesign/bench/pasada1.md). Solo si ESTE contenedor scrollea por una
+  // rueda reciente: un scroll programático (Collapse que ancla, scrollIntoView)
+  // no bloquea clics, y una lista interna que scrollea sola no se toca.
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    let timer = 0;
+    let wheelAt = -Infinity;
+    const release = () => { timer = 0; scroller.removeAttribute('data-scrolling'); };
+    const onWheel = (event: WheelEvent) => { wheelAt = event.timeStamp; };
+    const onScroll = (event: Event) => {
+      if (!timer && event.timeStamp - wheelAt > 250) return;
+      if (!timer) scroller.setAttribute('data-scrolling', '');
+      window.clearTimeout(timer);
+      timer = window.setTimeout(release, 150);
+    };
+    scroller.addEventListener('wheel', onWheel, { passive: true });
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      scroller.removeEventListener('wheel', onWheel);
+      scroller.removeEventListener('scroll', onScroll);
+      window.clearTimeout(timer);
+      scroller.removeAttribute('data-scrolling');
+    };
+  }, []);
   const { items: notifications, unread, toast, dismissToast, markRead, markAllRead } = useNotifications(true);
   const { links } = useQuickLinks(activeSite);
 

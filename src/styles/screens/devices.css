@@ -175,7 +175,7 @@
 }
 
 /* Ctrl K → "ir a la fila": la fila se marca 1,6 s (App agrega `row-highlight`). */
-.dv-table .ui-tr[data-device-tag] { position: relative; }
+.dv-table .ui-tr.row-highlight { position: relative; }
 .dv-table .ui-tr.row-highlight::after {
   content: '';
   position: absolute;
