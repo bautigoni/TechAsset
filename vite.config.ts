@@ -54,8 +54,40 @@ function swVersion(): Plugin {
   };
 }
 
+/**
+ * Piezas chicas compartidas por las pantallas (íconos de lucide y los
+ * componentes base de src/ui) en DOS chunks en vez de uno por módulo. Sin esto,
+ * abrir el Inicio pedía 21 archivos (varios de 300 bytes: un ícono cada uno) y,
+ * con HTTP/1.1 (6 conexiones por host), los últimos quedaban en cola detrás de
+ * los pedidos a la API del arranque. Lo que ya viaja en el chunk de entrada se
+ * queda ahí (no se mueve a un chunk que el arranque tendría que bajar aparte).
+ */
+const SHARED_UI = /[\\/]src[\\/]ui[\\/](Collapse|Data|StatusSlot|Field|Select|Toggle|Truncated|Tooltip|Inline|selection|scrollEdges)\.tsx?$/;
+function sharedChunks(id: string, { getModuleInfo }: { getModuleInfo: (id: string) => { isEntry: boolean; importers: readonly string[] } | null }) {
+  const group = /[\\/]node_modules[\\/]lucide-react[\\/]/.test(id) ? 'icons' : SHARED_UI.test(id) ? 'ui-kit' : null;
+  if (!group) return undefined;
+  // ¿Se importa estáticamente desde la entrada? Entonces queda en la entrada.
+  const seen = new Set<string>();
+  const queue = [id];
+  while (queue.length) {
+    const current = queue.pop() as string;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    const info = getModuleInfo(current);
+    if (!info) continue;
+    if (info.isEntry) return undefined;
+    queue.push(...info.importers);
+  }
+  return group;
+}
+
 export default defineConfig({
   plugins: [react(), preloadGeist(), swVersion()],
+  build: {
+    rollupOptions: {
+      output: { manualChunks: sharedChunks }
+    }
+  },
   server: {
     port: 5173,
     // Los worktrees de los agentes (.claude/worktrees), la base y las salidas de
