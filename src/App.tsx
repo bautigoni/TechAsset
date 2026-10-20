@@ -421,33 +421,23 @@ export function App() {
     void refreshMovements(true);
   };
 
-  // Después de prestar/devolver: equipos y movimientos EN PARALELO (antes los
-  // movimientos salían recién cuando terminaba el inventario: ~110 ms más de
-  // espera hasta que la pantalla quedaba al día). Se espera el inventario, como antes.
-  const afterLoanWrite = () => {
-    void refreshMovements(true);
-    return refresh({ force: true, wait: true });
-  };
-
   const onLend = async (payload: Record<string, unknown>) => {
     try {
       const result = await lendDevice({ ...payload, operator });
-      await afterLoanWrite();
+      await refresh({ force: true, wait: true });
       return result;
-    } catch (error) {
+    } finally {
       void refreshMovements(true);
-      throw error;
     }
   };
 
   const onReturn = async (payload: Record<string, unknown>) => {
     try {
       const result = await returnDevice({ ...payload, operator });
-      await afterLoanWrite();
+      await refresh({ force: true, wait: true });
       return result;
-    } catch (error) {
+    } finally {
       void refreshMovements(true);
-      throw error;
     }
   };
 
@@ -455,27 +445,28 @@ export function App() {
   const onLendBatch = async (payload: Record<string, unknown> & { etiquetas: string[] }): Promise<LoanBatchResponse> => {
     try {
       const result = await lendDevicesBatch({ ...payload, operator });
-      await afterLoanWrite();
+      await refresh({ force: true, wait: true });
       return result;
-    } catch (error) {
+    } finally {
       void refreshMovements(true);
-      throw error;
     }
   };
 
   const onReturnBatch = async (etiquetas: string[]): Promise<LoanBatchResponse> => {
     try {
       const result = await returnDevicesBatch(etiquetas, { operator });
-      await afterLoanWrite();
+      await refresh({ force: true, wait: true });
       return result;
-    } catch (error) {
+    } finally {
       void refreshMovements(true);
-      throw error;
     }
   };
 
   // Después de un Deshacer del Inicio: equipos y movimientos al día.
-  const afterLoanChange = () => afterLoanWrite();
+  const afterLoanChange = async () => {
+    await refresh({ force: true, wait: true });
+    void refreshMovements(true);
+  };
 
   // Devolver desde una tabla (dashboard o dispositivos) resuelve en el acto en
   // vez de mandarte a Préstamos a repetir el equipo que ya elegiste.
