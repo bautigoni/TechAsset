@@ -51,11 +51,14 @@ export function useFitPlaceholder(options: string[], external?: RefObject<HTMLIn
     // Sin medir acá: el ResizeObserver avisa al empezar a observar, después del
     // layout del frame. Medir en el layout effect forzaba un layout extra por
     // campo justo al montar la pantalla.
-    // Con la fuente web recién cargada el ancho del texto cambia.
-    void document.fonts?.ready.then(pick);
+    // Con la fuente web recién cargada el ancho del texto cambia: se escucha el
+    // evento. No leer `document.fonts.ready` acá: ese getter fuerza estilo y
+    // layout en el acto (49 ms con CPU 4× al montar el Inicio, pasada 3).
+    const fonts = document.fonts;
+    fonts?.addEventListener?.('loadingdone', pick);
     const observer = new ResizeObserver(pick);
     observer.observe(input);
-    watched.current.stop = () => observer.disconnect();
+    watched.current.stop = () => { observer.disconnect(); fonts?.removeEventListener?.('loadingdone', pick); };
   });
   useEffect(() => () => watched.current.stop(), []);
   return [ref, options[Math.min(index, options.length - 1)] || ''];
