@@ -4,6 +4,7 @@ import type { Movement } from '../../types';
 import { Button, Collapse, TruncatedText, cx, useAnchoredToggle } from '../../ui';
 import { TIME_HM, dateFormatter, dayKeyAr, todayKeyAr, addDaysToKey } from '../../utils/formatters';
 import { DashEmpty } from './DashEmpty';
+import { useSmoothHeight } from './useSmoothHeight';
 
 const FIRST = 10;
 const MAX = 20;
@@ -44,6 +45,8 @@ export function RecentMoves({ items, canHistory, onHistory }: { items: Movement[
   const toggle = () => setOpen(value => !value);
   // Ver los 20 / Ver menos: el botón tocado queda quieto (la lista crece o se achica abajo).
   const toggleAll = () => anchored(() => setAll(value => !value));
+  // La lista se estira o se encoge suave (no aparecen 10 filas de golpe).
+  const listRef = useSmoothHeight<HTMLDivElement>(`${all}|${rows.length}`);
   return (
     <section className="dash-card dash-moves" aria-labelledby="mov-titulo" data-dash="movimientos">
       <header className={cx('dash-card-head', open && 'is-open')}>
@@ -58,6 +61,7 @@ export function RecentMoves({ items, canHistory, onHistory }: { items: Movement[
         {canHistory && <Button size="sm" variant="ghost" className="dash-link" onClick={onHistory}>Ver historial</Button>}
       </header>
       <Collapse open={open} id="mov-lista" unmountOnClose>
+        <div ref={listRef} className="dash-moves-body">
         {rows.length ? (
           <ol className="dash-moves-list">
             {rows.map((item, index) => {
@@ -75,6 +79,7 @@ export function RecentMoves({ items, canHistory, onHistory }: { items: Movement[
         ) : (
           <DashEmpty flat icon={<History size={18} strokeWidth={1.6} />} title="Sin movimientos todavía" description="Acá aparecen los préstamos, devoluciones y cambios de la sede." />
         )}
+        </div>
       </Collapse>
     </section>
   );

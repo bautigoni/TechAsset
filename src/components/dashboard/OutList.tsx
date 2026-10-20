@@ -9,6 +9,7 @@ import { aliasOf, fichaFields, filterList, initialOf, loanOf, sinceOf, stateText
 import type { LoanActions } from './useLoanActions';
 import { normalizeText } from '../../utils/formatters';
 import { DashEmpty } from './DashEmpty';
+import { useSmoothHeight } from './useSmoothHeight';
 
 const FIRST_PAGE = 12;
 const PAGE = 20;
@@ -143,6 +144,7 @@ export function OutList(props: OutListProps) {
         }
           : { icon: 'search', title: 'No hay equipos en esta sede', desc: 'Se cargan desde Dispositivos o con la importación de inventario.', actions: [] };
   const hasRows = !loading && visible.length > 0;
+  const bodyRef = useSmoothHeight<HTMLDivElement>(`${filter}|${type}|${query}|${shown}|${loading ? 1 : 0}|${hasRows ? 1 : 0}`);
 
   const header = (
     <div className="dash-list-head">
@@ -201,6 +203,9 @@ export function OutList(props: OutListProps) {
       {error && <ErrorState className="dash-block-error" message="No se pudo actualizar la lista" updatedAt={updatedLabel} onRetry={onRetry} retrying={retrying} />}
       {status.slot('dash-status dash-status--in')}
 
+      {/* Cambiar de pestaña, filtrar, quedar vacía o "Ver más" estira o encoge la
+          lista suave (títulos, filas, vacío y pie juntos): nada aparece de golpe. */}
+      <div ref={bodyRef} className="dash-list-body">
       {hasRows && <div className="dash-cols" aria-hidden="true">
         {!readOnly && (
           <Checkbox
@@ -257,6 +262,7 @@ export function OutList(props: OutListProps) {
           {remaining > PAGE && <Button size="sm" variant="ghost" onClick={() => setShown(list.length)}>Ver todos</Button>}
         </div>
       )}
+      </div>
     </section>
   );
 }

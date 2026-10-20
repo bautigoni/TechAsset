@@ -189,31 +189,10 @@ export function Dashboard(props: DashboardProps) {
 
   return (
     <section className="dash" aria-label="Inicio">
-      <div className="dash-top">
-        {!online && (
-          <StatusText tone="bad" className="dash-offline"><icons.IconWifiOff size={14} /> Sin conexión · reintentando</StatusText>
-        )}
-        {consultationMode && <StatusText tone="muted" className="dash-nw"><icons.IconLock size={13} /> Solo lectura</StatusText>}
-        <span className="dash-grow" />
-        <UpdatedNote />
-        <Button
-          variant="secondary"
-          ref={closureBtnRef}
-          className={cx('dash-closure-btn', closureOpen && 'is-on')}
-          aria-expanded={closureOpen}
-          aria-controls="dash-cierre"
-          icon={<ClipboardCheck size={16} strokeWidth={1.6} />}
-          onClick={() => setClosureOpen(value => !value)}
-        >
-          Cierre del día
-        </Button>
-      </div>
-
-      {/* Se abre y se cierra en línea, suave, con el botón quieto (Collapse). */}
-      <Collapse open={closureOpen} id="dash-cierre" outerClassName="dash-fold" className="dash-closure">
-        <DailyClosureSection open={closureOpen} operator={operator} consultationMode={consultationMode} onClose={() => { setClosureOpen(false); closureBtnRef.current?.focus({ preventScroll: true }); }} />
-      </Collapse>
-
+      {/* Lo primero bajo la cabecera es la barra de acción: el estado del día
+          (sin conexión, solo lectura, actualizado) y "Cierre del día" viajan
+          adentro de la barra, no en una fila propia (esa fila dejaba una franja
+          casi vacía arriba: revisión UX 20/10). */}
       <div ref={barRef} className="dash-anchor">
         <ActionBar
           devices={devices}
@@ -229,8 +208,33 @@ export function Dashboard(props: DashboardProps) {
           onOpenLoans={onOpenLoans}
           onShowInList={text => { setFilter('all'); setType(''); setQuery(text); scrollTo(listRef.current); }}
           onProfile={onProfile}
+          aside={(
+            <>
+              {!online && (
+                <StatusText tone="bad" className="dash-nw dash-day-flag"><icons.IconWifiOff size={14} /> Sin conexión</StatusText>
+              )}
+              {consultationMode && <StatusText tone="muted" className="dash-nw dash-day-flag"><icons.IconLock size={13} /> Solo lectura</StatusText>}
+              <UpdatedNote />
+              <Button
+                variant="secondary"
+                ref={closureBtnRef}
+                className={cx('dash-closure-btn', closureOpen && 'is-on')}
+                aria-expanded={closureOpen}
+                aria-controls="dash-cierre"
+                icon={<ClipboardCheck size={16} strokeWidth={1.6} />}
+                onClick={() => setClosureOpen(value => !value)}
+              >
+                Cierre del día
+              </Button>
+            </>
+          )}
         />
       </div>
+
+      {/* Se abre y se cierra en línea debajo de la barra, suave, con el botón quieto (Collapse). */}
+      <Collapse open={closureOpen} id="dash-cierre" outerClassName="dash-fold" className="dash-closure">
+        <DailyClosureSection open={closureOpen} operator={operator} consultationMode={consultationMode} onClose={() => { setClosureOpen(false); closureBtnRef.current?.focus({ preventScroll: true }); }} />
+      </Collapse>
       <Collapse open={help} id="dash-atajos" outerClassName="dash-fold"><Shortcuts /></Collapse>
 
       <StatusTiles

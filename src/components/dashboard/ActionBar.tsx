@@ -10,6 +10,7 @@ import { EMPTY_DRAFT, SCHOOL_LEVELS, applySuggestion, draftPayload, validateDraf
 import type { LoanActions } from './useLoanActions';
 import { useQrCamera } from './useQrCamera';
 import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
+import { useSmoothHeight } from './useSmoothHeight';
 
 type Mode = 'single' | 'lend' | 'return';
 
@@ -30,6 +31,12 @@ export type ActionBarProps = {
   onOpenLoans: (etiqueta: string) => void;
   onShowInList: (query: string) => void;
   onProfile: (device: Device) => void;
+  /**
+   * Lo del día que va en la misma barra (actualizado, sin conexión, Cierre del
+   * día). Antes era una fila propia arriba de la barra que dejaba una franja
+   * casi vacía bajo la cabecera (captura del dueño, revisión UX 20/10).
+   */
+  aside?: ReactNode;
 };
 
 /**
@@ -38,7 +45,7 @@ export type ActionBarProps = {
  * (prestado → Devolver; libre → Prestar con persona/rol/ubicación/motivo).
  * "Prestar varios" / "Devolver varios" arman una cola con cada Enter.
  */
-export function ActionBar({ devices, options, readOnly, readOnlyReason, actions, status, scan, lendRequest, inputRef, focusBar, onOpenLoans, onShowInList, onProfile }: ActionBarProps) {
+export function ActionBar({ devices, options, readOnly, readOnlyReason, actions, status, scan, lendRequest, inputRef, focusBar, onOpenLoans, onShowInList, onProfile, aside }: ActionBarProps) {
   const [q, setQ] = useState('');
   const query = useDeferredValue(q);
   const [mode, setMode] = useState<Mode>('single');
@@ -306,6 +313,13 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
     </>
   ) : null;
   if (resultBody) heldResult.current = resultBody;
+  // Mientras el resultado está abierto, pasar de "encontrado" al préstamo, a la
+  // lista de parecidos o a la cola no salta de alto: se estira suave.
+  const lendShown = lendOpen && !readOnly && (mode === 'lend' || Boolean(lendList));
+  const resRef = useSmoothHeight<HTMLDivElement>([
+    camera.open || Boolean(camera.error), mode, found?.etiqueta || '', pickList.length, Boolean(q.trim()) && !matches.length,
+    lendShown, lendTags.length, queue.length, Boolean(queueNote), draft.location, draft.reason, Boolean(lendError)
+  ].join('|'));
 
   return (
     <section className="dash-bar-wrap" aria-label="Prestar o devolver">
@@ -324,8 +338,10 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
           prefix={<ScanLine size={18} strokeWidth={1.6} aria-hidden="true" />}
           suffix={(
             <span className="dash-bar-suffix">
-              {(q || lendOpen || batch) && <IconButton size="sm" label="Limpiar (Esc)" icon={<icons.IconX size={14} />} onClick={() => { reset(); focusBar(); }} />}
-              <Kbd className="dash-only-wide">/</Kbd>
+              {/* Una cosa a la vez y del mismo tamaño: la X para limpiar o el atajo "/". */}
+              {q || lendOpen || batch
+                ? <IconButton size="sm" label="Limpiar (Esc)" icon={<icons.IconX size={14} />} onClick={() => { reset(); focusBar(); }} />
+                : <Kbd className="dash-only-wide dash-bar-kbd">/</Kbd>}
             </span>
           )}
         />
@@ -338,12 +354,13 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
             Devolver<span className="dash-only-wide"> varios</span>
           </Button>
         </div>
+        {aside && <div className="dash-bar-day">{aside}</div>}
       </div>
 
       {/* El resultado crece hacia abajo desde la barra y se pliega hacia ella;
           mientras se cierra se sigue viendo lo último (no se vacía de golpe). */}
       <Collapse open={showResult} id="dash-res" className="dash-res" role="region" aria-label="Resultado" onSettled={open => { if (!open) heldResult.current = null; }}>
-        {resultBody ?? heldResult.current}
+        <div ref={resRef} className="dash-res-body">{resultBody ?? heldResult.current}</div>
       </Collapse>
 
       {status.slot('dash-status')}
@@ -580,8 +597,9 @@ function LendForm({ title, chips, cta, options, draft, setDraft, error, sending,
       <div className="dash-row-wrap dash-lend-foot">
         {error && <span role="alert" className="dash-lend-error">{error[1]}</span>}
         <span className="dash-grow" />
-        {onMoreOptions && <Button size="sm" variant="ghost" onClick={onMoreOptions}>Accesorios y más en Préstamos</Button>}
-        <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
+        {/* Mismo alto que "Confirmar préstamo" (agregado 2 del dueño: lo que está en fila, mismo alto). */}
+        {onMoreOptions && <Button variant="ghost" onClick={onMoreOptions}>Accesorios y más en Préstamos</Button>}
+        <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
         <Button className="dash-lend-cta" type="submit" variant="primary" loading={sending} loadingLabel="Prestando…" iconEnd={<Kbd>↵</Kbd>}>{cta}</Button>
       </div>
     </form>

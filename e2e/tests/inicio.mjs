@@ -157,6 +157,10 @@ async function serveCase(page, data) {
       if (url.pathname === '/api/tasks') return json({ ok: true, items: data.tasks, loadedAt: new Date().toISOString() });
       if (url.pathname === '/api/internal-notes') return json({ ok: true, items: data.notes });
     }
+    // Notas inventadas del caso: borrarlas / marcarlas no toca la base (responde OK acá).
+    if (request.method() === 'PATCH' && /^\/api\/internal-notes\/9\d{4}$/.test(url.pathname)) {
+      return json({ ok: true, item: data.notes.find(note => url.pathname.endsWith(`/${note.id}`)) || {} });
+    }
     return request.continue();
   });
 }
@@ -297,6 +301,81 @@ export function inicioProbe(maxGap) {
   };
 }
 
+/**
+ * Espacio muerto bajo la cabecera (captura del dueño `dueno-hueco-inicio.png`):
+ * cuánto hay entre el borde de arriba del área que scrollea y la barra de
+ * acción, y qué hay en el medio. Del Inicio solo puede quedar su padding.
+ */
+export function topGapProbe() {
+  const scroller = document.querySelector('.shell-scroll');
+  const dash = document.querySelector('.dash');
+  const bar = document.querySelector('.dash-bar');
+  const topbar = document.querySelector('.shell-topbar, .topbar, header');
+  if (!scroller || !dash || !bar) return { error: 'No está el Inicio' };
+  const box = element => element.getBoundingClientRect();
+  const padTop = parseFloat(getComputedStyle(dash).paddingTop) || 0;
+  const first = dash.firstElementChild;
+  return {
+    // Del borde del área que scrollea (debajo de la cabecera y sus franjas) a la barra.
+    gap: Math.round(box(bar).top - box(scroller).top),
+    padTop: Math.round(padTop),
+    // Lo que el shell pone entre la cabecera y el área (franjas, modo superadmin): no es del Inicio.
+    shell: topbar ? Math.round(box(scroller).top - box(topbar).bottom) : null,
+    firstIsBar: Boolean(first && first.contains(bar)),
+    firstClass: first ? String(first.className) : ''
+  };
+}
+
+/**
+ * Agregado 2 del dueño (20/10): lo que está uno al lado del otro en un renglón
+ * del Inicio (campo y botones de la barra, "/" y la X del campo, pestañas y
+ * filtro, contadores, botones de encabezados y pies, chips de tipos) mide lo
+ * mismo de alto y está centrado en la misma línea.
+ */
+export function rowHeightsProbe() {
+  const dash = document.querySelector('.dash');
+  if (!dash) return { error: 'No está el Inicio' };
+  const visible = element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden' && !element.closest('.ui-collapse[data-state="closed"]');
+  const GROUPS = '.dash-bar-suffix, .dash-bar, .dash-list-head, .dash-selhead, .dash-tiles, .dash-types, .dash-card-head, .dash-list-foot, .dash-agenda-acts, .dash-ficha-acts, .dash-notes-form, .dash-empty-acts, .dash-found-acts, .dash-lend-foot, .dash-res-foot, .dash-queue';
+  const CONTROLS = '.ui-btn, .ui-icon-btn, .ui-control, .ui-seg, .dash-bar-suffix > .ui-kbd, .dash-tile, .dash-type, .dash-qchip';
+  const describe = element => `${element.tagName.toLowerCase()}.${String(element.className).split(/\s+/).filter(Boolean).slice(0, 2).join('.')} "${(element.getAttribute('aria-label') || element.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 24)}"`;
+  const groups = new Map();
+  for (const control of dash.querySelectorAll(CONTROLS)) {
+    if (!visible(control)) continue;
+    if (control.parentElement?.closest('.ui-btn, .ui-icon-btn, .ui-seg, .dash-tile, .dash-type, .dash-qchip')) continue;
+    if (control.matches('.ui-control') && control.closest('.ui-seg')) continue;
+    const group = control.closest(GROUPS);
+    if (!group || !dash.contains(group)) continue;
+    const rect = control.getBoundingClientRect();
+    if (rect.height < 2) continue;
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push({ control, rect });
+  }
+  const problems = [];
+  let rows = 0;
+  for (const [group, items] of groups) {
+    // Renglones: controles cuyas franjas verticales se cruzan.
+    const lines = [];
+    for (const item of items.sort((a, b) => a.rect.top - b.rect.top)) {
+      const mid = (item.rect.top + item.rect.bottom) / 2;
+      const line = lines.find(candidate => candidate.some(other => mid > other.rect.top && mid < other.rect.bottom));
+      if (line) line.push(item); else lines.push([item]);
+    }
+    for (const line of lines) {
+      if (line.length < 2) continue;
+      rows += 1;
+      const heights = line.map(item => item.rect.height);
+      const centers = line.map(item => (item.rect.top + item.rect.bottom) / 2);
+      const dh = Math.max(...heights) - Math.min(...heights);
+      const dc = Math.max(...centers) - Math.min(...centers);
+      if (dh > 1 || dc > 1) {
+        problems.push(`${describe(group)}: ${line.map(item => `${describe(item.control)} ${Math.round(item.rect.height)}px`).join(' · ')} (alto ±${Math.round(dh)}, centro ±${Math.round(dc)})`);
+      }
+    }
+  }
+  return { rows, problems };
+}
+
 export async function inicioTests({ browser, base, api, admin, releaseVersion, test, track = () => {} }) {
   const devicesResponse = (await api.get('/api/devices')).data;
   const realDevices = devicesResponse.items || [];
@@ -435,10 +514,20 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
         // Mientras se despliega el encabezado no se mueve; al terminar, si la
         // lista no entra, se la trae a la vista (Collapse de src/ui) sin sacar
         // el encabezado de la pantalla.
+        // Solo cuentan los cuadros MIENTRAS se despliega (data-state="opening"):
+        // si el muestreo llega tarde (máquina cargada), el traer-a-la-vista del
+        // final no se confunde con un salto.
         const openSamples = [];
-        for (let i = 0; i < 5; i += 1) { await sleep(40); openSamples.push(await topOf(head)); }
+        for (let i = 0; i < 5; i += 1) {
+          await sleep(40);
+          const sample = await page.evaluate(sel => ({
+            top: document.querySelector(sel)?.getBoundingClientRect().top ?? null,
+            state: document.querySelector('#mov-lista')?.dataset.state || document.querySelector('[data-dash="movimientos"] .ui-collapse')?.dataset.state || ''
+          }), head);
+          if (sample.state !== 'open') openSamples.push(sample.top);
+        }
         await sleep(450);
-        const reopenDrift = Math.max(...openSamples.map(value => Math.abs(value - before)));
+        const reopenDrift = openSamples.length ? Math.max(...openSamples.map(value => Math.abs(value - before))) : 0;
         assert(await page.$('#mov-lista'), 'La lista no se desplegó.');
         assert(reopenDrift <= 2, `El encabezado se movió ${reopenDrift.toFixed(1)} px mientras se desplegaba.`);
         const headInView = await page.evaluate(sel => {
@@ -485,5 +574,231 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
       }
     });
   }
+  // ── Revisión UX 20/10 (revisor 2) ────────────────────────────────────────
+
+  // Hueco bajo la cabecera (captura del dueño): la barra de acción es lo primero
+  // y arranca a la distancia del padding del Inicio, en todos los anchos y temas,
+  // con el menú expandido, en riel y con el asistente abierto. En cada caso,
+  // además, lo que está en un mismo renglón mide lo mismo (agregado 2, punto 1).
+  await test('ini', 'Inicio (layout)', 'Sin hueco entre la cabecera y la barra de acción (360–1920, oscuro y claro, menú, riel y asistente) y renglones del mismo alto', async () => {
+    const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, reducedMotion: true, viewport: { width: 1440, height: 900 } });
+    track(page);
+    prepareOut();
+    const problems = [];
+    const summary = [];
+    const check = async label => {
+      await sleep(250);
+      const top = await page.evaluate(topGapProbe);
+      const rows = await page.evaluate(rowHeightsProbe);
+      if (top.error) { problems.push(`${label}: ${top.error}`); return top; }
+      if (!top.firstIsBar) problems.push(`${label}: lo primero del Inicio no es la barra de acción (${top.firstClass})`);
+      if (top.gap > top.padTop + 1) problems.push(`${label}: ${top.gap} px entre el borde del área y la barra (padding ${top.padTop})`);
+      if (rows.problems.length) problems.push(`${label}: alturas distintas en un renglón: ${rows.problems.slice(0, 2).join(' | ')}`);
+      return top;
+    };
+    const toggleRail = async () => { await page.keyboard.down('Control'); await page.keyboard.press('b'); await page.keyboard.up('Control'); await sleep(300); };
+    try {
+      await serveCase(page, dataFor(CASES[1]));
+      await gotoView(page, base, 'dashboard');
+      await waitInicio(page);
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+        for (const width of [360, 390, 768, 1024, 1280, 1366, 1440, 1600, 1920]) {
+          await page.setViewport({ width, height: 900 });
+          const top = await check(`${theme} ${width}`);
+          if (theme === 'dark') summary.push(`${width}:${top.gap}`);
+          if (width === 360 || width === 1440) await page.screenshot({ path: path.join(outDir, `hueco-${theme}-${width}.png`) });
+        }
+      }
+      await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+      await page.setViewport({ width: 1440, height: 900 });
+      await toggleRail();
+      for (const width of [1280, 1440, 1920]) { await page.setViewport({ width, height: 900 }); await check(`riel ${width}`); }
+      await page.setViewport({ width: 1440, height: 900 });
+      await toggleRail();
+      const before = await page.evaluate(() => document.querySelector('.dash').getBoundingClientRect().width);
+      await page.click('.shell-assistant-btn');
+      await until(() => page.evaluate(w => document.querySelector('.dash').getBoundingClientRect().width < w - 100, before), { message: 'el asistente abierto como columna' });
+      for (const width of [1024, 1280, 1366, 1440, 1920]) {
+        await page.setViewport({ width, height: 900 });
+        await check(`asistente ${width}`);
+        if (width === 1024) await page.screenshot({ path: path.join(outDir, 'hueco-asistente-1024.png') });
+      }
+    } finally {
+      await context.close();
+    }
+    if (problems.length) throw new Error(problems.slice(0, 8).join(' | '));
+    return `barra a ≤ padding del área en todos los casos; px (oscuro): ${summary.join(' ')}`;
+  });
+
+  // Renglones del mismo alto también con lo que se abre: resultado de la barra
+  // (encontrado, préstamo en línea), "Prestar varios", tipos y la ficha de una fila.
+  await test('ini', 'Inicio (layout)', 'Renglones del mismo alto con la barra en uso (encontrado, préstamo, varios), tipos y ficha abiertos (360/1024/1440)', async () => {
+    const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, reducedMotion: true, viewport: { width: 1440, height: 900 } });
+    track(page);
+    const problems = [];
+    const data = dataFor(CASES[3]);
+    const free = data.devices.find(device => device.estado === 'Disponible');
+    try {
+      await serveCase(page, data);
+      await gotoView(page, base, 'dashboard');
+      await waitInicio(page);
+      for (const width of [360, 1024, 1440]) {
+        await page.setViewport({ width, height: 900 });
+        const probe = async label => {
+          await sleep(200);
+          const rows = await page.evaluate(rowHeightsProbe);
+          if (rows.problems.length) problems.push(`${width} ${label}: ${rows.problems.slice(0, 2).join(' | ')}`);
+        };
+        const bar = 'input[data-dash-bar]';
+        // Con texto: la X reemplaza al "/" (uno a la vez, del mismo tamaño).
+        await page.click(bar);
+        await page.type(bar, free.etiqueta);
+        await page.waitForSelector(`[data-device-result="${free.etiqueta}"]`);
+        const suffix = await page.evaluate(() => {
+          const box = document.querySelector('.dash-bar-suffix');
+          return { kids: box ? box.children.length : 0, kbd: Boolean(box?.querySelector('.ui-kbd')) };
+        });
+        if (suffix.kids !== 1 || suffix.kbd) problems.push(`${width}: con texto, el campo muestra ${suffix.kids} cosas a la derecha (kbd: ${suffix.kbd})`);
+        await probe('encontrado');
+        await page.keyboard.press('Enter');
+        await page.waitForSelector('.dash-lend');
+        await probe('préstamo en línea');
+        await page.keyboard.press('Escape');
+        await page.click(bar, { clickCount: 3 });
+        await page.keyboard.press('Escape');
+        await page.evaluate(() => [...document.querySelectorAll('.dash-bar-btns .ui-btn')].find(button => /Prestar/.test(button.textContent || ''))?.click());
+        await page.waitForSelector('.dash-res-batch');
+        await probe('prestar varios');
+        await page.evaluate(() => [...document.querySelectorAll('.dash-bar-btns .ui-btn')].find(button => /Prestar/.test(button.textContent || ''))?.click());
+        await page.click('.dash-tile[aria-controls="dash-types"]');
+        await page.waitForSelector('#dash-types');
+        await probe('tipos');
+        await page.click('.dash-tile[aria-controls="dash-types"]');
+        await page.evaluate(() => [...document.querySelectorAll('[data-dash="afuera"] .ui-seg-item, [data-dash="afuera"] [role="radio"], [data-dash="afuera"] .ui-seg button')].find(button => /Prestados/.test(button.textContent || ''))?.click());
+        await page.waitForSelector('[data-dash="afuera"] .dash-rows > li .dash-row-hit');
+        await page.click('[data-dash="afuera"] .dash-rows > li:nth-child(1) .dash-row-hit');
+        await page.waitForSelector('[data-dash="afuera"] .dash-ficha');
+        await probe('ficha');
+        await page.click('[data-dash="afuera"] .dash-rows > li:nth-child(1) .dash-row-hit');
+        await sleep(200);
+      }
+    } finally {
+      await context.close();
+    }
+    if (problems.length) throw new Error(problems.slice(0, 8).join(' | '));
+    return 'barra, X/"/", resultado, préstamo, varios, tipos y ficha: mismo alto por renglón';
+  });
+
+  // Agregado 2, punto 2: "Afuera ahora" — Prestados / Disponibles / Todos no abre
+  // una caja de golpe: la lista cambia de alto en varios cuadros y el control queda quieto.
+  for (const scrolled of [false, true]) {
+    await test('ini', 'Inicio (layout)', `"Afuera ahora": cambiar de pestaña estira y encoge la lista suave con el control quieto${scrolled ? ' (con la página scrolleada)' : ''}`, async () => {
+      const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
+      track(page);
+      try {
+        await serveCase(page, dataFor(CASES[3]));
+        await gotoView(page, base, 'dashboard');
+        await waitInicio(page);
+        if (scrolled) {
+          await page.evaluate(() => {
+            const box = document.querySelector('.shell-scroll');
+            box.scrollTop += document.querySelector('[data-dash="afuera"]').getBoundingClientRect().top - box.getBoundingClientRect().top - 40;
+          });
+          await sleep(200);
+        }
+        const notes = [];
+        for (const label of ['Disponibles', 'Prestados', 'Todos', 'Prestados']) {
+          const target = await page.evaluateHandle(text => [...document.querySelectorAll('[data-dash="afuera"] .dash-tabs button, [data-dash="afuera"] .dash-tabs [role="radio"]')].find(button => (button.textContent || '').trim().startsWith(text)), label);
+          const element = target.asElement();
+          assert(element, `No encontré la pestaña ${label}.`);
+          // Muestras por cuadro desde ANTES del click: alto del cuerpo de la lista y lugar del control.
+          await page.evaluate(() => {
+            const body = document.querySelector('[data-dash="afuera"] .dash-list-body');
+            const tabs = document.querySelector('[data-dash="afuera"] .dash-tabs');
+            const samples = [];
+            window.__dashSamples = samples;
+            const t0 = performance.now();
+            const tick = () => {
+              samples.push({ h: body.getBoundingClientRect().height, top: tabs.getBoundingClientRect().top });
+              if (performance.now() - t0 < 900) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          });
+          await sleep(60);
+          await element.click();
+          await sleep(900);
+          const samples = await page.evaluate(() => window.__dashSamples);
+          const start = samples[0].h;
+          const end = samples[samples.length - 1].h;
+          const delta = Math.abs(end - start);
+          const middle = samples.filter(sample => Math.abs(sample.h - start) > 2 && Math.abs(sample.h - end) > 2).length;
+          // El cuadro con el salto más grande: nunca casi todo el cambio de una vez.
+          let jump = 0;
+          for (let i = 1; i < samples.length; i += 1) jump = Math.max(jump, Math.abs(samples[i].h - samples[i - 1].h));
+          const drift = Math.max(...samples.map(sample => Math.abs(sample.top - samples[0].top)));
+          if (delta > 40) {
+            assert(middle >= 3, `${label}: la lista pasó de ${Math.round(start)} a ${Math.round(end)} px con solo ${middle} cuadros intermedios (de golpe).`);
+            assert(jump < delta * 0.6, `${label}: un solo cuadro cambió ${Math.round(jump)} de ${Math.round(delta)} px (de golpe).`);
+          }
+          assert(drift <= 2, `${label}: las pestañas se movieron ${drift.toFixed(1)} px.`);
+          notes.push(`${label} ${Math.round(start)}→${Math.round(end)} px en ${middle} cuadros, control ±${drift.toFixed(1)}`);
+        }
+        return notes.join(' · ');
+      } finally {
+        await context.close();
+      }
+    });
+  }
+
+  // Agregado 2, punto 3: la línea "Nota borrada · Deshacer" de Notas es compacta
+  // (texto y acción juntos) y tiene aire arriba y abajo (no queda pegada al campo).
+  await test('ini', 'Inicio (layout)', 'Notas: "Nota borrada · Deshacer" compacta y con aire respecto del campo (390/1440)', async () => {
+    const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, reducedMotion: true, viewport: { width: 1440, height: 900 } });
+    track(page);
+    prepareOut();
+    const notes = [];
+    try {
+      await serveCase(page, dataFor(CASES[0]));
+      for (const width of [1440, 390]) {
+        await page.setViewport({ width, height: 900 });
+        await gotoView(page, base, 'dashboard');
+        await waitInicio(page);
+        if (width < 768) {
+          await page.evaluate(() => [...document.querySelectorAll('.dash-now-tabs button, .dash-now-tabs [role="radio"]')].find(button => /Notas/.test(button.textContent || ''))?.click());
+          await sleep(200);
+        }
+        const del = await page.waitForSelector('.dash-notes .dash-note button[aria-label="Borrar nota"]', { visible: true });
+        await del.click();
+        await page.waitForSelector('.dash-notes .ui-status .ui-status-undo', { visible: true });
+        await sleep(300);
+        const m = await page.evaluate(() => {
+          const card = document.querySelector('.dash-notes');
+          const status = card.querySelector('.ui-status');
+          const msg = status.querySelector('.ui-status-msg').getBoundingClientRect();
+          const acts = status.querySelector('.ui-status-actions').getBoundingClientRect();
+          const form = card.querySelector('.dash-notes-form').getBoundingClientRect();
+          const body = card.querySelector('.dash-notes-body').getBoundingClientRect();
+          const box = status.getBoundingClientRect();
+          return {
+            sameLine: Math.abs((msg.top + msg.bottom) / 2 - (acts.top + acts.bottom) / 2) < 4,
+            between: Math.round(acts.left - msg.right),
+            below: Math.round(form.top - box.bottom),
+            above: Math.round(box.top - body.bottom)
+          };
+        });
+        assert(m.sameLine, `${width}: el texto y Deshacer quedaron en renglones distintos habiendo lugar.`);
+        assert(m.between <= 16, `${width}: ${m.between} px de hueco entre "Nota borrada" y Deshacer.`);
+        assert(m.below >= 8, `${width}: la línea queda a ${m.below} px del campo de la nota (pegada).`);
+        assert(m.above >= 0, `${width}: la línea se mete ${-m.above} px en las notas.`);
+        notes.push(`${width}: texto↔acción ${m.between} px, al campo ${m.below} px`);
+        await page.screenshot({ path: path.join(outDir, `notas-estado-${width}.png`) });
+      }
+      return notes.join(' · ');
+    } finally {
+      await context.close();
+    }
+  });
+
   return report;
 }

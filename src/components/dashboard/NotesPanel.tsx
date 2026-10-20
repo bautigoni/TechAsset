@@ -3,6 +3,7 @@ import { Star, StickyNote, Trash2 } from 'lucide-react';
 import type { InternalNote } from '../../types';
 import { Button, ErrorState, IconButton, Input, SkeletonText, cx, useAnchoredToggle, useStatusLine } from '../../ui';
 import { DashEmpty } from './DashEmpty';
+import { useSmoothHeight } from './useSmoothHeight';
 import { createInternalNote, fetchInternalNotes, updateInternalNote } from '../../services/operationsApi';
 import { TIME_HM, dayKeyAr, formatDate, todayKeyAr } from '../../utils/formatters';
 
@@ -110,6 +111,8 @@ export function NotesPanel({ operator, readOnly, onCount }: { operator: string; 
 
   const extra = Math.max(0, notes.length - MAX_VISIBLE);
   const shown = all ? notes : notes.slice(-MAX_VISIBLE);
+  // Ver anteriores, una nota nueva o una borrada: el cuerpo cambia de alto suave.
+  const bodyRef = useSmoothHeight<HTMLDivElement>(`${all}|${shown.length}|${items === null}|${Boolean(loadError)}`);
 
   return (
     <section className="dash-card dash-notes" aria-labelledby="notas-titulo">
@@ -119,7 +122,7 @@ export function NotesPanel({ operator, readOnly, onCount }: { operator: string; 
           {notes.length ? `${notes.length} ${notes.length === 1 ? 'nota' : 'notas'}${important ? ` · ${important} ${important === 1 ? 'importante' : 'importantes'}` : ''}` : 'Sin notas'}
         </span>
       </header>
-      <div className="dash-notes-body" aria-live="polite">
+      <div ref={bodyRef} className="dash-notes-body" aria-live="polite">
         {items === null && !loadError && <SkeletonText lines={2} />}
         {loadError && <ErrorState message={loadError} onRetry={() => void refresh()} />}
         {extra > 0 && (

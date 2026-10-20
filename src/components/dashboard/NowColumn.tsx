@@ -11,6 +11,7 @@ import { errorMessage } from '../layout/Feedback';
 import { clickableProps } from '../../utils/a11y';
 import { agendaNow, isAgendaToday, isMine, topTasks } from './agendaNow';
 import { NotesPanel } from './NotesPanel';
+import { useSmoothHeight } from './useSmoothHeight';
 
 type RecessSlot = { label: string; startTime: string; endTime: string; groupName?: string };
 
@@ -70,6 +71,8 @@ export function NowColumn({ agenda, tasks, operator, readOnly, canAgenda, canTas
   const [tab, setTab] = useState<Tab>('agenda');
   const [noteCount, setNoteCount] = useState(0);
   const nowMinutes = useNowMinutes();
+  // Mobile: cambiar de pestaña (Agenda / Tareas / Notas) cambia el alto suave.
+  const nowRef = useSmoothHeight<HTMLDivElement>(tab);
   const top = useMemo(() => topTasks(tasks, operator), [tasks, operator]);
   const todayCount = useMemo(() => {
     const today = todayKeyAr();
@@ -77,7 +80,7 @@ export function NowColumn({ agenda, tasks, operator, readOnly, canAgenda, canTas
   }, [agenda]);
 
   return (
-    <div className="dash-now" data-tab={tab}>
+    <div ref={nowRef} className="dash-now" data-tab={tab}>
       {/* Mobile: pestañas Agenda / Tareas / Notas. En pantallas anchas se apilan. */}
       <Segmented<Tab>
         className="dash-now-tabs"
