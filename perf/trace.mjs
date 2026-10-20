@@ -172,7 +172,11 @@ try {
   if (ACTION !== 'mutations') {
   const trace = JSON.parse(fs.readFileSync(traceFile, 'utf8'));
   const events = trace.traceEvents || trace;
-  const main = events.find(e => e.name === 'thread_name' && e.args?.name === 'CrRendererMain');
+  // Puede haber más de un CrRendererMain (la pestaña en blanco inicial, otra
+  // navegación): el de la página es el que más eventos tiene.
+  const mains = events.filter(e => e.name === 'thread_name' && e.args?.name === 'CrRendererMain');
+  const countFor = thread => events.reduce((n, e) => n + (e.pid === thread.pid && e.tid === thread.tid && e.ph === 'X' ? 1 : 0), 0);
+  const main = mains.map(thread => ({ thread, n: countFor(thread) })).sort((a, b) => b.n - a.n)[0]?.thread;
   const mainEvents = events.filter(e => main && e.pid === main.pid && e.tid === main.tid && e.ph === 'X');
   // Tiempo propio por tipo de evento (descontando hijos).
   mainEvents.sort((a, b) => a.ts - b.ts || b.dur - a.dur);
