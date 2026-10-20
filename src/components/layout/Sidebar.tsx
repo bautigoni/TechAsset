@@ -25,6 +25,29 @@ type SidebarProps = {
 
 /** Densidad del menú según el alto disponible (se mide; ver shell.css). */
 const DENSITIES = ['full', 'tight', 'compact', 'dense', 'scroll'];
+const DENSITY_KEY = 'techasset_nav_density';
+
+/** Lo que define qué densidad entra: alto del menú, ítems, preferencias de texto y modo (rail). */
+function densityKey(nav: HTMLElement, items: number) {
+  const html = document.documentElement;
+  return [nav.clientHeight, items, html.dataset.textSize || '', html.dataset.density || '', nav.closest<HTMLElement>('.shell')?.dataset.nav || ''].join('|');
+}
+
+/** Última densidad medida (en memoria y en localStorage, para el próximo arranque). */
+const storedDensity: { key: string; value: string } = (() => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DENSITY_KEY) || 'null') as { key?: unknown; value?: unknown } | null;
+    if (parsed && typeof parsed.key === 'string' && typeof parsed.value === 'string' && DENSITIES.includes(parsed.value)) return { key: parsed.key, value: parsed.value };
+  } catch { /* sin storage: se mide siempre */ }
+  return { key: '', value: '' };
+})();
+
+function saveDensity(key: string, value: string) {
+  if (storedDensity.key === key && storedDensity.value === value) return;
+  storedDensity.key = key;
+  storedDensity.value = value;
+  try { localStorage.setItem(DENSITY_KEY, JSON.stringify({ key, value })); } catch { /* modo privado */ }
+}
 
 export function initialsOf(text: string) {
   return text.split(/\s|@/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U';
@@ -46,6 +69,9 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
   const displayName = user.nombre || user.email || 'Usuario';
   const [tip, setTip] = useState<{ anchor: HTMLElement; label: string } | null>(null);
   const navRef = useRef<HTMLElement | null>(null);
+  // La densidad de la última vez sale en el primer render (React no la vuelve
+  // a tocar: el valor inicial no cambia; después la maneja el ResizeObserver).
+  const [initialDensity] = useState(() => storedDensity.value || undefined);
 
   // Densidad (ver DENSITIES) y degradé de la lista: el ResizeObserver avisa al
   // observar (antes de pintar) y cada vez que cambia el alto o el modo (rail).
@@ -57,9 +83,18 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
       list.toggleAttribute('data-fade-bottom', list.scrollTop + list.clientHeight < list.scrollHeight - 1);
     };
     const observer = new ResizeObserver(() => {
-      for (const value of DENSITIES) {
-        nav.dataset.density = value;
-        if (list.scrollHeight <= list.clientHeight + 1) break;
+      // Mismo alto, mismos ítems y mismas preferencias que la última vez: la
+      // densidad guardada ya está puesta (desde el primer render) y entra; no
+      // hace falta probar de nuevo. Cada prueba es un estilo + layout forzado
+      // (con :has() en .shell) justo antes del primer pintado (pasada 3).
+      const key = densityKey(nav, items.length);
+      const fits = () => list.scrollHeight <= list.clientHeight + 1;
+      if (!(key === storedDensity.key && nav.dataset.density === storedDensity.value && fits())) {
+        for (const value of DENSITIES) {
+          nav.dataset.density = value;
+          if (fits()) break;
+        }
+        saveDensity(key, nav.dataset.density || 'full');
       }
       edges();
     });
@@ -136,7 +171,7 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
   );
 
   return (
-    <aside className="shell-nav" aria-label="Menú principal" ref={navRef}>
+    <aside className="shell-nav" aria-label="Menú principal" ref={navRef} data-density={initialDensity}>
       <div className="shell-nav-head">
         {canSwitchSites ? (
           <button
