@@ -8,9 +8,9 @@ import { Button } from '../../ui/Button';
 import { useStatusLine } from '../../ui/StatusSlot';
 import { TruncatedText } from '../../ui/Truncated';
 import { cx } from '../../ui/util';
-import { keepInPlace } from '../../ui/Collapse';
+import { Collapse, keepInPlace } from '../../ui/Collapse';
 import {
-  ChipLegend, GroupToggle, LazyBody, SelectModeButton, SelectionBar, SelectionSwap, batchResultMessage, deviceChipKind, isMarkClick, usePanelOpen
+  ChipLegend, GroupToggle, LazyBody, Reveal, SelectModeButton, SelectionBar, SelectionSwap, batchResultMessage, deviceChipKind, isMarkClick, useHeldList, usePanelOpen
 } from './ChipPanelKit';
 import { SuccessCheck } from './ScanMessage';
 import type { UndoFn } from './LoanForm';
@@ -172,7 +172,7 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onU
   const onChipClick = (event: MouseEvent, device: Device, group: Group) => {
     if (selectMode || isMarkClick(event)) {
       event.preventDefault();
-      // Al entrar en selección aparecen "Todos / Ninguno": el chip tocado no se corre.
+      // Al entrar en selección aparecen "Todos / Ninguno" (debajo de la grilla): el chip tocado no se corre.
       if (!selectMode) { keepInPlace(event.currentTarget as HTMLElement, { duration: 120 }); setSelectMode(true); }
       // Mejora: Shift + clic sobre otro del mismo tipo marca desde el último marcado hasta acá.
       const from = anchor.current;
@@ -267,6 +267,7 @@ function ChipGroup({ group, selectMode, selected, busyTags, consultationMode, on
   const [open, setOpen] = usePanelOpen(`devices:${group.nombre}`);
   const late = group.prestados.filter(device => loanAgeDays(device.loanedAt) >= 1).length;
   const bodyId = `lo-group-${group.nombre.replace(/\W+/g, '-')}`;
+  const heldOut = useHeldList(group.prestados, device => device.id || device.etiqueta);
   return (
     <div className={cx('lo-group', open && 'is-open')} data-group={group.nombre}>
       <div className="lo-group-head">
@@ -280,12 +281,6 @@ function ChipGroup({ group, selectMode, selected, busyTags, consultationMode, on
           warn={late ? `${late} hace más de 1 día` : ''}
           controls={bodyId}
         />
-        {selectMode && open && !consultationMode && group.selectable.length > 0 && (
-          <span className="lo-group-all">
-            <Button size="sm" variant="ghost" onClick={onAll}>Todos</Button>
-            <Button size="sm" variant="ghost" onClick={onNone}>Ninguno</Button>
-          </span>
-        )}
       </div>
       <LazyBody open={open} className="lo-group-body">
         <div className="lo-chip-grid" role="group" aria-label={`Equipos ${group.nombre}`} id={bodyId}>
@@ -320,20 +315,31 @@ function ChipGroup({ group, selectMode, selected, busyTags, consultationMode, on
             );
           })}
         </div>
-        {group.prestados.length > 0 && (
+        {/* "Todos / Ninguno" van debajo de los chips (no en el encabezado): entrar en
+            selección no achica el encabezado ni corre los chips que se están tocando. */}
+        <Reveal when={selectMode && !consultationMode && group.selectable.length > 0} fold="lo-fold-group">
+          <span className="lo-group-all" role="group" aria-label={`Marcar ${group.nombre}`}>
+            <Button size="sm" variant="ghost" onClick={onAll}>Todos</Button>
+            <Button size="sm" variant="ghost" onClick={onNone}>Ninguno</Button>
+          </span>
+        </Reveal>
+        {/* Prestar o devolver desde la grilla suma o saca su renglón plegándose. */}
+        <Reveal when={group.prestados.length > 0} fold="lo-fold-group">
           <div className="lo-out-list">
-            {group.prestados.map(device => {
+            {heldOut.rows.map(({ key, item: device, open: rowOpen, appear }) => {
               const days = loanAgeDays(device.loanedAt);
               return (
-                <div className="lo-out-row" key={device.id || device.etiqueta}>
-                  <span className={cx('lo-out-num g-num', days >= 2 ? 'is-late2' : days === 1 ? 'is-late1' : 'is-loaned')}>{getDeviceNumber(device) || device.etiqueta}</span>
-                  <TruncatedText className="lo-out-who">{[device.prestadoA || 'Sin persona', device.curso, device.ubicacion].filter(Boolean).join(' · ')}</TruncatedText>
-                  <span className="lo-out-time g-num">{days ? formatLoanDateTime(device.loanedAt) : formatTimeOnly(device.loanedAt)}</span>
-                </div>
+                <Collapse key={key} open={rowOpen} appear={appear} unmountOnClose reveal={false} onSettled={value => { if (!value) heldOut.release(key); }}>
+                  <div className="lo-out-row">
+                    <span className={cx('lo-out-num g-num', days >= 2 ? 'is-late2' : days === 1 ? 'is-late1' : 'is-loaned')}>{getDeviceNumber(device) || device.etiqueta}</span>
+                    <TruncatedText className="lo-out-who">{[device.prestadoA || 'Sin persona', device.curso, device.ubicacion].filter(Boolean).join(' · ')}</TruncatedText>
+                    <span className="lo-out-time g-num">{days ? formatLoanDateTime(device.loanedAt) : formatTimeOnly(device.loanedAt)}</span>
+                  </div>
+                </Collapse>
               );
             })}
           </div>
-        )}
+        </Reveal>
       </LazyBody>
     </div>
   );

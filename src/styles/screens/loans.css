@@ -28,7 +28,7 @@
 .lo-page h2 { margin: 0; }
 .lo-page p { margin: 0; }
 
-/* ── Barra de la página ─────────────────────────────────────────────── */
+/* ── Fecha y "Cierre del día" (encabezan la columna lateral) ─────────── */
 
 .lo-toolbar {
   display: flex;
@@ -52,6 +52,9 @@
   .lo-main, .lo-side { display: contents; }
   .lo-side > * { order: 1; }
   .lo-cols .lo-prev { order: 2; }
+  /* La fecha y "Cierre del día" van primero; el cierre se abre debajo de ese botón. */
+  .lo-side > .lo-toolbar { order: -2; }
+  .lo-main > .lo-closure-fold { order: -1; }
 }
 
 /* Plegables entre bloques (Collapse): cerrados no suman el gap de la página;
@@ -59,6 +62,7 @@
 .lo-fold { --ui-collapse-gap: var(--lo-gap); }
 /* Lo mismo adentro del formulario (gap 12 px) y de cada campo (gap 8 px). */
 .lo-fold-sm, .lo-fold-row { --ui-collapse-gap: var(--g-s-3); }
+.lo-fold-field { --ui-collapse-gap: var(--g-s-2); }
 .lo-fcontrol > .ui-collapse { --ui-collapse-gap: var(--g-s-2); }
 
 /* ── Card ───────────────────────────────────────────────────────────── */
@@ -162,7 +166,6 @@
 .lo-code { flex: 1 1 15rem; }
 .lo-code .ui-control { min-height: var(--g-s-7); background: var(--g-bg); }
 .lo-code .ui-input-el { font-family: var(--g-font-mono); font-size: var(--g-fs-md); }
-.lo-code-add { flex: none; height: auto; min-height: var(--g-s-7); }
 .lo-code-clear {
   display: inline-flex;
   align-items: center;
@@ -226,7 +229,10 @@
 .lo-queue { display: flex; flex-direction: column; gap: var(--g-s-2); min-width: 0; }
 .lo-queue-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--g-s-1) var(--g-s-3); min-width: 0; }
 .lo-queue-sum { color: var(--g-text-2); font-family: var(--g-font-mono); font-size: var(--g-fs-sm); }
+.lo-queue-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-1); min-width: 0; }
 .lo-queue-list { min-width: 0; border: 1px solid var(--g-line); border-radius: var(--g-radius-sm); }
+/* Cada fila va en su colapso (entra y sale plegándose): el separador va arriba de la que sigue. */
+.lo-qrow-fold + .lo-qrow-fold .lo-qrow { border-top: 1px solid var(--g-line); }
 .lo-qrow {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) 4.5rem minmax(0, 1.4fr) auto;
@@ -234,9 +240,7 @@
   gap: var(--g-s-3);
   min-height: var(--g-row-h);
   padding: var(--g-s-1) var(--g-s-1) var(--g-s-1) var(--g-s-3);
-  border-bottom: 1px solid var(--g-line);
 }
-.lo-qrow:last-child { border-bottom: 0; }
 .lo-qrow-name { display: flex; align-items: baseline; gap: var(--g-s-2); min-width: 0; overflow: hidden; white-space: nowrap; }
 .lo-qrow-alias { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: var(--g-fw-medium); }
 .lo-qrow-tag { flex: none; color: var(--g-text-3); font-size: var(--g-fs-xs); }
@@ -304,12 +308,11 @@
   padding: var(--g-s-1) calc(var(--g-s-2) + 2px);
   background: transparent;
   border: 0;
-  border-top: 1px solid var(--g-line);
   color: var(--g-text);
   text-align: left;
   cursor: pointer;
 }
-.lo-suggest-item:first-child { border-top: 0; }
+.lo-suggest-fold + .lo-suggest-fold .lo-suggest-item { border-top: 1px solid var(--g-line); }
 .lo-suggest-item.is-active, .lo-suggest-item:hover { background: var(--g-raised); }
 .lo-suggest-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
 .lo-suggest-name { min-width: 0; overflow: hidden; font-weight: var(--g-fw-medium); text-overflow: ellipsis; white-space: nowrap; }
@@ -365,8 +368,9 @@
 .lo-chip.is-late1 { background: transparent; border-color: var(--g-warn); color: var(--g-warn); font-weight: var(--g-fw-semibold); }
 .lo-chip.is-late2 { background: transparent; border-color: var(--g-bad); color: var(--g-bad); font-weight: var(--g-fw-semibold); }
 .lo-chip.is-blocked { background: transparent; border-style: dashed; color: var(--g-text-3); text-decoration: line-through; cursor: not-allowed; }
-/* Marcado = como el checkbox propio: fondo claro, número oscuro. Nunca azul relleno. */
-.lo-chip.is-selected { background: var(--g-check-bg); border-color: var(--g-check-bg); border-style: solid; color: var(--g-check-fg); font-weight: var(--g-fw-semibold); text-decoration: none; }
+/* Marcado: aro de 2 px en el color del texto sobre el fondo de siempre. Sobrio (sin
+   bloque blanco que encandile) y la muestra de la leyenda es igual a la de la grilla. */
+.lo-chip.is-selected { background: var(--g-raised); border-color: var(--g-text); border-style: solid; box-shadow: inset 0 0 0 1px var(--g-text); color: var(--g-text); font-weight: var(--g-fw-semibold); text-decoration: none; }
 .lo-chip:hover:not(:disabled):not(.is-selected) { border-color: var(--g-text-3); }
 .lo-chip.is-loaned:hover:not(:disabled):not(.is-selected),
 .lo-chip.is-late1:hover:not(:disabled):not(.is-selected),
@@ -418,6 +422,7 @@
 .lo-group-out, .lo-group-warn { white-space: nowrap; }
 .lo-group-warn { color: var(--g-warn); }
 .lo-group-all { display: inline-flex; flex: none; gap: 2px; }
+.lo-group-body .lo-group-all { display: flex; flex-wrap: wrap; margin-top: var(--g-s-2); }
 .lo-ring-skel { display: inline-block; width: var(--g-s-6); height: var(--g-s-6); border: 3px solid var(--g-line); border-radius: var(--g-radius-pill); }
 .lo-group-body { padding: 0 var(--lo-pad) var(--lo-pad); min-width: 0; }
 .lo-chip-grid { display: flex; flex-wrap: wrap; gap: calc(var(--g-s-1) + 2px); min-width: 0; }
@@ -452,31 +457,50 @@
 .lo-selbar-confirm { flex: 1 1 100%; padding: 0; background: transparent; border: 0; }
 
 /* Cartelitos */
-.lo-passes-head .lo-group-toggle { flex: 1 1 18rem; min-height: 0; padding: 0; }
+.lo-passes-head .lo-group-toggle { flex: 0 1 auto; flex-wrap: nowrap; min-height: 0; padding: 0; }
 .lo-passes-head .lo-group-toggle:hover { background: transparent; }
 .lo-passes-head .lo-group-title { font-size: var(--g-fs-md); overflow: visible; }
 .lo-passes-head .lo-group-name { flex: 0 0 auto; }
+/* "N entregados" y "Varios" van juntos a la derecha (en angosto bajan juntos). */
+.lo-passes-head .lo-passes-meta { flex: 1 1 auto; align-items: center; }
+@container (max-width: 520px) {
+  .lo-passes-head .lo-group-title { font-size: var(--g-fs-base); }
+}
 .lo-passes-body { padding: var(--g-s-3) var(--lo-pad) var(--lo-pad); min-width: 0; }
 .lo-passes-body > div { display: flex; flex-direction: column; gap: var(--g-s-3); min-width: 0; }
 .lo-passes-body .lo-legend { padding: 0; }
 .lo-passes-body .lo-out-list { margin-top: 0; }
-/* El formulario de entrega se pliega (Collapse): cerrado no suma el gap. */
-.lo-pass-fold { --ui-collapse-gap: var(--g-s-3); }
-.lo-pass-form { padding: var(--g-s-3) var(--lo-pad) var(--lo-pad); border: 1px solid var(--g-line-strong); border-radius: var(--g-radius-sm); background: var(--g-bg); }
-.lo-pf-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2) var(--g-s-3); min-width: 0; }
+/* Entregar cartelito: pop up (src/ui/Dialog, excepción del dueño 20/10). */
+.lo-pass-dialog { font-size: var(--g-fs-base); line-height: 1.25rem; }
+.lo-pass-form { display: flex; flex-direction: column; gap: var(--g-s-3); min-width: 0; container-type: inline-size; }
+.lo-pass-form > .ui-collapse { --ui-collapse-gap: var(--g-s-3); }
 .lo-pf-chips { display: flex; flex-wrap: wrap; gap: var(--g-s-1); }
+.lo-pf-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--g-s-6);
+  height: calc(var(--g-s-5) + 2px);
+  padding: 0 var(--g-s-2);
+  border: 1px solid var(--g-line-strong);
+  border-radius: var(--g-radius-sm);
+  color: var(--g-text);
+  font-family: var(--g-font-mono);
+  font-size: var(--g-fs-sm);
+}
 
 /* ── Lateral ────────────────────────────────────────────────────────── */
 
 .lo-now { display: flex; flex-direction: column; gap: var(--g-s-3); padding: var(--lo-pad); }
-.lo-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--g-s-3); min-width: 0; }
+/* 2 por fila en la columna lateral; en una sola columna ancha, los 4 en fila (sin media tarjeta vacía). */
+.lo-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--g-s-3); min-width: 0; }
 .lo-tile { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .lo-tile-num { color: var(--g-text); font-family: var(--g-font-mono); font-size: var(--g-fs-xl); font-weight: var(--g-fw-medium); line-height: 2rem; }
 .lo-tile-num.is-warn { color: var(--g-warn); }
 .lo-tile-num.is-bad { color: var(--g-bad); }
 .lo-tile-label { min-width: 0; overflow: hidden; color: var(--g-text-2); font-size: var(--g-fs-xs); text-overflow: ellipsis; white-space: nowrap; }
 .lo-tile-hint { font-size: var(--g-fs-xs); overflow: hidden; text-overflow: ellipsis; }
-.lo-now-facts { display: flex; flex-direction: column; gap: var(--g-s-1); padding-top: var(--g-s-3); border-top: 1px solid var(--g-line); font-size: var(--g-fs-sm); }
+.lo-now-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--g-s-1) var(--g-s-4); padding-top: var(--g-s-3); border-top: 1px solid var(--g-line); font-size: var(--g-fs-sm); }
 .lo-fact { display: flex; flex-wrap: wrap; gap: 0 var(--g-s-2); min-width: 0; }
 .lo-fact-k { color: var(--g-text-3); }
 .lo-fact-v { min-width: 0; color: var(--g-text); overflow-wrap: anywhere; }
@@ -489,9 +513,8 @@
   gap: 2px;
   min-width: 0;
   padding: calc(var(--g-s-2) + 2px) var(--lo-pad);
-  border-bottom: 1px solid var(--g-line);
 }
-.lo-loaned-row:last-child { border-bottom: 0; }
+.lo-loaned-fold + .lo-loaned-fold .lo-loaned-row { border-top: 1px solid var(--g-line); }
 .lo-loaned-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-1) var(--g-s-2); min-width: 0; }
 .lo-loaned-line > .lo-link { flex: 0 1 auto; }
 .lo-loaned-tag { flex: none; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
@@ -503,7 +526,7 @@
 /* ── Último día con préstamos ───────────────────────────────────────── */
 
 .lo-prev-head { padding-top: var(--g-s-1); padding-bottom: var(--g-s-1); }
-.lo-prev-toggle { flex: 1 1 18rem; padding: var(--g-s-1) 0; }
+.lo-prev-toggle { flex: 1 1 18rem; min-height: var(--g-control-h); padding: var(--g-s-1) 0; }
 .lo-prev-toggle:hover { background: transparent; }
 .lo-prev-toggle .lo-group-name { flex: 0 1 auto; }
 .lo-prev-date { color: var(--g-text-2); font-size: var(--g-fs-sm); white-space: nowrap; }

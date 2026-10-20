@@ -10,9 +10,10 @@ import { useStatusLine } from '../../ui/StatusSlot';
 import { ErrorState } from '../../ui/Data';
 import { TruncatedText } from '../../ui/Truncated';
 import { Collapse, keepInPlace } from '../../ui/Collapse';
+import { Dialog } from '../../ui/Dialog';
 import { fold, cx } from '../../ui/util';
 import { PersonSuggestInput } from './PersonSuggestInput';
-import { ChipLegend, GroupToggle, LazyBody, SelectModeButton, SelectionBar, SelectionSwap, batchResultMessage, isMarkClick, usePanelOpen } from './ChipPanelKit';
+import { ChipLegend, GroupToggle, LazyBody, Reveal, SelectModeButton, SelectionBar, SelectionSwap, batchResultMessage, isMarkClick, useHeldList, usePanelOpen } from './ChipPanelKit';
 import { SuccessCheck } from './ScanMessage';
 
 /**
@@ -41,7 +42,7 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
   const [items, setItems] = useState<PhotoPass[]>([]);
   const [options, setOptions] = useState<PhotoPassOptions>({ alumnos: [], cursos: [], docentes: [] });
   const [lending, setLending] = useState<PhotoPass[] | null>(null);
-  // El formulario se pliega con lo último que mostraba (no se vacía de golpe).
+  // El diálogo se cierra mostrando lo último (no se vacía a mitad de la salida).
   const lastLending = useRef<PhotoPass[] | null>(null);
   if (lending) lastLending.current = lending;
   const shownLending = lending || lastLending.current;
@@ -109,19 +110,22 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
   };
 
   const prestados = items.filter(isPrestado);
+  const heldOut = useHeldList(prestados, pass => String(pass.numero));
   const libres = items.filter(isDisponible);
   const seleccionables = useMemo(() => items.filter(pass => isPrestado(pass) || isDisponible(pass)).map(pass => String(pass.numero)), [items]);
   const marcados = items.filter(pass => selected.has(String(pass.numero)));
   const toLend = marcados.filter(isDisponible);
   const toReturn = marcados.filter(isPrestado);
 
+  // Al cerrar, el foco vuelve al cartelito tocado (o al primero del lote).
+  const returnTo = useRef<string | null>(null);
   const openLend = (list: PhotoPass[]) => {
     setForm(EMPTY);
     setFormError('');
+    returnTo.current = list[0] ? String(list[0].numero) : null;
     setLending(list);
-    if (!open) setOpen(true);
-    window.setTimeout(() => alumnoRef.current?.focus(), 0);
   };
+  const closeLend = () => { setLending(null); setFormError(''); };
 
   // Deshacer de cartelitos con las rutas de siempre: devolver lo entregado, o
   // volver a entregar lo devuelto con los mismos datos.
@@ -240,9 +244,13 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
             free={libres.length}
             total={items.length}
             loading={loading}
-            out={loading ? '' : `${prestados.length} ${prestados.length === 1 ? 'entregado' : 'entregados'}`}
+            out=""
             controls="lo-passes-body"
           />
+          {/* Fuera del botón: en angosto baja con "Varios" al mismo renglón (no queda un botón solo en una fila). */}
+          <span className="lo-group-meta lo-passes-meta">
+            <span className="lo-group-out">{loading ? '' : `${prestados.length} ${prestados.length === 1 ? 'entregado' : 'entregados'}`}</span>
+          </span>
           <SelectModeButton disabled={consultationMode || loading} onClick={() => { setSelectMode(true); if (!open) setOpen(true); }} />
         </div>
       </SelectionSwap>
@@ -252,68 +260,9 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
 
       <LazyBody open={open || selectMode} className="lo-passes-body">
         <div id="lo-passes-body">
-          <Collapse open={Boolean(lending)} outerClassName="lo-pass-fold">
-          {shownLending && (
-            <div className="lo-lend lo-pass-form" role="group" aria-labelledby="lo-pf-title" data-scanner-ignore="">
-              <div className="lo-pf-head">
-                <span id="lo-pf-title" className="lo-lend-title">{shownLending.length === 1 ? `Entregar cartelito ${shownLending[0].numero}` : `Entregar ${shownLending.length} cartelitos`}</span>
-                {shownLending.length > 1 && (
-                  <span className="lo-pf-chips" aria-label="Cartelitos a entregar">
-                    {shownLending.map(pass => <span key={pass.numero} className="lo-chip lo-chip--sample is-selected">{pass.numero}</span>)}
-                  </span>
-                )}
-              </div>
-              <div className="lo-frow">
-                <label htmlFor="lo-pf-alumno" className="lo-flabel">{shownLending.length > 1 ? 'Responsable' : 'Alumno'}</label>
-                <div className="lo-fcontrol">
-                  {/* Elegir al alumno completa curso y docente con los que suele venir. */}
-                  <PersonSuggestInput
-                    id="lo-pf-alumno"
-                    inputRef={alumnoRef}
-                    field="alumno"
-                    placeholder="Nombre y apellido"
-                    value={form.persona}
-                    onChange={persona => { setForm(v => ({ ...v, persona })); setFormError(''); }}
-                    onPick={item => setForm(v => ({ ...v, persona: item.nombre, curso: v.curso || item.curso, docente: v.docente || item.docente }))}
-                    onEnter={() => void submitLend()}
-                  />
-                </div>
-              </div>
-              <div className="lo-frow">
-                <label htmlFor="lo-pf-curso" className="lo-flabel">Curso</label>
-                <div className="lo-fcontrol">
-                  <Input id="lo-pf-curso" value={form.curso} onValueChange={curso => setForm(v => ({ ...v, curso }))} placeholder="Ej. EP · 5F" autoComplete="off" onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void submitLend(); } }} />
-                  {cursoSuggestions.length > 0 && (
-                    <div className="lo-opts" role="group" aria-label="Cursos conocidos">
-                      {cursoSuggestions.map(curso => (
-                        <button key={curso} type="button" className="lo-opt lo-opt--mono" onClick={() => setForm(v => ({ ...v, curso }))}>{curso}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="lo-frow">
-                <label htmlFor="lo-pf-docente" className="lo-flabel">Docente a cargo</label>
-                <div className="lo-fcontrol">
-                  <PersonSuggestInput id="lo-pf-docente" field="docente" placeholder="Con quién está" value={form.docente} onChange={docente => setForm(v => ({ ...v, docente }))} onEnter={() => void submitLend()} />
-                </div>
-              </div>
-              <div className="lo-frow">
-                <label htmlFor="lo-pf-motivo" className="lo-flabel">Motivo</label>
-                <Input id="lo-pf-motivo" className="lo-fcontrol" value={form.motivo} onValueChange={motivo => setForm(v => ({ ...v, motivo }))} placeholder="Acto, salida, proyecto… (opcional)" autoComplete="off" onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void submitLend(); } }} />
-              </div>
-              <div className="lo-lend-actions">
-                <Button variant="primary" loading={busy} loadingLabel="Entregando…" disabled={consultationMode || !form.persona.trim()} onClick={() => void submitLend()} iconEnd={<Kbd>↵</Kbd>}>
-                  {shownLending.length > 1 ? `Entregar ${shownLending.length}` : 'Entregar'}
-                </Button>
-                <Button variant="ghost" disabled={busy} onClick={() => { setLending(null); setFormError(''); }}>Cancelar</Button>
-                {formError && <span className="lo-form-error t-msg-enter t-input is-shaking" role="alert">{formError}</span>}
-              </div>
-            </div>
-          )}
-          </Collapse>
-
-          {loadError && <ErrorState message={loadError} onRetry={() => { setLoading(true); void refresh(); }} />}
+          <Reveal when={Boolean(loadError)}>
+            {loadError && <ErrorState message={loadError} onRetry={() => { setLoading(true); void refresh(); }} retrying={loading} />}
+          </Reveal>
 
           <p className="lo-help lo-passes-help">
             <span className="lo-long">Clic: libre lo entrega, entregado lo devuelve. Ctrl/⌘/Shift + clic marca varios.</span>
@@ -352,19 +301,93 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
               );
             })}
           </div>
-          {prestados.length > 0 && (
+          {/* Entregar o devolver suma o saca su renglón plegándose. */}
+          <Reveal when={prestados.length > 0}>
             <div className="lo-out-list">
-              {prestados.map(pass => (
-                <div className="lo-out-row" key={pass.numero}>
-                  <span className="lo-out-num g-num is-loaned">{pass.numero}</span>
-                  <TruncatedText className="lo-out-who">{[pass.prestadoA, pass.curso, pass.docente ? `con ${pass.docente}` : ''].filter(Boolean).join(' · ')}</TruncatedText>
-                  <span className="lo-out-time g-num">{formatTimeOnly(pass.loanedAt)}</span>
-                </div>
+              {heldOut.rows.map(({ key, item: pass, open: rowOpen, appear }) => (
+                <Collapse key={key} open={rowOpen} appear={appear} unmountOnClose reveal={false} onSettled={value => { if (!value) heldOut.release(key); }}>
+                  <div className="lo-out-row">
+                    <span className="lo-out-num g-num is-loaned">{pass.numero}</span>
+                    <TruncatedText className="lo-out-who">{[pass.prestadoA, pass.curso, pass.docente ? `con ${pass.docente}` : ''].filter(Boolean).join(' · ')}</TruncatedText>
+                    <span className="lo-out-time g-num">{formatTimeOnly(pass.loanedAt)}</span>
+                  </div>
+                </Collapse>
               ))}
             </div>
-          )}
+          </Reveal>
         </div>
       </LazyBody>
+
+      {/* Pop up (pedido del dueño, 20/10): única excepción a "nada de modales". */}
+      <Dialog
+        open={Boolean(lending)}
+        className="lo-pass-dialog"
+        title={shownLending ? (shownLending.length === 1 ? `Entregar cartelito ${shownLending[0].numero}` : `Entregar ${shownLending.length} cartelitos`) : ''}
+        description={shownLending && shownLending.length > 1 ? 'Un solo formulario para todos: el nombre va como responsable.' : 'Queda registrado de qué curso es y con qué docente está.'}
+        dirty={Boolean(form.persona.trim() || form.curso.trim() || form.docente.trim() || form.motivo.trim())}
+        onClose={closeLend}
+        returnFocus={() => (returnTo.current ? document.querySelector<HTMLElement>(`[data-loans-grid="passes"] .lo-chip[data-pass="${returnTo.current}"]`) : null)}
+        footer={shownLending && (
+          <>
+            <Button variant="primary" loading={busy} loadingLabel="Entregando…" disabled={consultationMode} onClick={() => void submitLend()} iconEnd={<Kbd className="lo-hide-touch">↵</Kbd>}>
+              {shownLending.length > 1 ? `Entregar ${shownLending.length}` : 'Entregar'}
+            </Button>
+            <Button variant="ghost" disabled={busy} onClick={closeLend}>Cancelar</Button>
+          </>
+        )}
+      >
+        {shownLending && (
+          <div className="lo-pass-form" data-pass-form="" data-scanner-ignore="">
+            {shownLending.length > 1 && (
+              <span className="lo-pf-chips" aria-label="Cartelitos a entregar">
+                {shownLending.map(pass => <span key={pass.numero} className="lo-pf-num g-num">{pass.numero}</span>)}
+              </span>
+            )}
+            <div className="lo-frow">
+              <label htmlFor="lo-pf-alumno" className="lo-flabel">{shownLending.length > 1 ? 'Responsable' : 'Alumno'}</label>
+              <div className="lo-fcontrol">
+                {/* Elegir al alumno completa curso y docente con los que suele venir. */}
+                <PersonSuggestInput
+                  id="lo-pf-alumno"
+                  inputRef={alumnoRef}
+                  field="alumno"
+                  placeholder="Nombre y apellido"
+                  value={form.persona}
+                  onChange={persona => { setForm(v => ({ ...v, persona })); setFormError(''); }}
+                  onPick={item => setForm(v => ({ ...v, persona: item.nombre, curso: v.curso || item.curso, docente: v.docente || item.docente }))}
+                  onEnter={() => void submitLend()}
+                />
+              </div>
+            </div>
+            <div className="lo-frow">
+              <label htmlFor="lo-pf-curso" className="lo-flabel">Curso</label>
+              <div className="lo-fcontrol">
+                <Input id="lo-pf-curso" value={form.curso} onValueChange={curso => setForm(v => ({ ...v, curso }))} placeholder="Ej. EP · 5F" autoComplete="off" onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void submitLend(); } }} />
+                <Reveal when={cursoSuggestions.length > 0} fold="lo-fold-field">
+                  <div className="lo-opts" role="group" aria-label="Cursos conocidos">
+                    {cursoSuggestions.map(curso => (
+                      <button key={curso} type="button" className="lo-opt lo-opt--mono" onClick={() => setForm(v => ({ ...v, curso }))}>{curso}</button>
+                    ))}
+                  </div>
+                </Reveal>
+              </div>
+            </div>
+            <div className="lo-frow">
+              <label htmlFor="lo-pf-docente" className="lo-flabel">Docente a cargo</label>
+              <div className="lo-fcontrol">
+                <PersonSuggestInput id="lo-pf-docente" field="docente" placeholder="Con quién está" value={form.docente} onChange={docente => setForm(v => ({ ...v, docente }))} onEnter={() => void submitLend()} />
+              </div>
+            </div>
+            <div className="lo-frow">
+              <label htmlFor="lo-pf-motivo" className="lo-flabel">Motivo</label>
+              <Input id="lo-pf-motivo" className="lo-fcontrol" value={form.motivo} onValueChange={motivo => setForm(v => ({ ...v, motivo }))} placeholder="Acto, salida, proyecto… (opcional)" autoComplete="off" onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void submitLend(); } }} />
+            </div>
+            <Reveal when={Boolean(formError)}>
+              {formError && <span className="lo-form-error t-input is-shaking" role="alert">{formError}</span>}
+            </Reveal>
+          </div>
+        )}
+      </Dialog>
     </section>
   );
 }

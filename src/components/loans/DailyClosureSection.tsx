@@ -8,6 +8,8 @@ import { ErrorState, Eyebrow, SkeletonText } from '../../ui/Data';
 import { TruncatedText } from '../../ui/Truncated';
 import { Collapse } from '../../ui/Collapse';
 import { EmptyState } from '../../ui/Data';
+import { useStatusLine } from '../../ui/StatusSlot';
+import { Reveal } from './ChipPanelKit';
 
 type Closure = { id: number | string; fecha?: string; operador?: string; observaciones?: string; createdAt?: string };
 
@@ -30,7 +32,8 @@ export function DailyClosureSection({ open = true, operator, consultationMode, o
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [info, setInfo] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
+  // Copiado / guardado / error: línea de estado que entra plegándose debajo de los botones.
+  const status = useStatusLine();
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -59,23 +62,23 @@ export function DailyClosureSection({ open = true, operator, consultationMode, o
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      setInfo({ tone: 'ok', text: 'Copiado al portapapeles.' });
+      status.show({ tone: 'ok', message: 'Copiado al portapapeles.', autoHideMs: 4000 });
     } catch {
-      setInfo({ tone: 'bad', text: 'No se pudo copiar. Seleccioná el texto y copialo a mano.' });
+      status.show({ tone: 'bad', message: 'No se pudo copiar. Seleccioná el texto y copialo a mano.' });
     }
   };
 
   const generate = async () => {
     if (consultationMode || !resumen) return;
     setSaving(true);
-    setInfo(null);
+    status.clear();
     try {
       await createDailyClosure({ operator, observaciones, resumen });
-      setInfo({ tone: 'ok', text: 'Cierre guardado.' });
+      status.show({ tone: 'ok', message: 'Cierre guardado.' });
       const closures = await fetchDailyClosures().catch(() => null);
       if (closures?.ok) setHistory(closures.items as Closure[]);
     } catch (reason) {
-      setInfo({ tone: 'bad', text: reason instanceof Error ? reason.message : 'No se pudo guardar el cierre.' });
+      status.show({ tone: 'bad', message: reason instanceof Error ? reason.message : 'No se pudo guardar el cierre.' });
     } finally {
       setSaving(false);
     }
@@ -107,22 +110,25 @@ export function DailyClosureSection({ open = true, operator, consultationMode, o
           {!history.length && <EmptyState compact icon={<ClipboardCheck size={18} strokeWidth={1.6} />} title="Todavía no hay cierres guardados" description="Cada cierre que generes queda acá con su fecha, operador y observaciones." />}
       </Collapse>
 
-      {loadError && <ErrorState message={loadError} onRetry={() => void load()} retrying={loading} />}
+      <Reveal when={Boolean(loadError)} fold="lo-closure-errfold">
+        {loadError && <ErrorState message={loadError} onRetry={() => void load()} retrying={loading} />}
+      </Reveal>
 
       <div className="lo-closure-grid">
         <div className="lo-closure-preview">
           <span className="lo-flabel">Vista previa</span>
-          {text
-            ? <div className="lo-closure-text g-num" aria-live="polite">{text}</div>
-            : loading ? <SkeletonText lines={8} /> : <span className="lo-muted">Sin datos para armar el cierre.</span>}
+          {/* Cargando → vista previa: uno se pliega mientras el otro crece (sin salto). */}
+          <Reveal when={!text && loading} fold="lo-fold-field"><SkeletonText lines={8} /></Reveal>
+          <Reveal when={Boolean(text)} fold="lo-fold-field"><div className="lo-closure-text g-num" aria-live="polite">{text}</div></Reveal>
+          <Reveal when={!text && !loading} fold="lo-fold-field"><span className="lo-muted">Sin datos para armar el cierre.</span></Reveal>
         </div>
         <div className="lo-closure-side">
           <Textarea label="Observaciones manuales" minRows={5} value={observaciones} onValueChange={setObservaciones} placeholder="Lo que el próximo turno tiene que saber…" />
           <div className="lo-lend-actions">
             <Button variant="secondary" disabled={!text} onClick={() => void copy()}>Copiar</Button>
             <Button variant="primary" disabled={consultationMode || !resumen} loading={saving} loadingLabel="Guardando…" onClick={() => void generate()}>Generar cierre</Button>
-            {info && <span className={info.tone === 'ok' ? 'lo-ok-text' : 'lo-form-error'} role={info.tone === 'ok' ? 'status' : 'alert'}>{info.text}</span>}
           </div>
+          {status.element}
         </div>
       </div>
     </section>

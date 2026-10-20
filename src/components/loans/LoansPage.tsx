@@ -15,7 +15,7 @@ import { LoanForm } from './LoanForm';
 import { PhotoPassPanel } from './PhotoPassPanel';
 import { DeviceChipsPanel } from './DeviceChipsPanel';
 import { DailyClosureSection } from './DailyClosureSection';
-import { Chevron, LazyBody, usePanelOpen } from './ChipPanelKit';
+import { Chevron, LazyBody, Reveal, useHeldList, usePanelOpen } from './ChipPanelKit';
 import { SuccessCheck } from './ScanMessage';
 import { scrollAppToTop } from '../../utils/scroll';
 import '../../styles/screens/loans.css';
@@ -85,20 +85,16 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
 
   return (
     <section className="lo-page" data-loans-page="">
-      <div className="lo-toolbar">
-        <span className="lo-toolbar-date">{capitalize(formatDate(new Date(), { weekday: 'short', day: 'numeric', month: 'short' }))}</span>
-        <Button ref={closureBtnRef} size="sm" variant="secondary" aria-expanded={closureOpen} aria-controls="lo-cierre" onClick={() => setClosureOpen(value => !value)}>
-          Cierre del día
-        </Button>
-      </div>
-
-      {/* En línea, suave y con el botón quieto (Collapse); lo escrito se conserva al cerrar. */}
-      <Collapse open={closureOpen} id="lo-cierre" outerClassName="lo-fold">
-        <DailyClosureSection open={closureOpen} operator={operator} consultationMode={consultationMode} onClose={() => { setClosureOpen(false); closureBtnRef.current?.focus({ preventScroll: true }); }} />
-      </Collapse>
-
+      {/* Sin franja propia arriba: la fecha y "Cierre del día" encabezan la columna
+          lateral (en una columna, van primero). Así el formulario arranca pegado a
+          la barra superior, sin un renglón casi vacío en el medio (ENCARGO 20/10). */}
       <div className="lo-cols">
         <div className="lo-main">
+          {/* En línea, suave (Collapse); lo escrito se conserva al cerrar. Va arriba de
+              la columna principal: el botón, en la otra columna (o arriba), no se mueve. */}
+          <Collapse open={closureOpen} id="lo-cierre" outerClassName="lo-fold lo-closure-fold">
+            <DailyClosureSection open={closureOpen} operator={operator} consultationMode={consultationMode} onClose={() => { setClosureOpen(false); closureBtnRef.current?.focus({ preventScroll: true }); }} />
+          </Collapse>
           <LoanForm
             devices={devices}
             consultationMode={consultationMode}
@@ -117,6 +113,12 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
           <PreviousDay devices={devices} onProfile={onProfile} />
         </div>
         <div className="lo-side">
+          <div className="lo-toolbar">
+            <span className="lo-toolbar-date">{capitalize(formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' }))}</span>
+            <Button ref={closureBtnRef} size="sm" variant="secondary" aria-expanded={closureOpen} aria-controls="lo-cierre" onClick={() => setClosureOpen(value => !value)}>
+              Cierre del día
+            </Button>
+          </div>
           <NowSummary devices={devices} site={site} />
           <LoanedNow devices={devices} consultationMode={consultationMode} onReview={seedLoanCode} onReturnBatch={onReturnBatch} onUndo={onUndo} onProfile={onProfile} />
         </div>
@@ -190,6 +192,7 @@ function LoanedNow({ devices, consultationMode, onReview, onReturnBatch, onUndo,
     .filter(device => getDeviceStateKey(device) === 'loaned')
     .sort((a, b) => loanAgeDays(b.loanedAt) - loanAgeDays(a.loanedAt) || String(a.loanedAt || '').localeCompare(String(b.loanedAt || ''))), [devices]);
   const list = all ? loaned : loaned.slice(0, SIDE_N);
+  const held = useHeldList(list, device => device.id || device.etiqueta);
 
   const returnOne = async (device: Device) => {
     if (busyTag) return;
@@ -229,11 +232,13 @@ function LoanedNow({ devices, consultationMode, onReview, onReturnBatch, onUndo,
       </div>
       {status.slot('lo-card-status')}
       <div className="lo-loaned-list">
-        {list.map(device => {
+        {/* Devolver saca el renglón plegándose (y prestar lo suma): la lista no salta. */}
+        {held.rows.map(({ key, item: device, open: rowOpen, appear }) => {
           const days = loanAgeDays(device.loanedAt);
           const alias = getOperationalAlias(device) || device.etiqueta;
           return (
-            <div className="lo-loaned-row" key={device.id || device.etiqueta} data-loaned-tag={device.etiqueta}>
+            <Collapse key={key} open={rowOpen} appear={appear} unmountOnClose reveal={false} outerClassName="lo-loaned-fold" onSettled={value => { if (!value) held.release(key); }}>
+            <div className="lo-loaned-row" data-loaned-tag={rowOpen ? device.etiqueta : undefined}>
               {/* Equipo y acciones arriba; quién/dónde y desde cuándo usan todo el ancho abajo. */}
               <div className="lo-loaned-line">
                 <button type="button" className="lo-link" aria-label={`Abrir ficha de ${alias} (${device.etiqueta})`} onClick={() => onProfile?.(device)}>{alias}</button>
@@ -246,15 +251,18 @@ function LoanedNow({ devices, consultationMode, onReview, onReturnBatch, onUndo,
               <TruncatedText className="lo-loaned-who" lines={2}>{`${device.prestadoA || 'Sin persona'} · ${[device.ubicacion, device.curso].filter(Boolean).join(' · ') || 'Sin ubicación'}`}</TruncatedText>
               <StatusText tone={ageTone(days)} mono className="lo-loaned-since">{formatLoanDateTime(device.loanedAt) || 'Sin fecha'} · {days <= 0 ? 'hoy' : days === 1 ? '1 día' : `${days} días`}</StatusText>
             </div>
+            </Collapse>
           );
         })}
-        {!loaned.length && <EmptyState compact className="lo-empty-state" icon={<House size={18} strokeWidth={1.6} />} title="Todo en casa" description="No hay equipos prestados ahora." />}
+        <Reveal when={!loaned.length} fold="lo-loaned-fold">
+          <EmptyState compact className="lo-empty-state" icon={<House size={18} strokeWidth={1.6} />} title="Todo en casa" description="No hay equipos prestados ahora." />
+        </Reveal>
       </div>
-      {loaned.length > SIDE_N && (
+      <Reveal when={loaned.length > SIDE_N} fold="lo-loaned-fold">
         <Button size="sm" variant="ghost" block className="lo-more" onClick={() => anchored(() => setAll(value => !value))}>
           {all ? `Ver solo los ${SIDE_N} más antiguos` : `Ver todos (${loaned.length})`}
         </Button>
-      )}
+      </Reveal>
     </section>
   );
 }
@@ -314,9 +322,13 @@ function PreviousDay({ devices, onProfile }: { devices: Device[]; onProfile?: (d
       </div>
       <LazyBody open={open} className="lo-prev-body">
         <div id="lo-prev-body">
-          {error && <ErrorState message={error} onRetry={() => void load()} retrying={loading} />}
+          <Reveal when={Boolean(error)} fold="lo-fold-none">
+            {error && <ErrorState className="lo-prev-error" message={error} onRetry={() => void load()} retrying={loading} />}
+          </Reveal>
           {!error && loading && !items.length && <SkeletonRows rows={4} />}
-          {!error && !loading && !items.length && <EmptyState compact className="lo-empty-state" icon={<CalendarClock size={18} strokeWidth={1.6} />} title="Sin préstamos anteriores" description="Cuando haya un día con préstamos, acá se ve qué salió, a quién y con qué." />}
+          <Reveal when={!error && !loading && !items.length} fold="lo-fold-none">
+            <EmptyState compact className="lo-empty-state" icon={<CalendarClock size={18} strokeWidth={1.6} />} title="Sin préstamos anteriores" description="Cuando haya un día con préstamos, acá se ve qué salió, a quién y con qué." />
+          </Reveal>
           {!error && items.length > 0 && (
             <div className="lo-prev-table" role="table" aria-label="Préstamos del último día con préstamos">
               <div className="lo-prev-row lo-prev-row--head" role="row">

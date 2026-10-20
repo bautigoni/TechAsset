@@ -18,7 +18,7 @@ import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
 import { TruncatedText } from '../../ui/Truncated';
 import { IconLock, IconSearch, IconX } from '../../ui/icons';
 import { cx } from '../../ui/util';
-import { AccessoryToggles, GradeGrid, OptionGroup, toggleList } from './ChipPanelKit';
+import { AccessoryToggles, GradeGrid, OptionGroup, Reveal, toggleList, useHeldList } from './ChipPanelKit';
 import { SuggestInput } from './PersonSuggestInput';
 import { ScanMessage, SuccessCheck } from './ScanMessage';
 
@@ -88,6 +88,9 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  // Esperando el permiso del navegador: el panel abre ya con el aviso (sin esto, el botón no respondía hasta que el navegador contestaba).
+  const [cameraPending, setCameraPending] = useState(false);
+  const cameraRequest = useRef(0);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const codeInputRef = useRef<HTMLInputElement | null>(null);
@@ -423,10 +426,11 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   /* ── Cámara / QR ─────────────────────────────────────────────────────── */
 
   // El panel de la cámara (el video o el aviso de por qué no abrió): el botón lo abre y lo cierra.
-  const cameraPanel = !continuous && (cameraOpen || Boolean(cameraError));
+  const cameraPanel = !continuous && (cameraOpen || cameraPending || Boolean(cameraError));
 
   const openCamera = async () => {
     setCameraError('');
+    let own = 0;
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError('No se pudo abrir la cámara. Este navegador no permite acceso a cámara.');
       return;
@@ -441,18 +445,27 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
     }
     try {
       stopCamera();
+      own = ++cameraRequest.current;
       lastQrRef.current = '';
+      setCameraPending(true);
       const stream = await openPreferredCamera();
+      // Se cerró el panel mientras el navegador preguntaba: la cámara no queda prendida.
+      if (own !== cameraRequest.current) { stream.getTracks().forEach(track => track.stop()); return; }
+      setCameraPending(false);
       streamRef.current = stream;
       setCameraOpen(true);
       if (!barcodeDetectorClass()) setCameraError('El escaneo QR no está disponible en este navegador. Podés ingresar el código manualmente.');
     } catch {
+      if (own !== cameraRequest.current) return;
+      setCameraPending(false);
       setCameraError('No se pudo abrir la cámara. Verificá permisos del navegador o usá HTTPS/localhost.');
       setCameraOpen(false);
     }
   };
 
   function stopCamera() {
+    cameraRequest.current += 1;
+    setCameraPending(false);
     if (scanFrameRef.current !== null) window.cancelAnimationFrame(scanFrameRef.current);
     scanFrameRef.current = null;
     streamRef.current?.getTracks().forEach(track => track.stop());
@@ -509,6 +522,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   };
   const submitLend = () => void (continuous ? handleConfirmMultipleLoan() : handleLend());
   const nErr = queueDevices.length - queueAvailable.length;
+  const heldQueue = useHeldList(queueDevices, device => device.id);
 
   return (
     <section className="lo-card lo-form" aria-labelledby="lo-form-title" data-loan-form="">
@@ -516,7 +530,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
         <h2 id="lo-form-title" className="lo-h2">Prestar o devolver</h2>
         <div className="lo-form-tools">
           <Switch className="lo-cont-switch" checked={continuous} onCheckedChange={toggleContinuous} label="Escaneo continuo" />
-          <Button size="sm" variant="ghost" icon={<IconSearch size={14} />} onClick={() => { codeInputRef.current?.focus(); codeInputRef.current?.select(); }}>Foco lector</Button>
+          <Button size="sm" variant="ghost" className="lo-hide-touch" icon={<IconSearch size={14} />} onClick={() => { codeInputRef.current?.focus(); codeInputRef.current?.select(); }}>Foco lector</Button>
           {!continuous && (
             <Button size="sm" variant="ghost" aria-expanded={cameraPanel} aria-controls="lo-camera" onClick={() => { if (cameraPanel) { stopCamera(); setCameraError(''); } else void openCamera(); }}>
               {cameraPanel ? 'Cerrar cámara' : 'Cámara'}
@@ -548,6 +562,8 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
           <div className="lo-camera">
             {cameraOpen && <video ref={videoRef} className="lo-camera-video" playsInline muted autoPlay aria-label="Vista de la cámara trasera" />}
             <div className="lo-camera-text">
+              {cameraPending && <span className="lo-camera-title">Abriendo la cámara…</span>}
+              {cameraPending && <span className="lo-muted">Si el navegador pregunta, permití el acceso a la cámara.</span>}
               {cameraOpen && <span className="lo-camera-title">Apuntá al QR del equipo</span>}
               {cameraOpen && <span className="lo-muted">Cámara trasera. Al leer el código lo carga arriba y se cierra sola.</span>}
               {cameraError && <ScanMessage tone="warn" text={cameraError} />}
@@ -576,32 +592,32 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
             spellCheck={false}
             data-loan-code=""
           />
-          {continuous && (
-            <Button className="lo-code-add" variant="secondary" disabled={!trimmed} onClick={() => addToContinuousScan(code)} iconEnd={<Kbd>↵</Kbd>}>
-              Agregar a la lista
-            </Button>
-          )}
         </div>
 
         {status.element}
 
-        {!continuous && scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} success={scanMessage.success} />}
+        {/* Todo lo que depende de lo escrito entra y sale plegándose (nada salta de alto). */}
+        <Reveal when={!continuous && Boolean(scanMessage)}>
+          {scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} success={scanMessage.success} />}
+        </Reveal>
 
-        {idle && (
+        <Reveal when={idle}>
           <p className="lo-help">Escaneá con el lector o escribí etiqueta, número o alias. <Kbd>Enter</Kbd> hace la acción: devuelve si está prestado, abre el préstamo si está libre.</p>
-        )}
+        </Reveal>
 
-        {!continuous && selected && (
-          <FoundDevice
-            device={selected}
-            state={selectedState}
-            busy={busy}
-            consultationMode={consultationMode}
-            onReturn={() => void handleReturn()}
-          />
-        )}
+        <Reveal when={!continuous && Boolean(selected)}>
+          {selected && (
+            <FoundDevice
+              device={selected}
+              state={selectedState}
+              busy={busy}
+              consultationMode={consultationMode}
+              onReturn={() => void handleReturn()}
+            />
+          )}
+        </Reveal>
 
-        {!continuous && selected && selectedState === 'loaned' && (
+        <Reveal when={!continuous && Boolean(selected) && selectedState === 'loaned'}>
           <div className="lo-frow">
             <span className="lo-flabel">Accesorios</span>
             <div className="lo-fcontrol">
@@ -615,15 +631,17 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                 ) : <span className="lo-muted">No se registraron accesorios para este préstamo.</span>}
             </div>
           </div>
-        )}
+        </Reveal>
 
-        {!continuous && selected && selectedState === 'blocked' && (
-          <div className="lo-msg lo-msg--error" role="alert">
-            <span className="lo-msg-text">{getOperationalAlias(selected) || selected.etiqueta} · {selected.etiqueta} está {selected.estado || 'no disponible'}. No se puede prestar ni devolver desde acá.</span>
-          </div>
-        )}
+        <Reveal when={!continuous && Boolean(selected) && selectedState === 'blocked'}>
+          {selected && (
+            <div className="lo-msg lo-msg--error" role="alert">
+              <span className="lo-msg-text">{getOperationalAlias(selected) || selected.etiqueta} · {selected.etiqueta} está {selected.estado || 'no disponible'}. No se puede prestar ni devolver desde acá.</span>
+            </div>
+          )}
+        </Reveal>
 
-        {!continuous && trimmed && matches.length > 1 && (
+        <Reveal when={!continuous && Boolean(trimmed) && matches.length > 1}>
           <div className="lo-multi">
             <span className="lo-multi-text">Hay más de un equipo posible para "{trimmed}". Elegí uno:</span>
             <div className="lo-multi-list">
@@ -635,24 +653,33 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
               {matches.length > 8 && <span className="lo-muted">y {matches.length - 8} más: especificá mejor.</span>}
             </div>
           </div>
-        )}
+        </Reveal>
 
-        {!continuous && trimmed && matches.length === 0 && (
+        <Reveal when={!continuous && Boolean(trimmed) && matches.length === 0}>
           <NotFound devices={devices} query={trimmed} onPick={etiqueta => { setCode(etiqueta); codeInputRef.current?.focus(); }} />
-        )}
+        </Reveal>
 
         <Collapse open={continuous} outerClassName="lo-fold-sm">
           <div className="lo-queue" data-scan-list="">
-            {scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} success={scanMessage.success} className="lo-scan-msg" />}
+            <Reveal when={Boolean(scanMessage)} fold="lo-fold-field">
+              {scanMessage && <ScanMessage tone={scanMessage.tone} text={scanMessage.text} success={scanMessage.success} className="lo-scan-msg" />}
+            </Reveal>
             <div className="lo-queue-head">
               <span className="lo-queue-sum g-num">Total {queueDevices.length} · Disponibles {queueAvailable.length} · Con error {nErr}</span>
-              <Button size="sm" variant="ghost" disabled={!queueDevices.length || busy} onClick={() => { setQueue([]); setScanMessage(null); }}>Limpiar lista</Button>
+              <span className="lo-queue-actions">
+                <Button size="sm" variant="secondary" className="lo-code-add" disabled={!trimmed || !continuous} onClick={() => addToContinuousScan(code)} iconEnd={<Kbd className="lo-hide-touch">↵</Kbd>}>
+                  Agregar a la lista
+                </Button>
+                <Button size="sm" variant="ghost" disabled={!queueDevices.length || busy} onClick={() => { setQueue([]); setScanMessage(null); }}>Limpiar lista</Button>
+              </span>
             </div>
             <div className="lo-queue-list">
-              {queueDevices.map(device => {
+              {/* Cada equipo entra y sale plegándose: escanear o quitar no hace saltar la lista. */}
+              {heldQueue.rows.map(({ key, item: device, open, appear }) => {
                 const ok = getLoanState(device.estado) === 'available';
                 return (
-                  <div className={cx('lo-qrow', !ok && 'is-error')} key={device.id} data-queue-tag={device.etiqueta}>
+                  <Collapse key={key} open={open} appear={appear} unmountOnClose reveal={false} outerClassName="lo-qrow-fold" onSettled={value => { if (!value) heldQueue.release(key); }}>
+                  <div className={cx('lo-qrow', !ok && 'is-error')} data-queue-tag={open ? device.etiqueta : undefined}>
                     <span className="lo-qrow-name">
                       <span className="lo-qrow-alias">{getOperationalAlias(device) || device.etiqueta}</span>
                       <span className="lo-qrow-tag g-num">{device.etiqueta}</span>
@@ -661,9 +688,12 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                     <StatusText tone={ok ? 'normal' : 'bad'} className="lo-qrow-state">{ok ? 'Disponible' : `No disponible (${device.estado || 'sin estado'})`}</StatusText>
                     <Button size="sm" variant="ghost" aria-label={`Quitar ${getOperationalAlias(device) || device.etiqueta} de la lista`} onClick={() => setQueue(items => items.filter(item => item.id !== device.id))}>Quitar</Button>
                   </div>
+                  </Collapse>
                 );
               })}
-              {!queueDevices.length && <EmptyState compact className="lo-queue-empty" icon={<ScanLine size={18} strokeWidth={1.6} />} title="Todavía no escaneaste ningún equipo" description="Cada Enter suma el equipo a esta lista; después confirmás todos juntos." />}
+              <Reveal when={!queueDevices.length} fold="lo-qrow-fold">
+                <EmptyState compact className="lo-queue-empty" icon={<ScanLine size={18} strokeWidth={1.6} />} title="Todavía no escaneaste ningún equipo" description="Cada Enter suma el equipo a esta lista; después confirmás todos juntos." />
+              </Reveal>
             </div>
           </div>
         </Collapse>
@@ -749,7 +779,9 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                 <Button size="sm" variant="ghost" className="lo-acc-toggle" disabled={consultationMode} aria-expanded={accessoriesOpen} aria-controls="lo-acc" onClick={() => setAccessoriesOpen(value => !value)}>
                   {loanAccessories.length ? `${accessoriesOpen ? 'Ocultar' : 'Elegir'} accesorios · ${loanAccessories.length} ${loanAccessories.length === 1 ? 'marcado' : 'marcados'}` : accessoriesOpen ? 'Ocultar accesorios' : 'Agregar accesorios (opcional)'}
                 </Button>
-                {loanAccessories.length > 0 && <span className="lo-acc-picked">{loanAccessories.join(', ')}</span>}
+                <Reveal when={loanAccessories.length > 0} fold="lo-fold-field">
+                  <span className="lo-acc-picked">{loanAccessories.join(', ')}</span>
+                </Reveal>
                 <Collapse open={accessoriesOpen} id="lo-acc">
                   <div className="lo-acc">
                     <AccessoryToggles label="Accesorios de entrega" items={accessoryList} checked={loanAccessories} onToggle={item => setLoanAccessories(list => toggleList(list, item))} />
@@ -774,8 +806,11 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                 {continuous ? `Confirmar préstamo múltiple (${queueAvailable.length})` : 'Prestar'}
               </Button>
               <Button variant="ghost" disabled={busy} onClick={() => { resetFields(); if (!continuous) setCode(''); focusCode(); }}>Cancelar</Button>
-              {formError && <span key={errorKey} className="lo-form-error t-msg-enter t-input is-shaking" role="alert">{formError}</span>}
             </div>
+            {/* El error va en su renglón y entra plegándose (antes se sumaba al de los botones y, en angosto, los corría de golpe). */}
+            <Reveal when={Boolean(formError)}>
+              {formError && <span key={errorKey} className="lo-form-error t-input is-shaking" role="alert">{formError}</span>}
+            </Reveal>
           </div>
         </Collapse>
       </div>

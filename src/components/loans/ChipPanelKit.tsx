@@ -54,6 +54,16 @@ export function LazyBody({ open, className, children }: { open: boolean; classNa
   return <Collapse open={open} className={className}>{children}</Collapse>;
 }
 
+/**
+ * Bloque que aparece y desaparece según el estado (un aviso, un resultado, un
+ * error): entra y sale con el colapso compartido en vez de saltar de alto.
+ * El gap del padre (flex/grid en columna) se lee solo (`gap="auto"`): cerrado no
+ * deja un hueco. `fold` = clase del contenedor que anima.
+ */
+export function Reveal({ when, fold = 'lo-fold-sm', className, children }: { when: boolean; fold?: string; className?: string; children: ReactNode }) {
+  return <Collapse open={when} appear unmountOnClose reveal={false} gap="auto" outerClassName={fold} className={className}>{children}</Collapse>;
+}
+
 export type ChipKind = 'free' | 'loaned' | 'late1' | 'late2' | 'blocked';
 
 /** Estado del chip de un equipo: misma regla que getDeviceStateKey, más la antigüedad. */
@@ -103,12 +113,50 @@ export function GroupToggle({ open, onToggle, title, titleAs = 'span', free, tot
           <span>libres</span>
         </span>
       </span>
-      <span className="lo-group-meta">
-        <span className="lo-group-out">{out}</span>
-        {warn && <span className="lo-group-warn">{warn}</span>}
-      </span>
+      {(out || warn) && (
+        <span className="lo-group-meta">
+          {out && <span className="lo-group-out">{out}</span>}
+          {warn && <span className="lo-group-warn">{warn}</span>}
+        </span>
+      )}
     </button>
   );
+}
+
+/**
+ * Lista cuyas filas entran y salen con el colapso compartido (nada aparece ni
+ * desaparece de golpe): las filas que se van siguen dibujadas, en su lugar,
+ * hasta terminar de plegarse. Las que estaban al montar no se animan (la lista
+ * ya entra con su propio colapso).
+ *
+ *   const held = useHeldList(items, item => item.id);
+ *   {held.rows.map(row => (
+ *     <Collapse key={row.key} open={row.open} appear={row.appear} unmountOnClose reveal={false}
+ *       onSettled={open => { if (!open) held.release(row.key); }}>…</Collapse>
+ *   ))}
+ */
+export function useHeldList<T>(items: T[], keyOf: (item: T) => string) {
+  const keys = items.map(keyOf);
+  const signature = keys.join('\u0001');
+  const [initial] = useState(() => new Set(keys));
+  const [last, setLast] = useState<{ signature: string; items: T[] }>({ signature, items });
+  const [leaving, setLeaving] = useState<Array<{ key: string; item: T; index: number }>>([]);
+  if (signature !== last.signature) {
+    // Ajuste durante el render (estado derivado de props, como useHeldKeys).
+    const now = new Set(keys);
+    const gone = last.items
+      .map((item, index) => ({ key: keyOf(item), item, index }))
+      .filter(entry => !now.has(entry.key));
+    setLeaving(list => [...list.filter(entry => !now.has(entry.key) && !gone.some(g => g.key === entry.key)), ...gone]);
+    setLast({ signature, items });
+  }
+  const release = useCallback((key: string) => setLeaving(list => (list.some(entry => entry.key === key) ? list.filter(entry => entry.key !== key) : list)), []);
+  const rows: Array<{ key: string; item: T; open: boolean; appear: boolean; index: number }> = items.map((item, index) => ({ key: keys[index], item, open: true, appear: !initial.has(keys[index]), index }));
+  for (const entry of [...leaving].sort((a, b) => a.index - b.index)) {
+    if (keys.includes(entry.key)) continue;
+    rows.splice(Math.min(entry.index, rows.length), 0, { key: entry.key, item: entry.item, open: false, appear: false, index: -1 });
+  }
+  return { rows, release };
 }
 
 /**

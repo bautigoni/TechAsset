@@ -3,6 +3,7 @@ import { Input } from '../../ui/Field';
 import { cx } from '../../ui/util';
 import { Collapse } from '../../ui/Collapse';
 import { getPhotoPassSuggestions, type PhotoPassSuggestion } from '../../services/photoPassesApi';
+import { useHeldList } from './ChipPanelKit';
 
 export type SuggestRow = { name: string; hint: string; times: string };
 
@@ -76,6 +77,7 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, local, onOpen, r
   const shownItems = useRef<T[]>([]);
   if (items.length) shownItems.current = items;
   const listItems = items.length ? items : shownItems.current;
+  const held = useHeldList(listItems, itemKey);
   const pick = (item: T) => {
     picked.current = row(item).name.trim();
     onPick(item);
@@ -120,26 +122,28 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, local, onOpen, r
         onKeyDown={onKeyDown}
       />
       <Collapse open={visible} id={listId} role="listbox" aria-label={listLabel} className="lo-suggest-list" reveal={false}>
-          {listItems.map((item, index) => {
+          {/* Al tipear, las sugerencias que salen o entran se pliegan: la lista no salta de alto. */}
+          {held.rows.map(({ key, item, open: rowOpen, appear, index }) => {
             const data = row(item);
             return (
-              <button
-                key={itemKey(item)}
-                id={`${listId}-${index}`}
-                type="button"
-                role="option"
-                tabIndex={-1}
-                aria-selected={index === active}
-                className={cx('lo-suggest-item', index === active && 'is-active')}
-                onMouseDown={event => { event.preventDefault(); pick(item); }}
-                onPointerMove={() => setActive(index)}
-              >
-                <span className="lo-suggest-main">
-                  <span className="lo-suggest-name">{data.name}</span>
-                  <span className="lo-suggest-hint">{data.hint}</span>
-                </span>
-                <span className="lo-suggest-times g-num">{data.times}</span>
-              </button>
+              <Collapse key={key} open={rowOpen} appear={appear} unmountOnClose reveal={false} anchor={false} outerClassName="lo-suggest-fold" onSettled={value => { if (!value) held.release(key); }}>
+                <button
+                  id={rowOpen ? `${listId}-${index}` : undefined}
+                  type="button"
+                  role="option"
+                  tabIndex={-1}
+                  aria-selected={rowOpen && index === active}
+                  className={cx('lo-suggest-item', rowOpen && index === active && 'is-active')}
+                  onMouseDown={event => { event.preventDefault(); if (rowOpen) pick(item); }}
+                  onPointerMove={() => { if (rowOpen) setActive(index); }}
+                >
+                  <span className="lo-suggest-main">
+                    <span className="lo-suggest-name">{data.name}</span>
+                    <span className="lo-suggest-hint">{data.hint}</span>
+                  </span>
+                  <span className="lo-suggest-times g-num">{data.times}</span>
+                </button>
+              </Collapse>
             );
           })}
           {footer && <div className="lo-suggest-foot">{footer}</div>}
