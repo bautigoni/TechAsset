@@ -12,6 +12,8 @@
   --tk-touch: calc(var(--g-s-7) - var(--g-s-1));       /* 44px */
   --tk-goo-room: calc(var(--g-s-7) * 2 - var(--g-s-2)); /* 88px: lo que baja el abanico + su rótulo */
   --tk-aside-w: calc(var(--g-s-6) * 10);               /* 320px */
+  --tk-goo-w: calc(var(--g-s-6) * 5);                  /* 160px: el abanico abierto y su rótulo */
+  --tk-bar-h: calc(var(--g-s-6) + var(--g-s-2));       /* 40px: el alto del "+" (gooey), igual para segmentados y búsqueda */
   display: flex;
   flex-direction: column;
   gap: var(--g-s-4);
@@ -59,7 +61,7 @@
   cursor: pointer;
 }
 .tk-link:hover { color: var(--g-accent-hover); text-decoration: underline; }
-.tk-link:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: 2px; }
+.tk-link:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: var(--g-radius-sm); }
 .tk-link--sm { align-self: flex-start; min-height: var(--g-s-5); font-size: var(--g-fs-xs); }
 .tk-link--muted { color: var(--g-text-2); font-weight: var(--g-fw-regular); font-size: var(--g-fs-xs); }
 .tk-link--muted:hover { color: var(--g-text); }
@@ -101,7 +103,7 @@
   max-width: 100%;
   padding: 3px;
   border: 1px solid var(--g-line);
-  border-radius: calc(var(--g-radius-sm) + 2px);
+  border-radius: var(--g-radius);
   background: var(--g-surface);
 }
 .tk-tabs--block { display: flex; width: 100%; }
@@ -122,7 +124,8 @@
   justify-content: center;
   gap: var(--g-s-2);
   min-width: 0;
-  height: calc(var(--g-control-h) - var(--g-s-2) + 2px);
+  /* La barra (segmentados, "+" y búsqueda) tiene un solo alto: --tk-bar-h menos el marco (3 px de aire y 1 de borde por lado). */
+  height: calc(var(--tk-bar-h) - var(--g-s-2));
   padding: 0 var(--g-s-3);
   border: 0;
   border-radius: var(--g-radius-sm);
@@ -139,7 +142,8 @@
 .tk-tab:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 1px; }
 .tk-tab-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .tk-tab-count { color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
-@media (pointer: coarse) { .tk-tab { min-height: calc(var(--tk-touch) - 8px); } }
+/* En touch todo control mide 44 px: la barra entera sube a ese alto (el "+" del gooey queda en 40, centrado). */
+@media (pointer: coarse) { .tk-screen { --tk-bar-h: var(--tk-touch); } }
 @media (prefers-reduced-motion: no-preference) {
   .tk-tabs-pill { transition: transform var(--g-dur-slow) var(--g-ease), width var(--g-dur-slow) var(--g-ease); }
   .tk-tab { transition: color var(--g-dur) var(--g-ease); }
@@ -190,6 +194,7 @@
 .tk-tb-segs { grid-area: segs; display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2); min-width: 0; }
 .tk-tb-search { grid-area: search; display: flex; flex-direction: column; gap: var(--g-s-1); justify-self: end; width: 100%; max-width: calc(var(--g-s-6) * 9); min-width: 0; }
 .tk-tb-search .ui-field { width: 100%; }
+.tk-tb-search .ui-control { min-height: var(--tk-bar-h); }
 /* El "+" abierto empuja: el abanico y su rótulo bajan dentro de este hueco. */
 .tk-goo-room { grid-area: room; height: 0; }
 .tk-toolbar.is-goo-open .tk-goo-room { height: var(--tk-goo-room); }
@@ -216,7 +221,10 @@
 }
 
 @media (max-width: 899px) {
-  .tk-toolbar { grid-template-columns: minmax(0, 1fr) calc(var(--g-s-6) + var(--g-s-2)); grid-template-areas: "segs plus" "room room" "search search"; }
+  /* El "+" va en una columna del ancho del abanico abierto (satélites a ±74 px
+     del centro y el rótulo debajo): pegado al borde derecho, el satélite de
+     "Nueva columna" quedaba fuera de la pantalla y el rótulo, cortado. */
+  .tk-toolbar { grid-template-columns: minmax(0, 1fr) var(--tk-goo-w); grid-template-areas: "segs plus" "room room" "search search"; }
   .tk-tb-search { justify-self: stretch; max-width: none; margin-top: var(--g-s-3); }
 }
 
@@ -224,27 +232,36 @@
 .tk-screen > .ui-collapse { --ui-collapse-gap: var(--g-s-4); }
 .tk-detail-main > .ui-collapse { --ui-collapse-gap: var(--g-s-5); }
 .tk-lane > .ui-collapse, .tk-card > .ui-collapse, .tk-col-edit > .ui-collapse, .tk-detail-head > .ui-collapse { --ui-collapse-gap: var(--g-s-2); }
-.tk-detail-block > .ui-collapse { --ui-collapse-gap: var(--g-s-1); }
+.tk-detail-block > .ui-collapse, .tk-fact > .ui-collapse, .tk-field > .ui-collapse, .tk-tb-search > .ui-collapse { --ui-collapse-gap: var(--g-s-1); }
+.tk-board-sec > .ui-collapse { --ui-collapse-gap: var(--g-s-3); }
+.tk-form > .ui-collapse { --ui-collapse-gap: var(--tk-form-gap); }
 
 /* ── Barra de selección (reemplaza a la de herramientas) ────────────── */
 /* Queda fija arriba del área que scrollea mientras hay tarjetas elegidas
    (en mobile se eligen tarjetas mucho más abajo). Las tarjetas guardan su
    alto como margen de scroll: con Tab o al llevarlas a la vista no quedan
-   debajo de la barra. */
+   debajo de la barra. Adentro, las acciones y la confirmación de borrar son
+   dos colapsos: una se pliega mientras la otra se despliega. */
 .tk-selbar {
   position: sticky;
   top: 0;
   z-index: 3;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--g-s-2) var(--g-s-3);
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
   min-height: calc(var(--g-s-7) + var(--g-s-1));
   padding: var(--g-s-2) var(--g-s-3);
   border: 1px solid var(--g-line-strong);
   border-radius: var(--g-radius);
   background: var(--g-surface);
+}
+.tk-selbar-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--g-s-2) var(--g-s-3);
+  min-width: 0;
 }
 .tk-selbar-main { display: flex; align-items: center; gap: var(--g-s-3); min-width: 0; }
 .tk-selbar-count { white-space: nowrap; font-weight: var(--g-fw-medium); }
@@ -307,14 +324,14 @@
 .tk-lane-head { display: flex; align-items: center; gap: var(--g-s-1); min-width: 0; height: var(--tk-ctrl-sm); padding-left: 2px; }
 .tk-lane-title { flex: 0 1 auto; min-width: 0; font-size: var(--g-fs-base); font-weight: var(--g-fw-semibold); }
 .tk-lane-count { flex: none; margin-left: var(--g-s-1); color: var(--g-text-3); }
-.tk-lane-pos { flex: none; color: var(--g-text-3); }
 .tk-grip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
+  /* Mismo alto que el lápiz de la misma fila (botón chico del sistema). */
   width: var(--g-s-5);
-  height: var(--g-s-5);
+  height: var(--tk-ctrl-sm);
   padding: 0;
   border: 0;
   border-radius: var(--g-radius-sm);
@@ -327,17 +344,18 @@
 .tk-grip:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 1px; }
 .tk-lane-cards { display: flex; flex-direction: column; gap: var(--g-s-2); min-width: 0; }
 .tk-lane-cards:empty { display: none; }
-.tk-lane-empty {
-  display: flex;
-  align-items: center;
+/* Cada tarjeta va en su colapso: entra y sale sin saltos. */
+.tk-lane-cards > .ui-collapse { --ui-collapse-gap: var(--g-s-2); }
+/* Vacío de la columna: compacto, centrado, con ícono; el borde punteado dice que se puede soltar ahí. */
+.tk-lane-empty.ui-empty {
   justify-content: center;
   min-height: calc(var(--g-s-7) * 2 - var(--g-s-2));
+  padding: var(--g-s-3);
   border: 1px dashed var(--g-line);
   border-radius: var(--g-radius);
-  color: var(--g-text-3);
-  font-size: var(--g-fs-sm);
-  text-align: center;
 }
+.tk-lane-empty .ui-empty-text { flex: 0 1 auto; }
+.tk-lane-empty .ui-empty-title { color: var(--g-text-2); font-size: var(--g-fs-sm); }
 /* El hueco donde cae lo que se arrastra (no hay fantasma flotante). */
 .tk-drop {
   padding: var(--g-s-2) var(--g-s-3);
@@ -359,7 +377,7 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
   min-width: 0;
   padding: var(--g-s-3);
   border: 1px solid var(--g-line);
-  border-radius: calc(var(--g-radius-sm) + 2px);
+  border-radius: var(--g-radius);
   background: var(--g-surface);
 }
 .tk-col-edit-row { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--g-s-1) * 1.5); min-width: 0; }
@@ -420,8 +438,8 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
 .tk-card:hover { border-color: var(--g-line-strong); }
 .tk-card.can-drag { cursor: grab; }
 .tk-card.is-selected { border-color: var(--g-text-3); background: var(--g-raised); }
-/* La entrada escalonada (.t-stagger, con su opacity fija en movimiento reducido) no tapa el apagado. */
-.tk-lane-cards > .tk-card.is-dragging { opacity: .4 !important; animation: none !important; }
+/* La que se arrastra queda apagada en su lugar (la entrada escalonada anima a su colapso, no a ella). */
+.tk-lane-cards .tk-card.is-dragging { opacity: .4; }
 @media (prefers-reduced-motion: no-preference) {
   .tk-card { transition: border-color var(--g-dur-fast) ease, background-color var(--g-dur-fast) ease, opacity var(--g-dur-fast) ease; }
 }
@@ -446,7 +464,7 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
 }
 .tk-card.is-done .tk-card-title { color: var(--g-text-2); }
 .tk-card-title:hover { text-decoration: underline; text-decoration-color: var(--g-text-3); text-underline-offset: 3px; }
-.tk-card-title:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: 2px; }
+.tk-card-title:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: var(--g-radius-sm); }
 .tk-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--g-s-3); min-width: 0; color: var(--g-text-2); font-size: var(--g-fs-xs); line-height: 1rem; }
 .tk-private { display: inline-flex; align-items: center; gap: var(--g-s-1); }
 .tk-card-desc { color: var(--g-text-2); font-size: var(--g-fs-sm); line-height: 1.125rem; }
@@ -513,7 +531,8 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
 .tk-form {
   display: flex;
   flex-direction: column;
-  gap: var(--g-s-5);
+  --tk-form-gap: var(--g-s-5);
+  gap: var(--tk-form-gap);
   min-width: 0;
   padding: var(--g-s-5);
   border: 1px solid var(--g-line);
@@ -591,6 +610,7 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
 .tk-attach-link:hover { text-decoration: underline; }
 .tk-attach-link svg { flex: none; }
 .tk-activity { display: flex; flex-direction: column; gap: var(--g-s-2); margin: 0; padding: 0; list-style: none; font-size: var(--g-fs-sm); }
+.tk-activity--more { padding-top: var(--g-s-1); }
 .tk-activity li { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
 .tk-activity-meta { font-size: var(--g-fs-xs); }
 .tk-detail-missing { display: flex; flex-direction: column; gap: var(--g-s-2); padding: var(--g-s-5) 0; }
@@ -646,8 +666,8 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
   .tk-tb-search { margin-top: var(--g-s-3); }
   .tk-board-head { display: none; }
   /* Compacta (va fija arriba): cuenta · Limpiar · Borrar en una fila y las columnas debajo. */
-  .tk-selbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--g-s-2); padding: var(--g-s-2) var(--g-s-3); }
-  .tk-selbar > .tk-grow { display: none; }
+  .tk-selbar-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--g-s-2); }
+  .tk-selbar-body > .tk-grow { display: none; }
   .tk-selbar-main { grid-column: 1; grid-row: 1; justify-content: space-between; gap: var(--g-s-2); min-width: 0; }
   .tk-selbar-clear { margin-left: auto; }
   .tk-selbar-end { grid-column: 2; grid-row: 1; justify-content: flex-end; }
@@ -655,8 +675,9 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
   .tk-selbar-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--g-s-6) * 3.25), 1fr)); align-content: start; }
   .tk-selbar-confirm { grid-column: 1 / -1; }
   .tk-colform { flex-direction: column; align-items: stretch; }
-  .tk-colform-input { max-width: none; }
-  .tk-form { padding: var(--g-s-4); gap: calc(var(--g-s-4) + 2px); }
+  /* En columna, la base flexible (256 px) era ALTO: el campo dejaba una franja vacía enorme. */
+  .tk-colform-input { flex: none; max-width: none; }
+  .tk-form { --tk-form-gap: calc(var(--g-s-4) + 2px); padding: var(--g-s-4); }
   .tk-form-foot { flex-direction: column; align-items: stretch; }
   .tk-detail-title { font-size: 1.5rem; line-height: 2rem; }
   .tk-facts-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }

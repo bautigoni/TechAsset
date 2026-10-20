@@ -4,6 +4,7 @@ import type { TaskChecklistItem, TaskItem } from '../../types';
 import { Button, Checkbox, Collapse, StatusText, TruncatedText, cx } from '../../ui';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { CARD_ITEMS, dueInfo, joinNames, responsablesOf, taskRouteUrl } from './taskModel';
+import { Presence, useSubtaskKeys } from './Presence';
 
 export type CardHandlers = {
   /** Click en la tarjeta o el título: abre la página (o selecciona con Ctrl/Shift). */
@@ -38,6 +39,7 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
   const [text, setText] = useState('');
   const [showAll, setShowAll] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const subtaskKeys = useSubtaskKeys();
   useEffect(() => { if (adding) inputRef.current?.focus({ preventScroll: true }); }, [adding]);
   // La línea de estado de la tarjeta se va con el colapso: mientras se pliega muestra la última.
   const lastStatus = useRef<ReactNode>(null);
@@ -45,6 +47,7 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
   const shownStatus = status || lastStatus.current;
 
   const items = task.items || [];
+  const keyOf = subtaskKeys(items);
   const doneItems = items.filter(item => item.completada).length;
   const due = dueInfo(task, done);
   const who = joinNames(responsablesOf(task));
@@ -53,7 +56,7 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
   const comments = task.commentsCount || 0;
   const files = task.attachments?.length || 0;
   const renderItem = (item: TaskChecklistItem) => (
-    <div className="tk-sub" key={item.id}>
+    <div className="tk-sub">
       <Checkbox
         checked={item.completada}
         disabled={!canEdit || item.id < 0}
@@ -136,26 +139,26 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
         </div>
       )}
 
-      {items.length > 0 && (
+      {/* Subtareas: el bloque y cada fila entran y salen con el colapso (agregar
+          o quitar una no hace saltar la tarjeta). */}
+      <Collapse open={items.length > 0} reveal={false}>
         <div className="tk-subs" data-nodrag="">
           <div className="tk-subs-head">
             <span>Subtareas</span>
             <span className="tk-mono">{doneItems}/{items.length}</span>
           </div>
-          {items.slice(0, CARD_ITEMS).map(item => renderItem(item))}
+          <Presence items={items.slice(0, CARD_ITEMS)} keyOf={keyOf} render={renderItem} />
           {/* Las que no entran se despliegan con el colapso compartido (alto suave), no de golpe. */}
-          {items.length > CARD_ITEMS && (
-            <Collapse open={showAll} id={`tk-subs-more-${task.id}`} className="tk-subs-more">
-              {items.slice(CARD_ITEMS).map(item => renderItem(item))}
-            </Collapse>
-          )}
-          {items.length > CARD_ITEMS && (
+          <Collapse open={showAll && items.length > CARD_ITEMS} id={`tk-subs-more-${task.id}`} className="tk-subs-more">
+            <Presence items={items.slice(CARD_ITEMS)} keyOf={keyOf} render={renderItem} />
+          </Collapse>
+          <Collapse open={items.length > CARD_ITEMS} lazy={false} reveal={false}>
             <button type="button" className="tk-link tk-link--sm" aria-expanded={showAll} aria-controls={`tk-subs-more-${task.id}`} onClick={() => setShowAll(value => !value)}>
-              {showAll ? 'Ver menos' : `Ver ${items.length - CARD_ITEMS} más`}
+              {showAll ? 'Ver menos' : `Ver ${Math.max(0, items.length - CARD_ITEMS)} más`}
             </button>
-          )}
+          </Collapse>
         </div>
-      )}
+      </Collapse>
 
       <Collapse open={Boolean(status)} className="tk-card-status" data-nodrag="" unmountOnClose>{shownStatus}</Collapse>
 

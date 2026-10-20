@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { ArrowLeft, Columns3, Eye, Lock, Trash2, Users, X } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Columns3, Eye, Lock, Trash2, Users, X } from 'lucide-react';
 import type { TaskChecklistItem, TaskColumn, TaskItem } from '../../types';
 import type { TasksStore } from '../../hooks/useTasks';
-import { Button, Checkbox, Collapse, ErrorState, IconButton, InlineConfirm, Input, Kbd, SkeletonText, StatusLine, StatusSlot, TruncatedText, cx, recentTrigger, scrollParentOf, useSelection, useStatusLine, type StatusMessage } from '../../ui';
+import { Button, Checkbox, Collapse, EmptyState, ErrorState, IconButton, InlineConfirm, Input, Kbd, SkeletonText, StatusLine, StatusSlot, TruncatedText, cx, recentTrigger, scrollParentOf, useAnchoredToggle, useSelection, useStatusLine, type StatusMessage } from '../../ui';
 import { IconSearch } from '../../ui/icons';
 import { GooeyMenu } from '../layout/GooeyMenu';
 import { getSiteAssistants } from '../../services/authApi';
@@ -17,6 +17,7 @@ import { TaskAnalytics } from './TaskAnalytics';
 import { MOBILE_QUERY, PillTabs, useMedia } from './TaskBits';
 import type { CardHandlers } from './TaskCard';
 import { useTaskActions } from './useTaskActions';
+import { useSmoothHeight } from './Presence';
 import {
   PAGE_SIZE, PRIORITIES, columnOf, dueInfo, inSpace, isTaskDone, matchesQuery, plural, priorityLane, readTaskRoute, sortTasks, taskRouteUrl,
   type Space, type Tab, type TaskRoute
@@ -130,17 +131,24 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const tipos = useMemo(() => Array.from(new Set(tasks.map(task => task.tipo || '').filter(Boolean))), [tasks]);
 
   const resetKey = `${space}:${tab}`;
+  const boardEmpty = store.loaded && !query.trim() && (tab === 'board' ? visible.length === 0 : openN === 0);
   useEffect(() => { setShown({}); }, [space, tab, query]);
   const shownIn = useCallback((key: string) => shown[key] ?? PAGE_SIZE, [shown]);
   const activeKey = lanes.some(lane => lane.key === mobileKey) ? mobileKey : lanes[0]?.key || '';
+  const boardRef = useSmoothHeight<HTMLElement>(`${resetKey}:${isMobile ? activeKey : ''}`);
   // Orden de lo que se ve (para Shift+click con rango y "seleccionar todo").
   const order = useMemo(() => (isMobile ? lanes.filter(lane => lane.key === activeKey) : lanes).flatMap(lane => lane.tasks.slice(0, shownIn(lane.key)).map(task => task.id)), [isMobile, lanes, activeKey, shownIn]);
 
   // La selección se recalcula contra lo vivo (una tarea borrada por otro sale sola).
   useEffect(() => { selection.prune(tasks.map(task => task.id)); }, [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const changeSpace = (next: Space) => { if (next !== space) { setSpace(next); setCardStatus(null); } };
-  const changeTab = (next: Tab) => { if (next !== tab) { setTab(next); setCardStatus(null); } };
+  // Cambiar de solapa, de espacio o de columna (mobile) reemplaza el tablero:
+  // el segmentado tocado queda quieto y el tablero pasa de un alto al otro
+  // suave (useSmoothHeight), nunca de golpe.
+  const anchored = useAnchoredToggle();
+  const changeSpace = (next: Space) => { if (next !== space) anchored(() => { setSpace(next); setCardStatus(null); }); };
+  const changeTab = (next: Tab) => { if (next !== tab) anchored(() => { setTab(next); setCardStatus(null); }); };
+  const changeLane = (key: string) => anchored(() => setMobileKey(key));
 
   /* ── Líneas de estado ── */
   const showCard = (taskId: string, message: StatusMessage) => setCardStatus({ taskId, message, key: Date.now() });
@@ -472,7 +480,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
           onValueChange={setQuery}
           onKeyDown={event => { if (event.key === 'Escape' && query) { event.preventDefault(); event.stopPropagation(); setQuery(''); } }}
         />
-        {isMobile && queryText && <span className="tk-hint">{queryText}</span>}
+        {isMobile && <Collapse open={Boolean(queryText)} anchor={false} reveal={false}><span className="tk-hint">{queryText}</span></Collapse>}
       </div>
       <div className="tk-goo-room" aria-hidden="true" />
     </div>
@@ -480,8 +488,8 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
 
   const selectionBar = showSelection && (
     <div ref={selbarRef} className="tk-selbar ui-enter" role="region" aria-label="Selección de tareas">
-      {!bulkConfirm ? (
-        <>
+      {/* Acciones ↔ confirmación de borrar: una se pliega mientras la otra se despliega (sin salto de alto). */}
+      <Collapse open={!bulkConfirm} lazy={false} reveal={false} className="tk-selbar-body">
           <div className="tk-selbar-main">
             <Checkbox
               checked={order.length > 0 && visibleSelected === order.length}
@@ -504,8 +512,8 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
             <Button size="sm" variant="ghost" className="tk-danger-link" icon={<Trash2 size={14} />} onClick={() => setBulkConfirm(true)}>Borrar</Button>
             {!isMobile && <Button size="sm" variant="ghost" onClick={selection.clear} iconEnd={<Kbd>Esc</Kbd>}>Limpiar</Button>}
           </div>
-        </>
-      ) : (
+      </Collapse>
+      <Collapse open={bulkConfirm} reveal={false} unmountOnClose>
         <InlineConfirm
           danger
           className="tk-selbar-confirm"
@@ -515,7 +523,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
           onConfirm={() => void deleteTasks(selectedIds)}
           onCancel={() => setBulkConfirm(false)}
         />
-      )}
+      </Collapse>
     </div>
   );
 
@@ -621,7 +629,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
             />
           )}
         </Collapse>
-        <section className="tk-board-sec" aria-labelledby="tk-board-title">
+        <section ref={boardRef} className="tk-board-sec" aria-labelledby="tk-board-title">
           <header className="tk-section-head tk-board-head">
             <div className="tk-section-titles">
               <span className="tk-eyebrow">{tab === 'board' ? 'Tablero' : 'Prioridad'}</span>
@@ -633,6 +641,17 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
               {store.moving && <span className="tk-mono tk-muted">Guardando…</span>}
             </div>
           </header>
+          {/* Espacio sin tareas: un vacío diseñado con la acción siguiente (las columnas siguen abajo para soltar). */}
+          <Collapse open={boardEmpty} anchor={false} reveal={false}>
+            <EmptyState
+              compact
+              className="tk-board-empty"
+              icon={<ClipboardList size={18} />}
+              title={tab === 'priority' ? (space === 'my' ? 'No tenés tareas abiertas.' : 'El equipo no tiene tareas abiertas.') : (space === 'my' ? 'No tenés tareas en Mis tareas.' : 'Todavía no hay tareas del equipo.')}
+              description={space === 'my' ? 'Acá están tus tareas privadas y las de equipo donde sos responsable.' : 'Las tareas de equipo las ve toda la sede.'}
+              action={canEdit ? <Button size="sm" icon={space === 'my' ? <Lock size={14} /> : <Users size={14} />} onClick={() => openCreate(space === 'my' ? 'private' : 'team')}>{space === 'my' ? 'Nueva tarea privada' : 'Nueva tarea de equipo'}</Button> : undefined}
+            />
+          </Collapse>
           {columnsState === 'error' && tab === 'board' && <ErrorState message="No se pudieron cargar las columnas." onRetry={() => { setColumnsState('loading'); void loadColumns(); }} />}
           {loadingColumns ? <TaskBoardSkeleton isMobile={isMobile} /> : (columnsState === 'ready' || tab === 'priority') && (
             <TaskBoard
@@ -650,7 +669,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
               shownIn={shownIn}
               onShowMore={key => setShown(current => ({ ...current, [key]: (current[key] ?? PAGE_SIZE) + PAGE_SIZE }))}
               activeKey={activeKey}
-              onActiveKey={setMobileKey}
+              onActiveKey={changeLane}
               reveal={reveal}
               onMoveTask={(taskId, column) => void moveTasks([taskId], column, false)}
               onReorder={ids => void reorderColumns(ids)}
@@ -660,7 +679,10 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
           )}
           <p className="tk-hint">{hint}</p>
         </section>
-        {space === 'team' && <TaskAnalytics tasks={spaceTasks} columns={columns} people={people} />}
+        {/* Solo en Equipo: al pasar a Mis tareas se pliega (no desaparece de golpe). */}
+        <Collapse open={space === 'team'} anchor={false} reveal={false}>
+          <TaskAnalytics tasks={spaceTasks} columns={columns} people={people} />
+        </Collapse>
       </>
     );
   }

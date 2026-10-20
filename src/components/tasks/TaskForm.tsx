@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Lock, Paperclip, Users, X } from 'lucide-react';
 import type { TaskItem } from '../../types';
-import { Button, DatePicker, FileDrop, IconButton, Input, Textarea, cx, type FileDropItem } from '../../ui';
+import { Button, Collapse, DatePicker, FileDrop, IconButton, Input, Textarea, cx, type FileDropItem } from '../../ui';
 import { uploadTaskAttachment } from '../../services/tasksApi';
 import { OptionChips } from './TaskBits';
 import { PRIORITIES, TIPOS_BASE, TURNOS, joinNames, responsablesOf } from './taskModel';
@@ -248,11 +248,12 @@ export function TaskForm({ mode, initial, defaultVisibility, operator, people: s
           <div className="tk-form-pair">
             <div className="tk-field">
               <Input label="Tipo" value={draft.tipo} placeholder="Soporte, Aula, Agenda…" onValueChange={value => patch({ tipo: value })} />
-              {tipoSuggestions.length > 0 && (
+              {/* Las sugerencias aparecen y se van al tipear: con el colapso, sin saltos. */}
+              <Collapse open={tipoSuggestions.length > 0} lazy={false} anchor={false} reveal={false}>
                 <span className="tk-suggest" aria-label="Sugerencias de tipo">
                   {tipoSuggestions.map(tipo => <button key={tipo} type="button" className="tk-link tk-link--muted" onClick={() => patch({ tipo })}>{tipo}</button>)}
                 </span>
-              )}
+              </Collapse>
             </div>
             <DatePicker
               label="Vencimiento"
@@ -265,7 +266,7 @@ export function TaskForm({ mode, initial, defaultVisibility, operator, people: s
         </div>
       </div>
 
-      {error && <p className="tk-error" role="alert">{error}</p>}
+      <Collapse open={Boolean(error)}><p className="tk-error" role="alert">{error}</p></Collapse>
 
       <footer className="tk-form-foot">
         <Button variant="primary" type="submit" loading={saving} loadingLabel="Guardando…" block={isMobile}>{isNew ? 'Crear tarea' : 'Guardar cambios'}</Button>

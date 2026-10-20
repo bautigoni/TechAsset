@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, GripVertical, Pencil } from 'lucide-react';
+import { ArrowDownToLine, ChevronLeft, ChevronRight, GripVertical, Inbox, Pencil, SearchX } from 'lucide-react';
 import type { TaskColumn, TaskItem } from '../../types';
-import { Button, Checkbox, Collapse, IconButton, Skeleton, TruncatedText, cx } from '../../ui';
+import { Button, Checkbox, Collapse, EmptyState, IconButton, Skeleton, TruncatedText, cx } from '../../ui';
 import { TaskCard, type CardHandlers } from './TaskCard';
 import { PAGE_SIZE, plural } from './taskModel';
+import { Presence } from './Presence';
 
 export type Lane = { key: string; title: string; column?: TaskColumn; tasks: TaskItem[] };
 
@@ -36,6 +37,14 @@ type Props = {
   onSaveColumn: (column: TaskColumn, patch: { name: string; isDone: boolean }) => Promise<void>;
   onDeleteColumn: (column: TaskColumn) => void;
 };
+
+/** Vacío de una columna: compacto, con ícono y lo que se puede hacer (soltar una tarea). */
+function LaneEmpty({ hasQuery, canDrop }: { hasQuery: boolean; canDrop: boolean }) {
+  const [icon, title] = hasQuery
+    ? [<SearchX key="i" size={18} />, 'Sin resultados en esta columna']
+    : canDrop ? [<ArrowDownToLine key="i" size={18} />, 'Soltá una tarea acá'] : [<Inbox key="i" size={18} />, 'Sin tareas'];
+  return <EmptyState compact center className="tk-lane-empty" icon={icon} title={title} />;
+}
 
 export function TaskBoardSkeleton({ isMobile }: { isMobile: boolean }) {
   if (isMobile) {
@@ -151,7 +160,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
     if (off !== offsetRef.current) setOffset(off);
   }, []);
   useLayoutEffect(() => {
-    if (isMobile || !boardMode) return;
+    if (isMobile) return;
     measure();
     const vp = vpRef.current;
     const track = trackRef.current;
@@ -190,7 +199,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
   const clampOffset = (value: number) => Math.max(0, Math.min(metricsRef.current.max, value));
 
   const onBackgroundDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (isMobile || !boardMode || event.button !== 0 || metricsRef.current.max <= 0 || event.pointerType === 'touch') return;
+    if (isMobile || event.button !== 0 || metricsRef.current.max <= 0 || event.pointerType === 'touch') return;
     if ((event.target as HTMLElement).closest('[data-task-id], button, input, textarea, a, header, form, .tk-col-edit')) return;
     const start = { x: event.clientX, off: offsetRef.current };
     setPanning(true);
@@ -209,7 +218,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
   // Trackpad o Shift + rueda: también panea (sin barra que mostrar).
   const wheelSnap = useRef<number | undefined>(undefined);
   const onWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    if (isMobile || !boardMode || metricsRef.current.max <= 0) return;
+    if (isMobile || metricsRef.current.max <= 0) return;
     const dx = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.shiftKey ? event.deltaY : 0;
     if (!dx) return;
     setOffset(current => clampOffset(current + dx));
@@ -218,7 +227,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
   };
   // Con Tab a una tarjeta de una columna que no se ve, el carril la trae.
   const onFocusIn = (event: React.FocusEvent<HTMLDivElement>) => {
-    if (isMobile || !boardMode || metricsRef.current.max <= 0) return;
+    if (isMobile || metricsRef.current.max <= 0) return;
     const lane = (event.target as HTMLElement).closest<HTMLElement>('[data-lane]');
     const vp = vpRef.current;
     if (!lane || !vp) return;
@@ -238,7 +247,17 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
 
   const laneAt = (x: number, y: number) => {
     const el = document.elementFromPoint(x, y);
-    return (el as HTMLElement | null)?.closest<HTMLElement>('[data-lane]')?.dataset.lane || null;
+    const hit = (el as HTMLElement | null)?.closest<HTMLElement>('[data-lane]')?.dataset.lane;
+    if (hit) return hit;
+    // Debajo de una columna más corta que la de al lado también se suelta en
+    // ella: cuenta toda la franja de la columna dentro del tablero.
+    const vp = vpRef.current?.getBoundingClientRect();
+    if (!vp || x < vp.left || x > vp.right || y < vp.top || y > vp.bottom) return null;
+    for (const lane of Array.from(trackRef.current?.querySelectorAll<HTMLElement>(':scope > [data-lane]') || [])) {
+      const box = lane.getBoundingClientRect();
+      if (x >= box.left && x <= box.right && y >= box.top) return lane.dataset.lane || null;
+    }
+    return null;
   };
   const finishDrag = (drop: boolean) => {
     window.clearInterval(autoPan.current);
@@ -341,7 +360,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
   const dragTask = drag?.kind === 'task' ? lanes.flatMap(lane => lane.tasks).find(task => task.id === drag.id) : undefined;
   const dragColumn = drag?.kind === 'col' ? columns.find(column => String(column.id) === drag.id) : undefined;
 
-  const renderLane = (lane: Lane, laneIndex: number) => {
+  const renderLane = (lane: Lane) => {
     const column = lane.column;
     const total = lane.tasks.length;
     const limit = shownIn(lane.key);
@@ -355,6 +374,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
     const tasksHere = column ? lanes.find(item => item.column?.id === column.id)?.tasks.length ?? 0 : 0;
     const fallback = column ? columns.find(item => item.id !== column.id) : undefined;
     const isDraggedColumn = Boolean(dragColumn && column && dragColumn.id === column.id);
+    const dropText = taskOver ? `Soltá para mover «${dragTask!.titulo}» a «${lane.title}»` : colOver ? `Soltá para poner «${dragColumn!.name}» en este lugar` : '';
 
     return (
       <section
@@ -380,7 +400,6 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
           )}
           <TruncatedText as="strong" className="tk-lane-title">{lane.title}</TruncatedText>
           <span className="tk-lane-count tk-mono">{total}</span>
-          {isMobile && lanes.length > 1 && <span className="tk-lane-pos tk-mono">{laneIndex + 1}/{lanes.length}</span>}
           <span className="tk-grow" />
           {column && boardMode && (
             <IconButton
@@ -417,7 +436,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
                 onChange={event => setEditing({ ...ed, name: event.target.value, error: '' })}
               />
             </label>
-            {ed.error && <span className="tk-error" role="alert">{ed.error}</span>}
+            <Collapse open={Boolean(ed.error)} reveal={false}><span className="tk-error" role="alert">{ed.error}</span></Collapse>
             <Checkbox
               checked={ed.isDone}
               onCheckedChange={next => setEditing({ ...ed, isDone: next })}
@@ -459,10 +478,11 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
           </Collapse>
         )}
 
+        {/* Las tarjetas que entran (mover, "Ver más", búsqueda) se despliegan y
+            las que salen se pliegan en su lugar: nada aparece de golpe. */}
         <div className="tk-lane-cards t-stagger" key={resetKey}>
-          {cards.map(task => (
+          <Presence items={cards} keyOf={task => task.id} render={task => (
             <TaskCard
-              key={task.id}
               task={task}
               done={doneOf(task)}
               selected={selected.has(task.id)}
@@ -473,27 +493,31 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
               onPointerDown={onCardPointerDown}
               {...handlers}
             />
-          ))}
+          )} />
         </div>
         {/* El hueco donde cae lo arrastrado va DEBAJO de las tarjetas: nada de
             lo que está bajo el puntero se corre mientras se arrastra. En una
             columna vacía ocupa el lugar (y el alto) del "Soltá una tarea acá". */}
-        {(taskOver || colOver) && (
-          <div className={cx('tk-drop', !total && 'tk-drop--fill')}>
-            {taskOver ? <>Soltá para mover «{dragTask!.titulo}» a «{lane.title}»</> : <>Soltá para poner «{dragColumn!.name}» en este lugar</>}
-          </div>
+        {/* En una columna con tarjetas el hueco se despliega debajo (sin anclar
+            ni scrollear: lo que está bajo el puntero no se mueve). En una vacía
+            reemplaza al vacío de la columna, con su mismo alto. */}
+        {total > 0 && boardMode && (
+          <Collapse open={Boolean(dropText)} anchor={false} reveal={false} unmountOnClose>
+            <div className="tk-drop">{dropText}</div>
+          </Collapse>
         )}
-        {!total && !taskOver && !colOver && <div className="tk-lane-empty">{column ? (hasQuery ? 'Sin resultados' : canEdit && boardMode ? 'Soltá una tarea acá' : 'Sin tareas') : 'Sin tareas'}</div>}
-        {total > limit && (
-          <Button size="sm" variant={isMobile ? 'secondary' : 'ghost'} block onClick={() => onShowMore(lane.key)}>
-            {`Ver ${Math.min(PAGE_SIZE, total - limit)} más (${total - limit} restantes)`}
+        {!total && dropText && <div className="tk-drop tk-drop--fill">{dropText}</div>}
+        {!total && !dropText && <LaneEmpty hasQuery={hasQuery} canDrop={Boolean(column) && canEdit && boardMode} />}
+        <Collapse open={total > limit} lazy={false} reveal={false}>
+          <Button size="sm" variant={isMobile ? 'secondary' : 'ghost'} block disabled={total <= limit} onClick={() => onShowMore(lane.key)}>
+            {`Ver ${Math.min(PAGE_SIZE, Math.max(0, total - limit))} más (${Math.max(0, total - limit)} restantes)`}
           </Button>
-        )}
+        </Collapse>
       </section>
     );
   };
 
-  const rendered = visibleLanes.map(lane => renderLane(lane, laneKeys.indexOf(lane.key)));
+  const rendered = visibleLanes.map(renderLane);
 
   if (isMobile) {
     return (
@@ -522,7 +546,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
 
   return (
     <div className="tk-board" onClickCapture={onClickCapture}>
-      {boardMode && metrics.max > 0 && (
+      {metrics.max > 0 && (
         <div className="tk-pager" aria-label="Columnas">
           <IconButton size="sm" label="Columnas anteriores" icon={<ChevronLeft size={16} />} disabled={offset <= 0} onClick={() => setOffset(current => snap(current, -1))} />
           <span className="tk-mono tk-muted">Columnas {metrics.from || 1}–{metrics.to || lanes.length} de {lanes.length}</span>
@@ -531,7 +555,7 @@ export function TaskBoard({ lanes, columns, resetKey, canEdit, isMobile, boardMo
       )}
       <div
         ref={vpRef}
-        className={cx('tk-lanes-vp', metrics.max > 0 && boardMode && 'can-pan', panning && 'is-panning', boardMode && offset > 0 && 'fade-l', boardMode && offset < metrics.max && 'fade-r')}
+        className={cx('tk-lanes-vp', metrics.max > 0 && 'can-pan', panning && 'is-panning', offset > 0 && 'fade-l', offset < metrics.max && 'fade-r')}
         onPointerDown={onBackgroundDown}
         onWheel={onWheel}
         onFocus={onFocusIn}

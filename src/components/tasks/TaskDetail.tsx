@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Paperclip, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { TaskChecklistItem, TaskColumn, TaskComment, TaskItem } from '../../types';
-import { Button, Checkbox, Collapse, ErrorState, InlineConfirm, Kbd, SkeletonText, StatusText, Textarea, cx, useAnchoredToggle } from '../../ui';
+import { Button, Checkbox, Collapse, ErrorState, InlineConfirm, Kbd, SkeletonText, StatusText, Textarea, cx } from '../../ui';
 import { createTaskComment, getTaskComments, getTaskHistory, type TaskHistoryEntry } from '../../services/tasksApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { formatDate, SHORT_DATE_TIME } from '../../utils/formatters';
 import { OptionChips } from './TaskBits';
 import { dueInfo, joinNames, responsablesOf } from './taskModel';
+import { Presence, useSubtaskKeys } from './Presence';
 
 type Props = {
   task: TaskItem;
@@ -50,7 +51,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
   const [adding, setAdding] = useState(false);
   const [itemText, setItemText] = useState('');
   const itemRef = useRef<HTMLInputElement | null>(null);
-  const anchored = useAnchoredToggle();
+  const subtaskKeys = useSubtaskKeys();
 
   const [comments, setComments] = useState<TaskComment[] | null>(null);
   const [commentsError, setCommentsError] = useState('');
@@ -74,6 +75,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
   useEffect(() => { if (adding) itemRef.current?.focus({ preventScroll: true }); }, [adding]);
 
   const items = task.items || [];
+  const keyOf = subtaskKeys(items);
   const doneItems = items.filter(item => item.completada).length;
   const due = dueInfo(task, done);
   const urgent = !done && (task.prioridad === 'Urgente' || task.prioridad === 'Alta');
@@ -125,24 +127,30 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
     { label: 'Vencimiento', value: due ? <StatusText tone={due.tone} mono>{due.text}</StatusText> : <span className="tk-muted">Sin fecha</span> }
   ];
   const attachments = task.attachments || [];
-  const historyShown = showAllHistory ? history || [] : (history || []).slice(0, 6);
+  const historyList = history || [];
+  const historyEntry = (entry: TaskHistoryEntry) => (
+    <li key={entry.id}>
+      <span>{ACTIONS[entry.accion] || entry.accion}{entry.accion === 'tarea movida' && entry.estado_nuevo ? ` a «${entry.estado_nuevo}»` : ''}{entry.accion === 'subtarea agregada' && entry.comentario ? `: ${entry.comentario}` : ''}</span>
+      <span className="tk-muted tk-activity-meta">{[entry.operador, formatDate(entry.timestamp, SHORT_DATE_TIME)].filter(Boolean).join(' · ')}</span>
+    </li>
+  );
 
+  // Cargando → actividad: el esqueleto se pliega mientras la lista se despliega;
+  // "Ver N anteriores" despliega las de más con el colapso (el link queda quieto).
   const activity = (
       <div className="tk-fact tk-fact--block">
         <span className="tk-fact-label">Actividad</span>
-        {history === null ? <SkeletonText lines={3} /> : history.length ? (
-          <ol className="tk-activity">
-            {historyShown.map(entry => (
-              <li key={entry.id}>
-                <span>{ACTIONS[entry.accion] || entry.accion}{entry.accion === 'tarea movida' && entry.estado_nuevo ? ` a «${entry.estado_nuevo}»` : ''}{entry.accion === 'subtarea agregada' && entry.comentario ? `: ${entry.comentario}` : ''}</span>
-                <span className="tk-muted tk-activity-meta">{[entry.operador, formatDate(entry.timestamp, SHORT_DATE_TIME)].filter(Boolean).join(' · ')}</span>
-              </li>
-            ))}
-          </ol>
-        ) : <span className="tk-muted">Sin movimientos registrados.</span>}
-        {(history?.length || 0) > 6 && (
-          <button type="button" className="tk-link tk-link--sm" aria-expanded={showAllHistory} onClick={event => { const at = event.currentTarget; anchored(() => setShowAllHistory(value => !value), at); }}>{showAllHistory ? 'Ver menos' : `Ver ${(history?.length || 0) - 6} anteriores`}</button>
-        )}
+        <Collapse open={history === null} lazy={false} anchor={false} reveal={false}><SkeletonText lines={3} /></Collapse>
+        <Collapse open={historyList.length > 0} anchor={false} reveal={false}>
+          <ol className="tk-activity">{historyList.slice(0, 6).map(historyEntry)}</ol>
+        </Collapse>
+        <Collapse open={showAllHistory && historyList.length > 6} id={`tk-activity-more-${task.id}`}>
+          <ol className="tk-activity tk-activity--more">{historyList.slice(6).map(historyEntry)}</ol>
+        </Collapse>
+        <Collapse open={history !== null && !history.length} anchor={false} reveal={false}><span className="tk-muted">Sin movimientos registrados.</span></Collapse>
+        <Collapse open={historyList.length > 6} lazy={false} anchor={false} reveal={false}>
+          <button type="button" className="tk-link tk-link--sm" aria-expanded={showAllHistory} aria-controls={`tk-activity-more-${task.id}`} onClick={() => setShowAllHistory(value => !value)}>{showAllHistory ? 'Ver menos' : `Ver ${Math.max(0, historyList.length - 6)} anteriores`}</button>
+        </Collapse>
       </div>
   );
 
@@ -218,8 +226,9 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
             <span className="tk-label">Subtareas</span>
             {items.length > 0 && <span className="tk-mono tk-text-2">{doneItems}/{items.length}</span>}
           </div>
-          {items.map(item => (
-            <div className="tk-sub tk-sub--row" key={item.id}>
+          {/* Agregar o quitar una subtarea no hace saltar la página: la fila se despliega o se pliega. */}
+          <Presence items={items} keyOf={keyOf} render={item => (
+            <div className="tk-sub tk-sub--row">
               <Checkbox checked={item.completada} disabled={!canEdit || item.id < 0} ariaLabel={`Subtarea: ${item.texto}`} onCheckedChange={next => onToggleItem(item, next)} />
               <span className={cx('tk-sub-full', item.completada && 'is-done')}>{item.texto}</span>
               {canEdit && (
@@ -228,8 +237,8 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
                 </button>
               )}
             </div>
-          ))}
-          {!items.length && <span className="tk-muted tk-small">Sin subtareas.</span>}
+          )} />
+          <Collapse open={!items.length} lazy={false} reveal={false}><span className="tk-muted tk-small">Sin subtareas.</span></Collapse>
           <Collapse open={adding} unmountOnClose>
             <form className="tk-card-add" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); addItem(); }}>
               <input
@@ -274,18 +283,20 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
             <span className="tk-label">Comentarios</span>
             <span className="tk-mono tk-muted">{comments ? comments.length : task.commentsCount || 0}</span>
           </div>
-          {commentsError && <ErrorState message={commentsError} onRetry={loadComments} />}
-          {comments === null && !commentsError && <SkeletonText lines={2} />}
-          {comments?.map(item => (
-            <article className="tk-comment" key={item.id}>
+          {/* Cargando → comentarios (o error, o vacío): uno se pliega mientras el
+              otro se despliega; un comentario nuevo entra con el colapso. */}
+          <Collapse open={Boolean(commentsError)} anchor={false} reveal={false}><ErrorState message={commentsError} onRetry={loadComments} /></Collapse>
+          <Collapse open={comments === null && !commentsError} lazy={false} anchor={false} reveal={false}><SkeletonText lines={2} /></Collapse>
+          <Presence items={comments || []} keyOf={item => String(item.id)} render={item => (
+            <article className="tk-comment">
               <div className="tk-comment-head">
                 <span className="tk-comment-author">{item.authorName || item.authorEmail}</span>
                 <span className="tk-mono tk-muted">{formatDate(item.createdAt, SHORT_DATE_TIME)}</span>
               </div>
               <p className="tk-prose tk-prose--sm">{item.body}</p>
             </article>
-          ))}
-          {comments && !comments.length && <span className="tk-muted tk-small">Todavía no hay comentarios.</span>}
+          )} />
+          <Collapse open={Boolean(comments && !comments.length)} anchor={false} reveal={false}><span className="tk-muted tk-small">Todavía no hay comentarios.</span></Collapse>
           {canEdit && (
             <form className="tk-comment-form" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void sendComment(); }}>
               <Textarea
@@ -298,8 +309,8 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
                 onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void sendComment(); } }}
               />
               <div className="tk-row">
-                <Button size="sm" type="submit" loading={commentBusy} disabled={!commentText.trim()}>Comentar</Button>
-                {!isMobile && <span className="tk-muted tk-small"><Kbd>Ctrl</Kbd> <Kbd>Enter</Kbd></span>}
+                {/* El atajo va adentro del botón (como "Limpiar Esc"): no hay cajas de otro alto al lado. */}
+                <Button size="sm" type="submit" loading={commentBusy} disabled={!commentText.trim()} iconEnd={!isMobile ? <Kbd>Ctrl Enter</Kbd> : undefined}>Comentar</Button>
               </div>
             </form>
           )}
