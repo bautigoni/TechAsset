@@ -69,10 +69,18 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
 
   useEffect(() => {
     void refresh();
+  }, []);
+  // Las opciones (alumnos, cursos y docentes para autocompletar) solo sirven con
+  // el panel abierto: antes se pedían al abrir Préstamos aunque estuviera
+  // plegado, y era el pedido más caro de la pantalla.
+  const optionsRequested = useRef(false);
+  useEffect(() => {
+    if (!open || optionsRequested.current) return;
+    optionsRequested.current = true;
     getPhotoPassOptions()
       .then(response => setOptions({ alumnos: response.alumnos, cursos: response.cursos, docentes: response.docentes }))
-      .catch(() => undefined);
-  }, []);
+      .catch(() => { optionsRequested.current = false; });
+  }, [open]);
 
   /** Corre la acción sobre cada cartelito, sigue aunque alguno falle y refresca una sola vez. */
   const runBatch = async (list: PhotoPass[], action: (pass: PhotoPass) => Promise<unknown>) => {

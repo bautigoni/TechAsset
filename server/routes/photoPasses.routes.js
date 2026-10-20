@@ -88,21 +88,26 @@ photoPassesRouter.get('/photo-passes/options', (req, res) => {
   // sugerir docentes se descarta lo que no parece un nombre.
   const parecenNombres = values => values.filter(value => value.length >= 3 && /\p{L}/u.test(value) && !/^\d+$/.test(value));
 
-  const alumnos = uniq(getDb().prepare("SELECT DISTINCT persona AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(persona,'')<>'' ORDER BY persona LIMIT 500").all(siteCode));
+  // Las seis listas en UNA consulta (UNION ALL de subconsultas con su propio
+  // LIMIT): antes eran seis viajes sincrónicos a la base por pedido.
+  const rows = getDb().prepare(`
+    SELECT 'alumno' AS kind, value FROM (SELECT DISTINCT persona AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(persona,'')<>'' ORDER BY persona LIMIT 500) a
+    UNION ALL SELECT 'curso', value FROM (SELECT DISTINCT curso AS value FROM loan_events WHERE site_code=? AND COALESCE(curso,'')<>'' LIMIT 300) b
+    UNION ALL SELECT 'curso', value FROM (SELECT DISTINCT curso AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(curso,'')<>'' LIMIT 300) c
+    UNION ALL SELECT 'docente', value FROM (SELECT DISTINCT teacher AS value FROM teacher_schedule_entries WHERE site_code=? AND COALESCE(teacher,'')<>'' LIMIT 300) d
+    UNION ALL SELECT 'docente', value FROM (SELECT DISTINCT persona AS value FROM loan_events WHERE site_code=? AND COALESCE(persona,'')<>'' LIMIT 500) e
+    UNION ALL SELECT 'docente', value FROM (SELECT DISTINCT docente AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(docente,'')<>'' LIMIT 300) f
+  `).all(siteCode, siteCode, siteCode, siteCode, siteCode, siteCode);
+  const of = kind => rows.filter(row => row.kind === kind);
 
-  const cursosDb = getDb().prepare("SELECT DISTINCT curso AS value FROM loan_events WHERE site_code=? AND COALESCE(curso,'')<>'' LIMIT 300").all(siteCode);
-  const cursosPasses = getDb().prepare("SELECT DISTINCT curso AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(curso,'')<>'' LIMIT 300").all(siteCode);
+  const alumnos = uniq(of('alumno'));
   let grados = [];
   try {
     const raw = getSiteSetting(siteCode, 'loan.gradeOptions');
     if (Array.isArray(raw)) grados = raw.map(value => ({ value }));
   } catch { /* si no hay setting, alcanza con lo que hay en la base */ }
-  const cursos = uniq([...cursosDb, ...cursosPasses, ...grados]);
-
-  const docentesHorarios = getDb().prepare("SELECT DISTINCT teacher AS value FROM teacher_schedule_entries WHERE site_code=? AND COALESCE(teacher,'')<>'' LIMIT 300").all(siteCode);
-  const docentesPrestamos = getDb().prepare("SELECT DISTINCT persona AS value FROM loan_events WHERE site_code=? AND COALESCE(persona,'')<>'' LIMIT 500").all(siteCode);
-  const docentesPasses = getDb().prepare("SELECT DISTINCT docente AS value FROM photo_pass_events WHERE site_code=? AND COALESCE(docente,'')<>'' LIMIT 300").all(siteCode);
-  const docentes = parecenNombres(uniq([...docentesHorarios, ...docentesPrestamos, ...docentesPasses]));
+  const cursos = uniq([...of('curso'), ...grados]);
+  const docentes = parecenNombres(uniq(of('docente')));
 
   res.json({ ok: true, alumnos, cursos, docentes });
 });
