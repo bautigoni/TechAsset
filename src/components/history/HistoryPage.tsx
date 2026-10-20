@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { History, SearchX } from 'lucide-react';
 import type { Device } from '../../types';
 import { Button, Collapse, DateRange, EmptyState, ErrorState, IconButton, Input, SectionHeader, Segmented, SkeletonRows, StatusText, Tabs, icons, useHeldKeys, useStatusLine } from '../../ui';
@@ -144,8 +144,6 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
   const yesterday = addDaysToKey(today, -1);
 
   const rowKey = (item: Item) => `${kind}-${item.cursorId}`;
-  // Estable: las filas son memo y "Cargar más" no re-renderiza las que ya estaban.
-  const toggleRow = useCallback((key: string) => setOpenRow(current => (current === key ? '' : key)), []);
 
   return (
     <section className="view active hs-page">
@@ -242,11 +240,12 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
                   {group.items.map(item => {
                     const key = rowKey(item);
                     const device = item.etiqueta ? byTag.get(item.etiqueta.toUpperCase()) : undefined;
+                    const toggle = () => setOpenRow(current => (current === key ? '' : key));
                     return (
                       <Fragment key={key}>
                         {kind === 'loans'
-                          ? <LoanRow item={item as LoanHistoryItem} device={device} open={openRow === key} onToggle={toggleRow} rowKey={key} />
-                          : <MovementRow item={item as MovementHistoryItem} device={device} open={openRow === key} onToggle={toggleRow} rowKey={key} />}
+                          ? <LoanRow item={item as LoanHistoryItem} device={device} open={openRow === key} onToggle={toggle} rowKey={key} />
+                          : <MovementRow item={item as MovementHistoryItem} device={device} open={openRow === key} onToggle={toggle} rowKey={key} />}
                         {heldRows.drawn(key) && device && (
                           <MiniDevice
                             id={miniId(key)}
@@ -309,8 +308,7 @@ function DeviceLink({ etiqueta, alias, device, open, onToggle, rowKey }: { etiqu
   );
 }
 
-const LoanRow = memo(function LoanRow({ item, device, open, onToggle: toggleKey, rowKey }: { item: LoanHistoryItem; device?: Device; open: boolean; onToggle: (key: string) => void; rowKey: string }) {
-  const onToggle = () => toggleKey(rowKey);
+function LoanRow({ item, device, open, onToggle, rowKey }: { item: LoanHistoryItem; device?: Device; open: boolean; onToggle: () => void; rowKey: string }) {
   const place = [item.curso, item.ubicacion].filter(Boolean).join(' · ');
   return (
     <div role="row" className={`hs-row hs-item${open ? ' is-open' : ''}`}>
@@ -333,10 +331,9 @@ const LoanRow = memo(function LoanRow({ item, device, open, onToggle: toggleKey,
       <Cell label="Operador"><span className="hs-ell hs-muted">{item.operador || '—'}</span></Cell>
     </div>
   );
-});
+}
 
-const MovementRow = memo(function MovementRow({ item, device, open, onToggle: toggleKey, rowKey }: { item: MovementHistoryItem; device?: Device; open: boolean; onToggle: (key: string) => void; rowKey: string }) {
-  const onToggle = () => toggleKey(rowKey);
+function MovementRow({ item, device, open, onToggle, rowKey }: { item: MovementHistoryItem; device?: Device; open: boolean; onToggle: () => void; rowKey: string }) {
   return (
     <div role="row" className={`hs-row hs-item${open ? ' is-open' : ''}`}>
       <Cell label="Hora" className="hs-c-time"><span className="ui-mono">{timeOf(item.timestamp)}</span></Cell>
@@ -355,7 +352,7 @@ const MovementRow = memo(function MovementRow({ item, device, open, onToggle: to
       <Cell label="Operador"><span className="hs-ell hs-muted">{item.operador || '—'}</span></Cell>
     </div>
   );
-});
+}
 
 /** Resumen del equipo en línea, debajo del movimiento (antes abría el modal de la ficha). */
 /** id del resumen en línea de una fila (lo que controla el botón del equipo). */
