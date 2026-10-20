@@ -28,6 +28,7 @@ function useColumnCount(ref: RefObject<HTMLElement | null>, minRem: number, gapP
   }, [ref, minRem, gapPx]);
   return count;
 }
+import { smoothHeight } from '../../utils/motion';
 import '../../styles/screens/horarios.css';
 
 type GroupBy = 'teacher' | 'course';
@@ -59,6 +60,9 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
   const [groupBy, setGroupBy] = useState<GroupBy>('teacher');
   const [adding, setAdding] = useState(() => Boolean(addInitial));
   const groupsRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  // Cambiar de nivel, de agrupación, de pestaña o buscar: el cuerpo pasa de un alto al otro suave.
+  const smooth = (update: () => void) => smoothHeight(bodyRef.current, update);
   const columnCount = useColumnCount(groupsRef, 22, 12);
   const keepAddDraft = useCallback((draft: ScheduleDraft | null) => {
     const blank = !draft || (!draft.teacher.trim() && !draft.course.trim() && !draft.subject.trim() && !draft.room.trim());
@@ -235,14 +239,14 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
 
       {loadError && <ErrorState message={loadError} retrying={retrying} onRetry={async () => { setRetrying(true); await load(); setRetrying(false); }} />}
 
-      <div className={cx('hr-body', `is-${tab}`)}>
+      <div ref={bodyRef} className={cx('hr-body', `is-${tab}`)}>
         {recessCard}
         <div className="hr-tabs">
           <Segmented<Tab>
             ariaLabel="Sección"
             block
             value={tab}
-            onChange={setTab}
+            onChange={next => smooth(() => setTab(next))}
             options={[{ value: 'docentes', label: 'Docentes' }, { value: 'recreos', label: recessDirty ? 'Recreos · sin guardar' : 'Recreos' }]}
           />
         </div>
@@ -251,7 +255,7 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
           <Tabs<SchoolLevel>
             ariaLabel="Nivel escolar"
             value={level}
-            onChange={next => { setLevel(next); setEditingId(0); setDeletingId(0); }}
+            onChange={next => smooth(() => { setLevel(next); setEditingId(0); setDeletingId(0); })}
             tabs={LEVELS.map(entry => ({ value: entry.value, label: entry.label, count: items.filter(item => item.schoolLevel === entry.value).length }))}
           />
 
@@ -292,14 +296,14 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
               placeholder="Docente, curso, materia, aula o día"
               autoComplete="off"
               value={search}
-              onValueChange={setSearch}
-              onKeyDown={event => { if (event.key === 'Escape' && search) { event.preventDefault(); setSearch(''); } }}
+              onValueChange={value => smooth(() => setSearch(value))}
+              onKeyDown={event => { if (event.key === 'Escape' && search) { event.preventDefault(); smooth(() => setSearch('')); } }}
               prefix={<icons.IconSearch size={15} />}
-              suffix={search ? <IconButton size="sm" label="Limpiar búsqueda" icon={<icons.IconX size={14} />} onClick={() => setSearch('')} /> : undefined}
+              suffix={search ? <IconButton size="sm" label="Limpiar búsqueda" icon={<icons.IconX size={14} />} onClick={() => smooth(() => setSearch(''))} /> : undefined}
               className="hr-search"
               data-scanner-ignore=""
             />
-            <Segmented<GroupBy> ariaLabel="Agrupar" value={groupBy} onChange={setGroupBy} options={[{ value: 'teacher', label: 'Por docente' }, { value: 'course', label: 'Por curso' }]} />
+            <Segmented<GroupBy> ariaLabel="Agrupar" value={groupBy} onChange={next => smooth(() => setGroupBy(next))} options={[{ value: 'teacher', label: 'Por docente' }, { value: 'course', label: 'Por curso' }]} />
             <span className="hr-result">
               <span className="g-num">{shown.length}</span> {shown.length === 1 ? 'horario' : 'horarios'}{needle ? ` con “${search.trim()}”` : ''}
             </span>
@@ -365,7 +369,7 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
               icon={<CalendarClock size={18} strokeWidth={1.6} />}
               title={needle ? `Ningún horario de ${lvName.toLowerCase()} coincide con “${search.trim()}”.` : `No hay horarios cargados para ${lvName.toLowerCase()}.`}
               action={needle
-                ? <Button size="sm" variant="secondary" onClick={() => setSearch('')}>Limpiar búsqueda</Button>
+                ? <Button size="sm" variant="secondary" onClick={() => smooth(() => setSearch(''))}>Limpiar búsqueda</Button>
                 : !consultationMode && !adding ? <Button size="sm" variant="secondary" onClick={toggleAdd}>Agregar el primero</Button> : undefined}
               className="hr-card"
             />

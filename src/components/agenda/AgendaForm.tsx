@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { AgendaItem } from '../../types';
-import { Button, DatePicker, Input, NumberField, Ring, Segmented, Textarea, TimeField, cx, preloadPickers } from '../../ui';
+import { Button, Collapse, DatePicker, Input, NumberField, Ring, Segmented, Textarea, TimeField, cx, preloadPickers } from '../../ui';
+import { smoothHeight } from '../../utils/motion';
 import { weekdayOfKey } from '../../utils/formatters';
 import {
   DAY_SHORT, DEVICE_TYPES, MODULES, WEEK_DAYS, cap1, capacityFor, capacityUsage, dayNameOfDate, displayTurno, fold, longDate, toMin,
@@ -78,6 +79,9 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const lastError = useRef('');
+  if (error) lastError.current = error;
   const modId = useId();
   const set = (patch: Partial<Draft>) => { setDraft(current => ({ ...current, ...patch })); setError(''); };
 
@@ -136,12 +140,12 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
         <h3 className="ag-h3">{title}</h3>
         <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
       </div>
-      <div className="ag-form-body">
+      <div className="ag-form-body" ref={bodyRef}>
         <div className="ag-form-row">
           <Segmented<Repeat>
             label="Se repite"
             value={draft.rep}
-            onChange={rep => set({ rep })}
+            onChange={rep => smoothHeight(bodyRef.current, () => set({ rep }))}
             options={[{ value: 'semanal', label: 'Todas las semanas' }, { value: 'fecha', label: 'Una sola fecha' }]}
           />
           {dated ? (
@@ -249,7 +253,9 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
 
         <Textarea label="Nota" minRows={2} value={draft.nota} onValueChange={nota => set({ nota })} placeholder="Algo que el equipo TIC tenga que saber (cargadores, auriculares, docente a cargo…)" />
 
-        {error && <p className="ag-form-error" role="alert">{error}</p>}
+        <Collapse open={Boolean(error)}>
+          <p className="ag-form-error" role="alert">{error || lastError.current}</p>
+        </Collapse>
         <div className="ag-form-foot">
           <span className="ag-form-summary">{whenText} · {draft.desde}–{draft.hasta} · {draft.cantidad} {draft.tipo}{draft.curso.trim() ? ` para ${draft.curso.trim()}` : ''}</span>
           <Button type="submit" variant="primary" loading={saving} loadingLabel="Guardando…" disabled={conflict || !timeOk}>{initial ? 'Guardar cambios' : 'Guardar actividad'}</Button>

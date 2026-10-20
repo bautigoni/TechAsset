@@ -17,6 +17,7 @@ import {
   itemDate, kpiCounts, longDate, matchesTurno, occursOn, readClock, referenceMonday, shortLabel, slotsOfDay, statusOf, summaryText,
   weekRangeLabel, type KpiKey, type TurnoFilter
 } from './agendaModel';
+import { smoothHeight } from '../../utils/motion';
 import '../../styles/screens/agenda.css';
 
 type View = 'dia' | 'semana' | 'mes' | 'hist';
@@ -273,11 +274,15 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
   };
 
   const toggle = (id: string) => setOpenId(current => (current === id ? '' : id));
+  // Cambiar de vista, día, turno o conteo: la lista pasa de un alto al otro suave (nada de golpe).
+  const smooth = (update: () => void) => smoothHeight(bodyRef.current, update);
   const goToItem = (item: AgendaItem, target: DayKey) => {
-    setView('dia');
-    setDay(target);
-    setKpi(null);
-    setOpenId(item.id);
+    smoothHeight(bodyRef.current, () => {
+      setView('dia');
+      setDay(target);
+      setKpi(null);
+      setOpenId(item.id);
+    });
     requestAnimationFrame(() => document.querySelector(`.ag-list [data-agenda-id="${CSS.escape(item.id)}"]`)?.scrollIntoView({ block: 'nearest' }));
   };
 
@@ -366,7 +371,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
     <EmptyState
       title={`Hoy es ${clock.todayName.toLowerCase()}: la agenda es de lunes a viernes.`}
       description="Lo que viene arranca el lunes."
-      action={<Button size="sm" variant="secondary" onClick={() => setDay('Lunes')}>Ver el lunes</Button>}
+      action={<Button size="sm" variant="secondary" onClick={() => smooth(() => setDay('Lunes'))}>Ver el lunes</Button>}
     />
   ) : (
     <EmptyState
@@ -375,7 +380,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
       icon={<CalendarCheck size={18} strokeWidth={1.6} />}
       title={view === 'mes' ? 'Sin actividades para este día.' : kpi || turno !== 'Completo' ? 'Sin actividades en el filtro actual.' : 'Sin actividades para este día.'}
       action={kpi || turno !== 'Completo'
-        ? <Button size="sm" variant="secondary" onClick={() => { setKpi(null); setTurno('Completo'); }}>Ver todas</Button>
+        ? <Button size="sm" variant="secondary" onClick={() => smooth(() => { setKpi(null); setTurno('Completo'); })}>Ver todas</Button>
         : !consultationMode && !creating ? <Button size="sm" variant="secondary" icon={<icons.IconPlus size={14} />} onClick={() => setCreating(true)}>Nueva actividad</Button> : undefined}
     />
   );
@@ -409,11 +414,11 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
       </Collapse>
 
       <div className="ag-controls">
-        <Segmented<View> ariaLabel="Vista" value={view} onChange={next => { setView(next); setOpenId(''); }} options={VIEWS} />
+        <Segmented<View> ariaLabel="Vista" value={view} onChange={next => smooth(() => { setView(next); setOpenId(''); })} options={VIEWS} />
         <Segmented<string>
           ariaLabel="Día"
           value={view === 'dia' ? day : ''}
-          onChange={next => { setDay(next as DayKey); setView('dia'); setOpenId(''); }}
+          onChange={next => smooth(() => { setDay(next as DayKey); setView('dia'); setOpenId(''); })}
           options={[{ value: 'Hoy', label: 'Hoy' }, ...WEEK_DAYS.map(name => ({ value: name, label: DAY_SHORT[name] }))]}
         />
       </div>
@@ -426,7 +431,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         </button>
         {/* En mobile los filtros se pliegan detrás de su botón (colapso compartido); en ancho están siempre. */}
         <Collapse open={!isNarrow || filtersOpen} className="ag-filters-body" id="ag-filters-body" reveal={isNarrow}>
-          <Segmented<TurnoFilter> ariaLabel="Turno" value={turno} onChange={setTurno} options={TURNOS.map(value => ({ value, label: value }))} />
+          <Segmented<TurnoFilter> ariaLabel="Turno" value={turno} onChange={next => smooth(() => setTurno(next))} options={TURNOS.map(value => ({ value, label: value }))} />
           <div className="ag-kpis" role="group" aria-label="Contar y filtrar">
             {KPI_DEFS.map(def => {
               const on = kpi === def.key || (def.key === 'total' && !kpi);
@@ -437,7 +442,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
                   type="button"
                   className={cx('ag-kpi', on && 'is-on')}
                   aria-pressed={def.key === 'total' ? !kpi : kpi === def.key}
-                  onClick={() => setKpi(current => (def.key === 'total' || current === def.key ? null : def.key))}
+                  onClick={() => smooth(() => setKpi(current => (def.key === 'total' || current === def.key ? null : def.key)))}
                 >
                   <span className="ag-kpi-label">{def.label}</span>
                   <span className={cx('ag-kpi-n', 'g-num', def.key === 'venc' && n > 0 && 'is-bad')}>{n}</span>
@@ -449,7 +454,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         <Collapse open={Boolean(kpi)} unmountOnClose>
           <div className="ag-filtering" role="status">
             <span>Filtrando por <b>{kpiLabel || lastKpiLabel.current}</b></span>
-            <Button size="sm" variant="ghost" className="ag-link-btn" onClick={() => setKpi(null)}>Limpiar</Button>
+            <Button size="sm" variant="ghost" className="ag-link-btn" onClick={() => smooth(() => setKpi(null))}>Limpiar</Button>
           </div>
         </Collapse>
       </div>
@@ -462,10 +467,10 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
             <section className="ag-card" aria-label="Mes">
               <div className="ag-card-head">
                 <h3 className="ag-h3">{monthLabel}</h3>
-                <IconButton size="sm" label="Mes anterior" icon={<icons.IconChevronLeft size={16} />} onClick={() => setMonthCursor(addDaysToKey(`${monthCursor}-01`, -1).slice(0, 7))} />
-                <IconButton size="sm" label="Mes siguiente" icon={<icons.IconChevronRight size={16} />} onClick={() => setMonthCursor(addDaysToKey(`${monthCursor}-01`, 32).slice(0, 7))} />
+                <IconButton size="sm" label="Mes anterior" icon={<icons.IconChevronLeft size={16} />} onClick={() => smooth(() => setMonthCursor(addDaysToKey(`${monthCursor}-01`, -1).slice(0, 7)))} />
+                <IconButton size="sm" label="Mes siguiente" icon={<icons.IconChevronRight size={16} />} onClick={() => smooth(() => setMonthCursor(addDaysToKey(`${monthCursor}-01`, 32).slice(0, 7)))} />
                 <span className="ag-spacer" />
-                <Button size="sm" variant="secondary" onClick={() => { setMonthCursor(clock.today.slice(0, 7)); setSelectedDate(clock.today); }}>Hoy</Button>
+                <Button size="sm" variant="secondary" onClick={() => smooth(() => { setMonthCursor(clock.today.slice(0, 7)); setSelectedDate(clock.today); })}>Hoy</Button>
               </div>
               <div className="ag-month">
                 <div className="ag-month-grid" aria-hidden="true">
@@ -485,7 +490,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
                         aria-pressed={selected}
                         aria-current={isToday ? 'date' : undefined}
                         aria-label={`${longDate(iso)}${n ? `, ${n} ${n === 1 ? 'actividad' : 'actividades'}` : ', sin actividades'}${isToday ? ', hoy' : ''}`}
-                        onClick={() => { setSelectedDate(iso); setOpenId(''); }}
+                        onClick={() => smooth(() => { setSelectedDate(iso); setOpenId(''); })}
                       >
                         <span className="ag-month-n g-num">{Number(iso.slice(8))}</span>
                         {n > 0 && <span className="ag-month-c g-num">{n}</span>}
@@ -577,7 +582,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
                 </button>
               );
             })}
-            {!nextToday.length && <p className="ag-empty ag-empty--left">No hay actividades pendientes o entregadas para hoy.</p>}
+            {!nextToday.length && <EmptyState compact className="ag-empty-state" icon={<CalendarCheck size={18} strokeWidth={1.6} />} title="Nada pendiente para hoy." description="No hay actividades pendientes ni entregadas hoy." />}
           </section>
 
           {!capInMain && capCard}

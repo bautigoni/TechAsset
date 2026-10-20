@@ -194,7 +194,7 @@
 .hr-rgroup-name { flex: 1 1 auto; }
 .hr-rgroup-name .ui-input-el { font-weight: var(--g-fw-semibold); }
 .hr-slot { display: flex; flex-direction: column; gap: var(--g-s-1); min-width: 0; padding: var(--g-s-2) 0; }
-.hr-slot + .hr-slot { border-top: 1px dashed var(--g-line); }
+.hr-slot-motion + .hr-slot-motion .hr-slot { border-top: 1px dashed var(--g-line); }
 .hr-slot-line { display: flex; align-items: center; gap: var(--g-s-2); min-width: 0; }
 .hr-slot-label { flex: 1 1 auto; }
 /* Inicio – Fin en una fila y el selector de hora abierto DEBAJO, a todo el ancho

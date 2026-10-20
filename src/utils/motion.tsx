@@ -106,3 +106,26 @@ export function ListItemMotion<T>({ entry, release, className, children }: { ent
     </Collapse>
   );
 }
+
+/**
+ * Atajo: dibuja `items` con altas y bajas animadas (cada fila envuelta en
+ * <ListItemMotion>, sin elemento de lista propio). `render` recibe el ítem y
+ * si se está yendo.
+ */
+export function MotionList<T>({ items, keyOf, render, itemClassName }: {
+  items: T[];
+  keyOf: (item: T) => string;
+  render: (item: T, leaving: boolean) => ReactNode;
+  itemClassName?: string;
+}) {
+  const rows = useListMotion(items, keyOf);
+  return (
+    <>
+      {rows.entries.map(entry => (
+        <ListItemMotion key={entry.key} entry={entry} release={rows.release} className={itemClassName}>
+          {render(entry.item, entry.leaving)}
+        </ListItemMotion>
+      ))}
+    </>
+  );
+}

@@ -14,6 +14,7 @@ import { TruncatedText } from '../../ui/Truncated';
 import { IconLock, IconSearch, IconX } from '../../ui/icons';
 import { cx, fold } from '../../ui/util';
 import { appScroller } from '../../utils/scroll';
+import { smoothHeight } from '../../utils/motion';
 import { Collapse } from '../../ui';
 import { TicketDetail } from './TicketDetail';
 import { TicketForm } from './TicketForm';
@@ -107,6 +108,9 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   const formDirty = useRef(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
+  const listRef = useRef<HTMLElement | null>(null);
+  // Filtrar o buscar: la lista pasa de un alto al otro suave (nada de golpe).
+  const smoothList = (update: () => void) => smoothHeight(listRef.current, update);
   const [narrow, setNarrow] = useState(false);
   // Volver a la lista en angosto: misma posición de scroll y foco en la fila.
   const returnPoint = useRef<{ id: number | null; top: number } | null>(null);
@@ -269,7 +273,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
     { value: 'todos' as const, label: 'Todos los orígenes', count: byEstado.length },
     ...ORIGENES.map(item => ({ value: item.key, label: item.label, count: byEstado.filter(ticket => (ticket.origen || 'tik') === item.key).length }))
   ];
-  const clearFilters = () => { setQ(''); setEstado('todos'); setOrigen('todos'); };
+  const clearFilters = () => smoothList(() => { setQ(''); setEstado('todos'); setOrigen('todos'); });
 
   // La selección se recalcula contra lo que existe.
   useEffect(() => { selection.prune(tickets.map(ticket => String(ticket.id))); }, [tickets, selection.prune]);
@@ -514,11 +518,11 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
           type="search"
           aria-label="Buscar tickets"
           prefix={<IconSearch size={16} />}
-          suffix={q ? <button type="button" className="ui-icon-btn ui-btn--ghost ui-btn--sm" aria-label="Limpiar búsqueda" onClick={() => setQ('')}><IconX size={14} /></button> : undefined}
+          suffix={q ? <button type="button" className="ui-icon-btn ui-btn--ghost ui-btn--sm" aria-label="Limpiar búsqueda" onClick={() => smoothList(() => setQ(''))}><IconX size={14} /></button> : undefined}
           value={q}
           placeholder="Buscar número, título, descripción, categoría, quién lo cargó o responsable"
           autoComplete="off"
-          onValueChange={setQ}
+          onValueChange={value => smoothList(() => setQ(value))}
         />
         {canEdit ? (
           <div className="tkx-actions">
@@ -531,13 +535,13 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
       </div>
 
       <div className="tkx-filters">
-        <Segmented ariaLabel="Filtrar por estado" size="sm" value={estado} onChange={setEstado} options={estadoOptions} />
-        <Segmented ariaLabel="Filtrar por origen" size="sm" value={origen} onChange={setOrigen} options={origenOptions} />
+        <Segmented ariaLabel="Filtrar por estado" size="sm" value={estado} onChange={next => smoothList(() => setEstado(next))} options={estadoOptions} />
+        <Segmented ariaLabel="Filtrar por origen" size="sm" value={origen} onChange={next => smoothList(() => setOrigen(next))} options={origenOptions} />
         <span className="tkx-count" role="status">{visible.length} {visible.length === 1 ? 'resultado' : 'resultados'}</span>
       </div>
 
       <div ref={wrapRef} className={cx('tkx-wrap', paneOpen ? 'has-pane' : 'no-pane')}>
-        <section className="tkx-list" aria-label="Lista de tickets">
+        <section ref={listRef} className="tkx-list" aria-label="Lista de tickets">
           <div className="tkx-list-head">
             <SelectionHeader
               count={canEdit ? selected.length : 0}

@@ -18,7 +18,8 @@
 /* Colapsos (Collapse de src/ui): cerrados no dejan el gap de su contenedor. */
 .ag-page > .ui-collapse { --ui-collapse-gap: var(--g-s-5); }
 .ag-filters > .ui-collapse, .ag-wk-item > .ui-collapse { --ui-collapse-gap: var(--g-s-2); }
-.ag-main > .ui-collapse, .ag-detail > .ui-collapse, .ag-sync-body > .ui-collapse { --ui-collapse-gap: var(--g-s-4); }
+.ag-main > .ui-collapse, .ag-detail > .ui-collapse, .ag-sync-body > .ui-collapse, .ag-form-body > .ui-collapse { --ui-collapse-gap: var(--g-s-4); }
+.ag-note > .ui-collapse { --ui-collapse-gap: var(--g-s-2); }
 
 .ag-empty-state { padding: var(--g-s-3) var(--g-s-4); }
 /* "Touch por franja" debajo de la lista (cuando así las columnas quedan parejas): las franjas en grilla. */
@@ -78,6 +79,8 @@
   touch-action: manipulation;
 }
 .ag-chip.g-num { font-family: var(--g-font-mono); }
+/* Los conteos van en la misma fila que el segmentado de turno: misma altura (36 px, 44 en touch). */
+.ag-kpi { height: var(--g-control-h); }
 .ag-kpi-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ag-kpi-n { color: var(--g-text-3); font-family: var(--g-font-mono); }
 .ag-kpi-n.is-bad { color: var(--g-bad); }
@@ -233,7 +236,7 @@
 .ag-divider { flex: none; width: 1px; height: var(--g-s-5); margin: 0 var(--g-s-1); background: var(--g-line-strong); }
 .ag-danger { color: var(--g-bad); }
 
-@container (max-width: 40rem) {
+@container (max-width: 52rem) {
   .ag-colhead { display: none; }
   .ag-row { grid-template-columns: minmax(0, 1fr); }
   .ag-row-main {
@@ -459,7 +462,7 @@
   .ag-controls .ui-seg-item { flex: 1 1 0; padding: 0 var(--g-s-1); }
   .ag-filt-toggle { display: flex; }
   .ag-page > .ui-collapse { --ui-collapse-gap: var(--g-s-4); }
-  .ag-kpi, .ag-chip { height: var(--ui-touch); }
+  .ag-chip { height: var(--ui-touch); }
   .ag-month-day { height: 3rem; padding: var(--g-s-1); }
   .ag-month-dow { padding-left: 0; text-align: center; }
   .ag-month-c { align-self: center; }

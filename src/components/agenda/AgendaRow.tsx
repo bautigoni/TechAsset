@@ -1,7 +1,8 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import type { AgendaItem } from '../../types';
 import { Button, Collapse, InlineConfirm, StatusText, Textarea, TruncatedText, cx, icons } from '../../ui';
 import { AgendaForm } from './AgendaForm';
+import { smoothHeight } from '../../utils/motion';
 import { cap1, displayTurno, isEnCurso, longDate, retiredInfo, shortDateTime, shortLabel, statusOf, type Clock } from './agendaModel';
 
 /** Lo que la pantalla le presta a cada fila (Día, Mes, Semana, Historial). */
@@ -58,7 +59,7 @@ export function AgendaRow({ item, open, onToggle, actions, showDay }: {
           </span>
           <span className="ag-c-what">
             <TruncatedText className={cx('ag-curso', cancelled && 'is-cancelled')}>{item.curso || 'Sin curso'}</TruncatedText>
-            <TruncatedText className="ag-what">{`${item.actividad || 'Actividad'} · ${item.ubicacion || 'sin ubicación'}`}</TruncatedText>
+            <TruncatedText className="ag-what" lines={2}>{`${item.actividad || 'Actividad'} · ${item.ubicacion || 'sin ubicación'}`}</TruncatedText>
           </span>
           <span className="ag-c-eq g-num">{item.cantidad} {item.tipoDispositivo}</span>
           <span className="ag-c-st">
@@ -116,17 +117,20 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
   const short = shortLabel(item);
   const working = busy[item.id];
   const lastChange = item.ultimaModificacion ? shortDateTime(item.ultimaModificacion) : '';
+  // Detalle ↔ edición: el contenedor pasa de un alto al otro suave (nada de golpe).
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const switchMode = (next: 'view' | 'edit') => smoothHeight(wrapRef.current, () => setMode(next));
 
   if (mode === 'edit') {
     return (
-      <div className="ag-detail ag-detail--form" role="region" aria-label={`Editar ${item.curso} · ${item.actividad}`}>
+      <div ref={wrapRef} className="ag-detail ag-detail--form" role="region" aria-label={`Editar ${item.curso} · ${item.actividad}`}>
         <AgendaForm
           initial={item}
           items={actions.items}
           clock={clock}
           frequent={actions.frequent}
-          onCancel={() => setMode('view')}
-          onSubmit={async payload => { await actions.edit(item, payload); setMode('view'); }}
+          onCancel={() => switchMode('view')}
+          onSubmit={async payload => { await actions.edit(item, payload); switchMode('view'); }}
         />
       </div>
     );
@@ -147,7 +151,7 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
   };
 
   return (
-    <div className="ag-detail" role="region" aria-label={`Detalle de ${item.curso} · ${item.actividad}`}>
+    <div ref={wrapRef} className="ag-detail" role="region" aria-label={`Detalle de ${item.curso} · ${item.actividad}`}>
       <div className="ag-detail-grid">
         <dl className="ag-dl">
           {fields.map(field => (
@@ -168,16 +172,17 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
             placeholder={consultation ? 'Sin nota.' : 'Sin nota. Escribí algo para el equipo TIC.'}
             onValueChange={value => { setNote(value); setNoteDirty(value !== (item.nota || '')); }}
           />
-          {noteDirty && !consultation && (
+          <Collapse open={noteDirty && !consultation}>
             <div className="ag-note-actions">
               <Button size="sm" variant="secondary" loading={working === 'nota'} loadingLabel="Guardando…" onClick={saveNote}>Guardar nota</Button>
               <Button size="sm" variant="ghost" onClick={() => { setNote(item.nota || ''); setNoteDirty(false); }}>Descartar</Button>
             </div>
-          )}
+          </Collapse>
         </div>
       </div>
 
-      {ask === 'cancel' ? (
+      {/* Acciones ↔ confirmación: una se pliega mientras la otra se abre. */}
+      <Collapse open={ask === 'cancel'} unmountOnClose>
         <InlineConfirm
           message={`¿Cancelar ${short}?`}
           detail="Queda en el historial y sale del calendario sincronizado."
@@ -187,7 +192,8 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
           onCancel={() => setAsk(null)}
           onConfirm={async () => { await actions.patch(item, { estado: 'Cancelado' }, { kind: 'cancel', message: `${short} cancelada.`, undo: true }); setAsk(null); }}
         />
-      ) : ask === 'delete' ? (
+      </Collapse>
+      <Collapse open={ask === 'delete'} unmountOnClose>
         <InlineConfirm
           danger
           message={`¿Borrar ${short} de la agenda?`}
@@ -198,7 +204,8 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
           onCancel={() => setAsk(null)}
           onConfirm={async () => { const ok = await actions.remove(item); if (!ok) setAsk(null); }}
         />
-      ) : (
+      </Collapse>
+      <Collapse open={!ask} lazy={false}>
         <div className="ag-detail-actions">
           <Button size="sm" variant="primary" disabled={consultation} loading={working === 'deliver'} loadingLabel="Guardando…" onClick={() => actions.patch(item, { estado: delivered ? 'Pendiente' : 'Entregado' }, { kind: 'deliver' })}>
             {delivered ? 'Volver a pendiente' : 'Marcar entregado'}
@@ -207,7 +214,7 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
             {ret.all ? 'Desmarcar retirada' : 'Marcar retirada'}
           </Button>
           <Button size="sm" variant="secondary" disabled={consultation} loading={working === 'task'} onClick={() => actions.createTask(item)}>Crear tarea</Button>
-          <Button size="sm" variant="secondary" disabled={consultation} onClick={() => setMode('edit')}>Editar</Button>
+          <Button size="sm" variant="secondary" disabled={consultation} onClick={() => switchMode('edit')}>Editar</Button>
           <span className="ag-divider" aria-hidden="true" />
           {item.estado !== 'Realizado' && (
             <Button size="sm" variant="ghost" disabled={consultation} loading={working === 'done'} onClick={() => actions.patch(item, { estado: 'Realizado' }, { kind: 'done', message: `${short} quedó como realizada.`, undo: true })}>Marcar realizada</Button>
@@ -222,7 +229,7 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
           {!item.estado.startsWith('Cancel') && <Button size="sm" variant="ghost" disabled={consultation} onClick={() => setAsk('cancel')}>Cancelar evento</Button>}
           <Button size="sm" variant="ghost" className="ag-danger" disabled={consultation} onClick={() => setAsk('delete')}>Borrar</Button>
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

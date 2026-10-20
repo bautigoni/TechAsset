@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAgendaHistory, type AgendaHistoryEntry } from '../../services/agendaApi';
-import { Button, ErrorState, SkeletonRows, StatusText, TruncatedText, type StatusTextTone } from '../../ui';
+import { History } from 'lucide-react';
+import { Button, Collapse, EmptyState, ErrorState, SkeletonRows, StatusText, TruncatedText, type StatusTextTone } from '../../ui';
 import { DAY_SHORT, shortDateTime } from './agendaModel';
 
 const STEP = 20;
@@ -19,12 +20,32 @@ function what(entry: AgendaHistoryEntry) {
   return [entry.curso, entry.actividad, `${when} ${entry.desde || ''}`.trim()].filter(Boolean).join(' · ');
 }
 
+/** Primeras FIRST filas y después tandas de STEP (cada "Ver más" entra creciendo). */
+const FIRST = 6;
+function pages<T>(list: T[], shown: number) {
+  const out: T[][] = [list.slice(0, Math.min(FIRST, shown))];
+  for (let from = FIRST; from < Math.min(shown, list.length); from += STEP) out.push(list.slice(from, Math.min(from + STEP, shown)));
+  return out;
+}
+
+function row(entry: AgendaHistoryEntry) {
+  const delta = change(entry);
+  return (
+    <li key={entry.id} className="ag-log-row">
+      <span className="ag-log-when g-num">{shortDateTime(entry.timestamp)}</span>
+      <TruncatedText className="ag-log-what" lines={2}>{what(entry)}</TruncatedText>
+      <StatusText tone={delta.tone} className="ag-log-change">{delta.text}</StatusText>
+      <TruncatedText className="ag-log-op">{entry.operador || 'sin operador'}</TruncatedText>
+    </li>
+  );
+}
+
 /** Registro de cambios (agenda_history): antes existía en el server y no se mostraba. */
 export function AgendaLog({ version }: { version: string }) {
   const [items, setItems] = useState<AgendaHistoryEntry[] | null>(null);
   const [error, setError] = useState('');
   const [retrying, setRetrying] = useState(false);
-  const [shown, setShown] = useState(6);
+  const [shown, setShown] = useState(FIRST);
 
   const load = async () => {
     try {
@@ -43,29 +64,26 @@ export function AgendaLog({ version }: { version: string }) {
         <h3 className="ag-h3">Registro de cambios</h3>
         {items && <span className="ag-head-sub"><span className="g-num">{items.length}</span> cambios en la sede{items.length >= 200 ? ' (los últimos)' : ''}</span>}
       </div>
-      {error && <ErrorState message={error} retrying={retrying} onRetry={async () => { setRetrying(true); await load(); setRetrying(false); }} className="ag-inset" />}
-      {!items && !error && <SkeletonRows rows={4} className="ag-inset" />}
-      {items && !items.length && <p className="ag-empty">Todavía no hay cambios registrados.</p>}
-      {items && items.length > 0 && (
-        <ol className="ag-log">
-          {items.slice(0, shown).map(entry => {
-            const delta = change(entry);
-            return (
-              <li key={entry.id} className="ag-log-row">
-                <span className="ag-log-when g-num">{shortDateTime(entry.timestamp)}</span>
-                <TruncatedText className="ag-log-what">{what(entry)}</TruncatedText>
-                <StatusText tone={delta.tone} className="ag-log-change">{delta.text}</StatusText>
-                <TruncatedText className="ag-log-op">{entry.operador || 'sin operador'}</TruncatedText>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {items && items.length > shown && (
+      <Collapse open={Boolean(error)}>
+        <ErrorState message={error || 'No se pudo cargar el registro de cambios.'} retrying={retrying} onRetry={async () => { setRetrying(true); await load(); setRetrying(false); }} className="ag-inset" />
+      </Collapse>
+      {/* Cargando → datos: el esqueleto se pliega mientras la lista se abre (sin salto de alto). */}
+      <Collapse open={!items && !error} lazy={false}>
+        <SkeletonRows rows={4} className="ag-inset" />
+      </Collapse>
+      <Collapse open={Boolean(items && !items.length)}>
+        <EmptyState compact className="ag-empty-state" icon={<History size={18} strokeWidth={1.6} />} title="Todavía no hay cambios registrados." description="Cada alta, entrega o cambio de una actividad queda anotado acá." />
+      </Collapse>
+      <Collapse open={Boolean(items && items.length)}>
+        {pages(items || [], shown).map((chunk, page) => (page === 0 ? <ol key="page-0" className="ag-log">{chunk.map(row)}</ol> : (
+          <Collapse key={`page-${page}`} open appear anchor={false} reveal={false}><ol className="ag-log">{chunk.map(row)}</ol></Collapse>
+        )))}
+      </Collapse>
+      <Collapse open={Boolean(items && items.length > shown)}>
         <div className="ag-card-foot">
           <Button size="sm" variant="ghost" block onClick={() => setShown(value => value + STEP)}>Ver más cambios</Button>
         </div>
-      )}
+      </Collapse>
     </section>
   );
 }

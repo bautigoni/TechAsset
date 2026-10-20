@@ -1,17 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Coffee, X } from 'lucide-react';
 import type { RecessGroup, RecessSlot } from '../../types';
 import { saveRecessSchedules } from '../../services/schedulesApi';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { Button, Collapse, EmptyState, IconButton, InlineConfirm, Input, StatusText, TimeField, cx, icons, preloadPickers } from '../../ui';
 import { keepScheduleDraft, peekScheduleDraft, slotValid, toMin, type SchoolClock } from './scheduleModel';
+import { MotionList } from '../../utils/motion';
 
 type DraftSlot = RecessSlot & { key: string };
 type DraftGroup = Omit<RecessGroup, 'slots'> & { key: string; slots: DraftSlot[] };
 
 let seq = 0;
 const newKey = () => `r${Date.now().toString(36)}${(seq += 1)}`;
-const withKeys = (groups: RecessGroup[]): DraftGroup[] => groups.map(group => ({ ...group, key: newKey(), slots: group.slots.map(slot => ({ ...slot, key: newKey() })) }));
+// Claves estables: lo guardado se identifica por posición (o por la clave que tenía en el borrador recién guardado),
+// así guardar o recargar no hace "salir y entrar" a todas las franjas.
+const withKeys = (groups: RecessGroup[], carry?: DraftGroup[] | null): DraftGroup[] => groups.map((group, gi) => {
+  const key = carry?.[gi]?.key || `g${gi}`;
+  return { ...group, key, slots: group.slots.map((slot, si) => ({ ...slot, key: carry?.[gi]?.slots[si]?.key || `${key}-s${si}` })) };
+});
 const strip = (groups: DraftGroup[]): RecessGroup[] => groups.map(group => ({
   ...(group.id !== undefined ? { id: group.id } : {}),
   name: group.name,
@@ -34,7 +40,8 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
   onSaved: () => Promise<unknown>;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const saved = useMemo(() => withKeys(groups), [groups]);
+  const carry = useRef<DraftGroup[] | null>(null);
+  const saved = useMemo(() => { const list = withKeys(groups, carry.current); carry.current = null; return list; }, [groups]);
   const site = getActiveSiteCode();
   // Borrador que quedó de una visita anterior (se salió por el menú sin guardar).
   const [draft, setDraft] = useState<DraftGroup[] | null>(() => peekScheduleDraft<DraftGroup[]>('recess', site));
@@ -74,6 +81,7 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
     setSaving(true);
     try {
       await saveRecessSchedules(strip(view));
+      carry.current = view;
       await onSaved();
       setDraft(null);
       setMessage({ tone: 'ok', text: 'Recreos guardados. Se avisó a los administradores.' });
@@ -108,8 +116,10 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
         </div>
       </Collapse>
 
-      {view.map((group, groupIndex) => (
-        <div key={group.key} className="hr-rgroup">
+      <MotionList items={view} keyOf={group => group.key} itemClassName="hr-rgroup-motion" render={group => {
+        const groupIndex = view.indexOf(group);
+        return (
+        <div className="hr-rgroup">
           <div className="hr-rgroup-head">
             <Input
               aria-label={`Nombre del grupo ${groupIndex + 1}`}
@@ -120,7 +130,7 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
               onValueChange={name => setGroup(group.key, { name })}
               className="hr-rgroup-name"
             />
-            {editable && <Button size="sm" variant="ghost" onClick={() => setAskDelete(group.key)}>Eliminar</Button>}
+            {editable && <Button variant="ghost" onClick={() => setAskDelete(group.key)}>Eliminar</Button>}
           </div>
           <Collapse open={askDelete === group.key} unmountOnClose>
             <InlineConfirm
@@ -133,14 +143,15 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
               onCancel={() => setAskDelete('')}
             />
           </Collapse>
-          {group.slots.map((slot, slotIndex) => {
+          <MotionList items={group.slots} keyOf={slot => slot.key} itemClassName="hr-slot-motion" render={slot => {
+            const slotIndex = group.slots.indexOf(slot);
             const valid = slotValid(slot);
             const active = valid && clock.day <= 5 && clock.now >= (toMin(slot.startTime) ?? 0) && clock.now < (toMin(slot.endTime) ?? 0);
             return (
-              <div key={slot.key} className={cx('hr-slot', !valid && 'is-bad')}>
+              <div className={cx('hr-slot', !valid && 'is-bad')}>
                 <div className="hr-slot-line">
                   <Input aria-label={`Nombre de la franja ${slotIndex + 1} de ${group.name || 'el grupo'}`} value={slot.label} disabled={!editable} onValueChange={label => setSlot(group.key, slot.key, { label })} className="hr-slot-label" />
-                  {editable && <IconButton size="sm" label={`Quitar la franja ${slot.label} ${slot.startTime}–${slot.endTime}`} icon={<X size={15} />} onClick={() => edit(list => list.map(entry => (entry.key !== group.key ? entry : { ...entry, slots: entry.slots.filter(item => item.key !== slot.key) })))} />}
+                  {editable && <IconButton label={`Quitar la franja ${slot.label} ${slot.startTime}–${slot.endTime}`} icon={<X size={15} />} onClick={() => edit(list => list.map(entry => (entry.key !== group.key ? entry : { ...entry, slots: entry.slots.filter(item => item.key !== slot.key) })))} />}
                 </div>
                 <div className="hr-slot-times">
                   {editable ? (
@@ -154,17 +165,20 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
                   )}
                 </div>
                 {active && <StatusText tone="info" className="hr-slot-msg">En curso ahora</StatusText>}
-                {!valid && <span className="hr-slot-msg hr-slot-msg--bad" role="alert">El fin tiene que ser después del inicio. Así no se guarda.</span>}
+                <Collapse open={!valid}>
+                  <span className="hr-slot-msg hr-slot-msg--bad" role="alert">El fin tiene que ser después del inicio. Así no se guarda.</span>
+                </Collapse>
               </div>
             );
-          })}
-          {!group.slots.length && <span className="hr-muted">Sin franjas.</span>}
+          }} />
+          <Collapse open={!group.slots.length}><span className="hr-muted">Sin franjas.</span></Collapse>
           {editable && (
             <Button size="sm" variant="ghost" icon={<icons.IconPlus size={14} />} className="hr-add-slot" onClick={() => setGroup(group.key, { slots: [...group.slots, { key: newKey(), label: 'Recreo', startTime: '10:00', endTime: '10:15' }] })}>Franja</Button>
           )}
         </div>
-      ))}
-      {!view.length && (
+        );
+      }} />
+      <Collapse open={!view.length}>
         <EmptyState
           compact
           className="hr-empty"
@@ -172,7 +186,7 @@ export function RecessPanel({ groups, canConfigure, consultation, clock, onSaved
           title="Todavía no hay grupos de recreo."
           description={editable ? 'Sumá un grupo por ciclo o nivel con «Grupo» y cargale sus franjas.' : 'Los carga un administrador de la sede.'}
         />
-      )}
+      </Collapse>
 
       {editable && (
         <div className="hr-card-foot">
