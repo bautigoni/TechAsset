@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Device } from '../../types';
-import { Button, Collapse, DatePicker, ErrorState, Eyebrow, FlowColumns, IconButton, InlineConfirm, NumberField, Segmented, Skeleton, SkeletonText, StatusText, ageTone, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, DatePicker, ErrorState, Eyebrow, FlowColumns, IconButton, InlineConfirm, NumberField, Segmented, Skeleton, SkeletonText, StatusText, TruncatedText, ageTone, icons, useStatusLine } from '../../ui';
 import { getDeviceOverview, updateDeviceMetadata, type DeviceOverviewResponse } from '../../services/devicesApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { getOperationalAlias } from '../../utils/classifyDevice';
@@ -157,11 +157,11 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
       <div className="dv-block-head">
         <div className="dv-block-title">
           <div className="dv-detail-name">
-            <h3 className="dv-h3 dv-ell">{alias}</h3>
+            <h3 className="dv-h3 dv-detail-title"><TruncatedText>{alias}</TruncatedText></h3>
             <span className="ui-mono dv-tag">{tag}</span>
           </div>
-          <span className="dv-muted dv-ell">{[deviceKind(device), deviceModel(device)].filter(Boolean).join(' · ')}</span>
-          <span className="dv-ell">{stateLine}</span>
+          <TruncatedText lines={2} className="dv-muted">{[deviceKind(device), deviceModel(device)].filter(Boolean).join(' · ')}</TruncatedText>
+          <span className="dv-state-line">{stateLine}</span>
         </div>
         <div className="dv-actions">
           {!consultationMode && loaned && actions.onReturn && <Button size="sm" loading={busy === 'return'} loadingLabel="Devolviendo…" onClick={() => void runReturn()}>Devolver</Button>}
@@ -185,15 +185,18 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
           onCancel={() => setAskDelete(false)}
         />
       </Collapse>
-      {loadError && <ErrorState message={loadError} />}
+      <Collapse open={Boolean(loadError)} outerClassName="dv-fold-sm">
+        <ErrorState message={loadError} />
+      </Collapse>
       {status.element}
-      {overview?.aiSummary?.text && (
+      {/* El resumen llega con el resto de la ficha: entra suave, no de golpe. */}
+      <Collapse open={Boolean(overview?.aiSummary?.text)} outerClassName="dv-fold-sm" reveal={false}>
         <div className="dv-ai">
           <Eyebrow>Resumen</Eyebrow>
-          <p className="dv-ai-text">{overview.aiSummary.text}</p>
-          <span className="dv-muted">Actualizado {shortWhen(overview.aiSummary.generatedAt)}</span>
+          <p className="dv-ai-text">{overview?.aiSummary?.text}</p>
+          <span className="dv-muted">Actualizado {shortWhen(overview?.aiSummary?.generatedAt || '')}</span>
         </div>
-      )}
+      </Collapse>
 
       <FlowColumns minRem={17} className="dv-detail-grid">
         <section className="dv-sec" aria-label="Estado y cuidado">
@@ -235,8 +238,8 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
           {loaned && (
             <div className="dv-loan">
               <span className="dv-label">Préstamo activo</span>
-              <span className="dv-ell">{[device.prestadoA || 'Sin persona', device.rol].filter(Boolean).join(' · ')}</span>
-              {loanWhere(device) && <span className="dv-muted dv-ell">{loanWhere(device)}</span>}
+              <TruncatedText lines={2}>{[device.prestadoA || 'Sin persona', device.rol].filter(Boolean).join(' · ')}</TruncatedText>
+              {loanWhere(device) && <TruncatedText lines={2} className="dv-muted">{loanWhere(device)}</TruncatedText>}
               {device.loanedAt && <span className="ui-mono dv-muted">Desde {shortWhen(device.loanedAt)}</span>}
             </div>
           )}
@@ -244,8 +247,8 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
             <span className="dv-label">Grupo</span>
             {overview?.group ? (
               <>
-                <span className="dv-ell">{overview.group.name}</span>
-                {overview.group.description && <span className="dv-muted dv-ell">{overview.group.description}</span>}
+                <TruncatedText lines={2}>{overview.group.name}</TruncatedText>
+                {overview.group.description && <TruncatedText lines={2} className="dv-muted">{overview.group.description}</TruncatedText>}
                 <div className="dv-chips" role="group" aria-label={`Equipos del grupo ${overview.group.name}`}>
                   {overview.group.members.map(member => (
                     <button key={member.etiqueta} type="button" className="dv-chip" aria-current={member.etiqueta === tag || undefined} onClick={() => actions.onOpenDevice?.(member.etiqueta)}>
@@ -293,7 +296,7 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
                   <span className="dv-tl-body">
                     <span className="dv-tl-action">{item.action}</span>
                     {(item.notes || item.source) && <span className="dv-muted dv-tl-notes">{item.notes || item.source}</span>}
-                    <span className="dv-muted dv-ell">{item.user || 'Sistema'}</span>
+                    <TruncatedText className="dv-muted">{item.user || 'Sistema'}</TruncatedText>
                   </span>
                 </li>
               ))}
@@ -309,7 +312,7 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
           {overview?.recentTickets.map(ticket => (
             <button key={ticket.id} type="button" className="dv-link-row" onClick={actions.onTickets}>
               <span className="ui-mono dv-muted">#{ticket.numero || ticket.id}</span>
-              <span className="dv-ell">{ticket.titulo || ticket.categoria}</span>
+              <TruncatedText>{ticket.titulo || ticket.categoria}</TruncatedText>
               <span className="dv-muted dv-nowrap">{ticket.estado}</span>
             </button>
           ))}
@@ -320,8 +323,8 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
           <Eyebrow>Mantenimiento y compra</Eyebrow>
           {overview?.maintenanceHistory.length ? overview.maintenanceHistory.map(item => (
             <div key={item.id} className="dv-maint">
-              <span className="dv-ell">{item.title}</span>
-              <span className="dv-muted dv-ell">{[item.status, dayLabel(item.date), item.notes].filter(Boolean).join(' · ')}</span>
+              <TruncatedText lines={2}>{item.title}</TruncatedText>
+              <TruncatedText lines={2} className="dv-muted">{[item.status, dayLabel(item.date), item.notes].filter(Boolean).join(' · ')}</TruncatedText>
             </div>
           )) : overview ? <span className="dv-muted">No hay mantenimientos vinculados.</span> : null}
           <dl className="dv-dl dv-dl--compact">
@@ -340,7 +343,7 @@ function Stat({ label, value }: { label: string; value: string | number | undefi
   return (
     <div className="dv-stat">
       <span className="ui-mono dv-stat-value">{value === undefined ? '—' : value}</span>
-      <span className="dv-muted dv-ell">{label}</span>
+      <TruncatedText className="dv-muted">{label}</TruncatedText>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Device } from '../../types';
-import { Button, Collapse, Checkbox, EmptyState, ErrorState, Input, InlineConfirm, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, Checkbox, EmptyState, ErrorState, Input, InlineConfirm, TruncatedText, icons, useStatusLine } from '../../ui';
 import { createDeviceGroup, deleteDeviceGroup, getDeviceGroups, updateDeviceGroup, type DeviceGroup } from '../../services/devicesApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { getOperationalAlias } from '../../utils/classifyDevice';
@@ -8,6 +8,7 @@ import { matchesDeviceSearch } from '../../utils/deviceSearch';
 import { errorMessage } from '../layout/Feedback';
 import { DevicePanel } from './DevicePanels';
 import { sortDevices } from './deviceView';
+import { useRevealedRows } from './revealRows';
 
 const PICKER_PAGE = 24;
 
@@ -34,6 +35,7 @@ export function DeviceGroupsPanel({ devices, consultationMode, onOpenDevice, onC
   const [askDelete, setAskDelete] = useState(false);
   const [busy, setBusy] = useState<'save' | 'delete' | null>(null);
   const status = useStatusLine();
+  const revealed = useRevealedRows();
 
   useAssistantContext(selected ? { type: 'group', id: String(selected.id), label: selected.name, data: { members: selected.members.map(item => item.etiqueta), description: selected.description } } : null);
 
@@ -109,13 +111,15 @@ export function DeviceGroupsPanel({ devices, consultationMode, onOpenDevice, onC
 
   return (
     <DevicePanel title="Grupos" label="Grupos de dispositivos" note="Un equipo está en un solo grupo: si lo agregás acá, sale del anterior." onClose={onClose}>
-      {loadError && <ErrorState message={loadError} />}
+      <Collapse open={Boolean(loadError)}>
+        <ErrorState message={loadError} />
+      </Collapse>
       <div className="dv-groups">
         <div className="dv-groups-list" role="group" aria-label="Grupos">
           <Button size="sm" disabled={consultationMode} icon={<icons.IconPlus size={14} />} onClick={() => edit(null)}>Nuevo grupo</Button>
           {(groups || []).map(group => (
             <button key={group.id} type="button" className="dv-group-item" aria-pressed={selected?.id === group.id} onClick={() => edit(group)}>
-              <span className="dv-ell">{group.name}</span>
+              <TruncatedText>{group.name}</TruncatedText>
               <span className="ui-mono dv-muted">{group.members.length}</span>
             </button>
           ))}
@@ -135,12 +139,12 @@ export function DeviceGroupsPanel({ devices, consultationMode, onOpenDevice, onC
               const other = groupOf.get(device.etiqueta);
               const moving = other && other.id !== selected?.id && tags.includes(device.etiqueta);
               return (
-                <div key={device.etiqueta} className="dv-pick">
+                <div key={device.etiqueta} className={`dv-pick${revealed.isNew(device.etiqueta) ? ' dv-row-in' : ''}`}>
                   <Checkbox ariaLabel={`Incluir ${device.etiqueta} en el grupo`} checked={tags.includes(device.etiqueta)} disabled={consultationMode} onCheckedChange={() => toggle(device.etiqueta)} />
                   <button type="button" className="dv-pick-name" onClick={() => onOpenDevice(device.etiqueta)} aria-label={`Abrir la ficha de ${device.etiqueta}`}>
                     <span className="dv-nowrap">{getOperationalAlias(device) || device.dispositivo}</span>
                     <span className="ui-mono dv-muted dv-nowrap">{device.etiqueta}</span>
-                    {other && other.id !== selected?.id && <span className={`dv-ell ${moving ? 'dv-warn' : 'dv-muted'}`}>{moving ? `sale de ${other.name}` : `en ${other.name}`}</span>}
+                    {other && other.id !== selected?.id && <span className={`dv-pick-note ${moving ? 'dv-warn' : 'dv-muted'}`}>{moving ? `sale de ${other.name}` : `en ${other.name}`}</span>}
                   </button>
                 </div>
               );
@@ -150,7 +154,7 @@ export function DeviceGroupsPanel({ devices, consultationMode, onOpenDevice, onC
           {pickerList.length > limit && (
             <div className="dv-more">
               <span className="dv-muted">Mostrando <span className="ui-mono">{limit}</span> de <span className="ui-mono">{pickerList.length}</span></span>
-              <Button size="sm" onClick={() => setLimit(value => value + PICKER_PAGE * 2)}>Ver más</Button>
+              <Button size="sm" onClick={() => { revealed.reveal(pickerList.slice(limit, limit + PICKER_PAGE * 2).map(device => device.etiqueta), () => setLimit(value => value + PICKER_PAGE * 2)); }}>Ver más</Button>
             </div>
           )}
           <Collapse open={Boolean(askDelete && selected)} unmountOnClose>

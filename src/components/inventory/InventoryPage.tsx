@@ -24,6 +24,7 @@ import { InventoryDetail } from './InventoryDetail';
 import { ConditionReview } from './ConditionReview';
 import { ResourceForm } from './ResourceForm';
 import { HiddenPanel, ImportExportPanel } from './InventoryPanels';
+import { useRevealedRows, useSmoothHeight } from '../devices/revealRows';
 
 type Segment = 'todo' | 'equipo' | 'recurso';
 // Los KPI no son decorativos: cada uno es el filtro de lo que está contando.
@@ -90,6 +91,11 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
   // El placeholder más largo que entra en el ancho real del buscador (nunca cortado).
   const [searchRef, searchPlaceholder] = useFitPlaceholder(['Nombre, etiqueta, modelo… (touch 34, D1436, sensor)', 'Nombre, etiqueta, modelo…', 'Buscar…']);
   const topStatus = useStatusLine();
+  // Árbol + listado cambian de alto suave al tocar un filtro (con el control quieto);
+  // la ficha, al pasar a editar y volver; "Ver más" hace crecer las filas nuevas.
+  const listSmooth = useSmoothHeight<HTMLDivElement>();
+  const detailSmooth = useSmoothHeight<HTMLDivElement>();
+  const revealed = useRevealedRows();
   const listStatus = useStatusLine();
   const siteCode = getActiveSiteCode();
 
@@ -219,21 +225,21 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
 
   // ── Cambios de filtro: vuelven al primer tramo y cierran la ficha ──────────
   const resetList = () => { setLimit(PAGE); setOpenKey(''); setEditingKey(''); };
-  const pickSegment = (next: Segment) => { resetList(); setSegment(next); setKpi(''); setSelected(null); };
-  const toggleKpi = (next: Exclude<KpiFilter, ''>, segFor: Segment) => {
+  const pickSegment = (next: Segment) => listSmooth.change(() => { resetList(); setSegment(next); setKpi(''); setSelected(null); });
+  const toggleKpi = (next: Exclude<KpiFilter, ''>, segFor: Segment) => listSmooth.change(() => {
     resetList();
     if (kpi === next) { setKpi(''); return; }
     setKpi(next);
     setSegment(segFor);
     setSelected(null);
-  };
-  const pickCategory = (next: TreeSelection) => {
+  });
+  const pickCategory = (next: TreeSelection) => listSmooth.change(() => {
     resetList();
     setSelected(next);
     if (next) setExpanded(current => (current.includes(next.categoria) ? current : [...current, next.categoria]));
     setTreeOpen(false);
-  };
-  const clearAll = () => { resetList(); setKpi(''); setCondicion(''); setSearch(''); setSelected(null); };
+  });
+  const clearAll = () => listSmooth.change(() => { resetList(); setKpi(''); setCondicion(''); setSearch(''); setSelected(null); });
 
   const togglePanel = (next: Panel) => setPanel(current => (current === next ? '' : next));
   const toggleOpen = (key: string) => {
@@ -354,17 +360,21 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
     topStatus.show({ tone: 'ok', message: 'Se descargó plantilla-inventario-tic.csv (2 filas de ejemplo).' });
   };
 
+  const showMore = () => { revealed.reveal(ordered.slice(visible.length, visible.length + PAGE).map(entry => entry.key), () => setLimit(value => value + PAGE)); };
+  const showAll = () => { revealed.reveal(ordered.slice(visible.length).map(entry => entry.key), () => setLimit(Number.MAX_SAFE_INTEGER)); };
+
   // ── Ficha en línea ───────────────────────────────────────────────────────
   const renderDetail = (entry: Entry) => (
+    <div ref={detailSmooth.ref} className="ivt-detail-wrap">
     <InventoryDetail
       key={entry.key}
       entry={entry}
       items={items}
       consultationMode={consultationMode}
       editing={editingKey === entry.key}
-      onStartEdit={() => { if (!consultationMode) setEditingKey(entry.key); }}
-      onCancelEdit={() => setEditingKey('')}
-      onSaved={item => { replaceItem(item); setEditingKey(''); }}
+      onStartEdit={() => { if (!consultationMode) detailSmooth.change(() => setEditingKey(entry.key)); }}
+      onCancelEdit={() => detailSmooth.change(() => setEditingKey(''))}
+      onSaved={item => detailSmooth.change(() => { replaceItem(item); setEditingKey(''); })}
       onCondition={value => setEntryCondition(entry, value)}
       onHide={hideItem}
       onProfile={onProfile}
@@ -373,6 +383,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
       onClose={() => { setOpenKey(''); setEditingKey(''); }}
       initialMessage={openMessage?.key === entry.key ? openMessage.text : undefined}
     />
+    </div>
   );
 
   const columns = useMemo<Column<Entry>[]>(() => [
@@ -490,7 +501,9 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
         />
       </Collapse>
       {topStatus.element}
-      {loadError && <ErrorState message={loadError} onRetry={() => void refresh()} />}
+      <Collapse open={Boolean(loadError)} outerClassName="ivt-fold">
+        <ErrorState message={loadError} onRetry={() => void refresh()} />
+      </Collapse>
 
       <Collapse open={panel === 'review' && !consultationMode} id="ivt-review" outerClassName="ivt-fold" unmountOnClose>
         <ConditionReview
@@ -533,7 +546,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
       <Collapse open={Boolean(kpi)} outerClassName="ivt-fold">
         <div className="ivt-note" role="status">
           <span className="ivt-grow">{kpi ? KPI_LABELS[kpi] : ''}</span>
-          <Button size="sm" variant="ghost" onClick={() => { resetList(); setKpi(''); }}>Quitar filtro</Button>
+          <Button size="sm" variant="ghost" onClick={() => listSmooth.change(() => { resetList(); setKpi(''); })}>Quitar filtro</Button>
         </div>
       </Collapse>
 
@@ -571,7 +584,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
         <Segmented<'table' | 'grid'>
           ariaLabel="Vista"
           value={view}
-          onChange={next => { setView(next); setEditingKey(''); }}
+          onChange={next => listSmooth.change(() => { setView(next); setEditingKey(''); })}
           options={[{ value: 'table', label: 'Tabla' }, { value: 'grid', label: 'Tarjetas' }]}
         />
       </div>
@@ -585,7 +598,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
               pressed={condicion === value}
               tone={value === 'Regular' ? 'warn' : value === 'Malo' ? 'bad' : 'normal'}
               count={value ? base.filter(entry => matchesCondition(entry, value)).length : base.length}
-              onClick={() => { resetList(); setCondicion(value); }}
+              onClick={() => listSmooth.change(() => { resetList(); setCondicion(value); })}
             >
               {label}
             </Chip>
@@ -593,7 +606,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
         </ChipGroup>
       </div>
 
-      <div className="ivt-body">
+      <div className="ivt-body" ref={listSmooth.ref}>
         <button type="button" className="ivt-treepick" aria-expanded={treeOpen} aria-controls="ivt-tree" onClick={() => setTreeOpen(value => !value)}>
           <span className="ivt-label">Categoría</span>
           <TruncatedText className="ivt-treepick-value">{selected ? [selected.categoria, selected.subcategoria].filter(Boolean).join(' › ') : 'Todo el inventario'}</TruncatedText>
@@ -633,21 +646,21 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
             <span className="ivt-count">{crumbCount}</span>
           </div>
 
-          {subChips.length > 0 && selected && (
+          <Collapse open={subChips.length > 0 && Boolean(selected)} reveal={false}>
             <ChipGroup label="Subcategorías">
               {subChips.map(sub => (
                 <Chip
                   key={sub.subcategoria}
-                  pressed={selected.subcategoria === sub.subcategoria}
+                  pressed={selected?.subcategoria === sub.subcategoria}
                   count={sub.entries.length}
                   thumb={sub.entries.find(entry => entry.imagenUrl)?.imagenUrl}
-                  onClick={() => pickCategory({ categoria: selected.categoria, subcategoria: selected.subcategoria === sub.subcategoria ? '' : sub.subcategoria })}
+                  onClick={() => selected && pickCategory({ categoria: selected.categoria, subcategoria: selected.subcategoria === sub.subcategoria ? '' : sub.subcategoria })}
                 >
                   {sub.subcategoria}
                 </Chip>
               ))}
             </ChipGroup>
-          )}
+          </Collapse>
 
           {listStatus.element}
 
@@ -660,7 +673,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
               title="No hay nada para este filtro."
               action={(
                 <span className="ivt-actions ivt-center">
-                  {emptyAlt > 0 && <Button size="sm" onClick={() => { resetList(); setSegment('todo'); setSelected(null); }}>Ver {emptyAlt} {emptyAlt === 1 ? 'resultado' : 'resultados'} en todo el inventario</Button>}
+                  {emptyAlt > 0 && <Button size="sm" onClick={() => listSmooth.change(() => { resetList(); setSegment('todo'); setSelected(null); })}>Ver {emptyAlt} {emptyAlt === 1 ? 'resultado' : 'resultados'} en todo el inventario</Button>}
                   <Button size="sm" variant="ghost" onClick={clearAll}>Quitar filtros</Button>
                 </span>
               )}
@@ -674,22 +687,23 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
                 rowKey={entry => entry.key}
                 sort={sort}
                 manualSort
-                onSortChange={next => { setSort(next); setLimit(PAGE); }}
+                onSortChange={next => listSmooth.change(() => { setSort(next); setLimit(PAGE); })}
                 onRowClick={entry => toggleOpen(entry.key)}
                 rowAttrs={entry => ({ 'data-device-tag': entry.device?.etiqueta })}
+                rowClassName={entry => (revealed.isNew(entry.key) ? 'ivt-row-in' : undefined)}
                 expandedKey={openEntry ? openKey : null}
                 renderExpanded={renderDetail}
                 cardBelow="lg"
                 className="ivt-table"
               />
-              <Pager shown={visible.length} total={ordered.length} onMore={() => setLimit(value => value + PAGE)} onAll={() => setLimit(Number.MAX_SAFE_INTEGER)} />
+              <Pager shown={visible.length} total={ordered.length} onMore={showMore} onAll={showAll} />
             </div>
           ) : (
             <>
               <div className="ivt-cards ivt-cards--dense">
                 {visible.map(entry => (
                   <Fragment key={entry.key}>
-                    <InventoryCard entry={entry} expanded={openKey === entry.key} onOpen={() => toggleOpen(entry.key)} />
+                    <InventoryCard entry={entry} expanded={openKey === entry.key} onOpen={() => toggleOpen(entry.key)} className={revealed.isNew(entry.key) ? 'ivt-row-in' : undefined} />
                     {heldCards.drawn(entry.key) && (
                       <Collapse open={openKey === entry.key} appear unmountOnClose outerClassName="ivt-card-fold" className="ivt-card-detail" onSettled={open => { if (!open) heldCards.release(entry.key); }}>
                         {renderDetail(entry)}
@@ -698,7 +712,7 @@ export function InventoryPage({ devices, consultationMode, onProfile, onRefreshD
                   </Fragment>
                 ))}
               </div>
-              <Pager shown={visible.length} total={ordered.length} onMore={() => setLimit(value => value + PAGE)} onAll={() => setLimit(Number.MAX_SAFE_INTEGER)} />
+              <Pager shown={visible.length} total={ordered.length} onMore={showMore} onAll={showAll} />
             </>
           )}
         </section>

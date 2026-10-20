@@ -111,13 +111,13 @@ export function ExportPanel({ visible, siteCode, onClose }: { visible: Device[];
       <div className="dv-export-grid">
         {EXPORTS.map(item => (
           <button key={item.key} type="button" className="dv-export" disabled={Boolean(busy)} aria-busy={busy === item.key || undefined} onClick={() => void csv(item)}>
-            <span className="dv-ell dv-export-title">{item.title} <span className="dv-muted">CSV</span></span>
-            <span className="dv-ell dv-muted">{busy === item.key ? 'Descargando…' : item.sub}</span>
+            <span className="dv-export-title">{item.title} <span className="dv-muted">CSV</span></span>
+            <span className="dv-muted">{busy === item.key ? 'Descargando…' : item.sub}</span>
           </button>
         ))}
         <button type="button" className="dv-export" disabled={Boolean(busy) || !visible.length} aria-busy={busy === 'qr' || undefined} onClick={() => void qr()}>
-          <span className="dv-ell dv-export-title">Códigos QR <span className="dv-muted">PDF</span></span>
-          <span className="dv-ell dv-muted">{busy === 'qr' ? 'Preparando…' : `Los ${visible.length} equipos visibles, para imprimir`}</span>
+          <span className="dv-export-title">Códigos QR <span className="dv-muted">PDF</span></span>
+          <span className="dv-muted">{busy === 'qr' ? 'Preparando…' : `Los ${visible.length} equipos visibles, para imprimir`}</span>
         </button>
       </div>
       {status.element}

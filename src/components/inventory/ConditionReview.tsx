@@ -3,7 +3,7 @@ import type { InventoryItem } from '../../types';
 import { CONDITION_VALUES } from '../../types';
 import { getDeviceReviewQueue } from '../../services/devicesApi';
 import type { ReviewUndoPayload } from '../../services/inventoryApi';
-import { Button, ErrorState, Eyebrow, Kbd, Ring, SkeletonText } from '../../ui';
+import { Button, Collapse, ErrorState, Eyebrow, Kbd, Ring, SkeletonText } from '../../ui';
 import { TruncatedText } from '../../ui/Truncated';
 import { isEditableTarget } from '../../hooks/useGlobalScanner';
 import { compareText, FORM_CATEGORIES, reviewLabel, type Entry } from './inventoryEntries';
@@ -210,15 +210,20 @@ export function ConditionReview({ items, entriesByKey, consultationMode, onRateD
         <Button variant="ghost" onClick={exit} iconEnd={<Kbd>Esc</Kbd>}>Salir</Button>
       </div>
 
-      {loading && <SkeletonText lines={3} />}
-      {loadError && <ErrorState message={loadError} onRetry={() => load()} />}
+      {/* Cargando → ítem, error, terminado y el aviso con Deshacer: todo entra y sale suave. */}
+      <Collapse open={loading} lazy={false} reveal={false}>
+        <SkeletonText lines={3} />
+      </Collapse>
+      <Collapse open={Boolean(loadError)} reveal={false}>
+        <ErrorState message={loadError} onRetry={() => load()} />
+      </Collapse>
 
-      {!loading && !loadError && current && (
-        <>
+      <Collapse open={Boolean(!loading && !loadError && current)} reveal={false} className="ivt-review-body">
+        {current && <>
           <div className="ivt-review-subject">
             <Tx tone="normal">{current.kind === 'equipo' ? `Equipo · ${current.etiqueta}` : `Recurso · ${live?.categoria || current.clase}`}</Tx>
             <TruncatedText as="strong" className="ivt-review-name">{current.titulo}</TruncatedText>
-            <Tx tone="normal" mono className="ivt-ell">{current.detalle}</Tx>
+            {current.detalle && <TruncatedText className="ivt-mono ivt-review-detail">{current.detalle}</TruncatedText>}
             <Tx tone="muted">{live?.condicion ? `Última revisión: ${reviewLabel(live).replace(/^Revisado /, '')} (${live.condicion})` : 'Nunca revisado'}</Tx>
           </div>
 
@@ -250,22 +255,25 @@ export function ConditionReview({ items, entriesByKey, consultationMode, onRateD
             </button>
           </div>
 
-          {error && <div className="ivt-error" role="alert">{error}</div>}
+          <Collapse open={Boolean(error)} reveal={false}>
+            <div className="ivt-error" role="alert">{error}</div>
+          </Collapse>
+
+          <Collapse open={Boolean(last)} reveal={false}>
+            <span className="ivt-review-last" role="status">
+              <span>{last?.titulo} quedó {last?.condicion}.</span>
+              <Button size="sm" variant="ghost" loading={undoing} onClick={() => void undoLast()}>Deshacer</Button>
+            </span>
+          </Collapse>
 
           <div className="ivt-review-foot">
-            {last && (
-              <span className="ivt-review-last" role="status">
-                <span>{last.titulo} quedó {last.condicion}.</span>
-                <Button size="sm" variant="ghost" loading={undoing} onClick={() => void undoLast()}>Deshacer</Button>
-              </span>
-            )}
             {next.length > 0 && <TruncatedText className="ivt-review-next">{`Siguen: ${next.join(' · ')}${remaining > next.length ? ' …' : ''}`}</TruncatedText>}
             <span className="ivt-help ivt-review-keys">1–4 califican · S salta · Esc sale (no actúan mientras escribís)</span>
           </div>
-        </>
-      )}
+        </>}
+      </Collapse>
 
-      {done && (
+      <Collapse open={done} reveal={false}>
         <div className="ivt-review-done">
           <div className="ivt-grow">
             <strong className="ivt-review-title">{total ? 'Recorrido terminado' : 'No hay nada para revisar en esta sede.'}</strong>
@@ -279,7 +287,7 @@ export function ConditionReview({ items, entriesByKey, consultationMode, onRateD
           </div>
           <Button variant="primary" onClick={exit}>Cerrar</Button>
         </div>
-      )}
+      </Collapse>
     </section>
   );
 }

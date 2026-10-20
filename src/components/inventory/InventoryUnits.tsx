@@ -134,16 +134,21 @@ export function InventoryUnits({ item, consultationMode, onItemChange }: {
         )}
       </div>
 
-      {loading && <SkeletonRows rows={2} />}
-      {loadError && <div className="ivt-error" role="alert">{loadError} <Button size="sm" variant="ghost" onClick={() => load()}>Reintentar</Button></div>}
+      {/* Cargando → unidades, la ayuda que se va al tocar "Agregar unidad" y la lista que aparece con "Crear las N": todo cambia de alto suave. */}
+      <Collapse open={loading} lazy={false} reveal={false}>
+        <SkeletonRows rows={2} />
+      </Collapse>
+      <Collapse open={Boolean(loadError)} reveal={false}>
+        <div className="ivt-error" role="alert">{loadError} <Button size="sm" variant="ghost" onClick={() => load()}>Reintentar</Button></div>
+      </Collapse>
 
-      {!loading && !units.length && editing !== 'new' && (
+      <Collapse open={!loading && !units.length && editing !== 'new'} reveal={false}>
         <p className="ivt-help ivt-para">
           Detallá cada unidad solo si necesitás seguir su número, una falla puntual, SN, MAC o TeamViewer. El recurso sigue siendo uno solo; “Con falla” cuenta las unidades en Regular o Malo.
         </p>
-      )}
+      </Collapse>
 
-      {units.length > 0 && (
+      <Collapse open={units.length > 0} reveal={false}>
         <ul className="ivt-units">
           {units.map(unit => (
             <Fragment key={unit.id}>
@@ -166,7 +171,7 @@ export function InventoryUnits({ item, consultationMode, onItemChange }: {
             </Fragment>
           ))}
         </ul>
-      )}
+      </Collapse>
 
       {held.drawn('new') && (
         <Collapse open={editing === 'new'} appear unmountOnClose onSettled={open => { if (!open) held.release('new'); }}>{form}</Collapse>

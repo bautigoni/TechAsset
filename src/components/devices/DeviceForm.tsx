@@ -126,11 +126,12 @@ export function DeviceForm({ initial, existingTags, saving, onSave, onCancel }: 
         <Input label="Número operativo" value={draft.numero} onValueChange={set('numero')} placeholder="34" inputMode="numeric" autoComplete="off" />
         <div className="dv-field-chips">
           <Input label="Categoría / tipo" required value={draft.categoria} onValueChange={set('categoria')} placeholder="Chromebook" autoComplete="off" error={catError || undefined} />
-          {catChips.length > 0 && (
+          {/* Las sugerencias cambian mientras se tipea: entran y salen suaves (sin mover el campo). */}
+          <Collapse open={catChips.length > 0} anchor={false} reveal={false}>
             <div className="dv-chips" role="group" aria-label="Categorías sugeridas">
               {catChips.map(item => <button key={item} type="button" className="dv-chip" onClick={() => set('categoria')(item)}>{item}</button>)}
             </div>
-          )}
+          </Collapse>
         </div>
         <div className="dv-field-chips">
           <Input label="Filtro (define el alias)" value={draft.filtro} onValueChange={set('filtro')} placeholder="Touch, Dell, TIC, Tablet, Plani…" autoComplete="off" />
@@ -155,7 +156,9 @@ export function DeviceForm({ initial, existingTags, saving, onSave, onCancel }: 
           Vas a renombrar {original} → {tag}. La condición, la clase y la vida útil pasan a {tag}; el historial de préstamos, el estado guardado y el grupo quedan con {original}.
         </p>
       </Collapse>
-      {error && <ErrorState message={error} />}
+      <Collapse open={Boolean(error)}>
+        <ErrorState message={error} />
+      </Collapse>
       <div className="dv-form-actions">
         <Button type="submit" variant="primary" loading={busy || saving} loadingLabel="Guardando…">{editing ? 'Guardar cambios' : 'Añadir dispositivo'}</Button>
         <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancelar</Button>

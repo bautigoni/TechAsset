@@ -17,6 +17,7 @@ import { DeviceForm, normalizeTagInput, type DeviceFormSave } from './DeviceForm
 import { DeviceGroupsPanel } from './DeviceGroupsPanel';
 import { ExportPanel, ImportPanel } from './DevicePanels';
 import { DeviceTrashPanel } from './DeviceTrashPanel';
+import { useSmoothHeight } from './revealRows';
 import {
   MANUAL_STATES, STATE_FILTERS, ageText, aliasOf, cellValue, deviceKind, deviceModel, isLendable, isLoaned, loanWhere, shortWhen,
   sortDevices, stateLabel, stateTone, typeOf, type SortKey
@@ -84,6 +85,10 @@ export function DevicesPage(props: DevicesPageProps) {
   const panelButtons = useRef<Partial<Record<Exclude<Panel, null> | 'create', HTMLButtonElement | null>>>({});
   const selection = useSelection();
   const listStatus = useStatusLine();
+  // Lista y encabezado de la lista: cambian de alto suave al tocar un filtro, marcar o confirmar.
+  const listBody = useSmoothHeight<HTMLDivElement>();
+  const listHead = useSmoothHeight<HTMLDivElement>();
+  const pickBatch = (next: Batch) => listHead.change(() => setBatch(next));
   const refresh = useCallback(async () => { await onImported?.(); }, [onImported]);
 
   // Contadores de Grupos y Papelera: un pedido chico al abrir, después de pintar
@@ -270,8 +275,7 @@ export function DevicesPage(props: DevicesPageProps) {
     } catch (reason) {
       listStatus.show({ tone: 'bad', message: errorMessage(reason, 'No se pudo completar la acción.') });
     } finally {
-      setBusy(false);
-      setBatch(null);
+      listHead.change(() => { setBusy(false); setBatch(null); });
     }
   };
 
@@ -285,7 +289,7 @@ export function DevicesPage(props: DevicesPageProps) {
     listStatus.show(failed
       ? { tone: 'warn', message: `Se devolvieron ${response.done} de ${tags.length}. ${failed}` }
       : { tone: 'ok', message: `Se devolvieron ${response.done} equipos.` });
-    selection.clear();
+    listHead.change(() => selection.clear());
   });
 
   const confirmStatus = (estado: string) => runBatch(async () => {
@@ -296,14 +300,14 @@ export function DevicesPage(props: DevicesPageProps) {
     listStatus.show(failed
       ? { tone: 'warn', message: `Cambiaron ${response.done} de ${tags.length}. ${failed}` }
       : { tone: 'ok', message: `${response.done} equipos ahora están "${estado}".` });
-    selection.clear();
+    listHead.change(() => selection.clear());
   });
 
   const confirmDelete = () => runBatch(async () => {
     const tags = selectedVisible.map(device => device.etiqueta);
     const response = await deleteDevicesBatch(tags, props.operator);
     await refresh();
-    selection.clear();
+    listHead.change(() => selection.clear());
     if (open && tags.includes(open.tag)) setOpen(null);
     setCounts(current => ({ ...current, trash: current.trash === null ? null : current.trash + response.done }));
     listStatus.show({
@@ -335,7 +339,7 @@ export function DevicesPage(props: DevicesPageProps) {
       confirmLabel={`Devolver ${toReturn.length}`}
       busy={busy}
       onConfirm={() => void confirmReturn()}
-      onCancel={() => setBatch(null)}
+      onCancel={() => pickBatch(null)}
     />
   ) : batch?.kind === 'delete' ? (
     <InlineConfirm
@@ -345,10 +349,10 @@ export function DevicesPage(props: DevicesPageProps) {
       confirmLabel={`Borrar ${selectedVisible.length}`}
       busy={busy}
       onConfirm={() => void confirmDelete()}
-      onCancel={() => setBatch(null)}
+      onCancel={() => pickBatch(null)}
     />
   ) : batch?.kind === 'status' ? (
-    <div className="ui-confirm dv-batch-state ui-enter" role="group" aria-label="Cambiar estado" data-scanner-ignore="" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setBatch(null); } }}>
+    <div className="ui-confirm dv-batch-state ui-enter" role="group" aria-label="Cambiar estado" data-scanner-ignore="" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); pickBatch(null); } }}>
       <div className="ui-confirm-text">
         <span className="ui-confirm-msg">Cambiar el estado de {notLoaned.length} {notLoaned.length === 1 ? 'equipo' : 'equipos'}</span>
         {toReturn.length > 0 && <span className="ui-confirm-detail">{toReturn.length === 1 ? 'El prestado no se toca: devolvelo primero.' : `Los ${toReturn.length} prestados no se tocan: devolvelos primero.`}</span>}
@@ -356,7 +360,7 @@ export function DevicesPage(props: DevicesPageProps) {
       <Segmented ariaLabel="Nuevo estado" size="sm" value={batch.estado || ''} onChange={estado => setBatch({ kind: 'status', estado })} options={MANUAL_STATES.map(value => ({ value, label: value }))} />
       <div className="ui-confirm-actions">
         <Button size="sm" variant="primary" disabled={!batch.estado} loading={busy} onClick={() => batch.estado && void confirmStatus(batch.estado)}>Cambiar {notLoaned.length}</Button>
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => setBatch(null)}>Cancelar</Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => pickBatch(null)}>Cancelar</Button>
       </div>
     </div>
   ) : null;
@@ -465,10 +469,10 @@ export function DevicesPage(props: DevicesPageProps) {
     else setPanel(null);
     panelButtons.current[which]?.focus({ preventScroll: true });
   };
-  const onToggle = (key: string, event: MouseEvent) => {
+  const onToggle = (key: string, event: MouseEvent) => listHead.change(() => {
     if (event.shiftKey) selection.selectRange(key, visibleKeys);
     else selection.toggle(key);
-  };
+  });
 
   return (
     <section className="view active dv-page">
@@ -509,7 +513,7 @@ export function DevicesPage(props: DevicesPageProps) {
           label="Estado"
           size="sm"
           value={stateFilter}
-          onChange={setStateFilter}
+          onChange={value => listBody.change(() => setStateFilter(value))}
           options={STATE_FILTERS.map(item => ({ value: item.value, label: item.label, count: stateCounts[item.value] ?? 0 }))}
         />
         {types.length > 1 && (
@@ -517,7 +521,7 @@ export function DevicesPage(props: DevicesPageProps) {
             label="Tipo"
             size="sm"
             value={typeFilter}
-            onChange={setTypeFilter}
+            onChange={value => listBody.change(() => setTypeFilter(value))}
             options={[{ value: 'all', label: 'Todos', count: typeCounts.all }, ...types.map(type => ({ value: type, label: type, count: typeCounts[type] || 0 }))]}
           />
         )}
@@ -526,12 +530,12 @@ export function DevicesPage(props: DevicesPageProps) {
       <section className="dv-card dv-list" aria-label="Lista de equipos">
         {/* Con equipos marcados, la barra de selección reemplaza SOLO el título:
             el buscador y el orden siguen a la vista y se pueden usar. */}
-        <div className="dv-list-head">
+        <div className="dv-list-head" ref={listHead.ref}>
         <SelectionHeader
           className="dv-selhead"
           count={consultationMode ? 0 : selection.count}
           noun={['equipo marcado', 'equipos marcados']}
-          onClear={() => { selection.clear(); setBatch(null); }}
+          onClear={() => listHead.change(() => { selection.clear(); setBatch(null); })}
           confirm={batchConfirm}
           actions={(
             <>
@@ -542,14 +546,14 @@ export function DevicesPage(props: DevicesPageProps) {
                 </>
               )}
               {props.onLoanBatch && toLend.length > 0 && <Button size="sm" variant="primary" disabled={busy} onClick={() => { props.onLoanBatch?.(toLend.map(device => device.etiqueta)); selection.clear(); }}>Prestar {toLend.length}</Button>}
-              {props.onReturnBatch && toReturn.length > 0 && <Button size="sm" disabled={busy} onClick={() => setBatch({ kind: 'return' })}>Devolver {toReturn.length}</Button>}
-              {notLoaned.length > 0 && <Button size="sm" disabled={busy} onClick={() => setBatch({ kind: 'status' })}>Cambiar estado</Button>}
-              {selectedVisible.length > 0 && <Button size="sm" variant="danger" disabled={busy} onClick={() => setBatch({ kind: 'delete' })}>Borrar {selectedVisible.length}</Button>}
+              {props.onReturnBatch && toReturn.length > 0 && <Button size="sm" disabled={busy} onClick={() => pickBatch({ kind: 'return' })}>Devolver {toReturn.length}</Button>}
+              {notLoaned.length > 0 && <Button size="sm" disabled={busy} onClick={() => pickBatch({ kind: 'status' })}>Cambiar estado</Button>}
+              {selectedVisible.length > 0 && <Button size="sm" variant="danger" disabled={busy} onClick={() => pickBatch({ kind: 'delete' })}>Borrar {selectedVisible.length}</Button>}
             </>
           )}
         >
             <div className="dv-list-title">
-              <h3 className="dv-h3 dv-ell">{listTitle}</h3>
+              <h3 className="dv-h3 dv-detail-title"><TruncatedText>{listTitle}</TruncatedText></h3>
               <span className="dv-muted dv-nowrap"><span className="ui-mono">{visible.length}</span> visibles</span>
             </div>
         </SelectionHeader>
@@ -567,9 +571,8 @@ export function DevicesPage(props: DevicesPageProps) {
             />
             <Segmented
               ariaLabel="Orden"
-              size="sm"
               value={sort ? '' : order}
-              onChange={value => { setOrder(value as 'original' | 'operational'); setSort(null); }}
+              onChange={value => listBody.change(() => { setOrder(value as 'original' | 'operational'); setSort(null); })}
               options={[{ value: 'original', label: 'Orden original' }, { value: 'operational', label: 'Nº operativo' }]}
             />
         </div>
@@ -585,6 +588,7 @@ export function DevicesPage(props: DevicesPageProps) {
           </Collapse>
         )}
 
+        <div className="dv-list-body" ref={listBody.ref}>
         <Table
           className="dv-table"
           caption="Equipos de la sede"
@@ -597,7 +601,7 @@ export function DevicesPage(props: DevicesPageProps) {
           cardBelow="lg"
           rowAttrs={device => ({ 'data-device-tag': device.etiqueta })}
           onRowClick={device => setOpen(current => (current?.tag === device.etiqueta && current.mode === 'ficha' ? null : { tag: device.etiqueta, mode: 'ficha' }))}
-          selection={consultationMode ? undefined : { selected: selection.selected, onToggle, onToggleAll: () => selection.toggleMany(visibleKeys) }}
+          selection={consultationMode ? undefined : { selected: selection.selected, onToggle, onToggleAll: () => listHead.change(() => selection.toggleMany(visibleKeys)) }}
           expandedKey={open?.tag || null}
           renderExpanded={device => (open?.mode === 'edit' && !consultationMode ? (
             <DeviceForm initial={device} existingTags={new Set(allDevices.map(item => item.etiqueta))} onSave={saveDevice} onCancel={() => setOpen({ tag: device.etiqueta, mode: 'ficha' })} />
@@ -608,17 +612,18 @@ export function DevicesPage(props: DevicesPageProps) {
             <EmptyState
               compact
               title="No hay dispositivos para este filtro o búsqueda."
-              action={(stateFilter !== 'all' || typeFilter !== 'all' || query) ? <Button size="sm" onClick={resetFilters}>Quitar filtros</Button> : undefined}
+              action={(stateFilter !== 'all' || typeFilter !== 'all' || query) ? <Button size="sm" onClick={() => listBody.change(resetFilters)}>Quitar filtros</Button> : undefined}
             />
           )}
         />
+        </div>
 
         <div className="dv-foot">
           {visible.length > 0 && <span className="dv-muted dv-nowrap">Mostrando <span className="ui-mono">{shown.length}</span> de <span className="ui-mono">{visible.length}</span></span>}
           {visible.length > shown.length && (
             <>
-              <Button size="sm" onClick={() => setLimit(value => value + PAGE)}>Ver más</Button>
-              <Button size="sm" variant="ghost" onClick={() => setLimit(visible.length)}>Ver todos</Button>
+              <Button size="sm" onClick={() => { listBody.change(() => setLimit(value => value + PAGE)); }}>Ver más</Button>
+              <Button size="sm" variant="ghost" onClick={() => { listBody.change(() => setLimit(visible.length)); }}>Ver todos</Button>
             </>
           )}
           {!consultationMode && (

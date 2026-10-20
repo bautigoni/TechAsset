@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import type { Reminder } from '../../types';
-import { Button, Collapse, DateTimeField, Eyebrow, Input, StatusText, useStatusLine } from '../../ui';
+import { Button, Collapse, DateTimeField, Eyebrow, Input, StatusText, TruncatedText, useStatusLine } from '../../ui';
 import { completeReminder, createReminder, getReminders } from '../../services/remindersApi';
 import { errorMessage } from '../layout/Feedback';
 import { shortWhen } from './deviceView';
@@ -83,7 +83,7 @@ export function DeviceReminders({ etiqueta, label, consultationMode }: { etiquet
       {list.map(item => (
         <div key={item.id} className="dv-rem">
           <span className="dv-rem-text">
-            <span className="dv-ell">{item.title}</span>
+            <TruncatedText lines={2}>{item.title}</TruncatedText>
             <StatusText tone={item.status === 'completed' ? 'muted' : 'normal'} mono>{item.status === 'completed' ? `Hecho · ${shortWhen(item.remindAt)}` : shortWhen(item.remindAt)}</StatusText>
           </span>
           {item.status === 'pending' && !consultationMode && (
@@ -91,7 +91,10 @@ export function DeviceReminders({ etiqueta, label, consultationMode }: { etiquet
           )}
         </div>
       ))}
-      {items && !items.length && !open && <span className="dv-muted">Sin recordatorios para este equipo.</span>}
+      {/* El vacío se pliega cuando se abre el formulario (y vuelve al cerrarlo), sin saltos. */}
+      <Collapse open={Boolean(items && !items.length && !open)} reveal={false}>
+        <span className="dv-muted">Sin recordatorios para este equipo.</span>
+      </Collapse>
       <Collapse open={open} id={formId} unmountOnClose>
         <form className="dv-rem-form" data-scanner-ignore="" onSubmit={save} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }}>
           <Input label="Qué hay que hacer" value={title} onValueChange={setTitle} placeholder="Ej. revisar el cargador" autoFocus autoComplete="off" />

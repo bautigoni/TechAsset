@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import type { InventoryItem } from '../../types';
 import { createInventoryItem, updateInventoryItem, uploadInventoryImage } from '../../services/inventoryApi';
-import { Button, FileDrop, Input, NumberField, Textarea } from '../../ui';
+import { Button, Collapse, FileDrop, Input, NumberField, Textarea } from '../../ui';
 import { compareText, FORM_CATEGORIES } from './inventoryEntries';
 import { Chip, ChipGroup, ConditionChips, errorText, readFileAsDataUrl } from './inventoryParts';
 
@@ -166,16 +166,15 @@ export function ResourceForm({ item, items, defaultCategory, consultationMode, o
           <NumberField label="Cantidad" min={0} value={draft.cantidad} onChange={cantidad => set({ cantidad })} disabled={consultationMode} />
           <Input label="Unidad" autoComplete="off" value={draft.unidad} placeholder="unidades" onValueChange={unidad => set({ unidad })} disabled={consultationMode} />
           <NumberField label="Stock mínimo" min={0} value={draft.minStock} onChange={minStock => set({ minStock })} disabled={consultationMode} />
-          {subcategorias.length > 0 && (
-            <div className="ivt-field ivt-full ivt-inline-chips">
+          {/* Cambian con la categoría elegida: entran y salen suaves. */}
+          <Collapse open={subcategorias.length > 0} outerClassName="ivt-full ivt-form-fold" className="ivt-field ivt-inline-chips" reveal={false}>
               <span className="ivt-help">Subcategorías usadas:</span>
               <ChipGroup label="Subcategorías usadas">
                 {subcategorias.map(sub => (
                   <Chip key={sub} pressed={draft.subcategoria === sub} disabled={consultationMode} onClick={() => set({ subcategoria: sub })}>{sub}</Chip>
                 ))}
               </ChipGroup>
-            </div>
-          )}
+          </Collapse>
           <div className="ivt-field ivt-full">
             <span className="ivt-label">Condición</span>
             <ConditionChips value={draft.condicion} onChange={condicion => set({ condicion })} disabled={consultationMode} />
@@ -183,7 +182,9 @@ export function ResourceForm({ item, items, defaultCategory, consultationMode, o
           <Textarea className="ivt-full" label="Observaciones" minRows={3} value={draft.observaciones} placeholder="Opcional" onValueChange={observaciones => set({ observaciones })} disabled={consultationMode} />
         </div>
       </div>
-      {error && <div className="ivt-error" role="alert">{error}</div>}
+      <Collapse open={Boolean(error)}>
+        <div className="ivt-error" role="alert">{error}</div>
+      </Collapse>
       <div className="ivt-actions">
         <Button type="submit" variant="primary" loading={busy} loadingLabel="Guardando…" disabled={consultationMode || uploading}>
           {editing ? 'Guardar cambios' : 'Agregar recurso'}

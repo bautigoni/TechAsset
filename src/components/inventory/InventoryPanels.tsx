@@ -114,29 +114,37 @@ export function HiddenPanel({ consultationMode, onRestored }: {
         <h3>Recursos ocultos</h3>
         <span className="ivt-help">Ocultar no borra nada: el recurso vuelve tal cual estaba. Reimportar el CSV con el mismo nombre también lo vuelve a mostrar.</span>
       </div>
-      {list.length > 6 && (
+      {/* Cargando → lista, vacío o error: el panel cambia de alto suave. */}
+      <Collapse open={list.length > 6} reveal={false}>
         <Input size="sm" label="Buscar en ocultos" autoComplete="off" value={query} onValueChange={setQuery} prefix={<IconSearch size={14} />} placeholder="Nombre, categoría o quién lo ocultó" className="ivt-hidden-search" />
-      )}
-      {loading && <SkeletonRows rows={2} />}
-      {error && <ErrorState message={error} onRetry={load} />}
-      {!loading && !error && !list.length && <EmptyState compact title="No hay recursos ocultos." />}
-      {!loading && visible.length > 0 && (
+      </Collapse>
+      <Collapse open={loading} lazy={false} reveal={false}>
+        <SkeletonRows rows={2} />
+      </Collapse>
+      <Collapse open={Boolean(error)} reveal={false}>
+        <ErrorState message={error} onRetry={load} />
+      </Collapse>
+      <Collapse open={!loading && !error && !list.length} reveal={false}>
+        <EmptyState compact title="No hay recursos ocultos." />
+      </Collapse>
+      <Collapse open={!loading && visible.length > 0} reveal={false}>
         <ul className="ivt-hidden-list">
           {visible.map(item => (
             <li key={item.id} className="ivt-hidden-row">
               <span className="ivt-hidden-text">
                 <TruncatedText className="ivt-strong">{item.nombre}</TruncatedText>
-                <Tx tone="muted" className="ivt-ell">
-                  {[item.categoria, item.subcategoria].filter(Boolean).join(' › ')}
-                  {item.deletedAt ? ` · Oculto ${formatDate(item.deletedAt, DATE_ONLY)}${item.deletedBy ? ` por ${item.deletedBy}` : ''}` : ''}
-                </Tx>
+                <TruncatedText lines={2} className="ivt-tx is-muted">
+                  {[[item.categoria, item.subcategoria].filter(Boolean).join(' › '), item.deletedAt ? `Oculto ${formatDate(item.deletedAt, DATE_ONLY)}${item.deletedBy ? ` por ${item.deletedBy}` : ''}` : ''].filter(Boolean).join(' · ')}
+                </TruncatedText>
               </span>
               <Button size="sm" disabled={consultationMode} loading={busyId === item.id} loadingLabel="Restaurando…" onClick={() => void restore(item)}>Restaurar</Button>
             </li>
           ))}
         </ul>
-      )}
-      {!loading && list.length > 0 && !visible.length && <EmptyState compact title="Nada coincide con esa búsqueda." />}
+      </Collapse>
+      <Collapse open={!loading && list.length > 0 && !visible.length} reveal={false}>
+        <EmptyState compact title="Nada coincide con esa búsqueda." />
+      </Collapse>
       {status.element}
     </section>
   );

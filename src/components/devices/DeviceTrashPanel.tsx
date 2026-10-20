@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Button, EmptyState, ErrorState, Input, SkeletonRows, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, Input, SkeletonRows, TruncatedText, icons, useStatusLine } from '../../ui';
 import { getDeletedDevices, restoreDevice, type DeletedDevice } from '../../services/devicesApi';
 import { fold } from '../../ui/util';
 import { errorMessage } from '../layout/Feedback';
 import { DevicePanel } from './DevicePanels';
 import { shortWhen } from './deviceView';
+import { useRevealedRows } from './revealRows';
 
 const PAGE = 12;
 
@@ -25,6 +26,7 @@ export function DeviceTrashPanel({ consultationMode, onRestored, onCount, onClos
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(PAGE);
   const status = useStatusLine();
+  const revealed = useRevealedRows();
 
   const load = () => {
     setError('');
@@ -58,7 +60,8 @@ export function DeviceTrashPanel({ consultationMode, onRestored, onCount, onClos
 
   return (
     <DevicePanel title="Papelera" label="Papelera de dispositivos" note="Ocultos de la app, con su historial intacto. Restaurar los deja como estaban." onClose={onClose}>
-      {items && items.length > 6 && (
+      {/* Lo que llega al cargar (buscador, lista, vacío o error) entra suave: el panel no salta de alto. */}
+      <Collapse open={Boolean(items && items.length > 6)} reveal={false}>
         <Input
           aria-label="Buscar en la papelera"
           prefix={<icons.IconSearch size={14} />}
@@ -68,29 +71,37 @@ export function DeviceTrashPanel({ consultationMode, onRestored, onCount, onClos
           autoComplete="off"
           className="dv-panel-search"
         />
-      )}
-      {error && <ErrorState message={error} onRetry={() => void load()} />}
-      {!items && <SkeletonRows rows={2} />}
-      {items && !items.length && !error && <EmptyState compact title="La papelera está vacía." />}
-      {items && items.length > 0 && !visible.length && <EmptyState compact title="Nada en la papelera coincide con esa búsqueda." />}
-      {visible.length > 0 && (
+      </Collapse>
+      <Collapse open={Boolean(error)} reveal={false}>
+        <ErrorState message={error} onRetry={() => void load()} />
+      </Collapse>
+      <Collapse open={!items} lazy={false} reveal={false}>
+        <SkeletonRows rows={2} />
+      </Collapse>
+      <Collapse open={Boolean(items && !items.length && !error)} reveal={false}>
+        <EmptyState compact title="La papelera está vacía." />
+      </Collapse>
+      <Collapse open={Boolean(items && items.length > 0 && !visible.length)} reveal={false}>
+        <EmptyState compact title="Nada en la papelera coincide con esa búsqueda." />
+      </Collapse>
+      <Collapse open={visible.length > 0} reveal={false}>
         <ul className="dv-trash-list">
           {visible.slice(0, limit).map(item => (
-            <li key={item.etiqueta} className="dv-trash-item">
+            <li key={item.etiqueta} className={`dv-trash-item${revealed.isNew(item.etiqueta) ? ' dv-row-in' : ''}`}>
               <span className="dv-trash-main">
-                <span className="dv-ell"><span className="ui-mono">{item.etiqueta}</span>{item.alias ? ` · ${item.alias}` : ''}</span>
-                <span className="dv-muted dv-ell">{[item.categoria, item.modelo].filter(Boolean).join(' · ') || 'Sin datos del equipo'}</span>
+                <span className="dv-trash-name"><span className="ui-mono">{item.etiqueta}</span>{item.alias ? <TruncatedText>{` · ${item.alias}`}</TruncatedText> : null}</span>
+                <TruncatedText lines={2} className="dv-muted">{[item.categoria, item.modelo].filter(Boolean).join(' · ') || 'Sin datos del equipo'}</TruncatedText>
               </span>
               <span className="dv-muted dv-trash-when">Borrado <span className="ui-mono">{shortWhen(item.deletedAt) || 'sin fecha'}</span>{item.deletedBy ? ` por ${item.deletedBy}` : ''}</span>
               <Button size="sm" disabled={consultationMode} loading={busy === item.etiqueta} loadingLabel="Restaurando…" onClick={() => void restore(item)}>Restaurar</Button>
             </li>
           ))}
         </ul>
-      )}
+      </Collapse>
       {visible.length > limit && (
         <div className="dv-more">
           <span className="dv-muted">Mostrando <span className="ui-mono">{limit}</span> de <span className="ui-mono">{visible.length}</span></span>
-          <Button size="sm" onClick={() => setLimit(value => value + PAGE)}>Ver más</Button>
+          <Button size="sm" onClick={() => { revealed.reveal(visible.slice(limit, limit + PAGE).map(item => item.etiqueta), () => setLimit(value => value + PAGE)); }}>Ver más</Button>
         </div>
       )}
       {status.element}

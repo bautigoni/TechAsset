@@ -5,7 +5,7 @@ import { Tx } from './inventoryParts';
 
 // Tarjeta del listado en vista Tarjetas. Toda la tarjeta abre (y cierra) la
 // ficha en línea; los cartelitos son texto coloreado, sin fondo ni puntito.
-export function InventoryCard({ entry, expanded, onOpen }: { entry: Entry; expanded: boolean; onOpen: () => void }) {
+export function InventoryCard({ entry, expanded, onOpen, className }: { entry: Entry; expanded: boolean; onOpen: () => void; className?: string }) {
   const stock = stockInfo(entry);
   const flags: Array<{ text: string; tone: 'warn' | 'bad' | 'muted' | 'normal' }> = [];
   if (entry.kind === 'recurso' && (entry.cantidad ?? 0) <= 0) flags.push({ text: 'Sin stock', tone: 'bad' });
@@ -26,7 +26,7 @@ export function InventoryCard({ entry, expanded, onOpen }: { entry: Entry; expan
     <div
       role="button"
       tabIndex={0}
-      className="ivt-card"
+      className={`ivt-card${className ? ` ${className}` : ''}`}
       aria-expanded={expanded}
       aria-label={`${expanded ? 'Cerrar' : 'Abrir'} el detalle de ${entry.nombre}`}
       data-device-tag={entry.device?.etiqueta}
