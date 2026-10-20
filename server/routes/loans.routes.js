@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { addLocalMovement, addLoanEvent, getDb, nowIso, setLocalState } from '../db.js';
+import { addLocalMovement, addLoanEvent, getDb, getLoanEventsVersion, nowIso, setLocalState } from '../db.js';
+import { getLoanPeople, searchLoanPeople } from '../services/loanPeople.service.js';
+import { sendWithEtag } from '../services/etag.service.js';
 import { buildLocalInventory, invalidateDeviceInventoryCache, isLoanedState } from '../services/deviceInventory.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 
@@ -182,60 +184,53 @@ loansRouter.get('/loans/:etiqueta/accessories', (req, res) => {
 });
 
 // Recomendador: sugiere personas conocidas (match flexible) con su rol/ubicación/
-// motivo/curso más usados y la fecha del último préstamo. Alimenta el autocompletado
-// del LoanForm. Lee de loan_events (historial durable).
+// motivo/curso más usados y la fecha del último préstamo. Sale del directorio
+// en memoria (services/loanPeople.service.js): 0 consultas por pedido.
 loansRouter.get('/loans/suggest', (req, res) => {
   const siteCode = requireSite(req);
-  const q = normalizeName(req.query.q);
-  const rows = getDb().prepare(`
-    SELECT persona, rol, ubicacion, ubicacion_detalle AS ubicacionDetalle, curso, motivo, timestamp
-    FROM loan_events
-    WHERE site_code=? AND tipo='prestamo' AND TRIM(persona)<>''
-  `).all(siteCode);
-  const groups = new Map();
-  for (const row of rows) {
-    const key = normalizeName(row.persona);
-    if (!key) continue;
-    if (q && !key.includes(q)) continue;
-    let group = groups.get(key);
-    if (!group) { group = { persona: row.persona, count: 0, last: '', roles: {}, ubic: {}, cursos: {}, motivos: {} }; groups.set(key, group); }
-    group.count += 1;
-    if (!group.last || String(row.timestamp) > group.last) { group.last = String(row.timestamp || ''); group.persona = row.persona; }
-    bump(group.roles, row.rol);
-    bump(group.ubic, row.ubicacion);
-    bump(group.cursos, row.curso);
-    bump(group.motivos, row.motivo);
-  }
-  const suggestions = [...groups.values()]
-    .sort((a, b) => b.count - a.count || b.last.localeCompare(a.last))
-    .slice(0, 8)
-    .map(group => ({
-      persona: group.persona,
-      count: group.count,
-      lastAt: group.last,
-      rol: mode(group.roles),
-      ubicacion: mode(group.ubic),
-      curso: mode(group.cursos),
-      motivo: mode(group.motivos)
-    }));
+  const suggestions = searchLoanPeople(getLoanPeople(siteCode), req.query.q, 8).map(({ key, ...person }) => person);
   res.json({ ok: true, suggestions });
 });
 
+// Directorio completo de personas de la sede (mismo formato que /loans/suggest,
+// más `key` = nombre normalizado). El front lo baja una vez al abrir el
+// formulario y filtra localmente en cada tecla: sugerencias sin esperar la red.
+// ETag sobre la versión de loan_events: si no cambió, 304 sin cuerpo.
+loansRouter.get('/loans/people', (req, res) => {
+  const siteCode = requireSite(req);
+  const people = getLoanPeople(siteCode);
+  sendWithEtag(req, res, { ok: true, people }, `${siteCode}:${getLoanEventsVersion()}:${people.length}:${people[0]?.lastAt || ''}`);
+});
+
+// Préstamos del último día con préstamos antes de hoy. Antes leía TODOS los
+// préstamos de la sede en cada pedido (miles de filas por la red en producción);
+// ahora busca ese día con una consulta indexada (site_code, timestamp) y trae
+// solo sus filas, y el resultado queda en memoria hasta que cambie loan_events
+// o el día.
+const previousDayCache = new Map(); // site -> { key, payload }
 loansRouter.get('/loans/previous-day', (req, res) => {
   const siteCode = requireSite(req);
   const today = localDateKey(new Date());
-  const rows = getDb().prepare(`
+  const cacheKey = `${today}|${getLoanEventsVersion()}`;
+  const hit = previousDayCache.get(siteCode);
+  if (hit && hit.key === cacheKey) return res.json(hit.payload);
+  const db = getDb();
+  // Inicio de hoy en Argentina (UTC−3, sin horario de verano) como ISO UTC: los timestamps se guardan en ISO.
+  const startOfToday = new Date(`${today}T00:00:00-03:00`).toISOString();
+  const latest = db.prepare(`
+    SELECT timestamp FROM loan_events
+    WHERE site_code=? AND tipo='prestamo' AND timestamp < ?
+    ORDER BY timestamp DESC LIMIT 1
+  `).get(siteCode, startOfToday);
+  const date = (latest && localDateKey(latest.timestamp)) || previousLocalDateKey();
+  const dayStart = new Date(`${date}T00:00:00-03:00`);
+  const dayEnd = new Date(dayStart.getTime() + 86400000);
+  const rows = db.prepare(`
     SELECT id, etiqueta, alias, filtro, persona, rol, ubicacion, curso, motivo, operador, accessories_json, timestamp
     FROM loan_events
-    WHERE site_code=? AND tipo='prestamo'
+    WHERE site_code=? AND tipo='prestamo' AND timestamp >= ? AND timestamp < ?
     ORDER BY timestamp DESC, id DESC
-  `).all(siteCode);
-  // "Ayer" estricto queda vacío después de fines de semana o feriados; se muestra
-  // el último día previo a hoy que tuvo préstamos (la fecha viaja en la respuesta).
-  const date = rows
-    .map(row => localDateKey(row.timestamp))
-    .filter(key => key && key < today)
-    .reduce((max, key) => (key > max ? key : max), '') || previousLocalDateKey();
+  `).all(siteCode, dayStart.toISOString(), dayEnd.toISOString());
   const items = rows
     .filter(row => localDateKey(row.timestamp) === date)
     .map(row => ({
@@ -252,12 +247,10 @@ loansRouter.get('/loans/previous-day', (req, res) => {
       accessories: parseAccessories(row.accessories_json),
       timestamp: row.timestamp || ''
     }));
-  res.json({ ok: true, date, items });
+  const payload = { ok: true, date, items };
+  previousDayCache.set(siteCode, { key: cacheKey, payload });
+  res.json(payload);
 });
-
-function normalizeName(value) {
-  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
-}
 
 function findActiveLoanEvent(siteCode, etiqueta) {
   const latest = getDb().prepare(`
@@ -277,21 +270,6 @@ function normalizeAccessories(value) {
 
 function parseAccessories(value) {
   try { return normalizeAccessories(JSON.parse(String(value || '[]'))); } catch { return []; }
-}
-
-function bump(map, value) {
-  const key = String(value || '').trim();
-  if (!key) return;
-  map[key] = (map[key] || 0) + 1;
-}
-
-function mode(map) {
-  let best = '';
-  let bestCount = 0;
-  for (const [key, count] of Object.entries(map)) {
-    if (count > bestCount) { best = key; bestCount = count; }
-  }
-  return best;
 }
 
 function previousLocalDateKey() {

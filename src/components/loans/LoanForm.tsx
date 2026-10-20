@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Device } from '../../types';
 import { parseScannedCode, resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { getDeviceNumber, getOperationalAlias, operationalTypeLabel } from '../../utils/classifyDevice';
@@ -6,6 +6,7 @@ import { getLoanState } from '../../utils/deviceState';
 import { formatLoanDateTime, loanAgeDays } from '../../utils/formatters';
 import { getSiteSettings } from '../../services/authApi';
 import { getActiveLoanAccessories, getLoanSuggestions, type LoanBatchResponse, type LoanSuggestion } from '../../services/loansApi';
+import { loadPeopleDirectory, searchPeople, usePeopleDirectory } from '../../services/peopleDirectory';
 import { Button, Kbd } from '../../ui/Button';
 import { Input } from '../../ui/Field';
 import { Switch } from '../../ui/Toggle';
@@ -104,6 +105,10 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
 
   const trimmed = code.trim();
   const matches = useMemo(() => (!continuous && trimmed ? resolveDeviceMatches(devices, trimmed) : []), [devices, trimmed, continuous]);
+  // Búsqueda rápida de personas: directorio bajado una vez, filtrado local en cada tecla.
+  const people = usePeopleDirectory();
+  const searchLocalPeople = useCallback((q: string): LoanSuggestion[] | null => (people ? searchPeople(people, q) : null), [people]);
+  const refreshPeople = useCallback(() => { void loadPeopleDirectory().catch(() => undefined); }, []);
   const selected = matches.length === 1 ? matches[0] : undefined;
   const selectedState = selected ? getLoanState(selected.estado) : 'unknown';
   const queueDevices = useMemo(() => {
@@ -684,6 +689,8 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                   listLabel="Personas que ya pidieron equipos"
                   footer="Enter elige la marcada. Completa rol, ubicación, curso y motivo más usados."
                   fetcher={q => getLoanSuggestions(q).then(response => response.suggestions || [])}
+                  local={searchLocalPeople}
+                  onOpen={refreshPeople}
                   itemKey={item => item.persona}
                   row={item => ({
                     name: item.persona,

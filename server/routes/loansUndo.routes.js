@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { addLocalMovement, getDb, setLocalState } from '../db.js';
+import { addLocalMovement, bumpLoanEventsVersion, getDb, setLocalState } from '../db.js';
 import { buildLocalInventory, invalidateDeviceInventoryCache, isLoanedState } from '../services/deviceInventory.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 
@@ -97,6 +97,7 @@ function undoReturn(siteCode, device, etiqueta, body) {
       siteCode
     });
     getDb().prepare('DELETE FROM loan_events WHERE id=? AND site_code=?').run(last.id, siteCode);
+    bumpLoanEventsVersion();
     addLocalMovement({ tipo: 'deshacer', descripcion: `Se deshizo la devolución de ${label(device, etiqueta)} (vuelve a ${loan.persona || 'quien lo tenía'})`, operador: body.operator, origen: 'Local', etiqueta, siteCode });
   });
   tx();
@@ -117,6 +118,7 @@ function undoLend(siteCode, device, etiqueta, body) {
       siteCode
     });
     getDb().prepare('DELETE FROM loan_events WHERE id=? AND site_code=?').run(last.id, siteCode);
+    bumpLoanEventsVersion();
     addLocalMovement({ tipo: 'deshacer', descripcion: `Se deshizo el préstamo de ${label(device, etiqueta)} a ${last.persona || 'sin persona'}`, operador: body.operator, origen: 'Local', etiqueta, siteCode });
   });
   tx();

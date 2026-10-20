@@ -3,6 +3,7 @@ import { Camera, PackageMinus, PackagePlus, ScanLine } from 'lucide-react';
 import type { Device } from '../../types';
 import { Button, Collapse, Combobox, IconButton, Input, Kbd, Select, StatusText, cx, icons, type SelectOption, type StatusMessage } from '../../ui';
 import { getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
+import { searchPeople, usePeopleDirectory } from '../../services/peopleDirectory';
 import { resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { aliasOf, agoText, fichaFields, loanOf, nearestDevices, nearestFree, stateText, whereOf } from './dashModel';
 import { EMPTY_DRAFT, SCHOOL_LEVELS, applySuggestion, draftPayload, validateDraft, type LendDraft, type LoanOptions } from './loanOptions';
@@ -472,30 +473,38 @@ function LendForm({ title, chips, cta, options, draft, setDraft, error, sending,
   onCancel: () => void;
   onMoreOptions?: () => void;
 }) {
-  const [found, setFound] = useState<LoanSuggestion[]>([]);
-  const [frequent, setFrequent] = useState<LoanSuggestion[]>([]);
+  const [fetchedFound, setFound] = useState<LoanSuggestion[]>([]);
+  const [fetchedFrequent, setFrequent] = useState<LoanSuggestion[]>([]);
+  // Directorio de personas en memoria (services/peopleDirectory.ts): frecuentes y
+  // sugerencias salen sin red ni debounce. Si todavía no llegó, se pide al server como antes.
+  const people = usePeopleDirectory();
+  const term = draft.person.trim();
+  const frequent = useMemo(() => (people ? people.slice(0, 5) : fetchedFrequent), [people, fetchedFrequent]);
+  const found = useMemo(() => (people ? (term.length >= 2 ? searchPeople(people, term) : []) : fetchedFound), [people, term, fetchedFound]);
   const set = (patch: Partial<LendDraft>) => setDraft({ ...draft, ...patch });
   const location = options.locations.find(item => item.label === draft.location);
   const reason = options.motives.find(item => item.label === draft.reason);
   const errorOf = (field: keyof LendDraft) => (error && error[0] === field ? true : undefined);
 
-  // Frecuentes: las personas más prestadas (una vez por apertura, caché de 15 s).
+  // Sin directorio todavía: frecuentes del server (una vez por apertura, caché de 15 s).
+  const hasPeople = Boolean(people);
   useEffect(() => {
+    if (hasPeople) return;
     let alive = true;
     getLoanSuggestions('').then(response => { if (alive) setFrequent((response.suggestions || []).slice(0, 5)); }).catch(() => undefined);
     return () => { alive = false; };
-  }, []);
+  }, [hasPeople]);
 
-  // Sugerencias por historial al tipear (≥ 2 letras, 220 ms).
+  // Sin directorio todavía: sugerencias del server al tipear (≥ 2 letras, 220 ms).
   useEffect(() => {
-    const term = draft.person.trim();
+    if (hasPeople) return;
     if (term.length < 2) { setFound([]); return; }
     let alive = true;
     const timer = window.setTimeout(() => {
       getLoanSuggestions(term).then(response => { if (alive) setFound(response.suggestions || []); }).catch(() => { if (alive) setFound([]); });
     }, 220);
     return () => { alive = false; window.clearTimeout(timer); };
-  }, [draft.person]);
+  }, [term, hasPeople]);
 
   const personOptions: SelectOption[] = found.map(item => ({
     value: item.persona,

@@ -1,10 +1,12 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type Ref } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { Input } from '../../ui/Field';
 import { cx } from '../../ui/util';
 import { Collapse } from '../../ui/Collapse';
 import { getPhotoPassSuggestions, type PhotoPassSuggestion } from '../../services/photoPassesApi';
 
 export type SuggestRow = { name: string; hint: string; times: string };
+
+const EMPTY: never[] = [];
 
 /**
  * Campo de persona con sugerencias del historial. La lista se abre EN LÍNEA
@@ -13,15 +15,24 @@ export type SuggestRow = { name: string; hint: string; times: string };
  * tocaste nada), Escape la cierra. Si no hay lista abierta, Enter llama a
  * `onEnter` (en Préstamos: prestar).
  *
+ * Con `local` (un directorio ya bajado, ver services/peopleDirectory.ts) filtra
+ * en memoria en cada tecla, sin debounce ni red: la lista sale en el mismo
+ * frame. Si `local` devuelve null (directorio todavía sin llegar) cae al
+ * `fetcher` con debounce; una respuesta vieja nunca pisa a una nueva.
+ *
  * Reemplaza al `<datalist>` nativo, que listaba todo lo que alguna vez se
  * escribió tal cual —"mile", "Mile", "Mile STAFF"— y en orden alfabético. Acá
  * el backend agrupa por nombre normalizado y ordena por uso.
  */
-export function SuggestInput<T>({ id, value, onChange, fetcher, row, itemKey, onPick, onEnter, placeholder, autoFocus, disabled, inputRef, listLabel, footer, ariaLabel }: {
+export function SuggestInput<T>({ id, value, onChange, fetcher, local, onOpen, row, itemKey, onPick, onEnter, placeholder, autoFocus, disabled, inputRef, listLabel, footer, ariaLabel }: {
   id?: string;
   value: string;
   onChange: (value: string) => void;
   fetcher: (q: string) => Promise<T[]>;
+  /** Búsqueda local inmediata; null = todavía no se puede (usa fetcher). */
+  local?: ((q: string) => T[] | null) | null;
+  /** Al enfocar el campo (para revalidar el directorio local). */
+  onOpen?: () => void;
   row: (item: T) => SuggestRow;
   itemKey: (item: T) => string;
   onPick: (item: T) => void;
@@ -34,7 +45,7 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, row, itemKey, on
   footer?: string;
   ariaLabel?: string;
 }) {
-  const [items, setItems] = useState<T[]>([]);
+  const [fetched, setFetched] = useState<T[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const picked = useRef('');
@@ -42,17 +53,23 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, row, itemKey, on
   const fetchRef = useRef(fetcher);
   fetchRef.current = fetcher;
 
+  const q = value.trim();
+  const wanted = q.length >= 2 && q !== picked.current;
+  // Resultado local: se calcula en el render de la tecla (filtrar ~400 nombres es < 1 ms).
+  const localItems = useMemo(() => (wanted && local ? local(q) : null), [wanted, local, q]);
+  const usesLocal = localItems !== null;
+  const items: T[] = !wanted ? EMPTY : localItems ?? fetched;
+
   useEffect(() => {
-    const q = value.trim();
-    if (q.length < 2 || q === picked.current) { setItems([]); return; }
+    if (!wanted || usesLocal) { setFetched(EMPTY); return; }
     let alive = true;
     const timer = window.setTimeout(() => {
       fetchRef.current(q)
-        .then(list => { if (alive) { setItems(list); setActive(0); } })
-        .catch(() => { if (alive) setItems([]); });
+        .then(list => { if (alive) { setFetched(list); setActive(0); } })
+        .catch(() => { if (alive) setFetched(EMPTY); });
     }, 220);
     return () => { alive = false; window.clearTimeout(timer); };
-  }, [value]);
+  }, [q, wanted, usesLocal]);
 
   const visible = open && items.length > 0;
   // Mientras la lista se pliega se sigue viendo lo último (no se vacía de golpe).
@@ -62,7 +79,7 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, row, itemKey, on
   const pick = (item: T) => {
     picked.current = row(item).name.trim();
     onPick(item);
-    setItems([]);
+    setFetched(EMPTY);
     setOpen(false);
   };
 
@@ -96,8 +113,8 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, row, itemKey, on
         aria-controls={visible ? listId : undefined}
         aria-autocomplete="list"
         aria-activedescendant={visible ? `${listId}-${active}` : undefined}
-        onValueChange={next => { picked.current = ''; onChange(next); setOpen(true); }}
-        onFocus={() => setOpen(true)}
+        onValueChange={next => { picked.current = ''; onChange(next); setOpen(true); setActive(0); }}
+        onFocus={() => { setOpen(true); onOpen?.(); }}
         // El blur se demora: sin eso el clic en una sugerencia cierra la lista antes de registrarse.
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
         onKeyDown={onKeyDown}

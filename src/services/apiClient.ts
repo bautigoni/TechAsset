@@ -45,6 +45,11 @@ const getInflight = new Map<string, Promise<unknown>>();
 // Cambia con cada escritura: una lectura que salió antes no guarda su resultado.
 let generation = 0;
 
+/** Sube con cada escritura propia: cachés propias de un módulo la usan para saber si quedaron viejas. */
+export function getApiGeneration() {
+  return generation;
+}
+
 export function clearApiCache() {
   generation += 1;
   getCache.clear();

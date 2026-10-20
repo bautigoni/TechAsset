@@ -594,6 +594,9 @@ export function initDb(database = getDb()) {
       created_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(site_code, user_email, read);
+    -- La campana pollea cada 30 s con lower(user_email) ORDER BY created_at: sin
+    -- este índice era un SCAN de toda la tabla + ordenamiento en cada poll.
+    CREATE INDEX IF NOT EXISTS idx_notifications_email_created ON notifications(lower(user_email), created_at);
     CREATE TABLE IF NOT EXISTS push_subscriptions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_email TEXT,
@@ -1886,6 +1889,13 @@ export function addLocalMovement({ tipo, descripcion, operador, origen = 'Local'
   getDb().prepare('INSERT INTO local_movements (timestamp, tipo, descripcion, operador, origen, etiqueta, site_code) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(nowIso(), tipo, descripcion, operador || '', origen, etiqueta || '', siteCode);
 }
+
+// Versión de loan_events en este proceso: sube con cada evento nuevo o borrado
+// (Deshacer). Las cachés derivadas (directorio de personas, préstamos del día
+// anterior) se rearman cuando cambia, sin consultar la base para saberlo.
+let loanEventsVersion = 0;
+export const getLoanEventsVersion = () => loanEventsVersion;
+export function bumpLoanEventsVersion() { loanEventsVersion += 1; }
 
 // Historial durable de préstamos/devoluciones. A diferencia de local_states (estado
 // vivo que se limpia al devolver), esto NUNCA se borra: es la fuente de la analítica
