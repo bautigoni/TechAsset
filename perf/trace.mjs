@@ -71,7 +71,29 @@ try {
   await page.emulateCPUThrottling(CPU);
   const url = `${base}/sede/nfpt/${VIEW}`;
   const traceFile = path.join(tmpDir, 'trace.json');
-  if (ACTION === 'load') {
+  if (ACTION === 'mutations') {
+    // Qué sigue cambiando el DOM después de cargar (agrupado por elemento y por 250 ms).
+    await page.evaluateOnNewDocument(() => {
+      window.__muts = [];
+      new MutationObserver(list => {
+        const t = Math.round(performance.now());
+        for (const m of list) {
+          const el = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+          const desc = el ? `${el.tagName.toLowerCase()}.${String(el.className || '').split(' ').slice(0, 2).join('.')}` : '?';
+          window.__muts.push([t, m.type === 'attributes' ? `${desc}[${m.attributeName}]` : `${desc} ${m.type}`]);
+        }
+      }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+    });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await sleep(6000);
+    const muts = await page.evaluate(() => window.__muts);
+    const buckets = new Map();
+    for (const [t, desc] of muts) {
+      const key = `${String(Math.floor(t / 250) * 250).padStart(5)} ms  ${desc}`;
+      buckets.set(key, (buckets.get(key) || 0) + 1);
+    }
+    for (const [key, n] of [...buckets.entries()].sort()) console.log(`${key} ×${n}`);
+  } else if (ACTION === 'load') {
     await page.tracing.start({ path: traceFile, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8.execute', 'disabled-by-default-v8.cpu_profiler'] });
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
     await sleep(1500);
@@ -91,6 +113,8 @@ try {
         await sleep(600);
       }
     }
+    // Con --hover el puntero queda sobre la lista (como al scrollear con la rueda).
+    if (argv.includes('--hover')) await page.mouse.move(700, 500);
     await page.tracing.start({ path: traceFile, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8.execute', 'disabled-by-default-v8.cpu_profiler'] });
     const frames = await page.evaluate(() => new Promise(resolve => {
       const candidates = [document.scrollingElement, ...document.querySelectorAll('body *')].filter(el => el && el.scrollHeight > el.clientHeight + 80 && (el === document.scrollingElement || /(auto|scroll)/.test(getComputedStyle(el).overflowY)));
@@ -102,6 +126,7 @@ try {
         const t = performance.now(); times.push(t - last); last = t;
         y += dir * 120;
         if (y >= range) dir = -1;
+        scroller.dispatchEvent(new WheelEvent('wheel', { deltaY: dir * 120, bubbles: true }));
         scroller.scrollTop = Math.max(0, Math.min(y, range));
         if (dir < 0 && y <= 0) { times.sort((a, b) => a - b); resolve({ n: times.length, p50: times[Math.floor(times.length / 2)], p95: times[Math.floor(times.length * 0.95)] }); return; }
         requestAnimationFrame(step);
@@ -111,6 +136,7 @@ try {
     await page.tracing.stop();
     console.log('frames', frames);
   }
+  if (ACTION !== 'mutations') {
   const trace = JSON.parse(fs.readFileSync(traceFile, 'utf8'));
   const events = trace.traceEvents || trace;
   const main = events.find(e => e.name === 'thread_name' && e.args?.name === 'CrRendererMain');
@@ -140,11 +166,12 @@ try {
   for (const [id, count] of counts) {
     const frame = nodes.get(id);
     if (!frame || /^\((idle|program|garbage collector|root)\)$/.test(frame.functionName)) continue;
-    const key = `${frame.functionName || '(anónima)'} ${String(frame.url || '').split('/').pop()}:${frame.lineNumber}`;
+    const key = `${frame.functionName || '(anónima)'} ${String(frame.url || '').split('/').pop()}:${frame.lineNumber}:${frame.columnNumber}`;
     byFn.set(key, (byFn.get(key) || 0) + count);
   }
   console.log('\nFunciones con más muestras:');
   for (const [name, count] of [...byFn.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15)) console.log(`  ${String(count).padStart(6)}  ${name}`);
+  }
 } finally {
   await browser.close();
   child.kill();

@@ -440,8 +440,12 @@ function instrument(site, release) {
     let inMain = false;
     for (const record of records) {
       if (record.type === 'characterData' && digitsOnly(record.oldValue, record.target.data)) continue;
-      relevant = true;
       const element = record.target.nodeType === 1 ? record.target : record.target.parentElement;
+      // <head>: los <link> que agrega la precarga de chunks (modulepreload y el
+      // CSS de cada pantalla) no se ven; contarlos estiraba "pantalla quieta"
+      // hasta que terminaba de precargar todo.
+      if (record.target === document.head || (element && element.closest && element.closest('head'))) continue;
+      relevant = true;
       if (element && element.closest && element.closest('main,[role="main"]')) inMain = true;
     }
     if (!relevant) return;
@@ -588,13 +592,18 @@ function instrument(site, release) {
     const frames = [];
     const ltBefore = B.longTasks.length;
     let last = await frame();
+    // Como la rueda: un evento `wheel` (que la app puede escuchar) y el scroll.
+    // El puntero queda donde lo dejó el último clic (en general, sobre la lista).
+    const wheel = deltaY => { try { scroller.dispatchEvent(new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true })); } catch { /* nada */ } };
     for (let y = step; y <= range + step && frames.length < maxFrames; y += step) {
+      wheel(step);
       scroller.scrollTop = Math.min(y, range);
       const t = await frame();
       frames.push(t - last);
       last = t;
     }
     for (let y = range - step; y >= -step && frames.length < maxFrames * 2; y -= step) {
+      wheel(-step);
       scroller.scrollTop = Math.max(y, 0);
       const t = await frame();
       frames.push(t - last);
