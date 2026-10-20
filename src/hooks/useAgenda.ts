@@ -19,17 +19,22 @@ export function useAgenda(operator: string) {
   const inFlight = useRef<{ site: string; promise: Promise<void> } | null>(null);
   const lastKey = useRef('');
   const lastSite = useRef('');
-  const refresh = useCallback(async () => {
+  const loaded = useRef<{ site: string; at: number } | null>(null);
+  /** `maxAgeMs`: si ya hay datos de esta sede más nuevos que eso, no pide de nuevo. */
+  const refresh = useCallback(async (options?: { maxAgeMs?: number }) => {
     const site = getActiveSiteCode();
     // "Ver anteriores" es de la sede donde se pidió: al cambiar de sede se vuelve
     // a traer solo lo reciente.
     if (lastSite.current && lastSite.current !== site) includeAll.current = false;
     lastSite.current = site;
     if (inFlight.current && inFlight.current.site === site) return inFlight.current.promise;
+    const maxAge = Number(options?.maxAgeMs) || 0;
+    if (maxAge && loaded.current?.site === site && Date.now() - loaded.current.at < maxAge) return;
     // Se pollea (App, cada 30 s): si no cambió nada no hay re-render.
     const promise: Promise<void> = getAgenda(includeAll.current)
       .then(data => {
         if (getActiveSiteCode() !== site) return;
+        loaded.current = { site, at: Date.now() };
         setOlderHidden(data.olderHidden || 0);
         const key = `${site}|${JSON.stringify(data.items)}`;
         if (key === lastKey.current) return;

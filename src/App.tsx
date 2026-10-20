@@ -280,11 +280,18 @@ export function App() {
   // Antes se disparaba en cada cambio de vista: un /api/devices?refresh=1 (que
   // fuerza el merge completo del inventario) + agenda + tareas + movimientos cada
   // vez que tocabas el menú. El auto-refresh ya mantiene todo fresco.
+  // Equipos: useDevices ya pide al cambiar de sede; acá se reusa ese pedido en
+  // vuelo. Antes iba con force y salían DOS /api/devices al arrancar (el
+  // segundo con ?refresh=1, que además salta la caché del server), y la
+  // respuesta del primero se tiraba.
   useEffect(() => {
     if (!user || !activeSite) return;
-    void refresh({ force: true });
-    void agenda.refresh();
-    void tasks.refresh();
+    void refresh();
+    // Agenda y tareas ya se pidieron al montar sus hooks (misma sede): si esa
+    // respuesta llegó hace menos de 5 s no se vuelven a bajar (antes salía un
+    // segundo GET /api/agenda de ~60 KB en cada arranque, según el timing).
+    void agenda.refresh({ maxAgeMs: 5000 });
+    void tasks.refresh({ maxAgeMs: 5000 });
     void refreshMovements(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSite, user?.id]);

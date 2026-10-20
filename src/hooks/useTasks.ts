@@ -34,15 +34,20 @@ export function useTasks(operator: string) {
       .then(r => { if (r.ok && getActiveSiteCode() === site) setShifts(r.settings); })
       .catch(() => { if (shiftsSite.current === site) shiftsSite.current = ''; });
   }, []);
-  const refresh = useCallback(async () => {
+  const lastLoad = useRef<{ site: string; at: number } | null>(null);
+  /** `maxAgeMs`: si ya hay datos de esta sede más nuevos que eso, no pide de nuevo. */
+  const refresh = useCallback(async (options?: { maxAgeMs?: number }) => {
     const site = getActiveSiteCode();
     loadShifts(site);
     if (inFlight.current && inFlight.current.site === site) return inFlight.current.promise;
+    const maxAge = Number(options?.maxAgeMs) || 0;
+    if (maxAge && lastLoad.current?.site === site && Date.now() - lastLoad.current.at < maxAge) return;
     const startedAt = epoch.current;
     // Se pollea (App, cada 30 s): si no cambió nada no hay re-render.
     const promise: Promise<void> = getTasks()
       .then(data => {
         if (getActiveSiteCode() !== site) return;
+        lastLoad.current = { site, at: Date.now() };
         setLoadedSite(site);
         if (pending.current > 0 || epoch.current !== startedAt) return;
         const key = `${site}|${JSON.stringify(data.items)}`;
