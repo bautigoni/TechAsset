@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { fetchToolsConfig } from '../../services/toolsApi';
 import { fetchQuickLinks } from '../../services/operationsApi';
 import type { QuickLink } from '../../types';
-import { errorMessage, toast } from '../layout/Feedback';
+import { errorMessage } from '../layout/Feedback';
+import { pushStatus } from '../../ui/Status';
 
 /** Aviso entre la página de Accesos rápidos y el rayo / Ctrl K del shell: algo cambió, recargá. */
 export const QUICK_LINKS_CHANGED = 'techasset:quick-links-changed';
@@ -17,7 +18,10 @@ export const QUICK_LINKS_CHANGED = 'techasset:quick-links-changed';
 export function useQuickLinks(reloadKey = '') {
   const [links, setLinks] = useState<QuickLink[]>([]);
   const [handingUrl, setHandingUrl] = useState('');
-  const reload = () => fetchQuickLinks().then(r => { if (r.ok) setLinks(r.items); }).catch(reason => toast({ message: errorMessage(reason, 'No se pudo cargar los accesos rápidos.'), tone: 'error' }));
+  // El error va a la línea de estado de la cabecera (antes, un toast flotante), con Reintentar.
+  const reload = (): Promise<void> => fetchQuickLinks()
+    .then(r => { if (r.ok) setLinks(r.items); })
+    .catch(reason => { pushStatus({ tone: 'bad', message: errorMessage(reason, 'No se pudieron cargar los accesos rápidos.'), retry: { onRetry: reload } }); });
   useEffect(() => {
     void reload();
     fetchToolsConfig().then(c => setHandingUrl(c.handingTicketUrl || '')).catch(() => {});

@@ -4,9 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>TechAsset</title>
+    <meta name="description" content="Gestión TIC del colegio: préstamos, equipos, agenda, aulas, tareas y tickets." />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="shortcut icon" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#0D0F12" />
     <!--
@@ -27,7 +28,6 @@
           if (t === 'system') t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
           t = t === 'light' ? 'light' : 'dark';
           d.setAttribute('data-theme', t);
-          d.setAttribute('data-theme-profile', 'classic');
           if (t === 'light') d.classList.add('theme-light');
           var n = s.getItem('techasset_density');
           if (n === 'compact') d.setAttribute('data-density', n);

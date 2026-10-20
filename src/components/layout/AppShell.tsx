@@ -273,8 +273,6 @@ export function AppShell(props: AppShellProps) {
         return;
       }
       if (event.key !== 'Escape' || event.defaultPrevented) return;
-      // Un diálogo viejo abierto se cierra solo (useDialogFocus); no competimos.
-      if (document.querySelector('.modal, .release-modal-overlay')) return;
       if (strip) { event.preventDefault(); closeStrip(true); return; }
       if (assistantOpen) { event.preventDefault(); setAssistantOpen(false); return; }
       if (moreOpen) { event.preventDefault(); setMoreOpen(false); }

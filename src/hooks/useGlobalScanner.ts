@@ -13,8 +13,8 @@ import { parseScannedCode } from '../utils/normalizeSearch';
  *     es de AVG_MS o menos;
  *   - se procesa con Enter (que entonces no hace nada más) o a los IDLE_MS
  *     sin teclas.
- * Nunca escucha dentro de un campo editable, de un diálogo (.modal,
- * role=dialog), de un formulario ni de un contenedor con [data-scanner-ignore]
+ * Nunca escucha dentro de un campo editable, de un role=dialog, de un
+ * formulario ni de un contenedor con [data-scanner-ignore]
  * (franjas de la barra superior, Ctrl K, asistente, formularios en línea).
  */
 const GAP_MS = 80;
@@ -22,7 +22,7 @@ const AVG_MS = 50;
 const MIN_CHARS = 4;
 const IDLE_MS = 120;
 
-export const SCANNER_IGNORE_SELECTOR = 'form, .modal, [role="dialog"], [data-scanner-ignore]';
+export const SCANNER_IGNORE_SELECTOR = 'form, [role="dialog"], [data-scanner-ignore]';
 
 export function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;

@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -26,8 +29,33 @@ function preloadGeist(): Plugin {
   };
 }
 
+/**
+ * Versión del service worker: public/sw.js trae `__BUILD_ID__` y acá se
+ * reemplaza por un hash de los nombres del bundle (cambian con cualquier cambio
+ * de código). Así cada deploy publica un sw.js distinto: el navegador instala
+ * el nuevo, la app avisa "Hay una versión nueva · Actualizar" y el caché viejo
+ * se borra al activarse.
+ */
+function swVersion(): Plugin {
+  let outDir = 'dist';
+  let buildId = '';
+  return {
+    name: 'techasset:sw-version',
+    apply: 'build',
+    configResolved(config) { outDir = path.resolve(config.root, config.build.outDir); },
+    generateBundle(_options, bundle) {
+      buildId = createHash('sha256').update(Object.keys(bundle).sort().join('|')).digest('hex').slice(0, 12);
+    },
+    closeBundle() {
+      const file = path.join(outDir, 'sw.js');
+      if (!buildId || !fs.existsSync(file)) return;
+      fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(/__BUILD_ID__/g, buildId));
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), preloadGeist()],
+  plugins: [react(), preloadGeist(), swVersion()],
   server: {
     port: 5173,
     proxy: {

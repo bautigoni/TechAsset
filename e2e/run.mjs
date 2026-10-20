@@ -30,6 +30,8 @@ import { classroomsTests } from './tests/classrooms.mjs';
 import { knowledgeCanvasTests } from './tests/knowledgeCanvas.mjs';
 import { toolsTests } from './tests/tools.mjs';
 import { settingsTests } from './tests/settings.mjs';
+import { authTests } from './tests/auth.mjs';
+import { pwaTests } from './tests/pwa.mjs';
 import { shellTests } from './tests/shell.mjs';
 import { inicioTests } from './tests/inicio.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
@@ -118,7 +120,7 @@ try {
     args: ['--no-first-run', '--disable-extensions', '--no-default-browser-check', '--window-size=1440,900']
   });
   timings.browser = Date.now() - t;
-  const ctx = { browser, base: server.base, api, apiConsulta, admin: env.admin, consulta: env.consulta, releaseVersion, blockedTag: env.blockedTag, test, track };
+  const ctx = { browser, base: server.base, api, apiConsulta, admin: env.admin, consulta: env.consulta, releaseVersion, blockedTag: env.blockedTag, test, track, mailFile: server.mailFile };
 
   console.log('\nFuncionales (a–h)');
   t = Date.now();
@@ -134,6 +136,10 @@ try {
   await knowledgeCanvasTests(ctx);
   await toolsTests(ctx);
   await settingsTests(ctx);
+  console.log('\nLogin, registro y sesión (lg)');
+  await authTests(ctx);
+  console.log('\nPWA: instalable, sin conexión y versión nueva (pwa)');
+  await pwaTests(ctx);
   await shellTests(ctx);
   await analyticsTests(ctx);
   console.log('\nOperación: plegables, huecos, truncados y acciones (op)');

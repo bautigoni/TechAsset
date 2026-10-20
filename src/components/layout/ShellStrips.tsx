@@ -1,7 +1,8 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
-import { Bell, Check, ExternalLink, LogOut, X, Zap } from 'lucide-react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { Bell, Check, Download, ExternalLink, LogOut, RefreshCw, X, Zap } from 'lucide-react';
 import type { AuthUser, QuickLink, SiteInfo } from '../../types';
-import type { AppNotification } from '../../services/notificationsApi';
+import { getLatestRelease, type AppNotification } from '../../services/notificationsApi';
+import { applyUpdate, dismissInstall, promptInstall, usePwaState } from '../../services/pwa';
 import { setAppearance, useAppearance, type ThemePref } from '../../utils/theme';
 import { Button } from '../../ui/Button';
 import { TruncatedText } from '../../ui/Truncated';
@@ -255,10 +256,126 @@ export function ShellStatus() {
   if (item && item !== shown) setShown(item);
   const current = item || shown;
   return (
-    <StripCollapse open={Boolean(item)}>
-      {current && <OutletLine item={current} />}
+    <>
+      <ReleaseStrip />
+      <PwaLines />
+      <StripCollapse open={Boolean(item)}>
+        {current && <OutletLine item={current} />}
+      </StripCollapse>
+    </>
+  );
+}
+
+/* ── App instalada: sin conexión, versión nueva, instalar ─────────────── */
+
+/**
+ * Avisos de la app (src/services/pwa.ts) como líneas fijas de la cabecera: no
+ * los pisa un pushStatus de una acción y se van solos cuando dejan de valer.
+ */
+function PwaLines() {
+  const { offline, updateReady, updating, installable } = usePwaState();
+  return (
+    <>
+      <StripCollapse open={offline}>
+        <StatusLine tone="offline" className="shell-status shell-status--offline" autoHideMs={0} message="Sin conexión. Lo que ves puede no estar al día y no se puede guardar nada hasta que vuelva." />
+      </StripCollapse>
+      <StripCollapse open={updateReady}>
+        <div className="ui-status ui-status--info shell-status shell-status--update" role="status">
+          <span className="ui-status-icon" aria-hidden="true"><RefreshCw size={14} strokeWidth={1.6} /></span>
+          <span className="ui-status-msg">Hay una versión nueva de TechAsset.</span>
+          <span className="ui-status-actions">
+            <Button size="sm" variant="secondary" loading={updating} loadingLabel="Actualizando…" onClick={applyUpdate}>Actualizar</Button>
+          </span>
+        </div>
+      </StripCollapse>
+      <StripCollapse open={installable}>
+        <div className="ui-status ui-status--info shell-status shell-status--install" role="status">
+          <span className="ui-status-icon" aria-hidden="true"><Download size={14} strokeWidth={1.6} /></span>
+          <span className="ui-status-msg">Instalá TechAsset en tu celu: se abre como una app, sin el navegador.</span>
+          <span className="ui-status-actions">
+            <Button size="sm" variant="secondary" onClick={() => void promptInstall()}>Instalar</Button>
+            <Button size="sm" variant="ghost" onClick={dismissInstall}>Más tarde</Button>
+          </span>
+        </div>
+      </StripCollapse>
+    </>
+  );
+}
+
+/* ── Novedades (antes un modal): franja en línea la primera vez después de un release ── */
+
+const SEEN_RELEASE_KEY = 'techasset_last_seen_release';
+type Release = { version: string; title: string; bodyMd: string };
+
+function readSeenRelease() {
+  try { return localStorage.getItem(SEEN_RELEASE_KEY) || ''; } catch { return ''; }
+}
+
+function ReleaseStrip() {
+  const [release, setRelease] = useState<Release | null>(null);
+  const [shown, setShown] = useState<Release | null>(null);
+  if (release && release !== shown) setShown(release);
+
+  useEffect(() => {
+    let alive = true;
+    const load = (force: boolean) => {
+      getLatestRelease()
+        .then(response => {
+          if (!alive || !response.release) return;
+          if (!force && readSeenRelease() === response.release.version) return;
+          setRelease(response.release);
+        })
+        .catch(() => { /* sin releases: nada que mostrar */ });
+    };
+    load(false);
+    // La campana (notificación de release) la vuelve a abrir.
+    const open = () => load(true);
+    window.addEventListener('techasset:open-release-notes', open);
+    return () => { alive = false; window.removeEventListener('techasset:open-release-notes', open); };
+  }, []);
+
+  const close = () => {
+    if (release) {
+      try { localStorage.setItem(SEEN_RELEASE_KEY, release.version); } catch { /* sin storage */ }
+    }
+    setRelease(null);
+  };
+  const current = release || shown;
+  const version = current ? (current.version.startsWith('v') ? current.version : `v${current.version}`) : '';
+  return (
+    <StripCollapse open={Boolean(release)}>
+      {current && (
+        <Strip
+          id="shell-strip-release"
+          className="shell-release"
+          title={<>Novedades <span className="shell-strip-count">{version}</span></>}
+          actions={<Button size="sm" variant="secondary" onClick={close}>Listo</Button>}
+          onClose={close}
+        >
+          <h3 className="shell-release-title">{current.title}</h3>
+          <div className="shell-release-body">
+            {parseRelease(current.bodyMd).map((block, index) => (
+              block.type === 'heading' ? <h4 key={index}>{block.text}</h4>
+                : block.type === 'item' ? <p key={index} className="shell-release-item"><Check size={14} strokeWidth={1.8} aria-hidden="true" />{block.text}</p>
+                  : <p key={index}>{block.text}</p>
+            ))}
+          </div>
+        </Strip>
+      )}
     </StripCollapse>
   );
+}
+
+function parseRelease(markdown: string) {
+  return String(markdown || '').split('\n').map(line => line.trim()).filter(Boolean).map(line => {
+    const heading = line.match(/^#{1,6}\s+(.+)/);
+    const item = line.match(/^[-*+]\s+(.+)/);
+    const text = (heading?.[1] || item?.[1] || line)
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[(.*?)\]\([^)]*\)/g, '$1');
+    return { type: heading ? 'heading' : item ? 'item' : 'paragraph', text } as { type: 'heading' | 'item' | 'paragraph'; text: string };
+  });
 }
 
 function OutletLine({ item }: { item: NonNullable<ReturnType<typeof useStatusOutlet>> }) {

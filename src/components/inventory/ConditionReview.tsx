@@ -180,7 +180,7 @@ export function ConditionReview({ items, entriesByKey, consultationMode, onRateD
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
       const target = event.target as HTMLElement | null;
       if (isEditableTarget(target)) return;
-      if (target?.closest?.('form, .modal, [role="dialog"]')) return;
+      if (target?.closest?.('form, [role="dialog"]')) return;
       if (event.key === 'Escape') { event.preventDefault(); exit(); return; }
       if (loading || !current) return;
       const position = ['1', '2', '3', '4'].indexOf(event.key);

@@ -1,16 +1,21 @@
 {
+  "id": "/",
   "name": "TechAsset",
   "short_name": "TechAsset",
-  "description": "Gestión tecnológica escolar: dispositivos, préstamos, agenda, tareas y tickets.",
+  "description": "Gestión TIC del colegio: préstamos, equipos, agenda, aulas, tareas y tickets.",
+  "lang": "es-AR",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "theme_color": "#0D0F12",
   "background_color": "#0D0F12",
+  "categories": ["education", "productivity"],
   "icons": [
-    { "src": "/techasset-logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
-    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/techasset-logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

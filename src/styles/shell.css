@@ -462,6 +462,14 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 .shell-status { margin: var(--g-s-2) var(--g-s-5) var(--g-s-2) var(--g-s-4); }
 .shell[data-nav="none"] .shell-status { margin: var(--g-s-2) var(--g-s-3); }
 
+/* Novedades de un release (antes un modal): franja con el título y la lista. */
+.shell-release-title { margin: 0 0 var(--g-s-2); font-size: var(--g-fs-md); font-weight: var(--g-fw-semibold); }
+.shell-release-body { display: flex; flex-direction: column; gap: var(--g-s-1); max-width: 760px; font-size: var(--g-fs-sm); line-height: 1.5; color: var(--g-text-2); }
+.shell-release-body h4 { margin: var(--g-s-2) 0 0; font-size: var(--g-fs-sm); font-weight: var(--g-fw-semibold); color: var(--g-text); }
+.shell-release-body p { margin: 0; }
+.shell-release-item { display: flex; gap: var(--g-s-2); align-items: baseline; }
+.shell-release-item svg { flex: none; color: var(--g-ok); transform: translateY(2px); }
+
 .shell-main { min-width: 0; }
 .shell-view[hidden] { display: none; }
 
@@ -824,9 +832,6 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
 .shell-more-row:disabled { opacity: 1; cursor: default; }
 .shell-more-row.is-user { padding: 0; }
 .shell-more-user { flex: 1; cursor: pointer; }
-
-/* Lo fijo de abajo (instalar la app) se corre arriba de la barra inferior. */
-body.has-tabbar .install-banner { bottom: calc(72px + env(safe-area-inset-bottom)); }
 
 @media (prefers-reduced-motion: reduce) {
   .shell-icon-btn, .shell-nav-item, .shell-assistant-btn { transition: none; }

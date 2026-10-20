@@ -1,85 +1,123 @@
-/* TechAsset service worker - shell cache + estrategia por tipo de request. */
-const CACHE = 'techasset-shell-v5';
-const SHELL = ['/manifest.webmanifest', '/favicon.png', '/techasset-logo.svg'];
+/* TechAsset service worker.
+ *
+ * Versión: `__BUILD_ID__` lo reemplaza el build (vite.config.ts, plugin
+ * techasset:sw-version) por un hash del bundle. Cada deploy cambia sw.js, el
+ * navegador instala el nuevo y la app avisa "Hay una versión nueva · Actualizar"
+ * (con la app abierta no se activa solo: el cambio de código a mitad de un
+ * préstamo no lo decide el SW). Al activarse borra los cachés de versiones viejas.
+ *
+ * Estrategias:
+ *  - navegación: red primero y sin caché HTTP (siempre el index.html del último
+ *    deploy, que apunta a los /assets nuevos); sin red, el shell guardado.
+ *  - /assets/* (nombres con hash): caché primero; un deploy cambia los nombres,
+ *    así que nunca se sirve CSS/JS viejo para un index nuevo.
+ *  - /api/*, /uploads/*, /downloads/*: no pasan por el SW (siempre red, sin
+ *    datos viejos ni archivos guardados en el dispositivo).
+ *  - resto (manifest, íconos, logos): red primero, caché si no hay red.
+ */
+const VERSION = '__BUILD_ID__';
+const CACHE = `techasset-${VERSION}`;
+// Rutas de la app (el mismo index.html). Las páginas que arma el server (el
+// calendario público, por ejemplo) no se guardan como shell.
+const SPA_ROUTE = /^\/(login|register|sede\/.*)?$/i;
+const BYPASS = /^\/(api|uploads|downloads)\//;
+const SHELL = ['/manifest.webmanifest', '/favicon.png', '/techasset-logo.svg', '/icons/icon-192.png', '/icons/badge-96.png'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    // El shell para abrir sin conexión: index.html y lo que carga al arrancar
+    // (JS y CSS de entrada, la fuente precargada), leído del propio index.
+    try {
+      const response = await fetch('/', { cache: 'no-store' });
+      if (response.ok) {
+        const html = await response.clone().text();
+        await cache.put('/', response);
+        const assets = [...new Set([...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]))];
+        await cache.addAll(assets);
+      }
+      await cache.addAll(SHELL);
+    } catch {
+      // Sin red al instalar: el shell se completa con lo que se vaya pidiendo.
+    }
+    // Primera instalación (todavía no hay un SW activo): tomar el control ya.
+    // Una actualización espera a que la app pida SKIP_WAITING ("Actualizar").
+    if (!self.registration.active) await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE && key.startsWith('techasset-')).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: 'window' }))
-      .then((clients) => clients.forEach((client) => client.postMessage({ type: 'TECHASSET_SW_READY' })))
   );
 });
+
+const offlinePage = () => new Response(
+  '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TechAsset</title>'
+  + '<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0D0F12;color:#ECEEF1;font:15px system-ui,sans-serif">'
+  + '<p>Sin conexión. TechAsset se abre cuando vuelva internet.</p></body></html>',
+  { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+);
+
+const remember = (key, response) => {
+  if (!response || !response.ok) return;
+  const copy = response.clone();
+  caches.open(CACHE).then((cache) => cache.put(key, copy)).catch(() => undefined);
+};
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin || BYPASS.test(url.pathname)) return;
 
-  // API: network-first (datos siempre frescos; sin cache offline para no servir viejo).
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(fetch(request).catch(() => caches.match(request)));
-    return;
-  }
-
-  // Navegación (SPA): red primero y sin HTTP cache, así nunca queda pegado un bundle viejo.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request, { cache: 'no-store' }).then((response) => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put('/index.html', copy));
-        }
-        return response;
-      }).catch(() => caches.match('/index.html'))
+      fetch(request, { cache: 'no-store' })
+        .then((response) => {
+          if (SPA_ROUTE.test(url.pathname)) remember('/', response);
+          return response;
+        })
+        .catch(() => caches.match('/').then((cached) => cached || offlinePage()))
     );
     return;
   }
 
-  // Assets versionados por Vite: cache-first. El nombre hash cambia con cada build.
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const network = fetch(request).then((response) => {
-          if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        }).catch(() => cached);
-        return cached || network;
-      })
+      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+        remember(request, response);
+        return response;
+      }))
     );
     return;
   }
 
-  // Resto de estáticos: network-first para que sw.js, manifest e íconos no queden congelados.
   event.respondWith(
-    fetch(request, { cache: 'no-store' }).then((response) => {
-      if (response && response.status === 200) {
-        const copy = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(request, copy));
-      }
-      return response;
-    }).catch(() => caches.match(request))
+    fetch(request, { cache: 'no-store' })
+      .then((response) => {
+        remember(request, response);
+        return response;
+      })
+      .catch(() => caches.match(request).then((cached) => cached || Response.error()))
   );
 });
 
-// Push: notificaciones (sección F). Cae bien aunque no haya VAPID configurado.
+// Push: notificaciones. Cae bien aunque no haya VAPID configurado.
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
   const title = data.title || 'TechAsset';
   const options = {
     body: data.body || '',
-    icon: '/favicon.png',
-    badge: '/favicon.png',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/badge-96.png',
     data: { link: data.link || '/' }
   };
   event.waitUntil(self.registration.showNotification(title, options));
