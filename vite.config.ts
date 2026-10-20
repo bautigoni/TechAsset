@@ -58,6 +58,12 @@ export default defineConfig({
   plugins: [react(), preloadGeist(), swVersion()],
   server: {
     port: 5173,
+    // Los worktrees de los agentes (.claude/worktrees), la base y las salidas de
+    // los bancos no son código de la app: vigilarlos dejaba al dev server
+    // gastando ~2 núcleos todo el tiempo.
+    watch: {
+      ignored: ['**/.claude/**', '**/data/**', '**/e2e/.out/**', '**/perf/.out/**', '**/docs/**', '**/backups/**']
+    },
     proxy: {
       '/api': 'http://127.0.0.1:8000',
       '/uploads': 'http://127.0.0.1:8000',
