@@ -18,9 +18,6 @@ export interface AssistantResponse {
 }
 
 export interface AssistantContext { type:string; id?:string; label?:string; data?:Record<string,unknown>; view?:string }
-export function sendAssistantMessage(messages: Array<{ role: string; content: string }>, context?:AssistantContext|null) {
-  return apiSend<AssistantResponse>('/api/asistente/chat', 'POST', { messages, context });
-}
 
 /** Deshace una acción del asistente (mismos permisos que la acción original). */
 export function undoAssistantAction(actionId: number) {

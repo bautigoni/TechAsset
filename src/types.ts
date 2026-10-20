@@ -57,17 +57,6 @@ export interface ClassroomHistoryEntry {
   observacion: string;
 }
 
-export interface ClassroomSummary {
-  total: number;
-  ok: number;
-  observaciones: number;
-  problema: number;
-  sinRevisar: number;
-  proyectorFalla: number;
-  nucFalla: number;
-  monitorFalla: number;
-}
-
 export type DeviceState = 'Disponible' | 'Prestado' | 'No encontrada' | 'Fuera de servicio';
 export type DeviceType = string;
 export type Operator = string;

@@ -38,19 +38,6 @@ agendaRouter.get('/agenda', (_req, res) => {
   sendWithEtag(_req, res, { ok: true, items, olderHidden, loadedAt: nowIso() }, { items, olderHidden });
 });
 
-agendaRouter.get('/agenda/today', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY turno, desde').all(requireSite(_req));
-  res.json({ ok: true, items: rows.map(rowToAgenda), loadedAt: nowIso() });
-});
-
-// Solo ids numéricos: sin la restricción, esta ruta se tragaba /agenda/history y
-// /agenda/export.csv (declaradas más abajo) y respondía "Actividad no encontrada".
-agendaRouter.get('/agenda/:id(\\d+)', (req, res) => {
-  const row = getDb().prepare('SELECT * FROM agenda WHERE id=? AND eliminada=0 AND site_code=?').get(req.params.id, requireSite(req));
-  if (!row) return res.status(404).json({ ok: false, error: 'Actividad no encontrada.' });
-  res.json({ ok: true, item: rowToAgenda(row) });
-});
-
 agendaRouter.post('/agenda', (req, res) => {
   const db = getDb();
   const siteCode = requireSite(req);
@@ -104,11 +91,6 @@ agendaRouter.patch('/agenda/:id', (req, res) => {
   res.json({ ok: true, item: rowToAgenda(db.prepare('SELECT * FROM agenda WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
-agendaRouter.put('/agenda/:id', (req, res) => {
-  req.method = 'PATCH';
-  agendaRouter.handle(req, res);
-});
-
 agendaRouter.delete('/agenda/:id', (req, res) => {
   const db = getDb();
   const siteCode = requireSite(req);
@@ -150,11 +132,6 @@ agendaRouter.get('/agenda/history', (_req, res) => {
     WHERE h.site_code=? ORDER BY h.id DESC LIMIT ${limit}
   `).all(requireSite(_req));
   res.json({ ok: true, items: rows });
-});
-
-agendaRouter.get('/agenda/export.csv', (_req, res) => {
-  const rows = getDb().prepare('SELECT * FROM agenda WHERE eliminada=0 AND site_code=? ORDER BY dia, desde').all(requireSite(_req));
-  res.type('text/csv').send(toCsv(rows));
 });
 
 function normalizeAgendaPayload(raw) {
@@ -235,8 +212,3 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
   return minutes(aStart) < minutes(bEnd) && minutes(bStart) < minutes(aEnd);
 }
 
-function toCsv(rows) {
-  if (!rows.length) return '';
-  const headers = Object.keys(rows[0]);
-  return [headers.join(','), ...rows.map(row => headers.map(key => `"${String(row[key] ?? '').replaceAll('"', '""')}"`).join(','))].join('\n');
-}

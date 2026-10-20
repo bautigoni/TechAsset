@@ -43,10 +43,6 @@ export function formatDate(value: string | number | Date | null | undefined, opt
   return dateFormatter(options).format(date);
 }
 
-export function formatDateTime(value?: string): string {
-  return formatDate(value, DATE_TIME);
-}
-
 const LOAN_DATE_TIME: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
 
 export function formatLoanDateTime(value?: string): string {
@@ -139,26 +135,6 @@ export function loanAgeDays(value?: string): number {
   const loanDay = Date.parse(`${localDayKey(date)}T00:00:00Z`);
   const today = todayStart();
   return Math.max(0, Math.round((today - loanDay) / 86400000));
-}
-
-export function loanAgeLabel(value?: string): string {
-  const days = loanAgeDays(value);
-  if (!value) return '';
-  if (days <= 0) return 'Hoy';
-  if (days === 1) return '1 dia';
-  return `${days} dias`;
-}
-
-export function loanAgeTone(value?: string): 'fresh' | 'warning' | 'danger' {
-  const days = loanAgeDays(value);
-  if (days >= 2) return 'danger';
-  if (days >= 1) return 'warning';
-  return 'fresh';
-}
-
-export function todayNameEs(date = new Date()): string {
-  const map = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-  return map[weekdayOfKey(dayKeyAr(date) || todayKeyAr())];
 }
 
 export function csvCell(value: unknown): string {

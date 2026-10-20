@@ -213,14 +213,13 @@ export function requireEditor(req, res, next) {
 // rol con algún permiso de edición (un "Profesor" podía borrar dispositivos).
 const MODULE_BY_WRITE_PREFIX = [
   [/^\/(devices|device-groups|lifecycle)\b/, 'devices'],
-  [/^\/(loans|prestamos|devoluciones|photo-passes)\b/, 'loans'],
+  [/^\/(loans|photo-passes)\b/, 'loans'],
   [/^\/inventory\b/, 'inventory'],
   [/^\/agenda\b/, 'agenda'],
   [/^\/(classrooms|classroom-categories)\b/, 'classrooms'],
-  // /tasks y /task-columns: tareas, subtareas, comentarios y columnas. Antes solo
-  // estaban /tareas (legacy) e /internal-notes y cualquier rol con algún permiso
-  // de edición podía crear, editar o borrar tareas.
-  [/^\/(internal-notes|tareas|tasks|task-columns)\b/, 'tasks'],
+  // /tasks y /task-columns: tareas, subtareas, comentarios y columnas; las
+  // notas del día (/internal-notes) cuentan como tareas.
+  [/^\/(internal-notes|tasks|task-columns)\b/, 'tasks'],
   [/^\/(teacher-schedules|recess-schedules)\b/, 'schedules'],
   [/^\/quick-links\b/, 'quickaccess'],
   [/^\/tools\b/, 'tools']
@@ -325,34 +324,5 @@ export function upsertLoginUser(allowed, profile = {}) {
     ts
   ));
   return user;
-}
-
-export function createRegisteredUser(profile = {}) {
-  const db = getDb();
-  const ts = nowIso();
-  const email = normalizeEmail(profile.email);
-  const siteCode = normalizeSiteCode(profile.siteCode);
-  const allowedRoles = new Set(['Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Consulta', 'Otro']);
-  const requestedRole = allowedRoles.has(String(profile.role)) ? String(profile.role) : 'Consulta';
-  const turno = requestedRole.includes('mañana') ? 'Mañana' : requestedRole.includes('tarde') ? 'Tarde' : String(profile.turno || 'Sin turno');
-  const nombre = String(profile.nombre || email.split('@')[0]).trim();
-  if (!email || !email.includes('@')) throw new Error('Ingresá un mail válido.');
-  const site = db.prepare('SELECT site_code FROM sites WHERE site_code=? AND activo=1').get(siteCode);
-  if (!site) throw new Error('La sede seleccionada no está disponible.');
-
-  db.prepare(`
-    INSERT INTO allowed_users (email, nombre, default_role, can_choose_role, status, activo, deleted_at, deleted_by, created_at, updated_at)
-    VALUES (?, ?, ?, 0, 'Pendiente', 0, '', '', ?, ?)
-    ON CONFLICT(email) DO UPDATE SET nombre=excluded.nombre, default_role=excluded.default_role, status='Pendiente', activo=0, deleted_at='', deleted_by='', updated_at=excluded.updated_at
-  `).run(email, nombre, requestedRole, ts, ts);
-  const allowed = db.prepare('SELECT * FROM allowed_users WHERE lower(email)=?').get(email);
-  db.prepare('UPDATE allowed_user_sites SET activo=0, updated_at=? WHERE allowed_user_id=?').run(ts, allowed.id);
-  db.prepare(`
-    INSERT INTO allowed_user_sites (allowed_user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at)
-    VALUES (?, ?, ?, ?, 1, 1, ?, ?)
-    ON CONFLICT(allowed_user_id, site_code) DO UPDATE SET site_role=excluded.site_role, turno=excluded.turno, is_default=1, activo=1, updated_at=excluded.updated_at
-  `).run(allowed.id, siteCode, requestedRole, turno, ts, ts);
-
-  return allowed;
 }
 

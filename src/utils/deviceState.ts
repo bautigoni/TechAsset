@@ -38,6 +38,3 @@ export function getDeviceStateKey(device: Pick<Device, 'estado'>): DeviceStateKe
   return 'out';
 }
 
-export function isDeviceState(device: Pick<Device, 'estado'>, key: DeviceStateKey) {
-  return getDeviceStateKey(device) === key;
-}

@@ -1,4 +1,4 @@
-import { createContext, useId, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useId, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Button, Checkbox, Segmented, Select } from '../../ui';
 import { IconCheck } from '../../ui/icons';
 import { cx } from '../../ui/util';

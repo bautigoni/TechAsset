@@ -11,8 +11,6 @@ import { InlineConfirm, StatusLine } from '../../ui/Inline';
 import { TruncatedText } from '../../ui/Truncated';
 import './assistant.css';
 
-export const ASSISTANT_LOGO = '/assistant-logo.png';
-
 type PendingConfirmation = NonNullable<AssistantResponse['pendingConfirmation']>;
 
 interface ChatMessage {

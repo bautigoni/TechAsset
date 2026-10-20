@@ -251,24 +251,6 @@ function parseJsonArray(value) {
   try { const parsed = JSON.parse(String(value || '[]')); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []; } catch { return []; }
 }
 
-devicesRouter.get('/devices/state', async (_req, res, next) => {
-  try {
-    const { items, source } = await getMergedDevices({ siteCode: requireSite(_req) });
-    res.json({ ok: true, rows: items.map(item => ({
-      etiqueta: item.etiqueta,
-      estado: item.estado,
-      prestadoA: item.prestadoA,
-      rol: item.rol,
-      ubicacion: item.ubicacion,
-      motivo: item.motivo,
-      loanedAt: item.loanedAt,
-      returnedAt: item.returnedAt
-    })), source });
-  } catch (error) {
-    next(error);
-  }
-});
-
 devicesRouter.post('/devices/import', async (req, res, next) => {
   try {
     const siteCode = requireSite(req);

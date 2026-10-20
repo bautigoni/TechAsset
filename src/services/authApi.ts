@@ -15,9 +15,6 @@ export const getAuthSession = () => apiGet<AuthSession>('/api/auth/session');
 export const login = (payload: { email: string; password?: string; nombre?: string; role?: string; turno?: string; siteCode?: string; siteCodes?: string[] }) =>
   apiSend<AuthSession>('/api/auth/login', 'POST', payload);
 
-export const getRegisterOptions = () =>
-  apiGet<{ ok: true; requiresCode: boolean }>('/api/auth/register-options');
-
 export const requestPasswordLink = (email: string) =>
   apiSend<{ ok: true; message: string }>('/api/auth/password/request', 'POST', { email });
 export const confirmPasswordLink = (token: string, password: string) =>
@@ -87,8 +84,6 @@ export type AllowedUserItem = {
   status?: 'Pendiente' | 'Activo' | 'Rechazado' | 'Inactivo';
   sites: Array<{ siteCode: string; siteRole?: string; turno?: string; isDefault?: boolean; activo?: boolean }>;
 };
-
-export const getAllowedUsers = () => apiGet<{ ok: true; items: AllowedUserItem[] }>('/api/allowed-users');
 
 export const getSiteAssistants = () => apiGet<{ ok: true; items: Array<{ name: string; email?: string; siteRole?: string; turno?: string }> }>('/api/site-assistants');
 

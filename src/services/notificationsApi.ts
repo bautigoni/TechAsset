@@ -37,9 +37,6 @@ export const getVapidPublicKey = () =>
 export const subscribePush = (subscription: PushSubscriptionJSON) =>
   apiSend<{ ok: true }>('/api/push/subscribe', 'POST', { subscription });
 
-export const sendReleaseBroadcast = (payload: { version: string; title: string; body: string }) =>
-  apiSend<{ ok: true; recipients: number; mailsSent: number }>('/api/admin/release-notes', 'POST', payload);
-
 export const getLatestRelease = () =>
   apiGet<{ ok: true; release: { version: string; title: string; bodyMd: string } | null }>('/api/release-notes/latest');
 

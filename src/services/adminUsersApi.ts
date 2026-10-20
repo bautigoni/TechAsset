@@ -1,4 +1,4 @@
-import { apiGet, apiSend } from './apiClient';
+import { apiGet } from './apiClient';
 
 export interface TenantUser {
   id: number;
@@ -49,6 +49,3 @@ export interface UsersByTenantResponse {
 
 export const getUsersByTenant = () => apiGet<UsersByTenantResponse>('/api/admin/users-by-tenant');
 
-export type AllowedUserAction = 'approve' | 'reject' | 'deactivate' | 'delete';
-export const runUserAction = (id: number, action: AllowedUserAction) =>
-  apiSend<{ ok: true }>(`/api/allowed-users/${id}/${action}`, 'POST');

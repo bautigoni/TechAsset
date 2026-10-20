@@ -1,9 +1,7 @@
-import type { Classroom, ClassroomCategory, ClassroomHistoryEntry, ClassroomIncident, ClassroomIncidentSummary, ClassroomSummary } from '../types';
+import type { Classroom, ClassroomCategory, ClassroomHistoryEntry, ClassroomIncident, ClassroomIncidentSummary } from '../types';
 import { apiGet, apiSend } from './apiClient';
 
 export const fetchClassrooms = () => apiGet<{ ok: true; items: Classroom[] }>('/api/classrooms');
-
-export const fetchClassroomSummary = () => apiGet<{ ok: true; summary: ClassroomSummary }>('/api/classrooms/summary');
 
 export const fetchClassroom = (roomKey: string, nombre?: string, piso = 'Planta baja'): Promise<{ ok: boolean; item: Classroom }> => {
   const params = new URLSearchParams();

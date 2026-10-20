@@ -8,8 +8,6 @@ export type ModuleKey =
 
 export type ModuleCategory = 'Operación' | 'Análisis' | 'Planificación' | 'Aulas y soporte' | 'Comunicaciones';
 
-export const MODULE_CATEGORIES: ModuleCategory[] = ['Operación', 'Análisis', 'Planificación', 'Aulas y soporte', 'Comunicaciones'];
-
 export interface ToggleableModule { key: ModuleKey; label: string; description: string; category: ModuleCategory; icon: string }
 
 export const TOGGLEABLE_MODULES: ToggleableModule[] = [
@@ -54,11 +52,6 @@ export function moduleOrder(settings?: Record<string, unknown> | null): ModuleKe
   const unique = Array.from(new Set(preferred)) as ModuleKey[];
   const missing = TOGGLEABLE_MODULES.map(mod => mod.key).filter(key => !unique.includes(key));
   return [...unique, ...missing];
-}
-
-export function orderedToggleableModules(settings?: Record<string, unknown> | null): ToggleableModule[] {
-  const byKey = new Map(TOGGLEABLE_MODULES.map(mod => [mod.key, mod]));
-  return moduleOrder(settings).map(key => byKey.get(key)).filter(Boolean) as ToggleableModule[];
 }
 
 export function isViewEnabled(view: ViewKey, settings?: Record<string, unknown> | null): boolean {

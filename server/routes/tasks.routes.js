@@ -34,19 +34,6 @@ tasksRouter.get('/tasks', (req, res) => {
   sendWithEtag(req, res, { ok: true, items: rows, loadedAt: nowIso(), space }, { items: rows, space });
 });
 
-tasksRouter.get('/tareas', (req, res) => {
-  req.url = '/tasks';
-  tasksRouter.handle(req, res);
-});
-
-tasksRouter.get('/tareas/:id', (req, res) => {
-  const row = getDb().prepare('SELECT * FROM tasks WHERE id=? AND eliminada=0 AND site_code=?').get(req.params.id, requireSite(req));
-  if (!row) return res.status(404).json({ ok: false, error: 'Tarea no encontrada.' });
-  const item = rowToTask(row);
-  if (!canSeeTask(item, String(req.user?.email || '').toLowerCase())) return res.status(404).json({ ok: false, error: 'Tarea no encontrada.' });
-  res.json({ ok: true, item });
-});
-
 tasksRouter.post('/tasks/upload', (req, res) => {
   const siteCode = requireSite(req);
   if (!canEditModule(req, 'tasks', siteCode)) return res.status(403).json({ ok: false, error: 'No tenés permiso para adjuntar archivos.' });
@@ -92,23 +79,6 @@ tasksRouter.post('/tasks', (req, res) => {
     }
   } catch { /* las notificaciones no deben bloquear la creación */ }
   res.json({ ok: true, item: rowToTask(db.prepare('SELECT * FROM tasks WHERE id=? AND site_code=?').get(id, siteCode)) });
-});
-
-tasksRouter.post('/tareas', (req, res) => {
-  req.url = '/tasks';
-  tasksRouter.handle(req, res);
-});
-
-tasksRouter.put('/tareas/:id', (req, res) => {
-  req.url = `/tasks/${req.params.id}`;
-  req.method = 'PATCH';
-  tasksRouter.handle(req, res);
-});
-
-tasksRouter.delete('/tareas/:id', (req, res) => {
-  req.url = `/tasks/${req.params.id}`;
-  req.method = 'DELETE';
-  tasksRouter.handle(req, res);
 });
 
 tasksRouter.patch('/tasks/:id', (req, res) => {
@@ -325,14 +295,6 @@ tasksRouter.post('/tasks/:id/comments', (req, res) => {
   res.json({ ok: true, item: rowToComment(getDb().prepare('SELECT * FROM task_comments WHERE id=?').get(info.lastInsertRowid)) });
 });
 
-tasksRouter.get('/tasks/:id/items', (req, res) => {
-  const siteCode = requireSite(req);
-  const task = getDb().prepare('SELECT * FROM tasks WHERE id=? AND site_code=? AND eliminada=0').get(req.params.id, siteCode);
-  if (!task || !canSeeTask(rowToTask(task), String(req.user?.email || '').toLowerCase())) return res.status(404).json({ ok: false, error: 'Tarea no encontrada.' });
-  const rows = getDb().prepare('SELECT * FROM task_items WHERE task_id=? AND site_code=? ORDER BY orden, id').all(req.params.id, siteCode);
-  res.json({ ok: true, items: rows.map(rowToTaskItem) });
-});
-
 tasksRouter.post('/tasks/:id/items', (req, res) => {
   const db = getDb();
   const siteCode = requireSite(req);
@@ -370,12 +332,6 @@ tasksRouter.delete('/tasks/:taskId/items/:itemId', (req, res) => {
   if (!task || !canSeeTask(rowToTask(task), String(req.user?.email || '').toLowerCase())) return res.status(404).json({ ok: false, error: 'Tarea no encontrada.' });
   const result = getDb().prepare('DELETE FROM task_items WHERE id=? AND task_id=? AND site_code=?').run(req.params.itemId, req.params.taskId, siteCode);
   res.json({ ok: true, deleted: result.changes > 0 });
-});
-
-tasksRouter.get('/tasks/export.csv', (_req, res) => {
-  const email = String(_req.user?.email || '').toLowerCase();
-  const rows = getDb().prepare('SELECT * FROM tasks WHERE eliminada=0 AND site_code=? ORDER BY fecha_creacion DESC').all(requireSite(_req)).filter(row => canSeeTask(rowToTask(row), email));
-  res.type('text/csv').send(toCsv(rows));
 });
 
 function normalizeTaskPayload(raw, siteCode) {
@@ -481,8 +437,3 @@ function normalizeTurno(value) {
   return ['Mañana', 'Tarde', 'Todo el día', 'Sin turno'].includes(raw) ? raw : 'Sin turno';
 }
 
-function toCsv(rows) {
-  if (!rows.length) return '';
-  const headers = Object.keys(rows[0]);
-  return [headers.join(','), ...rows.map(row => headers.map(key => `"${String(row[key] ?? '').replaceAll('"', '""')}"`).join(','))].join('\n');
-}

@@ -34,11 +34,6 @@ export function isEditor(role: string): boolean {
   return EDITOR_ROLES.has(clean(role));
 }
 
-/** Solo lectura: el rol no puede editar. */
-export function isReadOnlyRole(role: string): boolean {
-  return !isEditor(role);
-}
-
 export interface ModuleAccess {
   admin: boolean;
   view: Set<string>;

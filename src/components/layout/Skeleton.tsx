@@ -14,28 +14,6 @@ import type { CSSProperties } from 'react';
 // no como varios cuadrados parpadeando cada uno por su cuenta.
 const step = (index: number): CSSProperties => ({ animationDelay: `${index * 90}ms` });
 
-/** Bloque suelto, para meter dentro de una card o un modal. */
-export function SkeletonBlock({ height = 84, width, index = 0 }: { height?: number | string; width?: number | string; index?: number }) {
-  return <div className="t-skel-card" aria-hidden="true" style={{ height, width, ...step(index) }} />;
-}
-
-/** Renglón fino, para un subtítulo o un contador que todavía no llegó. */
-export function SkeletonLine({ width = '60%', height = 14, index = 0 }: { width?: number | string; height?: number | string; index?: number }) {
-  return <div className="t-skel-line" aria-hidden="true" style={{ width, height, ...step(index) }} />;
-}
-
-/** Encabezado + filas: sirve para listas, tablas y cuerpos de modal. */
-export function SkeletonPanel({ rows = 3, rowHeight = 64, head = true }: { rows?: number; rowHeight?: number; head?: boolean }) {
-  return (
-    <div className="t-skel-col" aria-hidden="true">
-      {head && <div className="t-skel-line t-skel-head" />}
-      {Array.from({ length: rows }, (_, index) => (
-        <div className="t-skel-card" key={index} style={{ height: rowHeight, ...step(index + 1) }} />
-      ))}
-    </div>
-  );
-}
-
 /** Página entera: título, subtítulo, fila de tarjetas y el cuerpo. */
 export function SkeletonView() {
   return (

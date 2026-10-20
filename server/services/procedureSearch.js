@@ -66,16 +66,6 @@ async function buildIndex() {
   return index;
 }
 
-export async function reindexProcedures() {
-  index = null;
-  return buildIndex();
-}
-
-export async function procedureStatus() {
-  const current = index || await buildIndex();
-  return current.status;
-}
-
 export async function searchProcedures(query, limit = 4) {
   const queryWords = new Set(words(query));
   if (!queryWords.size) return [];

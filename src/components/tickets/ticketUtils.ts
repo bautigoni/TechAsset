@@ -70,9 +70,7 @@ export function ticketAge(ticket: Pick<Ticket, 'createdAt' | 'estado'>) {
 }
 
 const SHORT: Intl.DateTimeFormatOptions = { timeZone: APP_TIME_ZONE, day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
-const DAY_ONLY: Intl.DateTimeFormatOptions = { timeZone: APP_TIME_ZONE, day: '2-digit', month: '2-digit', year: 'numeric' };
 export const shortDateTime = (value?: string) => formatDate(value, SHORT, '');
-export const dayOnly = (value?: string) => formatDate(value, DAY_ONLY, '');
 
 /** Búsqueda sin tildes por número, título, descripción, categoría, quién lo cargó y responsables. */
 export function ticketHaystack(ticket: Ticket) {

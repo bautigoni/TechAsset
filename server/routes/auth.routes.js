@@ -137,12 +137,6 @@ authRouter.post('/auth/password/confirm', (req, res) => {
   res.json({ ok: true, email: allowed?.email || '', message: 'Listo, ya podés entrar con tu nueva contraseña.' });
 });
 
-authRouter.get('/auth/register-options', (_req, res) => {
-  // Por seguridad multi-tenant ya NO exponemos la lista de sedes. El registro
-  // es por código de invitación que entrega un administrador.
-  res.json({ ok: true, requiresCode: true });
-});
-
 authRouter.post('/auth/register', (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);

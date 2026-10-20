@@ -49,13 +49,6 @@ operationsRouter.patch('/internal-notes/:id', (req, res) => {
   res.json({ ok: true, item: rowToNote(getDb().prepare('SELECT * FROM internal_notes WHERE id=? AND site_code=?').get(req.params.id, siteCode)) });
 });
 
-operationsRouter.delete('/internal-notes/:id', (req, res) => {
-  const ts = nowIso();
-  const operator = req.body?.operator || req.query.operator || '';
-  const result = getDb().prepare('UPDATE internal_notes SET visible=0, deleted_at=?, deleted_by=?, updated_at=? WHERE id=? AND site_code=?').run(ts, operator, ts, req.params.id, requireSite(req));
-  res.json({ ok: true, deleted: result.changes > 0 });
-});
-
 operationsRouter.get('/daily-closures', (_req, res) => {
   const rows = getDb().prepare('SELECT * FROM daily_closures WHERE site_code=? ORDER BY id DESC LIMIT 100').all(requireSite(_req));
   res.json({ ok: true, items: rows.map(rowToClosure) });

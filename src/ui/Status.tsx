@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Button } from './Button';
 import { IconAlert, IconCheck, IconInfo, IconRetry, IconUndo, IconWarn, IconWifiOff, IconX } from './icons';
 import { cx } from './util';

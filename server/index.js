@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'node:path';
 import { config } from './config.js';
+import { installCrashReporting, reportError } from './services/errorReporting.js';
 import { getDb } from './db.js';
 import { devicesRouter } from './routes/devices.routes.js';
 import { loansRouter } from './routes/loans.routes.js';
@@ -12,8 +13,6 @@ import { agendaRouter } from './routes/agenda.routes.js';
 import { tasksRouter } from './routes/tasks.routes.js';
 import { analyticsRouter } from './routes/analytics.routes.js';
 import { assistantRouter } from './routes/assistant.routes.js';
-import { prestamosRouter } from './routes/prestamos.routes.js';
-import { procedimientosRouter } from './routes/procedimientos.routes.js';
 import { healthRouter } from './routes/health.routes.js';
 import { classroomsRouter } from './routes/classrooms.routes.js';
 import { toolsRouter } from './routes/tools.routes.js';
@@ -43,6 +42,7 @@ import { authMiddleware, getUserSession, invalidateSessionCache, isSuperadmin, n
 getDb();
 startNotificationWorkers();
 
+installCrashReporting();
 const app = express();
 // Caddy corre en el mismo host (127.0.0.1): confiar en su X-Forwarded-For para
 // que req.ip sea el cliente real y no el proxy (lo usa el límite de intentos de login).
@@ -135,7 +135,7 @@ app.use('/api', canvasRouter);
 app.use('/api', requireEditor);
 // Cualquier escritura de equipos/préstamos invalida el inventario cacheado de
 // la sede, aunque la ruta no lo haga explícitamente (metadata, vida útil...).
-const INVENTORY_WRITE_PATHS = /^\/(devices|device-groups|lifecycle|loans|prestamos|devoluciones)\b/;
+const INVENTORY_WRITE_PATHS = /^\/(devices|device-groups|lifecycle|loans)\b/;
 app.use('/api', (req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD' && INVENTORY_WRITE_PATHS.test(req.path)) {
     res.on('finish', () => invalidateDeviceInventoryCache('write', req.siteCode));
@@ -154,8 +154,6 @@ app.use('/api', schedulesRouter);
 app.use('/api', pettyCashRouter);
 app.use('/api', tasksRouter);
 app.use('/api', assistantRouter);
-app.use('/api', prestamosRouter);
-app.use('/api', procedimientosRouter);
 app.use('/api', classroomsRouter);
 app.use('/api', toolsRouter);
 app.use('/api', operationsRouter);
@@ -189,8 +187,10 @@ app.get('*', (_req, res) => {
   });
 });
 
-app.use((error, _req, res, _next) => {
+app.use((error, req, res, _next) => {
   console.error(error);
+  // Sentry solo si hay SENTRY_DSN (sin cuerpo, cookies ni query: services/errorReporting.js).
+  reportError(error, { method: req.method, path: req.path });
   res.status(500).json({ ok: false, error: error.message || 'Error interno' });
 });
 

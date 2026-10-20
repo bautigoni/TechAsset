@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef } from 'react';
 
 /* ── Borradores en memoria ────────────────────────────────────────────────
    Lo que se estaba cargando en un formulario en línea sobrevive a salir de la
@@ -37,17 +37,3 @@ export function useKeepDraft<T>(key: string, value: T, dirty: boolean | (() => b
   }, [key]);
 }
 
-/**
- * `useState` que arranca desde el borrador guardado (si lo hay) y lo guarda al
- * salir mientras `isDirty(valor)`. Devuelve también si arrancó de un borrador.
- */
-export function useDraftState<T>(key: string, initial: T | (() => T), isDirty: (value: T) => boolean): [T, Dispatch<SetStateAction<T>>, boolean] {
-  const [restored] = useState(() => drafts.has(key));
-  const [value, setValue] = useState<T>(() => {
-    const saved = peekDraft<T>(key);
-    if (saved !== null) return saved;
-    return typeof initial === 'function' ? (initial as () => T)() : initial;
-  });
-  useKeepDraft(key, value, isDirty(value));
-  return [value, setValue, restored];
-}

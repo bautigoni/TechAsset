@@ -10,9 +10,6 @@ export const createInternalNote = (payload: Partial<InternalNote> & { operator: 
 export const updateInternalNote = (id: number, payload: Partial<InternalNote> & { operator?: string }) =>
   apiSend<{ ok: true; item: InternalNote }>(`/api/internal-notes/${id}`, 'PATCH', payload);
 
-export const deleteInternalNote = (id: number, operator: string) =>
-  apiSend<{ ok: true; deleted: boolean }>(`/api/internal-notes/${id}`, 'DELETE', { operator });
-
 export const fetchDailyClosurePreview = () =>
   apiGet<{ ok: true; resumen: Record<string, unknown> }>('/api/daily-closures/preview');
 

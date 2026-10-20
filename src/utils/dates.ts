@@ -11,6 +11,3 @@ export function minutesFromTime(value: string): number {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
-export function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
-  return minutesFromTime(aStart) < minutesFromTime(bEnd) && minutesFromTime(bStart) < minutesFromTime(aEnd);
-}

@@ -16,7 +16,6 @@ export const createTaskComment = (taskId: string, body: string) => apiSend<{ ok:
 export const uploadTaskAttachment = (payload: { name: string; mimeType: string; base64: string }) => apiSend<{ ok: true; attachment: { name: string; url: string; mimeType: string } }>('/api/tasks/upload', 'POST', payload);
 /** Actividad: con `taskId`, la de esa tarea (últimas 50); sin él, la de la sede. */
 export const getTaskHistory = (taskId?: string) => apiGet<{ ok: true; items: TaskHistoryEntry[] }>(`/api/tasks/history${taskId ? `?taskId=${encodeURIComponent(taskId)}` : ''}`);
-export const getTaskAnalytics = () => apiGet<{ ok: true; assistants: unknown[] }>('/api/tasks/analytics');
 export const createTask = (payload: Partial<TaskItem> & { operator: string }) => apiSend<{ ok: true; item: TaskItem }>('/api/tasks', 'POST', payload);
 export const updateTask = (id: string, payload: Partial<TaskItem> & { operator: string }) => apiSend<{ ok: true; item: TaskItem }>(`/api/tasks/${id}`, 'PATCH', payload);
 export const deleteTask = (id: string, operator: string) => apiSend<{ ok: true; id: string }>(`/api/tasks/${id}`, 'DELETE', { operator });
