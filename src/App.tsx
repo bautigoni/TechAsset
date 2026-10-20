@@ -605,6 +605,14 @@ export function App() {
     const frame = requestAnimationFrame(() => { timer = window.setTimeout(() => setViewsOn(true), 0); });
     return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
   }, [hasUser, viewsOn]);
+  // La vista que reemplaza a ese esqueleto entra sin animación (el esqueleto ya
+  // entró): si no, su animación de entrada arrancaba un frame después y lo que
+  // se tocaba enseguida se movía unos px. Las vistas siguientes animan como siempre.
+  const bootView = useRef<ViewKey | null>(null);
+  const leftBootView = useRef(false);
+  if (viewsOn && bootView.current === null) bootView.current = view;
+  if (bootView.current !== null && view !== bootView.current) leftBootView.current = true;
+  const enterStill = !leftBootView.current && view === bootView.current;
 
   // Nada mientras se resuelve la sesión. El pedido tarda ~170 ms: cualquier
   // cartel o placeholder alcanza a dibujarse y a irse, y ese parpadeo se nota
@@ -689,7 +697,7 @@ export function App() {
           árbol viejo para animar la salida agrega espera, y en una app de
           trabajo la espera se siente como lentitud. */}
       {!viewsOn ? <div className="view-enter"><section className="view active"><SkeletonView /></section></div> : (
-      <div key={view} className="view-enter">
+      <div key={view} className="view-enter" style={enterStill ? STILL : undefined}>
       <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
       {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={devices} sync={sync} agenda={agenda.items} tasks={tasks.items} movements={movements} siteSettings={siteSettings} scan={dashScan} canOpen={target => navItems.some(item => item.key === target)} onNavigate={navigate} onOpenTask={openTaskPage} onOpenLoans={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onLoanChanged={afterLoanChange} onRefresh={() => refresh({ force: true, wait: true })} onAgendaSave={agenda.save} />}
       {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} allDevices={devices} siteCode={activeSite} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} pageTag={devicePage?.tag} pageEdit={devicePage?.edit} onOpenPage={openDevicePage} onNavigate={navigate} />}
@@ -717,6 +725,9 @@ export function App() {
     </AppShell>
   );
 }
+
+/** La vista que reemplaza al esqueleto del arranque no repite la entrada. */
+const STILL = { animation: 'none' } as const;
 
 /* ── Sesión recordada ──────────────────────────────────────────────────────
    Guarda quién sos y a qué sedes entrás para poder pintar la app en el primer
