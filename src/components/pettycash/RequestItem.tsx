@@ -133,14 +133,14 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
           )}
           {pending && manager && (
             <div className="pc-req-actions">
-              <Button ref={resolveRef} size="sm" variant="primary" disabled={readOnly} aria-expanded={mode === 'approve'} onClick={() => toggle('approve')}>Resolver</Button>
-              <Button ref={rejectRef} size="sm" variant="ghost" disabled={readOnly} aria-expanded={mode === 'reject'} onClick={() => toggle('reject')}>Rechazar</Button>
+              <Button ref={resolveRef} size="sm" variant="primary" disabled={readOnly} aria-expanded={mode === 'approve'} aria-controls={`pc-approve-${item.id}`} onClick={() => toggle('approve')}>Resolver</Button>
+              <Button ref={rejectRef} size="sm" variant="ghost" disabled={readOnly} aria-expanded={mode === 'reject'} aria-controls={`pc-reject-${item.id}`} onClick={() => toggle('reject')}>Rechazar</Button>
             </div>
           )}
         </div>
       </div>
 
-      <Collapse unmountOnClose open={mode === 'approve'} role="region" aria-label={`Aprobar solicitud #${item.id}`} returnFocus={resolveRef}>
+      <Collapse unmountOnClose open={mode === 'approve'} id={`pc-approve-${item.id}`} role="region" aria-label={`Aprobar solicitud #${item.id}`} returnFocus={resolveRef}>
         <form className="pc-form pc-form--inline" onSubmit={approve} noValidate data-scanner-ignore="" onKeyDown={escape}>
           <div className="pc-form-head">
             <h3 className="pc-form-title">Aprobar solicitud <span className="pc-mono">#{item.id}</span></h3>
@@ -153,18 +153,23 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
             <Textarea className="pc-span" label="Nota de resolución" minRows={2} value={note} onValueChange={setNote} placeholder="Opcional" />
             <div className="pc-span pc-inv">
               <Switch checked={toInventory} onCheckedChange={setToInventory} label="Registrar también en Inventario TIC" description="Se crea como recurso nuevo, en unidades, con la observación de la compra." />
-              {toInventory && <NumberField className="pc-qty" label="Cantidad" value={qty} onChange={setQty} min={1} max={9999} unit="unidades" error={touched && (!qty || qty < 1) ? 'Mínimo 1.' : undefined} />}
+              {/* La cantidad aparece con alto suave al prender el switch (no de golpe). */}
+              <Collapse open={toInventory} unmountOnClose reveal={false} className="pc-qty">
+                <NumberField label="Cantidad" value={qty} onChange={setQty} min={1} max={9999} unit="unidades" error={touched && (!qty || qty < 1) ? 'Mínimo 1.' : undefined} />
+              </Collapse>
             </div>
           </div>
           <div className="pc-form-actions">
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setMode('none'); resolveRef.current?.focus({ preventScroll: true }); }}>Cancelar</Button>
             <Button size="sm" variant="primary" type="submit" loading={busy} loadingLabel="Aprobando…" disabled={overBalance}>Aprobar y descontar</Button>
           </div>
-          {error && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}
+          <Collapse open={Boolean(error)} unmountOnClose reveal={false} gap="auto">
+            <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>
+          </Collapse>
         </form>
       </Collapse>
 
-      <Collapse unmountOnClose open={mode === 'reject'} role="region" aria-label={`Rechazar solicitud #${item.id}`} returnFocus={rejectRef}>
+      <Collapse unmountOnClose open={mode === 'reject'} id={`pc-reject-${item.id}`} role="region" aria-label={`Rechazar solicitud #${item.id}`} returnFocus={rejectRef}>
         <form className="pc-form pc-form--inline pc-reject" onSubmit={reject} noValidate data-scanner-ignore="" onKeyDown={escape}>
           <p className="pc-reject-msg">¿Rechazar la solicitud? Se le avisa a {item.requesterName || 'quien la pidió'} con esta nota.</p>
           <Input label="Nota de rechazo" value={rejectNote} onValueChange={setRejectNote} autoComplete="off" autoFocus />
@@ -172,15 +177,20 @@ export function RequestItem({ item, manager, readOnly, balance, message, onResol
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setMode('none'); rejectRef.current?.focus({ preventScroll: true }); }}>Cancelar</Button>
             <Button size="sm" variant="danger" type="submit" loading={busy} loadingLabel="Rechazando…">Rechazar solicitud</Button>
           </div>
-          {error && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}
+          <Collapse open={Boolean(error)} unmountOnClose reveal={false} gap="auto">
+            <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>
+          </Collapse>
         </form>
       </Collapse>
 
-      {message && (
-        <div className="pc-req-status">
-          <StatusLine tone={message.tone} message={message.text} autoHideMs={0} />
-        </div>
-      )}
+      {/* El resultado (aprobada / rechazada) entra con alto suave debajo de la fila. */}
+      <Collapse open={Boolean(message)} reveal={false}>
+        {message && (
+          <div className="pc-req-status">
+            <StatusLine tone={message.tone} message={message.text} autoHideMs={0} />
+          </div>
+        )}
+      </Collapse>
     </li>
   );
 }

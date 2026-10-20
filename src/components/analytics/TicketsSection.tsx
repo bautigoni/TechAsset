@@ -8,7 +8,7 @@ import {
   CsvButton, EmptyCard, FlowRows, GroupedColumns, KpiStrip, Lazy, LineChart, Panel, SimpleTable, ThinRing, formatDec, formatInt, keepInPlace, lineHeight, pct, useActive,
   type FlowItem, type Group, type Kpi, type View
 } from './kit';
-import { GRAN_LABEL, evolutionPoints, rowSpans, sum, versusPrevious } from './model';
+import { GRAN_LABEL, evolutionPoints, sum, versusPrevious } from './model';
 
 const PRIORITY_ORDER = ['Urgente', 'Alta', 'Media', 'Baja', 'Sin prioridad'];
 const TOP_OPTIONS = [10, 15, 25, 50].map(value => ({ value: String(value), label: String(value) }));
@@ -183,18 +183,17 @@ export function TeamSection({ summary, loading, onOpenTasks }: { summary?: Analy
   const headline = initial ? 'Cargando la actividad del equipo…'
     : !lead ? 'Sin movimientos registrados en el período'
     : `${lead.label} registró ${pct(lead.prestamos + lead.devoluciones, movesTotal)} de los movimientos${flip ? `; ${flip.label} hace más devoluciones que préstamos` : ''}`;
-  const layout = rowSpans<string>([['ops', 8], ['tasks', 4]], key => key === 'tasks' || initial || ops.length > 0);
+  const hasPanel = (key: string) => key === 'tasks' || initial || ops.length > 0;
   return (
     <section className="an-sec" aria-labelledby="an-eq-h">
       <header className="an-sec-head">
         <span className="an-eyebrow">05 · Equipo TIC · según el período</span>
         <h3 className="an-sec-title" id="an-eq-h" tabIndex={-1}>{headline}</h3>
       </header>
-      <div className="an-grid">
-        {layout.map(([key, span]) => key === 'ops'
-          ? <OperatorsPanel key={key} span={span} ops={ops} loansTotal={loansTotal} returnsTotal={returnsTotal} loading={initial} />
-          : <TasksPanel key={key} span={span} summary={summary} loading={initial} onOpenTasks={onOpenTasks} />)}
-      </div>
+      {/* Tareas abiertas al lado del gráfico de operadores: si queda mucho más corta, la fila se apila (sin franja vacía al costado). */}
+      <FlowRows rows={[[['ops', 8], ['tasks', 4]]]} has={hasPanel} render={(key, span) => (key === 'ops'
+        ? <OperatorsPanel span={span} ops={ops} loansTotal={loansTotal} returnsTotal={returnsTotal} loading={initial} />
+        : <TasksPanel span={span} summary={summary} loading={initial} onOpenTasks={onOpenTasks} />)} />
     </section>
   );
 }

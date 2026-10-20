@@ -3,6 +3,7 @@
 // Recargar que también pide el parque (sin caché y sin duplicar), período,
 // error con Reintentar y la respuesta nueva del server (sin `events`).
 import { assert, gotoView, openContext, sleep, until } from '../lib/browser.mjs';
+import { revisionUx8Tests } from './revisionUx8.mjs';
 
 async function openAnalytics(page, base) {
   await gotoView(page, base, 'analytics');
@@ -120,7 +121,8 @@ export async function analyticsTests({ browser, base, api, admin, releaseVersion
         assert(kept, 'las secciones desaparecieron');
         fail = false;
         await clickText(page, '.an-page .ui-error button', /Reintentar/);
-        await until(() => page.evaluate(() => !document.querySelector('.an-page > .ui-error')), { message: 'que se recupere' });
+        // El aviso está en un Collapse (entra y sale con alto suave) y se desmonta al terminar de cerrar.
+        await until(() => page.evaluate(() => !document.querySelector('.an-top-error')), { message: 'que se recupere' });
       } finally {
         page.off('request', handler);
         await page.setRequestInterception(false);
@@ -130,4 +132,6 @@ export async function analyticsTests({ browser, base, api, admin, releaseVersion
   } finally {
     await context.close();
   }
+  // Revisión UX 8 (Analítica, Sugerencias y Caja chica): grupo propio `ux8`.
+  await revisionUx8Tests({ browser, base, admin, releaseVersion, test, track });
 }

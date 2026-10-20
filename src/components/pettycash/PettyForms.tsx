@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { FileCheck2 } from 'lucide-react';
-import { Button, Combobox, DatePicker, FileDrop, Input, Textarea, icons } from '../../ui';
+import { Button, Collapse, Combobox, DatePicker, FileDrop, Input, Textarea, icons } from '../../ui';
 import { createPettyCashExpense, createPurchaseRequest, discardPettyCashReceipt, uploadPettyCashReceipt } from '../../services/pettyCashApi';
 import { todayKeyAr } from '../../utils/formatters';
 import { money, parseMoney } from './money';
+import { smoothHeight } from '../suggestions/smoothHeight';
 
 const RECEIPT_ACCEPT = 'image/png,image/jpeg,image/webp,application/pdf,.pdf,.png,.jpg,.jpeg,.webp';
 /** El comprobante viaja en base64 dentro de un JSON de hasta 10 MB: 7 MB de archivo es el tope seguro. */
@@ -36,22 +37,25 @@ export function useUnsavedWarning(dirty: boolean) {
  */
 export function ReceiptField({ url, onChange, label, hint, disabled }: { url: string; onChange: (url: string) => void; label: string; hint: string; disabled?: boolean }) {
   const [removing, setRemoving] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  // Subido ↔ zona para soltar: cambian de alto con transición (no de golpe).
+  const swap = (next: string) => smoothHeight(boxRef.current, () => onChange(next), null);
   const upload = async (file: File) => {
     const base64 = await readDataUrl(file);
     const mimeType = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : '');
     const response = await uploadPettyCashReceipt({ mimeType, base64 });
-    onChange(response.url);
+    swap(response.url);
     return response.url;
   };
   const remove = async () => {
     setRemoving(true);
     const current = url;
-    onChange('');
+    swap('');
     try { await discardPettyCashReceipt(current); } catch { /* si falla, queda un archivo suelto: no bloquea el formulario */ }
     setRemoving(false);
   };
   return (
-    <div className="pc-receipt">
+    <div className="pc-receipt" ref={boxRef}>
       <span className="pc-label">{label} <span className="pc-opt">(opcional)</span></span>
       {url ? (
         <div className="pc-receipt-done">
@@ -164,7 +168,9 @@ export function ExpenseForm({ draft, setDraft, balance, categories, onSaved, onC
         <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancelar</Button>
         <Button variant="primary" type="submit" loading={busy} loadingLabel="Registrando…" disabled={overBalance}>Registrar gasto</Button>
       </div>
-      {serverError && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
+      <Collapse open={Boolean(serverError)} unmountOnClose reveal={false} gap="auto">
+        <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>
+      </Collapse>
     </form>
   );
 }
@@ -241,7 +247,9 @@ export function RequestForm({ draft, setDraft, categories, onSaved, onCancel, on
         <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancelar</Button>
         <Button variant="primary" type="submit" loading={busy} loadingLabel="Enviando…">Enviar solicitud</Button>
       </div>
-      {serverError && <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
+      <Collapse open={Boolean(serverError)} unmountOnClose reveal={false} gap="auto">
+        <p className="pc-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>
+      </Collapse>
     </form>
   );
 }

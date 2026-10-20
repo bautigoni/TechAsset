@@ -8,6 +8,7 @@ import { ExpenseForm, MoneyInput, RequestForm, emptyExpense, emptyRequest, useUn
 import { RequestItem } from './RequestItem';
 import { displayDay, money, moneyDraft, parseMoney } from './money';
 import { peekDraft, useKeepDraft } from '../../utils/drafts';
+import { smoothHeight } from '../suggestions/smoothHeight';
 import '../../styles/screens/pettycash.css';
 
 type PettyDraft = { fundOpen: boolean; fundDraft: string; expenseOpen: boolean; expenseDraft: ExpenseDraft; requestOpen: boolean; requestDraft: RequestDraft };
@@ -17,7 +18,6 @@ const requestFilled = (draft: RequestDraft) => Boolean(draft.description || draf
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
 const EXPENSES_STEP = 15;
 const RESOLVED_STEP = 6;
-
 /** Mantiene el orden de las solicitudes mientras la pantalla está abierta: resolver una no la hace saltar de lugar. */
 function stableOrder(previous: number[], next: number[]) {
   const set = new Set(next);
@@ -58,6 +58,8 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
   const fundBtn = useRef<HTMLButtonElement | null>(null);
   const expenseBtn = useRef<HTMLButtonElement | null>(null);
   const requestBtn = useRef<HTMLButtonElement | null>(null);
+  const expensesRef = useRef<HTMLElement | null>(null);
+  const requestsRef = useRef<HTMLElement | null>(null);
 
   const refresh = useCallback(async () => {
     const response = await getPettyCash();
@@ -216,7 +218,9 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
       {consultationMode && (
         <p className="pc-note" role="status"><icons.IconLock size={14} /><span>Modo consulta: podés ver saldo, gastos y solicitudes. Registrar, solicitar y resolver quedan deshabilitados.</span></p>
       )}
-      {loadError && <ErrorState message={`${loadError} Lo que ves puede estar desactualizado.`} retrying={retrying} onRetry={() => void retry()} />}
+      <Collapse open={Boolean(loadError)} unmountOnClose gap="auto">
+        <ErrorState message={`${loadError} Lo que ves puede estar desactualizado.`} retrying={retrying} onRetry={() => void retry()} />
+      </Collapse>
 
       <section className="pc-card pc-sum" aria-label="Saldo de la caja chica">
         <div className="pc-sum-row">
@@ -306,7 +310,7 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
         </Collapse>
       )}
 
-      <section className="pc-card pc-section" aria-labelledby="pc-req-title">
+      <section className="pc-card pc-section" aria-labelledby="pc-req-title" ref={requestsRef}>
         <div className="pc-section-head">
           <h2 id="pc-req-title" className="pc-section-title">Solicitudes de compra</h2>
           <span className={`pc-section-count${pendingCount ? ' is-warn' : ''}`}>{pendingCount ? `${pendingCount} ${pendingCount === 1 ? 'pendiente' : 'pendientes'}` : 'Sin pendientes'}</span>
@@ -327,18 +331,19 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
             </ul>
             {resolvedList.length > resolvedShown && (
               <div className="pc-more">
-                <Button size="sm" variant="ghost" onClick={() => setResolvedShown(count => count + RESOLVED_STEP * 2)}>Ver anteriores ({resolvedList.length - resolvedShown})</Button>
+                {/* "Ver anteriores": la tarjeta crece con alto suave (no de golpe), con el botón quieto. */}
+                <Button size="sm" variant="ghost" onClick={event => smoothHeight(requestsRef.current, () => setResolvedShown(count => count + RESOLVED_STEP * 2), event.currentTarget)}>Ver anteriores ({resolvedList.length - resolvedShown})</Button>
               </div>
             )}
           </>
         )}
       </section>
 
-      <section className="pc-card pc-section" aria-labelledby="pc-exp-title">
+      <section className="pc-card pc-section" aria-labelledby="pc-exp-title" ref={expensesRef}>
         <div className="pc-section-head">
           <h2 id="pc-exp-title" className="pc-section-title">Gastos</h2>
           <span className="pc-section-count pc-mono">{data.expenses.length}</span>
-          <span className="pc-section-hint">Más nuevos primero · ordená tocando el encabezado</span>
+          {data.expenses.length > 1 && <span className="pc-section-hint">Más nuevos primero · ordená tocando el encabezado</span>}
         </div>
         {data.expenses.length === 0 ? (
           <CompactEmpty
@@ -349,10 +354,12 @@ export function PettyCashPage({ consultationMode, siteCode }: { consultationMode
           />
         ) : (
           <>
-            <Table rows={sortedExpenses.slice(0, expensesShown)} columns={expenseColumns} sort={sort} onSortChange={setSort} manualSort rowKey={row => String(row.id)} caption="Gastos de la caja chica" cardBelow="md" className="pc-table" />
+            {/* Ordenar cambia qué filas se ven (y su alto): la tarjeta pasa al alto nuevo con transición. */}
+            <Table rows={sortedExpenses.slice(0, expensesShown)} columns={expenseColumns} sort={sort} onSortChange={next => smoothHeight(expensesRef.current, () => setSort(next))} manualSort rowKey={row => String(row.id)} caption="Gastos de la caja chica" cardBelow="md" className="pc-table" />
             {data.expenses.length > expensesShown && (
               <div className="pc-more">
-                <Button size="sm" variant="ghost" onClick={() => setExpensesShown(count => count + EXPENSES_STEP * 2)}>Ver más ({data.expenses.length - expensesShown})</Button>
+                {/* "Ver más": la tarjeta crece con alto suave (no de golpe), con el botón quieto. */}
+                <Button size="sm" variant="ghost" onClick={event => smoothHeight(expensesRef.current, () => setExpensesShown(count => count + EXPENSES_STEP * 2), event.currentTarget)}>Ver más ({data.expenses.length - expensesShown})</Button>
               </div>
             )}
           </>

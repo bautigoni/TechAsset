@@ -2,9 +2,9 @@ import { useMemo, useState, type KeyboardEvent } from 'react';
 import type { AnalyticsSummary } from '../../services/analyticsApi';
 import { Segmented, cx } from '../../ui';
 import {
-  ChartSkeleton, Columns, Ghost, Lazy, keepInPlace, useNarrow, Panel, SimpleTable, columnsHeight, formatInt, heatStep, pct, useActive, type Column, type View
+  ChartSkeleton, Columns, FlowRows, Ghost, Lazy, keepInPlace, useNarrow, Panel, SimpleTable, columnsHeight, formatInt, heatStep, pct, useActive, type Column, type View
 } from './kit';
-import { DAY_NAMES, DAY_SHORT, WEEK_ORDER, foldText, hh, hourRange, rowSpans, sum } from './model';
+import { DAY_NAMES, DAY_SHORT, WEEK_ORDER, foldText, hh, hourRange, sum } from './model';
 
 type Props = { summary?: AnalyticsSummary; loading: boolean; unreviewed?: number };
 
@@ -48,7 +48,7 @@ export function DemandSection({ summary, loading, unreviewed }: Props) {
   const showTypes = Boolean(types.length);
   const agendaRows = summary?.agendaOccupation || [];
   const showCompare = total > 0 || agendaRows.length > 0;
-  const layout = rowSpans<'types' | 'cmp'>([['types', 7], ['cmp', 5]], key => (loading && !summary) || (key === 'types' ? showTypes : showCompare));
+  const hasPanel = (key: string) => (loading && !summary) || (key === 'types' ? showTypes : showCompare);
 
   return (
     <section className="an-sec" aria-labelledby="an-dem-h">
@@ -67,13 +67,11 @@ export function DemandSection({ summary, loading, unreviewed }: Props) {
         <Heatmap matrix={matrix} hours={hours} hourTotals={hourTotals} dayTotals={dayTotals} total={total} cells={cells} quiet={quiet} unreviewed={unreviewed} />
       )}
 
-      {layout.length > 0 && (
-        <div className="an-grid">
-          {layout.map(([key, span]) => key === 'types'
-            ? <TypesPanel key={key} span={span} summary={summary} loading={loading} hours={hours} types={types} total={total} />
-            : <ComparePanel key={key} span={span} summary={summary} loading={loading} matrix={matrix} total={total} />)}
-        </div>
-      )}
+      {/* FlowRows (no una grilla fija): si los dos paneles quedan muy desparejos
+          en alto, la fila se apila en vez de dejar una franja vacía en el corto. */}
+      <FlowRows rows={[[['types', 7], ['cmp', 5]]]} has={hasPanel} render={(key, span) => (key === 'types'
+        ? <TypesPanel span={span} summary={summary} loading={loading} hours={hours} types={types} total={total} />
+        : <ComparePanel span={span} summary={summary} loading={loading} matrix={matrix} total={total} />)} />
     </section>
   );
 }

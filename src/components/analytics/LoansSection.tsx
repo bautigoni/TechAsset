@@ -197,6 +197,7 @@ function DurationPanel({ span, summary }: { span: number; summary?: AnalyticsSum
   const [view, setView] = useState<View>('chart');
   const data = summary?.durations;
   const [per, setPer] = useState(1);
+  const [durRef, durWidth] = useWidth<HTMLDivElement>(600);
   const count = data?.count ?? 0;
   const over = data?.over12 ?? 0;
   const title = !data ? 'Cuánto tiempo están afuera los equipos'
@@ -210,9 +211,9 @@ function DurationPanel({ span, summary }: { span: number; summary?: AnalyticsSum
       {view === 'table' && data ? (
         <SimpleTable caption="Préstamos devueltos según cuánto estuvieron afuera" head={['Tiempo afuera', 'Préstamos', '%']} rows={BUCKET_LABELS.map((label, index) => [label, formatInt(data.buckets[index]), pct(data.buckets[index], count)])} />
       ) : (
-        <div className="an-dur" {...groupProps}>
+        <div className="an-dur" ref={durRef} {...groupProps}>
           {data && <p className="an-dots-cap" aria-hidden="true"><span className="an-dots-key" />mediana {hoursLabel(data.median)} · mitad central {hoursLabel(data.q1)}–{hoursLabel(data.q3)}{per > 1 ? ` · cada punto = ${per} préstamos` : ''}</p>}
-          <Lazy height={164} kind="dots">{() => data ? <DotPlot data={data} active={active} onPer={setPer} /> : null}</Lazy>
+          <Lazy height={data ? dotLayout(data, durWidth).H : 164} kind="dots">{() => data ? <DotPlot data={data} width={durWidth} active={active} onPer={setPer} /> : null}</Lazy>
           <div className="an-buckets" onKeyDown={event => { if (['ArrowLeft', 'ArrowRight'].includes(event.key)) { const items = [...event.currentTarget.querySelectorAll<HTMLElement>('button')]; const i = items.indexOf(document.activeElement as HTMLElement); const next = items[Math.max(0, Math.min(items.length - 1, i + (event.key === 'ArrowRight' ? 1 : -1)))]; next?.focus(); event.preventDefault(); } }}>
             {BUCKET_LABELS.map((label, index) => (
               <button
@@ -238,14 +239,17 @@ function DurationPanel({ span, summary }: { span: number; summary?: AnalyticsSum
   );
 }
 
-function DotPlot({ data, active, onPer }: { data: NonNullable<AnalyticsSummary['durations']>; active: number | null; onPer: (per: number) => void }) {
-  const [ref, measured] = useWidth<HTMLDivElement>(600);
-  const W = Math.max(280, measured || 600);
-  const H = 164;
+/**
+ * Geometría del diagrama de puntos para un ancho dado. El alto sale de la pila
+ * más alta que se dibuja (hasta 12 puntos): con pocas devoluciones por franja
+ * el diagrama es bajo, sin una banda vacía reservada para pilas que no hay.
+ * La usa también el panel para reservar el alto exacto antes de dibujarlo.
+ */
+function dotLayout(data: NonNullable<AnalyticsSummary['durations']>, width: number) {
+  const W = Math.max(280, width || 600);
   const pad = 16;
-  const X = (hours: number) => pad + Math.sqrt(Math.min(hours, 48) / 48) * (W - 2 * pad);
   const d = 8;
-  const axisY = 136;
+  const X = (hours: number) => pad + Math.sqrt(Math.min(hours, 48) / 48) * (W - 2 * pad);
   const bins = new Map<number, number[]>();
   for (const hours of data.hours) {
     const bin = Math.floor((X(hours) - pad) / d);
@@ -256,6 +260,14 @@ function DotPlot({ data, active, onPer }: { data: NonNullable<AnalyticsSummary['
   const maxStack = Math.max(1, ...[...bins.values()].map(list => list.length));
   const cap = 12;
   const per = Math.max(1, Math.ceil(maxStack / cap));
+  const stacks = Math.ceil(maxStack / per);
+  // Mitad central y mediana arriba (hasta y≈23), la pila debajo y el eje con sus rótulos al pie.
+  const axisY = 28 + 6 + stacks * d + 4;
+  return { W, H: axisY + 28, pad, d, X, bins, per, axisY };
+}
+
+function DotPlot({ data, width, active, onPer }: { data: NonNullable<AnalyticsSummary['durations']>; width: number; active: number | null; onPer: (per: number) => void }) {
+  const { W, H, pad, d, X, bins, per, axisY } = dotLayout(data, width);
   useEffect(() => { onPer(per); }, [per, onPer]);
   const bucketOf = (hours: number) => data.edges.reduce((found, edge, index) => (hours >= edge ? index : found), 0);
   const on: string[] = [];
@@ -275,7 +287,7 @@ function DotPlot({ data, active, onPer }: { data: NonNullable<AnalyticsSummary['
   const med = X(data.median);
   const label = `mediana ${hoursLabel(data.median)} · mitad central ${hoursLabel(data.q1)}–${hoursLabel(data.q3)}`;
   return (
-    <div ref={ref} className="an-dots">
+    <div className="an-dots">
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Diagrama de puntos: ${data.count} préstamos devueltos según cuántas horas estuvieron afuera, en escala de raíz cuadrada de 0 a 48 horas. ${label}.${per > 1 ? ` Cada punto representa ${per} préstamos.` : ''}`}>
         <path d={`M${q1.toFixed(1)} 16H${q3.toFixed(1)}`} className="an-dots-iqr" />
         <path d={`M${med.toFixed(1)} 9V23`} className="an-dots-med" />

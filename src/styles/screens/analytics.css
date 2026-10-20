@@ -79,7 +79,7 @@
   bottom: -1px;
   left: var(--g-s-2);
   height: 2px;
-  border-radius: 2px;
+  border-radius: var(--g-radius-pill);
   background: var(--g-accent);
   opacity: 0;
   transform: scaleX(.4);
@@ -100,6 +100,7 @@
 
 .an-body { display: flex; flex-direction: column; min-width: 0; }
 .an-body > .ui-error, .an-page > .ui-error { margin-top: var(--g-s-4); }
+.an-top-error { padding-top: var(--g-s-4); }
 .an-sec {
   display: flex;
   flex-direction: column;
@@ -122,6 +123,8 @@
 .an-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--g-s-4); min-width: 0; }
 /* FlowGrid: mide los altos naturales (sin estirar) y, si la fila queda despareja, la apila. */
 .an-grid.is-measuring { align-items: start; }
+/* Fila que el usuario dejó despareja (Top N, Tabla): cada tarjeta con su alto, sin estirar a la vecina. */
+.an-grid.is-loose { align-items: start; }
 .an-grid.is-measuring .an-stack > .an-card { flex: none; }
 .an-grid.is-stacked > .an-cell > .an-card, .an-grid.is-stacked > .an-stack { grid-column: span 12; }
 .an-card {
@@ -148,8 +151,10 @@
    contenido (mitad y mitad), en vez de quedar como una sola franja vacía antes de la lectura o al pie. */
 .an-card:not(.an-heatcard, .an-empty) > .an-card-head + :not(.an-readout, .an-note, .an-link--end) { margin-top: auto; }
 .an-card:not(.an-heatcard, .an-empty) > :not(.an-card-head, .an-readout, .an-note, .an-link--end):is(:has(+ .an-readout), :has(+ .an-note), :last-child) { margin-bottom: auto; }
-/* Una tabla (ranking) no se centra en blanco: la tarjeta queda con su alto, como una lista. */
-.an-card:not(.an-heatcard, .an-empty):has(> .an-table) { align-self: start; }
+/* Una tabla (ranking) no se centra en blanco: arranca bajo el encabezado y lo que sobra
+   (como mucho 48 px: si no, FlowGrid apila la fila) queda antes de la nota. La tarjeta
+   tiene el mismo alto que su vecina de fila (antes quedaba más corta, con su alto propio). */
+.an-card:not(.an-heatcard, .an-empty) > .an-card-head + .an-table { margin-top: 0; }
 .an-dim { color: var(--g-text-2); }
 .an-warn { color: var(--g-warn); }
 .an-rank { color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
@@ -176,9 +181,9 @@
 .an-link:hover { color: var(--g-accent-hover); }
 .an-link:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: var(--g-radius-sm); }
 .an-link--end { align-self: flex-start; margin-top: auto; }
-/* Tareas abiertas (al lado del gráfico de operadores, más alto): con su alto propio, sin una franja vacía antes de "Ir a Tareas TIC". */
-.an-card:has(#an-tasks-t) { align-self: start; }
-.an-card:has(#an-tasks-t) .an-link--end { margin-top: 0; }
+/* Tareas abiertas va al lado del gráfico de operadores en una FlowRows: si
+   queda mucho más corta, la fila se apila (antes quedaba con su alto propio y
+   una franja vacía debajo, al costado del gráfico). */
 
 .an-body.is-busy .an-card,
 .an-body.is-busy .an-kpis { opacity: .6; }
@@ -227,7 +232,7 @@
 .an-page .is-series3 { --an-c: var(--g-series-3); }
 .an-page .is-series4 { --an-c: var(--g-series-4); }
 .an-page .is-muted { --an-c: var(--g-text-3); }
-.an-swatch { display: inline-block; flex: none; width: .625rem; height: .625rem; border-radius: 2px; background: var(--an-c); }
+.an-swatch { display: inline-block; flex: none; width: .625rem; height: .625rem; border-radius: var(--ui-radius-xs); background: var(--an-c); }
 .an-swatch.is-rest { box-shadow: inset 0 0 0 1px var(--g-line-strong); }
 .an-keys { display: flex; flex-wrap: wrap; gap: var(--g-s-1) var(--g-s-4); }
 .an-key { display: inline-flex; align-items: center; gap: var(--g-s-2); color: var(--g-text-2); font-size: var(--g-fs-xs); white-space: nowrap; }
@@ -274,7 +279,7 @@
   width: 60%;
   max-width: 1.75rem;
   height: calc((var(--an-plot-h) - 1.125rem) * var(--an-r, 0));
-  border-radius: 3px 3px 0 0;
+  border-radius: var(--ui-radius-xs) var(--ui-radius-xs) 0 0;
   background: var(--an-c, var(--g-accent));
   transform-origin: 50% 100%;
 }
@@ -349,7 +354,7 @@
   height: 2.75rem;
   padding: 0;
   border: 1px solid var(--an-heat);
-  border-radius: 4px;
+  border-radius: var(--ui-radius-xs);
   background: var(--an-heat);
   color: var(--g-text);
   font-family: var(--g-font-mono);
@@ -379,7 +384,7 @@
 .an-heat-legend { display: flex; flex: none; align-items: flex-end; gap: 3px; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: .6875rem; }
 .an-heat-legend-t { margin-right: var(--g-s-1); padding-bottom: 2px; font-family: var(--g-font); font-size: var(--g-fs-xs); white-space: nowrap; }
 .an-heat-legend-s { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.an-hc-sw { display: block; width: 1.375rem; height: .5rem; border-radius: 2px; background: var(--an-heat); }
+.an-hc-sw { display: block; width: 1.375rem; height: .5rem; border-radius: var(--ui-radius-xs); background: var(--an-heat); }
 .an-hc-sw.is-s1 { --an-heat: color-mix(in srgb, var(--g-accent) 16%, var(--g-surface)); }
 .an-hc-sw.is-s2 { --an-heat: color-mix(in srgb, var(--g-accent) 27%, var(--g-surface)); }
 .an-hc-sw.is-s3 { --an-heat: color-mix(in srgb, var(--g-accent) 39%, var(--g-surface)); }
@@ -633,7 +638,7 @@
 .an-stack > .an-card { flex: 1 1 auto; }
 .an-dots { display: flex; flex-direction: column; gap: var(--g-s-2); }
 .an-dots-cap { margin: 0; color: var(--g-text-2); font-size: var(--g-fs-xs); line-height: 1.125rem; }
-.an-dots-key { display: inline-block; width: 1.25rem; height: 3px; margin-right: var(--g-s-2); border-radius: 2px; background: var(--g-text-2); vertical-align: middle; }
+.an-dots-key { display: inline-block; width: 1.25rem; height: 3px; margin-right: var(--g-s-2); border-radius: var(--g-radius-pill); background: var(--g-text-2); vertical-align: middle; }
 .an-device-name { min-width: 0; overflow-wrap: break-word; }
 .an-device { flex-wrap: wrap; column-gap: var(--g-s-2); row-gap: 0; }
 .an-heat-row--foot .an-heat-rowh { font-size: .6875rem; white-space: nowrap; overflow-wrap: normal; }

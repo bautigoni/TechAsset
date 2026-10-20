@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
-import { Segmented, Skeleton, Button, cx, keepInPlace as holdInPlace, recentTrigger } from '../../ui';
+import { Segmented, Skeleton, Button, COLLAPSE_MS, cx, keepInPlace as holdInPlace, recentTrigger } from '../../ui';
 import { appScroller } from '../../utils/scroll';
 import { IconChevronDown, IconChevronUp } from '../../ui/icons';
 
@@ -91,9 +91,62 @@ export function rovingKeys(event: KeyboardEvent<HTMLElement>, selector = '[data-
    cerca del final, el alto que falta se reserva al pie y se libera al subir. */
 
 export function keepInPlace(anchor: HTMLElement | null, mutate: () => void) {
+  const card = anchor?.closest<HTMLElement>('.an-card') ?? null;
   const hold = holdInPlace(anchor, { duration: 0, reserve: 'auto' });
-  flushSync(mutate);
+  // Además, la tarjeta cambia de alto con una transición (no de golpe): el
+  // control queda quieto y lo de abajo se acomoda suave.
+  smoothHeights(card ? [card] : [], mutate, true);
   hold.stop();
+}
+
+const EASE_FALLBACK = 'cubic-bezier(.2, 0, 0, 1)';
+
+/**
+ * Aplica `mutate` (en el mismo frame) y anima el alto de cada elemento desde su
+ * alto anterior al nuevo, recortando lo que sobra mientras dura. Antes de medir
+ * el alto final, las filas (FlowGrid) se reacomodan ya (`an:relayout`) y no se
+ * vuelven a medir mientras dura la animación (medirían un alto a mitad de
+ * camino). Con movimiento reducido el cambio es inmediato.
+ */
+export function smoothHeights(elements: HTMLElement[], mutate: () => void, touched = false) {
+  const before = elements.map(el => (el.isConnected ? el.getBoundingClientRect().height : 0));
+  flushSync(mutate);
+  const grids = new Set<HTMLElement>();
+  for (const el of elements) {
+    if (!el.isConnected) continue;
+    const own = el.closest<HTMLElement>('.an-grid');
+    if (own) grids.add(own);
+    el.querySelectorAll<HTMLElement>('.an-grid').forEach(grid => grids.add(grid));
+  }
+  grids.forEach(grid => grid.dispatchEvent(new CustomEvent('an:relayout', { detail: { touched } })));
+  if (reducedMotion()) return;
+  const ease = getComputedStyle(document.documentElement).getPropertyValue('--g-ease').trim() || EASE_FALLBACK;
+  const moves: Array<{ el: HTMLElement; from: number; to: number }> = [];
+  elements.forEach((el, index) => {
+    if (!el.isConnected) return;
+    const from = before[index];
+    const to = el.getBoundingClientRect().height;
+    if (from && Math.abs(to - from) >= 2) moves.push({ el, from, to });
+  });
+  if (!moves.length) return;
+  grids.forEach(grid => { grid.dataset.anAnimating = '1'; });
+  // El primer cuadro se pinta con el alto anterior y la transición arranca en
+  // el cuadro siguiente: si dibujar lo nuevo (una tabla) tarda, la curva no
+  // arranca "ya avanzada" y no se ve un salto.
+  for (const { el, from } of moves) { el.style.height = `${from}px`; el.style.overflow = 'clip'; }
+  requestAnimationFrame(() => {
+    const running = moves.map(({ el, from, to }) => {
+      el.style.height = '';
+      el.style.overflow = '';
+      const animation = el.animate([{ height: `${from}px`, overflow: 'clip' }, { height: `${to}px`, overflow: 'clip' }], { duration: COLLAPSE_MS, easing: ease, fill: 'backwards' });
+      // Arranca AHORA: el reloj del cuadro es el de su comienzo y, tras un cuadro largo, la curva empezaría ya avanzada.
+      animation.startTime = performance.now();
+      return animation;
+    });
+    void Promise.all(running.map(animation => animation.finished.catch(() => undefined))).then(() => {
+      grids.forEach(grid => { delete grid.dataset.anAnimating; });
+    });
+  });
 }
 
 /* ── Carga diferida: el gráfico se dibuja recién cuando se acerca a la vista ──
@@ -305,9 +358,15 @@ function FlowGrid({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const grid = ref.current;
     if (!grid) return;
-    const decide = () => {
+    // touched: el cambio de alto lo hizo el usuario dentro de la fila (Top N,
+    // Gráfico/Tabla). La fila no se reacomoda bajo el cursor (no se apila ni se
+    // desapila); si quedó despareja, cada tarjeta toma su alto propio
+    // (`is-loose`) en vez de estirar la vecina con una franja vacía.
+    const decide = (touched = false) => {
       const items = [...grid.children].map(child => (child.classList.contains('an-cell') ? child.firstElementChild : child)).filter((el): el is HTMLElement => el instanceof HTMLElement);
-      grid.classList.remove('is-stacked');
+      const wasStacked = grid.classList.contains('is-stacked');
+      grid.classList.remove('is-stacked', 'is-loose');
+      if (touched && wasStacked) { grid.classList.add('is-stacked'); return; }
       grid.classList.add('is-measuring');
       const rows = new Map<number, number[]>();
       for (const item of items) {
@@ -317,24 +376,27 @@ function FlowGrid({ children }: { children: ReactNode }) {
       }
       grid.classList.remove('is-measuring');
       const uneven = [...rows.values()].some(heights => heights.length > 1 && Math.max(...heights) - Math.min(...heights) > 48);
-      grid.classList.toggle('is-stacked', uneven);
+      grid.classList.toggle(touched ? 'is-loose' : 'is-stacked', uneven);
     };
-    decide();
-    if (typeof ResizeObserver === 'undefined') return;
+    if (!grid.dataset.anAnimating) decide();
+    // Una tarjeta que se está animando (smoothHeights) ya decidió la fila antes de animar.
+    const onRelayout = (event: Event) => decide(Boolean((event as CustomEvent<{ touched?: boolean }>).detail?.touched));
+    grid.addEventListener('an:relayout', onRelayout);
+    if (typeof ResizeObserver === 'undefined') return () => grid.removeEventListener('an:relayout', onRelayout);
     // Ancho de la fila y alto del contenido de cada tarjeta (los datos llegan después).
     // Si el cambio de alto lo provocó el usuario dentro de la fila (Gráfico/Tabla,
     // un "Ver más"), la fila queda como está: nada se reacomoda bajo el cursor.
     let width = grid.clientWidth;
     const observer = new ResizeObserver(() => {
+      if (grid.dataset.anAnimating) return;
       const touched = recentTrigger(1500);
       const resized = Math.abs(grid.clientWidth - width) >= 1;
       width = grid.clientWidth;
-      if (!resized && touched && grid.contains(touched)) return;
-      decide();
+      decide(!resized && Boolean(touched && grid.contains(touched)));
     });
     observer.observe(grid);
     for (const child of grid.querySelectorAll('.an-card')) for (const part of child.children) observer.observe(part);
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); grid.removeEventListener('an:relayout', onRelayout); };
   });
   return <div ref={ref} className="an-grid">{children}</div>;
 }

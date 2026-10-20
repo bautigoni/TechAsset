@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { Device, ViewKey } from '../../types';
 import { getAnalytics, getParque, type AnalyticsResponse, type ParqueResponse } from '../../services/analyticsApi';
-import { Button, ErrorState, Segmented, Skeleton, cx } from '../../ui';
+import { Button, Collapse, ErrorState, Segmented, Skeleton, cx } from '../../ui';
 import { IconRetry } from '../../ui/icons';
 import { addDaysToKey, todayKeyAr } from '../../utils/formatters';
 import { appScroller } from '../../utils/scroll';
 import { DemandSection } from './DemandSection';
-import { formatInt, keepInPlace, reducedMotion } from './kit';
+import { formatInt, keepInPlace, reducedMotion, smoothHeights } from './kit';
 import '../../styles/screens/analytics.css';
 
 // Las secciones de abajo viajan en su propio chunk: abrir Analítica baja,
@@ -70,8 +70,14 @@ export function AnalyticsPage({ onNavigate }: { devices?: Device[]; onRefresh?: 
     try {
       const response = await getAnalytics(range.from, range.to, fresh);
       if (id !== request.current) return;
-      setData(response);
-      setUpdatedAt(new Date());
+      // Período nuevo: cada sección pasa de su alto anterior al nuevo con una
+      // transición (el Segmented queda quieto arriba; nada cambia de golpe).
+      // (Se animan los contenedores de cada sección, que no se reemplazan aunque la sección cambie de forma.)
+      const sections = [...document.querySelectorAll<HTMLElement>('.an-body > .an-anchor')].filter(node => !node.querySelector(':scope > .an-sec--pending'));
+      smoothHeights(sections, () => {
+        setData(response);
+        setUpdatedAt(new Date());
+      });
     } catch (err) {
       if (id !== request.current) return;
       setError(err instanceof Error ? err.message : 'No se pudo cargar la analítica.');
@@ -180,7 +186,10 @@ export function AnalyticsPage({ onNavigate }: { devices?: Device[]; onRefresh?: 
         <span className="an-index-meta">{period.long} · {summary ? <span className="g-num">{formatInt(summary.totalPrestamos)}</span> : <Skeleton width="1.5rem" height="0.75rem" />} préstamos</span>
       </nav>
 
-      {error && summary && <ErrorState message={`No se pudo actualizar: ${error}. Se muestran los datos anteriores.`} onRetry={() => void load(true)} retrying={loading} />}
+      {/* El aviso entra y sale con alto suave (no empuja la página de golpe). */}
+      <Collapse open={Boolean(error && summary)} unmountOnClose className="an-top-error">
+        <ErrorState message={`No se pudo actualizar: ${error}. Se muestran los datos anteriores.`} onRetry={() => void load(true)} retrying={loading} />
+      </Collapse>
 
       <div className={cx('an-body', loading && summary && 'is-busy')} aria-busy={loading || undefined}>
         {/* Cada sección vive en un "slot" con su id (ancla del índice). Las de

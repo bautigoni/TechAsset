@@ -9,6 +9,7 @@ import {
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { Button, EmptyState, ErrorState, Eyebrow, InlineConfirm, Input, Segmented, SkeletonRows, StatusText, Textarea, StatusSlot, useStatusLine, type StatusTextTone } from '../../ui';
 import { TruncatedText } from '../../ui/Truncated';
+import { smoothHeight } from './smoothHeight';
 import { cx, fold } from '../../ui/util';
 import { APP_TIME_ZONE, formatDate } from '../../utils/formatters';
 import { Collapse } from '../../ui';
@@ -59,6 +60,7 @@ export function SuggestionsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [narrow, setNarrow] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
   const newBtnRef = useRef<HTMLButtonElement | null>(null);
   const pageStatus = useStatusLine();
 
@@ -69,17 +71,24 @@ export function SuggestionsPage() {
     setLoading(true);
     try {
       const response = await getSuggestions({ status, category, sort });
-      setItems(response.items || []);
-      setStats(response.stats || EMPTY_STATS);
-      setCategories(response.categories || []);
-      setCanManage(Boolean(response.canManage));
-      setCounts(response.counts || { status: {}, category: {} });
-      setLoadError('');
+      // Filtro u orden nuevo: la lista pasa a su alto nuevo con una transición
+      // (no de golpe) y el filtro tocado queda quieto.
+      smoothHeight(listRef.current, () => {
+        setItems(response.items || []);
+        setStats(response.stats || EMPTY_STATS);
+        setCategories(response.categories || []);
+        setCanManage(Boolean(response.canManage));
+        setCounts(response.counts || { status: {}, category: {} });
+        setLoadError('');
+        setLoading(false);
+        setLoaded(true);
+      });
     } catch (reason) {
-      setLoadError(errorText(reason, 'No se pudieron cargar las sugerencias.'));
-    } finally {
-      setLoading(false);
-      setLoaded(true);
+      smoothHeight(listRef.current, () => {
+        setLoadError(errorText(reason, 'No se pudieron cargar las sugerencias.'));
+        setLoading(false);
+        setLoaded(true);
+      });
     }
   }, [status, category, sort]);
   useEffect(() => { void load(); }, [load]);
@@ -158,9 +167,12 @@ export function SuggestionsPage() {
     setBusy(item.id, true);
     try {
       await deleteSuggestion(item.id);
-      setAskId(null);
-      setItems(current => current.filter(entry => entry.id !== item.id));
-      if (openId === item.id) setOpenId(null);
+      // La fila borrada se va con el alto de la lista animado (no de golpe).
+      smoothHeight(listRef.current, () => {
+        setAskId(null);
+        setItems(current => current.filter(entry => entry.id !== item.id));
+        if (openId === item.id) setOpenId(null);
+      }, null);
       pageStatus.show({
         tone: 'ok',
         message: `Sugerencia «${item.title}» eliminada con sus votos.`,
@@ -271,7 +283,7 @@ export function SuggestionsPage() {
             />
           </Collapse>
 
-          <div className="sgx-list">
+          <div className="sgx-list" ref={listRef}>
             {!loaded && loading ? (
               <SkeletonRows rows={5} className="sgx-skel" />
             ) : loadError && !items.length ? (
@@ -287,7 +299,9 @@ export function SuggestionsPage() {
               />
             ) : (
               <>
-                {loadError && <ErrorState message={loadError} onRetry={() => void load()} retrying={loading} />}
+                <Collapse open={Boolean(loadError)} unmountOnClose className="sgx-list-error">
+                  <ErrorState message={loadError} onRetry={() => void load()} retrying={loading} />
+                </Collapse>
                 {items.map(item => (
                   <SuggestionRow
                     key={item.id}
@@ -335,7 +349,9 @@ export function SuggestionsPage() {
           </div>
         </section>
 
-        <aside className="sgx-side" aria-label="Filtros">
+        {/* Con el buzón vacío no hay nada que filtrar: sin la columna de filtros
+            (alta, todo en 0) al lado de un vacío corto, que dejaba un hueco grande. */}
+        {(!loaded || stats.total > 0 || status || category) && <aside className="sgx-side" aria-label="Filtros">
           {narrow ? (
             <>
               <button type="button" className="sgx-ftoggle" aria-expanded={filtersOpen} aria-controls="sgx-filters-body" onClick={() => setFiltersOpen(open => !open)}>
@@ -347,7 +363,7 @@ export function SuggestionsPage() {
               <Collapse open={filtersOpen} id="sgx-filters-body" unmountOnClose>{filters}</Collapse>
             </>
           ) : filters}
-        </aside>
+        </aside>}
       </div>
     </section>
   );
@@ -383,6 +399,7 @@ function SuggestionRow({ item, canManage, categories, busy, open, statusOpen, ed
   // La descripción se despliega con su propio botón, debajo del texto: abrir los
   // comentarios no cambia el alto de lo que está arriba del botón tocado.
   const [descOpen, setDescOpen] = useState(false);
+  const descRef = useRef<HTMLParagraphElement | null>(null);
   const descLong = item.description.length > 180 || item.description.split('\n').length > 2;
   return (
     <article className="sgx-row" id={`sgx-${item.id}`} aria-labelledby={`sgx-h-${item.id}`}>
@@ -420,9 +437,9 @@ function SuggestionRow({ item, canManage, categories, busy, open, statusOpen, ed
               <StatusText tone={STATUS_TONE[item.status]} strong className="sgx-small">{STATUS_LABEL[item.status] || item.status}</StatusText>
             </div>
             <TruncatedText className="sgx-meta">{`${item.category} · ${author} · ${formatDate(item.createdAt, DAY, '')}`}</TruncatedText>
-            <p id={`sgx-desc-${item.id}`} className={cx('sgx-desc', descLong && !descOpen && 'is-clamped')}>{item.description}</p>
+            <p ref={descRef} id={`sgx-desc-${item.id}`} className={cx('sgx-desc', descLong && !descOpen && 'is-clamped')}>{item.description}</p>
             {descLong && (
-              <button type="button" className="sgx-more" aria-expanded={descOpen} aria-controls={`sgx-desc-${item.id}`} onClick={() => setDescOpen(value => !value)}>{descOpen ? 'Mostrar menos' : 'Mostrar todo'}</button>
+              <button type="button" className="sgx-more" aria-expanded={descOpen} aria-controls={`sgx-desc-${item.id}`} onClick={event => smoothHeight(descRef.current, () => setDescOpen(value => !value), event.currentTarget)}>{descOpen ? 'Mostrar menos' : 'Mostrar todo'}</button>
             )}
             <div className="sgx-actions">
               <Button size="sm" variant="ghost" aria-expanded={open} aria-controls={`sgx-comments-${item.id}`} onClick={onToggleOpen}>
@@ -483,6 +500,7 @@ function Comments({ suggestionId, onCommented }: { suggestionId: number; onComme
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
+  const listRef = useRef<HTMLDivElement | null>(null);
   const load = useCallback(async () => {
     try {
       const response = await getSuggestionComments(suggestionId);
@@ -500,7 +518,8 @@ function Comments({ suggestionId, onCommented }: { suggestionId: number; onComme
     setSendError('');
     try {
       const response = await addSuggestionComment(suggestionId, clean);
-      setItems(current => [...(current || []), response.item]);
+      // El comentario nuevo entra con el alto de la lista animado (no de golpe).
+      smoothHeight(listRef.current, () => setItems(current => [...(current || []), response.item]), null);
       setBody('');
       onCommented();
     } catch (reason) {
@@ -514,23 +533,34 @@ function Comments({ suggestionId, onCommented }: { suggestionId: number; onComme
   };
   return (
     <div className="sgx-comments">
-      {error && <ErrorState message={error} onRetry={() => void load()} />}
-      {items === null && !error ? <SkeletonRows rows={2} /> : items && items.length ? (
-        <ol className="sgx-comment-list">
-          {items.map(comment => (
-            <li key={comment.id} className="sgx-comment">
-              <span className="sgx-avatar" aria-hidden="true">{initials(comment.authorName || comment.authorEmail)}</span>
-              <div className="sgx-grow">
-                <div className="sgx-comment-head">
-                  <span className="sgx-strong sgx-ell">{comment.authorName || comment.authorEmail || 'Usuario'}</span>
-                  <span className="sgx-small sgx-muted sgx-nowrap">{formatDate(comment.createdAt, DAY_TIME, '')}</span>
-                </div>
-                <p className="sgx-para">{comment.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      ) : items ? <p className="sgx-para sgx-muted">Todavía no hay comentarios.</p> : null}
+      {/* Cargando → comentarios: el esqueleto se pliega mientras la lista se
+          despliega (los dos con alto suave), en vez de reemplazarse de golpe. */}
+      <Collapse open={Boolean(error)} unmountOnClose reveal={false}>
+        <ErrorState message={error} onRetry={() => void load()} />
+      </Collapse>
+      <Collapse open={items === null && !error} unmountOnClose reveal={false} aria-hidden="true">
+        <SkeletonRows rows={2} />
+      </Collapse>
+      <Collapse open={items !== null} reveal={false}>
+        <div ref={listRef}>
+          {items && items.length ? (
+            <ol className="sgx-comment-list">
+              {items.map(comment => (
+                <li key={comment.id} className="sgx-comment">
+                  <span className="sgx-avatar" aria-hidden="true">{initials(comment.authorName || comment.authorEmail)}</span>
+                  <div className="sgx-grow">
+                    <div className="sgx-comment-head">
+                      <span className="sgx-strong sgx-ell">{comment.authorName || comment.authorEmail || 'Usuario'}</span>
+                      <span className="sgx-small sgx-muted sgx-nowrap">{formatDate(comment.createdAt, DAY_TIME, '')}</span>
+                    </div>
+                    <p className="sgx-para">{comment.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : <p className="sgx-para sgx-muted">Todavía no hay comentarios.</p>}
+        </div>
+      </Collapse>
       <form className="sgx-composer" data-scanner-ignore="" onSubmit={event => { event.preventDefault(); void send(); }}>
         <Textarea label="Comentar" minRows={2} value={body} placeholder="Sumá tu opinión o un dato" onValueChange={value => { setBody(value); if (sendError) setSendError(''); }} onKeyDown={onKeyDown} error={sendError || undefined} />
         <div className="sgx-composer-foot">
@@ -608,14 +638,15 @@ function SuggestionForm({ heading, initial, categories, submitLabel, compact, on
       />
       <div className="sgx-catfield">
         <Input label="Categoría" value={draft.category} placeholder="General" maxLength={80} onValueChange={value => set({ category: value })} />
-        {chips.length > 0 && (
+        {/* Las categorías usadas se filtran mientras escribís: aparecen y se van con alto suave. */}
+        <Collapse open={chips.length > 0} unmountOnClose reveal={false} gap="auto">
           <div className="sgx-chips" role="group" aria-label="Categorías usadas">
             <span className="sgx-small sgx-muted">Usadas</span>
             {chips.map(item => (
               <button key={item} type="button" className="sgx-chip" aria-pressed={fold(item) === fold(draft.category)} onClick={() => set({ category: item })}>{item}</button>
             ))}
           </div>
-        )}
+        </Collapse>
       </div>
       <Textarea
         label="Descripción"
@@ -625,7 +656,9 @@ function SuggestionForm({ heading, initial, categories, submitLabel, compact, on
         error={tried && descMissing ? 'Falta la descripción.' : undefined}
         onValueChange={description => set({ description })}
       />
-      {error && <ErrorState message={error} />}
+      <Collapse open={Boolean(error)} unmountOnClose>
+        <ErrorState message={error} />
+      </Collapse>
       <Collapse open={askDiscard} unmountOnClose>
         <InlineConfirm
           danger

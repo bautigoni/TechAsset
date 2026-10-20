@@ -86,7 +86,9 @@ export function ParqueSection({ data, loading, error, onRetry }: Props) {
         </div>
         <span className="an-sec-tag">Estado actual, sin filtro de período</span>
       </header>
-      {error && <ErrorState message={`No se pudo cargar el parque: ${error}`} onRetry={onRetry} retrying={loading} />}
+      <Collapse open={Boolean(error)} unmountOnClose gap="auto">
+        <ErrorState message={`No se pudo cargar el parque: ${error}`} onRetry={onRetry} retrying={loading} />
+      </Collapse>
       {data && summary && universo > 0 && summary.cobertura < 60 && (
         <p className="an-callout" role="note">Solo el {summary.cobertura}% del inventario tiene condición cargada. Corré la revisión desde Inventario TIC para que estos números sean confiables.</p>
       )}
