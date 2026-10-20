@@ -153,6 +153,7 @@ export function AppShell(props: AppShellProps) {
   const [question, setQuestion] = useState<{ text: string; nonce: number } | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const veilRef = useRef<HTMLDivElement | null>(null);
   const savedScroll = useRef<{ top: number; view: string } | null>(null);
   const viewRef = useRef<string>(view);
   viewRef.current = view;
@@ -172,23 +173,35 @@ export function AppShell(props: AppShellProps) {
     return () => cancelAnimationFrame(raf);
   }, [keyboardOpen]);
   // Mientras se scrollea con la rueda o el trackpad, el contenido no recibe el
-  // puntero (data-scrolling → pointer-events: none en shell.css) y vuelve
-  // 150 ms después del último frame de scroll. Con el puntero encima, cada
-  // frame movía el :hover de fila en fila: hit-test + repintado +
-  // re-"layerizado" de toda la lista (Dispositivos con 387 filas, ver
-  // docs/redesign/bench/pasada1.md). Solo si ESTE contenedor scrollea por una
-  // rueda reciente: un scroll programático (Collapse que ancla, scrollIntoView)
-  // no bloquea clics, y una lista interna que scrollea sola no se toca.
+  // puntero y vuelve 150 ms después del último frame de scroll. Con el puntero
+  // encima, cada frame movía el :hover de fila en fila y hacía un hit-test de
+  // toda la lista (Dispositivos con 387 filas, ver docs/redesign/bench/pasada1.md).
+  // Lo toma un velo invisible (primer hijo de .shell-scroll, sticky, del alto
+  // del área visible): el hit-test termina en él y la rueda sigue scrolleando
+  // este contenedor. Antes era `pointer-events: none` sobre el contenido, pero
+  // se hereda: prenderlo y apagarlo recalculaba el estilo de cada nodo (~16.000
+  // en Dispositivos: 1,3 a 2 s con CPU 4×, el "peor frame" de 736 ms del scroll
+  // en la suite, al empezar y al terminar cada gesto). Ver bench/pasada3.md.
+  // Solo si ESTE contenedor scrollea por una rueda reciente: un scroll
+  // programático (Collapse que ancla, scrollIntoView) no bloquea clics, y una
+  // lista interna que scrollea sola no se toca.
   useEffect(() => {
     const scroller = scrollRef.current;
-    if (!scroller) return;
+    const veil = veilRef.current;
+    if (!scroller || !veil) return;
     let timer = 0;
     let wheelAt = -Infinity;
-    const release = () => { timer = 0; scroller.removeAttribute('data-scrolling'); };
+    const release = () => { timer = 0; veil.hidden = true; };
     const onWheel = (event: WheelEvent) => { wheelAt = event.timeStamp; };
     const onScroll = (event: Event) => {
       if (!timer && event.timeStamp - wheelAt > 250) return;
-      if (!timer) scroller.setAttribute('data-scrolling', '');
+      if (!timer) {
+        // Del alto del área visible, sin ocupar lugar (margen negativo igual).
+        const height = scroller.clientHeight;
+        veil.style.height = `${height}px`;
+        veil.style.marginBottom = `${-height}px`;
+        veil.hidden = false;
+      }
       window.clearTimeout(timer);
       timer = window.setTimeout(release, 150);
     };
@@ -198,7 +211,7 @@ export function AppShell(props: AppShellProps) {
       scroller.removeEventListener('wheel', onWheel);
       scroller.removeEventListener('scroll', onScroll);
       window.clearTimeout(timer);
-      scroller.removeAttribute('data-scrolling');
+      veil.hidden = true;
     };
   }, []);
   const { items: notifications, unread, toast, dismissToast, markRead, markAllRead } = useNotifications(true);
@@ -501,6 +514,7 @@ export function AppShell(props: AppShellProps) {
             franjas), el menú, la columna del asistente y la barra inferior
             quedan quietos y nunca se superponen al contenido. */}
         <div className="shell-scroll" ref={scrollRef} hidden={assistantView}>
+        <div className="shell-scroll-veil" ref={veilRef} aria-hidden="true" hidden />
         <main className="shell-main" id="main">
           {stripsOn && (
             <Suspense fallback={null}>

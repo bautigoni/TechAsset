@@ -388,9 +388,13 @@ button.shell-site:hover, .shell-site[aria-expanded="true"] { background: var(--g
   background: var(--g-bg);
 }
 .shell-scroll[hidden] { display: none; }
-/* Durante el scroll el contenido no toma el puntero (AppShell): sin hover que
-   salte de fila en fila ni hit-test por frame. Vuelve 150 ms después. */
-.shell-scroll[data-scrolling] > * { pointer-events: none; }
+/* Durante el scroll con la rueda, un velo invisible toma el puntero (AppShell):
+   sin hover que salte de fila en fila ni hit-test de toda la lista por frame.
+   Sticky arriba, del alto del área visible y con margen negativo igual (no
+   ocupa lugar). No usar pointer-events sobre el contenido: se hereda y
+   cambiarlo recalcula el estilo de todos los nodos (bench/pasada3.md). */
+.shell-scroll-veil { position: sticky; top: 0; z-index: 30; }
+.shell-scroll-veil[hidden] { display: none; }
 
 .shell-topbar {
   height: var(--g-topbar-h);
