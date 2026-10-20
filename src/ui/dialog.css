@@ -1,0 +1,115 @@
+/* ══ Dialog (ventana emergente centrada) ═════════════════════════════════
+   Excepción documentada a "nada de modales": hoy solo los cartelitos de fotos.
+   Solo tokens. Receta `modal` de transitions.dev (opacidad + escala), 200 ms. */
+
+.ui-dialog-layer {
+  --ui-dialog-dur: 200ms;
+  --ui-dialog-scale: .98;
+  --ui-dialog-radius: calc(var(--g-radius) * 2);   /* 20 px: redondeado (estética ElevenLabs) */
+  --ui-dialog-gutter: var(--g-s-4);
+  position: fixed;
+  inset: 0;
+  z-index: 900;                                     /* debajo del tooltip (1000) */
+  display: grid;
+  place-items: center;
+  padding: var(--ui-dialog-gutter);
+  padding: max(var(--ui-dialog-gutter), env(safe-area-inset-top)) max(var(--ui-dialog-gutter), env(safe-area-inset-right)) max(var(--ui-dialog-gutter), env(safe-area-inset-bottom)) max(var(--ui-dialog-gutter), env(safe-area-inset-left));
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+  font-family: var(--g-font);
+  color: var(--g-text);
+}
+.ui-dialog-layer *, .ui-dialog-layer *::before, .ui-dialog-layer *::after { box-sizing: border-box; }
+
+/* Fondo atenuado sobrio: sin blur ni brillo. */
+.ui-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--g-bg) 72%, transparent);
+  opacity: 0;
+}
+
+.ui-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(32rem, 100%);
+  max-height: 100%;
+  min-height: 0;
+  background: var(--g-surface);
+  border: 1px solid var(--g-line);
+  border-radius: var(--ui-dialog-radius);
+  box-shadow: var(--g-shadow-tooltip);
+  opacity: 0;
+  transform: scale(var(--ui-dialog-scale));
+  transform-origin: center;
+  outline: none;
+}
+
+.ui-dialog-layer.is-open .ui-dialog-backdrop { opacity: 1; }
+.ui-dialog-layer.is-open .ui-dialog { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ui-dialog-backdrop { transition: opacity var(--ui-dialog-dur) var(--g-ease); }
+  .ui-dialog { transition: opacity var(--ui-dialog-dur) var(--g-ease), transform var(--ui-dialog-dur) var(--g-ease); will-change: opacity, transform; }
+  .ui-dialog-layer.is-closing .ui-dialog-backdrop,
+  .ui-dialog-layer.is-closing .ui-dialog { transition-duration: calc(var(--ui-dialog-dur) * .75); }
+}
+
+.ui-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--g-s-3);
+  min-width: 0;
+  padding: var(--g-s-5) var(--g-s-5) var(--g-s-3);
+}
+.ui-dialog-titles { display: flex; flex-direction: column; gap: var(--g-s-1); flex: 1 1 auto; min-width: 0; }
+.ui-dialog-title { margin: 0; font-size: var(--g-fs-lg); font-weight: var(--g-fw-semibold); line-height: 1.75rem; overflow-wrap: anywhere; }
+.ui-dialog-desc { margin: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); line-height: 1.125rem; overflow-wrap: anywhere; }
+.ui-dialog-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--g-control-h);
+  height: var(--g-control-h);
+  margin: calc(-1 * var(--g-s-1)) calc(-1 * var(--g-s-2)) 0 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--g-radius-pill);
+  color: var(--g-text-2);
+  cursor: pointer;
+}
+.ui-dialog-x:hover { background: var(--g-raised); color: var(--g-text); }
+.ui-dialog-x:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; }
+@media (pointer: coarse) { .ui-dialog-x { width: var(--ui-touch); height: var(--ui-touch); } }
+
+/* El cuerpo scrollea por dentro si no entra (sin barra, con degradé); la cabecera y el pie quedan. */
+.ui-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--g-s-4);
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--g-s-2) var(--g-s-5) var(--g-s-4);
+}
+.ui-dialog-ask { padding: 0 var(--g-s-5) var(--g-s-3); }
+.ui-dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--g-s-2) var(--g-s-3);
+  min-width: 0;
+  padding: var(--g-s-4) var(--g-s-5) var(--g-s-5);
+  border-top: 1px solid var(--g-line);
+}
+
+@media (max-width: 640px) {
+  .ui-dialog-layer { --ui-dialog-gutter: var(--g-s-3); }
+  .ui-dialog { width: 100%; }
+  .ui-dialog-head { padding: var(--g-s-4) var(--g-s-4) var(--g-s-2); }
+  .ui-dialog-body { padding: var(--g-s-2) var(--g-s-4) var(--g-s-3); }
+  .ui-dialog-ask { padding: 0 var(--g-s-4) var(--g-s-3); }
+  .ui-dialog-foot { padding: var(--g-s-3) var(--g-s-4) var(--g-s-4); }
+}

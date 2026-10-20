@@ -6,6 +6,7 @@ import {
   SelectionHeader, Skeleton, SkeletonRows, SkeletonText, StatusLine, StatusText, Switch, Table, Tabs, TagInput, Textarea, TimeField,
   TruncatedText, ageTone, icons, useAnchoredToggle, useInlineConfirm, useSelection, useStatusLine, type Column, type FileDropItem
 } from './index';
+import { Dialog } from './Dialog';
 
 /**
  * Página de muestra interna (solo superadmin): todos los componentes de
@@ -342,6 +343,10 @@ export function Showcase() {
             <CollapseDemo />
           </Card>
 
+          <Card eyebrow="Excepción (solo cartelitos)" title="Dialog · pop up centrado" wide>
+            <DialogDemo />
+          </Card>
+
           <Card eyebrow="Patrones en línea" title="Selección · Confirmación · Estado" wide>
             <Eyebrow>Ctrl/Cmd+click marca · Shift+click rango · con selección el click simple marca</Eyebrow>
             <SelectionHeader
@@ -478,3 +483,34 @@ export function Showcase() {
 }
 
 export default Showcase;
+
+/**
+ * Ejemplo del pop up. Es una EXCEPCIÓN a "nada de modales": hoy solo lo usan los
+ * cartelitos de fotos (pedido del dueño, 20/10). Para todo lo demás, en línea.
+ */
+function DialogDemo() {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const close = () => { setOpen(false); setName(''); };
+  return (
+    <>
+      <Eyebrow>Esc, la X o el fondo cierran · con algo escrito pregunta antes · Enter envía · el foco vuelve al botón</Eyebrow>
+      <div><Button variant="secondary" onClick={() => setOpen(true)}>Abrir el ejemplo</Button></div>
+      <Dialog
+        open={open}
+        title="Entregar cartelito 4"
+        description="Ejemplo: el formulario va adentro y las acciones en el pie."
+        dirty={Boolean(name.trim())}
+        onClose={close}
+        footer={(
+          <>
+            <Button variant="primary" disabled={!name.trim()} onClick={close} iconEnd={<Kbd>↵</Kbd>}>Entregar</Button>
+            <Button variant="ghost" onClick={close}>Cancelar</Button>
+          </>
+        )}
+      >
+        <Input label="Alumno" value={name} onValueChange={setName} placeholder="Nombre y apellido" onKeyDown={event => { if (event.key === 'Enter' && name.trim()) { event.preventDefault(); close(); } }} />
+      </Dialog>
+    </>
+  );
+}
