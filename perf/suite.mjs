@@ -473,8 +473,11 @@ function instrument(site, release) {
 
   /** ¿Se ve algo "cargando"? Devuelve una descripción o ''. */
   B.loadingVisible = () => {
+    // Solo lo que está a la vista: una pantalla que monta secciones al
+    // scrollear (Analítica del rediseño) deja esqueletos debajo del pliegue a propósito.
+    const inViewport = element => { const rect = element.getBoundingClientRect(); return rect.bottom > 0 && rect.top < innerHeight; };
     for (const element of document.querySelectorAll('[class*="skel" i],[class*="shimmer" i],[aria-busy="true"]')) {
-      if (visible(element)) return `${element.tagName.toLowerCase()}.${String(element.className || '').slice(0, 40)}`;
+      if (visible(element) && inViewport(element)) return `${element.tagName.toLowerCase()}.${String(element.className || '').slice(0, 40)}`;
     }
     const scope = document.querySelector('main,[role="main"]') || document.body;
     if (!scope) return '';
@@ -791,7 +794,8 @@ async function chooseOption(page, labelSource, preferSource) {
       select.dispatchEvent(new Event('change', { bubbles: true }));
       return 'select';
     }
-    for (const group of scope.querySelectorAll('[role="radiogroup"]')) {
+    // Grupos de radios o de chips (rediseño: OptionGroup = role="group" con botones aria-pressed).
+    for (const group of scope.querySelectorAll('[role="radiogroup"], [role="group"][aria-label]')) {
       const name = norm(group.getAttribute('aria-label') || document.getElementById(group.getAttribute('aria-labelledby') || '')?.textContent || '');
       if (!rx.test(name)) continue;
       const radios = [...group.querySelectorAll('[role="radio"], input[type="radio"], button')];
@@ -921,13 +925,28 @@ async function runPeople(run, terms) {
     await openApp(page);
     const opened = await switchView(page, 'loans');
     if (!opened.ok) throw new Error(`Préstamos no cargó: ${opened.reason}`);
-    const input = await findField(page, 'person');
+    let input = await findField(page, 'person');
+    if (!input) {
+      // Rediseño: el formulario de préstamo (con el campo Persona) se despliega
+      // recién al elegir un equipo disponible. Se escribe la etiqueta de uno en
+      // el campo de código y se espera a que aparezca el formulario.
+      const code = await findField(page, 'code');
+      const free = (await api.devices()).find(item => loanState(item.estado) === 'available');
+      if (code && free) {
+        await clearAndType(page, code, free.etiqueta);
+        const t = await page.evaluate(() => window.__bench.lastInput('keydown'));
+        await settle(page, { since: t, quiet: 400, timeout: 10000 });
+        input = await findField(page, 'person');
+      }
+    }
     if (!input) throw new Error('No encontré el campo de persona en Préstamos.');
     const parts = [];
     for (const { kind, term } of terms) {
       await clearAndType(page, input, '');
       await sleep(800);
-      await page.evaluate(() => { for (const element of document.querySelectorAll('li, [role="option"]')) element.__benchOld = true; });
+      // Solo cuentan como "viejas" las opciones que se ven ahora: una lista plegada
+      // que React reusa (misma persona en dos búsquedas) vuelve a valer al desplegarse.
+      await page.evaluate(() => { for (const element of document.querySelectorAll('li, [role="option"]')) element.__benchOld = window.__bench.visible(element); });
       await input.focus();
       await page.keyboard.type(term);
       const result = await page.evaluate((query, expectNone) => new Promise(resolve => {
@@ -1085,7 +1104,8 @@ async function runOps(run, tag) {
 
     // Prestar.
     await clearAndType(page, code, tag);
-    const lendButton = await waitFor(() => findButton(page, '^prestar$', { enabled: true, near: code }), { timeout: 8000 });
+    // Rediseño: el botón Prestar vive en el formulario que se despliega, fuera de la sección del campo de código.
+    const lendButton = await waitFor(async () => (await findButton(page, '^prestar[^a-z0-9]*$', { enabled: true, near: code })) || findButton(page, '^prestar[^a-z0-9]*$', { enabled: true }), { timeout: 8000 });
     if (!lendButton) throw new Error(`No apareció "Prestar" para ${tag}.`);
     const person = await findField(page, 'person');
     if (!person) throw new Error('No encontré el campo de persona.');
@@ -1096,7 +1116,7 @@ async function runOps(run, tag) {
     filled.push(await chooseOption(page, '^ubicacion$', '^doe$'));
     if (await page.$('[aria-label="Nivel"]')) filled.push(await chooseOption(page, '^nivel$', '^ep$'));
     if (await page.$('[aria-label="Grado, año o curso"]')) filled.push(await chooseOption(page, '^grado', '.'));
-    const lendNow = await findButton(page, '^prestar$', { enabled: true, near: code });
+    const lendNow = (await findButton(page, '^prestar[^a-z0-9]*$', { enabled: true, near: code })) || await findButton(page, '^prestar[^a-z0-9]*$', { enabled: true });
     if (!lendNow) throw new Error(`"Prestar" se deshabilitó (campos: ${filled.join(', ')}).`);
     await lendNow.click();
     const lendSince = await page.evaluate(() => window.__bench.lastInput('click'));
@@ -1110,7 +1130,7 @@ async function runOps(run, tag) {
     // Devolver.
     await sleep(800);
     await clearAndType(page, code, tag);
-    const returnButton = await waitFor(() => findButton(page, '^devolver$', { enabled: true, near: code }), { timeout: 8000 });
+    const returnButton = await waitFor(async () => (await findButton(page, '^devolver[^a-z0-9]*$', { enabled: true, near: code })) || findButton(page, '^devolver[^a-z0-9]*$', { enabled: true }), { timeout: 8000 });
     if (!returnButton) throw new Error(`No apareció "Devolver" para ${tag}.`);
     await returnButton.click();
     const retSince = await page.evaluate(() => window.__bench.lastInput('click'));

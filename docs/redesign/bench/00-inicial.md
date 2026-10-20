@@ -1,9 +1,9 @@
 # Benchmark 00-inicial
 
-Checkout `83f97e4 Merge pull request #5: rendimiento, seguridad, bugs y UX` (83f97e4, main) · 2026-10-19T15:18:10.649Z · generado por `perf/suite.mjs`.
+Checkout `83f97e4 Merge pull request #5: rendimiento, seguridad, bugs y UX` (83f97e4, HEAD) · 2026-10-20T03:40:12.773Z · generado por `perf/suite.mjs`.
 
-**Condiciones:** 7 corridas por métrica · CPU 4× más lenta · red simulada 40 ms RTT, 10 Mbps bajada, 5 Mbps subida · 15 ms sincrónicos por query en el server (simula Supabase) · Chrome 155.0.8059.84 headless, 1366×800 · Node v24.19.0 · AMD Ryzen 5 5560U with Radeon Graphics ×12. Una pasada de calentamiento sin registrar antes de las corridas; cada medición en un contexto de navegador nuevo, sin service worker.
-**Datos (copia de la base, sede NFPT):** 76 equipos, 153 eventos de préstamo, 255 movimientos, 8 tareas, 27 actividades de agenda, 0 tickets.
+**Condiciones:** 7 corridas por métrica · CPU 4× más lenta · red simulada 40 ms RTT, 10 Mbps bajada, 5 Mbps subida · 15 ms sincrónicos por query en el server (simula Supabase) · Chrome 155.0.8059.85 headless, 1366×800 · Node v24.19.0 · AMD Ryzen 5 5560U with Radeon Graphics ×12. Una pasada de calentamiento sin registrar antes de las corridas; cada medición en un contexto de navegador nuevo, sin service worker.
+**Datos (copia de la base, sede NFPT):** 386 equipos, 5145 eventos de préstamo, 5881 movimientos, 258 tareas, 327 actividades de agenda, 250 tickets.
 
 Valores en ms: **mediana / p95** (p95 por rango más cercano; con n = 7 coincide con el máximo). Entre paréntesis, el tamaño de muestra válida. "–" = no se pudo medir (ver Fallas).
 
@@ -11,14 +11,14 @@ Valores en ms: **mediana / p95** (p95 por rango más cercano; con n = 7 coincide
 
 | Métrica | Frío (sin caché) | Caliente (recarga con caché) |
 | --- | ---: | ---: |
-| FCP (primer pintado con contenido) | 968 / 1372 (7) | 368 / 640 (7) |
-| App visible (navegación + main pintados) | 1037.7 / 1456.4 (7) | 443.4 / 813.9 (7) |
-| Dashboard con datos (todos los pedidos terminados y pantalla quieta) | 3199.6 / 4232.5 (7) | 1481.6 / 2273.9 (7) |
-| Interactiva (TTI: 5 s sin tareas largas) | 1926.5 / 2805.4 (7) | 1108.3 / 1822 (7) |
-| TBT (FCP → TTI) | 263 / 548 (7) | 38 / 113 (7) |
-| Tareas largas totales (ms) | 1005 / 1729 (7) | 254 / 714 (7) |
-| DOMContentLoaded | 378.5 / 427.7 (7) | 144.4 / 167.1 (7) |
-| Transferido hasta TTI (KB, corrida 1) | Script 227.8, Stylesheet 60.5, Image 45, Fetch 17.8, Document 1.3, Other 0 | Fetch 6.9, Document 0.3, Script 0, Stylesheet 0, Other 0, Image 0 |
+| FCP (primer pintado con contenido) | 912 / 928 (7) | 300 / 304 (7) |
+| App visible (navegación + main pintados) | 970 / 978 (7) | 338 / 347.4 (7) |
+| Dashboard con datos (todos los pedidos terminados y pantalla quieta) | 3100.5 / 3191.1 (7) | 1392.3 / 1459.2 (7) |
+| Interactiva (TTI: 5 s sin tareas largas) | 1533.7 / 1666.7 (7) | 304 / 935.7 (7) |
+| TBT (FCP → TTI) | 63 / 119 (7) | 0 / 6 (7) |
+| Tareas largas totales (ms) | 513 / 756 (7) | 0 / 56 (7) |
+| DOMContentLoaded | 369.6 / 392.5 (7) | 133.8 / 137.5 (7) |
+| Transferido hasta TTI (KB, corrida 1) | Script 227.8, Stylesheet 60.5, Image 45, Fetch 44.5, Document 1.3, Other 0 | Fetch 13.6, Document 0.3, Script 0, Stylesheet 0, Image 0, Other 0 |
 
 ## Cambio de módulo
 
@@ -26,16 +26,16 @@ Click en la navegación → **respuesta** (primer frame con un cambio en `<main>
 
 | Pantalla | 1ª respuesta | 1ª contenido | 2ª respuesta | 2ª contenido | Fallas |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Dashboard | 163.9 / 292.3 | 330.9 / 587 (7) | 209.5 / 470.2 | 429.6 / 987.5 (7) | 0 |
-| Préstamos | 442.3 / 638.3 | 561.3 / 827.5 (7) | 165.6 / 237.8 | 305.4 / 444.4 (7) | 0 |
-| Dispositivos | 348.8 / 423.3 | 628.8 / 755 (7) | 151 / 206.3 | 479.4 / 677.3 (7) | 0 |
-| Inventario | 377.9 / 631.8 | 545.3 / 778.5 (7) | 92.6 / 121.6 | 127.2 / 275.5 (7) | 0 |
-| Agenda | 307.5 / 548.2 | 307.5 / 548.2 (7) | 118.7 / 249.7 | 118.7 / 249.7 (7) | 0 |
-| Tareas | 177.9 / 258.8 | 598.2 / 721.6 (7) | 132.4 / 184.6 | 168 / 462.1 (7) | 0 |
-| Tickets | 145.9 / 180.8 | 187 / 269.2 (7) | 110.4 / 140.6 | 116.6 / 231.4 (7) | 0 |
-| Historial | 115.6 / 196.3 | 336.1 / 501.2 (7) | 123.5 / 206.8 | 200.1 / 421.5 (7) | 0 |
-| Analítica | 137.3 / 252 | 888 / 1146 (7) | 197.3 / 577 | 230.5 / 775.9 (7) | 0 |
-| Configuración | 615.8 / 659 | 924 / 1056.2 (7) | 429.6 / 778.4 | 429.6 / 778.4 (7) | 0 |
+| Dashboard | 157.4 / 169.9 | 401.3 / 576.4 (7) | 152.4 / 183.6 | 337.4 / 419.3 (7) | 0 |
+| Préstamos | 298.5 / 311.5 | 1008.2 / 1061.2 (7) | 138.6 / 179.2 | 892.6 / 972.1 (7) | 0 |
+| Dispositivos | 179.5 / 200.7 | 342.9 / 386.8 (7) | 125 / 130.9 | 240.8 / 281.7 (7) | 0 |
+| Inventario | 264.7 / 301.6 | 338.7 / 373.4 (7) | 73.7 / 91.2 | 135.1 / 165.1 (7) | 0 |
+| Agenda | 164.8 / 176.8 | 164.8 / 176.8 (7) | 114.4 / 117.6 | 114.4 / 117.6 (7) | 0 |
+| Tareas | 112.5 / 121.4 | 386.6 / 415.6 (7) | 82.2 / 98.3 | 246.3 / 349.8 (7) | 0 |
+| Tickets | 92.7 / 111 | 1412.6 / 1546.8 (7) | 73.8 / 80.3 | 1037.8 / 1174.8 (7) | 0 |
+| Historial | 130 / 151.8 | 283.8 / 309 (7) | 112.9 / 130.5 | 250.7 / 270.4 (7) | 0 |
+| Analítica | 85.3 / 91 | 1225.3 / 1239.4 (7) | 66.1 / 294.4 | 1080.2 / 1131.2 (7) | 0 |
+| Configuración | 441.6 / 464 | 835.7 / 888.7 (7) | 259.4 / 419.1 | 750.4 / 857.9 (7) | 0 |
 
 ## Búsqueda rápida de personas (Préstamos)
 
@@ -43,24 +43,24 @@ Se tipean 3 letras seguidas en el campo Persona; se mide desde la 3ª tecla hast
 
 | Caso | Término | Personas que coinciden | Visible en pantalla | Espera antes del pedido | Pedido (navegador) | Endpoint (Node) | Fallas |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| común | `ale` | 2 | 343.6 / 367.7 (7) | 237.2 / 264.8 | 76 / 108.8 | 34.6 / 57.3 · 1 q | 0 |
-| parcial | `val` | 1 | 338.5 / 383.1 (7) | 238.6 / 252.3 | 72.9 / 103 | 34.5 / 38.8 · 1 q | 0 |
-| con tilde | `áka` | 2 | 344.4 / 358.4 (7) | 241.9 / 247.2 | 69.3 / 87.4 | 29.9 / 41.2 · 1 q | 0 |
-| sin tilde | `aka` | 2 | 334.6 / 378.1 (7) | 235 / 270.4 | 67.6 / 79 | 34.5 / 50.4 · 1 q | 0 |
-| sin resultados | `zqx` | 0 | 327.5 / 337.7 (7) | 233.4 / 238.2 | 68.4 / 81.1 | 36.1 / 48.2 · 1 q | 0 |
+| común | `mic` | 9 | 332.4 / 364.7 (7) | 234.1 / 240.6 | 69.1 / 115.9 | 41.6 / 57.8 · 1 q | 0 |
+| parcial | `cae` | 9 | 343.7 / 391.1 (7) | 235.6 / 241.4 | 74.4 / 122.1 | 53 / 57.2 · 1 q | 0 |
+| con tilde | `rám` | 6 | 338 / 352.7 (7) | 235.1 / 247.4 | 73 / 76.6 | 39.3 / 55.4 · 1 q | 0 |
+| sin tilde | `ram` | 6 | 336.3 / 385.4 (7) | 234 / 242.3 | 72 / 104.2 | 54.6 / 57.2 · 1 q | 0 |
+| sin resultados | `zqx` | 0 | 333 / 348.4 (7) | 228.4 / 248.8 | 70.5 / 74.3 | 54 / 55.9 · 1 q | 0 |
 
 En "sin resultados" la columna visible mide hasta que llega la respuesta vacía y se pinta el frame siguiente.
 
 ## Búsqueda flexible de equipos (Dispositivos)
 
-`touch 34` (debería encontrar D1436): **74 / 120.5 (7)** ms desde la última tecla hasta que la tabla se aquieta · filas 76 → 1 · encontrado en 7/7 corridas.
+`touch 34` (debería encontrar D1436): **91.5 / 100.7 (7)** ms desde la última tecla hasta que la tabla se aquieta · filas 386 → 1 · encontrado en 7/7 corridas.
 
 ## Historial
 
 | Acción | ms | Filas |
 | --- | ---: | ---: |
-| Abrir Historial (primera página) | 475.6 / 551.2 (7) | 50 |
-| Cargar más | 364.6 / 548.5 (7) | 100 |
+| Abrir Historial (primera página) | 328.4 / 336.6 (7) | 50 |
+| Cargar más | 220.6 / 250 (7) | 100 |
 
 ## Desplazamiento en listas largas
 
@@ -68,62 +68,62 @@ Scroll programático de 120 px por frame, bajando y subiendo, sobre el contenedo
 
 | Lista | Filas | Frames | p50 frame | p95 frame | Peor frame | Frames > 50 ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Dispositivos (tabla abierta entera) | 76 | 110 | 16.7 / 16.7 | 33.4 / 33.5 (7) | 50.1 / 66.9 | 1 / 3 |
-| Historial (hasta 4 páginas) | 159 | 138 | 16.7 / 16.7 | 16.9 / 20.4 (7) | 33.7 / 67 | 0 / 2 |
+| Dispositivos (tabla abierta entera) | 386 | 588 | 17.7 / 141.7 | 18.2 / 177.9 (7) | 196.3 / 263.9 | 5 / 558 |
+| Historial (hasta 4 páginas) | 200 | 190 | 17.7 / 17.7 | 18.2 / 18.3 (7) | 36.1 / 36.8 | 0 / 0 |
 
 ## Operaciones frecuentes
 
 | Operación | UI: click → pantalla quieta | POST (navegador) | API desde Node (POST + ver en /api/devices) | Queries |
 | --- | ---: | ---: | ---: | ---: |
-| Prestar uno | 497.3 / 545.8 (7) | 171 / 250 | 368 / 443.4 | 13 / 13 |
-| Devolver uno | 466 / 673.7 (7) | 171 / 317 | 396.9 / 532.4 | 14 / 16 |
+| Prestar uno | 510.6 / 574.2 (7) | 190 / 219 | 344.5 / 354.3 | 13 / 13 |
+| Devolver uno | 527.5 / 564.8 (7) | 226 / 260 | 345.9 / 372.7 | 14 / 14 |
 
 ## API (desde Node, sin red simulada)
 
-Cada endpoint 7 veces con las cachés del server calientes. Ráfaga de arranque (los GET que pide la app al abrir, 6 en paralelo): **604.7 / 805.6 (7)** ms, 22 queries.
+Cada endpoint 7 veces con las cachés del server calientes. Ráfaga de arranque (los GET que pide la app al abrir, 6 en paralelo): **545.1 / 560.7 (7)** ms, 22 queries.
 
 | Endpoint | Estado | ms | Queries | KB |
 | --- | ---: | ---: | ---: | ---: |
-| `/api/auth/session` | 200 | 2.1 / 15.8 | 0 | 0.5 |
-| `/api/site-settings` | 200 | 33.1 / 45 | 1 | 1.6 |
-| `/api/devices` | 200 | 11.2 / 18.1 | 0 | 62.2 |
-| `/api/movements` | 200 | 34.3 / 41 | 1 | 15.8 |
-| `/api/agenda` | 200 | 34.7 / 37.2 | 1 | 10.5 |
-| `/api/tasks?space=team` | 200 | 97.7 / 168 | 4 | 4.6 |
-| `/api/notifications` | 200 | 44.2 / 62.7 | 1 | 0 |
-| `/api/user/prefs` | 200 | 35.9 / 42 | 1 | 0 |
-| `/api/release-notes/latest` | 200 | 41.1 / 60.9 | 1 | 0 |
-| `/api/internal-notes?filter=all` | 200 | 31 / 111.7 | 1 | 0 |
-| `/api/loans/previous-day` | 200 | 86.9 / 203.7 | 1 | 0.8 |
-| `/api/photo-passes` | 200 | 37.9 / 68.2 | 1 | 5.9 |
-| `/api/history?kind=loans&limit=50` | 200 | 40.7 / 62.2 | 1 | 12 |
-| `/api/history?kind=all&limit=50` | 200 | 49.4 / 60.6 | 1 | 8.7 |
-| `/api/loans/suggest?q=ale` | 200 | 34.6 / 57.3 | 1 | 0.3 |
-| `/api/loans/suggest?q=val` | 200 | 34.5 / 38.8 | 1 | 0.1 |
-| `/api/loans/suggest?q=%C3%A1ka` | 200 | 29.9 / 41.2 | 1 | 0.2 |
-| `/api/loans/suggest?q=aka` | 200 | 34.5 / 50.4 | 1 | 0.2 |
-| `/api/loans/suggest?q=zqx` | 200 | 36.1 / 48.2 | 1 | 0 |
-| `/api/tasks?space=all` | 200 | 129.5 / 325.5 | 4 | 4.6 |
-| `/api/settings/shifts` | 200 | 41.6 / 70.8 | 1 | 0.1 |
-| `/api/quick-links` | 200 | 38.2 / 85.7 | 1 | 2.3 |
-| `/api/tools/config` | 200 | 215.5 / 250.8 | 8 | 0.1 |
-| `/api/internal-notes?filter=active` | 200 | 27.7 / 29.2 | 1 | 0 |
-| `/api/recess-schedules` | 200 | 34.2 / 48.9 | 1 | 0.1 |
-| `/api/devices?refresh=1` | 200 | 20.4 / 22 | 0 | 62.2 |
-| `/api/photo-passes/options` | 200 | 170.9 / 187.3 | 7 | 0.6 |
-| `/api/inventory/items` | 200 | 54.6 / 69.3 | 2 | 18.1 |
-| `/api/site-assistants` | 200 | 32.9 / 44.8 | 1 | 0.2 |
-| `/api/task-columns` | 200 | 31.3 / 41.6 | 1 | 0.3 |
-| `/api/tickets` | 200 | 34.4 / 40.5 | 1 | 0 |
-| `/api/ticket-templates` | 200 | 33.8 / 40.3 | 1 | 0 |
-| `/api/classrooms` | 200 | 42.4 / 62.3 | 1 | 21.4 |
-| `/api/analytics/parque` | 200 | 102.5 / 133.2 | 4 | 0.8 |
-| `/api/analytics?from=2025-10-19&to=2026-10-19` | 200 | 264.1 / 378.4 | 9 | 56.6 |
-| `/api/notifications/prefs` | 200 | 65.7 / 85.1 | 2 | 0.2 |
-| `/api/invites` | 200 | 35.2 / 46.2 | 1 | 0 |
-| `/api/lifecycle/defaults` | 200 | 67.4 / 97.8 | 2 | 0.4 |
-| `/api/allowed-users` | 200 | 415.2 / 781 | 15 | 2 |
-| `/api/sites` | 200 | 32.3 / 51.4 | 1 | 0.7 |
+| `/api/auth/session` | 200 | 16 / 16.3 | 0 | 0.5 |
+| `/api/site-settings` | 200 | 32.5 / 47.7 | 1 | 1.6 |
+| `/api/devices` | 200 | 22.7 / 24.1 | 0 | 311 |
+| `/api/movements` | 200 | 33.9 / 49.7 | 1 | 16.4 |
+| `/api/agenda` | 200 | 49.8 / 50.7 | 1 | 57.2 |
+| `/api/tasks?space=team` | 200 | 100.3 / 101.9 | 4 | 158.7 |
+| `/api/notifications` | 200 | 32.5 / 48.4 | 1 | 4.9 |
+| `/api/user/prefs` | 200 | 31.7 / 46.8 | 1 | 0 |
+| `/api/release-notes/latest` | 200 | 31.7 / 47.1 | 1 | 0 |
+| `/api/internal-notes?filter=all` | 200 | 47.3 / 47.7 | 1 | 0 |
+| `/api/loans/previous-day` | 200 | 641.8 / 714.5 | 1 | 1.2 |
+| `/api/photo-passes` | 200 | 47.4 / 48.4 | 1 | 5.9 |
+| `/api/history?kind=loans&limit=50` | 200 | 48.1 / 48.6 | 1 | 12.9 |
+| `/api/history?kind=all&limit=50` | 200 | 52.6 / 53.5 | 1 | 9 |
+| `/api/loans/suggest?q=mic` | 200 | 41.6 / 57.8 | 1 | 1.2 |
+| `/api/loans/suggest?q=cae` | 200 | 53 / 57.2 | 1 | 1.2 |
+| `/api/loans/suggest?q=r%C3%A1m` | 200 | 39.3 / 55.4 | 1 | 0.9 |
+| `/api/loans/suggest?q=ram` | 200 | 54.6 / 57.2 | 1 | 0.9 |
+| `/api/loans/suggest?q=zqx` | 200 | 54 / 55.9 | 1 | 0 |
+| `/api/tasks?space=all` | 200 | 86.6 / 101.3 | 4 | 158.7 |
+| `/api/settings/shifts` | 200 | 32.2 / 47.6 | 1 | 0.1 |
+| `/api/quick-links` | 200 | 32.7 / 48.5 | 1 | 2.3 |
+| `/api/tools/config` | 200 | 143.3 / 159.1 | 8 | 0.2 |
+| `/api/internal-notes?filter=active` | 200 | 46.4 / 47.5 | 1 | 0 |
+| `/api/recess-schedules` | 200 | 32.3 / 47.9 | 1 | 0.1 |
+| `/api/devices?refresh=1` | 200 | 23 / 23.8 | 0 | 311 |
+| `/api/photo-passes/options` | 200 | 174.3 / 206.7 | 7 | 6.9 |
+| `/api/inventory/items` | 200 | 64.1 / 80.1 | 2 | 18.1 |
+| `/api/site-assistants` | 200 | 31.9 / 46.9 | 1 | 0.2 |
+| `/api/task-columns` | 200 | 31.9 / 47.4 | 1 | 0.3 |
+| `/api/tickets` | 200 | 36.5 / 52.3 | 1 | 135.5 |
+| `/api/ticket-templates` | 200 | 47 / 47.5 | 1 | 0 |
+| `/api/classrooms` | 200 | 48.1 / 49.1 | 1 | 21.4 |
+| `/api/analytics/parque` | 200 | 95.7 / 111.2 | 4 | 0.8 |
+| `/api/analytics?from=2025-10-20&to=2026-10-20` | 200 | 308.8 / 331.4 | 9 | 1892.7 |
+| `/api/notifications/prefs` | 200 | 47.6 / 63.3 | 2 | 0.2 |
+| `/api/invites` | 200 | 31.8 / 94.2 | 1 | 0 |
+| `/api/lifecycle/defaults` | 200 | 47.5 / 63.5 | 2 | 0.4 |
+| `/api/allowed-users` | 200 | 268.5 / 283.9 | 15 | 2 |
+| `/api/sites` | 200 | 31.8 / 32.1 | 1 | 0.7 |
 
 ## Tamaños del build
 
