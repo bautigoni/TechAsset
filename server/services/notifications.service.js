@@ -234,15 +234,58 @@ export function processDueReminders() {
   return rows.length;
 }
 
-let notificationWorkerTimer = null;
-export function startNotificationWorkers(intervalMs = 10000) {
-  if (notificationWorkerTimer) return notificationWorkerTimer;
-  const tick = () => {
-    try { processNotificationOutbox(); processDueReminders(); }
-    catch (error) { console.error('[notification-worker]', error?.message || error); }
+// Trabajos de fondo. En producción cada consulta es un viaje SINCRÓNICO a
+// Supabase que frena todo el proceso: antes había un tick cada 10 s con dos
+// consultas (outbox + recordatorios), ~880.000 viajes acumulados sin nada que
+// hacer casi nunca (docs/redesign/bench/produccion-diagnostico.md).
+//
+// - Recordatorios: solo los escribe esta app (rutas /reminders y el asistente),
+//   así que se despiertan por evento: después de cada escritura y a la hora
+//   exacta del próximo vencimiento. Un barrido cada 5 min cubre lo que se
+//   escriba por fuera (otra herramienta contra la base).
+// - Outbox: lo llenan clientes externos (función enqueue_techasset_notification
+//   en Postgres), así que se sigue mirando, pero cada 30 s (lo mismo que tarda la
+//   campanita en pollear): una notificación externa llega con ≤ 30 s más.
+const OUTBOX_INTERVAL_MS = Math.max(5000, Number(process.env.NOTIFICATION_OUTBOX_MS || 30000));
+const REMINDER_SWEEP_MS = 5 * 60 * 1000;
+let outboxTimer = null;
+let reminderTimer = null;
+
+function runReminders() {
+  reminderTimer = null;
+  let delay = REMINDER_SWEEP_MS;
+  try {
+    processDueReminders();
+    const next = getDb().prepare(`
+      SELECT MIN(remind_at) AS at FROM reminders
+      WHERE active=1 AND status='pending' AND COALESCE(notification_sent_at,'')=''
+    `).get()?.at;
+    const dueIn = next ? Date.parse(next) - Date.now() : NaN;
+    if (Number.isFinite(dueIn)) delay = Math.min(REMINDER_SWEEP_MS, Math.max(1000, dueIn + 250));
+  } catch (error) {
+    console.error('[notification-worker] recordatorios:', error?.message || error);
+  }
+  reminderTimer = setTimeout(runReminders, delay);
+  reminderTimer.unref?.();
+}
+
+/** Después de crear, editar, posponer o deshacer un recordatorio: revisa ya y reprograma. */
+export function scheduleReminderCheck() {
+  if (!outboxTimer) return; // workers apagados (scripts, tests)
+  if (reminderTimer) clearTimeout(reminderTimer);
+  reminderTimer = setTimeout(runReminders, 50);
+  reminderTimer.unref?.();
+}
+
+export function startNotificationWorkers() {
+  if (outboxTimer) return outboxTimer;
+  const outbox = () => {
+    try { processNotificationOutbox(); }
+    catch (error) { console.error('[notification-worker] outbox:', error?.message || error); }
   };
-  tick();
-  notificationWorkerTimer = setInterval(tick, Math.max(5000, intervalMs));
-  notificationWorkerTimer.unref?.();
-  return notificationWorkerTimer;
+  outbox();
+  outboxTimer = setInterval(outbox, OUTBOX_INTERVAL_MS);
+  outboxTimer.unref?.();
+  runReminders();
+  return outboxTimer;
 }

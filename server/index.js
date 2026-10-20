@@ -35,7 +35,7 @@ import { remindersRouter } from './routes/reminders.routes.js';
 import { knowledgeRouter } from './routes/knowledge.routes.js';
 import { canvasRouter } from './routes/canvas.routes.js';
 import { historyRouter } from './routes/history.routes.js';
-import { startNotificationWorkers } from './services/notifications.service.js';
+import { scheduleReminderCheck, startNotificationWorkers } from './services/notifications.service.js';
 import { invalidateDeviceInventoryCache } from './services/deviceInventory.service.js';
 import { authMiddleware, getUserSession, invalidateSessionCache, isSuperadmin, normalizeSiteCode, requireEditor, requireModuleEditor } from './services/siteContext.service.js';
 
@@ -67,7 +67,17 @@ app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
 // inventario, PDFs de tickets...). Los logos de sede quedan públicos porque
 // van en mails y antes del login.
 // fallthrough: false = un adjunto que no existe da 404, no el index.html de la SPA.
-const serveUploads = express.static(config.uploadsDir, { maxAge: '7d', immutable: true, fallthrough: false });
+const staticUploads = express.static(config.uploadsDir, { maxAge: '7d', immutable: true, fallthrough: false });
+// Un archivo que falta en disco (logos y adjuntos perdidos en la migración a la
+// VM) respondía 500 y dejaba un ENOENT con stack en el log en CADA carga. Ahora
+// es un 404 limpio, cacheable 10 min (el front cae al logo por defecto).
+const serveUploads = (req, res, next) => staticUploads(req, res, error => {
+  if (error && (error.status === 404 || error.statusCode === 404 || error.code === 'ENOENT')) {
+    res.set('Cache-Control', 'private, max-age=600');
+    return res.status(404).type('text').send('No existe.');
+  }
+  return next(error);
+});
 app.use('/uploads', (req, res, next) => {
   const [category, siteSegment, ...rest] = req.path.split('/').filter(Boolean);
   if (category === 'site-logos') return serveUploads(req, res, next);
@@ -113,6 +123,12 @@ app.use('/api', (req, _res, next) => {
     }
     if (req.query?.operator) req.query.operator = nombre;
   }
+  next();
+});
+// Recordatorios: el worker no pollea; se despierta después de cada escritura
+// (rutas de recordatorios y el asistente, que también los crea y borra).
+app.use('/api', (req, res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD' && /^\/(reminders|assistant)\b/.test(req.path)) res.on('finish', scheduleReminderCheck);
   next();
 });
 app.use('/api', sitesRouter);
