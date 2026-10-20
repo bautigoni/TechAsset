@@ -307,6 +307,18 @@ export function AppShell(props: AppShellProps) {
   // Ctrl K y las franjas se precargan en idle: al abrirlas ya están.
   useEffect(() => { prefetchViewsWhenIdle(PANEL_CHUNKS); }, []);
 
+  // La línea de estado completa (versión nueva, sin conexión, novedades) vive
+  // en el chunk de las franjas: se pide un frame después del primer pintado.
+  // Pedirla en el primer render metía la precarga de ese chunk (~9 ms con CPU
+  // 4×) antes del primer pintado; los avisos de pushStatus que lleguen antes
+  // esperan en el store.
+  const [statusOn, setStatusOn] = useState(false);
+  useEffect(() => {
+    let timer = 0;
+    const frame = requestAnimationFrame(() => { timer = window.setTimeout(() => setStatusOn(true), 0); });
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
+  }, []);
+
   // La barra inferior existe: lo fijo de abajo (banner de instalar) se corre.
   useEffect(() => {
     document.body.classList.toggle('has-tabbar', isMobile && !keyboardOpen);
@@ -506,8 +518,9 @@ export function AppShell(props: AppShellProps) {
           )}
           </div>
           {/* Línea de estado global: entra y sale con alto suave. Sin fallback: un aviso que llega antes
-              que el chunk (precargado en idle) espera en el store y entra animado, nunca de golpe. */}
-          <Suspense fallback={null}><ShellStatus /></Suspense>
+              que el chunk (precargado en idle, pedido después del primer pintado) espera en el store y
+              entra animado, nunca de golpe. */}
+          {statusOn && <Suspense fallback={null}><ShellStatus /></Suspense>}
         </div>
 
         {/* Lo único que scrollea: el contenido. La barra superior (con sus
