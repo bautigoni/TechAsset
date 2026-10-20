@@ -24,8 +24,20 @@ export async function pwaTests({ browser, base, admin, releaseVersion, test, tra
       assert(originalSw && !originalSw.includes('__BUILD_ID__'), 'dist/sw.js no tiene la versión del build (falta el plugin techasset:sw-version)');
       await gotoView(page, base, 'dashboard');
       await until(() => page.evaluate(() => navigator.serviceWorker?.controller?.state === 'activated'), { timeout: 15000, message: 'el service worker controlando la página' });
-      const cdp = await page.createCDPSession();
-      const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');
+      // Instalabilidad en el contexto normal del navegador: en uno aislado (incógnito)
+      // Chrome siempre responde "in-incognito". Basta la landing (el SW se registra igual).
+      const plain = await browser.defaultBrowserContext().newPage();
+      let installabilityErrors = [];
+      try {
+        await plain.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
+        await until(() => plain.evaluate(() => navigator.serviceWorker?.controller?.state === 'activated'), { timeout: 15000, message: 'el SW en el contexto normal' });
+        const cdp = await plain.createCDPSession();
+        ({ installabilityErrors } = await cdp.send('Page.getInstallabilityErrors'));
+        await cdp.detach();
+        await plain.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r?.unregister()));
+      } finally {
+        await plain.close().catch(() => {});
+      }
       assert(!installabilityErrors.length, `errores de instalabilidad: ${JSON.stringify(installabilityErrors)}`);
       const manifest = await page.evaluate(() => fetch('/manifest.webmanifest').then(r => r.json()));
       const sizes = manifest.icons.map(icon => `${icon.sizes}:${icon.purpose || 'any'}`);
@@ -35,7 +47,6 @@ export async function pwaTests({ browser, base, admin, releaseVersion, test, tra
         assert(status === 200, `${icon.src} responde ${status}`);
       }
       assert(manifest.theme_color === '#0D0F12' && manifest.background_color === '#0D0F12', 'colores del manifest fuera del tema');
-      await cdp.detach();
       return `instalable; íconos ${sizes.join(', ')}`;
     });
 
@@ -48,7 +59,9 @@ export async function pwaTests({ browser, base, admin, releaseVersion, test, tra
       });
       assert(cached.keys.length === 1, `esperaba un solo caché de la versión actual (${cached.keys.join(', ')})`);
       assert(cached.urls.includes('/'), 'el shell (/) no está en el caché');
-      const entry = await page.evaluate(() => [...document.querySelectorAll('script[src*="/assets/"], link[rel="stylesheet"][href*="/assets/"]')].map(el => new URL(el.src || el.href).pathname));
+      // Lo de entrada (lo que nombra index.html); los chunks de pantalla se guardan al pedirse.
+      const entry = await page.evaluate(() => fetch('/', { cache: 'no-store' }).then(r => r.text()).then(html => [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map(match => match[1])));
+      assert(entry.length >= 2, `index.html no nombra assets de entrada (${entry.join(', ')})`);
       for (const asset of entry) assert(cached.urls.includes(asset), `${asset} no está en el caché`);
       await page.setOfflineMode(true);
       try {
