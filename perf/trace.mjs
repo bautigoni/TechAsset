@@ -7,6 +7,13 @@
 // action=scroll: abre la vista, (con --expand toca "Ver todos"/"Ver más" hasta
 //   el final), y traza 120 px por frame hacia abajo y hacia arriba.
 // action=load:   traza la carga en frío de la vista (contexto nuevo).
+// action=warm:   carga una vez sin trazar y traza la recarga (caché HTTP y
+//   sesión recordada, como "inicio en caliente" de la suite).
+// action=type:   en Préstamos, elige un equipo libre y traza el tipeo de
+//   --text (default "mic") en Persona, tecla por tecla.
+// --net:      misma red simulada que perf/suite.mjs (40 ms, 10/5 Mbps).
+// --timeline: además, la línea de tiempo (pedidos y tareas ≥ 16 ms del hilo
+//   principal con su tipo de trabajo dominante), en ms desde el inicio.
 // Muestra los tipos de evento con más tiempo propio y las funciones JS con más
 // muestras del profiler. Base: copia del snapshot (nunca la real).
 import { spawn } from 'node:child_process';
@@ -69,8 +76,10 @@ try {
     try { localStorage.setItem('techasset_active_site', 'NFPT'); sessionStorage.setItem('techasset_active_site', 'NFPT'); localStorage.setItem('techasset_last_seen_release', '9999'); } catch { /* nada */ }
   });
   await page.emulateCPUThrottling(CPU);
+  if (argv.includes('--net')) await page.emulateNetworkConditions({ download: (10 * 1e6) / 8, upload: (5 * 1e6) / 8, latency: 40 });
   const url = `${base}/sede/nfpt/${VIEW}`;
   const traceFile = path.join(tmpDir, 'trace.json');
+  const categories = ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8.execute', 'disabled-by-default-v8.cpu_profiler', 'blink.user_timing', 'loading'];
   if (ACTION === 'mutations') {
     // Qué sigue cambiando el DOM después de cargar (agrupado por elemento y por 250 ms).
     await page.evaluateOnNewDocument(() => {
@@ -93,10 +102,34 @@ try {
       buckets.set(key, (buckets.get(key) || 0) + 1);
     }
     for (const [key, n] of [...buckets.entries()].sort()) console.log(`${key} ×${n}`);
-  } else if (ACTION === 'load') {
-    await page.tracing.start({ path: traceFile, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8.execute', 'disabled-by-default-v8.cpu_profiler'] });
+  } else if (ACTION === 'load' || ACTION === 'warm') {
+    if (ACTION === 'warm') {
+      await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+      await sleep(2500);
+    }
+    await page.tracing.start({ path: traceFile, categories });
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
     await sleep(1500);
+    await page.tracing.stop();
+  } else if (ACTION === 'type') {
+    await page.goto(`${base}/sede/nfpt/loans`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await sleep(1500);
+    const free = await (await fetch(`${base}/api/devices`, { headers: { cookie: `techasset_session=${token}`, 'X-Site-Code': 'NFPT' } })).json()
+      .then(data => data.items.find(item => /disponible|devuelto/i.test(item.estado || '')));
+    const code = await page.$('main input[role="combobox"], main input');
+    await code.click();
+    await page.keyboard.type(free.etiqueta);
+    await sleep(1500);
+    const person = await page.$('#lo-persona');
+    if (!person) throw new Error('No apareció el campo Persona.');
+    await person.click();
+    await sleep(800);
+    await page.tracing.start({ path: traceFile, categories });
+    for (const char of option('text', 'mic')) {
+      await page.keyboard.type(char);
+      await sleep(300);
+    }
+    await sleep(500);
     await page.tracing.stop();
   } else {
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
@@ -115,7 +148,7 @@ try {
     }
     // Con --hover el puntero queda sobre la lista (como al scrollear con la rueda).
     if (argv.includes('--hover')) await page.mouse.move(700, 500);
-    await page.tracing.start({ path: traceFile, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8.execute', 'disabled-by-default-v8.cpu_profiler'] });
+    await page.tracing.start({ path: traceFile, categories });
     const frames = await page.evaluate(() => new Promise(resolve => {
       const candidates = [document.scrollingElement, ...document.querySelectorAll('body *')].filter(el => el && el.scrollHeight > el.clientHeight + 80 && (el === document.scrollingElement || /(auto|scroll)/.test(getComputedStyle(el).overflowY)));
       candidates.sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight));
@@ -171,6 +204,35 @@ try {
   }
   console.log('\nFunciones con más muestras:');
   for (const [name, count] of [...byFn.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15)) console.log(`  ${String(count).padStart(6)}  ${name}`);
+  if (argv.includes('--timeline')) {
+    // Origen: navigationStart (carga) o el primer evento de la traza.
+    const nav = events.find(e => e.name === 'navigationStart' && main && e.pid === main.pid);
+    const t0 = nav ? nav.ts : Math.min(...mainEvents.map(e => e.ts));
+    const ms = us => Math.round((us - t0) / 1000);
+    const lines = [];
+    const sends = new Map();
+    for (const e of events) {
+      if (e.name === 'ResourceSendRequest') sends.set(e.args?.data?.requestId, { t: e.ts, url: e.args.data.url, prio: e.args.data.priority });
+      if (e.name === 'ResourceFinish') {
+        const s = sends.get(e.args?.data?.requestId);
+        if (s) lines.push([s.t, `red   ${String(ms(s.t)).padStart(5)} → ${String(ms(e.ts)).padStart(5)}  ${s.prio || ''} ${String(s.url).replace(base, '').slice(0, 90)}`]);
+      }
+      if (['firstContentfulPaint', 'firstPaint', 'domContentLoadedEventEnd', 'MarkDOMContent'].includes(e.name) && main && e.pid === main.pid) lines.push([e.ts, `marca ${String(ms(e.ts)).padStart(5)}  ${e.name}`]);
+    }
+    // Tareas de primer nivel ≥ 16 ms con su trabajo dominante (tiempo propio de los hijos).
+    const tasks = mainEvents.filter(e => (e.name === 'RunTask' || e.name === 'ThreadControllerImpl::RunTask') && e.dur >= 16000);
+    for (const task of tasks) {
+      const inside = mainEvents.filter(e => e !== task && e.ts >= task.ts && e.ts + (e.dur || 0) <= task.ts + task.dur);
+      const kinds = new Map();
+      for (const e of inside) kinds.set(e.name, (kinds.get(e.name) || 0) + Math.max(0, (e.dur || 0) - (e.childDur || 0)));
+      const top = [...kinds.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([name, us]) => `${name} ${Math.round(us / 1000)}`).join(', ');
+      const fn = inside.find(e => e.name === 'FunctionCall' || e.name === 'EvaluateScript' || e.name === 'v8.evaluateModule');
+      const where = fn?.args?.data?.url ? String(fn.args.data.url).split('/').pop() : fn?.args?.data?.functionName || '';
+      lines.push([task.ts, `tarea ${String(ms(task.ts)).padStart(5)} +${String(Math.round(task.dur / 1000)).padStart(4)} ms  ${top}${where ? `  [${where}]` : ''}`]);
+    }
+    console.log('\nLínea de tiempo (ms):');
+    for (const [, text] of lines.sort((a, b) => a[0] - b[0])) console.log(`  ${text}`);
+  }
   }
 } finally {
   await browser.close();
