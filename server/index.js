@@ -156,7 +156,9 @@ const INVENTORY_WRITE_PATHS = /^\/(devices|device-groups|lifecycle|loans)\b/;
 const TASK_WRITE_PATHS = /^\/(tasks|task-columns|asistente)\b/;
 app.use('/api', (req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD' && INVENTORY_WRITE_PATHS.test(req.path)) {
-    res.on('finish', () => invalidateDeviceInventoryCache('write', req.siteCode));
+    // Salvo que la ruta ya haya actualizado el inventario cacheado en el lugar
+    // (préstamo/devolución: patchInventoryState).
+    res.on('finish', () => { if (!res.locals.inventoryPatched) invalidateDeviceInventoryCache('write', req.siteCode); });
   }
   // Ídem la lista de tareas cacheada (GET /api/tasks): tareas, subtareas,
   // comentarios, columnas y el asistente (crea tareas y deshace borrados).

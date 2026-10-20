@@ -52,15 +52,57 @@ export async function getMergedDevices({ siteCode = config.defaultSiteCode || 'N
   const normalizedSite = normalizeSite(siteCode);
   const hit = inventoryCache.get(normalizedSite);
   if (hit && Date.now() - hit.at < INVENTORY_CACHE_MS) return { ...hit.result, items: hit.result.items.slice() };
-  const result = await buildMergedDevices(normalizedSite);
-  if (result.items.length) inventoryCache.set(normalizedSite, { at: Date.now(), result });
+  const { raws, ...result } = await buildMergedDevices(normalizedSite);
+  if (result.items.length) inventoryCache.set(normalizedSite, { at: Date.now(), result, raws });
   return { ...result, items: result.items.slice() };
+}
+
+/**
+ * Préstamo o devolución de UN equipo: en vez de tirar el inventario cacheado
+ * (y que el próximo GET /api/devices lo rearme con 4 consultas + 3 de vida
+ * útil, en producción ~7 viajes sincrónicos a Supabase por cada préstamo), se
+ * recalcula solo ese equipo con el estado recién escrito (lo que devuelve
+ * setLocalState), con la misma mergeLocalDevice que usa el armado completo.
+ * Las cachés derivadas (vida útil en /api/devices) reciben el cambio por
+ * onInventoryPatch. Sin caché vigente o sin el equipo, invalida como siempre.
+ * Devuelve true si parchó.
+ */
+const patchListeners = new Set();
+export function onInventoryPatch(listener) {
+  patchListeners.add(listener);
+  return () => patchListeners.delete(listener);
+}
+
+export function patchInventoryState(siteCode, state, reason = 'patch') {
+  const normalizedSite = normalizeSite(siteCode);
+  const hit = inventoryCache.get(normalizedSite);
+  const tag = normalizeTag(state?.etiqueta);
+  const indexes = [];
+  if (hit && hit.raws && tag && Date.now() - hit.at < INVENTORY_CACHE_MS) {
+    hit.raws.forEach((raw, index) => { if (normalizeTag(raw.etiqueta) === tag) indexes.push(index); });
+  }
+  if (!indexes.length) {
+    invalidateDeviceInventoryCache(reason, normalizedSite);
+    return false;
+  }
+  const before = getInventoryVersion(normalizedSite);
+  const items = hit.result.items.slice();
+  const changed = [];
+  for (const index of indexes) {
+    items[index] = mergeLocalDevice(hit.raws[index], state, normalizedSite);
+    changed.push(index);
+  }
+  hit.result = { ...hit.result, items };
+  inventoryVersion += 1;
+  const after = getInventoryVersion(normalizedSite);
+  for (const listener of patchListeners) listener({ siteCode: normalizedSite, before, after, indexes: changed, items });
+  return true;
 }
 
 async function buildMergedDevices(normalizedSite) {
   const started = Date.now();
   try {
-    const items = buildLocalInventory(normalizedSite);
+    const { items, raws } = buildInventoryWithRaws(normalizedSite);
     const loadedAt = new Date().toISOString();
     const lastImport = getLastImport(normalizedSite);
     const source = lastImport ? `${dbLabel()} · Última importación: ${lastImport}` : dbLabel();
@@ -76,7 +118,7 @@ async function buildMergedDevices(normalizedSite) {
       lastError: items.length ? '' : 'No hay dispositivos importados para esta sede.',
       respondedWithCache: false
     });
-    return { ok: true, items, source, loadedAt, diagnostics };
+    return { ok: true, items, source, loadedAt, diagnostics, raws };
   } catch (error) {
     const loadedAt = new Date().toISOString();
     const message = error instanceof Error ? error.message : String(error || 'Error local');
@@ -110,11 +152,24 @@ export function getDeviceInventoryDiagnostics(siteCode = config.defaultSiteCode 
 }
 
 export function buildLocalInventory(siteCode = config.defaultSiteCode || 'NFPT') {
+  return buildInventoryWithRaws(siteCode).items;
+}
+
+/**
+ * Equipos de la sede ya combinados con su estado, desde la caché del inventario
+ * si está vigente (0 consultas) o armándolos. Para validar un préstamo o una
+ * devolución alcanza: toda escritura de la app invalida o parcha la caché.
+ */
+export async function getCurrentInventory(siteCode = config.defaultSiteCode || 'NFPT') {
+  return (await getMergedDevices({ siteCode })).items;
+}
+
+function buildInventoryWithRaws(siteCode) {
   const normalizedSite = normalizeSite(siteCode);
   const hidden = new Set(getDb().prepare('SELECT etiqueta FROM hidden_devices WHERE site_code=?').all(normalizedSite).map(row => normalizeTag(row.etiqueta)));
-  const devices = loadLocalDevices(normalizedSite).filter(device => !hidden.has(normalizeTag(device.etiqueta)));
+  const raws = loadLocalDevices(normalizedSite).filter(device => !hidden.has(normalizeTag(device.etiqueta)));
   const statesByTag = new Map(getLocalStates(normalizedSite).map(state => [normalizeTag(state.etiqueta), state]));
-  return devices.map(device => mergeLocalDevice(device, statesByTag.get(normalizeTag(device.etiqueta)), normalizedSite));
+  return { raws, items: raws.map(device => mergeLocalDevice(device, statesByTag.get(normalizeTag(device.etiqueta)), normalizedSite)) };
 }
 
 function loadLocalDevices(siteCode) {

@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { addLocalMovement, addLoanEvent, getDb, getLoanEventsVersion, nowIso, setLocalState } from '../db.js';
 import { getLoanPeople, searchLoanPeople } from '../services/loanPeople.service.js';
 import { sendWithEtag } from '../services/etag.service.js';
-import { buildLocalInventory, invalidateDeviceInventoryCache, isLoanedState } from '../services/deviceInventory.service.js';
+import { getCurrentInventory, isLoanedState, patchInventoryState } from '../services/deviceInventory.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 
 export const loansRouter = Router();
@@ -13,15 +13,16 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
     const etiqueta = normalizeEtiqueta(req.body.etiqueta);
     const siteCode = requireSite(req);
     if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
-    const device = currentDevice(siteCode, etiqueta);
+    const device = await currentDevice(siteCode, etiqueta);
     if (!device) return res.status(404).json({ ok: false, error: `No existe el dispositivo ${etiqueta}.` });
     if (!isAvailableState(device.estado)) {
-      return res.status(409).json({ ok: false, error: `${deviceLabel(siteCode, etiqueta)} está ${device.estado || 'no disponible'} y no se puede prestar.` });
+      return res.status(409).json({ ok: false, error: `${deviceDisplayLabel(device, etiqueta)} está ${device.estado || 'no disponible'} y no se puede prestar.` });
     }
     const validation = validateLoanPayload(req.body);
     if (validation) return res.status(400).json({ ok: false, error: validation });
-    registerLend(siteCode, device, etiqueta, req.body);
-    invalidateDeviceInventoryCache('loan-lend', siteCode);
+    const state = registerLend(siteCode, device, etiqueta, req.body);
+    // El inventario cacheado se actualiza solo en este equipo (sin rearmarlo).
+    res.locals.inventoryPatched = patchInventoryState(siteCode, state, 'loan-lend');
     res.json({ ok: true, synced: true, syncing: false, message: 'Préstamo registrado en base local.' });
   } catch (error) {
     next(error);
@@ -39,15 +40,16 @@ loansRouter.post('/loans/lend-batch', async (req, res, next) => {
     if (!etiquetas.length) return res.status(400).json({ ok: false, error: 'No llegó ningún equipo.' });
     const validation = validateLoanPayload(req.body);
     if (validation) return res.status(400).json({ ok: false, error: validation });
-    const byTag = inventoryByTag(siteCode);
+    const byTag = await inventoryByTag(siteCode);
+    const states = [];
     const results = etiquetas.map(etiqueta => {
       const device = byTag.get(etiqueta);
       if (!device) return { etiqueta, ok: false, error: `No existe el dispositivo ${etiqueta}.` };
       if (!isAvailableState(device.estado)) return { etiqueta, ok: false, error: `${deviceDisplayLabel(device, etiqueta)} está ${device.estado || 'no disponible'}.` };
-      registerLend(siteCode, device, etiqueta, req.body);
+      states.push(registerLend(siteCode, device, etiqueta, req.body));
       return { etiqueta, ok: true };
     });
-    invalidateDeviceInventoryCache('loan-lend-batch', siteCode);
+    res.locals.inventoryPatched = patchStates(siteCode, states, 'loan-lend-batch');
     res.json({ ok: true, results, done: results.filter(item => item.ok).length });
   } catch (error) {
     next(error);
@@ -59,16 +61,17 @@ loansRouter.post('/loans/return-batch', async (req, res, next) => {
     const siteCode = requireSite(req);
     const etiquetas = batchTags(req.body?.etiquetas);
     if (!etiquetas.length) return res.status(400).json({ ok: false, error: 'No llegó ningún equipo.' });
-    const byTag = inventoryByTag(siteCode);
+    const byTag = await inventoryByTag(siteCode);
+    const states = [];
     const results = etiquetas.map(etiqueta => {
       const device = byTag.get(etiqueta);
       if (!device) return { etiqueta, ok: false, error: `No existe el dispositivo ${etiqueta}.` };
       // Igual que la devolución suelta: si ya estaba devuelto no es un error.
       if (!isLoanedState(device.estado)) return { etiqueta, ok: true, idempotent: true };
-      registerReturn(siteCode, device, etiqueta, req.body);
+      states.push(registerReturn(siteCode, device, etiqueta, req.body));
       return { etiqueta, ok: true };
     });
-    invalidateDeviceInventoryCache('loan-return-batch', siteCode);
+    res.locals.inventoryPatched = patchStates(siteCode, states, 'loan-return-batch');
     res.json({ ok: true, results, done: results.filter(item => item.ok).length });
   } catch (error) {
     next(error);
@@ -80,15 +83,23 @@ function batchTags(value) {
   return [...new Set(list.map(normalizeEtiqueta).filter(Boolean))].slice(0, 300);
 }
 
-function inventoryByTag(siteCode) {
-  return new Map(buildLocalInventory(siteCode).map(item => [normalizeEtiqueta(item.etiqueta), item]));
+async function inventoryByTag(siteCode) {
+  return new Map((await getCurrentInventory(siteCode)).map(item => [normalizeEtiqueta(item.etiqueta), item]));
+}
+
+/** Parcha el inventario cacheado equipo por equipo; si alguno no se pudo, ya quedó invalidado. */
+function patchStates(siteCode, states, reason) {
+  let patched = true;
+  for (const state of states) if (!patchInventoryState(siteCode, state, reason)) patched = false;
+  if (!states.length) return true;
+  return patched;
 }
 
 function registerLend(siteCode, device, etiqueta, body) {
   const fechaPrestado = nowIso();
   const loanSessionId = crypto.randomUUID();
   const accessories = normalizeAccessories(body.accessories);
-  setLocalState(etiqueta, {
+  const state = setLocalState(etiqueta, {
     estado: 'Prestado',
     prestadoA: body.person || '',
     rol: body.role || '',
@@ -113,6 +124,7 @@ function registerLend(siteCode, device, etiqueta, body) {
     comentarios: body.comment || '', operador: body.operator || '', timestamp: fechaPrestado
     , loanSessionId, accessories
   });
+  return state;
 }
 
 function registerReturn(siteCode, device, etiqueta, body) {
@@ -120,7 +132,7 @@ function registerReturn(siteCode, device, etiqueta, body) {
   const activeLoan = findActiveLoanEvent(siteCode, etiqueta);
   const returnedAccessories = normalizeAccessories(body.returnedAccessories ?? body.accessories);
   const expectedAccessories = parseAccessories(activeLoan?.accessories_json);
-  setLocalState(etiqueta, {
+  const state = setLocalState(etiqueta, {
     estado: 'Disponible',
     prestadoA: '',
     rol: '',
@@ -144,6 +156,7 @@ function registerReturn(siteCode, device, etiqueta, body) {
     comentarios: body.comment || '', operador: body.operator || '', timestamp: fechaDevuelto
     , loanSessionId: activeLoan?.loan_session_id || '', accessories: returnedAccessories, expectedAccessories
   });
+  return state;
 }
 
 loansRouter.post('/loans/return', async (req, res, next) => {
@@ -151,7 +164,7 @@ loansRouter.post('/loans/return', async (req, res, next) => {
     const etiqueta = normalizeEtiqueta(req.body.etiqueta);
     const siteCode = requireSite(req);
     if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
-    const device = currentDevice(siteCode, etiqueta);
+    const device = await currentDevice(siteCode, etiqueta);
     if (!device) return res.status(404).json({ ok: false, error: `No existe el dispositivo ${etiqueta}.` });
     if (!isLoanedState(device.estado)) {
       return res.json({
@@ -162,8 +175,8 @@ loansRouter.post('/loans/return', async (req, res, next) => {
         message: `${deviceDisplayLabel(device, etiqueta)} ya estaba ${isAvailableState(device.estado) ? 'disponible' : device.estado || 'no disponible'}. No se registró otra devolución.`
       });
     }
-    registerReturn(siteCode, device, etiqueta, req.body);
-    invalidateDeviceInventoryCache('loan-return', siteCode);
+    const state = registerReturn(siteCode, device, etiqueta, req.body);
+    res.locals.inventoryPatched = patchInventoryState(siteCode, state, 'loan-return');
     res.json({ ok: true, synced: true, syncing: false, message: 'Devolución registrada en base local.' });
   } catch (error) {
     next(error);
@@ -295,12 +308,10 @@ function normalizeEtiqueta(value) {
   return number ? `D${number.padStart(4, '0')}` : raw;
 }
 
-function deviceLabel(siteCode, etiqueta) {
-  return deviceDisplayLabel(currentDevice(siteCode, etiqueta), etiqueta);
-}
-
-function currentDevice(siteCode, etiqueta) {
-  return buildLocalInventory(siteCode).find(item => normalizeEtiqueta(item.etiqueta) === normalizeEtiqueta(etiqueta));
+// Del inventario cacheado (0 consultas si está vigente; antes se rearmaba
+// entero, 3 consultas y ~400 JSON.parse, para buscar un equipo).
+async function currentDevice(siteCode, etiqueta) {
+  return (await getCurrentInventory(siteCode)).find(item => normalizeEtiqueta(item.etiqueta) === normalizeEtiqueta(etiqueta));
 }
 
 function deviceDisplayLabel(device, etiqueta) {

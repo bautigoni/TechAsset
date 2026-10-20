@@ -1962,9 +1962,14 @@ function backfillLoanEventsFromMovements(database) {
   tx();
 }
 
+/**
+ * Escribe el estado vivo de un equipo y devuelve lo escrito con la misma forma
+ * que getLocalStates (sirve para actualizar el inventario cacheado sin releerlo).
+ */
 export function setLocalState(etiqueta, fields) {
   const tag = String(etiqueta || '').trim();
-  if (!tag) return;
+  if (!tag) return null;
+  const updatedAt = nowIso();
   getDb().prepare(`
     INSERT INTO local_states (etiqueta, site_code, estado, prestado_a, rol, ubicacion, ubicacion_detalle, curso, motivo, motivo_detalle, comentarios, loaned_at, returned_at, updated_at)
     VALUES (@etiqueta, @site_code, @estado, @prestado_a, @rol, @ubicacion, @ubicacion_detalle, @curso, @motivo, @motivo_detalle, @comentarios, @loaned_at, @returned_at, @updated_at)
@@ -1996,8 +2001,24 @@ export function setLocalState(etiqueta, fields) {
     comentarios: fields.comentarios || '',
     loaned_at: fields.loanedAt || '',
     returned_at: fields.returnedAt || '',
-    updated_at: nowIso()
+    updated_at: updatedAt
   });
+  return {
+    etiqueta: tag,
+    siteCode: fields.siteCode || config.defaultSiteCode || 'NFPT',
+    estado: fields.estado || '',
+    prestadoA: fields.prestadoA || '',
+    rol: fields.rol || '',
+    ubicacion: fields.ubicacion || '',
+    ubicacionDetalle: fields.ubicacionDetalle || '',
+    curso: fields.curso || '',
+    motivo: fields.motivo || '',
+    motivoDetalle: fields.motivoDetalle || '',
+    comentarios: fields.comentarios || '',
+    loanedAt: fields.loanedAt || '',
+    returnedAt: fields.returnedAt || '',
+    updatedAt
+  };
 }
 
 export function getSiteSetting(siteCode, key) {

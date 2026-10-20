@@ -122,6 +122,22 @@ export function getDeviceMetadataMap(siteCode) {
 }
 
 // Enriquece dispositivos ya mergeados con condición + ciclo de vida.
+// Campos que agrega decorateDevicesWithLifecycle. Ninguno depende del estado de
+// préstamo (salen de la metadata, la clase y la fecha de alta del equipo).
+const DECORATION_KEYS = ['condition', 'conditionNotes', 'lastReviewedAt', 'teamviewerId', 'assetClass', 'assetClassConfirmed', 'lifecycleSource',
+  'fechaAlta', 'meses', 'fechaRenovacion', 'mesesRestantes', 'vidaConsumidaPct', 'vencido', 'estimada'];
+
+/**
+ * El mismo resultado que decorar `device` de nuevo, reusando la decoración ya
+ * calculada del equipo (sin las 3 consultas de vida útil). Solo vale cuando lo
+ * que cambió es el estado de préstamo.
+ */
+export function redecorateWith(previous, device) {
+  const next = { ...device };
+  for (const key of DECORATION_KEYS) if (key in previous) next[key] = previous[key];
+  return next;
+}
+
 export function decorateDevicesWithLifecycle(devices, siteCode, now = new Date()) {
   const metaByTag = getDeviceMetadataMap(siteCode);
   const overrides = getLifecycleOverrides(siteCode);

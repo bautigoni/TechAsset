@@ -94,6 +94,18 @@ try {
   check('se ve prestado al instante', /prest/i.test(await estado('D9001') || ''));
   const lendBatch = await call('POST', '/api/loans/lend-batch', { etiquetas: ['D9002', 'D9003', 'D9999'], person: 'Grupo 5F', role: 'Alumno', location: 'DOE' });
   check('prestar en lote', lendBatch.json?.done === 2, lendBatch.text.slice(0, 200));
+  // Pasada 2: préstamo/devolución parchan el inventario cacheado en vez de
+  // rearmarlo. Tiene que quedar IGUAL que un armado desde cero: se fuerza
+  // invalidando con una escritura de equipos que no cambia nada visible.
+  const patched = (await call('GET', '/api/devices')).json;
+  await call('POST', '/api/devices/status', { etiqueta: 'D9004', estado: 'Disponible' });
+  const rebuilt = (await call('GET', '/api/devices')).json;
+  const pick = list => JSON.stringify((list?.items || []).filter(item => ['D9001', 'D9002', 'D9003'].includes(item.etiqueta)));
+  check('inventario parchado == armado desde cero (pasada 2)', pick(patched) === pick(rebuilt) && /prest/i.test(patched.items.find(item => item.etiqueta === 'D9002')?.estado || ''), `${pick(patched).slice(0, 300)} vs ${pick(rebuilt).slice(0, 300)}`);
+  const panelCounts = await call('GET', '/api/devices/panel-counts');
+  check('GET /devices/panel-counts (subconsultas COUNT)', panelCounts.status === 200 && typeof panelCounts.json?.groups === 'number' && typeof panelCounts.json?.trash === 'number', panelCounts.text.slice(0, 200));
+  const toolsConfig = await call('GET', '/api/tools/config');
+  check('GET /tools/config (claves de mail en un IN)', toolsConfig.status === 200 && typeof toolsConfig.json?.modoPrueba === 'boolean', toolsConfig.text.slice(0, 200));
   // Directorio de personas en memoria (pasada 1): se arma con lo prestado.
   const peopleBefore = await call('GET', '/api/loans/people');
   check('GET /loans/people (directorio)', peopleBefore.status === 200 && peopleBefore.json.people.some(p => p.persona === 'Ana') && peopleBefore.json.people.find(p => p.persona === 'Grupo 5F')?.count === 2, peopleBefore.text.slice(0, 200));

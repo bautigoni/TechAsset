@@ -1,15 +1,24 @@
 ﻿import { Router } from 'express';
 import { addLocalMovement, getDb, nowIso, setAppSetting, setLocalState } from '../db.js';
-import { buildLocalInventory, getDeviceInventoryDiagnostics, getInventoryVersion, getMergedDevices, invalidateDeviceInventoryCache, isLoanedState } from '../services/deviceInventory.service.js';
+import { buildLocalInventory, getDeviceInventoryDiagnostics, getInventoryVersion, getMergedDevices, invalidateDeviceInventoryCache, isLoanedState, onInventoryPatch } from '../services/deviceInventory.service.js';
 import { parseDevicesCsv, toCsvExportUrl } from '../services/googleSheets.service.js';
 import { requireSite } from '../services/siteContext.service.js';
 import { sendWithEtag } from '../services/etag.service.js';
 import { getDeviceAiSummary } from '../services/aiSummaries.service.js';
-import { CONDITIONS, computeLifecycle, decorateDevicesWithLifecycle, deriveAssetClass, getAssetClasses, getLifecycleOverrides, recordConditionChange, resolveExpectedLifeMonths } from '../services/lifecycle.service.js';
+import { CONDITIONS, computeLifecycle, decorateDevicesWithLifecycle, deriveAssetClass, getAssetClasses, getLifecycleOverrides, recordConditionChange, redecorateWith, resolveExpectedLifeMonths } from '../services/lifecycle.service.js';
 
 export const devicesRouter = Router();
 
 const decoratedCache = new Map();
+// Préstamo/devolución de un equipo (patchInventoryState): la lista decorada se
+// actualiza en el lugar en vez de rearmarse con las consultas de vida útil.
+onInventoryPatch(({ siteCode, before, after, indexes, items }) => {
+  const cached = decoratedCache.get(siteCode);
+  if (!cached || cached.version !== before) return;
+  const next = cached.items.slice();
+  for (const index of indexes) next[index] = redecorateWith(cached.items[index], items[index]);
+  decoratedCache.set(siteCode, { version: after, items: next });
+});
 
 devicesRouter.get('/devices', async (_req, res, next) => {
   try {
