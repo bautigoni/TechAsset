@@ -4,16 +4,19 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { config } from '../config.js';
-import { getAppSetting, setAppSetting } from '../db.js';
+import { getAppSettings, setAppSetting } from '../db.js';
 import { sendMail } from '../services/mail.service.js';
 import { isSiteManager, isSuperadmin } from '../services/siteContext.service.js';
 
 const MAIL_KEYS = ['smtpServer', 'smtpPort', 'smtpUser', 'smtpAppPassword', 'mailFrom', 'mailSubject', 'modoPrueba', 'microsoftLoginUrl'];
 
 function getMailSettings() {
+  // Una sola consulta para las 8 claves (antes, una por clave: /tools/config
+  // se pide en cada arranque de la app y costaba 8 viajes a la base).
+  const values = getAppSettings(MAIL_KEYS.map(key => `mail.${key}`));
   const stored = {};
   for (const key of MAIL_KEYS) {
-    const value = getAppSetting(`mail.${key}`);
+    const value = values.get(`mail.${key}`);
     if (value != null && value !== '') stored[key] = value;
   }
   return {

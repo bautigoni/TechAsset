@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { config } from '../config.js';
-import { getAppSetting } from '../db.js';
+import { getAppSettings } from '../db.js';
 
 let nodemailerPromise;
 
@@ -11,9 +11,13 @@ function loadNodemailer() {
   return nodemailerPromise;
 }
 
+const MAIL_SETTING_KEYS = ['smtpServer', 'smtpPort', 'smtpUser', 'smtpAppPassword', 'mailFrom', 'modoPrueba'].map(key => `mail.${key}`);
+
 function readMailSettings() {
+  // Una sola consulta para todas las claves de mail.
+  const values = getAppSettings(MAIL_SETTING_KEYS);
   const fromDb = key => {
-    const value = getAppSetting(`mail.${key}`);
+    const value = values.get(`mail.${key}`);
     return value != null && value !== '' ? value : undefined;
   };
   const port = Number(fromDb('smtpPort') ?? config.smtp.port) || 587;

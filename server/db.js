@@ -2012,6 +2012,18 @@ export function getAppSetting(key) {
   return row ? row.value : null;
 }
 
+/**
+ * Varias claves de app_settings en UNA consulta (Map clave → valor; las que no
+ * existen no aparecen). En producción cada consulta es un viaje sincrónico a
+ * Supabase: leer las 8 claves de mail de a una costaba 8 viajes por pedido.
+ */
+export function getAppSettings(keys) {
+  const list = [...new Set(keys)].filter(Boolean);
+  if (!list.length) return new Map();
+  const rows = getDb().prepare(`SELECT key, value FROM app_settings WHERE key IN (${list.map(() => '?').join(', ')})`).all(...list);
+  return new Map(rows.map(row => [row.key, row.value]));
+}
+
 export function setAppSetting(key, value) {
   getDb().prepare(`
     INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)

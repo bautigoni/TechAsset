@@ -69,17 +69,27 @@ schedulesRouter.post('/teacher-schedules/:id/restore', (req, res) => {
 schedulesRouter.get('/recess-schedules', (req, res) => {
   const siteCode = requireSite(req);
   if (!canViewModule(req, 'schedules', siteCode)) return forbidden(res);
-  // Grupos y franjas en dos consultas (antes, una más por grupo).
-  const slotRows = getDb().prepare(`
-    SELECT s.* FROM recess_slots s JOIN recess_groups g ON g.id = s.group_id
-    WHERE g.site_code=? AND g.active=1 ORDER BY s.sort_order, s.start_time, s.id
+  // Grupos y franjas en UNA consulta (el Inicio la pide al abrir; antes eran
+  // dos, y antes todavía una más por grupo). LEFT JOIN: un grupo sin franjas
+  // sigue apareciendo.
+  const rows = getDb().prepare(`
+    SELECT g.id AS g_id, g.name AS g_name, g.sort_order AS g_sort,
+           s.id AS s_id, s.label AS s_label, s.start_time AS s_start, s.end_time AS s_end, s.sort_order AS s_sort
+    FROM recess_groups g LEFT JOIN recess_slots s ON s.group_id = g.id
+    WHERE g.site_code=? AND g.active=1
+    ORDER BY g.sort_order, g.id, s.sort_order, s.start_time, s.id
   `).all(siteCode);
-  const groups = getDb().prepare('SELECT * FROM recess_groups WHERE site_code=? AND active=1 ORDER BY sort_order, id').all(siteCode).map(group => ({
-    id: group.id,
-    name: group.name,
-    sortOrder: Number(group.sort_order || 0),
-    slots: slotRows.filter(slot => Number(slot.group_id) === Number(group.id)).map(slot => ({ id: slot.id, label: slot.label || 'Recreo', startTime: slot.start_time, endTime: slot.end_time, sortOrder: Number(slot.sort_order || 0) }))
-  }));
+  const groups = [];
+  const byId = new Map();
+  for (const row of rows) {
+    let group = byId.get(Number(row.g_id));
+    if (!group) {
+      group = { id: row.g_id, name: row.g_name, sortOrder: Number(row.g_sort || 0), slots: [] };
+      byId.set(Number(row.g_id), group);
+      groups.push(group);
+    }
+    if (row.s_id != null) group.slots.push({ id: row.s_id, label: row.s_label || 'Recreo', startTime: row.s_start, endTime: row.s_end, sortOrder: Number(row.s_sort || 0) });
+  }
   const clock = localClock();
   const active = groups.flatMap(group => group.slots.map(slot => ({ ...slot, groupId: group.id, groupName: group.name }))).filter(slot => slot.startTime <= clock.time && slot.endTime > clock.time);
   res.json({ ok: true, groups, active, clock, canConfigure: isSiteManager(req, siteCode) });
