@@ -28,7 +28,7 @@ async function lastReply(page) {
     if (!turn) return null;
     return {
       state: turn.getAttribute('data-state'),
-      text: (turn.querySelector('.asst-msg--assistant > p:not(.asst-tool)')?.textContent || '').trim(),
+      text: (turn.querySelector('.asst-msg--assistant .asst-msg-body > p:not(.asst-tool)')?.textContent || '').trim(),
       tool: (turn.querySelector('.asst-tool')?.textContent || '').trim(),
       actions: [...turn.querySelectorAll('.asst-action')].map(node => (node.textContent || '').replace(/\s+/g, ' ').trim()),
       confirm: Boolean(turn.querySelector('.asst-confirm')),
@@ -345,6 +345,89 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
     });
   }
 
+  // k) Abrir y cerrar SUAVE (pedido del dueño 20/10: "se abre de una, todo tosco"):
+  // cuadro a cuadro, la columna crece y se achica en varios pasos (nada de 0 al
+  // ancho final en un cuadro), la tarjeta entra con opacidad, el botón de la
+  // barra no se mueve y el foco va al compositor y vuelve al botón. En mobile
+  // la vista entra con fundido. Con movimiento reducido: instantáneo.
+  const sampleFrames = (page, act) => page.evaluate(async action => {
+    const shellBtn = document.querySelector('.shell-assistant-btn');
+    if (action === 'open') shellBtn.click();
+    else (document.activeElement || document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    const frames = [];
+    const t0 = performance.now();
+    await new Promise(resolve => {
+      const tick = () => {
+        const asst = document.querySelector('.asst');
+        const panel = document.querySelector('.asst-panel');
+        frames.push({
+          t: Math.round(performance.now() - t0),
+          width: asst && !asst.hidden ? asst.getBoundingClientRect().width : -1,
+          opacity: panel && asst && !asst.hidden ? Number(getComputedStyle(panel).opacity) : -1,
+          button: shellBtn.getBoundingClientRect().left
+        });
+        if (performance.now() - t0 < 600) requestAnimationFrame(tick); else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+    return frames;
+  }, act);
+  for (const reduced of [false, true]) {
+    await test('k', 'Asistente', `Abrir/cerrar suave cuadro a cuadro (columna 1440${reduced ? ', movimiento reducido = instantáneo' : ''})`, async () => {
+      const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 }, reducedMotion: reduced });
+      track(page);
+      try {
+        await gotoView(page, base, 'dashboard');
+        await page.waitForSelector('.shell-assistant-btn');
+        // Como el usuario: el puntero pasa por el botón (precarga el panel) y después toca.
+        await page.hover('.shell-assistant-btn');
+        await until(() => page.evaluate(() => performance.getEntriesByType('resource').some(entry => /AssistantPanel|assistant/i.test(entry.name))), { timeout: 5000, message: 'la precarga del panel al pasar el puntero' }).catch(() => {});
+        await sleep(300);
+        const open = await sampleFrames(page, 'open');
+        const final = open[open.length - 1];
+        assert(final.width >= 380, `La columna abierta mide ${final.width} px.`);
+        const growing = open.filter(frame => frame.width > 1 && frame.width < final.width - 1).length;
+        const fading = open.filter(frame => frame.opacity > 0.02 && frame.opacity < 0.98).length;
+        const buttonMoves = Math.max(...open.map(frame => frame.button)) - Math.min(...open.map(frame => frame.button));
+        assert(buttonMoves <= 1, `El botón Asistente se movió ${buttonMoves} px al abrir.`);
+        assert(await page.evaluate(() => document.activeElement?.classList.contains('asst-input')), 'Al abrir, el foco no quedó en el compositor.');
+        if (reduced) {
+          assert(growing === 0 && fading === 0, `Con movimiento reducido hubo animación (${growing} cuadros de ancho, ${fading} de opacidad).`);
+        } else {
+          assert(growing >= 3, `La columna pasó de 0 a ${final.width} px en ${growing} cuadros intermedios (se abre de golpe).`);
+          assert(fading >= 2, `La tarjeta no entró con opacidad (${fading} cuadros intermedios).`);
+        }
+        const close = await sampleFrames(page, 'close');
+        const shrinking = close.filter(frame => frame.width > 1 && frame.width < final.width - 1).length;
+        const closeMoves = Math.max(...close.map(frame => frame.button)) - Math.min(...close.map(frame => frame.button));
+        assert(close[close.length - 1].width === -1, 'Después de cerrar, el asistente sigue dibujado.');
+        assert(closeMoves <= 1, `El botón Asistente se movió ${closeMoves} px al cerrar.`);
+        if (reduced) assert(shrinking === 0, `Con movimiento reducido el cierre animó ${shrinking} cuadros.`);
+        else assert(shrinking >= 3, `La columna se cerró en ${shrinking} cuadros intermedios (de golpe).`);
+        assert(await page.evaluate(() => document.activeElement?.classList.contains('shell-assistant-btn')), 'Al cerrar con Esc, el foco no volvió al botón Asistente.');
+        return `abrir: ${growing} cuadros de ancho · ${fading} de opacidad; cerrar: ${shrinking}; botón quieto`;
+      } finally {
+        await context.close();
+      }
+    });
+  }
+  await test('k', 'Asistente', 'Mobile (390): la vista propia entra con fundido, no de golpe', async () => {
+    const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 390, height: 844, isMobile: true, hasTouch: true } });
+    track(page);
+    try {
+      await gotoView(page, base, 'dashboard');
+      await page.waitForSelector('.shell-assistant-btn');
+      await sleep(800);
+      const open = await sampleFrames(page, 'open');
+      const fading = open.filter(frame => frame.opacity > 0.02 && frame.opacity < 0.98).length;
+      assert(await page.$('.asst--view:not([hidden])'), 'A 390 px el asistente no abrió como vista propia.');
+      assert(fading >= 2, `La vista del asistente apareció de golpe (${fading} cuadros intermedios de opacidad).`);
+      return `${fading} cuadros de fundido`;
+    } finally {
+      await context.close();
+    }
+  });
+
   // k) Hilo: sigue al último mensaje mientras llega el stream; si el usuario subió a leer, no lo arrastra.
   await test('k', 'Asistente', 'Stream largo: el hilo sigue al final y no arrastra a quien subió a leer', async () => {
     const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion });
@@ -355,7 +438,12 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
       await ask(page, 'Contame todo');
       const feedState = () => page.$eval(`${PANEL} .asst-feed`, feed => ({ top: feed.scrollTop, gap: feed.scrollHeight - feed.scrollTop - feed.clientHeight, overflow: feed.scrollHeight > feed.clientHeight + 200 }));
       await until(async () => (await feedState()).overflow, { message: 'que la respuesta desborde el hilo' });
-      const following = await feedState();
+      // El hilo baja con scroll suave: en cualquier momento puede ir unos px detrás,
+      // pero llega al final y nunca se queda lejos.
+      const following = await until(async () => {
+        const state = await feedState();
+        return state.gap < 4 ? state : null;
+      }, { timeout: 2000, interval: 30, message: 'que el hilo siga al final mientras llega el stream' });
       assert(following.gap < 4, `Mientras llega el stream el hilo no está al final (faltan ${following.gap} px).`);
       // El usuario sube a leer.
       await page.$eval(`${PANEL} .asst-feed`, feed => { feed.scrollTop = 100; feed.dispatchEvent(new Event('scroll')); });

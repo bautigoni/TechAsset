@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import './showcase.css';
+import { AssistantMark, type AssistantMarkState, type AssistantMarkVariant } from '../components/assistant/AssistantMark';
 import {
-  Button, Checkbox, Collapse, ColorField, Combobox, DateField, DatePicker, DateRange, DateTimeField, Disclosure, EmptyState, ErrorState,
+  AutoHeight, Button, Checkbox, Collapse, ColorField, Combobox, DateField, DatePicker, DateRange, DateTimeField, Disclosure, EmptyState, ErrorState,
   Eyebrow, FileDrop, IconButton, InlineConfirm, Input, Kbd, NumberField, RadioGroup, Ring, Segmented, Select, SectionHeader,
   SelectionHeader, Skeleton, SkeletonRows, SkeletonText, StatusLine, StatusText, Switch, Table, Tabs, TagInput, Textarea, TimeField,
   TruncatedText, ageTone, icons, useAnchoredToggle, useInlineConfirm, useSelection, useStatusLine, type Column, type FileDropItem
@@ -146,6 +147,54 @@ function CollapseDemo() {
   );
 }
 
+/** Escala de radios (estética ElevenLabs, docs/redesign/ESTETICA-ELEVENLABS.md). */
+const RADII = [
+  { token: '--g-radius-xs', px: '6', use: 'Casillas, kbd, ítems chicos' },
+  { token: '--g-radius-sm', px: '12', use: 'Campos (--g-radius-field), chips de pantalla, tooltip' },
+  { token: '--g-radius', px: '16', use: 'Tarjetas (--g-radius-card)' },
+  { token: '--g-radius-lg', px: '20', use: 'Paneles (--g-radius-panel), líneas de estado' },
+  { token: '--g-radius-xl', px: '24', use: 'Superficies de primer nivel, pop up' },
+  { token: '--g-radius-pill', px: '999', use: 'Botones (--g-radius-btn), segmentado, chips' }
+];
+
+const MARK_VARIANTS: { variant: AssistantMarkVariant; name: string; note: string }[] = [
+  { variant: 'orb', name: 'A · Esfera (en uso)', note: 'Esfera en tonos del acento con un brillo interno que gira despacio mientras piensa; respira al escuchar o hablar.' },
+  { variant: 'ring', name: 'B · Anillo', note: 'Anillo fino con un núcleo que respira. La más liviana a la vista.' },
+  { variant: 'duo', name: 'C · Dúo', note: 'Dos esferas superpuestas que orbitan lento. La más "orgánica".' }
+];
+const MARK_STATES: { state: AssistantMarkState; label: string }[] = [
+  { state: 'idle', label: 'Quieta' },
+  { state: 'thinking', label: 'Pensando' },
+  { state: 'listening', label: 'Escuchando' },
+  { state: 'speaking', label: 'Hablando' }
+];
+
+/** AutoHeight: cambiar de segmento cambia el alto suave, con el segmentado quieto. */
+function AutoHeightDemo() {
+  const [tab, setTab] = useState('prestados');
+  const lists: Record<string, string[]> = {
+    prestados: ['Touch 34 · Alex C.', 'Touch 8 · Máximo M.', 'TIC 4 · Felipe M.'],
+    disponibles: Array.from({ length: 9 }, (_, index) => `Plani ${index + 2} · Depósito TIC`),
+    todos: []
+  };
+  const rows = lists[tab];
+  return (
+    <div className="ui-sc-stack">
+      <Segmented
+        ariaLabel="Lista"
+        value={tab}
+        onChange={setTab}
+        options={[{ value: 'prestados', label: 'Prestados', count: 3 }, { value: 'disponibles', label: 'Disponibles', count: 9 }, { value: 'todos', label: 'Vacío', count: 0 }]}
+      />
+      <AutoHeight>
+        {rows.length
+          ? <ul className="ui-sc-clist">{rows.map(row => <li key={row}>{row}</li>)}</ul>
+          : <EmptyState compact icon={<icons.IconCheck size={18} />} title="Nada para mostrar." description="El alto se achica suave, sin saltar." />}
+      </AutoHeight>
+    </div>
+  );
+}
+
 const COURSES = ['1° A', '1° B', '2° A', '2° B', '3° A', '3° B', '4° A', '4° B', '5° A', '5° B', '6° A', '6° B', 'Sala de 5', 'Biblioteca', 'Dirección'];
 
 export function Showcase() {
@@ -228,6 +277,48 @@ export function Showcase() {
         />
 
         <div className="ui-sc-grid">
+          <Card eyebrow="Forma" title="Radios · estética ElevenLabs" wide>
+            <p className="ui-sc-note">
+              Radios grandes y concéntricos (un elemento adentro de otro lleva el radio de afuera menos el espacio que los separa).
+              Los componentes usan los semánticos: <code>--g-radius-btn</code>, <code>--g-radius-field</code>, <code>--g-radius-card</code>, <code>--g-radius-panel</code>.
+              El foco es un anillo de <code>--g-focus-w</code> que sigue el radio; adentro de algo que recorta se dibuja hacia adentro.
+            </p>
+            <div className="ui-sc-radii">
+              {RADII.map(item => (
+                <div key={item.token} className="ui-sc-radius">
+                  <span className="ui-sc-radius-box" style={{ borderRadius: `var(${item.token})` }} aria-hidden="true" />
+                  <span className="ui-sc-radius-text">
+                    <code>{item.token}</code>
+                    <span className="g-num">{item.px} px</span>
+                    <span>{item.use}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card eyebrow="Asistente" title="Marca · tres alternativas" wide>
+            <p className="ui-sc-note">
+              Inspirada en el orb del agente de voz de ElevenLabs, sobria: tonos del acento, sombreado tonal mínimo, sin halo ni glow.
+              Quieta por defecto; se mueve lento solo mientras piensa, escucha o habla (nunca con movimiento reducido). Elegí una y queda en la barra y el panel.
+            </p>
+            {MARK_VARIANTS.map(item => (
+              <Row key={item.variant} label={item.name}>
+                {MARK_STATES.map(entry => (
+                  <span key={entry.state} className="ui-sc-mark">
+                    <AssistantMark variant={item.variant} state={entry.state} size={40} />
+                    <span>{entry.label}</span>
+                  </span>
+                ))}
+                <span className="ui-sc-mark">
+                  <AssistantMark variant={item.variant} size={16} />
+                  <span>Barra (16 px)</span>
+                </span>
+                <span className="ui-sc-mark-note">{item.note}</span>
+              </Row>
+            ))}
+          </Card>
+
           <Card eyebrow="Acciones" title="Button · IconButton · Kbd" wide>
             {(['primary', 'secondary', 'ghost', 'danger'] as const).map(variant => (
               <Row key={variant} label={variant}>
@@ -337,6 +428,14 @@ export function Showcase() {
               <FileDrop accept="image/*,.pdf" maxSizeMB={10} multiple upload={fakeUpload} defaultItems={demoFiles} />
               <FileDrop accept=".csv" title="Arrastrá el CSV de inventario acá o tocá para elegirlo" disabled hint="Deshabilitado en modo consulta" />
             </div>
+          </Card>
+
+          <Card eyebrow="Cambiar de alto" title="AutoHeight">
+            <p className="ui-sc-note">
+              Para lo que cambia de alto sin abrirse ni cerrarse (segmentado, pestañas, cargando → datos):
+              <code>{'<AutoHeight>{lista}</AutoHeight>'}</code>. Tabs ya lo usa en su panel.
+            </p>
+            <AutoHeightDemo />
           </Card>
 
           <Card eyebrow="Abrir y cerrar" title="Collapse · useAnchoredToggle" wide>

@@ -1,39 +1,76 @@
-/* Asistente de IA (Grafito). Viaja en el chunk del panel: no pesa en la
-   primera carga. Columna que empuja el contenido o vista propia; nunca flota. */
+/* Asistente de IA (Grafito con la estética de ElevenLabs, ver
+   docs/redesign/ESTETICA-ELEVENLABS.md). Viaja en el chunk del panel: no pesa
+   en la primera carga. Columna que empuja el contenido (desktop) o vista
+   propia (mobile); nunca flota encima de nada.
+
+   La columna de la grilla del shell (shell.css) crece de 0 al ancho del panel
+   y la tarjeta entra con opacidad + un corrimiento corto; al cerrar, al revés
+   (AppShell publica data-asst-phase="enter|open|closing" en .shell). */
 
 .asst {
   grid-area: asst;
-  display: flex;
-  flex-direction: column;
+  position: relative;
   min-width: 0;
-  background: var(--g-surface);
+  min-height: 0;
+  height: 100%;
+  /* Mientras la columna crece desde 0, recorta la tarjeta (que ya tiene su ancho final). */
+  overflow: hidden;
   color: var(--g-text);
   font-family: var(--g-font);
 }
 .asst[hidden] { display: none; }
 
-/* Columna o vista propia: ocupa el alto disponible y solo scrollea el historial. */
-.asst { min-height: 0; height: 100%; }
-.asst--column {
-  width: var(--shell-asst-w, 360px);
-  border-left: 1px solid var(--g-line);
+/* La tarjeta, separada de los bordes para que se vean sus esquinas redondas. */
+.asst-panel {
+  position: absolute;
+  top: var(--g-s-3);
+  right: var(--g-s-3);
+  bottom: var(--g-s-3);
+  width: var(--shell-asst-w, 380px);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--g-line);
+  border-radius: var(--g-radius-panel);
+  background: var(--g-surface);
+  overflow: hidden;
 }
+.asst--view .asst-panel {
+  inset: var(--g-s-2);
+  width: auto;
+}
+
+/* Entrada (cada vez que se muestra) y salida suaves. */
+@media (prefers-reduced-motion: no-preference) {
+  .asst-panel {
+    animation: asst-panel-in var(--g-dur-panel) var(--g-ease) backwards;
+    transition: opacity var(--g-dur-panel) var(--g-ease), transform var(--g-dur-panel) var(--g-ease);
+  }
+  .asst--view .asst-panel { animation-name: asst-view-in; }
+  .shell[data-asst-phase="closing"] .asst-panel { opacity: 0; transform: translateX(var(--g-s-4)); }
+}
+@keyframes asst-panel-in { from { opacity: 0; transform: translateX(var(--g-s-4)); } }
+@keyframes asst-view-in { from { opacity: 0; transform: translateY(var(--g-s-3)); } }
+
+/* ── Cabecera ─────────────────────────────────────────────────────────── */
 
 .asst-head {
   display: flex;
   align-items: center;
-  gap: var(--g-s-2);
-  min-height: 52px;
-  padding: var(--g-s-2) var(--g-s-3) var(--g-s-2) var(--g-s-4);
-  border-bottom: 1px solid var(--g-line);
+  gap: var(--g-s-3);
   flex: none;
+  min-height: calc(var(--g-control-h) + var(--g-s-5));
+  padding: var(--g-s-3) var(--g-s-2) var(--g-s-2) var(--g-s-4);
 }
+.asst--view .asst-head { padding-left: var(--g-s-2); gap: var(--g-s-2); }
 .asst-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .asst-title h2 {
   margin: 0;
   font-size: var(--g-fs-md);
   font-weight: var(--g-fw-semibold);
   line-height: 1.3;
+  letter-spacing: -.01em;
 }
 .asst-title span {
   font-size: var(--g-fs-xs);
@@ -43,14 +80,36 @@
   text-overflow: ellipsis;
 }
 
+/* Botones redondos (cerrar, volver, micrófono) y "Nueva" en píldora. */
+.asst-round-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--g-control-h);
+  height: var(--g-control-h);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--g-radius-pill);
+  background: transparent;
+  color: var(--g-text-2);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.asst-round-btn:hover:not(:disabled) { background: var(--g-raised); color: var(--g-text); }
+.asst-round-btn:disabled { opacity: .45; cursor: not-allowed; }
+
 .asst-text-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--g-radius-sm);
+  gap: var(--g-s-1);
+  flex: none;
+  height: calc(var(--g-control-h) - var(--g-s-1));
+  padding: 0 var(--g-s-3);
+  border: 1px solid var(--g-line);
+  border-radius: var(--g-radius-pill);
   background: transparent;
   color: var(--g-text-2);
   font: inherit;
@@ -58,24 +117,60 @@
   font-weight: var(--g-fw-medium);
   white-space: nowrap;
   cursor: pointer;
-  flex: none;
+  touch-action: manipulation;
 }
-.asst-text-btn:hover { background: var(--g-raised); color: var(--g-text); }
+.asst-text-btn:hover { border-color: var(--g-line-strong); background: var(--g-raised); color: var(--g-text); }
+
+.asst :is(.asst-round-btn, .asst-text-btn, .asst-send, .asst-suggestion, .asst-listen):focus-visible {
+  outline: var(--g-focus-w) solid var(--g-focus);
+  outline-offset: var(--g-focus-offset);
+}
+@media (pointer: coarse) {
+  .asst-round-btn, .asst-send { width: var(--ui-touch, 44px); height: var(--ui-touch, 44px); }
+  .asst-text-btn { height: var(--ui-touch, 44px); }
+}
+
+/* ── Hilo ─────────────────────────────────────────────────────────────── */
 
 .asst-feed {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--g-s-4);
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: var(--g-s-2) var(--g-s-4) var(--g-s-4);
   display: flex;
   flex-direction: column;
   gap: var(--g-s-3);
   /* Pista de que hay más arriba/abajo sin barra visible. */
-  mask-image: linear-gradient(to bottom, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, var(--g-text) var(--g-s-3), var(--g-text) calc(100% - var(--g-s-3)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, var(--g-text) var(--g-s-3), var(--g-text) calc(100% - var(--g-s-3)), transparent 100%);
+  /* Recorta: el foco de lo de adentro se dibuja hacia adentro. */
+  --g-focus-offset: calc(-1 * var(--g-focus-w));
 }
+.asst-feed::-webkit-scrollbar { display: none; }
 
-.asst-welcome p {
-  margin: 0 0 var(--g-s-3);
+/* Estado vacío: la marca, una pregunta y sugerencias en chips. */
+.asst-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--g-s-4);
+  margin: auto 0;
+  padding: var(--g-s-5) 0;
+  text-align: center;
+}
+.asst-welcome-text { display: flex; flex-direction: column; align-items: center; gap: var(--g-s-1); min-width: 0; }
+.asst-welcome-text h3 {
+  margin: 0;
+  font-size: var(--g-fs-lg);
+  font-weight: var(--g-fw-medium);
+  line-height: 1.3;
+  letter-spacing: -.01em;
+}
+.asst-welcome-text p {
+  margin: 0;
+  max-width: 30ch;
   font-size: var(--g-fs-sm);
   line-height: 1.5;
   color: var(--g-text-2);
@@ -85,46 +180,54 @@
   margin: 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.asst-suggestion {
-  display: block;
-  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--g-s-2);
   min-width: 0;
-  padding: 8px 10px;
+  max-width: 100%;
+}
+.asst-suggestions li { display: flex; min-width: 0; max-width: 100%; }
+.asst-suggestion {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  height: calc(var(--g-control-h) - var(--g-s-1));
+  padding: 0 var(--g-s-3);
   border: 1px solid var(--g-line);
-  border-radius: var(--g-radius-sm);
+  border-radius: var(--g-radius-pill);
   background: transparent;
   color: var(--g-text);
   font: inherit;
   font-size: var(--g-fs-sm);
-  line-height: 1.4;
-  text-align: left;
+  white-space: nowrap;
   cursor: pointer;
-  transition: border-color var(--g-dur-fast) var(--g-ease), background-color var(--g-dur-fast) var(--g-ease);
+  touch-action: manipulation;
 }
 .asst-suggestion:hover { border-color: var(--g-line-strong); background: var(--g-raised); }
+@media (pointer: coarse) { .asst-suggestion { height: var(--ui-touch, 44px); } }
 
+/* Burbujas suaves: la tuya rellena, la del asistente con borde fino. La
+   esquina del lado de quien habla, más chica. */
 .asst-msg {
-  max-width: 92%;
-  padding: 8px 12px;
-  border-radius: var(--g-radius);
+  max-width: 88%;
+  padding: var(--g-s-2) calc(var(--g-s-3) + 2px);
+  border-radius: var(--g-radius-lg);
   font-size: var(--g-fs-base);
   line-height: 1.5;
   overflow-wrap: anywhere;
-  animation: asst-in var(--g-dur) var(--g-ease) both;
 }
 .asst-msg p { margin: 0; white-space: pre-wrap; }
 .asst-msg--user {
   align-self: flex-end;
+  border-bottom-right-radius: var(--g-radius-xs);
   background: var(--g-raised);
-  border: 1px solid var(--g-line-strong);
 }
 .asst-msg--assistant {
   align-self: flex-start;
-  background: transparent;
   border: 1px solid var(--g-line);
+  border-top-left-radius: var(--g-radius-xs);
+  background: transparent;
 }
 
 /* Un turno del asistente: texto + líneas de estado (acciones con Deshacer,
@@ -132,26 +235,26 @@
 .asst-turn {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-start;
   gap: var(--g-s-2);
   min-width: 0;
 }
-.asst-turn > .asst-msg { align-self: flex-start; }
+.asst-turn > .asst-confirm { align-self: stretch; }
 .asst-msg .asst-tool {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--g-s-2);
   color: var(--g-text-3);
   font-size: var(--g-fs-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.asst-msg p + .asst-tool { margin-top: 6px; }
+.asst-msg p + .asst-tool { margin-top: var(--g-s-1); }
 .asst-tool .ui-spinner { flex: none; }
 .asst-tool span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.asst-msg-tools { display: flex; flex-wrap: wrap; gap: 2px 6px; margin-top: 6px; min-width: 0; }
-.asst-msg-tools .asst-listen { margin-top: 0; white-space: nowrap; max-width: 100%; }
+.asst-msg-tools { display: flex; flex-wrap: wrap; gap: 2px var(--g-s-1); margin: var(--g-s-1) 0 0 calc(var(--g-s-2) * -1); min-width: 0; }
+.asst-msg-tools .asst-listen { white-space: nowrap; max-width: 100%; }
 .asst-msg-tools .asst-listen span { overflow: hidden; text-overflow: ellipsis; }
 .asst-action, .asst-confirm { font-size: var(--g-fs-sm); }
 .asst-action .ui-status-actions .ui-btn--ghost { color: var(--g-accent); }
@@ -160,11 +263,11 @@
 .asst-listen {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 6px;
-  padding: 2px 6px;
+  gap: var(--g-s-1);
+  height: calc(var(--g-s-5) + var(--g-s-1));
+  padding: 0 var(--g-s-2);
   border: 0;
-  border-radius: var(--g-radius-sm);
+  border-radius: var(--g-radius-pill);
   background: transparent;
   color: var(--g-accent);
   font: inherit;
@@ -174,64 +277,78 @@
 }
 .asst-listen:hover, .asst-listen.is-speaking { background: var(--g-raised); }
 
-.asst-typing { display: flex; gap: 4px; padding: 12px; }
-.asst-typing span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--g-text-3);
-  animation: asst-dot 1.2s var(--g-ease) infinite;
-}
-.asst-typing span:nth-child(2) { animation-delay: .15s; }
-.asst-typing span:nth-child(3) { animation-delay: .3s; }
-
-.asst-form {
-  display: flex;
+.asst-typing {
+  display: inline-flex;
   align-items: center;
   gap: var(--g-s-2);
-  padding: var(--g-s-3);
-  border-top: 1px solid var(--g-line);
-  flex: none;
-  background: var(--g-surface);
+  color: var(--g-text-3);
+  font-size: var(--g-fs-sm);
 }
+
+/* ── Compositor en píldora ────────────────────────────────────────────── */
+
+.asst-form {
+  flex: none;
+  padding: var(--g-s-2) var(--g-s-3) var(--g-s-3);
+}
+.asst-composer {
+  display: flex;
+  align-items: center;
+  gap: var(--g-s-1);
+  min-width: 0;
+  padding: var(--g-s-1) var(--g-s-1) var(--g-s-1) var(--g-s-4);
+  border: 1px solid var(--g-line-strong);
+  border-radius: var(--g-radius-pill);
+  background: var(--g-raised);
+}
+.asst-composer:hover { border-color: var(--g-text-3); }
+.asst-composer:focus-within {
+  border-color: var(--g-accent);
+  outline: var(--g-focus-w) solid var(--g-focus);
+  outline-offset: var(--g-focus-offset);
+}
+.asst-composer.is-listening { border-color: var(--g-bad); }
 .asst-input {
   flex: 1;
   min-width: 0;
   height: var(--g-control-h);
-  padding: 0 12px;
-  border: 1px solid var(--g-line-strong);
-  border-radius: var(--g-radius-sm);
-  background: var(--g-raised);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
   color: var(--g-text);
   font: inherit;
   font-size: var(--g-fs-base);
-  outline: none;
+  text-overflow: ellipsis;
 }
-.asst-input::placeholder { color: var(--g-text-3); }
-.asst-input:focus-visible { border-color: var(--g-focus); box-shadow: 0 0 0 1px var(--g-focus); }
-@media (pointer: coarse) { .asst-input { font-size: 16px; } }
+.asst-input::placeholder { color: var(--g-text-3); opacity: 1; }
+.asst-input:disabled { cursor: progress; }
+@media (pointer: coarse) { .asst-input { height: var(--ui-touch, 44px); font-size: var(--g-fs-md); } }
 
+.asst-composer .asst-round-btn:hover:not(:disabled) { background: var(--g-line); }
 .asst-mic.is-recording { color: var(--g-bad); }
 .asst-send {
-  display: grid;
+  display: inline-grid;
   place-items: center;
+  flex: none;
   width: var(--g-control-h);
   height: var(--g-control-h);
+  padding: 0;
   border: 0;
-  border-radius: var(--g-radius-sm);
+  border-radius: var(--g-radius-pill);
   background: var(--g-accent);
   color: var(--g-on-accent);
   cursor: pointer;
-  flex: none;
+  touch-action: manipulation;
 }
 .asst-send:hover:not(:disabled) { background: var(--g-accent-hover); }
-.asst-send:disabled { opacity: .45; cursor: default; }
-.asst-send:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; }
+.asst-send:disabled { opacity: .4; cursor: not-allowed; }
 
-@keyframes asst-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@keyframes asst-dot { 0%, 60%, 100% { opacity: .35; } 30% { opacity: 1; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .asst-msg, .asst-typing span { animation: none; }
-  .asst-typing span { opacity: .7; }
+@media (prefers-reduced-motion: no-preference) {
+  .asst-msg, .asst-turn > .ui-status, .asst-confirm { animation: asst-in var(--g-dur) var(--g-ease) backwards; }
+  .asst-round-btn, .asst-text-btn, .asst-suggestion, .asst-listen, .asst-send, .asst-composer {
+    transition: background-color var(--g-dur-fast) var(--g-ease), border-color var(--g-dur-fast) var(--g-ease), color var(--g-dur-fast) var(--g-ease), opacity var(--g-dur-fast) var(--g-ease);
+  }
 }
+@keyframes asst-in { from { opacity: 0; transform: translateY(var(--g-s-1)); } }

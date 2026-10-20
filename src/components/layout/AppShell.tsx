@@ -3,7 +3,7 @@ import { isViewKey, type AuthUser, type Device, type SiteInfo, type ViewKey } fr
 import type { AssistantContext } from '../../services/assistantApi';
 import type { AppNotification } from '../../services/notificationsApi';
 import { useNotifications } from '../../hooks/useNotifications';
-import { lazyView, prefetchViewsWhenIdle } from '../../utils/lazyView';
+import { lazyView, prefetchView, prefetchViewsWhenIdle } from '../../utils/lazyView';
 import { pushStatus } from '../../ui/Status';
 import { isEditableTarget } from '../../hooks/useGlobalScanner';
 import { useQuickLinks } from '../tools/quickLinks';
@@ -34,6 +34,15 @@ const ASST_COLUMN_MIN = 1024; // >= 1024: el asistente es columna; si no, vista 
 // Con el asistente abierto y < 1600 el menú pasa a rail: a 1440 con menú
 // completo + columna quedaban ~850 px de contenido y las tablas se cortaban.
 const ASST_WIDE_MIN = 1600;
+
+/** Duración de la entrada/salida de paneles (--g-dur-panel; 0 con movimiento reducido). */
+function panelMs() {
+  if (typeof window === 'undefined') return 0;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return 0;
+  const value = getComputedStyle(document.documentElement).getPropertyValue('--g-dur-panel').trim();
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? (value.endsWith('ms') ? n : n * 1000) : 240;
+}
 
 function readCollapsed() {
   try { return localStorage.getItem(COLLAPSED_KEY) === '1'; } catch { return false; }
@@ -132,6 +141,15 @@ export function AppShell(props: AppShellProps) {
 
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantMounted, setAssistantMounted] = useState(false);
+  // Entrada y salida suaves: el asistente queda dibujado mientras se va
+  // ('closing') y entra desde un primer cuadro cerrado ('enter'). Lo lógico
+  // (abierto/cerrado) cambia al toque; lo que se ve, con la transición.
+  const [assistantSettled, setAssistantSettled] = useState<'open' | 'closed'>('closed');
+  const assistantPhase: 'enter' | 'open' | 'closing' | 'closed' = assistantOpen
+    ? (assistantSettled === 'open' ? 'open' : 'enter')
+    : (assistantSettled === 'open' ? 'closing' : 'closed');
+  // Al volver de la vista propia (mobile) el contenido entra con un fundido corto.
+  const [assistantReturning, setAssistantReturning] = useState(false);
   const [question, setQuestion] = useState<{ text: string; nonce: number } | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -187,9 +205,11 @@ export function AppShell(props: AppShellProps) {
   const { links } = useQuickLinks(activeSite);
 
   const assistantMode: 'column' | 'view' = width >= ASST_COLUMN_MIN ? 'column' : 'view';
-  const assistantColumn = assistantOpen && assistantMode === 'column';
-  const assistantView = assistantOpen && assistantMode === 'view';
-  const railForced = !isMobile && (width <= RAIL_MAX || (assistantColumn && width < ASST_WIDE_MIN));
+  // Dibujado (incluye la salida); el menú pasa a rail solo mientras está abierto de verdad.
+  const assistantShown = assistantPhase !== 'closed';
+  const assistantColumn = assistantShown && assistantMode === 'column';
+  const assistantView = assistantShown && assistantMode === 'view';
+  const railForced = !isMobile && (width <= RAIL_MAX || (assistantOpen && assistantMode === 'column' && width < ASST_WIDE_MIN));
   const navMode = isMobile ? 'none' : railForced || collapsed ? 'rail' : 'full';
   const canCollapse = !isMobile && !railForced;
   const canSwitchSites = user.rolGlobal === 'Superadmin' && sites.length > 1;
@@ -235,6 +255,36 @@ export function AppShell(props: AppShellProps) {
     setMoreOpen(false);
   }, []);
   const closeAssistant = useCallback(() => setAssistantOpen(false), []);
+  // El panel baja apenas el usuario apunta al botón: el primer toque ya abre animado.
+  const assistantIntent = useCallback(() => prefetchView('assistant'), []);
+
+  // Fases de la entrada/salida (ver assistantPhase). Entrar: dos cuadros en
+  // 'enter' (cerrado) y recién ahí 'open', así la transición arranca de 0.
+  // Salir: 'closing' dura lo que la transición; en la vista propia es al toque.
+  useEffect(() => {
+    if (assistantOpen && assistantSettled !== 'open') {
+      let second = 0;
+      const first = requestAnimationFrame(() => { second = requestAnimationFrame(() => setAssistantSettled('open')); });
+      return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); };
+    }
+    if (!assistantOpen && assistantSettled === 'open') {
+      const timer = window.setTimeout(() => setAssistantSettled('closed'), assistantMode === 'view' ? 0 : panelMs());
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+  }, [assistantOpen, assistantSettled, assistantMode]);
+  // Volver de la vista propia: el contenido aparece con un fundido (no de golpe).
+  const wasAssistantView = useRef(false);
+  useEffect(() => {
+    if (wasAssistantView.current && !assistantView) {
+      setAssistantReturning(true);
+      const timer = window.setTimeout(() => setAssistantReturning(false), panelMs() + 40);
+      wasAssistantView.current = assistantView;
+      return () => window.clearTimeout(timer);
+    }
+    wasAssistantView.current = assistantView;
+    return undefined;
+  }, [assistantView]);
 
   // Ctrl K y las franjas se precargan en idle: al abrirlas ya están.
   useEffect(() => { prefetchViewsWhenIdle(PANEL_CHUNKS); }, []);
@@ -360,6 +410,7 @@ export function AppShell(props: AppShellProps) {
       className={`shell${keyboardOpen ? ' is-kb-open' : ''}`}
       data-nav={navMode}
       data-asst={assistantColumn ? 'column' : assistantView ? 'view' : 'closed'}
+      data-asst-phase={assistantReturning ? 'returning' : assistantPhase}
     >
       {!isMobile && (
         <Sidebar
@@ -389,6 +440,7 @@ export function AppShell(props: AppShellProps) {
             onToggleStrip={toggleStrip}
             assistantOpen={assistantOpen}
             onToggleAssistant={() => (assistantOpen ? closeAssistant() : openAssistant())}
+            onAssistantIntent={assistantIntent}
             collapsed={navMode === 'rail'}
             canCollapse={canCollapse}
             onToggleCollapsed={toggleCollapsed}
@@ -473,6 +525,7 @@ export function AppShell(props: AppShellProps) {
           <Suspense fallback={null}>
             <AssistantPanel
               open={assistantOpen}
+              shown={assistantShown}
               onClose={closeAssistant}
               mode={assistantMode}
               backLabel={`Volver a ${current?.label || 'la vista'}`}

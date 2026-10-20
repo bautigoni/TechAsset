@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { ArrowLeft, Mic, Plus, Send, Square, Volume2, X } from 'lucide-react';
+import { ArrowLeft, ArrowUp, Mic, Plus, Square, Volume2, X } from 'lucide-react';
 import {
   streamAssistantMessage, undoAssistantAction,
   type AssistantAction, type AssistantContext, type AssistantResponse
@@ -7,8 +7,10 @@ import {
 import { ApiError } from '../../services/apiClient';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { Spinner } from '../../ui/icons';
+import { AutoHeight } from '../../ui/Collapse';
 import { InlineConfirm, StatusLine } from '../../ui/Inline';
 import { TruncatedText } from '../../ui/Truncated';
+import { AssistantMark, type AssistantMarkState } from './AssistantMark';
 import './assistant.css';
 
 type PendingConfirmation = NonNullable<AssistantResponse['pendingConfirmation']>;
@@ -37,23 +39,26 @@ type UndoState =
   | { status: 'done'; message: string }
   | { status: 'error'; message: string; retryable: boolean };
 
-const STAFF_SUGGESTIONS = [
-  'Prestale el Touch 34 a Mili en DOE, ¿me confirmás los datos?',
-  '¿Qué dispositivos están disponibles hoy para prestar y cuántos hay de cada tipo?',
-  'Mostrame las tareas pendientes de esta semana ordenadas por prioridad',
-  '¿Quién tiene el D1436 prestado, desde cuándo y cuándo se vence?',
-  'Creá una tarea urgente para revisar los proyectores de todas las aulas del primer piso, asignada a Equi',
-  '¿Qué actividades hay en la agenda de hoy y quién las pidió?',
-  'Repará el D1432 de Mili, me dijo que no prende la pantalla, se lo prestaste ayer'
+/** Sugerencias del estado vacío: el chip muestra lo corto; al tocarlo se manda el pedido completo. */
+type Suggestion = { label: string; prompt: string };
+
+const STAFF_SUGGESTIONS: Suggestion[] = [
+  { label: 'Prestar el Touch 34', prompt: 'Prestale el Touch 34 a Mili en DOE, ¿me confirmás los datos?' },
+  { label: 'Disponibles hoy', prompt: '¿Qué dispositivos están disponibles hoy para prestar y cuántos hay de cada tipo?' },
+  { label: 'Tareas de la semana', prompt: 'Mostrame las tareas pendientes de esta semana ordenadas por prioridad' },
+  { label: '¿Quién tiene el D1436?', prompt: '¿Quién tiene el D1436 prestado, desde cuándo y cuándo se vence?' },
+  { label: 'Tarea: revisar proyectores', prompt: 'Creá una tarea urgente para revisar los proyectores de todas las aulas del primer piso, asignada a Equi' },
+  { label: 'Agenda de hoy', prompt: '¿Qué actividades hay en la agenda de hoy y quién las pidió?' },
+  { label: 'Reparar el D1432', prompt: 'Repará el D1432 de Mili, me dijo que no prende la pantalla, se lo prestaste ayer' }
 ];
 
-const VIEWER_SUGGESTIONS = [
-  '¿Cuántos dispositivos hay disponibles ahora y cuántos están prestados?',
-  '¿Dónde está el D1436 y quién lo tiene hace cuánto tiempo?',
-  '¿Cuáles son las tareas pendientes con prioridad alta para esta semana?',
-  '¿Qué dice la agenda de hoy? Mostrame los detalles de cada actividad.',
-  '¿Qué aulas tienen problemas y cuál es el estado general de cada una?',
-  '¿Hay algún equipo prestado hace más de 30 días?'
+const VIEWER_SUGGESTIONS: Suggestion[] = [
+  { label: 'Disponibles y prestados', prompt: '¿Cuántos dispositivos hay disponibles ahora y cuántos están prestados?' },
+  { label: '¿Dónde está el D1436?', prompt: '¿Dónde está el D1436 y quién lo tiene hace cuánto tiempo?' },
+  { label: 'Tareas urgentes', prompt: '¿Cuáles son las tareas pendientes con prioridad alta para esta semana?' },
+  { label: 'Agenda de hoy', prompt: '¿Qué dice la agenda de hoy? Mostrame los detalles de cada actividad.' },
+  { label: 'Aulas con problemas', prompt: '¿Qué aulas tienen problemas y cuál es el estado general de cada una?' },
+  { label: 'Prestados hace +30 días', prompt: '¿Hay algún equipo prestado hace más de 30 días?' }
 ];
 
 /** Lo que se ve mientras corre cada herramienta del server (tools.js). */
@@ -126,8 +131,10 @@ let nextMessageId = 1;
  * con Deshacer. El dictado es del navegador (useSpeechDictation): sin Web
  * Speech API (Firefox) el micrófono no aparece.
  */
-export function AssistantPanel({ open, onClose, mode, backLabel, currentView, onNavigate, onOpenDevice, canEdit, context, question }: {
+export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, currentView, onNavigate, onOpenDevice, canEdit, context, question }: {
   open: boolean;
+  /** Dibujado: sigue en pantalla mientras sale (la transición de cierre). */
+  shown?: boolean;
   onClose: () => void;
   /** 'column' = al costado; 'view' = ocupa el lugar del contenido. */
   mode: 'column' | 'view';
@@ -150,6 +157,14 @@ export function AssistantPanel({ open, onClose, mode, backLabel, currentView, on
   const inputRef = useRef<HTMLInputElement | null>(null);
   const feedRef = useRef<HTMLDivElement | null>(null);
   const stickToBottom = useRef(true);
+  // Pegado al final. La burbuja que llega crece con alto suave (AutoHeight) y
+  // el hilo la sigue cuadro a cuadro: la respuesta sube suave, sin saltos de a renglón.
+  const followEnd = useCallback(() => {
+    const feed = feedRef.current;
+    if (!feed || !stickToBottom.current) return;
+    const target = feed.scrollHeight - feed.clientHeight;
+    if (target - feed.scrollTop >= 1) feed.scrollTop = target;
+  }, []);
   const lastQuestion = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const sendingRef = useRef(false);
@@ -180,26 +195,25 @@ export function AssistantPanel({ open, onClose, mode, backLabel, currentView, on
 
   // Al abrir: foco en el campo (sin mover la página).
   useEffect(() => {
-    if (open) inputRef.current?.focus({ preventScroll: true });
-  }, [open]);
+    if (open && shown) inputRef.current?.focus({ preventScroll: true });
+  }, [open, shown]);
 
   // Pegado al último mensaje mientras el usuario no haya subido a leer
   // (scroll interno del historial, no de la página). En layout effect: se
   // pega antes de pintar, sin un frame con el texto nuevo cortado abajo.
   useLayoutEffect(() => {
-    const feed = feedRef.current;
-    if (feed && stickToBottom.current) feed.scrollTop = feed.scrollHeight;
-  }, [messages, loading, undoStates]);
+    followEnd();
+  }, [messages, loading, undoStates, followEnd]);
   // Lo que crece sin que cambien los mensajes (el texto que se reacomoda, la
   // entrada animada de una burbuja, una línea de estado): mismo pegado.
   const messageCount = messages.length;
   useEffect(() => {
     const feed = feedRef.current;
     if (!feed || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => { if (stickToBottom.current) feed.scrollTop = feed.scrollHeight; });
+    const observer = new ResizeObserver(() => followEnd());
     for (const child of Array.from(feed.children)) observer.observe(child);
     return () => observer.disconnect();
-  }, [messageCount, loading]);
+  }, [messageCount, loading, followEnd]);
 
   // Teclado en el celular: al achicarse la ventana visible, el último mensaje sigue a la vista.
   useEffect(() => {
@@ -213,9 +227,16 @@ export function AssistantPanel({ open, onClose, mode, backLabel, currentView, on
     return () => vv.removeEventListener('resize', onResize);
   }, [open]);
 
+  const lastFeedTop = useRef(0);
   const onFeedScroll = () => {
     const feed = feedRef.current;
-    if (feed) stickToBottom.current = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 48;
+    if (!feed) return;
+    const gap = feed.scrollHeight - feed.scrollTop - feed.clientHeight;
+    // Subir (aunque sea poco) suelta el pegado; volver cerca del final lo retoma.
+    // Un scroll suave propio que todavía no llegó nunca va hacia arriba.
+    if (feed.scrollTop < lastFeedTop.current - 1) stickToBottom.current = gap < 8;
+    else if (gap < 48) stickToBottom.current = true;
+    lastFeedTop.current = feed.scrollTop;
   };
 
   const stopDictation = useCallback((discard: boolean) => {
@@ -417,178 +438,197 @@ export function AssistantPanel({ open, onClose, mode, backLabel, currentView, on
 
   const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window;
   const lastId = messages[messages.length - 1]?.id;
+  const markState: AssistantMarkState = listening ? 'listening' : speakingMessage !== null ? 'speaking' : loading ? 'thinking' : 'idle';
 
   return (
     <aside
       className={`asst asst--${mode}`}
       aria-label="Asistente TechAsset"
-      hidden={!open}
+      hidden={!shown}
+      inert={!open}
       data-scanner-ignore=""
       onKeyDown={onKeyDown}
     >
-      <header className="asst-head">
-        {mode === 'view' && (
-          <button type="button" className="shell-icon-btn" aria-label={backLabel} onClick={onClose}>
-            <ArrowLeft size={16} strokeWidth={1.6} aria-hidden="true" />
-          </button>
-        )}
-        <div className="asst-title">
-          <h2>Asistente</h2>
-          <span>Datos de tu sede en tiempo real</span>
-        </div>
-        {hasStarted && (
-          <button type="button" className="asst-text-btn" onClick={newConversation}>
-            <Plus size={14} strokeWidth={1.6} aria-hidden="true" />
-            <span>Nueva</span>
-          </button>
-        )}
-        {mode === 'column'
-          ? (
-            <button type="button" className="shell-icon-btn" aria-label="Cerrar asistente" onClick={onClose}>
+      {/* La tarjeta: separada de los bordes (se ven las esquinas), entra y sale suave. */}
+      <div className="asst-panel">
+        <header className="asst-head">
+          {mode === 'view' && (
+            <button type="button" className="asst-round-btn" aria-label={backLabel} onClick={onClose}>
+              <ArrowLeft size={16} strokeWidth={1.6} aria-hidden="true" />
+            </button>
+          )}
+          <AssistantMark size={28} state={markState} />
+          <div className="asst-title">
+            <h2>Asistente</h2>
+            <span>{listening ? 'Te escucho…' : loading ? 'Pensando…' : 'Datos de tu sede, en vivo'}</span>
+          </div>
+          {hasStarted && (
+            <button type="button" className="asst-text-btn" onClick={newConversation}>
+              <Plus size={14} strokeWidth={1.6} aria-hidden="true" />
+              <span>Nueva</span>
+            </button>
+          )}
+          {mode === 'column' && (
+            <button type="button" className="asst-round-btn" aria-label="Cerrar asistente" onClick={onClose}>
               <X size={16} strokeWidth={1.6} aria-hidden="true" />
             </button>
-          )
-          : <button type="button" className="asst-text-btn" onClick={onClose}>{backLabel}</button>}
-      </header>
-      <div className="asst-feed" ref={feedRef} onScroll={onFeedScroll} aria-live="polite" aria-busy={loading}>
-        {!hasStarted && (
-          <div className="asst-welcome">
-            <p>Preguntá sobre equipos, préstamos, agenda o tareas. Responde con lo que hay en la base{canEdit ? ' y puede registrar préstamos, devoluciones y tareas' : ''}.</p>
-            <ul className="asst-suggestions">
-              {suggestions.map(s => (
-                <li key={s}><button type="button" className="asst-suggestion" onClick={() => void send(s)}><TruncatedText>{s}</TruncatedText></button></li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {messages.map(msg => {
-          if (msg.role === 'user') {
-            return <div key={msg.id} className="asst-msg asst-msg--user"><p>{msg.content}</p></div>;
-          }
-          const waiting = msg.streaming && !msg.content && !msg.tool;
-          const showConfirm = msg.confirmation && !msg.confirmationSettled && !msg.streaming && msg.id === lastId && !loading;
-          return (
-            <div key={msg.id} className="asst-turn" data-state={msg.streaming ? 'streaming' : msg.error ? 'error' : 'done'}>
-              {waiting && (
-                <div className="asst-msg asst-msg--assistant asst-typing" aria-label="El asistente está escribiendo">
-                  <span /><span /><span />
-                </div>
-              )}
-              {(msg.content || (msg.streaming && msg.tool)) && (
-                <div className="asst-msg asst-msg--assistant">
-                  {msg.content && <p>{msg.streaming ? livePlainText(msg.content) : msg.content}</p>}
-                  {msg.streaming && msg.tool && (
-                    <p className="asst-tool" role="status"><Spinner size={12} /> <span>{msg.tool}</span></p>
-                  )}
-                  {!msg.streaming && msg.content && (canSpeak || msg.link) && (
-                    <div className="asst-msg-tools">
-                      {canSpeak && (
-                        <button
-                          type="button"
-                          className={`asst-listen${speakingMessage === msg.id ? ' is-speaking' : ''}`}
-                          onClick={() => toggleSpeech(msg.id, msg.content)}
-                          aria-label={speakingMessage === msg.id ? 'Detener audio' : 'Escuchar respuesta'}
-                        >
-                          {speakingMessage === msg.id ? <Square size={12} strokeWidth={1.8} aria-hidden="true" /> : <Volume2 size={13} strokeWidth={1.6} aria-hidden="true" />}
-                          <span>{speakingMessage === msg.id ? 'Detener' : 'Escuchar'}</span>
-                        </button>
+          )}
+        </header>
+        <div className="asst-feed" ref={feedRef} onScroll={onFeedScroll} aria-live="polite" aria-busy={loading}>
+          {!hasStarted && (
+            <div className="asst-welcome">
+              <AssistantMark size={44} state={markState} />
+              <div className="asst-welcome-text">
+                <h3>¿En qué te ayudo?</h3>
+                <p>Preguntá sobre equipos, préstamos, agenda o tareas. Responde con lo que hay en la base{canEdit ? ' y puede registrar préstamos, devoluciones y tareas' : ''}.</p>
+              </div>
+              <ul className="asst-suggestions" aria-label="Sugerencias">
+                {suggestions.map(item => (
+                  <li key={item.label}>
+                    <button type="button" className="asst-suggestion" aria-label={`${item.label}: ${item.prompt}`} onClick={() => void send(item.prompt)}>
+                      <TruncatedText>{item.label}</TruncatedText>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {messages.map(msg => {
+            if (msg.role === 'user') {
+              return <div key={msg.id} className="asst-msg asst-msg--user"><p>{msg.content}</p></div>;
+            }
+            const waiting = msg.streaming && !msg.content && !msg.tool;
+            const showConfirm = msg.confirmation && !msg.confirmationSettled && !msg.streaming && msg.id === lastId && !loading;
+            return (
+              <div key={msg.id} className="asst-turn" data-state={msg.streaming ? 'streaming' : msg.error ? 'error' : 'done'}>
+                {waiting && (
+                  <div className="asst-msg asst-msg--assistant asst-typing" aria-label="El asistente está escribiendo">
+                    <AssistantMark size={14} state="thinking" />
+                    <span>Pensando…</span>
+                  </div>
+                )}
+                {(msg.content || (msg.streaming && msg.tool)) && (
+                  <div className="asst-msg asst-msg--assistant">
+                    {/* Mientras llega el texto, la burbuja crece con alto suave. */}
+                    <AutoHeight anchor={false} innerClassName="asst-msg-body">
+                      {msg.content && <p>{msg.streaming ? livePlainText(msg.content) : msg.content}</p>}
+                      {msg.streaming && msg.tool && (
+                        <p className="asst-tool" role="status"><Spinner size={12} /> <span>{msg.tool}</span></p>
                       )}
-                      {msg.link?.device && (
-                        <button type="button" className="asst-listen" onClick={() => openLinkedDevice(msg.link?.device)}>
-                          <span>Ver ficha de {msg.link.device}</span>
-                        </button>
-                      )}
-                      {msg.link?.route && (
-                        <button type="button" className="asst-listen" onClick={() => onNavigate(msg.link?.route || '')}>
-                          <span>Abrir {ROUTE_LABELS[msg.link.route] || 'la sección'}</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              {msg.actions?.map(action => {
-                const state = undoStates[action.id];
-                if (state?.status === 'done') {
-                  return <StatusLine key={action.id} className="asst-action" tone="info" message={state.message} autoHideMs={0} />;
-                }
-                if (state?.status === 'error') {
+                    </AutoHeight>
+                    {!msg.streaming && msg.content && (canSpeak || msg.link) && (
+                      <div className="asst-msg-tools">
+                        {canSpeak && (
+                          <button
+                            type="button"
+                            className={`asst-listen${speakingMessage === msg.id ? ' is-speaking' : ''}`}
+                            onClick={() => toggleSpeech(msg.id, msg.content)}
+                            aria-label={speakingMessage === msg.id ? 'Detener audio' : 'Escuchar respuesta'}
+                          >
+                            {speakingMessage === msg.id ? <Square size={12} strokeWidth={1.8} aria-hidden="true" /> : <Volume2 size={13} strokeWidth={1.6} aria-hidden="true" />}
+                            <span>{speakingMessage === msg.id ? 'Detener' : 'Escuchar'}</span>
+                          </button>
+                        )}
+                        {msg.link?.device && (
+                          <button type="button" className="asst-listen" onClick={() => openLinkedDevice(msg.link?.device)}>
+                            <span>Ver ficha de {msg.link.device}</span>
+                          </button>
+                        )}
+                        {msg.link?.route && (
+                          <button type="button" className="asst-listen" onClick={() => onNavigate(msg.link?.route || '')}>
+                            <span>Abrir {ROUTE_LABELS[msg.link.route] || 'la sección'}</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {msg.actions?.map(action => {
+                  const state = undoStates[action.id];
+                  if (state?.status === 'done') {
+                    return <StatusLine key={action.id} className="asst-action" tone="info" message={state.message} autoHideMs={0} />;
+                  }
+                  if (state?.status === 'error') {
+                    return (
+                      <StatusLine
+                        key={action.id}
+                        className="asst-action"
+                        tone="bad"
+                        message={`${action.label}. No se pudo deshacer: ${state.message}`}
+                        retry={state.retryable ? { onRetry: () => undo(action), label: 'Reintentar' } : undefined}
+                      />
+                    );
+                  }
                   return (
                     <StatusLine
                       key={action.id}
                       className="asst-action"
-                      tone="bad"
-                      message={`${action.label}. No se pudo deshacer: ${state.message}`}
-                      retry={state.retryable ? { onRetry: () => undo(action), label: 'Reintentar' } : undefined}
+                      tone="ok"
+                      message={action.label}
+                      autoHideMs={0}
+                      action={action.undo
+                        ? { label: state?.status === 'busy' ? 'Deshaciendo…' : 'Deshacer', onClick: () => { if (state?.status !== 'busy') void undo(action); } }
+                        : undefined}
                     />
                   );
-                }
-                return (
-                  <StatusLine
-                    key={action.id}
-                    className="asst-action"
-                    tone="ok"
-                    message={action.label}
-                    autoHideMs={0}
-                    action={action.undo
-                      ? { label: state?.status === 'busy' ? 'Deshaciendo…' : 'Deshacer', onClick: () => { if (state?.status !== 'busy') void undo(action); } }
-                      : undefined}
+                })}
+                {showConfirm && msg.confirmation && (
+                  <InlineConfirm
+                    className="asst-confirm"
+                    message={`Son ${msg.confirmation.cantidad} equipos. ¿Confirmás?`}
+                    detail={msg.confirmation.equipos.length ? msg.confirmation.equipos.join(', ') : undefined}
+                    confirmLabel="Sí, confirmo"
+                    cancelLabel="No"
+                    onConfirm={() => { settleConfirmation(msg.id); void send(CONFIRM_TEXT); }}
+                    onCancel={() => { settleConfirmation(msg.id); inputRef.current?.focus({ preventScroll: true }); }}
                   />
-                );
-              })}
-              {showConfirm && msg.confirmation && (
-                <InlineConfirm
-                  className="asst-confirm"
-                  message={`Son ${msg.confirmation.cantidad} equipos. ¿Confirmás?`}
-                  detail={msg.confirmation.equipos.length ? msg.confirmation.equipos.join(', ') : undefined}
-                  confirmLabel="Sí, confirmo"
-                  cancelLabel="No"
-                  onConfirm={() => { settleConfirmation(msg.id); void send(CONFIRM_TEXT); }}
-                  onCancel={() => { settleConfirmation(msg.id); inputRef.current?.focus({ preventScroll: true }); }}
-                />
-              )}
-              {msg.error && (
-                <StatusLine
-                  className="asst-action"
-                  tone="bad"
-                  message={msg.error}
-                  retry={msg.id === lastId && !loading ? { onRetry: () => retry(msg.id) } : undefined}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {dictation.error && (
-        <StatusLine className="asst-dictation-error" tone="warn" message={dictation.error} onDismiss={dictation.reset} />
-      )}
-      <form className="asst-form" onSubmit={e => { e.preventDefault(); void send(input); }}>
-        <input
-          ref={inputRef}
-          className="asst-input"
-          value={shownInput}
-          onChange={e => setInput(e.target.value)}
-          readOnly={listening}
-          placeholder={listening ? 'Te escucho…' : 'Escribí tu pedido…'}
-          aria-label="Pedido para el asistente"
-          disabled={loading}
-        />
-        {dictation.supported && (
-          <button
-            type="button"
-            className={`shell-icon-btn asst-mic${listening ? ' is-recording' : ''}`}
-            onClick={toggleDictation}
-            disabled={loading && !listening}
-            aria-pressed={listening}
-            aria-label={listening ? 'Dejar de dictar' : 'Dictar el pedido'}
-          >
-            {listening ? <Square size={14} strokeWidth={1.8} aria-hidden="true" /> : <Mic size={16} strokeWidth={1.6} aria-hidden="true" />}
-          </button>
+                )}
+                {msg.error && (
+                  <StatusLine
+                    className="asst-action"
+                    tone="bad"
+                    message={msg.error}
+                    retry={msg.id === lastId && !loading ? { onRetry: () => retry(msg.id) } : undefined}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {dictation.error && (
+          <StatusLine className="asst-dictation-error" tone="warn" message={dictation.error} onDismiss={dictation.reset} />
         )}
-        <button type="submit" className="asst-send" disabled={loading || listening || !input.trim()} aria-label="Enviar">
-          <Send size={16} strokeWidth={1.6} aria-hidden="true" />
-        </button>
-      </form>
+        {/* Compositor en píldora: campo + micrófono + enviar (botones redondos). */}
+        <form className="asst-form" onSubmit={e => { e.preventDefault(); void send(input); }}>
+          <div className={`asst-composer${listening ? ' is-listening' : ''}`}>
+            <input
+              ref={inputRef}
+              className="asst-input"
+              value={shownInput}
+              onChange={e => setInput(e.target.value)}
+              readOnly={listening}
+              placeholder={listening ? 'Te escucho…' : 'Escribí tu pedido…'}
+              aria-label="Pedido para el asistente"
+              disabled={loading}
+            />
+            {dictation.supported && (
+              <button
+                type="button"
+                className={`asst-round-btn asst-mic${listening ? ' is-recording' : ''}`}
+                onClick={toggleDictation}
+                disabled={loading && !listening}
+                aria-pressed={listening}
+                aria-label={listening ? 'Dejar de dictar' : 'Dictar el pedido'}
+              >
+                {listening ? <Square size={14} strokeWidth={1.8} aria-hidden="true" /> : <Mic size={16} strokeWidth={1.6} aria-hidden="true" />}
+              </button>
+            )}
+            <button type="submit" className="asst-send" disabled={loading || listening || !input.trim()} aria-label="Enviar">
+              {loading ? <Spinner size={14} /> : <ArrowUp size={16} strokeWidth={1.8} aria-hidden="true" />}
+            </button>
+          </div>
+        </form>
+      </div>
     </aside>
   );
 }

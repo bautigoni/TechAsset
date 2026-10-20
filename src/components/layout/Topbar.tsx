@@ -1,7 +1,8 @@
-import { Bell, Bot, Lock, PanelLeftClose, PanelLeftOpen, Search, Zap } from 'lucide-react';
+import { Bell, Lock, PanelLeftClose, PanelLeftOpen, Search, Zap } from 'lucide-react';
 import type { AuthUser } from '../../types';
 import { initialsOf } from './Sidebar';
 import { AnimatedNumber } from './AnimatedNumber';
+import { AssistantMark } from '../assistant/AssistantMark';
 
 export type StripKey = 'quick' | 'notif' | 'account' | 'sites' | 'palette';
 
@@ -12,7 +13,7 @@ export type StripKey = 'quick' | 'notif' | 'account' | 'sites' | 'palette';
  * debajo de la barra que empuja el contenido (una a la vez; Esc o el mismo
  * botón la cierran).
  */
-export function Topbar({ title, context, consultationMode, user, unread, openStrip, onToggleStrip, assistantOpen, onToggleAssistant, collapsed, canCollapse, onToggleCollapsed }: {
+export function Topbar({ title, context, consultationMode, user, unread, openStrip, onToggleStrip, assistantOpen, onToggleAssistant, onAssistantIntent, collapsed, canCollapse, onToggleCollapsed }: {
   title: string;
   context?: string;
   consultationMode: boolean;
@@ -22,6 +23,8 @@ export function Topbar({ title, context, consultationMode, user, unread, openStr
   onToggleStrip: (strip: StripKey, trigger: HTMLElement) => void;
   assistantOpen: boolean;
   onToggleAssistant: () => void;
+  /** Puntero o foco sobre el botón: se precarga el panel (abre animado desde el primer toque). */
+  onAssistantIntent?: () => void;
   collapsed: boolean;
   /** Bajo 1100 px (o con el asistente abierto en pantallas medianas) el rail es fijo. */
   canCollapse: boolean;
@@ -70,8 +73,10 @@ export function Topbar({ title, context, consultationMode, user, unread, openStr
           aria-pressed={assistantOpen}
           aria-label="Asistente"
           onClick={onToggleAssistant}
+          onPointerEnter={onAssistantIntent}
+          onFocus={onAssistantIntent}
         >
-          <Bot size={16} strokeWidth={1.6} aria-hidden="true" />
+          <AssistantMark size={16} />
           <span className="shell-assistant-btn-label">Asistente</span>
         </button>
         <button

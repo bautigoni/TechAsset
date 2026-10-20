@@ -1,0 +1,70 @@
+/* Marca del asistente (AssistantMark.tsx). Va en la barra superior: entra en
+   el CSS inicial, por eso es mínima. Solo tokens; movimiento solo con
+   data-state activo y sin prefers-reduced-motion. Sin halo ni glow: nada se
+   dibuja por fuera del círculo (overflow: hidden + border-radius). */
+
+.asst-mark {
+  --mark-size: 18px;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--mark-size);
+  height: var(--mark-size);
+  border-radius: 50%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* ── orb: esfera con luz arriba a la izquierda y un brillo interno ── */
+.asst-mark--orb {
+  background: radial-gradient(circle at 34% 28%, var(--g-orb-hi) 0%, var(--g-orb-mid) 52%, var(--g-orb-lo) 100%);
+}
+.asst-mark--orb .asst-mark-core {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* Banda de luz suave descentrada: al girar se lee como el remolino del orb. */
+  background: radial-gradient(ellipse 70% 38% at 50% 22%, var(--g-orb-hi), transparent 72%);
+  opacity: .55;
+}
+
+/* ── ring: anillo fino con núcleo ── */
+.asst-mark--ring {
+  border: max(1.5px, calc(var(--mark-size) * .1)) solid var(--g-orb-mid);
+  background: transparent;
+}
+.asst-mark--ring .asst-mark-core {
+  position: absolute;
+  inset: 26%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--g-orb-hi), var(--g-orb-mid) 70%);
+}
+
+/* ── duo: dos esferas que se superponen ── */
+.asst-mark--duo { background: transparent; }
+.asst-mark--duo::before,
+.asst-mark--duo .asst-mark-core {
+  content: '';
+  position: absolute;
+  width: 64%;
+  height: 64%;
+  border-radius: 50%;
+}
+.asst-mark--duo::before { top: 6%; left: 6%; background: var(--g-orb-hi); opacity: .85; }
+.asst-mark--duo .asst-mark-core { right: 6%; bottom: 6%; background: var(--g-orb-lo); opacity: .9; }
+
+/* ── Movimiento: lento y solo mientras hace algo ── */
+@media (prefers-reduced-motion: no-preference) {
+  .asst-mark--orb:not([data-state="idle"]) .asst-mark-core { animation: asst-mark-spin 3.2s linear infinite; }
+  .asst-mark--orb[data-state="listening"],
+  .asst-mark--orb[data-state="speaking"] { animation: asst-mark-breathe 1.6s var(--g-ease) infinite alternate; }
+  .asst-mark--orb[data-state="speaking"] { animation-duration: .9s; }
+
+  .asst-mark--ring:not([data-state="idle"]) .asst-mark-core { animation: asst-mark-breathe 1.4s var(--g-ease) infinite alternate; }
+  .asst-mark--ring[data-state="thinking"] .asst-mark-core { animation-duration: 2.2s; }
+
+  .asst-mark--duo:not([data-state="idle"]) { animation: asst-mark-spin 2.8s linear infinite; }
+  .asst-mark--duo[data-state="speaking"] { animation-duration: 1.6s; }
+}
+@keyframes asst-mark-spin { to { transform: rotate(360deg); } }
+@keyframes asst-mark-breathe { from { transform: scale(.9); } to { transform: scale(1); } }

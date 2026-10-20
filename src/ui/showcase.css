@@ -73,3 +73,14 @@
 .ui-sc-cbody { display: flex; flex-direction: column; gap: var(--g-s-3); padding: var(--g-s-2) var(--g-s-2) var(--g-s-3); }
 .ui-sc-clist { list-style: none; margin: 0; padding: 0; }
 .ui-sc-clist li { padding: var(--g-s-2); border-bottom: 1px solid var(--g-line); color: var(--g-text-2); }
+
+/* Forma: escala de radios */
+.ui-sc-radii { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: var(--g-s-3); min-width: 0; }
+.ui-sc-radius { display: flex; align-items: center; gap: var(--g-s-3); min-width: 0; }
+.ui-sc-radius-box { flex: none; width: calc(var(--g-s-7) + var(--g-s-3)); height: var(--g-s-7); border: 1px solid var(--g-line-strong); background: var(--g-raised); }
+.ui-sc-radius-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--g-text-2); font-size: var(--g-fs-xs); }
+.ui-sc-radius-text code { color: var(--g-text); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
+
+/* Asistente: alternativas de la marca */
+.ui-sc-mark { display: inline-flex; flex-direction: column; align-items: center; gap: var(--g-s-1); min-width: calc(var(--g-s-7) + var(--g-s-4)); color: var(--g-text-3); font-size: var(--g-fs-xs); white-space: nowrap; }
+.ui-sc-mark-note { flex: 1 1 14rem; min-width: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); }
