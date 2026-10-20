@@ -31,8 +31,6 @@ import { isSettingsAlias, panelFromPath, requestSettingsPanel } from './componen
 // (ver prefetchViewsWhenIdle más abajo), así el cambio de vista sigue siendo
 // instantáneo. La clave del lazyView es la ViewKey para poder prefetchear por nav.
 const Dashboard = lazyView('dashboard', () => import('./components/dashboard/Dashboard'), 'Dashboard');
-// El Inicio es la vista de entrada: su chunk se pide ya, en paralelo con la sesión.
-if (typeof window !== 'undefined' && /^\/(sede\/[^/]+\/?(dashboard)?)?$/i.test(window.location.pathname)) prefetchView('dashboard');
 const DevicesPage = lazyView('devices', () => import('./components/devices/DevicesPage'), 'DevicesPage');
 const LoansPage = lazyView('loans', () => import('./components/loans/LoansPage'), 'LoansPage');
 const HistoryPage = lazyView('history', () => import('./components/history/HistoryPage'), 'HistoryPage');
@@ -56,6 +54,18 @@ const UiShowcase = lazyView('ui', () => import('./ui/Showcase'), 'Showcase');
 // tiene sesión, así que no tiene por qué pesar en el bundle del que ya entró.
 const LoginPage = lazyView('login', () => import('./components/auth/LoginPage'), 'LoginPage');
 const LandingPage = lazyView('landing', () => import('./components/auth/LandingPage'), 'LandingPage');
+
+// La sesión se pide apenas se evalúa este módulo, antes del primer render: así
+// sale ANTES que agenda, tareas y turnos (que se piden en los efectos de sus
+// hooks) y el server, que atiende de a un pedido, la contesta primero. Sin
+// sesión recordada es lo único que frena el primer pintado de la app.
+let bootSession: ReturnType<typeof getAuthSession> | null = typeof window !== 'undefined' ? getAuthSession() : null;
+// Marcado como atendido: si falla antes del primer render no es un rechazo sin manejar
+// (el efecto de la sesión igual recibe el error y lo trata).
+bootSession?.catch(() => undefined);
+// El Inicio es la vista de entrada: su chunk se pide ya, en paralelo con la
+// sesión (después de ella, que va primera en la cola de pedidos).
+if (typeof window !== 'undefined' && /^\/(sede\/[^/]+\/?(dashboard)?)?$/i.test(window.location.pathname)) prefetchView('dashboard');
 
 export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
@@ -133,7 +143,9 @@ export function App() {
       setAuthLoading(false);
     }
 
-    getAuthSession()
+    const pendingSession = bootSession || getAuthSession();
+    bootSession = null;
+    pendingSession
       .then(session => {
         if (session.authenticated && session.user && session.sites?.length) {
           aplicarSesion(session.user, session.sites);
