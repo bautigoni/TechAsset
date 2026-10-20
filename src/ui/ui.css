@@ -770,8 +770,11 @@ html[data-theme="light"] .ui-btn--primary[data-force~="active"] { background: co
   font-size: var(--g-fs-base);
 }
 .ui-status-icon { display: inline-flex; flex: none; }
-.ui-status-msg { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
-.ui-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-1); margin-left: auto; }
+/* Compacta (pedido del dueño, 20/10): texto y acción juntos, sin un hueco en el
+   medio; la línea mide lo que su contenido (hasta el ancho disponible). */
+.ui-status { width: fit-content; max-width: 100%; }
+.ui-status-msg { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.ui-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-1); }
 .ui-status-count { min-width: 2.25em; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); text-align: right; }
 .ui-status-undo { color: var(--g-accent); }
 .ui-status--ok .ui-status-icon { color: var(--g-ok); }
