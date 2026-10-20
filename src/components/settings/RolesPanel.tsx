@@ -5,7 +5,7 @@ import { cx } from '../../ui/util';
 import { getSiteSettings, updateSiteSettings } from '../../services/authApi';
 import { getManagedUsers } from '../../services/settingsApi';
 import { TOGGLEABLE_MODULES } from '../../utils/modules';
-import { Card, CardFoot, CheckField, Notice, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
+import { Card, CardFoot, CheckField, Notice, Reveal, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
 
 const ALL_KEYS = TOGGLEABLE_MODULES.map(mod => mod.key as string);
 
@@ -236,10 +236,11 @@ export function RolesPanel({ header, readOnly, siteCode, onChanged }: { header: 
                       <CheckField checked={role.admin} disabled={readOnly} label="Administrador de la sede" description="Acceso total: usuarios, invitaciones, módulos y configuración." onChange={value => patch(role.uid, { admin: value })} />
                     </div>
                   </div>
-                  {role.admin ? (
+                  {/* Marcar o desmarcar Administrador cambia la grilla de permisos por el resumen con transición de alto. */}
+                  <Reveal when={role.admin}>
                     <p className="cfg-t2 cfg-para">Ve y edita todos los módulos, administra usuarios, invitaciones y la sede.</p>
-                  ) : (
-                    <>
+                  </Reveal>
+                  <Reveal when={!role.admin} className="cfg-acc-perms">
                       <div className="cfg-perms" role="group" aria-label={`Permisos de ${role.name || 'este rol'} por módulo`}>
                         {columns.map((mods, columnIndex) => (
                           <div className={cx('cfg-perm-col', columnIndex === 1 && 'is-second')} key={columnIndex}>
@@ -255,21 +256,24 @@ export function RolesPanel({ header, readOnly, siteCode, onChanged }: { header: 
                         ))}
                       </div>
                       <p className="cfg-hint">Marcar Editar marca Ver.</p>
-                    </>
-                  )}
+                  </Reveal>
                   {!readOnly && (
                     <div className="cfg-acc-f">
                       {roles.length > 1 ? (
-                        deleting === role.uid ? (
-                          <InlineConfirm
-                            danger
-                            message={`¿Eliminar el rol ${role.name.trim() || 'sin nombre'}?`}
-                            detail={users ? `${users} usuario${users === 1 ? '' : 's'} lo usa${users === 1 ? '' : 'n'}: van a quedar resueltos por nombre hasta que les asignes otro. Se aplica al guardar.` : 'Se aplica al guardar los roles.'}
-                            confirmLabel="Eliminar rol"
-                            onConfirm={() => removeRole(role.uid)}
-                            onCancel={() => setDeleting('')}
-                          />
-                        ) : <Button variant="danger" size="sm" onClick={() => setDeleting(role.uid)}>Eliminar rol</Button>
+                        <>
+                          {/* El botón queda quieto; la confirmación se abre debajo, en línea. */}
+                          <Button variant="danger" size="sm" aria-expanded={deleting === role.uid} aria-controls={`${bodyId}-del`} onClick={() => setDeleting(deleting === role.uid ? '' : role.uid)}>Eliminar rol</Button>
+                          <Collapse open={deleting === role.uid} id={`${bodyId}-del`} unmountOnClose gap="var(--g-s-2)" outerClassName="cfg-reveal-row">
+                            <InlineConfirm
+                              danger
+                              message={`¿Eliminar el rol ${role.name.trim() || 'sin nombre'}?`}
+                              detail={users ? `${users} usuario${users === 1 ? '' : 's'} lo usa${users === 1 ? '' : 'n'}: van a quedar resueltos por nombre hasta que les asignes otro. Se aplica al guardar.` : 'Se aplica al guardar los roles.'}
+                              confirmLabel="Eliminar rol"
+                              onConfirm={() => removeRole(role.uid)}
+                              onCancel={() => setDeleting('')}
+                            />
+                          </Collapse>
+                        </>
                       ) : <span className="cfg-t3">Es el único rol: no se puede eliminar.</span>}
                     </div>
                   )}
@@ -283,7 +287,7 @@ export function RolesPanel({ header, readOnly, siteCode, onChanged }: { header: 
           tone={problem ? 'bad' : status ? status.tone : changed ? 'warn' : 'muted'}
         >
           <Button variant="secondary" icon={<Plus size={15} aria-hidden="true" />} disabled={readOnly || !roles} onClick={addRole}>Agregar rol</Button>
-          {changed && <Button variant="ghost" disabled={saving} onClick={discard}>Descartar</Button>}
+          <Button variant="ghost" disabled={!changed || saving} onClick={discard}>Descartar</Button>
           <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={readOnly || !changed || Boolean(problem)} onClick={() => void save()}>Guardar roles</Button>
         </CardFoot>
       </Card>

@@ -45,8 +45,13 @@
 }
 .tl-note svg { flex: none; margin-top: 3px; }
 
+.tl-panels { min-width: 0; }
 .tl-panel[hidden] { display: none; }
 .tl-panel { display: flex; flex-direction: column; gap: var(--g-s-4); min-width: 0; }
+/* Cambiar de solapa no aparece de golpe: el panel entra con un fundido corto (las solapas quedan quietas arriba). */
+.tl-panel:not([hidden]) { animation: tl-panel-in var(--g-dur) var(--g-ease) both; }
+@keyframes tl-panel-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tl-panel:not([hidden]) { animation: none; } }
 
 /* ── Cards ──────────────────────────────────────────────────────────── */
 .tl-card {
@@ -112,7 +117,7 @@
   border-radius: var(--g-radius-sm);
   background: var(--g-bg);
 }
-.tl-sheet-card { border: 1px dashed var(--g-line-strong); border-radius: 2px; }
+.tl-sheet-card { border: 1px dashed var(--g-line-strong); border-radius: calc(var(--g-radius-sm) / 3); }
 .tl-step-title { color: var(--g-text); font-size: var(--g-fs-base); font-weight: var(--g-fw-semibold); line-height: 1.25rem; }
 
 .tl-mode {

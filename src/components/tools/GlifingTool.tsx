@@ -7,6 +7,7 @@ import { formatTimeOnly } from '../../utils/formatters';
 import { canRetryCsv, errorText, readCsv, useExpired } from './useExpiry';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { peekDraft, useKeepDraft } from '../../utils/drafts';
+import { Reveal } from '../settings/Reveal';
 
 const REQUIRED = ['Username', 'Nombre', 'Apellido', 'Grupo', 'Contraseña'];
 type CardKind = 'glifing' | 'santillana';
@@ -135,9 +136,9 @@ export function GlifingTool({ readOnly }: { readOnly: boolean }) {
                 Generar tarjetas {KIND_NAME[kind]}
               </Button>
             </div>
-            {disabledReason && !busy && <span className="tl-muted tl-small">{disabledReason}</span>}
-            {genError && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{genError}</span></p>}
-            <Collapse unmountOnClose open={Boolean(result)} role="region" aria-label="Tarjetas generadas">
+            <Reveal when={disabledReason && !busy}>{disabledReason && !busy && <span className="tl-muted tl-small">{disabledReason}</span>}</Reveal>
+            <Reveal when={genError}>{genError && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{genError}</span></p>}</Reveal>
+            <Collapse unmountOnClose gap="auto" open={Boolean(result)} role="region" aria-label="Tarjetas generadas">
               {result && (
                 <div className="tl-result" role="status">
                   {expired ? (
@@ -170,13 +171,14 @@ export function GlifingTool({ readOnly }: { readOnly: boolean }) {
       </section>
 
       <div className="tl-out">
-        {csvError && (
+        {/* Error, vista previa y vacío se pliegan y despliegan entre sí (sin saltos de alto). */}
+        <Reveal when={csvError}>{csvError && (
           <div className="tl-card tl-alert" role="alert">
             <span className="tl-alert-title"><icons.IconAlert size={14} />{csvError}</span>
             <span className="tl-muted">Revisá el encabezado del CSV o bajá la plantilla y pegá los datos ahí.</span>
           </div>
-        )}
-        {preview.length > 0 ? (
+        )}</Reveal>
+        <Reveal when={preview.length > 0}>{preview.length > 0 && (
           <section className="tl-card tl-table-card" aria-label="Vista previa del CSV">
             <div className="tl-card-head">
               <h2 className="tl-card-title">Vista previa</h2>
@@ -186,9 +188,10 @@ export function GlifingTool({ readOnly }: { readOnly: boolean }) {
             <Table rows={preview} columns={columns} rowKey={row => row.__i} caption="Primeras filas del CSV de alumnos" cardBelow="md" />
             <p className="tl-foot tl-foot--in">Las tarjetas se generan con todas las filas, no solo con estas {preview.length}.</p>
           </section>
-        ) : !csvError && (
+        )}</Reveal>
+        <Reveal when={!preview.length && !csvError}>
           <CompactEmpty className="tl-card" icon={<FileSpreadsheet size={18} strokeWidth={1.6} />} title="Todavía no subiste el CSV" description="Cuando lo subas vas a ver acá las primeras 10 filas para revisarlas antes de generar." />
-        )}
+        </Reveal>
       </div>
     </div>
   );

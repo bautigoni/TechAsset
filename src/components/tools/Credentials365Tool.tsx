@@ -8,6 +8,7 @@ import { formatTimeOnly } from '../../utils/formatters';
 import { canRetryCsv, errorText, readCsv, useExpired } from './useExpiry';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { peekDraft, useKeepDraft } from '../../utils/drafts';
+import { Reveal } from '../settings/Reveal';
 
 const REQUIRED = ['Nombre para mostrar', 'Nombre de usuario', 'mail', 'Contraseña', 'Sede', 'Licencias'];
 type Row = Record<string, string>;
@@ -188,8 +189,8 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
               onRemove={() => reset()}
               defaultItems={restoredFile}
             />
-            {csv && <span className="tl-muted tl-small"><b className="g-num">{uploadTotal}</b> {uploadTotal === 1 ? 'fila detectada' : 'filas detectadas'}.</span>}
-            {csvError && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{csvError}</span></p>}
+            <Reveal when={csv}>{csv && <span className="tl-muted tl-small"><b className="g-num">{uploadTotal}</b> {uploadTotal === 1 ? 'fila detectada' : 'filas detectadas'}.</span>}</Reveal>
+            <Reveal when={csvError}>{csvError && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{csvError}</span></p>}</Reveal>
             <a className="tl-link" href={TEMPLATE_URLS.credentials365} download>
               <Download size={14} strokeWidth={1.6} aria-hidden="true" />
               <span>Descargar plantilla (credenciales 365)</span>
@@ -205,13 +206,13 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
                 {validation ? 'Validar de nuevo' : 'Validar filas'}
               </Button>
             </div>
-            {validation && (
+            <Reveal when={validation}>{validation && (
               <dl className="tl-counters">
                 <div><dt>Total</dt><dd className="g-num">{validation.total}</dd></div>
                 <div><dt>Válidas</dt><dd className="g-num">{validation.validos}</dd></div>
                 <div><dt>Inválidas</dt><dd className={`g-num${validation.invalidos ? ' is-bad' : ''}`}>{validation.invalidos}</dd></div>
               </dl>
-            )}
+            )}</Reveal>
             <div className="tl-actions tl-send">
               <Button
                 variant="primary"
@@ -220,13 +221,14 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
                 loadingLabel="Enviando…"
                 disabled={Boolean(blocked) || confirming}
                 aria-expanded={!modoPrueba ? confirming : undefined}
+                aria-controls={!modoPrueba ? 'tl-cred-confirm' : undefined}
                 onClick={onAskSend}
               >
                 {modoPrueba ? 'Enviar (modo prueba)' : 'Enviar correos'}
               </Button>
             </div>
-            {blocked && <span className="tl-muted tl-small">{blocked}</span>}
-            <Collapse unmountOnClose open={confirming && Boolean(validation)}>
+            <Reveal when={blocked}>{blocked && <span className="tl-muted tl-small">{blocked}</span>}</Reveal>
+            <Collapse unmountOnClose open={confirming && Boolean(validation)} id="tl-cred-confirm" gap="auto">
               {validation && (
                 <InlineConfirm
                   danger
@@ -239,8 +241,8 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
                 />
               )}
             </Collapse>
-            {error && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}
-            <Collapse unmountOnClose open={Boolean(result)} role="region" aria-label="Resultado del envío">
+            <Reveal when={error}>{error && <p className="tl-error" role="alert"><icons.IconAlert size={14} /><span>{error}</span></p>}</Reveal>
+            <Collapse unmountOnClose gap="auto" open={Boolean(result)} role="region" aria-label="Resultado del envío">
               {result && (
                 <div className="tl-result" role="status">
                   <span className="tl-result-line">
@@ -272,7 +274,8 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
       </section>
 
       <div className="tl-out">
-        {previewRows.length > 0 ? (
+        {/* Vacío ↔ vista previa: uno se pliega mientras el otro se abre (sin saltos de alto). */}
+        <Reveal when={previewRows.length > 0}>{previewRows.length > 0 && (
           <section className="tl-card tl-table-card" aria-label="Primeras filas">
             <div className="tl-card-head">
               <h2 className="tl-card-title">Primeras filas</h2>
@@ -280,15 +283,16 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
             </div>
             <Table rows={previewRows} columns={validColumns} rowKey={row => row.__i} caption="Primeras filas del CSV de cuentas" cardBelow="lg" />
           </section>
-        ) : (
+        )}</Reveal>
+        <Reveal when={!previewRows.length}>
           <CompactEmpty
             className="tl-card"
             icon={<FileSpreadsheet size={18} strokeWidth={1.6} />}
             title={csv ? 'Validá las filas para revisarlas' : 'Todavía no subiste el CSV'}
             description={csv ? 'Vas a ver acá las primeras filas y, aparte, las inválidas con su motivo.' : 'Subilo y validalo: acá vas a ver las filas antes de enviar.'}
           />
-        )}
-        {validation && validation.invalid.length > 0 && (
+        </Reveal>
+        <Reveal when={validation && validation.invalid.length > 0}>{validation && validation.invalid.length > 0 && (
           <section className="tl-card tl-table-card" aria-label="Filas inválidas">
             <div className="tl-card-head">
               <h2 className="tl-card-title">Filas inválidas</h2>
@@ -296,7 +300,7 @@ export function Credentials365Tool({ readOnly, canSend, config, onConfig, onOpen
             </div>
             <Table rows={validation.invalid} columns={invalidColumns} rowKey={row => row.__i} caption="Filas inválidas con su motivo" cardBelow="md" />
           </section>
-        )}
+        )}</Reveal>
       </div>
     </div>
   );

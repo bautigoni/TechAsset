@@ -4,7 +4,7 @@ import { Button, ColorField, FileDrop, Input } from '../../ui';
 import { cx } from '../../ui/util';
 import { saveSite } from '../../services/authApi';
 import { TenantLogo } from '../layout/TenantLogo';
-import { CheckField, errorText, useDirty } from './settingsKit';
+import { CheckField, Reveal, errorText, useDirty } from './settingsKit';
 
 type Draft = {
   siteCode: string;
@@ -147,7 +147,7 @@ export function SiteForm({ site, mode, superadmin, readOnly, onSaved, onCancel, 
             hint="PNG, JPG o WEBP · hasta 2 MB · cuadrado se ve mejor · también podés pegarlo con Ctrl V"
             onFilesChange={files => { void onLogoFiles(files); }}
           />
-          {logoProblem && <p className="cfg-error" role="alert">{logoProblem}</p>}
+          <Reveal when={logoProblem}>{logoProblem && <p className="cfg-error" role="alert">{logoProblem}</p>}</Reveal>
           <div className="cfg-inline">
             <Button size="sm" variant="ghost" disabled={disabled || !draft.logo} onClick={() => { set('logo', ''); set('logoDataUrl', ''); setDropKey(value => value + 1); }}>Usar marca TA</Button>
             <span className="cfg-t3">Sin logo propio se usa la marca TA. El logo se ve en el menú, los mails y antes de entrar.</span>
@@ -197,13 +197,16 @@ export function SiteForm({ site, mode, superadmin, readOnly, onSaved, onCancel, 
         )}
       </div>
 
-      {(error || ok) && <p className={cx(error ? 'cfg-error' : 'cfg-okmsg')} role={error ? 'alert' : 'status'}>{error || ok}</p>}
       <div className="cfg-uform-f">
         <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={readOnly || (mode === 'edit' && !changed)} onClick={() => void save()}>{mode === 'create' ? 'Crear sede' : 'Guardar sede'}</Button>
         {onCancel && <Button variant="ghost" disabled={saving} onClick={onCancel}>Cancelar</Button>}
-        {mode === 'edit' && changed && !onCancel && <Button variant="ghost" disabled={saving} onClick={() => { setDraft(initial); setDropKey(value => value + 1); setError(''); }}>Descartar</Button>}
+        {mode === 'edit' && !onCancel && <Button variant="ghost" disabled={!changed || saving} onClick={() => { setDraft(initial); setDropKey(value => value + 1); setError(''); }}>Descartar</Button>}
         <span className="cfg-hint">Al guardar se actualizan el selector de sede, el menú y la barra superior.</span>
       </div>
+      {/* Debajo de los botones: aparece sin correr lo que se tocó. */}
+      <Reveal when={error || ok}>
+        {(error || ok) && <p className={cx(error ? 'cfg-error' : 'cfg-okmsg')} role={error ? 'alert' : 'status'}>{error || ok}</p>}
+      </Reveal>
     </div>
   );
 }

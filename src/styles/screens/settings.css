@@ -118,7 +118,7 @@
   top: var(--g-s-2);
   bottom: var(--g-s-2);
   width: 2px;
-  border-radius: 2px;
+  border-radius: var(--g-radius-pill);
   background: var(--g-accent);
 }
 .cfg-nav-c { flex: none; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); font-weight: var(--g-fw-regular); white-space: nowrap; }
@@ -299,9 +299,9 @@
 .cfg-prv-half { display: flex; flex: 1 1 50%; min-width: 0; background: var(--g-bg); }
 .cfg-prv-side { flex: 0 0 24%; border-right: 1px solid var(--g-line); background: var(--g-surface); }
 .cfg-prv-main { display: flex; flex: 1 1 auto; flex-direction: column; gap: 6px; min-width: 0; padding: var(--g-s-2); }
-.cfg-prv-line { height: 6px; width: 55%; border-radius: 2px; background: var(--g-line-strong); }
+.cfg-prv-line { height: 6px; width: 55%; border-radius: var(--g-radius-pill); background: var(--g-line-strong); }
 .cfg-prv-line.is-short { width: 35%; }
-.cfg-prv-card { height: 1.6rem; border: 1px solid var(--g-line); border-radius: 4px; background: var(--g-surface); }
+.cfg-prv-card { height: 1.6rem; border: 1px solid var(--g-line); border-radius: calc(var(--g-radius-sm) * .66); background: var(--g-surface); }
 
 /* ── Notificaciones ─────────────────────────────────────────────────────── */
 
@@ -400,7 +400,7 @@
 @media (prefers-reduced-motion: reduce) { .cfg-chev { transition: none; } }
 .cfg-acc-b { display: flex; flex-direction: column; gap: var(--g-s-4); padding: var(--g-s-2) var(--g-s-4) var(--g-s-4); }
 .cfg-acc-f { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2); min-width: 0; }
-.cfg-acc-f > .ui-confirm { flex: 1 1 100%; }
+.cfg-acc-perms { display: flex; flex-direction: column; gap: var(--g-s-4); min-width: 0; }
 .cfg-perms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--g-s-6); min-width: 0; }
 .cfg-perm-h, .cfg-perm-r {
   display: grid;
@@ -561,7 +561,9 @@
 }
 .cfg-link { flex: 1 1 16rem; min-width: 0; color: var(--g-text); font-family: var(--g-font-mono); font-size: var(--g-fs-sm); overflow-wrap: anywhere; word-break: break-all; user-select: all; }
 .cfg-copy { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2); min-width: 0; }
-.cfg-copy-err { color: var(--g-bad); font-size: var(--g-fs-xs); }
+.cfg-copy-err { display: block; color: var(--g-bad); font-size: var(--g-fs-xs); }
+/* Lo que aparece dentro de una fila que envuelve (Reveal row) ocupa la fila entera. */
+.cfg-reveal-row { flex: 1 1 100%; min-width: 0; }
 
 /* ── Opciones de préstamo ───────────────────────────────────────────────── */
 
@@ -652,3 +654,11 @@ a.cfg-list-i:hover { color: var(--g-text-3); }
 .cfg-list-i > svg { flex: none; }
 .cfg .ui-control:has(> .ui-input-el[readonly]) { background: transparent; }
 .cfg .ui-input-el[readonly] { color: var(--g-text-2); }
+
+/* Campo chico (size="sm") con la misma altura que el botón y el segmentado
+   chicos de al lado (barra de Usuarios, "Agregar ubicación"): el campo de
+   `src/ui` fija el alto del <input> al del tamaño normal y el control crecía
+   a 36 px. Arreglo local (el cambio compartido va en ui.css: ver informe). */
+@media (pointer: fine) {
+  .cfg .ui-control--sm .ui-input-el { height: calc(var(--ui-control-sm) - 2px); }
+}

@@ -13,6 +13,7 @@ import { apiSend } from '../../services/apiClient';
 import '../../styles/screens/quickaccess.css';
 import { getActiveSiteCode } from '../../services/activeSite';
 import { peekDraft, useKeepDraft } from '../../utils/drafts';
+import { Reveal, useSmoothHeight } from '../settings/Reveal';
 
 const notifyQuickLinksChanged = () => window.dispatchEvent(new Event(QUICK_LINKS_CHANGED));
 const restoreQuickLink = (id: number) => apiSend<{ ok: true; item: QuickLink }>(`/api/quick-links/${id}/restore`, 'POST', {});
@@ -35,6 +36,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
   const [retrying, setRetrying] = useState(false);
   const [handingUrl, setHandingUrl] = useState('');
   const [query, setQuery] = useState('');
+  const groupsRef = useSmoothHeight<HTMLDivElement>(query);
   // Un alta o una edición a medio tipear sobrevive a salir por el menú: vuelve abierta con lo escrito.
   const [site] = useState(() => getActiveSiteCode() || 'sede');
   const uiKey = `${site}:accesos`;
@@ -241,15 +243,15 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
         </div>
       )}
 
-      {loadError && (
+      <Reveal when={loadError}>{loadError && (
         <ErrorState
           message={links ? `${loadError} Mostramos lo último que se cargó.` : loadError}
           retrying={retrying}
           onRetry={async () => { setRetrying(true); await load(); setRetrying(false); }}
         />
-      )}
+      )}</Reveal>
 
-      {links && liveCount === 0 && !Object.keys(ghosts).length && (
+      <Reveal when={links && liveCount === 0 && !Object.keys(ghosts).length}>
         <CompactEmpty
           className="qa-card"
           icon={<Link2 size={18} strokeWidth={1.6} />}
@@ -257,9 +259,9 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
           description="Sumá los links que usa el equipo todos los días: aparecen acá, en el rayo de la barra superior y en Ctrl K."
           action={editable ? <Button variant="secondary" icon={<Plus size={16} />} onClick={() => openNew()}>Nuevo acceso</Button> : undefined}
         />
-      )}
+      </Reveal>
 
-      {links && q && visible.length === 0 && (
+      <Reveal when={links && q && visible.length === 0}>
         <CompactEmpty
           className="qa-card"
           icon={<icons.IconSearch size={18} />}
@@ -267,8 +269,10 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
           description="Probá con otra palabra o parte del link."
           action={<Button variant="secondary" onClick={() => setQuery('')}>Limpiar filtro</Button>}
         />
-      )}
+      </Reveal>
 
+      {/* Filtrar cambia las categorías con transición de alto (el campo queda quieto arriba). */}
+      <div className="qa-groups" ref={groupsRef}>
       {groups.map(([categoria, rows]) => {
         const liveRows = rows.filter(link => !ghosts[link.id]);
         const sorting = sortingGroup === categoria;
@@ -352,6 +356,7 @@ export function QuickAccessPage({ operator, consultationMode, canEdit = true }: 
           </section>
         );
       })}
+      </div>
 
       <div className="qa-extras">
         {handingUrl && (

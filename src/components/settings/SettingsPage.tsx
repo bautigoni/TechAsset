@@ -107,12 +107,18 @@ export function SettingsPage(props: SettingsPageProps) {
   const allowed = effective ? canOpen(effective) : true;
 
   /* ── Cambios sin guardar ── */
+  // Panel → formularios con cambios (un panel puede tener varios abiertos).
+  const sourcesRef = useRef(new Map<string, Set<string>>());
   const dirtyRef = useRef(new Set<string>());
   const [dirtyKeys, setDirtyKeys] = useState<string[]>([]);
-  const setDirty = useCallback((key: string, dirty: boolean) => {
+  const setDirty = useCallback((key: string, dirty: boolean, source = '') => {
+    const sources = sourcesRef.current.get(key) || new Set<string>();
+    if (dirty) sources.add(source); else sources.delete(source);
+    sourcesRef.current.set(key, sources);
     const set = dirtyRef.current;
-    if (dirty === set.has(key)) return;
-    if (dirty) set.add(key); else set.delete(key);
+    const now = sources.size > 0;
+    if (now === set.has(key)) return;
+    if (now) set.add(key); else set.delete(key);
     setDirtyKeys([...set]);
   }, []);
   const dirtyApi = useMemo(() => ({ setDirty }), [setDirty]);

@@ -6,7 +6,7 @@ import { cx } from '../../ui/util';
 import { getSiteSettings, updateSiteSettings } from '../../services/authApi';
 import { getDevicesDiagnostics } from '../../services/devicesApi';
 import { formatDate, SHORT_DATE_TIME } from '../../utils/formatters';
-import { Card, CardBody, CardFoot, Notice, errorText, useDirty } from './settingsKit';
+import { Card, CardBody, CardFoot, Notice, Reveal, errorText, useDirty } from './settingsKit';
 
 type Diag = Record<string, unknown>;
 
@@ -139,7 +139,7 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
       {header()}
       <Card title="Diagnóstico de inventario" actions={<Button size="sm" variant="secondary" icon={<RefreshCw size={14} aria-hidden="true" />} loading={diagBusy} loadingLabel="Corriendo…" onClick={() => void runDiag()}>Correr de nuevo</Button>}>
         <CardBody>
-          {diagError && <ErrorState message={diagError} onRetry={() => void runDiag()} retrying={diagBusy} />}
+          <Reveal when={diagError}>{diagError && <ErrorState message={diagError} onRetry={() => void runDiag()} retrying={diagBusy} />}</Reveal>
           {!diag && !diagError && <SkeletonRows rows={2} />}
           {diag && (
             <dl className="cfg-diag">
@@ -168,7 +168,9 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
               <Button variant="primary" loading={saving === newKey.trim() && Boolean(newKey)} disabled={readOnly || !newKey.trim() || !newText.trim() || Boolean(newProblem)} onClick={() => void saveKey(newKey.trim(), newText, true)}>Guardar clave</Button>
               <Button variant="ghost" onClick={() => { setAdding(false); setNewKey(''); setNewText(''); }}>Cancelar</Button>
             </div>
-            {results[newKey.trim()]?.tone === 'bad' && <p className="cfg-error" role="alert">{results[newKey.trim()].text}</p>}
+            <Reveal when={results[newKey.trim()]?.tone === 'bad'}>
+              {results[newKey.trim()]?.tone === 'bad' && <p className="cfg-error" role="alert">{results[newKey.trim()].text}</p>}
+            </Reveal>
           </div>
         </Collapse>
         {loadError && <div className="cfg-pad"><ErrorState message={loadError} onRetry={loadSettings} /></div>}
@@ -206,8 +208,10 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
                   <div className="cfg-uform-f">
                     <Button variant="primary" loading={saving === key} loadingLabel="Guardando…" disabled={readOnly || !changed || Boolean(parsed.error)} onClick={() => void saveKey(key, text)}>Guardar clave</Button>
                     <Button variant="ghost" disabled={!changed || saving === key} onClick={() => setTexts(current => ({ ...current, [key]: JSON.stringify(settings?.[key], null, 2) }))}>Descartar</Button>
-                    {result && <span className={cx('cfg-inline', result.tone === 'bad' ? 'is-bad' : 'cfg-t2')} role={result.tone === 'bad' ? 'alert' : 'status'}>{result.text}</span>}
                   </div>
+                  <Reveal when={result}>
+                    {result && <p className={cx('cfg-para', result.tone === 'bad' ? 'is-bad' : 'cfg-t2')} role={result.tone === 'bad' ? 'alert' : 'status'}>{result.text}</p>}
+                  </Reveal>
                 </div>
               </Collapse>
             </div>

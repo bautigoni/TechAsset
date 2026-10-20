@@ -1,6 +1,7 @@
 import { createContext, useId, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Button, Checkbox, Segmented, Select } from '../../ui';
 import { IconCheck } from '../../ui/icons';
+import { Reveal } from './Reveal';
 import { cx } from '../../ui/util';
 import { ApiError } from '../../services/apiClient';
 
@@ -78,6 +79,8 @@ export function SettingRow({ name, desc, children, nameId }: { name: ReactNode; 
   );
 }
 
+export { Reveal } from './Reveal';
+
 /** Aviso fijo de un bloque (no flota): una línea con borde arriba. */
 export function Notice({ tone, children, role }: { tone?: 'warn' | 'bad' | 'ok' | 'info'; children: ReactNode; role?: 'status' | 'alert' }) {
   return <div className={cx('cfg-notice', tone && `is-${tone}`)} role={role}>{children}</div>;
@@ -106,7 +109,9 @@ export function CopyButton({ text, label = 'Copiar link', size = 'sm' }: { text:
       <Button size={size} variant="secondary" icon={state === 'ok' ? <IconCheck size={14} /> : undefined} onClick={() => void copy()}>
         {state === 'ok' ? 'Copiado' : label}
       </Button>
-      {state === 'error' && <span className="cfg-copy-err" role="alert">No se pudo copiar: seleccioná el link y copialo a mano.</span>}
+      <Reveal when={state === 'error'} row>
+        <span className="cfg-copy-err" role="alert">No se pudo copiar: seleccioná el link y copialo a mano.</span>
+      </Reveal>
     </span>
   );
 }
@@ -117,13 +122,18 @@ export function CopyButton({ text, label = 'Copiar link', size = 'sm' }: { text:
    igual se sale de Configuración (menú), el borrador queda guardado en memoria
    y se recupera al volver. */
 
-type DirtyApi = { setDirty: (key: string, dirty: boolean) => void };
+/**
+ * `source` distingue varios formularios del mismo panel (la edición de dos
+ * usuarios a la vez): el panel queda "sin guardar" mientras alguno lo esté.
+ */
+type DirtyApi = { setDirty: (key: string, dirty: boolean, source?: string) => void };
 export const DirtyContext = createContext<DirtyApi>({ setDirty: () => undefined });
 
 export function useDirty(key: string, dirty: boolean) {
   const { setDirty } = useContext(DirtyContext);
-  useEffect(() => { setDirty(key, dirty); }, [key, dirty, setDirty]);
-  useEffect(() => () => setDirty(key, false), [key, setDirty]);
+  const source = useId();
+  useEffect(() => { setDirty(key, dirty, source); }, [key, dirty, setDirty, source]);
+  useEffect(() => () => setDirty(key, false, source), [key, setDirty, source]);
 }
 
 // Borradores en memoria por sede y sección (compartidos con Caja chica, Accesos y Herramientas).

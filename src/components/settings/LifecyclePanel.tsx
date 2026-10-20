@@ -4,7 +4,7 @@ import { Button, EmptyState, ErrorState, NumberField, SkeletonRows } from '../..
 import { IconCheck } from '../../ui/icons';
 import { cx } from '../../ui/util';
 import { getLifecycleDefaults, updateLifecycleDefault, type LifecycleDefault } from '../../services/devicesApi';
-import { Card, CardFoot, errorText, useDirty } from './settingsKit';
+import { Card, CardFoot, Notice, Reveal, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
 
 type RowState = { tone: 'ok' | 'bad'; text: string };
 
@@ -13,7 +13,10 @@ type RowState = { tone: 'ok' | 'bad'; text: string };
  * sede → valor del sistema. Vacío (o 0) vuelve al del sistema. El server pide
  * permiso de edición de Dispositivos.
  */
-export function LifecyclePanel({ header, readOnly }: { header: (actions?: ReactNode) => ReactNode; readOnly: boolean; siteCode: string }) {
+export function LifecyclePanel({ header, readOnly, siteCode }: { header: (actions?: ReactNode) => ReactNode; readOnly: boolean; siteCode: string }) {
+  // Lo tipeado y sin guardar sobrevive a salir por el menú (como en las otras secciones).
+  const draftKey = `${siteCode}:vida-util`;
+  const [restored] = useState(() => peekDraft<Record<string, number | null>>(draftKey));
   const [rows, setRows] = useState<LifecycleDefault[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, number | null>>({});
   const [loadError, setLoadError] = useState('');
@@ -22,7 +25,8 @@ export function LifecyclePanel({ header, readOnly }: { header: (actions?: ReactN
 
   const apply = (items: LifecycleDefault[]) => {
     setRows(items);
-    setDrafts(Object.fromEntries(items.map(item => [item.assetClass, item.origen === 'sede' ? item.meses : null])));
+    const fromServer = Object.fromEntries(items.map(item => [item.assetClass, item.origen === 'sede' ? item.meses : null]));
+    setDrafts(current => ({ ...fromServer, ...(restored || {}), ...current }));
   };
   const load = () => {
     setLoadError('');
@@ -33,6 +37,8 @@ export function LifecyclePanel({ header, readOnly }: { header: (actions?: ReactN
   const savedValue = (row: LifecycleDefault) => (row.origen === 'sede' ? row.meses : null);
   const dirtyClasses = (rows || []).filter(row => (drafts[row.assetClass] ?? null) !== savedValue(row));
   useDirty('vida-util', dirtyClasses.length > 0);
+  useKeepDraft(draftKey, Object.fromEntries(dirtyClasses.map(row => [row.assetClass, drafts[row.assetClass] ?? null])), dirtyClasses.length > 0);
+  const discardAll = () => { dropDraft(draftKey); setDrafts(Object.fromEntries((rows || []).map(row => [row.assetClass, savedValue(row)]))); };
 
   const save = async (row: LifecycleDefault) => {
     setBusy(row.assetClass);
@@ -59,6 +65,7 @@ export function LifecyclePanel({ header, readOnly }: { header: (actions?: ReactN
     <>
       {header()}
       <Card ariaLabel="Vida útil por clase">
+        {restored && dirtyClasses.length > 0 && <Notice tone="warn">Recuperamos cambios que no habías guardado.</Notice>}
         {!rows ? <div className="cfg-pad"><SkeletonRows rows={6} /></div> : !rows.length ? (
           <div className="cfg-pad"><EmptyState compact icon={<CalendarClock size={18} aria-hidden="true" />} title="No hay clases de activo cargadas." description="Aparecen cuando el inventario tiene equipos con clase." /></div>
         ) : (
@@ -93,17 +100,21 @@ export function LifecyclePanel({ header, readOnly }: { header: (actions?: ReactN
                       <Button size="sm" variant={changed ? 'primary' : 'ghost'} loading={busy === row.assetClass} loadingLabel="Guardando…" disabled={readOnly || !changed || Boolean(busy)} onClick={() => void save(row)}>Guardar</Button>
                     </span>
                   </div>
-                  {state && (
-                    <p className={cx('cfg-rowmsg', state.tone === 'bad' ? 'is-bad' : 'cfg-t2')} role={state.tone === 'bad' ? 'alert' : 'status'}>
-                      {state.tone === 'ok' && <IconCheck size={14} />} {row.assetClass}: {state.text}
-                    </p>
-                  )}
+                  <Reveal when={state}>
+                    {state && (
+                      <p className={cx('cfg-rowmsg', state.tone === 'bad' ? 'is-bad' : 'cfg-t2')} role={state.tone === 'bad' ? 'alert' : 'status'}>
+                        {state.tone === 'ok' && <IconCheck size={14} />} {row.assetClass}: {state.text}
+                      </p>
+                    )}
+                  </Reveal>
                 </div>
               );
             })}
           </div>
         )}
-        <CardFoot status="Dejalo vacío para usar el valor por defecto del sistema. Un equipo puntual puede tener su propio valor desde su ficha. Prioridad: equipo, sede, sistema." tone="muted" />
+        <CardFoot status="Dejalo vacío para usar el valor por defecto del sistema. Un equipo puntual puede tener su propio valor desde su ficha. Prioridad: equipo, sede, sistema." tone="muted">
+          <Button variant="ghost" disabled={!dirtyClasses.length || Boolean(busy) || readOnly} onClick={discardAll}>Descartar</Button>
+        </CardFoot>
       </Card>
     </>
   );

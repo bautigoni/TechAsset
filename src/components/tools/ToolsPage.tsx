@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Button, Eyebrow, StatusText, Tabs, icons } from '../../ui';
+import { Button, Eyebrow, StatusText, Tabs, icons, useAnchoredToggle } from '../../ui';
 import { fetchToolsConfig, type ToolsConfig } from '../../services/toolsApi';
 import type { ViewKey } from '../../types';
 import { requestSettingsPanel } from '../settings/settingsRoute';
 import { GlifingTool } from './GlifingTool';
 import { Credentials365Tool } from './Credentials365Tool';
 import { DownloadList } from './Downloads';
+import { useSmoothHeight } from '../settings/Reveal';
 import '../../styles/screens/tools.css';
 
 type TabKey = 'cards' | 'creds' | 'dl';
@@ -50,6 +51,8 @@ export function ToolsPage({ consultationMode = false, canEdit = true, canSend = 
   onNavigate?: (view: ViewKey) => void;
 }) {
   const [tab, setTab] = useState<TabKey>(readTab);
+  const panelsRef = useSmoothHeight<HTMLDivElement>(tab);
+  const anchored = useAnchoredToggle();
   const [config, setConfig] = useState<ToolsConfig | null>(null);
   const [configError, setConfigError] = useState(false);
 
@@ -60,7 +63,7 @@ export function ToolsPage({ consultationMode = false, canEdit = true, canSend = 
   useEffect(loadConfig, []);
 
   const pick = (next: TabKey) => {
-    setTab(next);
+    anchored(() => setTab(next));
     try { sessionStorage.setItem(TAB_KEY, next); } catch { /* sin storage */ }
   };
 
@@ -103,6 +106,8 @@ export function ToolsPage({ consultationMode = false, canEdit = true, canSend = 
 
       <Tabs tabs={TABS} value={tab} onChange={pick} ariaLabel="Herramientas" className="tl-tabs" />
 
+      {/* Cambiar de solapa pasa del alto de una al de la otra con transición (las solapas quedan quietas). */}
+      <div className="tl-panels" ref={panelsRef}>
       <div role="tabpanel" aria-label="Tarjetas de acceso" hidden={tab !== 'cards'} className="tl-panel">
         <GlifingTool readOnly={readOnly} />
       </div>
@@ -118,6 +123,7 @@ export function ToolsPage({ consultationMode = false, canEdit = true, canSend = 
           <DownloadList />
         </section>
         <p className="tl-foot">Antes de mostrar Descargar se verifica que el archivo exista en el servidor. También están en Accesos rápidos.</p>
+      </div>
       </div>
     </section>
   );

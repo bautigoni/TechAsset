@@ -200,12 +200,12 @@ export function InvitesPanel({ header, readOnly, onChanged }: { header: (actions
                       {isActive && !readOnly && (
                         <>
                           {invite.email && <Button size="sm" variant="ghost" loading={rowBusy === invite.id && revoking !== invite.id} disabled={Boolean(rowBusy)} onClick={() => void resend(invite)}>Reenviar</Button>}
-                          <Button size="sm" variant="ghost" className="cfg-danger-text" disabled={Boolean(rowBusy)} aria-expanded={revoking === invite.id} onClick={() => setRevoking(revoking === invite.id ? 0 : invite.id)}>Revocar</Button>
+                          <Button size="sm" variant="ghost" className="cfg-danger-text" disabled={Boolean(rowBusy)} aria-expanded={revoking === invite.id} aria-controls={`cfg-inv-revoke-${invite.id}`} onClick={() => setRevoking(revoking === invite.id ? 0 : invite.id)}>Revocar</Button>
                         </>
                       )}
                     </span>
                   </div>
-                  <Collapse open={revoking === invite.id} unmountOnClose data-scanner-ignore="">
+                  <Collapse open={revoking === invite.id} id={`cfg-inv-revoke-${invite.id}`} unmountOnClose data-scanner-ignore="">
                     <InlineConfirm
                       danger
                       className="cfg-row-confirm"

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MailPlus, Plus, RefreshCw, Search, UserRound } from 'lucide-react';
 import type { SiteInfo } from '../../types';
-import { Button, Collapse, EmptyState, ErrorState, InlineConfirm, Input, Segmented, SkeletonRows, StatusLine } from '../../ui';
+import { Button, Collapse, EmptyState, ErrorState, InlineConfirm, Input, Segmented, SkeletonRows, StatusLine, useAnchoredToggle } from '../../ui';
 import { cx, fold } from '../../ui/util';
 import { getSiteSettings, getSites, saveAllowedUser, updateAllowedUserStatus, type AllowedUserItem } from '../../services/authApi';
 import { getManagedUsers, undoUserAction, type ManagedUser, type UserStatus } from '../../services/settingsApi';
 import { getUsersByTenant, type TenantInvite } from '../../services/adminUsersApi';
 import { formatDate } from '../../utils/formatters';
-import { Card, CardFoot, CheckField, ChoiceField, errorText, useDirty } from './settingsKit';
+import { Card, CardFoot, CheckField, ChoiceField, Reveal, errorText, useDirty } from './settingsKit';
+import { useSmoothHeight } from './Reveal';
 
 // Si la sede no tiene roles.config, los de siempre.
 const FALLBACK_ROLES = ['Jefe TIC', 'Asistente TIC mañana', 'Asistente TIC tarde', 'Asistente TIC general', 'Consulta', 'Otro'];
@@ -77,6 +78,13 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
   const [deleted, setDeleted] = useState<Set<number>>(new Set());
   const [invites, setInvites] = useState<Record<string, TenantInvite[]>>({});
   const noteKey = useRef(0);
+  // Cerrar una edición (o pasar a otra fila) no borra lo tipeado: el formulario
+  // queda montado y plegado. Cancelar o Guardar lo vuelven a empezar (cambia su key).
+  const [formKeys, setFormKeys] = useState<Record<string, number>>({});
+  const resetForm = (key: string | number) => setFormKeys(current => ({ ...current, [key]: (current[key] || 0) + 1 }));
+  const anchored = useAnchoredToggle();
+  // Tocar un filtro o buscar cambia la lista con transición de alto (el filtro tocado queda quieto).
+  const listRef = useSmoothHeight<HTMLDivElement>(`${filter}|${siteFilter}|${query}|${limit}`);
 
   /* ── Datos ── */
   const load = useCallback(async (keepOrder: boolean) => {
@@ -236,7 +244,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
           ariaLabel="Filtrar por estado"
           size="sm"
           value={filter}
-          onChange={value => { setFilter(value); setLimit(PAGE); }}
+          onChange={value => anchored(() => { setFilter(value); setLimit(PAGE); })}
           options={[
             { value: 'todos', label: 'Todos', count: counts.todos },
             { value: 'pendientes', label: 'Pendientes', count: counts.pendientes },
@@ -249,7 +257,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
             ariaLabel="Filtrar por sede"
             size="sm"
             value={siteFilter}
-            onChange={value => { setSiteFilter(value); setLimit(PAGE); }}
+            onChange={value => anchored(() => { setSiteFilter(value); setLimit(PAGE); })}
             options={[{ value: 'todas', label: 'Todas' }, ...allSites.map(site => ({ value: site.siteCode, label: site.siteCode, count: ordered.filter(user => activeSitesOf(user).some(item => item.siteCode === site.siteCode)).length }))]}
           />
         )}
@@ -265,11 +273,11 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
           onValueChange={value => { setQuery(value); setLimit(PAGE); }}
         />
       </div>
-      {elsewhere.length > 0 && <p className="cfg-hint cfg-pad-x">También hay coincidencias en {elsewhere.join(', ')}.</p>}
+      <Reveal when={elsewhere.length > 0}>{elsewhere.length > 0 && <p className="cfg-hint cfg-pad-x">También hay coincidencias en {elsewhere.join(', ')}.</p>}</Reveal>
 
-      <Collapse open={editing === 'new'} id="cfg-user-new" unmountOnClose data-scanner-ignore="">
+      <Collapse open={editing === 'new'} id="cfg-user-new" data-scanner-ignore="">
         <UserForm
-          key="new"
+          key={`new-${formKeys.new || 0}`}
           title="Nuevo usuario"
           initial={emptyDraft()}
           roleOptions={roleOptions}
@@ -278,9 +286,10 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
           siteCode={siteCode}
           superadmin={superadmin}
           readOnly={readOnly}
-          onCancel={() => setEditing(null)}
+          onCancel={() => { setEditing(null); resetForm('new'); }}
           onSaved={async saved => {
             setEditing(null);
+            resetForm('new');
             await load(true);
             const created = (saved.id && Number(saved.id)) || 0;
             if (created) showNote(created, { tone: 'ok', text: `Guardaste a ${displayName(saved)}. Rige al instante.` });
@@ -293,7 +302,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
       {loadError && <div className="cfg-pad"><ErrorState message={loadError} onRetry={() => void load(true)} retrying={loading} /></div>}
 
       {users !== null && (
-        <div className="cfg-table cfg-tu" role="table" aria-label="Usuarios">
+        <div className="cfg-table cfg-tu" role="table" aria-label="Usuarios" ref={listRef}>
           <div className="cfg-trow cfg-urow is-head" role="row">
             <span role="columnheader">Usuario</span>
             <span role="columnheader">Rol y turno</span>
@@ -361,9 +370,9 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                     />
                   )}
                 </Collapse>
-                <Collapse open={editing === user.id} id={`cfg-user-edit-${user.id}`} unmountOnClose data-scanner-ignore="">
+                <Collapse open={editing === user.id} id={`cfg-user-edit-${user.id}`} data-scanner-ignore="">
                   <UserForm
-                    key={`edit-${user.id}`}
+                    key={`edit-${user.id}-${formKeys[user.id] || 0}`}
                     title={`Editar a ${displayName(user)}`}
                     initial={draftFor(user)}
                     roleOptions={roleOptions}
@@ -372,9 +381,10 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                     siteCode={siteCode}
                     superadmin={superadmin}
                     readOnly={readOnly}
-                    onCancel={() => setEditing(null)}
+                    onCancel={() => { setEditing(null); resetForm(user.id); }}
                     onSaved={async () => {
                       setEditing(null);
+                      resetForm(user.id);
                       await load(true);
                       showNote(user.id, { tone: 'ok', text: 'Usuario guardado. Rige al instante: su próxima acción ya usa el rol nuevo.' });
                       onChanged?.();
@@ -391,13 +401,13 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
                 icon={q ? <Search size={18} aria-hidden="true" /> : <UserRound size={18} aria-hidden="true" />}
                 title={q ? 'Nadie coincide con esa búsqueda.' : filter === 'pendientes' ? 'No hay solicitudes pendientes.' : filter === 'sinsede' ? 'Todos los usuarios tienen al menos una sede.' : 'No hay usuarios con este filtro.'}
                 description={q ? 'Probá con parte del mail o del nombre.' : undefined}
-                action={(q || filter !== 'todos' || siteFilter !== 'todas') ? <Button size="sm" onClick={() => { setQuery(''); setFilter('todos'); setSiteFilter('todas'); }}>Ver todos</Button> : undefined}
+                action={(q || filter !== 'todos' || siteFilter !== 'todas') ? <Button size="sm" onClick={() => anchored(() => { setQuery(''); setFilter('todos'); setSiteFilter('todas'); })}>Ver todos</Button> : undefined}
               />
             </div>
           )}
           {visible.length > limit && (
             <div className="cfg-more">
-              <Button variant="ghost" onClick={() => setLimit(value => value + PAGE)}>Ver {Math.min(PAGE, visible.length - limit)} más</Button>
+              <Button variant="ghost" onClick={event => { const at = event.currentTarget; anchored(() => setLimit(value => value + PAGE), at); }}>Ver {Math.min(PAGE, visible.length - limit)} más</Button>
               <span className="cfg-t3">Mostrando {limit} de {visible.length}</span>
             </div>
           )}
@@ -452,10 +462,15 @@ function UserForm({ title, initial, roleOptions, turns, sites, siteCode, superad
   onSaved: (saved: AllowedUserItem) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<FormDraft>(initial);
+  // El formulario queda montado plegado: si los datos del usuario cambian
+  // (Aprobar, Actualizar) y acá no se tocó nada, sigue a los nuevos.
+  const initialSig = JSON.stringify(initial);
+  const [base, setBase] = useState(initialSig);
+  if (initialSig !== base && JSON.stringify(draft) === base) { setBase(initialSig); setDraft(initial); }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [mailError, setMailError] = useState('');
-  useDirty('usuarios', JSON.stringify(draft) !== JSON.stringify(initial));
+  useDirty('usuarios', JSON.stringify(draft) !== base);
   const set = <K extends keyof FormDraft>(key: K, value: FormDraft[K]) => { setDraft(current => ({ ...current, [key]: value })); setError(''); };
   const legacyRole = draft.role && !roleOptions.includes(draft.role) ? draft.role : '';
   const options = legacyRole ? [legacyRole, ...roleOptions] : roleOptions;
@@ -534,7 +549,7 @@ function UserForm({ title, initial, roleOptions, turns, sites, siteCode, superad
         <ChoiceField label="Turno" value={draft.turno} options={turns.map(turn => ({ value: turn, label: turn }))} onChange={value => set('turno', value)} />
         <ChoiceField label="Estado" value={draft.status} options={STATUSES.map(status => ({ value: status, label: status }))} onChange={value => set('status', value as UserStatus)} />
       </div>
-      {superadmin && !isSuperRole && (
+      <Reveal when={superadmin && !isSuperRole}>
         <div className="cfg-grid">
           <div className="cfg-field">
             <span className="ui-label"><span className="ui-label-text">Sedes</span></span>
@@ -544,19 +559,21 @@ function UserForm({ title, initial, roleOptions, turns, sites, siteCode, superad
               ))}
             </div>
           </div>
-          {draft.sites.length > 0 && (
-            <ChoiceField label="Sede por defecto" value={draft.defaultSite} options={draft.sites.map(code => ({ value: code, label: code }))} onChange={value => set('defaultSite', value)} hint="Solo entre las sedes marcadas." />
-          )}
+          <Reveal when={draft.sites.length > 0}>
+            {draft.sites.length > 0 && (
+              <ChoiceField label="Sede por defecto" value={draft.defaultSite} options={draft.sites.map(code => ({ value: code, label: code }))} onChange={value => set('defaultSite', value)} hint="Solo entre las sedes marcadas." />
+            )}
+          </Reveal>
         </div>
-      )}
-      {superadmin && isSuperRole && <p className="cfg-hint">El superadmin entra a todas las sedes activas.</p>}
+      </Reveal>
+      <Reveal when={superadmin && isSuperRole}><p className="cfg-hint">El superadmin entra a todas las sedes activas.</p></Reveal>
       {!superadmin && <p className="cfg-hint">Se guarda en tu sede, <span className="cfg-mono">{siteCode}</span>. Las otras sedes las asigna un superadmin.</p>}
       <div className="cfg-uform-f">
         <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={readOnly} onClick={() => void save()}>Guardar usuario</Button>
         <Button variant="ghost" disabled={saving} onClick={onCancel}>Cancelar</Button>
         <span className="cfg-hint">Rige al instante: la próxima acción de este usuario ya usa el rol nuevo.</span>
       </div>
-      {error && <p className="cfg-error" role="alert">{error}</p>}
+      <Reveal when={error}>{error && <p className="cfg-error" role="alert">{error}</p>}</Reveal>
     </div>
   );
 }

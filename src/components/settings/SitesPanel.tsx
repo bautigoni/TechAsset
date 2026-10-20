@@ -5,7 +5,8 @@ import { Button, Collapse, EmptyState, ErrorState, Input, SkeletonRows } from '.
 import { cx, fold } from '../../ui/util';
 import { createInvite, getSites } from '../../services/authApi';
 import { TenantLogo } from '../layout/TenantLogo';
-import { Card, CardFoot, CopyButton, errorText } from './settingsKit';
+import { Card, CardFoot, CopyButton, Reveal, errorText } from './settingsKit';
+import { useSmoothHeight } from './Reveal';
 import { SiteForm } from './SiteForm';
 
 type AdminCode = { email: string; busy: boolean; link: string; mailSent: boolean; error: string };
@@ -31,6 +32,11 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
   const [codeOpen, setCodeOpen] = useState('');
   const [codes, setCodes] = useState<Record<string, AdminCode>>({});
   const [created, setCreated] = useState('');
+  // Cerrar un formulario sin guardar no lo borra (se lo encuentra al volver a abrirlo):
+  // solo Cancelar o Guardar lo vuelven a empezar (cambia su key).
+  const [formKeys, setFormKeys] = useState<Record<string, number>>({});
+  const listRef = useSmoothHeight<HTMLDivElement>(query);
+  const resetForm = (key: string) => setFormKeys(current => ({ ...current, [key]: (current[key] || 0) + 1 }));
 
   const load = () => {
     setLoadError('');
@@ -64,17 +70,19 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
   return (
     <>
       {header(<Button variant="primary" icon={<Plus size={15} aria-hidden="true" />} disabled={readOnly} aria-expanded={creating} aria-controls="cfg-site-new" onClick={() => setCreating(value => !value)}>Crear sede</Button>)}
-      <Collapse open={creating} id="cfg-site-new" gap="var(--g-s-4)" unmountOnClose data-scanner-ignore="">
+      <Collapse open={creating} id="cfg-site-new" gap="var(--g-s-4)" data-scanner-ignore="">
         <Card title="Nueva sede">
           <div className="cfg-pad">
             <SiteForm
+              key={formKeys['+new'] || 0}
               mode="create"
               superadmin
               readOnly={readOnly}
               dirtyKey="sedes"
-              onCancel={() => setCreating(false)}
+              onCancel={() => { setCreating(false); resetForm('+new'); }}
               onSaved={async site => {
                 setCreating(false);
+                resetForm('+new');
                 setCreated(site.siteCode);
                 await load();
                 await onChanged();
@@ -101,9 +109,10 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
             onValueChange={setQuery}
           />
         </div>
-        {created && <p className="cfg-okmsg cfg-pad-x" role="status">Sede {created} creada. Ya podés entrar o generar su código de administrador.</p>}
+        <Reveal when={created}>{created && <p className="cfg-okmsg cfg-pad-x" role="status">Sede {created} creada. Ya podés entrar o generar su código de administrador.</p>}</Reveal>
         {loadError && <div className="cfg-pad"><ErrorState message={loadError} onRetry={() => void load()} /></div>}
         {!sites && !loadError && <div className="cfg-pad"><SkeletonRows rows={3} /></div>}
+        <div ref={listRef}>
         {sites && !filtered.length && (
           <div className="cfg-pad">
             <EmptyState compact icon={query ? <Search size={18} aria-hidden="true" /> : <Building2 size={18} aria-hidden="true" />} title={query ? 'No hay sedes para esa búsqueda.' : 'Todavía no hay sedes.'} action={query ? <Button size="sm" onClick={() => setQuery('')}>Ver todas</Button> : undefined} />
@@ -132,15 +141,16 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
                   <Button size="sm" variant="ghost" aria-expanded={codeOpen === site.siteCode} aria-controls={`cfg-site-code-${site.siteCode}`} disabled={readOnly} onClick={() => { setCodeOpen(codeOpen === site.siteCode ? '' : site.siteCode); setEditing(''); }}>Código admin</Button>
                 </span>
               </div>
-              <Collapse open={editing === site.siteCode} id={`cfg-site-edit-${site.siteCode}`} unmountOnClose data-scanner-ignore="">
+              <Collapse open={editing === site.siteCode} id={`cfg-site-edit-${site.siteCode}`} data-scanner-ignore="">
                 <div className="cfg-uform">
                   <SiteForm
+                    key={formKeys[site.siteCode] || 0}
                     site={site}
                     mode="edit"
                     superadmin
                     readOnly={readOnly}
                     dirtyKey="sedes"
-                    onCancel={() => setEditing('')}
+                    onCancel={() => { setEditing(''); resetForm(site.siteCode); }}
                     onSaved={async () => { await load(); await onChanged(); }}
                   />
                 </div>
@@ -161,21 +171,22 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
                     <Button variant="secondary" loading={state.busy} loadingLabel="Generando…" onClick={() => void generate(site)}>Generar código admin</Button>
                   </div>
                   <span className="cfg-hint">Invitación de Administrador para {site.siteCode}, vence en 30 días.</span>
-                  {state.error && <p className="cfg-error" role="alert">{state.error}</p>}
-                  {state.link && (
+                  <Reveal when={state.error}>{state.error && <p className="cfg-error" role="alert">{state.error}</p>}</Reveal>
+                  <Reveal when={state.link}>{state.link && (
                     <div className="cfg-result" role="status">
                       <span className="cfg-strong cfg-nowrap">Código listo</span>
                       <span className="cfg-t2">{state.mailSent ? '· mail enviado' : '· compartí el link'}</span>
                       <code className="cfg-link">{state.link}</code>
                       <CopyButton text={state.link} label="Copiar" />
                     </div>
-                  )}
+                  )}</Reveal>
                 </div>
               </Collapse>
             </div>
           );
         })}
         </div>}
+        </div>
         <CardFoot status="Crear una sede con un código que ya existe avisa en vez de pisar sus datos." tone="muted" />
       </Card>
     </>

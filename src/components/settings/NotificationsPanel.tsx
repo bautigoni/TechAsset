@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Button, ErrorState, Skeleton, Switch } from '../../ui';
 import { IconCheck } from '../../ui/icons';
 import { enableBrowserPush, getNotificationPrefs, setNotificationEmailPref, setNotificationTypePrefs, type NotificationTypePrefs } from '../../services/notificationsApi';
-import { Card, CardFoot, CheckField, SettingRow, errorText } from './settingsKit';
+import { Card, CardFoot, CheckField, Reveal, SettingRow, errorText } from './settingsKit';
 
 const DEFAULT_TYPES: NotificationTypePrefs = {
   releases: true,
@@ -120,7 +120,7 @@ export function NotificationsPanel({ header }: { header: (actions?: ReactNode) =
             <Switch checked={email} disabled={!loaded} loading={busy === 'email'} ariaLabel="Avisos por mail" onCheckedChange={next => void toggleEmail(next)} />
           </span>
         </SettingRow>
-        {msg?.where === 'channels' && <CardFoot status={msg.text} tone={msg.tone} />}
+        <Reveal when={msg?.where === 'channels'}>{msg?.where === 'channels' && <CardFoot status={msg.text} tone={msg.tone} />}</Reveal>
       </Card>
       <Card title="Qué te avisamos" meta="Se guarda al tocar">
         <div className="cfg-checklist">
@@ -137,7 +137,7 @@ export function NotificationsPanel({ header }: { header: (actions?: ReactNode) =
             </div>
           ))}
         </div>
-        <CardFoot status={msg?.where === 'types' ? msg.text : undefined} tone={msg?.where === 'types' ? msg.tone : undefined} />
+        <Reveal when={msg?.where === 'types'}>{msg?.where === 'types' && <CardFoot status={msg.text} tone={msg.tone} />}</Reveal>
       </Card>
     </>
   );

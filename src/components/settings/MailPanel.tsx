@@ -3,7 +3,7 @@ import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { Button, Collapse, ErrorState, IconButton, Input, NumberField, Segmented, SkeletonRows } from '../../ui';
 import { cx } from '../../ui/util';
 import { getMailSettings, saveMailSettings, type MailSettings } from '../../services/settingsApi';
-import { Card, CardBody, CardFoot, Notice, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
+import { Card, CardBody, CardFoot, Notice, Reveal, dropDraft, errorText, peekDraft, useDirty, useKeepDraft } from './settingsKit';
 import { MailStatusLine } from './MailStatusLine';
 
 type Draft = Omit<MailSettings, 'smtpAppPasswordMasked' | 'smtpAppPasswordSet'> & { smtpAppPassword: string };
@@ -154,7 +154,7 @@ export function MailPanel({ header, readOnly }: { header: (actions?: ReactNode) 
                   options={[{ value: 'prueba', label: 'Prueba · no envía' }, { value: 'real', label: 'Real · envía' }]}
                   onChange={value => set('modoPrueba', value === 'prueba')}
                 />
-                {draft && !draft.modoPrueba && settings?.modoPrueba && <p className="cfg-hint is-warn">Al guardar en modo real, las invitaciones, los avisos y las credenciales 365 empiezan a salir de verdad.</p>}
+                <Reveal when={draft && !draft.modoPrueba && settings?.modoPrueba}><p className="cfg-hint is-warn">Al guardar en modo real, las invitaciones, los avisos y las credenciales 365 empiezan a salir de verdad.</p></Reveal>
               </div>
             </div>
           )}
@@ -163,7 +163,7 @@ export function MailPanel({ header, readOnly }: { header: (actions?: ReactNode) 
           status={status?.text || (readOnly ? 'Modo consulta: se ve, no se edita.' : changed ? 'Hay cambios sin guardar.' : 'Se guarda en el servidor y pisa los valores del .env.')}
           tone={status ? status.tone : changed ? 'warn' : 'muted'}
         >
-          {changed && <Button variant="ghost" disabled={saving} onClick={discard}>Descartar</Button>}
+          <Button variant="ghost" disabled={!changed || saving} onClick={discard}>Descartar</Button>
           <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={readOnly || !changed} onClick={() => void save()}>Guardar configuración</Button>
         </CardFoot>
       </Card>

@@ -3,6 +3,7 @@ import { ClipboardList, ExternalLink, FileSpreadsheet, FileText, Folder, Globe, 
 import type { QuickLink } from '../../types';
 import { Button, Combobox, IconButton, Input, TruncatedText, icons } from '../../ui';
 import { peekDraft, useKeepDraft } from '../../utils/drafts';
+import { Reveal } from '../settings/Reveal';
 
 export { useQuickLinks, groupLinks } from './quickLinks';
 
@@ -132,12 +133,14 @@ export function LinkForm({ initial, categories, title, submitLabel, onSubmit, on
             placeholder="https://…"
             error={showUrlError || undefined}
           />
-          {showUrlError && urlCheck.suggest && (
-            <span className="qa-suggest">
-              <span className="qa-suggest-text">¿Querés decir <span className="qa-mono">{urlCheck.suggest}</span>?</span>
-              <Button size="sm" variant="ghost" onClick={() => set({ url: urlCheck.suggest || '' })}>Usar</Button>
-            </span>
-          )}
+          <Reveal when={showUrlError && urlCheck.suggest}>
+            {showUrlError && urlCheck.suggest && (
+              <span className="qa-suggest">
+                <span className="qa-suggest-text">¿Querés decir <span className="qa-mono">{urlCheck.suggest}</span>?</span>
+                <Button size="sm" variant="ghost" onClick={() => set({ url: urlCheck.suggest || '' })}>Usar</Button>
+              </span>
+            )}
+          </Reveal>
         </div>
         <Input label="Descripción (opcional)" value={draft.descripcion} onValueChange={descripcion => set({ descripcion })} placeholder="Para qué sirve" autoComplete="off" />
         <Combobox label="Categoría" value={draft.categoria} onChange={categoria => set({ categoria })} options={categories} placeholder="Institucionales, Personalizados…" />
@@ -147,7 +150,7 @@ export function LinkForm({ initial, categories, title, submitLabel, onSubmit, on
         <Button variant="ghost" onClick={cancel} disabled={busy}>Cancelar</Button>
         <Button variant="primary" type="submit" loading={busy} loadingLabel="Guardando…">{submitLabel}</Button>
       </div>
-      {serverError && <p className="qa-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}
+      <Reveal when={serverError}>{serverError && <p className="qa-error" role="alert"><icons.IconAlert size={14} /><span>{serverError}</span></p>}</Reveal>
     </form>
   );
 }

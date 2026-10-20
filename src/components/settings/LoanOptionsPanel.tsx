@@ -238,7 +238,7 @@ export function LoanOptionsPanel({ header, readOnly, siteCode }: { header: (acti
           status={problem || status?.text || (readOnly ? 'Modo consulta: se ve, no se edita.' : changed ? 'Hay cambios sin guardar en las opciones de préstamo.' : 'Estas listas son las que aparecen al prestar. Se guardan las cinco juntas.')}
           tone={problem ? 'bad' : status ? status.tone : changed ? 'warn' : 'muted'}
         >
-          {changed && <Button variant="ghost" disabled={saving} onClick={discard}>Descartar</Button>}
+          <Button variant="ghost" disabled={!changed || saving} onClick={discard}>Descartar</Button>
           <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={readOnly || !changed || Boolean(problem)} onClick={() => void save()}>Guardar opciones</Button>
         </CardFoot>
       </div>
