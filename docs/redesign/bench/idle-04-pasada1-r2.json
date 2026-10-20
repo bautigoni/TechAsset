@@ -1,0 +1,143 @@
+{
+  "label": "04-pasada1-r2",
+  "repo": "C:\\Users\\Usuario\\AppData\\Local\\Temp\\claude\\C--Users-Usuario-Downloads-techasset\\28d4eb43-9ca6-445e-8c97-66e1be73520e\\scratchpad\\co\\base04",
+  "commit": "",
+  "seconds": 60,
+  "runs": 3,
+  "latency": 15,
+  "cpu": 4,
+  "startup": [
+    {
+      "readyMs": 7311.8,
+      "queries": 223
+    },
+    {
+      "readyMs": 4945.7,
+      "queries": 222
+    },
+    {
+      "readyMs": 4920.6,
+      "queries": 222
+    }
+  ],
+  "serverIdle": [
+    2,
+    2,
+    2
+  ],
+  "views": {
+    "dashboard": {
+      "samples": [
+        {
+          "apiPerMin": 14,
+          "commitsPerMin": 10,
+          "scriptMsPerMin": 44.9,
+          "taskMsPerMin": 381.6,
+          "layoutsPerMin": 10,
+          "serverQueriesPerMin": 31
+        },
+        {
+          "apiPerMin": 14,
+          "commitsPerMin": 11,
+          "scriptMsPerMin": 46.4,
+          "taskMsPerMin": 362.8,
+          "layoutsPerMin": 11,
+          "serverQueriesPerMin": 32
+        },
+        {
+          "apiPerMin": 14,
+          "commitsPerMin": 11,
+          "scriptMsPerMin": 45.3,
+          "taskMsPerMin": 364.6,
+          "layoutsPerMin": 11,
+          "serverQueriesPerMin": 31
+        }
+      ],
+      "median": {
+        "apiPerMin": 14,
+        "commitsPerMin": 11,
+        "scriptMsPerMin": 45.3,
+        "taskMsPerMin": 364.6,
+        "layoutsPerMin": 11,
+        "serverQueriesPerMin": 31
+      }
+    },
+    "loans": {
+      "samples": [
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 13.7,
+          "taskMsPerMin": 143.2,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 25
+        },
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 15.3,
+          "taskMsPerMin": 142.8,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 25
+        },
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 14.6,
+          "taskMsPerMin": 155.1,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 26
+        }
+      ],
+      "median": {
+        "apiPerMin": 10,
+        "commitsPerMin": 0,
+        "scriptMsPerMin": 14.6,
+        "taskMsPerMin": 143.2,
+        "layoutsPerMin": 0,
+        "serverQueriesPerMin": 25
+      }
+    },
+    "devices": {
+      "samples": [
+        {
+          "apiPerMin": 14,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 42.1,
+          "taskMsPerMin": 181.6,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 31
+        },
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 22.1,
+          "taskMsPerMin": 185.4,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 25
+        },
+        {
+          "apiPerMin": 10,
+          "commitsPerMin": 0,
+          "scriptMsPerMin": 20.2,
+          "taskMsPerMin": 180.4,
+          "layoutsPerMin": 0,
+          "serverQueriesPerMin": 28
+        }
+      ],
+      "median": {
+        "apiPerMin": 10,
+        "commitsPerMin": 0,
+        "scriptMsPerMin": 22.1,
+        "taskMsPerMin": 181.6,
+        "layoutsPerMin": 0,
+        "serverQueriesPerMin": 28
+      }
+    }
+  },
+  "summary": {
+    "startupReadyMs": 4945.7,
+    "startupQueries": 222,
+    "serverIdleQueriesPerMin": 2
+  }
+}
