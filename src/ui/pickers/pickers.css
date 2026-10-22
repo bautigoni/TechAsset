@@ -75,7 +75,7 @@
   min-width: calc(var(--g-s-6) + var(--g-s-2));
   height: var(--ui-control-sm);
   margin: 0;
-  padding: 0 calc(var(--g-s-2) + 2px);
+  padding: 0 var(--g-s-2);
   border: 1px solid var(--g-line);
   border-radius: var(--g-radius-pill);
   background: transparent;

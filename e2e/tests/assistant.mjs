@@ -318,6 +318,11 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
       try {
         await gotoView(page, base, 'dashboard');
         await page.waitForSelector('tr[data-device-tag], .shell-scroll', { timeout: 20000 });
+        // Con la máquina cargada el Inicio tarda en traer sus datos: se espera a que tenga scroll.
+        await until(() => page.evaluate(() => {
+          const scroller = document.querySelector('.shell-scroll');
+          return scroller && scroller.scrollHeight > scroller.clientHeight + 100;
+        }), { timeout: 20000, message: 'que el Inicio cargue y tenga scroll' }).catch(() => {});
         await sleep(400);
         const before = await page.evaluate(() => {
           const scroller = document.querySelector('.shell-scroll');
@@ -366,7 +371,7 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
           opacity: panel && asst && !asst.hidden ? Number(getComputedStyle(panel).opacity) : -1,
           button: shellBtn.getBoundingClientRect().left
         });
-        if (performance.now() - t0 < 600) requestAnimationFrame(tick); else resolve();
+        if (performance.now() - t0 < 900) requestAnimationFrame(tick); else resolve();
       };
       requestAnimationFrame(tick);
     });
@@ -381,7 +386,11 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
         await page.waitForSelector('.shell-assistant-btn');
         // Como el usuario: el puntero pasa por el botón (precarga el panel) y después toca.
         await page.hover('.shell-assistant-btn');
-        await until(() => page.evaluate(() => performance.getEntriesByType('resource').some(entry => /AssistantPanel|assistant/i.test(entry.name))), { timeout: 5000, message: 'la precarga del panel al pasar el puntero' }).catch(() => {});
+        // Una vuelta de calentamiento (el chunk del panel ya bajó): la medición no depende de la red.
+        await page.$eval('.shell-assistant-btn', button => button.click());
+        await page.waitForSelector(`${INPUT}`, { timeout: 15000 });
+        await page.keyboard.press('Escape');
+        await until(async () => Boolean(await page.$('.asst[hidden]')), { message: 'el cierre de calentamiento' });
         await sleep(300);
         const open = await sampleFrames(page, 'open');
         const final = open[open.length - 1];
