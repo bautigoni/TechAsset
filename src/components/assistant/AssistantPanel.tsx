@@ -4,11 +4,11 @@ import {
   streamAssistantMessage, undoAssistantAction,
   type AssistantAction, type AssistantContext, type AssistantResponse
 } from '../../services/assistantApi';
-import { ApiError } from '../../services/apiClient';
+import { ApiError, apiGet } from '../../services/apiClient';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { Spinner } from '../../ui/icons';
 import { AutoHeight } from '../../ui/Collapse';
-import { InlineConfirm, StatusLine } from '../../ui/Inline';
+import { InlineConfirm, StatusLine, pushStatus } from '../../ui/Inline';
 import { TruncatedText } from '../../ui/Truncated';
 import { AssistantMark, type AssistantMarkState } from './AssistantMark';
 import './assistant.css';
@@ -29,8 +29,10 @@ interface ChatMessage {
   confirmationSettled?: boolean;
   /** Falló el pedido: se muestra en línea con Reintentar. */
   error?: string;
-  /** Destino sugerido que en la vista propia no se abre solo (enlace debajo). */
+  /** Destino sugerido que no se abre solo (enlace debajo). */
   link?: { route?: string; device?: string };
+  /** El asistente abrió otra vista o la ficha de un equipo: se dice (no cambia la pantalla callado). */
+  navigated?: string;
 }
 
 /** Estado del Deshacer de cada acción, por id de acción. */
@@ -39,27 +41,56 @@ type UndoState =
   | { status: 'done'; message: string }
   | { status: 'error'; message: string; retryable: boolean };
 
-/** Sugerencias del estado vacío: el chip muestra lo corto; al tocarlo se manda el pedido completo. */
-type Suggestion = { label: string; prompt: string };
+/**
+ * Sugerencias del estado vacío. Las consultas (solo lectura) se mandan al
+ * tocarlas; las que harían algo (prestar, crear una tarea) solo completan el
+ * campo para que la persona escriba el resto y mande ella (QA ESC-12: un chip
+ * mandaba un préstamo a "Mili", que nadie había escrito). Los equipos de los
+ * ejemplos son reales de la sede activa; si no hay, el chip no aparece.
+ */
+type Suggestion = { label: string; prompt: string; fill?: boolean };
+/** Equipos reales de la sede (alias o etiqueta), para los ejemplos. */
+export type AssistantExamples = { free?: string; freeTag?: string; loaned?: string; loanedTag?: string };
+/** GET /api/asistente/status: con qué responde el asistente en este servidor. */
+type AssistantStatusInfo = { provider: string; model: string };
 
-const STAFF_SUGGESTIONS: Suggestion[] = [
-  { label: 'Prestar el Touch 34', prompt: 'Prestale el Touch 34 a Mili en DOE, ¿me confirmás los datos?' },
-  { label: 'Disponibles hoy', prompt: '¿Qué dispositivos están disponibles hoy para prestar y cuántos hay de cada tipo?' },
-  { label: 'Tareas de la semana', prompt: 'Mostrame las tareas pendientes de esta semana ordenadas por prioridad' },
-  { label: '¿Quién tiene el D1436?', prompt: '¿Quién tiene el D1436 prestado, desde cuándo y cuándo se vence?' },
-  { label: 'Tarea: revisar proyectores', prompt: 'Creá una tarea urgente para revisar los proyectores de todas las aulas del primer piso, asignada a Equi' },
-  { label: 'Agenda de hoy', prompt: '¿Qué actividades hay en la agenda de hoy y quién las pidió?' },
-  { label: 'Reparar el D1432', prompt: 'Repará el D1432 de Mili, me dijo que no prende la pantalla, se lo prestaste ayer' }
-];
+function buildSuggestions(canEdit: boolean, local: boolean, ex: AssistantExamples): Suggestion[] {
+  const out: Suggestion[] = [];
+  const add = (cond: unknown, item: Suggestion) => { if (cond) out.push(item); };
+  if (local) {
+    // Sin IA solo entiende etiquetas ("¿cómo está el D5008?").
+    const tagged = [ex.loanedTag, ex.freeTag].filter((tag): tag is string => Boolean(tag && /^D\d+$/i.test(tag)));
+    for (const tag of tagged) out.push({ label: `¿Cómo está el ${tag}?`, prompt: `¿Cómo está el ${tag}?` });
+    return out;
+  }
+  if (canEdit) {
+    add(true, { label: 'Disponibles ahora', prompt: '¿Qué equipos están disponibles ahora y cuántos hay de cada tipo?' });
+    add(ex.loaned, { label: `¿Quién tiene el ${ex.loaned}?`, prompt: `¿Quién tiene el ${ex.loaned} y desde cuándo?` });
+    add(true, { label: 'Agenda de hoy', prompt: '¿Qué actividades hay hoy en la agenda?' });
+    add(true, { label: 'Tareas de la semana', prompt: '¿Qué tareas pendientes hay esta semana, por prioridad?' });
+    add(ex.free, { label: `Prestar el ${ex.free}…`, prompt: `Prestale el ${ex.free} a `, fill: true });
+    add(true, { label: 'Nueva tarea…', prompt: 'Creá una tarea para ', fill: true });
+    return out;
+  }
+  add(true, { label: 'Disponibles y prestados', prompt: '¿Cuántos equipos hay disponibles ahora y cuántos están prestados?' });
+  add(ex.loaned || ex.free, { label: `¿Dónde está el ${ex.loaned || ex.free}?`, prompt: `¿Dónde está el ${ex.loaned || ex.free} y quién lo tiene?` });
+  add(true, { label: 'Tareas urgentes', prompt: '¿Cuáles son las tareas pendientes con prioridad alta para esta semana?' });
+  add(true, { label: 'Agenda de hoy', prompt: '¿Qué actividades hay hoy en la agenda?' });
+  add(true, { label: 'Aulas con problemas', prompt: '¿Qué aulas tienen problemas?' });
+  add(true, { label: 'Prestados hace +30 días', prompt: '¿Hay algún equipo prestado hace más de 30 días?' });
+  return out;
+}
 
-const VIEWER_SUGGESTIONS: Suggestion[] = [
-  { label: 'Disponibles y prestados', prompt: '¿Cuántos dispositivos hay disponibles ahora y cuántos están prestados?' },
-  { label: '¿Dónde está el D1436?', prompt: '¿Dónde está el D1436 y quién lo tiene hace cuánto tiempo?' },
-  { label: 'Tareas urgentes', prompt: '¿Cuáles son las tareas pendientes con prioridad alta para esta semana?' },
-  { label: 'Agenda de hoy', prompt: '¿Qué dice la agenda de hoy? Mostrame los detalles de cada actividad.' },
-  { label: 'Aulas con problemas', prompt: '¿Qué aulas tienen problemas y cuál es el estado general de cada una?' },
-  { label: 'Prestados hace +30 días', prompt: '¿Hay algún equipo prestado hace más de 30 días?' }
-];
+const PROVIDER_NAMES: Record<string, string> = { anthropic: 'Claude, de Anthropic', openai: 'OpenAI' };
+const providerName = (provider: string) => PROVIDER_NAMES[provider] || provider;
+const PROVIDER_COMPANY: Record<string, string> = { anthropic: 'Anthropic', openai: 'OpenAI' };
+
+/**
+ * Pidió ir a algún lado ("abrí Préstamos", "llevame a la ficha del D5008"): solo
+ * así el asistente cambia la pantalla. Si no, ofrece el enlace y no toca lo que
+ * la persona tiene abierto (podría tener un formulario a medio llenar).
+ */
+const OPEN_INTENT = /(^|[^\p{L}])(abr[ií]|abrir|abre|abr[ií]me|llev[aá]me|and[aá] a|ir a|ver la ficha|entr[aá] a)(?=$|[^\p{L}])/iu;
 
 /** Lo que se ve mientras corre cada herramienta del server (tools.js). */
 const TOOL_LABELS: Record<string, string> = {
@@ -131,7 +162,7 @@ let nextMessageId = 1;
  * con Deshacer. El dictado es del navegador (useSpeechDictation): sin Web
  * Speech API (Firefox) el micrófono no aparece.
  */
-export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, currentView, onNavigate, onOpenDevice, canEdit, context, question }: {
+export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, currentView, onNavigate, onOpenDevice, canEdit, context, question, examples = {} }: {
   open: boolean;
   /** Dibujado: sigue en pantalla mientras sale (la transición de cierre). */
   shown?: boolean;
@@ -148,6 +179,8 @@ export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, c
   context?: AssistantContext | null;
   /** Pregunta que llega desde Ctrl K ("Preguntar al asistente"). */
   question?: { text: string; nonce: number } | null;
+  /** Equipos reales de la sede para los ejemplos. */
+  examples?: AssistantExamples;
 }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -171,8 +204,6 @@ export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, c
   const undoingRef = useRef(new Set<number>());
   const messagesRef = useRef<ChatMessage[]>([]);
   messagesRef.current = messages;
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
   const currentViewRef = useRef(currentView);
   currentViewRef.current = currentView;
   // Dictado: lo que había escrito antes de hablar + lo que se reconoce.
@@ -191,7 +222,20 @@ export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, c
   const shownInput = listening ? joinText(dictationBase.current, dictation.transcript) : input;
 
   const hasStarted = messages.length > 0;
-  const suggestions = canEdit ? STAFF_SUGGESTIONS : VIEWER_SUGGESTIONS;
+  // Con qué responde este servidor (IA y de quién, o modo básico): se dice
+  // arriba y en la bienvenida, antes de que la persona escriba nada.
+  const [status, setStatus] = useState<AssistantStatusInfo | null>(null);
+  useEffect(() => {
+    let alive = true;
+    apiGet<AssistantStatusInfo>('/api/asistente/status')
+      .then(data => { if (alive) setStatus({ provider: String(data?.provider || 'local'), model: String(data?.model || '') }); })
+      // Sin respuesta no se afirma nada: queda el texto neutro y los ejemplos de consulta.
+      .catch(() => { if (alive) setStatus({ provider: 'unknown', model: '' }); });
+    return () => { alive = false; };
+  }, []);
+  const local = status?.provider === 'local';
+  const company = status ? PROVIDER_COMPANY[status.provider] || '' : '';
+  const suggestions = status ? buildSuggestions(Boolean(canEdit), local, examples) : [];
 
   // Al abrir: foco en el campo (sin mover la página).
   useEffect(() => {
@@ -308,28 +352,31 @@ export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, c
       if (controller.signal.aborted) return;
       const actions = response.actions || [];
       const acted = actions.length > 0 || streamedActions > 0;
-      // En la vista propia (mobile) ir a otra sección cierra el asistente: salvo
-      // que haya pedido abrir una sección, la respuesta se queda a la vista y
-      // el destino sugerido va como enlace debajo.
-      const stay = modeRef.current === 'view' && !toolsSeen.includes('abrir_seccion');
+      // La pantalla cambia sola solo si se pidió ir ("abrí Préstamos", "llevame a
+      // la ficha"). Si no, el destino sugerido va como enlace debajo de la
+      // respuesta: la vista de al lado no cambia callada (QA ESC-13) ni se pierde
+      // lo que la persona tenía a medio escribir ahí.
+      const go = toolsSeen.includes('abrir_seccion') || OPEN_INTENT.test(clean);
       const linkRoute = response.suggestedRoute && response.suggestedRoute !== currentViewRef.current ? response.suggestedRoute : undefined;
       const linkDevice = acted ? undefined : response.suggestedDevice || undefined;
-      const link = stay && (linkRoute || linkDevice) ? { route: linkRoute, device: linkDevice } : undefined;
+      let navigated: string | undefined;
+      if (go && linkDevice && onOpenDevice?.(linkDevice)) navigated = `la ficha de ${linkDevice}`;
+      else if (go && linkRoute) { onNavigate(linkRoute); navigated = ROUTE_LABELS[linkRoute] || 'la sección'; }
+      const link = !navigated && (linkRoute || linkDevice) ? { route: linkRoute, device: linkDevice } : undefined;
       patchMessage(replyId, message => ({
         content: response.reply,
         streaming: false,
         tool: null,
         actions: mergeActions(message.actions, actions),
         confirmation: response.pendingConfirmation,
-        link
+        link,
+        navigated
       }));
-      if (stay) return;
-      // Si hizo algo, el panel queda abierto para que se vea el Deshacer.
-      if (!acted && response.suggestedDevice && onOpenDevice?.(response.suggestedDevice)) {
-        onClose();
-      } else if (response.suggestedRoute) {
-        onNavigate(response.suggestedRoute);
-      }
+      if (!navigated) return;
+      // Lo dice también en la línea de estado de la app: en mobile (o al abrir
+      // una ficha) el asistente se cierra y la respuesta no queda a la vista.
+      pushStatus({ tone: 'info', message: `El asistente abrió ${navigated}.`, autoHideMs: 6000 });
+      if (navigated.startsWith('la ficha')) onClose();
     } catch (error) {
       if (controller.signal.aborted) return;
       const reason = error instanceof TypeError
@@ -399,6 +446,18 @@ export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, c
     window.speechSynthesis.speak(utterance);
   };
 
+  // Ejemplo que haría algo: completa el campo (no manda) y deja el cursor al final para seguir escribiendo.
+  const fillSuggestion = (text: string) => {
+    stopDictation(true);
+    setInput(text);
+    window.requestAnimationFrame(() => {
+      const field = inputRef.current;
+      if (!field) return;
+      field.focus({ preventScroll: true });
+      field.setSelectionRange(text.length, text.length);
+    });
+  };
+
   const toggleDictation = () => {
     if (listening) { stopDictation(false); return; }
     if (loading) return;
@@ -460,7 +519,7 @@ export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, c
           <AssistantMark size={28} state={markState} />
           <div className="asst-title">
             <h2>Asistente</h2>
-            <span>{listening ? 'Te escucho…' : loading ? 'Pensando…' : 'Datos de tu sede, en vivo'}</span>
+            <span>{listening ? 'Te escucho…' : loading ? 'Pensando…' : !status || status.provider === 'unknown' ? 'Datos de tu sede' : local ? 'Modo básico, sin IA' : `Con IA · ${providerName(status.provider)}`}</span>
           </div>
           {hasStarted && (
             <button type="button" className="asst-text-btn" onClick={newConversation}>
@@ -480,17 +539,42 @@ export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, c
               <AssistantMark size={44} state={markState} />
               <div className="asst-welcome-text">
                 <h3>¿En qué te ayudo?</h3>
-                <p>Preguntá sobre equipos, préstamos, agenda o tareas. Responde con lo que hay en la base{canEdit ? ' y puede registrar préstamos, devoluciones y tareas' : ''}.</p>
+                <p>
+                  {local
+                    ? 'Estoy en modo básico, sin IA: te digo el estado de un equipo si me pasás su etiqueta.'
+                    : `Preguntá sobre equipos, préstamos, agenda o tareas de tu sede.${canEdit ? ' También puedo registrar préstamos, devoluciones y tareas (con Deshacer).' : ''}`}
+                </p>
               </div>
-              <ul className="asst-suggestions" aria-label="Sugerencias">
-                {suggestions.map(item => (
-                  <li key={item.label}>
-                    <button type="button" className="asst-suggestion" aria-label={`${item.label}: ${item.prompt}`} onClick={() => void send(item.prompt)}>
-                      <TruncatedText>{item.label}</TruncatedText>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              {/* Qué hace con lo que escribís (QA ESC-11): IA o no, qué se manda, qué no se guarda. */}
+              <AutoHeight anchor={false} className="asst-privacy-wrap">
+                {status && (
+                  <p className="asst-privacy">
+                    {local
+                      ? 'No usa IA: lo que escribís no sale del servidor de TechAsset y la conversación no se guarda.'
+                      : `${company ? `Usa IA de ${company}: lo que escribís y lo que tenés abierto en pantalla se le envía para responder.` : 'Lo que escribís y lo que tenés abierto en pantalla se usa para responder.'} TechAsset no guarda la conversación; sí registra, con tu nombre, qué consultó o hizo el asistente.`}
+                    {dictation.supported && ' El dictado lo hace tu navegador: TechAsset no recibe audio.'}
+                    {' '}<a className="asst-privacy-link" href="/privacidad" target="_blank" rel="noopener noreferrer">Privacidad</a>
+                  </p>
+                )}
+              </AutoHeight>
+              <AutoHeight anchor={false}>
+                {suggestions.length > 0 && (
+                  <ul className="asst-suggestions" aria-label="Ejemplos">
+                    {suggestions.map(item => (
+                      <li key={item.label}>
+                        <button
+                          type="button"
+                          className={`asst-suggestion${item.fill ? ' is-fill' : ''}`}
+                          aria-label={item.fill ? `Completar el pedido: ${item.prompt.trim()}…` : `Preguntar: ${item.prompt}`}
+                          onClick={() => (item.fill ? fillSuggestion(item.prompt) : void send(item.prompt))}
+                        >
+                          <TruncatedText>{item.label}</TruncatedText>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </AutoHeight>
             </div>
           )}
           {messages.map(msg => {
@@ -516,6 +600,9 @@ export function AssistantPanel({ open, shown = open, onClose, mode, backLabel, c
                         <p className="asst-tool" role="status"><Spinner size={12} /> <span>{msg.tool}</span></p>
                       )}
                     </AutoHeight>
+                    {msg.navigated && !msg.streaming && (
+                      <p className="asst-nav-note" role="status">Abrí {msg.navigated}{mode === 'column' && !msg.navigated.startsWith('la ficha') ? ' al lado' : ''}.</p>
+                    )}
                     {!msg.streaming && msg.content && (canSpeak || msg.link) && (
                       <div className="asst-msg-tools">
                         {canSpeak && (

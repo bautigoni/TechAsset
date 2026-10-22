@@ -184,7 +184,7 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
       assert(!/\*\*|^#+\s/m.test(reply.text), `La respuesta trae markdown: ${reply.text.slice(0, 120)}`);
       assert(reply.actions.length === 0, `Un pedido de solo lectura dejó acciones: ${reply.actions.join(' | ')}`);
       if (provider === 'local') {
-        assert(/no está configurado|no está disponible|etiqueta/i.test(reply.text), `Respuesta inesperada del modo local: ${reply.text.slice(0, 160)}`);
+        assert(/modo básico, sin IA/i.test(reply.text) && /etiqueta/i.test(reply.text), `Respuesta inesperada del modo local: ${reply.text.slice(0, 160)}`);
       } else {
         assert(/\d/.test(reply.text), `La IA no dio un número: ${reply.text.slice(0, 160)}`);
       }

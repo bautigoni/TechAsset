@@ -205,7 +205,26 @@
   touch-action: manipulation;
 }
 .asst-suggestion:hover { border-color: var(--g-line-strong); background: var(--g-raised); }
+/* Los que completan el campo (no mandan): borde punteado, como un borrador. */
+.asst-suggestion.is-fill { border-style: dashed; color: var(--g-text-2); }
 @media (pointer: coarse) { .asst-suggestion { height: var(--ui-touch, 44px); } }
+
+/* Qué hace con lo que escribís: una línea chica, sin caja, debajo de la bienvenida. */
+.asst-privacy-wrap { align-self: stretch; }
+.asst-privacy {
+  max-width: 40ch;
+  margin: 0 auto;
+  font-size: var(--g-fs-xs);
+  line-height: 1.5;
+  color: var(--g-text-3);
+  text-wrap: pretty;
+}
+.asst-privacy-link { color: var(--g-accent); text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.asst-privacy-link:focus-visible { outline: var(--g-focus-w) solid var(--g-focus); outline-offset: 2px; border-radius: var(--g-radius-xs); }
+@media (pointer: coarse) { .asst-privacy-link { display: inline-block; padding: 12px 4px; margin: -12px -4px; } }
+
+/* "Abrí Préstamos al lado.": la vista cambió por pedido; se dice debajo de la respuesta. */
+.asst-nav-note { margin: var(--g-s-1) 0 0; color: var(--g-text-3); font-size: var(--g-fs-xs); }
 
 /* Burbujas suaves: la tuya rellena, la del asistente con borde fino. La
    esquina del lado de quien habla, más chica. */
@@ -276,6 +295,7 @@
   cursor: pointer;
 }
 .asst-listen:hover, .asst-listen.is-speaking { background: var(--g-raised); }
+@media (pointer: coarse) { .asst-listen { min-height: var(--ui-touch, 44px); padding: 0 var(--g-s-3); } }
 
 .asst-typing {
   display: inline-flex;
