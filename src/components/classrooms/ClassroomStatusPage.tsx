@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from 'react';
 import '../../styles/screens/classrooms.css';
 import type { Classroom, ClassroomCategory, Operator, SiteInfo } from '../../types';
 import { fetchClassroomCategories, fetchClassrooms } from '../../services/classroomsApi';
@@ -11,6 +11,7 @@ import { FloorPlan, IconObs, IconProblem, type RoomStatus } from './plan/FloorPl
 import { ClassroomSheet } from './ClassroomSheet';
 import { ClassroomCategories } from './ClassroomCategories';
 import { getEquipment, generalTone, issuesOf } from './classroomState';
+import { useSmoothHeight } from './useSmoothHeight';
 
 type FloorKey = FloorPlanDef['key'];
 type FilterKey = 'ok' | 'obs' | 'prob' | 'sin' | 'proy' | 'nuc' | 'mon';
@@ -56,6 +57,14 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
   const catsButtonRef = useRef<HTMLButtonElement | null>(null);
   const lastPending = useRef<Pending | null>(null);
   const layoutRef = useRef<HTMLDivElement | null>(null);
+  // Nada cambia de alto de golpe por tocar algo (agregado del dueño 20/10):
+  // la lista al filtrar, todo el bloque al cambiar de planta o sede, la ficha
+  // al pasar a otra aula o cuando llegan sus datos.
+  const listBox = useSmoothHeight<HTMLElement>();
+  const layoutBox = useSmoothHeight<HTMLDivElement>();
+  const sideBox = useSmoothHeight<HTMLDivElement>();
+  const sheetSettled = useRef(false);
+  const [, rerender] = useReducer((value: number) => value + 1, 0);
 
   const refresh = useCallback(async () => {
     if (!floors) return;
@@ -74,8 +83,9 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  const refreshCategories = useCallback(async () => {
+  const refreshCategories = useCallback(async (before?: () => void) => {
     const cats = await fetchClassroomCategories();
+    before?.();
     setCategories(cats.items || []);
     setCanManage(Boolean(cats.canManage));
   }, []);
@@ -122,18 +132,25 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
   }, [rooms, matchOf]);
 
   const matches = useMemo(() => (filter ? (roomKey: string) => matchOf(roomKey, filter) : null), [filter, matchOf]);
+  const changeFilter = (next: FilterKey | null) => { listBox.smooth(); setFilter(next); };
+  const visibleCount = useMemo(() => (matches ? rooms.filter(room => matches(room.roomKey)).length : rooms.length), [rooms, matches]);
+  // Acá (y no en la lista): el efecto corre con el ref del layout ya puesto desde el primer render.
+  const { cols: listCols, hint: hintFits } = useBalancedLayout(layoutRef, visibleCount);
 
   // ── Abrir / cerrar ficha con aviso de cambios sin guardar ────────────────
   const doOpen = (roomKey: string, nombre: string) => {
+    // Otra aula con la ficha abierta: se sostiene el alto hasta que llegan sus datos (sin achicarse y volver a crecer).
+    if (sheetOpen && sheetSettled.current && selected?.roomKey !== roomKey) sideBox.hold();
     setSelected({ roomKey, nombre, piso: floor?.piso || '' });
     setSheetOpen(true);
   };
   const doClose = () => {
+    sideBox.release();
     setSheetOpen(false);
     const trigger = triggerRef.current;
     if (trigger?.isConnected) focusQuietly(trigger);
   };
-  const doFloor = (next: FloorKey) => { setSheetOpen(false); setSelected(null); setFilter(null); setFloorKey(next); };
+  const doFloor = (next: FloorKey) => { sideBox.release(); layoutBox.smooth(); setSheetOpen(false); setSelected(null); setFilter(null); setFloorKey(next); };
 
   const guarded = (next: Pending, run: () => void) => {
     if (dirtyRef.current) { setPending(next); return; }
@@ -162,6 +179,16 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
     else if (next.kind === 'floor') doFloor(next.floor);
     else onSiteChange?.(next.site);
   };
+
+  // La ficha avisa antes de cambiar de alto (llegaron los datos, un diagnóstico,
+  // un incidente nuevo): con la ficha ya abierta, la columna pasa suave al alto
+  // nuevo. Mientras el colapso la está abriendo, ya anima él.
+  const { smooth: smoothSide } = sideBox;
+  const onSheetGrow = useCallback(() => {
+    if (!sheetSettled.current) return;
+    smoothSide();
+    rerender();
+  }, [smoothSide]);
 
   const onDirtyChange = useCallback((dirty: boolean) => { dirtyRef.current = dirty; }, []);
   const onSaved = useCallback((saved: Classroom) => {
@@ -244,7 +271,9 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
         </Collapse>
       )}
 
-      {loadError && <ErrorState message={loadError} retrying={retrying} onRetry={async () => { setRetrying(true); await refresh(); setRetrying(false); }} />}
+      <Collapse open={Boolean(loadError)} unmountOnClose>
+        <ErrorState message={loadError || 'No se pudo cargar el estado de las aulas.'} retrying={retrying} onRetry={async () => { setRetrying(true); await refresh(); setRetrying(false); }} />
+      </Collapse>
 
       {/* Resumen de la planta: cada indicador filtra el plano y la lista */}
       <div className="cls-summary" role="group" aria-label="Resumen de la planta. Cada indicador filtra el plano y la lista.">
@@ -252,7 +281,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
           Array.from({ length: 7 }, (_, index) => <Skeleton key={index} className="cls-sum-skel" height="3.25rem" radius="md" index={index} />)
         ) : (
           <>
-            <button type="button" className={cx('cls-sum', 'cls-sum-main', filter === 'ok' && 'is-on')} aria-pressed={filter === 'ok'} onClick={() => setFilter(current => (current === 'ok' ? null : 'ok'))}>
+            <button type="button" className={cx('cls-sum', 'cls-sum-main', filter === 'ok' && 'is-on')} aria-pressed={filter === 'ok'} onClick={() => changeFilter(filter === 'ok' ? null : 'ok')}>
               <Ring value={counts.ok} total={okRatioTotal} size={36} unit="aulas OK" />
               <span className="cls-sum-text">
                 <span className="cls-sum-label">Aulas OK</span>
@@ -260,16 +289,16 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
               </span>
             </button>
             {FILTERS.map(item => (
-              <button key={item.key} type="button" className={cx('cls-sum', item.label.length > 18 && 'is-long', filter === item.key && 'is-on')} aria-pressed={filter === item.key} onClick={() => setFilter(current => (current === item.key ? null : item.key))}>
+              <button key={item.key} type="button" className={cx('cls-sum', item.label.length > 18 && 'is-long', filter === item.key && 'is-on')} aria-pressed={filter === item.key} onClick={() => changeFilter(filter === item.key ? null : item.key)}>
                 <span className="cls-sum-label">{item.label}</span>
                 <span className={cx('cls-mono', 'cls-sum-num', counts[item.key] > 0 && item.tone !== 'normal' && `cls-tone-${item.tone}`)}>{counts[item.key]}</span>
               </button>
             ))}
-            {filter && <Button variant="ghost" className="cls-sum-clear" onClick={() => setFilter(null)}>Quitar filtro</Button>}
           </>
         )}
       </div>
 
+      <div className="cls-layout-box" ref={layoutBox.ref}>
       <div className={cx('cls-layout', !selected && 'is-idle')} ref={layoutRef}>
         {/* Plano */}
         <section className="cls-card cls-plan-card" aria-labelledby="cls-plan-title">
@@ -284,9 +313,9 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
         </section>
 
         {/* Ficha en línea */}
-        <div className="cls-side">
+        <div className="cls-side" ref={sideBox.ref}>
           {/* "Elegí un aula" se pliega mientras la ficha se abre (y vuelve al cerrarla): sin saltos de la lista de abajo. */}
-          <Collapse open={!selected} anchor={false} reveal={false} lazy={false}>
+          <Collapse open={!selected && hintFits} anchor={false} reveal={false} lazy={false} className="cls-side-hint">
             <aside className="cls-card cls-placeholder" aria-label="Ficha del aula">
               <EmptyState
                 compact
@@ -297,7 +326,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
             </aside>
           </Collapse>
           {selected && (
-            <Collapse open={sheetOpen} appear onSettled={open => { if (!open) setSelected(null); }}>
+            <Collapse open={sheetOpen} appear className="cls-side-sheet" onSettled={open => { sheetSettled.current = open; if (!open) setSelected(null); }}>
               <ClassroomSheet
                 key={selected.roomKey}
                 roomKey={selected.roomKey}
@@ -311,6 +340,7 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
                 onClose={close}
                 onDirtyChange={onDirtyChange}
                 onNavigate={onNavigate}
+                onGrow={onSheetGrow}
                 guard={guardFor(['room', 'close'])}
               />
             </Collapse>
@@ -318,13 +348,16 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
         </div>
 
         {/* Lista de aulas */}
-        <section className="cls-card cls-list-card" aria-labelledby="cls-list-title">
+        <section className="cls-card cls-list-card" aria-labelledby="cls-list-title" ref={listBox.ref}>
           <div className="cls-list-head">
             <h3 className="cls-h3" id="cls-list-title">Aulas de {floor.label}</h3>
-            <span className="cls-count">{matches ? rooms.filter(room => matches(room.roomKey)).length : rooms.length}</span>
+            <span className="cls-count">{matches ? `${visibleCount} de ${rooms.length}` : rooms.length}</span>
+            {/* Quitar el filtro va acá (donde se ve su efecto), en el mismo renglón: aparecer no cambia ningún alto. */}
+            {filter && <Button size="sm" variant="ghost" className="cls-list-clear" onClick={() => changeFilter(null)}>Quitar filtro</Button>}
           </div>
-          <RoomList rooms={rooms} statuses={statuses} matches={matches} selectedKey={sheetOpen ? selected?.roomKey || null : null} onPick={pick} layoutRef={layoutRef} />
+          <RoomList rooms={rooms} statuses={statuses} matches={matches} selectedKey={sheetOpen ? selected?.roomKey || null : null} onPick={pick} cols={listCols} />
         </section>
+      </div>
       </div>
     </section>
   );
@@ -342,15 +375,24 @@ function Legend() {
 }
 
 /**
- * Sin huecos (REGLAS-UX): en ancho, el plano va a la izquierda y la ficha (o
- * "Elegí un aula") con la lista a la derecha. Con una planta muy ancha el
- * plano queda bajo y una lista de una columna dejaba un hueco grande debajo
- * del plano. Se elige 1 o 2 columnas para la lista según cuál deja las dos
- * columnas de la página más parejas. Solo depende del alto del plano y de la
- * columna de la ficha (no de la lista), así que no oscila.
+ * Sin huecos (REGLAS-UX): en ancho, el plano va a la izquierda (sticky, con su
+ * alto natural: la tarjeta nunca se estira con franjas vacías arriba y abajo
+ * del dibujo) y la ficha (o "Elegí un aula") con la lista a la derecha. Sin
+ * ficha abierta se elige lo que deja las dos columnas parejas:
+ * - la lista en 1 o 2 columnas;
+ * - si la derecha queda más corta, la lista estira sus filas (hasta STRETCH
+ *   px cada una) y, si no alcanza, el plano se achica a ese alto (con un piso
+ *   para que se lea; el zoom sigue);
+ * - si la derecha queda más alta que una planta ancha y baja, el aviso "Elegí
+ *   un aula" se pliega (lo mismo dice la línea debajo del plano).
+ * Se mide de verdad (el plano a su tamaño normal, la lista en 1 y en 2
+ * columnas) y se deshace en el mismo frame. Con la ficha abierta se conserva
+ * todo: ni el plano ni la lista cambian al tocar un aula.
  */
-function useBalancedColumns(layoutRef: RefObject<HTMLDivElement | null>, count: number) {
+const STRETCH = 20;
+function useBalancedLayout(layoutRef: RefObject<HTMLDivElement | null>, count: number) {
   const [cols, setCols] = useState<1 | 2>(1);
+  const [hint, setHint] = useState(true);
   useLayoutEffect(() => {
     const layout = layoutRef.current;
     if (!layout || typeof ResizeObserver === 'undefined') return;
@@ -359,78 +401,83 @@ function useBalancedColumns(layoutRef: RefObject<HTMLDivElement | null>, count: 
     const list = layout.querySelector<HTMLElement>('.cls-list-card');
     if (!plan || !side || !list) return;
     let frame = 0;
-    const measure = () => {
-      frame = 0;
-      // Se mide con la lista en su alto natural (sin el estirado de .is-idle).
-      layout.classList.add('is-measuring');
-      try { measureNow(); } finally { layout.classList.remove('is-measuring'); }
-    };
+    let lastCount = -1;
+    const clearFit = () => { layout.style.removeProperty('--cls-plan-fit'); layout.classList.remove('is-fill'); };
     const measureNow = () => {
       // Una sola columna de página (angosto): la grilla de la lista ya se reparte sola.
-      if (Math.abs(list.offsetLeft - plan.offsetLeft) < 4) { setCols(1); return; }
+      if (Math.abs(list.offsetLeft - plan.offsetLeft) < 4) { setCols(1); setHint(true); clearFit(); return; }
       const ul = list.querySelector<HTMLElement>('.cls-list');
-      const firstRow = ul?.querySelector<HTMLElement>('li');
-      if (!ul || !firstRow) { setCols(1); return; }
-      const gap = parseFloat(getComputedStyle(layout).rowGap) || 0;
-      const rowGap = parseFloat(getComputedStyle(ul).rowGap) || 0;
-      // Lo que ocupa la lista sin sus filas (encabezado, padding), medido con la lista en su alto natural.
-      const chrome = list.offsetHeight - ul.offsetHeight;
-      const oneRow = ul.classList.contains('is-2col') ? firstRow.offsetHeight - 16 : firstRow.offsetHeight;
-      const twoRow = oneRow + 16; // en dos columnas el estado baja a su propia línea
-      const right = (rows: number, rowH: number) => side.offsetHeight + gap + chrome + rows * rowH + Math.max(0, rows - 1) * rowGap;
-      // Alto natural del plano (sin el estirado de .is-idle): su encabezado + lo de adentro.
-      const inner = plan.querySelector<HTMLElement>('.cls-plan');
-      const innerGap = inner ? parseFloat(getComputedStyle(inner).rowGap) || 0 : 0;
-      const innerNatural = inner ? Array.from(inner.children).reduce((sum, child) => sum + (child as HTMLElement).offsetHeight, 0) + innerGap * Math.max(0, inner.children.length - 1) : 0;
-      const planH = inner ? plan.offsetHeight - inner.offsetHeight + innerNatural : plan.offsetHeight;
-      const one = right(count, oneRow);
-      const two = right(Math.ceil(count / 2), twoRow);
-      setCols(one > planH + 24 && Math.abs(planH - two) < Math.abs(planH - one) ? 2 : 1);
-      // Planta alta con pocas aulas: la columna de la derecha queda mucho más corta
-      // que el plano y dejaba un hueco debajo. Sin ficha abierta, el plano se ajusta
-      // a ese alto (con un piso para que se lea; el zoom sigue disponible). Se
-      // calcula con el alto que tendría el plano a su tamaño normal (no con el ya
-      // ajustado), así no oscila; con una ficha abierta se conserva el ajuste (el
-      // plano no cambia de tamaño al tocar un aula).
-      if (layout.classList.contains('is-idle')) {
-        const view = plan.querySelector<HTMLElement>('.cls-plan-view');
-        const ratio = view ? parseFloat(getComputedStyle(view).getPropertyValue('--cls-ratio')) || 0 : 0;
-        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-        if (view && ratio > 0 && inner) {
-          const maxH = Math.min(46 * rem, window.innerHeight - 16 * rem);
-          const viewNatural = Math.min(inner.clientWidth, maxH * ratio) / ratio;
-          const chromeH = plan.offsetHeight - view.offsetHeight;
-          const rightH = one;
-          const fit = rightH - chromeH;
-          const short = chromeH + viewNatural > rightH + 48;
-          if (short && fit < maxH) layout.style.setProperty('--cls-plan-fit', `${Math.max(20 * rem, fit)}px`);
-          else layout.style.removeProperty('--cls-plan-fit');
-          // La lista (más corta que el plano) llega hasta su pie con filas más altas.
-          layout.classList.toggle('is-fill', short);
+      const view = plan.querySelector<HTMLElement>('.cls-plan-view');
+      if (!ul || !view) { setCols(1); setHint(true); clearFit(); return; }
+      const idle = layout.classList.contains('is-idle');
+      const fitBefore = layout.style.getPropertyValue('--cls-plan-fit');
+      const was2 = ul.classList.contains('is-2col');
+      layout.style.removeProperty('--cls-plan-fit');
+      const planH = plan.offsetHeight;
+      const pad = parseFloat(getComputedStyle(view).paddingTop) || 0;
+      const chromeH = planH - view.offsetHeight + 2 * pad;
+      ul.classList.remove('is-2col');
+      const list1 = list.offsetHeight;
+      ul.classList.add('is-2col');
+      const list2 = list.offsetHeight;
+      ul.classList.toggle('is-2col', was2);
+      if (fitBefore) layout.style.setProperty('--cls-plan-fit', fitBefore);
+      // El aviso mide lo mismo abierto o plegado (el contenido del colapso conserva su alto).
+      const hintH = side.querySelector<HTMLElement>('.cls-side-hint')?.offsetHeight || 0;
+      const rowsOf = (c: number) => Math.ceil(count / c);
+      // Costo: lo que la derecha se pasa es hueco debajo del plano; si queda corta,
+      // las filas estiran sin costo hasta STRETCH y lo que falta achica el plano
+      // (cuesta la mitad). Plegar el aviso y usar 2 columnas tienen un recargo
+      // chico: solo se eligen si de verdad emparejan.
+      const options: Array<{ c: 1 | 2; withHint: boolean; right: number; score: number }> = [];
+      for (const c of [1, 2] as const) {
+        if (c === 2 && count < 2) continue;
+        for (const withHint of [true, false]) {
+          if (!withHint && !idle) continue;
+          const right = (withHint ? hintH : 0) + (c === 1 ? list1 : list2);
+          const base = right >= planH ? right - planH : Math.max(0, planH - right - rowsOf(c) * STRETCH) * 0.5;
+          options.push({ c, withHint, right, score: base + (c === 2 ? 8 : 0) + (withHint ? 0 : 40) });
         }
       }
+      const best = options.reduce((min, item) => (item.score < min.score ? item : min), options[0]);
+      setCols(best.c);
+      if (!idle) return;
+      setHint(best.withHint);
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const short = planH > best.right + 2;
+      const fit = best.right + rowsOf(best.c) * STRETCH - chromeH;
+      if (short && chromeH + fit < planH) layout.style.setProperty('--cls-plan-fit', `${Math.max(20 * rem, fit)}px`);
+      else layout.style.removeProperty('--cls-plan-fit');
+      layout.classList.toggle('is-fill', short);
+    };
+    const measure = () => {
+      frame = 0;
+      // Con la ficha abierta no se reacomoda nada (salvo que cambie la cantidad de aulas: un filtro).
+      if (!layout.classList.contains('is-idle') && lastCount === count) return;
+      lastCount = count;
+      // Se mide con la lista en su alto natural (sin el estirado de .is-fill).
+      layout.classList.add('is-measuring');
+      try { measureNow(); } finally { layout.classList.remove('is-measuring'); }
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
     const observer = new ResizeObserver(schedule);
     observer.observe(plan);
-    observer.observe(side);
     observer.observe(layout);
     measure();
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, [layoutRef, count]);
-  return cols;
+  return { cols, hint };
 }
 
-function RoomList({ rooms, statuses, matches, selectedKey, onPick, layoutRef }: {
+function RoomList({ rooms, statuses, matches, selectedKey, onPick, cols }: {
   rooms: Array<{ roomKey: string; nombre: string }>;
   statuses: Record<string, RoomStatus>;
   matches: ((roomKey: string) => boolean) | null;
   selectedKey: string | null;
   onPick: (roomKey: string, nombre: string) => void;
-  layoutRef: RefObject<HTMLDivElement | null>;
+  cols: 1 | 2;
 }) {
   const visible = matches ? rooms.filter(room => matches(room.roomKey)) : rooms;
-  const cols = useBalancedColumns(layoutRef, visible.length);
   if (!visible.length) return <EmptyState compact title="Ningún aula de esta planta coincide con el filtro." />;
   return (
     <ul className={cx('cls-list', cols === 2 && 'is-2col')}>

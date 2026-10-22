@@ -10,6 +10,7 @@ import { errorMessage } from '../layout/Feedback';
 import { aliasOf, deviceKind, shortWhen, stateLabel, stateTone } from '../devices/deviceView';
 import { clearHistorySeed, peekHistorySeed } from './historySeed';
 import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
+import { useSmoothHeight } from '../classrooms/useSmoothHeight';
 import '../../styles/screens/history.css';
 
 type Kind = 'loans' | 'all';
@@ -63,6 +64,11 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
   const [reload, setReload] = useState(0);
   const requestId = useRef(0);
   const exportStatus = useStatusLine();
+  // Nada cambia de alto de golpe (agregado del dueño 20/10): los resultados al
+  // filtrar, cambiar de pestaña o "Cargar más", y los filtros al cambiar de pestaña.
+  const resultsBox = useSmoothHeight<HTMLDivElement>();
+  const filtersBox = useSmoothHeight<HTMLElement>();
+  const { smooth: smoothResults } = resultsBox;
   // El placeholder más largo que entra en el ancho real del buscador (nunca cortado).
   const [searchRef, searchPlaceholder] = useFitPlaceholder(kind === 'loans'
     ? ['Persona, equipo (D1436, touch34), curso, operador…', 'Persona, equipo, curso, operador…', 'Persona, equipo, curso…', 'Buscar…']
@@ -81,21 +87,26 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
   // Cada cambio de filtro arranca de cero; una respuesta vieja que llega tarde
   // (se tipeó rápido) se descarta por requestId.
   useEffect(() => {
+    // Mientras llega lo nuevo queda lo anterior (atenuado), no un esqueleto: la
+    // lista no se achica y vuelve a crecer; al llegar pasa suave al alto nuevo.
     const id = ++requestId.current;
     setLoading(true);
-    setError('');
     setOpenRow('');
     const load = kind === 'loans' ? getLoanHistory(filters) : getMovementHistory(filters);
     load.then(response => {
       if (id !== requestId.current) return;
+      smoothResults();
+      setError('');
       setItems(response.items);
       setCursor(response.nextCursor);
+      setLoading(false);
     }).catch(reason => {
-      if (id === requestId.current) setError(errorMessage(reason, 'No se pudo cargar el historial.'));
-    }).finally(() => {
-      if (id === requestId.current) setLoading(false);
+      if (id !== requestId.current) return;
+      smoothResults();
+      setError(errorMessage(reason, 'No se pudo cargar el historial.'));
+      setLoading(false);
     });
-  }, [kind, filters, reload]);
+  }, [kind, filters, reload, smoothResults]);
 
   const loadMore = async () => {
     if (!cursor || loadingMore) return;
@@ -104,10 +115,11 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
     try {
       const response = kind === 'loans' ? await getLoanHistory({ ...filters, before: cursor }) : await getMovementHistory({ ...filters, before: cursor });
       if (id !== requestId.current) return;
+      smoothResults();
       setItems(current => [...current, ...response.items]);
       setCursor(response.nextCursor);
     } catch (reason) {
-      if (id === requestId.current) setError(errorMessage(reason, 'No se pudo cargar más.'));
+      if (id === requestId.current) { smoothResults(); setError(errorMessage(reason, 'No se pudo cargar más.')); }
     } finally {
       setLoadingMore(false);
     }
@@ -157,7 +169,10 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
             value={kind}
             onChange={next => {
               if (next === kind) return;
-              // Las filas de una pestaña no sirven para la otra: se vacía antes del render.
+              // Las filas de una pestaña no sirven para la otra: se vacía antes del render
+              // (esqueleto con alto suave; los filtros cambian de alto suave también).
+              smoothResults();
+              filtersBox.smooth();
               setItems([]);
               setCursor('');
               setLoading(true);
@@ -168,7 +183,7 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
         )}
       />
 
-      <section className="hs-card hs-filters" aria-label="Filtros" data-scanner-ignore="">
+      <section className="hs-card hs-filters" aria-label="Filtros" data-scanner-ignore="" ref={filtersBox.ref}>
         <div className="hs-filter-row">
           <Input
             ref={searchRef}
@@ -186,14 +201,14 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
           {kind === 'loans' && (
             <Segmented
               label="Tipo"
-              size="sm"
               value={tipo}
               onChange={setTipo}
               options={[{ value: '', label: 'Todos' }, { value: 'prestamo', label: 'Préstamos' }, { value: 'devolucion', label: 'Devoluciones' }]}
             />
           )}
           <div className="hs-filter-actions">
-            {hasFilters && <Button variant="ghost" onClick={clearFilters}>Limpiar</Button>}
+            {/* Siempre en su lugar (deshabilitado sin filtros): aparecer no corre ni parte la fila. */}
+            <Button variant="ghost" disabled={!hasFilters} onClick={clearFilters}>Limpiar</Button>
             <Button icon={<icons.IconFile size={14} />} disabled={!items.length} loading={exporting} loadingLabel="Exportando…" onClick={() => void exportCsv()}>Exportar CSV</Button>
           </div>
         </div>
@@ -214,16 +229,17 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
           <span className="hs-muted hs-nowrap hs-tz">Horas de la sede (UTC−3)</span>
         </div>
 
+        <div className="hs-results-body" ref={resultsBox.ref} aria-busy={loading || undefined}>
         {error && <ErrorState message={error} onRetry={() => setReload(value => value + 1)} />}
-        {loading && <div className="hs-skeleton"><SkeletonRows rows={6} /></div>}
+        {loading && !items.length && <div className="hs-skeleton"><SkeletonRows rows={6} /></div>}
         {!loading && !error && !items.length && (
           hasFilters
             ? <EmptyState compact className="hs-empty" icon={<SearchX size={18} strokeWidth={1.6} />} title="No hay resultados para esos filtros" description="Probá con otra fecha, otro tipo o buscá por etiqueta, alias o persona." action={<Button size="sm" onClick={clearFilters}>Limpiar filtros</Button>} />
             : <EmptyState compact className="hs-empty" icon={<History size={18} strokeWidth={1.6} />} title="Todavía no hay movimientos registrados" description="Acá aparecen los préstamos, devoluciones y cambios de equipos de la sede." />
         )}
 
-        {!loading && items.length > 0 && (
-          <div className={`hs-list hs-list--${kind}`} role="table" aria-label={kind === 'loans' ? 'Préstamos y devoluciones' : 'Movimientos'}>
+        {items.length > 0 && (
+          <div className={`hs-list hs-list--${kind}${loading ? ' is-stale' : ''}`} role="table" aria-label={kind === 'loans' ? 'Préstamos y devoluciones' : 'Movimientos'}>
             <div role="row" className="hs-row hs-colh">
               {(kind === 'loans' ? ['Hora', 'Tipo', 'Equipo', 'Persona', 'Curso / ubicación', 'Motivo', 'Operador'] : ['Hora', 'Origen', 'Movimiento', 'Operador'])
                 .map(label => <span key={label} role="columnheader" className="hs-ell">{label}</span>)}
@@ -270,20 +286,22 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
           </div>
         )}
 
-        {!loading && items.length > 0 && (
+        {items.length > 0 && (
           <div className="hs-foot">
-            {cursor && <Button loading={loadingMore} loadingLabel="Cargando…" onClick={() => void loadMore()}>Cargar más</Button>}
+            {cursor && <Button loading={loadingMore} loadingLabel="Cargando…" disabled={loading} onClick={() => void loadMore()}>Cargar más</Button>}
             <span className="hs-muted">{cursor ? <><span className="ui-mono">{items.length}</span> cargados</> : 'No hay más movimientos para estos filtros.'}</span>
           </div>
         )}
+        </div>
       </section>
     </section>
   );
 }
 
-function Cell({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+/** `empty`: sin dato ("—"). En filas-tarjeta (angosto) no se muestra: una tarjeta no es una pila de rayas. */
+function Cell({ label, className, empty, children }: { label: string; className?: string; empty?: boolean; children: ReactNode }) {
   return (
-    <span role="cell" className={`hs-cell${className ? ` ${className}` : ''}`}>
+    <span role="cell" className={`hs-cell${className ? ` ${className}` : ''}`} data-empty={empty ? '' : undefined}>
       <span className="hs-cell-label" aria-hidden="true">{label}</span>
       <span className="hs-cell-value">{children}</span>
     </span>
@@ -315,20 +333,20 @@ function LoanRow({ item, device, open, onToggle, rowKey }: { item: LoanHistoryIt
       <Cell label="Hora" className="hs-c-time"><span className="ui-mono">{timeOf(item.timestamp)}</span></Cell>
       <Cell label="Tipo" className="hs-c-type"><StatusText tone={item.tipo === 'prestamo' ? 'info' : 'normal'}>{tipoLabel(item.tipo)}</StatusText></Cell>
       <Cell label="Equipo" className="hs-c-eq"><DeviceLink etiqueta={item.etiqueta} alias={item.alias} device={device} open={open} onToggle={onToggle} rowKey={rowKey} /></Cell>
-      <Cell label="Persona">
+      <Cell label="Persona" empty={!item.persona && !item.rol}>
         <span className="hs-stack">
           <span className="hs-ell">{item.persona || '—'}</span>
           {item.rol && <span className="hs-ell hs-muted">{item.rol}</span>}
         </span>
       </Cell>
-      <Cell label="Curso / ubicación"><span className="hs-ell">{place || '—'}</span></Cell>
-      <Cell label="Motivo">
+      <Cell label="Curso / ubicación" empty={!place}><span className="hs-ell">{place || '—'}</span></Cell>
+      <Cell label="Motivo" empty={!item.motivo && !(item.accesorios || []).length}>
         <span className="hs-stack">
           <span className="hs-ell">{item.motivo || '—'}</span>
           {(item.accesorios || []).length > 0 && <span className="hs-wrap hs-muted">Accesorios: {item.accesorios.join(', ')}</span>}
         </span>
       </Cell>
-      <Cell label="Operador"><span className="hs-ell hs-muted">{item.operador || '—'}</span></Cell>
+      <Cell label="Operador" empty={!item.operador}><span className="hs-ell hs-muted">{item.operador || '—'}</span></Cell>
     </div>
   );
 }
@@ -337,7 +355,7 @@ function MovementRow({ item, device, open, onToggle, rowKey }: { item: MovementH
   return (
     <div role="row" className={`hs-row hs-item${open ? ' is-open' : ''}`}>
       <Cell label="Hora" className="hs-c-time"><span className="ui-mono">{timeOf(item.timestamp)}</span></Cell>
-      <Cell label="Origen"><span className="hs-ell hs-muted">{item.origen || '—'}</span></Cell>
+      <Cell label="Origen" empty={!item.origen}><span className="hs-ell hs-muted">{item.origen || '—'}</span></Cell>
       <Cell label="Movimiento" className="hs-c-mv">
         <span className="hs-stack">
           <span className="hs-mv-line">
@@ -349,7 +367,7 @@ function MovementRow({ item, device, open, onToggle, rowKey }: { item: MovementH
           {item.descripcion && <span className="hs-wrap hs-muted">{item.descripcion}</span>}
         </span>
       </Cell>
-      <Cell label="Operador"><span className="hs-ell hs-muted">{item.operador || '—'}</span></Cell>
+      <Cell label="Operador" empty={!item.operador}><span className="hs-ell hs-muted">{item.operador || '—'}</span></Cell>
     </div>
   );
 }

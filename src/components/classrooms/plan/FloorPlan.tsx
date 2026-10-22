@@ -124,6 +124,10 @@ export function FloorPlan({ floor, siteLabel, statuses, selectedKey, matches, on
   const W = floor.width || 1000;
   const H = floor.height || 1000;
   const viewRef = useRef<HTMLDivElement | null>(null);
+  // Lo que se mide (ancho, alto, puntos de la pinza) es el recuadro interior: el
+  // exterior deja un margen para que el contorno de foco o de hover de un aula
+  // del borde no quede recortado por el overflow del plano.
+  const portRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [viewW, setViewW] = useState(0);
   const [rootW, setRootW] = useState(0);
@@ -148,7 +152,7 @@ export function FloorPlan({ floor, siteLabel, statuses, selectedKey, matches, on
   useEffect(() => { if (!compact && frame !== 'all') { setFrame('all'); setZoom(startZoom('all')); } }, [compact, frame]);
 
   useEffect(() => {
-    const el = viewRef.current;
+    const el = portRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
     const root = rootRef.current;
     const observer = new ResizeObserver(entries => {
@@ -173,7 +177,7 @@ export function FloorPlan({ floor, siteLabel, statuses, selectedKey, matches, on
 
   /** Zoom con un punto fijo (px dentro del recuadro). */
   const zoomAt = useCallback((nextScale: number, px: number, py: number, base: Zoom = zoomRef.current) => {
-    const el = viewRef.current;
+    const el = portRef.current;
     if (!el) return;
     const vw = el.clientWidth || 1;
     const vh = el.clientHeight || 1;
@@ -186,14 +190,14 @@ export function FloorPlan({ floor, siteLabel, statuses, selectedKey, matches, on
   }, []);
 
   const zoomBy = (factor: number) => {
-    const el = viewRef.current;
+    const el = portRef.current;
     if (!el) return;
     zoomAt(zoomRef.current.s * factor, el.clientWidth / 2, el.clientHeight / 2);
   };
   const resetZoom = () => setZoom(clampZoom(startZoom(frame), fz));
 
   const panBy = useCallback((dx: number, dy: number, base: Zoom) => {
-    const el = viewRef.current;
+    const el = portRef.current;
     if (!el) return;
     const f = fzRef.current;
     const cw = (el.clientWidth / f) * base.s;
@@ -205,11 +209,12 @@ export function FloorPlan({ floor, siteLabel, statuses, selectedKey, matches, on
   // el zoom de la página (Safari ignora user-scalable=no).
   useEffect(() => {
     const el = viewRef.current;
-    if (!el) return;
+    const port = portRef.current;
+    if (!el || !port) return;
     let mode: 'none' | 'pinch' | 'pan' = 'none';
     let start = { d: 1, mx: 0, my: 0, x: 0, y: 0, zoom: zoomRef.current };
     const local = (touch: Touch) => {
-      const rect = el.getBoundingClientRect();
+      const rect = port.getBoundingClientRect();
       return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
     };
     const onStart = (event: TouchEvent) => {
@@ -248,7 +253,7 @@ export function FloorPlan({ floor, siteLabel, statuses, selectedKey, matches, on
       // Ctrl + rueda (o la pinza del touchpad) acerca el plano, no la página.
       if (!event.ctrlKey) return;
       event.preventDefault();
-      const rect = el.getBoundingClientRect();
+      const rect = port.getBoundingClientRect();
       zoomAt(zoomRef.current.s * (event.deltaY < 0 ? 1.15 : 1 / 1.15), event.clientX - rect.left, event.clientY - rect.top);
     };
     const options: AddEventListenerOptions = { passive: false };
@@ -411,6 +416,7 @@ export function FloorPlan({ floor, siteLabel, statuses, selectedKey, matches, on
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
+        <div className="cls-plan-port" ref={portRef}>
         <div className="cls-plan-stage" style={stageStyle}>
           <svg className="cls-plan-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
             {paths.body && <path className="cls-plan-body" d={paths.body} />}
@@ -422,6 +428,7 @@ export function FloorPlan({ floor, siteLabel, statuses, selectedKey, matches, on
           </svg>
           {labels}
           {roomButtons}
+        </div>
         </div>
       </div>
       <p className={cx('cls-plan-readout', hovered && 'is-live')} aria-live="polite">{readout}</p>

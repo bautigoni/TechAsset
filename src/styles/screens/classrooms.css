@@ -14,6 +14,9 @@
   gap: var(--g-s-4);
   min-width: 0;
   padding: var(--g-s-5) var(--g-s-6) var(--g-s-6);
+  /* clip (no hidden): .view.active recorta en X con overflow hidden, que la vuelve
+     contenedor de scroll y el plano dejaba de seguir a la vista (sticky). */
+  overflow-x: clip;
   color: var(--g-text);
   font-family: var(--g-font);
   font-size: var(--g-fs-base);
@@ -31,7 +34,7 @@
 .cls-text-2 { color: var(--g-text-2); }
 .cls-small { font-size: var(--g-fs-sm); }
 .cls-para { margin: 0; font-size: var(--g-fs-sm); line-height: 1.5; color: var(--g-text); }
-.cls-help { color: var(--g-text-3); font-size: var(--g-fs-xs); line-height: 1.5; min-width: 0; }
+.cls-help { margin: 0; color: var(--g-text-3); font-size: var(--g-fs-xs); line-height: 1.5; min-width: 0; }
 .cls-label { color: var(--g-text-2); font-size: var(--g-fs-xs); font-weight: var(--g-fw-medium); }
 .cls-count { color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); font-weight: var(--g-fw-regular); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cls-h2 { margin: 2px 0 0; font-size: var(--g-fs-lg); line-height: 1.4; font-weight: var(--g-fw-semibold); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -99,7 +102,6 @@
 .cls-sum-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--g-text-2); font-size: var(--g-fs-sm); }
 .cls-sum-num { font-size: var(--g-fs-md); color: var(--g-text-2); }
 .cls-sum-main .cls-sum-num { color: var(--g-text); }
-.cls-sum-clear { align-self: center; }
 
 /* ── Disposición: plano · ficha · lista ────────────────────────────────── */
 
@@ -116,23 +118,24 @@
 .cls-list-card { grid-area: list; display: flex; flex-direction: column; gap: var(--g-s-3); padding: var(--g-s-4); }
 
 /* Ancho: el plano a la izquierda (sigue a la vista mientras se recorre la
-   ficha, así no queda una columna vacía al lado de una ficha larga) y a la
-   derecha la ficha (o el aviso "Elegí un aula") con la lista de aulas debajo.
-   El plano no se mueve al abrir o cerrar la ficha. */
+   ficha o la lista, así no queda una columna vacía al lado) y a la derecha la
+   ficha (o el aviso "Elegí un aula") con la lista de aulas debajo. La tarjeta
+   del plano mide siempre lo que su plano (nunca se estira con un hueco arriba
+   y abajo del dibujo) y no se mueve al abrir o cerrar la ficha. La columna de
+   la derecha cede ancho (hasta 21rem) para que el plano tenga lugar: con 26rem
+   fijos, a 1280 px una planta ancha quedaba chica y sin nombres. */
 @container (min-width: 60rem) {
   .cls-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(21rem, 26rem);
+    grid-template-columns: minmax(0, 1fr) clamp(21rem, 32%, 26rem);
     grid-template-rows: auto 1fr;
     grid-template-areas: "plan side" "plan list";
+    /* El espacio entre la ficha (o el aviso) y la lista va DENTRO de su colapso:
+       plegado, la lista sube hasta arriba de todo, a la par del plano. */
+    row-gap: 0;
   }
+  .cls-side-hint, .cls-side-sheet { padding-bottom: var(--g-s-4); }
   .cls-plan-card { position: sticky; top: var(--g-s-4); align-self: start; }
   .cls-layout .cls-plan { --cls-plan-maxh: min(46rem, calc(100dvh - 16rem), var(--cls-plan-fit, 46rem)); }
-  /* Sin ficha abierta: el plano ocupa el alto de la columna de al lado (la
-     lista se reparte en 1 o 2 columnas para emparejar, ver useBalancedColumns)
-     y se centra en lo que sobra, así no queda un hueco suelto debajo. */
-  .cls-layout.is-idle .cls-plan-card { position: static; align-self: stretch; }
-  .cls-layout.is-idle .cls-plan { flex: 1 1 auto; }
-  .cls-layout.is-idle .cls-plan-view { margin-top: auto; margin-bottom: auto; }
   /* Planta alta con pocas aulas: la lista llega hasta el pie del plano y sus
      filas crecen parejas (botones más altos), en vez de dejar un hueco debajo.
      Cuando la lista es la más alta no cambia nada (la fila de la grilla mide lo que ella). */
@@ -146,7 +149,7 @@
 .cls-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-1) var(--g-s-4); min-width: 0; font-size: var(--g-fs-xs); }
 .cls-legend > * { white-space: nowrap; }
 .cls-legend-item { display: inline-flex; align-items: center; gap: 6px; }
-.cls-legend-dash { width: 12px; height: 10px; border: 1px dashed var(--g-text-3); border-radius: 2px; box-sizing: border-box; }
+.cls-legend-dash { width: 12px; height: 10px; border: 1px dashed var(--g-text-3); border-radius: var(--g-radius-sm); box-sizing: border-box; }
 
 .cls-placeholder { display: flex; flex-direction: column; gap: var(--g-s-2); padding: var(--g-s-2) var(--g-s-3); }
 
@@ -161,8 +164,14 @@
 .cls-plan-zoom-value { min-width: 3.25em; text-align: center; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); font-variant-numeric: tabular-nums; }
 
 .cls-plan-view {
+  /* Margen interior: el contorno de foco (2 px + 1 px de separación) y el de
+     hover de un aula pegada al borde se ven enteros; el plano se dibuja en
+     .cls-plan-port, que es lo que se mide para el zoom y la pinza. */
+  --cls-plan-pad: var(--g-s-1);
   position: relative;
-  width: min(100%, calc(var(--cls-plan-maxh) * var(--cls-ratio)));
+  box-sizing: content-box; /* aspect-ratio = el del plano, sin contar el margen */
+  width: min(100% - 2 * var(--cls-plan-pad), calc(var(--cls-plan-maxh) * var(--cls-ratio)));
+  padding: var(--cls-plan-pad);
   margin: 0 auto;
   overflow: hidden;
   background: var(--g-bg);
@@ -177,6 +186,7 @@
 .cls-plan-view.is-zoomed { touch-action: none; cursor: grab; }
 .cls-plan-view.is-zoomed:active { cursor: grabbing; }
 
+.cls-plan-port { position: absolute; inset: var(--cls-plan-pad); }
 .cls-plan-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .cls-plan-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .cls-plan-svg path { vector-effect: non-scaling-stroke; }
@@ -219,7 +229,7 @@
   overflow: hidden;
   background: var(--g-raised);
   border: 1px solid var(--g-line-strong);
-  border-radius: 3px;
+  border-radius: var(--g-radius-sm);
   color: var(--g-text-2);
   font-family: var(--g-font-mono);
   font-size: var(--g-fs-xs);
@@ -255,7 +265,9 @@
 
 /* ── Lista de aulas ────────────────────────────────────────────────────── */
 
-.cls-list-head { display: flex; align-items: baseline; gap: var(--g-s-2); min-width: 0; }
+/* Alto fijo de un control chico: que aparezca "Quitar filtro" no cambia el alto. */
+.cls-list-head { display: flex; align-items: center; gap: var(--g-s-2); min-width: 0; min-height: var(--ui-control-sm); }
+.cls-list-clear { margin-left: auto; }
 .cls-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); gap: var(--g-s-1) var(--g-s-2); margin: 0; padding: 0; list-style: none; min-width: 0; }
 .cls-list-item {
   display: flex;
@@ -294,10 +306,10 @@
 .cls-sheet > .ui-confirm { margin: var(--g-s-3) var(--g-s-4) 0; }
 .cls-sheet-head { display: flex; align-items: flex-start; gap: var(--g-s-2); padding: var(--g-s-4) var(--g-s-3) 0 var(--g-s-5); min-width: 0; }
 .cls-sheet-title:focus { outline: none; }
-.cls-sheet-title:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: 2px; }
-.cls-sheet-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--g-s-1) var(--g-s-2); padding: var(--g-s-2) var(--g-s-5) 0; min-width: 0; }
+.cls-sheet-title:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: var(--g-radius-sm); }
+.cls-sheet-summary { display: flex; align-items: baseline; gap: var(--g-s-2); padding: var(--g-s-2) var(--g-s-5) 0; min-width: 0; }
 .cls-sheet-state { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.cls-sheet-issues { flex: 1 1 10rem; min-width: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); }
+.cls-sheet-issues { flex: 1 1 0; min-width: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); }
 .cls-sheet-actions { padding: var(--g-s-3) var(--g-s-5) var(--g-s-4); border-bottom: 1px solid var(--g-line); }
 .cls-sheet-status { padding: var(--g-s-3) var(--g-s-4) 0; }
 
@@ -315,11 +327,14 @@
 .cls-eq-name { display: flex; align-items: baseline; gap: var(--g-s-2); min-width: 0; }
 .cls-eq-label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--g-fw-medium); }
 .cls-was { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
-.cls-eq-states { display: flex; }
-.cls-eq-states .ui-seg-item { flex: 1 1 auto; }
+/* Los 5 estados no entran en un renglón de la columna de la ficha: en grilla
+   pareja (mismo ancho y alto, columnas alineadas) en vez de una segunda fila suelta y centrada. */
+.cls-eq-states { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.75rem), 1fr)); }
+.cls-eq-states .ui-seg-item { min-width: 0; }
 
 .cls-savebar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2); padding-top: var(--g-s-1); }
 .cls-savebar-text { flex: 1 1 6rem; min-width: 0; color: var(--g-text-3); font-size: var(--g-fs-sm); }
+.cls-savebar-btns { display: flex; align-items: center; gap: var(--g-s-2); margin-left: auto; }
 .cls-savebar-text.is-dirty { color: var(--g-warn); }
 
 .cls-health { display: flex; flex-direction: column; gap: var(--g-s-3); }
@@ -352,7 +367,6 @@
   .view.active.cls > .ui-collapse { --ui-collapse-gap: var(--g-s-3); }
   .cls-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cls-sum-main { grid-column: 1 / -1; }
-  .cls-sum-clear { grid-column: 1 / -1; justify-self: start; }
   .cls-summary { grid-auto-flow: row dense; }
   .cls-sum { justify-content: space-between; }
   /* Los rótulos largos ocupan la fila entera: nada se corta ni se parte. */

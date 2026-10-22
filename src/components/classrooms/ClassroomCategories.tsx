@@ -1,12 +1,11 @@
 import { useRef, useState, type FormEvent } from 'react';
 import type { ClassroomCategory, ClassroomItemState } from '../../types';
 import { createClassroomCategory, deleteClassroomCategory, reorderClassroomCategories, updateClassroomCategory } from '../../services/classroomsApi';
-import { Button, Checkbox, Collapse, EmptyState, Eyebrow, IconButton, InlineConfirm, Input, StatusLine, cx } from '../../ui';
+import { Button, Checkbox, Collapse, EmptyState, Eyebrow, IconButton, InlineConfirm, Input, StatusSlot, cx, useAnchoredToggle, useStatusLine } from '../../ui';
 import { IconChevronDown, IconChevronUp } from '../../ui/icons';
 import { errorMessage } from '../layout/Feedback';
 import { ITEM_STATES } from './classroomState';
-
-type Notice = { tone: 'ok' | 'bad'; message: string } | null;
+import { useSmoothHeight } from './useSmoothHeight';
 
 /**
  * Administrar categorías de equipamiento EN LÍNEA (antes un modal). Solo para
@@ -17,7 +16,8 @@ type Notice = { tone: 'ok' | 'bad'; message: string } | null;
 export function ClassroomCategories({ categories, consultationMode, onChanged, onClose }: {
   categories: ClassroomCategory[];
   consultationMode: boolean;
-  onChanged: () => Promise<void>;
+  /** Vuelve a pedir las categorías; `before` corre justo antes de pintarlas (para animar el cambio de alto). */
+  onChanged: (before?: () => void) => Promise<void>;
   onClose: () => void;
 }) {
   const rootRef = useRef<HTMLElement | null>(null);
@@ -27,19 +27,23 @@ export function ClassroomCategories({ categories, consultationMode, onChanged, o
   const [deleting, setDeleting] = useState<number | null>(null);
   const [newLabel, setNewLabel] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState<Notice>(null);
+  // Aviso del resultado: entra y sale suave (StatusSlot), nunca empuja de golpe la lista.
+  const notice = useStatusLine();
+  // La lista cambia de alto suave al crear o eliminar, y el control tocado queda quieto.
+  const listBox = useSmoothHeight<HTMLDivElement>();
+  const anchored = useAnchoredToggle();
 
   const run = async (key: string, work: () => Promise<unknown>, ok: string) => {
     if (busy) return;
     setBusy(key);
-    setNotice(null);
+    notice.clear();
     try {
       await work();
-      await onChanged();
-      setNotice({ tone: 'ok', message: ok });
+      await onChanged(() => anchored(() => listBox.smooth()));
+      notice.show({ tone: 'ok', message: ok, autoHideMs: 5000 });
       return true;
     } catch (reason) {
-      setNotice({ tone: 'bad', message: errorMessage(reason, 'No se pudo guardar el cambio de categorías.') });
+      notice.show({ tone: 'bad', message: errorMessage(reason, 'No se pudo guardar el cambio de categorías.') });
       return false;
     } finally {
       setBusy(null);
@@ -89,8 +93,9 @@ export function ClassroomCategories({ categories, consultationMode, onChanged, o
         <Button variant="ghost" onClick={onClose}>Cerrar</Button>
       </div>
 
-      {notice && <StatusLine tone={notice.tone} message={notice.message} onDismiss={() => setNotice(null)} autoHideMs={notice.tone === 'ok' ? 5000 : undefined} />}
+      <StatusSlot status={notice} />
 
+      <div ref={listBox.ref} className="cls-cats-body">
       {categories.length ? (
         <ol className="cls-cats-list">
           {categories.map((category, index) => {
@@ -150,6 +155,7 @@ export function ClassroomCategories({ categories, consultationMode, onChanged, o
       ) : (
         <EmptyState compact title="Todavía no hay categorías." description="Creá la primera: va a aparecer como una fila en la ficha de cada aula." />
       )}
+      </div>
 
       <form className="cls-cats-new" onSubmit={event => void create(event)}>
         <Input

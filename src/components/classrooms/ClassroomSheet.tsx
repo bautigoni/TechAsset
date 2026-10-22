@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import type { Classroom, ClassroomCategory, ClassroomHistoryEntry, ClassroomIncident, ClassroomIncidentSummary, ClassroomItemState, Operator } from '../../types';
 import { fetchClassroom, fetchClassroomHealth, fetchClassroomHistory, fetchClassroomIncidents, generateClassroomHealth, updateClassroom, type ClassroomHealthReport } from '../../services/classroomsApi';
 import { createTicket } from '../../services/ticketsApi';
-import { Button, Checkbox, Collapse, Disclosure, EmptyState, ErrorState, Eyebrow, IconButton, Input, Ring, Segmented, SkeletonText, StatusSlot, StatusText, Textarea, cx, useStatusLine } from '../../ui';
+import { Button, Checkbox, Collapse, Disclosure, EmptyState, ErrorState, Eyebrow, IconButton, Input, Ring, Segmented, SkeletonText, StatusSlot, StatusText, Textarea, TruncatedText, cx, useStatusLine } from '../../ui';
 import { IconX } from '../../ui/icons';
 import { errorMessage } from '../layout/Feedback';
 import { DATE_ONLY, formatDate } from '../../utils/formatters';
@@ -67,6 +67,8 @@ export type ClassroomSheetProps = {
   onClose: () => void;
   onDirtyChange: (dirty: boolean) => void;
   onNavigate?: (view: 'tickets' | 'reminders') => void;
+  /** Se llama justo ANTES de un cambio de alto de la ficha (datos que llegan, diagnóstico, incidentes): la página lo anima. */
+  onGrow?: () => void;
   /** Confirmación de "cambios sin guardar" que manda la página (va arriba de todo). */
   guard?: ReactNode;
 };
@@ -75,7 +77,10 @@ export type ClassroomSheetProps = {
  * Ficha del aula EN LÍNEA (antes el modal ClassroomInfoPanel): columna al lado
  * del plano en desktop, debajo en pantallas angostas. Nada flota.
  */
-export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, consultationMode, categories, onSaved, onClose, onDirtyChange, onNavigate, guard }: ClassroomSheetProps) {
+export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, consultationMode, categories, onSaved, onClose, onDirtyChange, onNavigate, onGrow, guard }: ClassroomSheetProps) {
+  const growRef = useRef(onGrow);
+  growRef.current = onGrow;
+  const grow = useCallback(() => growRef.current?.(), []);
   const rootRef = useRef<HTMLElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const categoriesRef = useRef(categories);
@@ -111,29 +116,37 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
   }, [roomKey, nombre, piso]);
 
   // Carga. Depende SOLO del aula y del reintento: un refresco de categorías
-  // en la página no vuelve a pedir el aula ni pisa el borrador.
+  // en la página no vuelve a pedir el aula ni pisa el borrador. Todo llega en
+  // un solo cambio (aula, historial, incidentes, diagnóstico): la ficha pasa
+  // del esqueleto a su alto final una sola vez y suave, no en cuatro saltos.
   useEffect(() => {
     let cancelled = false;
     setLoadError('');
-    fetchClassroom(roomKey, nombre, piso).then(response => {
+    void Promise.allSettled([
+      fetchClassroom(roomKey, nombre, piso),
+      fetchClassroomHistory(roomKey),
+      fetchClassroomIncidents(roomKey),
+      fetchClassroomHealth(roomKey)
+    ]).then(([room, hist, inc, dx]) => {
       if (cancelled) return;
-      if (!response.ok) { setLoadError('No se pudo cargar el aula.'); return; }
-      const item = normalizeClassroom(response.item, categoriesRef.current);
+      grow();
+      if (hist.status === 'fulfilled' && hist.value.ok) setHistory(hist.value.items);
+      if (inc.status === 'fulfilled') {
+        if (inc.value.ok) {
+          setIncidents(inc.value.items || []);
+          setIncidentSummary(inc.value.summary || EMPTY_SUMMARY);
+        }
+        setIncidentsError('');
+      } else setIncidentsError(errorMessage(inc.reason, 'No se pudieron cargar los incidentes.'));
+      if (dx.status === 'fulfilled' && dx.value.report) setHealth({ report: dx.value.report, generatedAt: dx.value.generatedAt, generatedBy: dx.value.generatedBy });
+      if (room.status === 'rejected') { setLoadError(errorMessage(room.reason, 'No se pudo cargar el aula.')); return; }
+      if (!room.value.ok) { setLoadError('No se pudo cargar el aula.'); return; }
+      const item = normalizeClassroom(room.value.item, categoriesRef.current);
       setClassroom(item);
       setDraft(item);
-    }).catch(reason => { if (!cancelled) setLoadError(errorMessage(reason, 'No se pudo cargar el aula.')); });
-    fetchClassroomHistory(roomKey).then(response => { if (!cancelled && response.ok) setHistory(response.items); }).catch(() => undefined);
-    fetchClassroomIncidents(roomKey).then(response => {
-      if (cancelled || !response.ok) return;
-      setIncidents(response.items || []);
-      setIncidentSummary(response.summary || EMPTY_SUMMARY);
-      setIncidentsError('');
-    }).catch(reason => { if (!cancelled) setIncidentsError(errorMessage(reason, 'No se pudieron cargar los incidentes.')); });
-    fetchClassroomHealth(roomKey).then(response => {
-      if (!cancelled && response.report) setHealth({ report: response.report, generatedAt: response.generatedAt, generatedBy: response.generatedBy });
-    }).catch(() => undefined);
+    });
     return () => { cancelled = true; };
-  }, [roomKey, nombre, piso, attempt]);
+  }, [roomKey, nombre, piso, attempt, grow]);
 
   const changes = useMemo(() => countChanges(classroom, draft), [classroom, draft]);
   const dirty = changes > 0;
@@ -150,13 +163,15 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
   const reloadIncidents = useCallback(async () => {
     try {
       const response = await fetchClassroomIncidents(roomKey);
+      grow();
       setIncidents(response.items || []);
       setIncidentSummary(response.summary || EMPTY_SUMMARY);
       setIncidentsError('');
     } catch (reason) {
+      grow();
       setIncidentsError(errorMessage(reason, 'No se pudieron cargar los incidentes.'));
     }
-  }, [roomKey]);
+  }, [roomKey, grow]);
 
   const reloadHistory = useCallback(async () => {
     try {
@@ -168,7 +183,7 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
   const header = (
     <div className="cls-sheet-head">
       <div className="cls-grow">
-        <Eyebrow>{`Ficha del aula · ${piso} · ${siteCode}`}</Eyebrow>
+        <Eyebrow>{`Ficha del aula · ${piso}`}</Eyebrow>
         <h2 className="cls-h2 cls-sheet-title" ref={headingRef} tabIndex={-1}>{draft?.nombre || nombre}</h2>
       </div>
       <IconButton label="Cerrar ficha (Esc)" icon={<IconX size={18} />} onClick={onClose} />
@@ -186,7 +201,7 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
         {header}
         <div className="cls-sec">
           {loadError
-            ? <ErrorState message={loadError} onRetry={() => setAttempt(value => value + 1)} />
+            ? <ErrorState message={loadError} onRetry={() => { grow(); setAttempt(value => value + 1); }} />
             : <SkeletonText lines={5} />}
         </div>
       </aside>
@@ -260,8 +275,10 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
     setHealthError('');
     try {
       const response = await generateClassroomHealth(roomKey);
+      grow();
       setHealth({ report: response.report, generatedAt: response.generatedAt, generatedBy: response.generatedBy || '' });
     } catch (reason) {
+      grow();
       setHealthError(errorMessage(reason, 'No se pudo generar el análisis.'));
     } finally {
       setHealthBusy(false);
@@ -279,7 +296,8 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
           {estado === 'Con observaciones' && <IconObs size={14} />}
           {estado}
         </StatusText>
-        {issues.length > 0 && <span className="cls-sheet-issues">{issues.join(' · ')}</span>}
+        {/* Siempre un renglón (lo que falla, o nada): cambiar un estado no corre la ficha hacia abajo. */}
+        <TruncatedText className="cls-sheet-issues">{issues.length ? issues.join(' · ') : ' '}</TruncatedText>
       </div>
       <div className="cls-actions cls-sheet-actions">
         <Button variant="secondary" aria-expanded={ticketOpen} disabled={consultationMode} onClick={() => setTicketOpen(open => !open)}>Crear ticket</Button>
@@ -372,8 +390,11 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
           <span className={cx('cls-savebar-text', dirty && 'is-dirty')} aria-live="polite">
             {consultationMode ? 'Modo consulta: no se puede editar.' : dirty ? `${changes} ${changes === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}` : 'Sin cambios'}
           </span>
-          <Button variant="ghost" disabled={!dirty || saving} onClick={() => { setDraft(classroom); status.clear(); }}>Descartar</Button>
-          <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={!dirty || consultationMode} onClick={() => void save()}>Guardar cambios</Button>
+          {/* Los dos botones van juntos: si no entran al lado del texto, bajan juntos a la derecha. */}
+          <span className="cls-savebar-btns">
+            <Button variant="ghost" disabled={!dirty || saving} onClick={() => { setDraft(classroom); status.clear(); }}>Descartar</Button>
+            <Button variant="primary" loading={saving} loadingLabel="Guardando…" disabled={!dirty || consultationMode} onClick={() => void save()}>Guardar cambios</Button>
+          </span>
         </div>
       </Section>
 
@@ -443,7 +464,7 @@ export function ClassroomSheet({ roomKey, nombre, piso, siteCode, operator, cons
                 ))}
               </ol>
               {history.length > historyShown && (
-                <Button size="sm" variant="ghost" onClick={() => setHistoryShown(value => value + HISTORY_PAGE)}>Ver {Math.min(HISTORY_PAGE, history.length - historyShown)} anteriores</Button>
+                <Button size="sm" variant="ghost" onClick={() => { grow(); setHistoryShown(value => value + HISTORY_PAGE); }}>Ver {Math.min(HISTORY_PAGE, history.length - historyShown)} anteriores</Button>
               )}
             </>
           ) : <EmptyState compact title="Sin cambios registrados todavía." />}
@@ -525,7 +546,9 @@ function TicketForm({ nombre, roomKey, issues, onCancel, onCreated }: { nombre: 
       <Segmented<(typeof PRIORITIES)[number]> label="Prioridad" value={prioridad} onChange={setPrioridad} options={PRIORITIES.map(value => ({ value, label: value }))} />
       <Input label="Categoría (opcional)" placeholder="Ej. Hardware" value={categoria} onValueChange={setCategoria} />
       <p className="cls-help">Queda vinculado al aula y aparece en Incidentes y en Tickets.</p>
-      {error && <ErrorState message={error} />}
+      <Collapse open={Boolean(error)} unmountOnClose>
+        <ErrorState message={error || 'No se pudo crear el ticket.'} />
+      </Collapse>
       <div className="cls-actions cls-actions-end">
         <Button variant="ghost" disabled={busy} onClick={onCancel}>Cancelar</Button>
         <Button type="submit" variant="primary" loading={busy} loadingLabel="Creando…">Crear ticket</Button>
