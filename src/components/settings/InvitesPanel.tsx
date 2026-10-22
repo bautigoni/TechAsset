@@ -164,7 +164,7 @@ export function InvitesPanel({ header, readOnly, onChanged }: { header: (actions
         </Collapse>
       </Card>
 
-      <Card title="Invitaciones de la sede" meta={invites ? <span className="cfg-mono">{active} activa{active === 1 ? '' : 's'} · {invites.length} en total</span> : undefined}>
+      <Card title="Invitaciones de la sede" heightKey={invites ? 'listo' : loadError ? 'error' : 'cargando'} meta={invites ? <span className="cfg-mono">{active} activa{active === 1 ? '' : 's'} · {invites.length} en total</span> : undefined}>
         {loadError && <div className="cfg-pad"><ErrorState message={loadError} onRetry={() => void load()} /></div>}
         {!invites && !loadError && <div className="cfg-pad"><SkeletonRows rows={3} /></div>}
         {invites && !invites.length && (

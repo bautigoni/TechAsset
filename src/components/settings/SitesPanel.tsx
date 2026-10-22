@@ -92,7 +92,7 @@ export function SitesPanel({ header, readOnly, siteCode, onSwitchSite, onChanged
         </Card>
       </Collapse>
 
-      <Card ariaLabel="Todas las sedes">
+      <Card ariaLabel="Todas las sedes" heightKey={sites ? 'listo' : loadError ? 'error' : 'cargando'}>
         <div className="cfg-toolbar">
           <span className="cfg-t2 cfg-nowrap">
             <span className="cfg-mono">{sites?.length ?? '–'}</span> sedes · <span className="cfg-mono">{active}</span> activas · <span className="cfg-mono">{sites ? sites.length - active : '–'}</span> inactivas

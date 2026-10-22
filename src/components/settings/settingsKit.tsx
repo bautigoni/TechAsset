@@ -1,7 +1,7 @@
 import { createContext, useId, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Button, Checkbox, Segmented, Select } from '../../ui';
 import { IconCheck } from '../../ui/icons';
-import { Reveal } from './Reveal';
+import { Reveal, useSmoothHeight } from './Reveal';
 import { cx } from '../../ui/util';
 import { ApiError } from '../../services/apiClient';
 
@@ -25,7 +25,7 @@ export function errorText(reason: unknown, fallback: string) {
 
 /* ── Card, filas de ajuste y pie con estado ───────────────────────────────── */
 
-export function Card({ title, meta, actions, children, className, labelledBy, ariaLabel }: {
+export function Card({ title, meta, actions, children, className, labelledBy, ariaLabel, heightKey }: {
   title?: ReactNode;
   meta?: ReactNode;
   actions?: ReactNode;
@@ -33,10 +33,16 @@ export function Card({ title, meta, actions, children, className, labelledBy, ar
   className?: string;
   labelledBy?: string;
   ariaLabel?: string;
+  /**
+   * Cuando cambia (p. ej. de cargando a cargado), la tarjeta pasa de su alto
+   * al nuevo con transición en vez de saltar.
+   */
+  heightKey?: unknown;
 }) {
   const headId = `cfg-h${useId().replace(/:/g, '')}`;
+  const smooth = useSmoothHeight<HTMLElement>(heightKey);
   return (
-    <section className={cx('cfg-card', className)} aria-labelledby={title ? labelledBy || headId : undefined} aria-label={title ? undefined : ariaLabel}>
+    <section ref={heightKey === undefined ? undefined : smooth} className={cx('cfg-card', className)} aria-labelledby={title ? labelledBy || headId : undefined} aria-label={title ? undefined : ariaLabel}>
       {(title || meta || actions) && (
         <div className="cfg-card-h">
           {title && <h3 id={labelledBy || headId} className="cfg-card-t">{title}</h3>}

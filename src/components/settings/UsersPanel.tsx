@@ -238,7 +238,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
   const openNew = () => { setEditing(current => (current === 'new' ? null : 'new')); setConfirmDelete(0); };
 
   const listCard = (
-    <Card ariaLabel="Usuarios permitidos" className="cfg-users">
+    <Card ariaLabel="Usuarios permitidos" className="cfg-users" heightKey={users === null ? (loadError ? 'error' : 'cargando') : 'listo'}>
       <div className="cfg-toolbar">
         <Segmented
           ariaLabel="Filtrar por estado"
@@ -425,7 +425,8 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
     <>
       {header(<Button variant="primary" icon={<Plus size={15} aria-hidden="true" />} disabled={readOnly} aria-expanded={editing === 'new'} aria-controls="cfg-user-new" onClick={openNew}>Nuevo usuario</Button>)}
       {listCard}
-      {tenantInvites && (
+      {/* Elegir una sede en el filtro muestra sus invitaciones con transición de alto. */}
+      <Reveal when={tenantInvites}>{tenantInvites && (
         <Card title={`Invitaciones de ${siteFilter}`} meta={<span className="cfg-mono">{tenantInvites.length > 12 ? `12 de ${tenantInvites.length}` : tenantInvites.length}</span>}>
           {tenantInvites.length ? (
             <div className="cfg-table cfg-tinv" role="table" aria-label={`Invitaciones de ${siteFilter}`}>
@@ -442,7 +443,7 @@ export function UsersPanel({ header, readOnly, siteCode, superadmin, sites: sess
           ) : <div className="cfg-pad"><EmptyState compact icon={<MailPlus size={18} aria-hidden="true" />} title="Esta sede no tiene invitaciones." /></div>}
           <CardFoot status="Para reenviar o revocar, entrá a la sede y abrí Invitaciones." tone="muted" />
         </Card>
-      )}
+      )}</Reveal>
     </>
   );
 }

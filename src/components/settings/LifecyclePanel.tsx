@@ -64,7 +64,7 @@ export function LifecyclePanel({ header, readOnly, siteCode }: { header: (action
   return (
     <>
       {header()}
-      <Card ariaLabel="Vida útil por clase">
+      <Card ariaLabel="Vida útil por clase" heightKey={Boolean(rows)}>
         {restored && dirtyClasses.length > 0 && <Notice tone="warn">Recuperamos cambios que no habías guardado.</Notice>}
         {!rows ? <div className="cfg-pad"><SkeletonRows rows={6} /></div> : !rows.length ? (
           <div className="cfg-pad"><EmptyState compact icon={<CalendarClock size={18} aria-hidden="true" />} title="No hay clases de activo cargadas." description="Aparecen cuando el inventario tiene equipos con clase." /></div>

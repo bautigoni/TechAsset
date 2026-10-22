@@ -198,7 +198,7 @@ export function RolesPanel({ header, readOnly, siteCode, onChanged }: { header: 
           <span><span className="is-warn">{missing.length === 1 ? '1 rol en uso no está' : `${missing.length} roles en uso no están`} en esta lista:</span> {missing.map(([name, n]) => `${name} (${n})`).join(', ')}. Se resuelven por nombre hasta que los agregues acá con el mismo nombre.</span>
         </Notice>
       )}
-      <Card ariaLabel="Roles de la sede">
+      <Card ariaLabel="Roles de la sede" heightKey={Boolean(roles)}>
         {restored && changed && <Notice tone="warn">Recuperamos cambios que no habías guardado.</Notice>}
         {!roles ? <div className="cfg-pad"><SkeletonRows rows={3} /></div> : roles.map(role => {
           const isOpen = open === role.uid;

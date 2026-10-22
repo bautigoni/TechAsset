@@ -66,7 +66,7 @@ export function ShiftsPanel({ header, readOnly, siteCode }: { header: (actions?:
   return (
     <>
       {header()}
-      <Card ariaLabel="Turnos TIC">
+      <Card ariaLabel="Turnos TIC" heightKey={Boolean(server)}>
         {restored && changed && <Notice tone="warn">Recuperamos cambios que no habías guardado.</Notice>}
         <CardBody>
           {!server ? <SkeletonRows rows={2} /> : (

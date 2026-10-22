@@ -137,7 +137,7 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
   return (
     <>
       {header()}
-      <Card title="Diagnóstico de inventario" actions={<Button size="sm" variant="secondary" icon={<RefreshCw size={14} aria-hidden="true" />} loading={diagBusy} loadingLabel="Corriendo…" onClick={() => void runDiag()}>Correr de nuevo</Button>}>
+      <Card title="Diagnóstico de inventario" heightKey={diag ? 'listo' : diagError ? 'error' : 'cargando'} actions={<Button size="sm" variant="secondary" icon={<RefreshCw size={14} aria-hidden="true" />} loading={diagBusy} loadingLabel="Corriendo…" onClick={() => void runDiag()}>Correr de nuevo</Button>}>
         <CardBody>
           <Reveal when={diagError}>{diagError && <ErrorState message={diagError} onRetry={() => void runDiag()} retrying={diagBusy} />}</Reveal>
           {!diag && !diagError && <SkeletonRows rows={2} />}
@@ -156,6 +156,7 @@ export function AdvancedPanel({ header, readOnly, onChanged }: { header: (action
 
       <Card
         title="Configuración de la sede, clave por clave"
+        heightKey={settings ? 'listo' : loadError ? 'error' : 'cargando'}
         meta={settings ? <span className="cfg-mono">{keys.length} claves</span> : undefined}
         actions={<Button size="sm" variant="ghost" disabled={readOnly || !settings} aria-expanded={adding} aria-controls="cfg-adv-new" onClick={() => setAdding(value => !value)}>Agregar clave</Button>}
       >

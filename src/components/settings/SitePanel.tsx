@@ -30,7 +30,7 @@ export function SitePanel({ header, readOnly, siteCode, site: sessionSite, super
     <>
       {header()}
       {loadError && !site && <ErrorState message={loadError} onRetry={load} />}
-      <Card title="Datos de la sede" meta={<span className="cfg-mono">{siteCode}</span>}>
+      <Card title="Datos de la sede" heightKey={Boolean(site)} meta={<span className="cfg-mono">{siteCode}</span>}>
         <CardBody>
           {!site ? <SkeletonRows rows={5} /> : (
             <SiteForm

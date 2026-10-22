@@ -154,7 +154,7 @@ export function ModulesPanel({ header, readOnly, siteCode, onChanged }: { header
   return (
     <>
       {header()}
-      <Card title="Orden del menú" meta={draft ? <span className="cfg-mono">{draft.enabled.length} de {TOGGLEABLE_MODULES.length} prendidos</span> : undefined}>
+      <Card title="Orden del menú" heightKey={Boolean(draft)} meta={draft ? <span className="cfg-mono">{draft.enabled.length} de {TOGGLEABLE_MODULES.length} prendidos</span> : undefined}>
         {restored && changes > 0 && <Notice tone="warn">Recuperamos cambios que no habías guardado.</Notice>}
         {!draft ? <div className="cfg-pad"><SkeletonRows rows={6} /></div> : (
           <div className={cx('cfg-mods', dragging && 'is-dragging')} ref={listRef} role="list" aria-label="Módulos en el orden del menú">

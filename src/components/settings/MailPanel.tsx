@@ -115,7 +115,7 @@ export function MailPanel({ header, readOnly }: { header: (actions?: ReactNode) 
     <>
       {header()}
       <MailStatusLine context="smtp" refreshKey={refresh} />
-      <Card title="Servidor de salida" meta="Global · todas las sedes">
+      <Card title="Servidor de salida" heightKey={Boolean(draft)} meta="Global · todas las sedes">
         {restored && changed && <Notice tone="warn">Recuperamos cambios que no habías guardado (la contraseña no se recuerda).</Notice>}
         <button type="button" className="cfg-acc-h is-plain" aria-expanded={help} aria-controls="cfg-smtp-help" onClick={() => setHelp(value => !value)}>
           <span className="cfg-strong">Cómo completar esta configuración</span>
