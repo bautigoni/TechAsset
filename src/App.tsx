@@ -271,7 +271,7 @@ export function App() {
   }, [activeSite, view, user, devicePage, publicPage]);
 
   // Privacidad: se abre desde la landing, el ingreso o Configuración › Cuenta
-  // (openPublicPage empuja /privacidad) y Atrás/Adelante la recorren, con o sin sesión.
+  // (openPrivacy empuja /privacidad) y Atrás/Adelante la recorren, con o sin sesión.
   const userRef = useRef(user);
   userRef.current = user;
   useEffect(() => {
