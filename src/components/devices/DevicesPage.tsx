@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import type { Device, ViewKey } from '../../types';
 import {
   Button, Collapse, EmptyState, IconButton, InlineConfirm, Input, Kbd, SectionHeader, Segmented, SelectionHeader, SkeletonRows, StatusText, Table, TruncatedText,
@@ -463,7 +463,12 @@ export function DevicesPage(props: DevicesPageProps) {
 
   const stateTitle = STATE_FILTERS.find(item => item.value === stateFilter)?.title || 'Todos los equipos';
   const listTitle = typeFilter === 'all' ? stateTitle : `${stateTitle} · ${typeFilter}`;
-  const togglePanel = (next: Exclude<Panel, null>) => { setPanel(current => (current === next ? null : next)); setCreating(false); };
+  // Abrir un panel re-dibuja toda la página (la tabla de equipos): como
+  // transición, React reparte ese trabajo en cuadros ANTES de confirmar, y el
+  // colapso empieza a crecer recién en un cuadro liviano. Si no, con la
+  // máquina cargada el render se comía los 250 ms de la apertura y el panel
+  // aparecía entero en el primer cuadro ("de golpe").
+  const togglePanel = (next: Exclude<Panel, null>) => startTransition(() => { setPanel(current => (current === next ? null : next)); setCreating(false); });
   const closePanel = (which: Exclude<Panel, null> | 'create') => {
     if (which === 'create') setCreating(false);
     else setPanel(null);
@@ -502,10 +507,10 @@ export function DevicesPage(props: DevicesPageProps) {
         <ExportPanel visible={visible} siteCode={props.siteCode || ''} onClose={() => closePanel('export')} />
       </Collapse>
       <Collapse open={panel === 'groups'} id="dv-panel-groups" outerClassName="dv-fold">
-        <DeviceGroupsPanel devices={allDevices} consultationMode={consultationMode} onOpenDevice={tag => openInList(tag)} onCount={groups => setCounts(current => ({ ...current, groups }))} onClose={() => closePanel('groups')} />
+        <DeviceGroupsPanel devices={allDevices} consultationMode={consultationMode} onOpenDevice={tag => openInList(tag)} onCount={groups => setCounts(current => (current.groups === groups ? current : { ...current, groups }))} onClose={() => closePanel('groups')} />
       </Collapse>
       <Collapse open={panel === 'trash'} id="dv-panel-trash" outerClassName="dv-fold" unmountOnClose>
-        <DeviceTrashPanel consultationMode={consultationMode} onRestored={refresh} onCount={trash => setCounts(current => ({ ...current, trash }))} onClose={() => closePanel('trash')} />
+        <DeviceTrashPanel consultationMode={consultationMode} onRestored={refresh} onCount={trash => setCounts(current => (current.trash === trash ? current : { ...current, trash }))} onClose={() => closePanel('trash')} />
       </Collapse>
 
       <div className="dv-filters">
