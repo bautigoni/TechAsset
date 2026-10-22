@@ -592,9 +592,11 @@
   .an-card, .an-stack { grid-column: span var(--an-span-mid, 12); }
   .an-stack > .an-card { grid-column: auto; }
   .an-heatcard { grid-template-columns: minmax(0, 1fr); }
-  /* Apilado: el divisor entre el mapa y las franjas no suma dos rellenos enteros (no queda una franja vacía). */
-  .an-heat-main { padding-bottom: var(--g-s-4); }
-  .an-heat-aside { padding-top: var(--g-s-4); border-top: 1px solid var(--g-line); border-left: 0; }
+  /* Apilado: el divisor entre el mapa y las franjas no suma dos rellenos enteros (no queda una franja vacía).
+     El renglón de lectura reserva dos líneas (no salta al pasar por las celdas): cuando entra en una,
+     la de reserva + los rellenos del divisor quedan en el ritmo de la tarjeta (gap s-3), no en una franja. */
+  .an-heat-main { padding-bottom: var(--g-s-3); }
+  .an-heat-aside { padding-top: var(--g-s-3); border-top: 1px solid var(--g-line); border-left: 0; }
   .an-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); column-gap: var(--g-s-4); }
 }
 
