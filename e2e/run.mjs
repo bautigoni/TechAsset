@@ -37,6 +37,7 @@ import { inicioTests } from './tests/inicio.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
 import { operacionTests } from './tests/operacion.mjs';
 import { prestamosUxTests } from './tests/prestamosUx.mjs';
+import { qaBTests } from './tests/qa-b.mjs';
 import { barridoOperacionTests } from './tests/barridoOperacion.mjs';
 import { uxRecursosTests } from './tests/uxRecursos.mjs';
 import { layoutTests, mobileTests, WIDTHS } from './tests/baseline.mjs';
@@ -147,6 +148,8 @@ try {
   await operacionTests(ctx);
   console.log('\nPréstamos: revisión UX (pux)');
   await prestamosUxTests(ctx);
+  console.log('\nQA de lanzamiento, frente B: Préstamos y errores de red (qab)');
+  await qaBTests(ctx);
   console.log('\nBarrido UX: agenda, horarios, aulas, recordatorios, tareas, tickets y sugerencias (bxo)');
   barridoOperacion = await barridoOperacionTests(ctx);
   await uxRecursosTests(ctx);
