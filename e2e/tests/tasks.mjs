@@ -55,7 +55,7 @@ export async function tasksTests({ browser, base, api, apiConsulta, admin, consu
 
   await test('e', 'Tareas', 'Alta en línea con el "+" (prioridad, sin modal)', async () => {
     await openBoard(page, base);
-    await gooey(page, 'Nueva tarea de equipo');
+    await gooey(page, 'Nueva tarea del grupo');
     await page.waitForSelector('form.tk-form', { timeout: 5000 });
     assert(!(await page.$('.modal, [role="dialog"]')), 'apareció un modal');
     await typeIn(page, 'form.tk-form input[placeholder^="Ej. Revisar"]', title);
@@ -302,6 +302,8 @@ async function tasksUxTests({ browser, base, api, admin, releaseVersion, test, t
         const all = [...bar.tabs, ...bar.plus, ...bar.search];
         if (Math.max(...all) - Math.min(...all) > 1) issues.push(`${width}: barra ${JSON.stringify(bar)}`);
         for (const row of await page.evaluate(unevenRows, '.tk-screen')) issues.push(`${width} tablero: ${row}`);
+        // La casilla de selección aparece al pasar el mouse por la tarjeta (QA de lanzamiento, frente E).
+        await page.hover('.tk-card .tk-card-title');
         await page.click('.tk-card .tk-card-check');
         await page.waitForSelector('.tk-selbar');
         await sleep(300);
@@ -347,11 +349,11 @@ async function tasksUxTests({ browser, base, api, admin, releaseVersion, test, t
       return `campo de ${h} px, sin franjas vacías`;
     });
 
-    await test('tk-ux', 'Tareas', 'Equipo ↔ Mis tareas y Tablero ↔ Prioridad: el tablero cambia de alto suave y el segmentado no se mueve', async () => {
+    await test('tk-ux', 'Tareas', 'Grupo ↔ Mis tareas y Tablero ↔ Prioridad: el tablero cambia de alto suave y el segmentado no se mueve', async () => {
       await openTasksAt(page, base, 1440);
       const probe = `() => [document.querySelector('.tk-screen').getBoundingClientRect().height, document.querySelector('.tk-toolbar .tk-tabs[aria-label="Espacio de tareas"]').getBoundingClientRect().top]`;
       const out = [];
-      for (const [label, rx] of [['Mis tareas', /^Mis tareas/], ['Equipo', /^Equipo/], ['Prioridad', /^Prioridad$/], ['Tablero', /^Tablero$/]]) {
+      for (const [label, rx] of [['Mis tareas', /^Mis tareas/], ['Grupo', /^Grupo/], ['Prioridad', /^Prioridad$/], ['Tablero', /^Tablero$/]]) {
         const frames = await sampleFrames(page, probe, () => press(page, rx, '.tk-toolbar'));
         const heights = smoothness(frames.map(frame => frame?.[0]));
         const tops = frames.map(frame => frame?.[1]).filter(value => typeof value === 'number');
@@ -451,7 +453,9 @@ async function tasksUxTests({ browser, base, api, admin, releaseVersion, test, t
 
     await test('tk-ux', 'Tareas', 'Barra de selección en mobile: Borrar ↔ confirmación cambia de alto suave', async () => {
       await openTasksAt(page, base, 390, 800);
-      await page.click('.tk-card .tk-card-check');
+      // En el celu se elige con «Elegir» y tocando la tarjeta (la casilla no se ve en reposo).
+      await press(page, /^Elegir$/, '.tk-board-head');
+      await page.click('.tk-card .tk-card-meta');
       await page.waitForSelector('.tk-selbar');
       await sleep(400);
       const probe = `() => document.querySelector('.tk-selbar').getBoundingClientRect().height`;
@@ -507,7 +511,7 @@ async function tasksUxTests({ browser, base, api, admin, releaseVersion, test, t
       const states = {
         tablero: async () => {},
         prioridad: async () => { await press(page, /^Prioridad$/, '.tk-toolbar'); await sleep(500); },
-        alta: async () => { await gooey(page, 'Nueva tarea de equipo'); await sleep(400); },
+        alta: async () => { await gooey(page, 'Nueva tarea del grupo'); await sleep(400); },
         columna: async () => { await gooey(page, 'Nueva columna'); await sleep(400); },
         editarColumna: async () => { await page.click('.tk-lane .tk-lane-edit'); await sleep(400); await press(page, /^Eliminar columna$/, '.tk-col-edit'); await sleep(400); }
       };
