@@ -45,11 +45,138 @@ Sin revertidos en esta pasada: los cambios que se descartaron antes de escribir 
 
 ## Búsqueda rápida de personas (DIRECTIVA §6) — validación final
 
-PENDIENTE_PEOPLE
+Herramienta nueva: `node perf/people-check.mjs --repo=<checkout>` (salida en `perf/.out/people-check.json`). Base: el snapshot, con las dos sedes como «muchos registros» (NFPT: 349 personas distintas en el directorio, 2.602 préstamos) y «pocos» (NFND: 140 personas, 317 préstamos). Navegador con CPU 4× y red 40 ms / 10 / 5 Mbps; **máquina con carga de fondo** (7–12 núcleos ocupados de 12). Los términos salen de los datos de cada sede (el nombre más repetido, mitad de una palabra, un apellido, nombre + apellido en los dos órdenes, mayúsculas, con y sin tilde, sin resultados). Se tipea letra por letra (110 ms entre teclas, como una persona) y se mide desde el evento `input` de la última tecla hasta el frame pintado con la sugerencia esperada.
+
+**API** (Node, 15 ms por consulta como Supabase; mismo resultado en las dos sedes):
+
+- `GET /api/loans/people`: NFPT 56,4 KB (≈ 10 KB gzip) · 9,1 / 151,4 ms (mediana / p95, n = 15) · con `If-None-Match` → **304**. NFND 23,1 KB · 15 / 41,8 ms.
+- `GET /api/loans/suggest` (respaldo del front): en los 20 casos (10 por sede) **cada resultado contiene todas las palabras tipeadas sin importar mayúsculas ni tildes, 0 repetidos** (la misma persona escrita de dos formas sale una vez), y la lista es **idéntica, en orden, a la regla del front** (`searchPeople`, copiada en el script). 3,0–18,2 ms por pedido.
+- **Permisos de sede:** sin sesión → **401**; un Asistente de NFPT pidiendo el directorio o sugerencias de NFND → **403**; su sede → 200.
+
+**Navegador, NFPT (muchos registros), n = 3:**
+
+| 3 letras (nombre repetido) | `mic` | 8 | 107.8 / 178 | 0 | 573 ms | 264 ms | 3/3 |
+| nombre repetido completo | `micaela` | 8 | 53.7 / 76.9 | 0 | 660 ms | 208 ms | 3/3 |
+| parcial (mitad de palabra) | `cael` | 8 | 44.3 / 303.4 | 0 | 682 ms | 312 ms | 3/3 |
+| apellido solo | `sosa` | 8 | 88.9 / 89 | 0 | 609 ms | 384 ms | 3/3 |
+| nombre + apellido | `micaela sos` | 1 | 40.2 / 47.8 | 0 | 947 ms | 400 ms | 3/3 |
+| apellido + nombre | `sosa mic` | 1 | 65.2 / 67.1 | 0 | 550 ms | 256 ms | 3/3 |
+| MAYÚSCULAS | `MICA` | 8 | 46.9 / 65.5 | 0 | 268 ms | 232 ms | 3/3 |
+| con tilde | `agustí` | 6 | 55.6 / 138 | 0 | 853 ms | 344 ms | 3/3 |
+| sin tilde | `agusti` | 6 | 73.9 / 98.8 | 0 | 469 ms | 240 ms | 3/3 |
+| sin resultados | `zqx` | 0 | — (nada que mostrar) | 0 | 661 ms | 248 ms | 3/3 |
+| 3 letras (nombre repetido) | `lor` | 8 | 121.9 / 326.4 | 0 | 196 ms | 152 ms | 3/3 |
+| nombre repetido completo | `lorena` | 7 | 78.4 / 105.1 | 0 | 452 ms | 232 ms | 3/3 |
+| parcial (mitad de palabra) | `cael` | 6 | 81.1 / 258.6 | 0 | 265 ms | 200 ms | 3/3 |
+| apellido solo | `marti` | 8 | 179.9 / 180.4 | 0 | 124 ms | 168 ms | 3/3 |
+| nombre + apellido | `lorena mar` | 1 | 43 / 110 | 0 | 296 ms | 304 ms | 3/3 |
+| apellido + nombre | `mart lor` | 1 | 44.9 / 97.9 | 0 | 336 ms | 168 ms | 3/3 |
+| MAYÚSCULAS | `LORE` | 8 | 71.4 / 100.1 | 0 | 283 ms | 304 ms | 3/3 |
+| con tilde | `pére` | 2 | 123.3 / 166 | 0 | 364 ms | 216 ms | 3/3 |
+| sin tilde | `pere` | 2 | 58.9 / 97 | 0 | 455 ms | 224 ms | 3/3 |
+| sin resultados | `zqx` | 0 | — (nada que mostrar) | 0 | 382 ms | 264 ms | 3/3 |
+
+**Navegador, NFND (pocos registros), n = 3:**
+
+| 3 letras (nombre repetido) | `lor` | 8 | 121.9 / 326.4 | 0 | 196 ms | 152 ms | 3/3 |
+| nombre repetido completo | `lorena` | 7 | 78.4 / 105.1 | 0 | 452 ms | 232 ms | 3/3 |
+| parcial (mitad de palabra) | `cael` | 6 | 81.1 / 258.6 | 0 | 265 ms | 200 ms | 3/3 |
+| apellido solo | `marti` | 8 | 179.9 / 180.4 | 0 | 124 ms | 168 ms | 3/3 |
+| nombre + apellido | `lorena mar` | 1 | 43 / 110 | 0 | 296 ms | 304 ms | 3/3 |
+| apellido + nombre | `mart lor` | 1 | 44.9 / 97.9 | 0 | 336 ms | 168 ms | 3/3 |
+| MAYÚSCULAS | `LORE` | 8 | 71.4 / 100.1 | 0 | 283 ms | 304 ms | 3/3 |
+| con tilde | `pére` | 2 | 123.3 / 166 | 0 | 364 ms | 216 ms | 3/3 |
+| sin tilde | `pere` | 2 | 58.9 / 97 | 0 | 455 ms | 224 ms | 3/3 |
+| sin resultados | `zqx` | 0 | — (nada que mostrar) | 0 | 382 ms | 264 ms | 3/3 |
+
+(«última tecla → sugerencias» en ms, mediana / p95; «pedidos /api al tipear»: pedidos a `/api/loans/*` mientras se tipeaba —el directorio ya estaba bajado—; «tareas largas»: suma de tareas ≥ 50 ms del hilo principal en la ventana del tipeo, incluye los polls de fondo; «peor tecla»: la peor duración de un evento de teclado según Event Timing; «lista correcta»: la lista mostrada contiene exactamente lo que da la regla —para «sin resultados», que no se muestre nada.)
+
+**Respuestas viejas que no pisan a las nuevas:** con el directorio caído (pedido abortado a propósito) la app usa `/api/loans/suggest` con debounce; la respuesta del primer término (`mic`) se demoró 900 ms y la del segundo (`sosa`) no. Resultado: el campo dice «sosa», se ven **8 sugerencias y todas son del último término**. Con el directorio (el camino normal) no hay pedidos al tipear, así que no hay respuestas que puedan llegar tarde.
+
+**Veredicto §6:** sugerencias en **40–180 ms de mediana** desde la última tecla en los 20 casos, sin pedidos de red al tipear, listas correctas 60/60, tolerante a mayúsculas y tildes, nombres/apellidos/combinaciones, nombres repetidos, sin resultados, respuestas viejas descartadas y permisos de sede aplicados en el server. **Objetivo < 200 ms: cumplido en las medianas**; el p95 (n = 3, es decir el peor de 3) superó 200 ms en 3 de 18 casos con resultados: `cael` 303 ms en NFPT, `lor` 326 y `cael` 259 en NFND, con la máquina saturada por otros procesos (no se aisló si coincidieron con un poll de fondo). Sin cambios de código en esta pasada (lo de la pasada 1 sigue vigente).
 
 ## Barrido de los 5 ejes en las pantallas que no se habían mirado
 
-PENDIENTE_SWEEP
+Herramientas nuevas: `node perf/sweep.mjs --repo=<checkout>` (navegador, CPU 4×, red 40 ms / 10 / 5 Mbps, 15 ms por consulta; prende Conocimiento, Recordatorios y Canvas en la copia de la base) y `perf/pg-endpoints.mjs` (Postgres 17 real con el volumen del snapshot y `pg_stat_statements`). n = 2 corridas del barrido; **máquina con carga de fondo**: los ms son indicativos, los conteos (commits, pedidos, consultas, archivos) no dependen de la carga.
+
+**Navegador** (cada pantalla abierta desde el menú con la app ya cargada en el Inicio; «tipeo»: 3 letras en el primer campo de texto de la pantalla, 90 ms entre teclas, ms hasta la pantalla quieta contando desde la primera tecla; «reposo»: 20 s quieta, escalado a 1 min):
+
+| Pantalla | Abrir (ms, med) | Commits al abrir | Pedidos al abrir | Consultas | JS nuevo 1ª vez (archivos / KB) | Tipeo 3 letras: ms · commits · pedidos | Reposo: pedidos/min · commits/min · consultas/min |
+| --- | ---: | ---: | --- | ---: | ---: | --- | --- |
+| agenda | 343 | 2 | 2: /api/devices, /api/movements | 1 | 0 / 0 | sin campo | 15 · 0 · 21 |
+| tickets | 268.2 | 6 | 6: /api/tickets, /api/ticket-templates, /api/classrooms, /api/site-assistants, /api/site-settings, /api/tools/config | 6 | 0 / 0 | 300 · 6 · 0 (Buscar tickets) | 21 · 0 · 33 |
+| classrooms | 204.2 | 3 | 2: /api/classrooms, /api/classroom-categories | 3 | 0 / 0 | sin campo | 6 · 0 · 12 |
+| inventory | 182.9 | 4 | 1: /api/inventory/items | 2 | 0 / 0 | 445 · 6 · 0 (Nombre, etiqueta, modelo… (touch 34, D14) | 9 · 0 · 15 |
+| settings | 240.8 | 4 | 3: /api/allowed-users, /api/invites, /api/site-settings | 5 | 0 / 0 | sin campo | 15 · 0 · 21 |
+| knowledge | 146.1 | 5 | 1: /api/knowledge/articles, /api/devices, /api/movements | 3 | 0 / 0 | 635.5 · 10 · 1 (Buscar en la base de conocimiento) | 15 · 0 · 21 |
+| reminders | 81 | 3 | 1: /api/reminders | 1 | 0 / 0 | sin campo | 6 · 0 · 15 |
+| canvas | 187.9 | 3 | 3: /api/canvas/items, /api/canvas/version, /api/tasks | 2 | 0 / 0 | sin campo | 6 · 0 · 6 |
+| schedules | 140.1 | 5 | 2: /api/teacher-schedules, /api/recess-schedules | 2 | 1 / 8.4 | 226.7 · 3 · 0 (Buscar por docente, curso, materia, aula) | 21 · 0 · 24 |
+| tools | 176.9 | 5 | 1: /api/tools/config | 1 | 0 / 0 | sin campo | 15 · 0 · 24 |
+| quickaccess | 349.6 | 5 | 2: /api/quick-links, /api/tools/config, /api/devices, /api/movements | 2 | 0 / 0 | 283 · 5 · 0 (Filtrar accesos) | 15 · 0 · 21 |
+| pettycash | 141.5 | 3 | 1: /api/petty-cash | 4 | 0 / 0 | sin campo | 6 · 0 · 3 |
+| suggestions | 113.1 | 3 | 1: /api/suggestions | 4 | 0 / 0 | sin campo | 0 · 0 · 0 |
+
+Lectura por eje:
+
+1. **Renders:** 2 a 6 commits de React al abrir cualquier pantalla y **0 commits por minuto en reposo en las 13** (los polls con ETag/304 no re-renderizan). Al tipear, 1 a 2 commits por tecla (el valor y el filtro; Conocimiento suma el estado de carga de su búsqueda en el server: 10 en 3 letras). Sin renders de más que corregir.
+2. **Bundle:** al abrir por primera vez **no se baja JS nuevo** en 12 de 13 pantallas (la precarga en idle de la pasada 1 ya las trajo); Horarios baja un sub-chunk de 8,4 KB. Ninguna imagen ni fuente nueva al abrir.
+3. **Requests:** 1 a 3 pedidos al abrir, salvo Tickets (6: lista, plantillas y los auxiliares de los formularios —aulas, asistentes, ajustes de la sede, config de herramientas—, que salen después de la lista y no la demoran). En reposo 0 a 21 pedidos/min: son los polls globales (equipos, movimientos, notificaciones, tareas) con ETag/304; Sugerencias quieta: 0.
+4. **Queries:** 1 a 7 consultas al abrir cada pantalla en SQLite. En **Postgres con el volumen del snapshot** (2 pedidos por endpoint: frío y con las cachés del server calientes):
+
+| Endpoint | Estado | Consultas (frío / caliente) | Ejecución en PG ms (frío / caliente) | Respuesta ms (frío / caliente) | KB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `/api/auth/session` | 200 | 3 / 0 | 0.2 / 0 | 33 / 5 | 0.5 |
+| `/api/site-settings` | 200 | 1 / 1 | 0.1 / 0.1 | 43 / 28 | 1.6 |
+| `/api/devices` | 200 | 7 / 0 | 2.5 / 0 | 252 / 112 | 310.9 |
+| `/api/movements` | 200 | 1 / 1 | 15.6 / 7.5 | 65 / 37 | 16.4 |
+| `/api/agenda` | 200 | 1 / 1 | 1.3 / 1.6 | 53 / 46 | 57.3 |
+| `/api/tasks?space=all` | 200 | 5 / 0 | 2 / 0 | 92 / 20 | 159 |
+| `/api/notifications` | 200 | 1 / 1 | 0.3 / 0.3 | 22 / 25 | 4.9 |
+| `/api/user/prefs` | 200 | 1 / 1 | 0 / 0 | 27 / 26 | 0 |
+| `/api/release-notes/latest` | 200 | 1 / 1 | 0.1 / 0.1 | 27 / 14 | 0 |
+| `/api/internal-notes?filter=active` | 200 | 1 / 1 | 0.1 / 0.1 | 74 / 13 | 0 |
+| `/api/quick-links` | 200 | 1 / 1 | 0.1 / 0.1 | 18 / 11 | 2.4 |
+| `/api/tools/config` | 200 | 1 / 1 | 0 / 0 | 30 / 12 | 0.2 |
+| `/api/recess-schedules` | 200 | 1 / 1 | 0.1 / 0.1 | 122 / 88 | 0.1 |
+| `/api/settings/shifts` | 200 | 1 / 1 | 0.1 / 0.1 | 30 / 27 | 0.1 |
+| `/api/tickets` | 200 | 1 / 1 | 2.5 / 2.5 | 98 / 63 | 135.5 |
+| `/api/ticket-templates` | 200 | 1 / 1 | 0.1 / 0.1 | 10 / 18 | 0 |
+| `/api/classrooms` | 200 | 9 / 1 | 1 / 0.5 | 141 / 25 | 21.4 |
+| `/api/classrooms/summary` | 200 | 1 / 1 | 0.3 / 0.4 | 25 / 18 | 0.1 |
+| `/api/classroom-categories` | 200 | 2 / 1 | 0.2 / 0.1 | 31 / 25 | 1.5 |
+| `/api/inventory/items` | 200 | 2 / 2 | 0.2 / 0.4 | 40 / 32 | 18.1 |
+| `/api/knowledge/articles` | 200 | 3 / 3 | 0.2 / 0.2 | 52 / 44 | 0.1 |
+| `/api/reminders` | 200 | 1 / 1 | 0.1 / 0.1 | 21 / 9 | 0 |
+| `/api/reminders/people` | 200 | 1 / 1 | 0.2 / 0.1 | 19 / 24 | 0.4 |
+| `/api/canvas/items` | 200 | 1 / 1 | 0 / 0.1 | 11 / 8 | 0 |
+| `/api/teacher-schedules` | 200 | 1 / 1 | 0 / 0.1 | 13 / 9 | 0.1 |
+| `/api/petty-cash` | 200 | 4 / 4 | 0.3 / 0.3 | 27 / 38 | 0.2 |
+| `/api/suggestions` | 200 | 4 / 4 | 0.2 / 0.2 | 35 / 27 | 0.2 |
+| `/api/photo-passes` | 200 | 2 / 1 | 0.2 / 0.2 | 21 / 21 | 5.9 |
+| `/api/site-assistants` | 200 | 1 / 1 | 0.3 / 0.2 | 22 / 8 | 0.2 |
+| `/api/task-columns` | 200 | 1 / 1 | 0.1 / 0.1 | 12 / 11 | 0.3 |
+| `/api/devices/panel-counts` | 200 | 1 / 1 | 0.1 / 0.1 | 11 / 13 | 0 |
+| `/api/device-groups` | 200 | 2 / 2 | 0.1 / 0.1 | 28 / 29 | 0 |
+| `/api/devices/deleted` | 200 | 1 / 1 | 0.3 / 0.4 | 12 / 22 | 0.2 |
+| `/api/history?kind=loans&limit=50` | 200 | 1 / 1 | 7.5 / 4.9 | 34 / 18 | 12.9 |
+| `/api/history?kind=all&limit=50` | 200 | 1 / 1 | 17.3 / 18.2 | 41 / 40 | 9 |
+| `/api/loans/people` | 200 | 1 / 0 | 6.1 / 0 | 146 / 16 | 57 |
+| `/api/loans/suggest?q=mar` | 200 | 0 / 0 | 0 / 0 | 18 / 8 | 1.2 |
+| `/api/loans/previous-day` | 200 | 2 / 0 | 2.5 / 0 | 35 / 10 | 0.3 |
+| `/api/photo-passes/options` | 200 | 2 / 2 | 7.1 / 6.7 | 43 / 40 | 6.9 |
+| `/api/daily-closures` | 200 | 1 / 1 | 0 / 0 | 17 / 20 | 0 |
+| `/api/daily-closures/preview` | 200 | 7 / 7 | 2.4 / 2 | 74 / 43 | 19.5 |
+| `/api/analytics` | 200 | 4 / 4 | 30.3 / 29.2 | 406 / 178 | 112.4 |
+| `/api/analytics/parque` | 200 | 4 / 4 | 0.2 / 0.3 | 35 / 119 | 0.8 |
+| `/api/allowed-users` | 200 | 3 / 3 | 0.5 / 0.4 | 29 / 43 | 2.3 |
+| `/api/sites` | 200 | 1 / 1 | 0.1 / 0.1 | 22 / 14 | 0.7 |
+
+   Ningún endpoint crece con los datos (sin N+1): el máximo en frío es `/api/classrooms` con 9 consultas, que quedan en 1 con la caché; `/api/devices` 7 → 0, `/api/tasks` 5 → 0, `/api/loans/people` 1 → 0. Lo más caro en ejecución dentro de Postgres es `/api/analytics` (4 consultas, ~30 ms) y el historial completo (`kind=all`, 1 consulta, ~17 ms): se piden al abrir esas pantallas, no se pollean.
+5. **Imágenes, fuentes y scripts:** ninguna imagen ni fuente pedida al abrir estas pantallas; Geist y Geist Mono ya están en caché desde el arranque (sin cambios desde la pasada 2).
+6. **Asistente:** su chunk se precarga en idle con las vistas (`prefetchViewsWhenIdle([..., 'assistant'])`); no se midió el chat (sin claves de IA en el banco: cae al modo local).
+
+Sin cambios de código por el barrido: lo que se vio está dentro de lo esperado o es una decisión de diseño (búsqueda de Conocimiento en el server, paginada).
 
 ## Robustez: sesión larga, duplicados, errores
 
