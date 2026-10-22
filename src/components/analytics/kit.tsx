@@ -179,7 +179,10 @@ export function Lazy({ height, kind, children, eager }: { height: number; kind: 
   );
 }
 
-const SKEL_BARS = [42, 68, 30, 84, 56, 72, 38, 60, 26];
+// Como en el gráfico de verdad, la columna más alta llega al techo del área: con
+// un techo de 84 % el esqueleto dejaba una franja vacía arriba (50 px en las
+// columnas dobles de "Préstamos vs. agenda TIC") mientras el gráfico no entraba en la vista.
+const SKEL_BARS = [42, 68, 30, 100, 56, 72, 38, 60, 26];
 
 export function ChartSkeleton({ kind, height }: { kind: SkeletonKind; height: number }) {
   const style: CSSProperties = { height };
