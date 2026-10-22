@@ -34,6 +34,7 @@ import { authTests } from './tests/auth.mjs';
 import { pwaTests } from './tests/pwa.mjs';
 import { shellTests } from './tests/shell.mjs';
 import { inicioTests } from './tests/inicio.mjs';
+import { qaCTests } from './tests/qa-c.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
 import { operacionTests } from './tests/operacion.mjs';
 import { prestamosUxTests } from './tests/prestamosUx.mjs';
@@ -130,6 +131,8 @@ try {
   await tasksTests(ctx);
   console.log('\nInicio: huecos, truncados y plegado (ini)');
   inicio = await inicioTests(ctx);
+  console.log('\nQA ronda 1, frente C: Inicio (qa-c)');
+  await qaCTests(ctx);
   console.log('\nAsistente (k)');
   await assistantTests(ctx);
   await ticketsTests(ctx);

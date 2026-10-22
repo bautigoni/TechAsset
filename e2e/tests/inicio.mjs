@@ -464,7 +464,8 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
           height: Math.round(list?.getBoundingClientRect().height || 0)
         };
       });
-      assert(/Todo en casa/.test(state.empty), `El vacío no muestra la frase: "${state.empty}".`);
+      // QA ronda 1, ítem 26: "Todo en casa" pasó a una frase literal.
+      assert(/Ningún equipo prestado/.test(state.empty),`El vacío no muestra la frase: "${state.empty}".`);
       assert(!state.foot && !state.cols, `Sin filas quedó el pie (${state.foot}) o los títulos de columna (${state.cols}).`);
       assert(state.height < 200, `La tarjeta vacía mide ${state.height} px (tiene que ser compacta).`);
       const lend = await until(() => page.evaluateHandle(() => [...document.querySelectorAll('[data-dash="afuera"] .dash-empty button')].find(button => /Prestar un equipo/.test(button.textContent || ''))).then(handle => handle.asElement()), { message: 'el botón Prestar un equipo' });
