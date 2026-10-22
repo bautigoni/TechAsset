@@ -458,7 +458,10 @@ export async function barridoOperacionTests({ browser, base, api, admin, release
       const open = await anchoredDuring(page, sel, () => clickSel(page, sel));
       assert(await page.$('.ag-item.is-open .ui-collapse[data-state="open"] .ag-detail'), 'no se abrió el detalle');
       const close = await anchoredDuring(page, sel, () => clickSel(page, sel));
-      assert(open.max <= 2 && close.max <= 2, `la flecha se movió ${open.max} / ${close.max} px`);
+      // Si el detalle queda abajo de la vista, Collapse lo trae con un scroll suave (REGLAS-UX):
+      // eso mueve la flecha en pantalla a propósito. Lo que no puede pasar es que el layout la
+      // corra (`shift`, descontado ese scroll) ni que salga de la vista (`hidden`).
+      assert(open.shift <= 2 && close.max <= 2 && !open.hidden, `la flecha se movió ${open.shift} (layout) / ${close.max} px; fuera de vista en ${open.hidden} cuadros`);
     });
 
     await test('bxo', 'Agenda', 'Sincronizar: abrir y cerrar el panel no mueve el botón (± 2 px)', async () => {
