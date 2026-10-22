@@ -68,6 +68,9 @@
 /* ── Card ───────────────────────────────────────────────────────────── */
 
 .lo-card {
+  /* Contiene a sus textos solo-lector (.ui-sr, absolutos): sin esto quedan anclados
+     fuera del área que scrollea y no acompañan el scroll. */
+  position: relative;
   container-type: inline-size;
   min-width: 0;
   background: var(--g-surface);

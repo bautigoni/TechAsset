@@ -274,7 +274,7 @@ export async function prestamosUxTests({ browser, base, api, admin, releaseVersi
       return text.slice(0, 60);
     });
 
-    await test('pux', 'Préstamos UX', 'Modo selección: el encabezado del grupo no cambia de alto y abrir/cerrar no lo mueve (390 y 1440)', async () => {
+    await test('pux', 'Préstamos UX', 'Modo selección: el encabezado del grupo no cambia de alto, abrir/cerrar no lo mueve y la sonda UX da 0 (390 y 1440)', async () => {
       const notes = [];
       for (const width of [390, 1440]) {
         await viewportFor(page, width, 844);
@@ -287,6 +287,10 @@ export async function prestamosUxTests({ browser, base, api, admin, releaseVersi
         await sleep(400);
         const after = await toggle.evaluate(b => Math.round(b.getBoundingClientRect().height));
         assert(Math.abs(after - before) <= 1, `${width}: el encabezado pasó de ${before} a ${after} px al entrar en selección.`);
+        // Con la página scrolleada (el clic la lleva al chip), nada queda anclado afuera
+        // (los .ui-sr de las tarjetas acompañan el scroll: .lo-card es su contenedor).
+        const probe = await probeView(page, { scope: '.lo-page', scrollSteps: 3 });
+        assert(!probe.total, `${width} (selección): ${formatProbe(probe)}`);
         const toggles = await checkCollapsibles(page, { scope: DEVICES, max: 3 });
         assert(!toggles.problems.length, `${width}: ${formatProbe({ counts: {}, total: 0 }, toggles)}`);
         notes.push(`${width}: ${before} px`);
