@@ -95,6 +95,10 @@
   touch-action: manipulation;
   transition: border-color var(--g-dur-fast) var(--g-ease), background-color var(--g-dur-fast) var(--g-ease);
 }
+/* Las tarjetas crecen hasta llenar su renglón: sin una suelta y corta con el
+   resto del renglón vacío cuando envuelven (el número va al borde derecho). */
+.cls-summary > .cls-sum { flex: 1 1 auto; justify-content: space-between; }
+.cls-summary > .cls-sum-main { justify-content: flex-start; }
 .cls-sum:hover { border-color: var(--g-line-strong); }
 .cls-sum.is-on { background: var(--g-raised); border-color: var(--g-accent); }
 .cls-sum:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; }
