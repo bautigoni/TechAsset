@@ -199,9 +199,39 @@ export function ClassroomStatusPage({ operator, consultationMode, activeSite, si
   }, []);
 
   if (!floors || !floor) {
+    // Sede sin plano (una sede nueva): un vacío que explica qué es esta
+    // pantalla, qué falta, quién lo carga y qué se puede hacer mientras tanto.
+    const noPlanName = sites.find(site => site.siteCode === activeSite)?.nombre || activeSite;
+    const withPlan = sites.filter(site => FLOOR_PLANS[site.siteCode] && site.siteCode !== activeSite);
     return (
       <section className="view active cls">
-        <EmptyState title="Estado de aulas no configurado para esta sede." description="Esta sede todavía no tiene planos cargados." />
+        <section className="cls-card cls-noplan" aria-labelledby="cls-noplan-title">
+          <School className="cls-noplan-icon" size={24} strokeWidth={1.6} aria-hidden="true" />
+          <h2 id="cls-noplan-title" className="cls-noplan-title">{noPlanName} todavía no tiene el plano de sus aulas</h2>
+          <p className="cls-para cls-text-2">
+            Estado de aulas se arma sobre el plano de cada planta: con el plano cargado, acá ves cada aula y si su proyector, NUC o monitor andan bien, y anotás lo que falla.
+          </p>
+          <div className="cls-noplan-who">
+            <span className="cls-noplan-label">Quién lo carga</span>
+            <p className="cls-para">
+              Los planos los agrega quien administra TechAsset (no se cargan desde Configuración). El Jefe TIC de la sede se los pide con:
+            </p>
+            <ul className="cls-noplan-list">
+              <li>las plantas del edificio,</li>
+              <li>el nombre de cada aula, tal como se usa en el colegio, y en qué planta está,</li>
+              <li>un croquis o una foto del plano de cada planta.</li>
+            </ul>
+          </div>
+          <p className="cls-para cls-text-2">Mientras tanto, si algo de un aula no anda, cargalo como ticket.</p>
+          {(onNavigate || (withPlan.length > 0 && onSiteChange)) && (
+            <div className="cls-noplan-actions">
+              {onNavigate && <Button variant="secondary" onClick={() => onNavigate('tickets')}>Ir a Tickets</Button>}
+              {onSiteChange && withPlan.map(site => (
+                <Button key={site.siteCode} variant="ghost" onClick={() => onSiteChange(site.siteCode)}>Ver las aulas de {site.nombre || site.siteCode}</Button>
+              ))}
+            </div>
+          )}
+        </section>
       </section>
     );
   }
