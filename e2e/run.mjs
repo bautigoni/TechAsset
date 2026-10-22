@@ -31,6 +31,7 @@ import { knowledgeCanvasTests } from './tests/knowledgeCanvas.mjs';
 import { toolsTests } from './tests/tools.mjs';
 import { settingsTests } from './tests/settings.mjs';
 import { authTests } from './tests/auth.mjs';
+import { qaATests } from './tests/qa-a.mjs';
 import { pwaTests } from './tests/pwa.mjs';
 import { shellTests } from './tests/shell.mjs';
 import { inicioTests } from './tests/inicio.mjs';
@@ -139,6 +140,8 @@ try {
   await settingsTests(ctx);
   console.log('\nLogin, registro y sesión (lg)');
   await authTests(ctx);
+  console.log('\nQA de lanzamiento, frente A: ingreso, cuenta, privacidad, mails y server (qa-a)');
+  await qaATests(ctx);
   console.log('\nPWA: instalable, sin conexión y versión nueva (pwa)');
   await pwaTests(ctx);
   await shellTests(ctx);

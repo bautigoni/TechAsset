@@ -1,6 +1,8 @@
 // lg) Login y landing (etapa 9), de punta a punta en la copia de la base:
 //   invitación (API del admin) → /register?code= (código precargado, URL limpia,
-//   un solo request aunque se toque dos veces) → "olvidé mi contraseña" (mensaje
+//   un solo request aunque se toque dos veces; la cuenta entra directo) →
+//   cerrar sesión ("Sesión cerrada", sin el nombre en el navegador) →
+//   "olvidé mi contraseña" (confirma el mail antes de mandar; mensaje
 //   neutro; el link sale del archivo de mails de prueba, NODE_ENV=test) →
 //   "Elegí tu contraseña" (no coinciden: no se pierde lo escrito) → contraseña
 //   mala (error en línea, el mail queda) → ingreso → sesión vencida (vuelve a la
@@ -97,20 +99,41 @@ export async function authTests({ browser, base, api, releaseVersion, test, trac
       await typeInto(page, EMAIL, email);
       await typeInto(page, '#auth-form input[autocomplete="new-password"]', firstPassword);
       await shot(page, 'registro-oscuro-1440');
-      // Doble toque: un solo registro.
+      // Doble toque: un solo registro. Registro OK = sesión abierta: entra directo (QA ítem 8).
       await page.click(SUBMIT, { clickCount: 1 });
       await page.click(SUBMIT, { clickCount: 1 }).catch(() => {});
-      await until(async () => /Cuenta creada/.test(await msgText(page)), { message: 'el aviso "Cuenta creada"' });
+      await page.waitForSelector('.shell', { timeout: 20000 });
+      await until(async () => (await pathname(page)).startsWith('/sede/nfpt/'), { message: 'entra directo a su sede al crear la cuenta' });
       await sleep(400);
       assert(registerPosts === 1, `se mandaron ${registerPosts} registros (esperaba 1)`);
-      await until(async () => (await pathname(page)) === '/login', { message: 'pasa a Ingresar' });
-      const kept = await page.$eval(EMAIL, input => input.value);
-      assert(kept === email, `el mail no quedó puesto en Ingresar ("${kept}")`);
+      const entered = await page.evaluate(() => fetch('/api/auth/session').then(r => r.json()));
+      assert(entered.authenticated && entered.user?.email === email, 'después de crear la cuenta no quedó la sesión abierta');
       await shot(page, 'registro-ok-oscuro-1440');
 
-      // "Olvidé mi contraseña": mensaje neutro y el link en el mail de prueba.
-      await clickByText(page, '#auth-form button', /Olvidé mi contraseña/);
+      // Cerrar sesión: al ingreso con "Sesión cerrada" y sin el nombre en el navegador (QA ítem 15).
+      await page.click('button[aria-label="Menú de cuenta"]');
+      await clickByText(page, 'button', /^Cerrar sesión$/);
+      await until(async () => (await pathname(page)) === '/login', { message: 'el ingreso después de cerrar sesión' });
+      await until(async () => /Sesión cerrada/.test(await msgText(page)), { message: 'el aviso "Sesión cerrada"' });
+      const leftovers = await page.evaluate(() => [localStorage.getItem('techasset_operator'), localStorage.getItem('techasset_session_cache')]);
+      assert(!leftovers[0] && !leftovers[1], `quedó en el navegador: ${JSON.stringify(leftovers)}`);
+
+      // "Olvidé mi contraseña": primero pide confirmar el mail (no manda nada al tocar el link).
+      let linkPosts = 0;
+      const countLink = request => { if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/auth/password/request') linkPosts += 1; };
+      page.on('request', countLink);
+      await typeInto(page, EMAIL, email);
+      await clickByText(page, '#auth-form button', /^Olvidé mi contraseña$/);
+      await until(() => visible(page, '#auth-forgot input[type="email"]'), { message: 'el paso de confirmar el mail' });
+      await sleep(300);
+      assert(linkPosts === 0, 'tocar "Olvidé mi contraseña" ya mandó el link');
+      const proposed = await page.$eval('#auth-forgot input[type="email"]', input => input.value);
+      assert(proposed === email, `el mail propuesto es "${proposed}"`);
+      await shot(page, 'olvide-confirmar-oscuro-1440');
+      await clickByText(page, '#auth-forgot button', /Mandar el link/);
       await until(async () => /Si el mail tiene acceso a TechAsset/.test(await msgText(page)), { message: 'el mensaje neutro del link' });
+      page.off('request', countLink);
+      assert(linkPosts === 1, `se pidieron ${linkPosts} links (esperaba 1)`);
       const mail = await until(() => readMails(mailFile).reverse().find(item => (item.to || []).includes(email) && /login\?password=/.test(item.text || '')), { timeout: 8000, message: 'el mail con el link de contraseña' });
       const link = mail.text.match(/https?:\/\/\S*login\?password=([a-f0-9]+)/);
       assert(link, 'el mail no trae el link');
@@ -144,7 +167,7 @@ export async function authTests({ browser, base, api, releaseVersion, test, trac
       await page.click(SUBMIT);
       await page.waitForSelector('.shell', { timeout: 20000 });
       await until(async () => (await pathname(page)).startsWith('/sede/nfpt/'), { message: 'entra a su sede' });
-      return `${email}: registro (1 request), link, contraseña nueva, ingreso`;
+      return `${email}: registro (1 request) y adentro, cerrar sesión, link confirmado, contraseña nueva, ingreso`;
     });
 
     await test('lg', 'Login', 'Sesión vencida → vuelve a la misma vista; cerrar sesión; link de sede sin sesión', async () => {
@@ -165,11 +188,11 @@ export async function authTests({ browser, base, api, releaseVersion, test, trac
       await page.waitForSelector('.shell', { timeout: 20000 });
       await until(async () => (await pathname(page)) === `/sede/nfpt/${otherView}`, { message: `volver a /${otherView}` });
 
-      // Cerrar sesión: a la landing.
+      // Cerrar sesión: al ingreso con "Sesión cerrada".
       await page.click('button[aria-label="Menú de cuenta"]');
       await clickByText(page, 'button', /^Cerrar sesión$/);
-      await until(async () => (await pathname(page)) === '/', { message: 'la landing después de cerrar sesión' });
-      await page.waitForSelector('.landing-hero');
+      await until(async () => (await pathname(page)) === '/login', { message: 'el ingreso después de cerrar sesión' });
+      await until(async () => /Sesión cerrada/.test(await msgText(page)), { message: 'el aviso "Sesión cerrada"' });
       const session = await page.evaluate(() => fetch('/api/auth/session').then(r => r.json()));
       assert(!session.authenticated, 'la sesión sigue viva después de cerrar');
 
@@ -190,7 +213,7 @@ export async function authTests({ browser, base, api, releaseVersion, test, trac
       await page.click(SUBMIT);
       await page.waitForSelector('.shell', { timeout: 20000 });
       await until(async () => (await pathname(page)) === '/sede/nfpt/dashboard', { message: 'su sede por defecto (Inicio)' });
-      return `vencida → /${otherView}; logout → /; link sin sesión con "Usar mi sede por defecto" → Inicio`;
+      return `vencida → /${otherView}; logout → /login "Sesión cerrada"; link sin sesión con "Usar mi sede por defecto" → Inicio`;
     });
 
     await test('lg', 'Login', 'Errores de la URL traducidos, tema desde el ingreso y capturas', async () => {
