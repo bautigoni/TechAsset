@@ -3,7 +3,7 @@ import { Lock, MessageSquare, Paperclip, Plus, X } from 'lucide-react';
 import type { TaskChecklistItem, TaskItem } from '../../types';
 import { Button, Checkbox, Collapse, StatusText, TruncatedText, cx } from '../../ui';
 import { getActiveSiteCode } from '../../services/activeSite';
-import { CARD_ITEMS, dueInfo, joinNames, responsablesOf, taskRouteUrl } from './taskModel';
+import { CARD_ITEMS, dueInfo, joinNames, priorityText, responsablesOf, taskRouteUrl, turnoText } from './taskModel';
 import { Presence, useSubtaskKeys } from './Presence';
 
 export type CardHandlers = {
@@ -106,6 +106,15 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
       onPointerDown={event => onPointerDown?.(task, event)}
     >
       <div className="tk-card-head">
+        {/* Link de verdad a la página de la tarea (el título puede ocupar
+            varias líneas; el click lo maneja la app: abre, o con Ctrl/Shift
+            selecciona). El botón del medio la abre en otra pestaña. */}
+        <a className="tk-card-title" href={taskRouteUrl({ id: task.id, edit: false }, getActiveSiteCode())} onClick={event => { event.preventDefault(); event.stopPropagation(); onOpen(task, event); }} onKeyDown={onTitleKey}>
+          {task.titulo}
+        </a>
+        {/* Casilla de SELECCIÓN (no "completar"): a la derecha del título y
+            visible solo al elegir varias, al pasar el mouse o con el foco en la
+            tarjeta. Una tarea se completa moviéndola a la columna de hechas. */}
         {canEdit && (
           <Checkbox
             className="tk-card-check"
@@ -114,19 +123,13 @@ export const TaskCard = memo(function TaskCard({ task, done, selected, canEdit, 
             onCheckedChange={(_, event) => onSelect(task, event)}
           />
         )}
-        {/* Link de verdad a la página de la tarea (el título puede ocupar
-            varias líneas; el click lo maneja la app: abre, o con Ctrl/Shift
-            selecciona). El botón del medio la abre en otra pestaña. */}
-        <a className="tk-card-title" href={taskRouteUrl({ id: task.id, edit: false }, getActiveSiteCode())} onClick={event => { event.preventDefault(); event.stopPropagation(); onOpen(task, event); }} onKeyDown={onTitleKey}>
-          {task.titulo}
-        </a>
       </div>
 
       <div className="tk-card-meta">
         <span className="tk-nw">{who}</span>
-        <span className={cx('tk-nw', urgent && 'tk-bad')}>{task.prioridad || 'Media'}</span>
+        <span className={cx('tk-nw', urgent && 'tk-bad')}>{priorityText(task.prioridad)}</span>
         {task.tipo && <span className="tk-nw">{task.tipo}</span>}
-        {task.turno && task.turno !== 'Sin turno' && <span className="tk-nw">{task.turno}</span>}
+        {turnoText(task.turno) && <span className="tk-nw">{turnoText(task.turno)}</span>}
         {due && <StatusText tone={due.tone} mono>{due.text}</StatusText>}
         {task.visibility === 'private' && <span className="tk-nw tk-private"><Lock size={12} aria-hidden="true" />Privada</span>}
       </div>

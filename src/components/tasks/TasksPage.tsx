@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { ArrowLeft, ClipboardList, Columns3, Eye, Lock, Trash2, Users, X } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Columns3, Eye, ListChecks, Lock, Trash2, Users, X } from 'lucide-react';
 import type { TaskChecklistItem, TaskColumn, TaskItem } from '../../types';
 import type { TasksStore } from '../../hooks/useTasks';
 import { Button, Checkbox, Collapse, EmptyState, ErrorState, IconButton, InlineConfirm, Input, Kbd, SkeletonText, StatusLine, StatusSlot, TruncatedText, cx, recentTrigger, scrollParentOf, useAnchoredToggle, useSelection, useStatusLine, type StatusMessage } from '../../ui';
@@ -40,6 +40,8 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const store = useTaskActions(core);
   const canEdit = !consultationMode;
   const isMobile = useMedia(MOBILE_QUERY);
+  // Debajo de 900 px el "+" va pegado al borde: su rótulo tiene que ser corto para no cortarse.
+  const narrowGoo = useMedia('(max-width: 899px)');
   const tasks = store.items;
 
   const [space, setSpace] = useState<Space>('team');
@@ -54,6 +56,9 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const [colForm, setColForm] = useState<{ name: string; error: string; saving: boolean } | null>(null);
   const [gooOpen, setGooOpen] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState(false);
+  // "Elegir": modo selección explícito (sobre todo en touch, donde no hay
+  // Ctrl+click ni hover que muestre las casillas).
+  const [selecting, setSelecting] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
   const [shown, setShown] = useState<Record<string, number>>({});
   const [mobileKey, setMobileKey] = useState('');
@@ -175,7 +180,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const moveTasks = async (ids: string[], column: TaskColumn, bulk: boolean, place: 'board' | 'detail' = 'board') => {
     const status = place === 'detail' ? detailStatus : boardStatus;
     const before = new Map(tasks.filter(task => ids.includes(task.id)).map(task => [task.id, task]));
-    if (bulk) { selection.clear(); setBulkConfirm(false); }
+    if (bulk) { selection.clear(); setSelecting(false); setBulkConfirm(false); }
     try {
       const { result, moved } = await store.moveMany(ids, column);
       if (result === 'busy') { status.show({ tone: 'info', message: 'Esperá un segundo: todavía se está guardando el movimiento anterior.' }); return; }
@@ -203,6 +208,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   /* ── Borrar (con Deshacer) ── */
   const deleteTasks = async (ids: string[]) => {
     setBulkConfirm(false);
+    setSelecting(false);
     for (const id of ids) if (selection.isSelected(id)) selection.toggle(id);
     const { removed, failed } = await store.removeMany(ids);
     if (failed.length) {
@@ -326,6 +332,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
     setCreating(visibility);
     setColForm(null);
     selection.clear();
+    setSelecting(false);
     if (route) go(null);
     scrollAppToTop();
   };
@@ -344,7 +351,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
     if (item?.visibility === 'private' && space === 'team') {
       boardStatus.show({ tone: 'ok', message: `Creaste «${item.titulo}»${landing}. Es privada: está en Mis tareas.`, action: { label: 'Ver Mis tareas', onClick: () => changeSpace('my') } });
     } else if (item && space === 'my' && !inSpace(item, 'my', operator)) {
-      boardStatus.show({ tone: 'ok', message: `Creaste «${item.titulo}»${landing}. No estás entre los responsables: está en Equipo.`, action: { label: 'Ver Equipo', onClick: () => changeSpace('team') } });
+      boardStatus.show({ tone: 'ok', message: `Creaste «${item.titulo}»${landing}. No estás entre los responsables: está en Grupo.`, action: { label: 'Ver Grupo', onClick: () => changeSpace('team') } });
     } else if (item) {
       boardStatus.show({ tone: 'ok', message: `Creaste «${item.titulo}»${landing}.`, undo: { onUndo: async () => { await store.removeMany([item.id]); } } });
     }
@@ -356,11 +363,17 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   };
 
   /* ── Selección y apertura ── */
-  const latest = useRef({ selection, order, canEdit, isMobile, go, keyMove, toggleItem, addItem, removeItem });
-  latest.current = { selection, order, canEdit, isMobile, go, keyMove, toggleItem, addItem, removeItem };
+  const latest = useRef({ selection, order, canEdit, isMobile, selecting, go, keyMove, toggleItem, addItem, removeItem });
+  latest.current = { selection, order, canEdit, isMobile, selecting, go, keyMove, toggleItem, addItem, removeItem };
   const handlers = useMemo<Omit<CardHandlers, 'onPointerDown'>>(() => ({
     onOpen: (task: TaskItem, event: MouseEvent) => {
       const l = latest.current;
+      // Eligiendo ("Elegir"): tocar la tarjeta la marca o la desmarca, no la abre.
+      if (l.canEdit && l.selecting) {
+        if (event.shiftKey) l.selection.selectRange(task.id, l.order);
+        else l.selection.toggle(task.id);
+        return;
+      }
       if (l.canEdit && (event.ctrlKey || event.metaKey || event.shiftKey || (l.isMobile && l.selection.count > 0))) {
         l.selection.handleClick(task.id, event, l.order);
         return;
@@ -384,11 +397,11 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
       if (event.key !== 'Escape' || event.defaultPrevented || isEditableTarget(event.target)) return;
       if (bulkConfirm) { setBulkConfirm(false); return; }
       if (colForm) { setColForm(null); return; }
-      if (selection.count) selection.clear();
+      if (selection.count || selecting) { selection.clear(); setSelecting(false); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [bulkConfirm, colForm, selection]);
+  }, [bulkConfirm, colForm, selection, selecting]);
 
   /* ── Render ── */
   const routeTask = route ? tasks.find(task => task.id === route.id) : undefined;
@@ -397,7 +410,9 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const visibleSelected = order.filter(id => selection.selected.has(id)).length;
   const hiddenSelected = selectedCount - visibleSelected;
   const selectedTitles = tasks.filter(task => selection.selected.has(task.id)).map(task => task.titulo).join(' · ');
-  const showSelection = canEdit && selectedCount > 0 && !route;
+  const selectMode = canEdit && !route && (selecting || selectedCount > 0);
+  const showSelection = selectMode;
+  const endSelection = () => { selection.clear(); setSelecting(false); };
   const loadingColumns = columnsState === 'loading';
 
   /* ── Barra de selección: reemplaza a la de herramientas y queda fija arriba
@@ -443,11 +458,11 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   const hint = tab === 'priority'
     ? 'Solo tareas abiertas. Para mover de columna, usá el Tablero o la página de la tarea.'
     : !canEdit ? 'Modo consulta: no se mueven tarjetas.'
-      : isMobile ? 'Deslizá para cambiar de columna. Para mover una tarea, abrila o elegí varias y usá «Mover a».'
-        : 'Arrastrá una tarjeta a otra columna (o Alt + ← →), y el asa de una columna para reordenarla. Ctrl+click o Shift+click para elegir varias.';
+      : isMobile ? 'Deslizá para cambiar de columna. Para mover una tarea, abrila; para mover varias, tocá «Elegir», marcalas y usá «Mover a».'
+        : 'Arrastrá una tarjeta a otra columna (o Alt + ← →), y los puntitos ⠿ de una columna para reordenarla. Para elegir varias: «Elegir», Ctrl+click o Shift+click. Una tarea se completa moviéndola a la columna de hechas.';
 
   const queryText = query.trim() ? `${plural(visible.length, 'resultado', 'resultados')} para «${query.trim()}»` : '';
-  const boardTitle = tab === 'board' ? (space === 'team' ? 'Tareas del equipo' : 'Mis tareas') : (space === 'team' ? 'Abiertas del equipo por prioridad' : 'Mis abiertas por prioridad');
+  const boardTitle = tab === 'board' ? (space === 'team' ? 'Tareas del grupo' : 'Mis tareas') : (space === 'team' ? 'Abiertas del grupo por prioridad' : 'Mis abiertas por prioridad');
   const sums = (
     <>
       <span className="tk-mono tk-text-2">{plural(openN, 'abierta', 'abiertas')}</span>
@@ -459,21 +474,22 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
     <div className={cx('tk-toolbar', gooOpen && 'is-goo-open')}>
       <div className="tk-tb-title">
         <span className="tk-eyebrow">{tab === 'board' ? 'Tablero' : 'Prioridad'}</span>
-        <span className="tk-tb-heading">{space === 'team' ? 'Equipo' : 'Mis tareas'}</span>
+        <span className="tk-tb-heading">{space === 'team' ? 'Grupo' : 'Mis tareas'}</span>
       </div>
       <div className="tk-tb-segs">
         <PillTabs ariaLabel="Vista" value={tab} onChange={changeTab} block={isMobile} options={[{ value: 'board', label: 'Tablero' }, { value: 'priority', label: 'Prioridad' }]} />
-        <PillTabs ariaLabel="Espacio de tareas" value={space} onChange={changeSpace} block={isMobile} options={[{ value: 'team', label: 'Equipo', count: openIn('team') }, { value: 'my', label: 'Mis tareas', count: openIn('my') }]} />
+        {/* "Grupo" y no "Equipo": en la app "equipo" es un dispositivo (QA de lanzamiento, NN-12). */}
+        <PillTabs ariaLabel="Espacio de tareas" value={space} onChange={changeSpace} block={isMobile} options={[{ value: 'team', label: 'Grupo', count: openIn('team') }, { value: 'my', label: 'Mis tareas', count: openIn('my') }]} />
       </div>
       <div className="tk-tb-plus">
         {canEdit && (
           <GooeyMenu
-            ariaLabel="Crear: tarea o columna"
+            ariaLabel="Nueva tarea o columna"
             direction="down"
-            caption="Equipo · Privada · Columna"
+            caption={narrowGoo ? 'Del grupo · Privada · Columna' : 'Tarea del grupo · Tarea privada · Columna nueva'}
             onOpenChange={setGooOpen}
             items={[
-              { id: 'team', label: 'Nueva tarea de equipo', icon: <Users size={16} />, onSelect: () => openCreate('team') },
+              { id: 'team', label: 'Nueva tarea del grupo', icon: <Users size={16} />, onSelect: () => openCreate('team') },
               { id: 'mine', label: 'Nueva tarea privada', icon: <Lock size={16} />, onSelect: () => openCreate('private') },
               { id: 'column', label: 'Nueva columna', icon: <Columns3 size={16} />, onSelect: openColumnForm }
             ]}
@@ -509,20 +525,25 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
               ariaLabel="Seleccionar todas las tareas visibles"
               onCheckedChange={() => selection.toggleMany(order)}
             />
-            <span className="tk-selbar-count"><b className="tk-mono">{selectedCount}</b> {selectedCount === 1 ? 'seleccionada' : 'seleccionadas'}</span>
+            {selectedCount
+              ? <span className="tk-selbar-count"><b className="tk-mono">{selectedCount}</b> {selectedCount === 1 ? 'seleccionada' : 'seleccionadas'}</span>
+              : <span className="tk-selbar-hint">Tocá las tareas para elegirlas</span>}
             {hiddenSelected > 0 && <span className="tk-muted tk-small tk-nw">{hiddenSelected} fuera de esta vista</span>}
-            {isMobile && <Button size="sm" variant="ghost" className="tk-selbar-clear" onClick={selection.clear}>Limpiar</Button>}
           </div>
           <div className="tk-selbar-move">
-            <span className="tk-label">Mover a</span>
+            {/* En el celu, "Quitar selección" va en el renglón de "Mover a" (en el primero no entra junto a Borrar). */}
+            <div className="tk-selbar-movehead">
+              <span className="tk-label">Mover a</span>
+              {isMobile && <Button size="sm" variant="ghost" className="tk-selbar-clear" onClick={endSelection}>{selectedCount ? 'Quitar selección' : 'Cancelar'}</Button>}
+            </div>
             <div className={cx('tk-selbar-cols', isMobile && 'tk-chips--grid')}>
-              {columns.map(column => <Button key={column.id} size="sm" disabled={store.moving} onClick={() => void moveTasks(selectedIds, column, true)}>{column.name}</Button>)}
+              {columns.map(column => <Button key={column.id} size="sm" disabled={store.moving || !selectedCount} onClick={() => void moveTasks(selectedIds, column, true)}>{column.name}</Button>)}
             </div>
           </div>
           <span className="tk-grow" />
           <div className="tk-selbar-end">
-            <Button size="sm" variant="ghost" className="tk-danger-link" icon={<Trash2 size={14} />} onClick={() => setBulkConfirm(true)}>Borrar</Button>
-            {!isMobile && <Button size="sm" variant="ghost" onClick={selection.clear} iconEnd={<Kbd>Esc</Kbd>}>Limpiar</Button>}
+            <Button size="sm" variant="ghost" className="tk-danger-link" icon={<Trash2 size={14} />} disabled={!selectedCount} onClick={() => setBulkConfirm(true)}>Borrar</Button>
+            {!isMobile && <Button size="sm" variant="ghost" onClick={endSelection} iconEnd={<Kbd>Esc</Kbd>}>{selectedCount ? 'Quitar selección' : 'Cancelar'}</Button>}
           </div>
       </Collapse>
       <Collapse open={bulkConfirm} reveal={false} unmountOnClose>
@@ -651,6 +672,10 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
               {queryText && <><span className="tk-nw tk-text-2">{queryText}</span><button type="button" className="tk-link" onClick={() => setQuery('')}>Limpiar búsqueda</button></>}
               {sums}
               {store.moving && <span className="tk-mono tk-muted">Guardando…</span>}
+              {/* Elegir varias (mover o borrar en lote): en touch es la única forma; en desktop, además de Ctrl/Shift+click. */}
+              {canEdit && !boardEmpty && (
+                <Button size="sm" variant="ghost" className={cx('tk-pick', selectMode && 'is-on')} icon={<ListChecks size={14} />} aria-pressed={selectMode} onClick={() => (selectMode ? endSelection() : setSelecting(true))}>Elegir</Button>
+              )}
             </div>
           </header>
           {/* Espacio sin tareas: un vacío diseñado con la acción siguiente (las columnas siguen abajo para soltar). */}
@@ -659,9 +684,9 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
               compact
               className="tk-board-empty"
               icon={<ClipboardList size={18} />}
-              title={tab === 'priority' ? (space === 'my' ? 'No tenés tareas abiertas.' : 'El equipo no tiene tareas abiertas.') : (space === 'my' ? 'No tenés tareas en Mis tareas.' : 'Todavía no hay tareas del equipo.')}
-              description={space === 'my' ? 'Acá están tus tareas privadas y las de equipo donde sos responsable.' : 'Las tareas de equipo las ve toda la sede.'}
-              action={canEdit ? <Button size="sm" icon={space === 'my' ? <Lock size={14} /> : <Users size={14} />} onClick={() => openCreate(space === 'my' ? 'private' : 'team')}>{space === 'my' ? 'Nueva tarea privada' : 'Nueva tarea de equipo'}</Button> : undefined}
+              title={tab === 'priority' ? (space === 'my' ? 'No tenés tareas abiertas.' : 'El grupo no tiene tareas abiertas.') : (space === 'my' ? 'No tenés tareas en Mis tareas.' : 'Todavía no hay tareas del grupo.')}
+              description={space === 'my' ? 'Acá están tus tareas privadas y las del grupo donde sos responsable.' : 'Las tareas del grupo las ve toda la sede.'}
+              action={canEdit ? <Button size="sm" icon={space === 'my' ? <Lock size={14} /> : <Users size={14} />} onClick={() => openCreate(space === 'my' ? 'private' : 'team')}>{space === 'my' ? 'Nueva tarea privada' : 'Nueva tarea del grupo'}</Button> : undefined}
             />
           </Collapse>
           {columnsState === 'error' && tab === 'board' && <ErrorState message="No se pudieron cargar las columnas." onRetry={() => { setColumnsState('loading'); void loadColumns(); }} />}
@@ -691,7 +716,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
           )}
           <p className="tk-hint">{hint}</p>
         </section>
-        {/* Solo en Equipo: al pasar a Mis tareas se pliega (no desaparece de golpe). */}
+        {/* Solo en Grupo: al pasar a Mis tareas se pliega (no desaparece de golpe). */}
         <Collapse open={space === 'team'} anchor={false} reveal={false}>
           <TaskAnalytics tasks={spaceTasks} columns={columns} people={people} />
         </Collapse>
@@ -700,7 +725,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
   }
 
   return (
-    <section ref={screenRef} className={cx('tk-screen', showSelection && 'has-selbar')} data-route={route ? (route.edit ? 'edit' : 'detail') : 'list'}>
+    <section ref={screenRef} className={cx('tk-screen', showSelection && 'has-selbar', selectMode && 'is-selecting')} data-route={route ? (route.edit ? 'edit' : 'detail') : 'list'}>
       {consultationMode && (
         <p className="tk-consulta"><Eye size={16} aria-hidden="true" />Modo consulta: ves las tareas y sus comentarios, sin editar.</p>
       )}

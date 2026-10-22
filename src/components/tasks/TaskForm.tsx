@@ -85,7 +85,7 @@ export function TaskForm({ mode, initial, defaultVisibility, operator, people: s
   const isNew = mode === 'create';
 
   useEffect(() => { titleRef.current?.focus({ preventScroll: true }); }, []);
-  // Al cambiar la visibilidad desde el "+" (equipo / privada) con el alta abierta.
+  // Al cambiar la visibilidad desde el "+" (grupo / privada) con el alta abierta.
   useEffect(() => { if (isNew) setDraft(current => ({ ...current, visibility: defaultVisibility })); }, [defaultVisibility, isNew]);
 
   const patch = (change: Partial<Draft>) => setDraft(current => ({ ...current, ...change }));
@@ -155,7 +155,7 @@ export function TaskForm({ mode, initial, defaultVisibility, operator, people: s
 
   const listed = draft.attachments.filter(attachment => !uploaded.current.has(attachment.url));
   const title = isNew ? (draft.titulo.trim() || 'Nueva tarea') : (draft.titulo.trim() || 'Sin título');
-  const eyebrow = isNew ? (draft.visibility === 'private' ? 'Nueva tarea privada' : 'Nueva tarea de equipo') : 'Editar tarea';
+  const eyebrow = isNew ? (draft.visibility === 'private' ? 'Nueva tarea privada' : 'Nueva tarea del grupo') : 'Editar tarea';
 
   return (
     <form
@@ -177,7 +177,7 @@ export function TaskForm({ mode, initial, defaultVisibility, operator, people: s
         <div className="tk-vis" role="radiogroup" aria-label="Visibilidad">
           <button type="button" role="radio" aria-checked={draft.visibility === 'team'} className={cx('tk-vis-opt', draft.visibility === 'team' && 'is-on')} onClick={() => patch({ visibility: 'team' })}>
             <Users size={16} aria-hidden="true" />
-            <span className="tk-vis-text"><span className="tk-vis-title">Tarea de equipo</span><span className="tk-vis-desc">Visible en el espacio compartido</span></span>
+            <span className="tk-vis-text"><span className="tk-vis-title">Tarea del grupo</span><span className="tk-vis-desc">La ve toda la sede</span></span>
           </button>
           <button type="button" role="radio" aria-checked={draft.visibility === 'private'} className={cx('tk-vis-opt', draft.visibility === 'private' && 'is-on')} onClick={() => patch({ visibility: 'private' })}>
             <Lock size={16} aria-hidden="true" />
@@ -186,7 +186,7 @@ export function TaskForm({ mode, initial, defaultVisibility, operator, people: s
         </div>
       ) : (
         <p className="tk-form-note">
-          {draft.visibility === 'private' ? 'Mi tarea: solo visible para vos' : 'Tarea de equipo: visible en el espacio compartido'}
+          {draft.visibility === 'private' ? 'Mi tarea: solo visible para vos' : 'Tarea del grupo: la ve toda la sede'}
           <span className="tk-muted"> · la visibilidad no se cambia al editar</span>
         </p>
       )}

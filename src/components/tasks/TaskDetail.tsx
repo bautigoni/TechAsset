@@ -119,7 +119,7 @@ export function TaskDetail({ task, column, columns, done, canEdit, moving, isMob
   };
 
   const facts: Array<{ label: string; value: ReactNode }> = [
-    { label: 'Visibilidad', value: task.visibility === 'private' ? 'Privada (solo vos)' : 'Equipo' },
+    { label: 'Visibilidad', value: task.visibility === 'private' ? 'Privada (solo vos)' : 'Del grupo (la ve toda la sede)' },
     { label: 'Responsables', value: joinNames(responsablesOf(task)) },
     { label: 'Prioridad', value: <span className={cx(urgent && 'tk-bad')}>{task.prioridad || 'Media'}</span> },
     { label: 'Turno', value: task.turno && task.turno !== 'Sin turno' ? task.turno : <span className="tk-muted">Sin turno</span> },

@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import type { TaskColumn, TaskItem } from '../../types';
 import { ProgressRing } from './TaskBits';
-import { columnOf, isTaskDone, plural, responsablesOf } from './taskModel';
+import { columnOf, isTaskDone, plural, responsablesOf, turnoText } from './taskModel';
 
 type Person = { name: string; turno?: string };
 
 /**
- * Carga del equipo (solo en el espacio Equipo): por persona, asignadas,
+ * Tareas por persona (solo en el espacio Grupo): por persona, asignadas,
  * pendientes, en proceso, hechas y el avance con un anillo fino neutro. Se
  * calcula con las tareas que ya están en memoria (cero pedidos extra).
  * "Compartida" (y el viejo "Ambos") cuentan para todos.
@@ -41,12 +41,12 @@ export function TaskAnalytics({ tasks, columns, people }: { tasks: TaskItem[]; c
     <section className="tk-people" aria-labelledby="tk-people-title">
       <header className="tk-section-head">
         <div className="tk-section-titles">
-          <span className="tk-eyebrow">Asistentes</span>
-          <h2 id="tk-people-title" className="tk-h2">Carga del equipo</h2>
+          <span className="tk-eyebrow">Grupo</span>
+          <h2 id="tk-people-title" className="tk-h2">Tareas por persona</h2>
         </div>
-        <span className="tk-hint">Cuenta las tareas del espacio Equipo</span>
+        <span className="tk-hint">Cuenta las tareas del grupo (no las privadas)</span>
       </header>
-      <div className="tk-people-table" role="table" aria-label="Carga del equipo">
+      <div className="tk-people-table" role="table" aria-label="Tareas por persona">
         <div className="tk-people-row tk-people-row--head" role="row">
           <span role="columnheader" className="tk-people-name">Persona</span>
           <span role="columnheader">Asignadas</span>
@@ -59,7 +59,7 @@ export function TaskAnalytics({ tasks, columns, people }: { tasks: TaskItem[]; c
           <div className="tk-people-row" role="row" key={row.name}>
             <span role="cell" className="tk-people-name">
               <span className="tk-people-who">{row.name}</span>
-              {row.turno && row.turno !== 'Sin turno' && <span className="tk-muted tk-small">{row.turno}</span>}
+              {turnoText(row.turno) && <span className="tk-muted tk-small">{turnoText(row.turno)}</span>}
               {!row.assigned && <span className="tk-muted tk-small">Sin tareas asignadas.</span>}
             </span>
             <span role="cell" className="tk-people-num" data-label="Asignadas">{row.assigned}</span>

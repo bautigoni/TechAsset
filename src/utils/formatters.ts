@@ -16,11 +16,19 @@ export function normalizeText(value: unknown): string {
 // CPU consumía. Mismo resultado, un formateador por combinación de opciones.
 const dateFormatters = new Map<string, Intl.DateTimeFormat>();
 
+// La app usa 24 h en todos lados ("14:15", nunca "2:15 p. m."): es-AR con
+// `timeStyle` u `hour` sale en 12 h en Chrome. Si quien llama no eligió
+// (`hour12`/`hourCycle`), se fuerza h23 (QA de lanzamiento, NN-37).
+function with24h(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormatOptions {
+  if (options.hour12 !== undefined || options.hourCycle !== undefined) return options;
+  return options.hour !== undefined || options.timeStyle !== undefined ? { ...options, hourCycle: 'h23' } : options;
+}
+
 export function dateFormatter(options: Intl.DateTimeFormatOptions = {}, locale = 'es-AR') {
   const key = `${locale}|${JSON.stringify(options)}`;
   let formatter = dateFormatters.get(key);
   if (!formatter) {
-    formatter = new Intl.DateTimeFormat(locale, options);
+    formatter = new Intl.DateTimeFormat(locale, with24h(options));
     dateFormatters.set(key, formatter);
   }
   return formatter;

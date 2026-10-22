@@ -19,6 +19,22 @@ export function responsablesOf(task: Pick<TaskItem, 'responsables' | 'responsabl
   return String(task.responsable || '').split(',').map(value => value.trim()).filter(Boolean);
 }
 
+/** En la tarjeta, la prioridad con su rótulo: "Prioridad baja" (suelto, "Baja" no se entendía). */
+export function priorityText(prioridad: string | undefined): string {
+  return `Prioridad ${(prioridad || 'Media').toLowerCase()}`;
+}
+
+/**
+ * En la tarjeta, el turno con su rótulo ("Todo el día" suelto parecía una
+ * duración): "Turno mañana", "Turno tarde", "Ambos turnos"; sin turno, nada.
+ */
+export function turnoText(turno: string | undefined): string {
+  const value = String(turno || '').trim();
+  if (!value || value === 'Sin turno') return '';
+  if (value === 'Todo el día') return 'Ambos turnos';
+  return `Turno ${value.toLowerCase()}`;
+}
+
 /** "Sin asignar" / "A" / "A y B" / "A, B y C". */
 export function joinNames(names: string[]): string {
   const list = names.filter(name => name && name !== 'Sin asignar');
@@ -43,7 +59,8 @@ export function isTaskDone(task: TaskItem, columns: TaskColumn[]): boolean {
 }
 
 /**
- * Espacio "Equipo": todo lo que no es privado. "Mis tareas": mis privadas +
+ * Espacio "Grupo" (antes "Equipo", que en la app también es un dispositivo):
+ * todo lo que no es privado. "Mis tareas": mis privadas +
  * las de equipo donde figuro como responsable (por nombre, como siempre). El
  * server ya filtra las privadas ajenas.
  */

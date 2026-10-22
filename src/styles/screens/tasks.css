@@ -266,6 +266,8 @@
 .tk-selbar-main { display: flex; align-items: center; gap: var(--g-s-3); min-width: 0; }
 .tk-selbar-count { white-space: nowrap; font-weight: var(--g-fw-medium); }
 .tk-selbar-count b { font-size: var(--g-fs-base); font-weight: var(--g-fw-semibold); }
+.tk-selbar-hint { min-width: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); line-height: 1.125rem; }
+.tk-selbar-movehead { display: contents; }
 .tk-selbar-move { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-2); min-width: 0; padding-left: var(--g-s-3); border-left: 1px solid var(--g-line); }
 .tk-selbar-cols { display: flex; flex-wrap: wrap; gap: calc(var(--g-s-1) * 1.5); min-width: 0; }
 .tk-selbar-end { display: flex; flex-wrap: wrap; align-items: center; gap: var(--g-s-1); }
@@ -444,7 +446,19 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
   .tk-card { transition: border-color var(--g-dur-fast) ease, background-color var(--g-dur-fast) ease, opacity var(--g-dur-fast) ease; }
 }
 .tk-card-head { display: flex; align-items: flex-start; gap: var(--g-s-2); min-width: 0; }
-.tk-card-check { margin-top: 2px; }
+/* Casilla de SELECCIÓN, no de "completar" (QA de lanzamiento, NN-13): a la
+   derecha del título y oculta hasta que se elige ("Elegir", Ctrl/Shift+click),
+   se pasa el mouse por la tarjeta o el foco entra en ella (teclado). El lugar
+   queda reservado: que aparezca no mueve el título. */
+.tk-card-check { flex: none; margin-top: 2px; visibility: hidden; opacity: 0; }
+.tk-screen.is-selecting .tk-card-check,
+.tk-card.is-selected .tk-card-check,
+.tk-card:focus-within .tk-card-check { visibility: visible; opacity: 1; }
+@media (hover: hover) { .tk-card:hover .tk-card-check { visibility: visible; opacity: 1; } }
+@media (pointer: coarse) { .tk-card-check::after { content: ''; position: absolute; inset: -14px -12px -14px -10px; } }
+@media (prefers-reduced-motion: no-preference) { .tk-card-check { transition: opacity var(--g-dur-fast) ease, visibility var(--g-dur-fast) ease; } }
+.tk-pick { flex: none; }
+.tk-pick.is-on { background: var(--g-raised); color: var(--g-text); }
 .tk-card-title {
   display: block;
   flex: 1 1 auto;
@@ -668,8 +682,9 @@ html.tk-dragging, html.tk-dragging * { cursor: grabbing !important; user-select:
   /* Compacta (va fija arriba): cuenta · Limpiar · Borrar en una fila y las columnas debajo. */
   .tk-selbar-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--g-s-2); }
   .tk-selbar-body > .tk-grow { display: none; }
-  .tk-selbar-main { grid-column: 1; grid-row: 1; justify-content: space-between; gap: var(--g-s-2); min-width: 0; }
-  .tk-selbar-clear { margin-left: auto; }
+  .tk-selbar-main { grid-column: 1; grid-row: 1; justify-content: flex-start; gap: var(--g-s-2); min-width: 0; }
+  .tk-selbar-movehead { display: flex; align-items: center; justify-content: space-between; gap: var(--g-s-2); min-width: 0; }
+  .tk-selbar-clear { flex: none; }
   .tk-selbar-end { grid-column: 2; grid-row: 1; justify-content: flex-end; }
   .tk-selbar-move { grid-column: 1 / -1; grid-row: 2; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--g-s-1); padding-left: 0; border-left: 0; }
   .tk-selbar-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--g-s-6) * 3.25), 1fr)); align-content: start; }
