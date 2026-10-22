@@ -12,7 +12,7 @@
 //     recreos conservado al volver por el menú, notificación que abre el
 //     ticket puntual.
 // Todo corre contra la copia de la base (lo que se crea, se crea ahí).
-import { assert, gotoView, openContext, pathname, sleep, until } from '../lib/browser.mjs';
+import { assert, clickStable, gotoView, openContext, pathname, sleep, until } from '../lib/browser.mjs';
 
 export const BARRIDO_WIDTHS = [360, 768, 1024, 1280, 1366, 1440, 1920];
 const SCREENS = [
@@ -422,8 +422,11 @@ export async function barridoOperacionTests({ browser, base, api, admin, release
       await gotoView(page, base, 'schedules');
       await page.waitForSelector('.hr-rgroup-name input', { timeout: 20000 });
       const edited = `${groups[0].name} (borrador e2e)`;
-      const input = await page.$('.hr-rgroup-name input');
-      await input.click();
+      // Como un usuario: el toque cae en el campo quieto (con la máquina cargada,
+      // un click sobre algo que se estaba acomodando no lo enfocaba y lo tipeado
+      // rápido iba al lector global, que navegaba a Préstamos). Se verifica el foco.
+      await clickStable(page, () => page.$('.hr-rgroup-name input'));
+      await until(() => page.evaluate(() => Boolean(document.activeElement?.closest('.hr-rgroup-name'))), { timeout: 3000, message: 'que el nombre del grupo tome el foco al tocarlo' });
       await page.keyboard.down('Control');
       await page.keyboard.press('KeyA');
       await page.keyboard.up('Control');
