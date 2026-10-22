@@ -33,6 +33,7 @@ import { settingsTests } from './tests/settings.mjs';
 import { authTests } from './tests/auth.mjs';
 import { pwaTests } from './tests/pwa.mjs';
 import { shellTests } from './tests/shell.mjs';
+import { qaDTests } from './tests/qa-d.mjs';
 import { inicioTests } from './tests/inicio.mjs';
 import { analyticsTests } from './tests/analytics.mjs';
 import { operacionTests } from './tests/operacion.mjs';
@@ -142,6 +143,8 @@ try {
   console.log('\nPWA: instalable, sin conexión y versión nueva (pwa)');
   await pwaTests(ctx);
   await shellTests(ctx);
+  console.log('\nQA de lanzamiento, frente D: shell, mobile y asistente (qa-d)');
+  await qaDTests(ctx);
   await analyticsTests(ctx);
   console.log('\nOperación: plegables, huecos, truncados y acciones (op)');
   await operacionTests(ctx);
