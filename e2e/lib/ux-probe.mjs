@@ -35,8 +35,10 @@
 //                 anillo de foco (medido enfocando uno de cada tipo con
 //                 :focus-visible, `sampleFocusRings`) y ::before/::after absolutos
 //                 (la rayita del ítem activo) — cortado > 1 px por un ancestro con
-//                 overflow ≠ visible; en un contenedor que scrollea solo cuenta el
-//                 borde donde el scroll llegó al tope ("Inicio" cortado arriba);
+//                 overflow ≠ visible; en un contenedor que scrollea (nativo o
+//                 paneado con transform) solo cuenta el borde donde el scroll
+//                 llegó al tope ("Inicio" cortado arriba): lo cortado del lado
+//                 donde queda scroll se ve scrolleando;
 //   topGap        (20/10) con el contenido arriba de todo, lo primero que se ve
 //                 empieza a > 32 px de la cabecera, o la primera fila es solo algo
 //                 chico a la derecha y el primer bloque de la izquierda arranca a
@@ -84,27 +86,7 @@ const DIALOG_SELECTOR = '[role="dialog"], [role="alertdialog"], dialog[open], [a
  *   where: regex sobre el `where` de la muestra (o "disparador: problema" en toggle)
  *   owner: quién lo arregla
  */
-export const KNOWN_PENDING = [
-  // ── Inicio (revisor 2) ──
-  { view: /^dashboard$/, kind: 'topGap', where: /dash-top/, owner: 'revisor 2 (Inicio)', note: 'fila "Actualizado hace… · Cierre del día" sola a la derecha: 64 px muertos arriba a la izquierda (captura del dueño)' },
-  { view: /^dashboard$/, kind: 'mismatch', where: /dash-bar-btns/, owner: 'revisor 2 (Inicio)', note: 'a 390: botón cámara 36 px al lado de Prestar/Devolver 44 px' },
-  { view: /^dashboard$/, kind: 'mismatch', where: /dash-list-head/, owner: 'revisor 2 (Inicio)', note: 'Afuera ahora: segmentado sm 32 px al lado del filtro 36 px' },
-  // ── Operación: Dispositivos y Préstamos ──
-  { view: /^devices$/, kind: 'mismatch', where: /dv-list-head/, owner: 'revisor de Dispositivos', note: 'filtro 36 px al lado del segmentado sm 32 px' },
-  { view: /^devices$/, kind: 'toggle', where: /^Papelera.*de golpe/, owner: 'revisor de Dispositivos', note: 'con equipos en la papelera, abrirla salta 148 px (cargando → lista, sin transición); intermitente' },
-  { view: /^inventory$/, kind: 'toggle', where: /^Ocultos.*de golpe/, owner: 'revisor de Inventario', note: 'a 390 claro, abrir "Ocultos" salta 167 px (cargando → lista, sin transición); intermitente' },
-  { view: /^loans$/, kind: 'toggle', where: /^Cámara .*aria-expanded no cambió/, owner: 'revisor de Préstamos', note: 'a 390 claro "Cámara" no cambia aria-expanded / lo-camera no existe abierto' },
-  { view: /^loans$/, kind: 'toggle', where: /^Touch.*se movió/, owner: 'revisor de Préstamos', note: 'a 390 claro abrir el grupo Touch mueve el disparador 52 px' },
-  // ── Gestión: Aulas, Tickets ──
-  { view: /^classrooms$/, kind: 'clipped', where: /cls-room/, owner: 'revisor de Aulas', note: 'aulas del plano cortadas por el recuadro (classroom-model-canvas) con el zoom inicial' },
-  { view: /^ticket:/, kind: 'mismatch', where: /tkx-inline-add/, owner: 'revisor de Tickets', note: 'campo 36 px al lado del botón sm 32 px ("Agregar" del checklist)' },
-  // ── Recursos: Analítica, Configuración ──
-  { view: /^analytics$/, kind: 'innerGaps', where: /an-heatcard/, owner: 'revisor de Analítica', note: 'a 1024: franja vacía de 50 px en "Hora × día de la semana"' },
-  { view: /^settings$/, kind: 'clipped', where: /cfg-list-i/, owner: 'revisor de Configuración', note: 'a 390: el anillo de foco de cada ítem queda cortado por el overflow de la tarjeta (cfg-list-c)' },
-  { view: /^settings\/mail$/, kind: 'clipped', where: /cfg-acc-h/, owner: 'revisor de Configuración', note: '"Cómo completar esta configuración" cortado por el overflow de la tarjeta' },
-  { view: /^settings\/usuarios$/, kind: 'mismatch', where: /cfg-toolbar/, owner: 'revisor de Configuración', note: 'segmentados sm 32 px al lado del buscador 36 px' },
-  { view: /^settings\/prestamo$/, kind: 'mismatch', where: /cfg-add/, owner: 'revisor de Configuración', note: 'campo 36 px al lado del botón sm 32 px ("Agregar")' }
-];
+export const KNOWN_PENDING = [];
 
 /** Saca de un resultado de probeView los pendientes conocidos de la vista. Devuelve { probe, known }. */
 export function splitKnown(viewKey, probe) {
@@ -448,6 +430,46 @@ export function uxProbe(opts = {}) {
       clipMemo.set(el, list);
       return list;
     };
+    // Hasta dónde llegó el scroll de un contenedor que recorta, por eje. Un
+    // recorte en un borde es defecto solo si ese borde ya está en su tope
+    // (atStart arriba/izquierda, atEnd abajo/derecha): si queda scroll en esa
+    // dirección, lo cortado es contenido alcanzable (se ve scrolleando), y si
+    // el contenedor no scrollea en ese eje los dos bordes son tope.
+    // Dos formas de scrollear: la nativa (overflow auto/scroll con contenido
+    // de más) y el paneo programático (overflow hidden/clip con un hijo
+    // corrido por un transform de traslación pura, como el tablero de Tareas
+    // con flechas, arrastre y degradé en el borde): ahí el tope es el borde
+    // del hijo contra el del contenedor.
+    const scrollRange = (c, box) => {
+      const cs = styleOf(c);
+      const native = (axis, over, pos, size, client) => {
+        const scrolls = /auto|scroll/.test(over) && c[size] > c[client] + 1;
+        return scrolls ? { atStart: c[pos] <= 0, atEnd: c[pos] >= c[size] - c[client] - 1, scrolls } : null;
+      };
+      const pan = axis => {
+        for (const child of c.children) {
+          const t = styleOf(child).transform;
+          const m = t && t !== 'none' ? t.match(/^matrix\(([^)]+)\)$/) : null;
+          if (!m) continue;
+          const [a, b, cc, d] = m[1].split(',').map(parseFloat);
+          if (a !== 1 || b !== 0 || cc !== 0 || d !== 1) continue; // solo traslación (no escala ni giro)
+          // El hijo puede medir lo mismo que el contenedor y desbordar con su
+          // contenido (una fila flex de columnas): su largo es el de scroll.
+          const r = child.getBoundingClientRect();
+          const [lo, hi, start, end] = axis === 'x'
+            ? [box.left, box.right, r.left, Math.max(r.right, r.left + child.scrollWidth)]
+            : [box.top, box.bottom, r.top, Math.max(r.bottom, r.top + child.scrollHeight)];
+          if (end - start <= hi - lo + 1) continue;
+          return { atStart: start >= lo - 1, atEnd: end <= hi + 1, scrolls: true };
+        }
+        return null;
+      };
+      const none = { atStart: true, atEnd: true, scrolls: false };
+      return {
+        x: native('x', cs.overflowX, 'scrollLeft', 'scrollWidth', 'clientWidth') || (/hidden|clip/.test(cs.overflowX) && pan('x')) || none,
+        y: native('y', cs.overflowY, 'scrollTop', 'scrollHeight', 'clientHeight') || (/hidden|clip/.test(cs.overflowY) && pan('y')) || none
+      };
+    };
     const flagged = new Map(); // elemento → clipper (para no repetir en los hijos)
     const check = (el, paint, what, label) => {
       const pos = styleOf(el).position;
@@ -463,17 +485,15 @@ export function uxProbe(opts = {}) {
         box.bottom = box.top + c.clientHeight;
         // Del todo afuera: scrolleado fuera de la vista (no está "cortado", no se ve).
         if (paint.right <= box.left + 1 || paint.left >= box.right - 1 || paint.bottom <= box.top + 1 || paint.top >= box.bottom - 1) return;
-        const cs = styleOf(c);
-        const scrollX = /auto|scroll/.test(cs.overflowX) && c.scrollWidth > c.clientWidth + 1;
-        const scrollY = /auto|scroll/.test(cs.overflowY) && c.scrollHeight > c.clientHeight + 1;
+        const range = scrollRange(c, box);
         const sides = [];
         if (clip.y) {
-          if (box.top - paint.top > 1 && (!scrollY || c.scrollTop <= 0)) sides.push(`arriba ${Math.round(box.top - paint.top)}px`);
-          if (paint.bottom - box.bottom > 1 && (!scrollY || c.scrollTop >= c.scrollHeight - c.clientHeight - 1)) sides.push(`abajo ${Math.round(paint.bottom - box.bottom)}px`);
+          if (box.top - paint.top > 1 && range.y.atStart) sides.push(`arriba ${Math.round(box.top - paint.top)}px`);
+          if (paint.bottom - box.bottom > 1 && range.y.atEnd) sides.push(`abajo ${Math.round(paint.bottom - box.bottom)}px`);
         }
         if (clip.x) {
-          if (box.left - paint.left > 1 && (!scrollX || c.scrollLeft <= 0)) sides.push(`izquierda ${Math.round(box.left - paint.left)}px`);
-          if (paint.right - box.right > 1 && (!scrollX || c.scrollLeft >= c.scrollWidth - c.clientWidth - 1)) sides.push(`derecha ${Math.round(paint.right - box.right)}px`);
+          if (box.left - paint.left > 1 && range.x.atStart) sides.push(`izquierda ${Math.round(box.left - paint.left)}px`);
+          if (paint.right - box.right > 1 && range.x.atEnd) sides.push(`derecha ${Math.round(paint.right - box.right)}px`);
         }
         if (!sides.length) {
           // Lo que sigue (los ancestros de afuera) solo puede recortar lo que este deja ver.
