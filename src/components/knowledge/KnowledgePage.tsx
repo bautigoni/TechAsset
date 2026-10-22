@@ -45,6 +45,11 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
   const [category, setCategory] = useState('');
   const [list, setList] = useState<ListState>({ items: [], total: 0, nextCursor: '', loading: true, loadingMore: false, error: '' });
   const [facets, setFacets] = useState<KnowledgeCategoryCount[]>([]);
+  // Base vacía (sin filtro, ya cargada): la lista con su vacío ocupa todo el
+  // ancho y no hay lector al lado repitiendo el mismo vacío y el mismo botón
+  // (dos tarjetas de distinto alto en la fila). Con un filtro sin resultados
+  // el lector queda (avisa "Nada para leer") y la lista no cambia de ancho.
+  const emptyBase = !narrow && route.kind === 'list' && !list.items.length && !list.loading && !list.error && !query && !category;
   const request = useRef(0);
 
   // Artículos pedidos sueltos (deep link a uno que no está en la página cargada).
@@ -84,7 +89,7 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
     observer.observe(main);
     observer.observe(scroller);
     return () => observer.disconnect();
-  }, [narrow]);
+  }, [narrow, emptyBase]); // sin lector (base vacía) y de vuelta: se mide el que se monta
 
   /* ── Datos ────────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -341,11 +346,6 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
     </Collapse>
   );
 
-  // Base vacía (sin filtro, ya cargada): la lista con su vacío ocupa todo el
-  // ancho y no hay lector al lado repitiendo el mismo vacío y el mismo botón
-  // (dos tarjetas de distinto alto en la fila). Con un filtro sin resultados
-  // el lector queda (avisa "Nada para leer") y la lista no cambia de ancho.
-  const emptyBase = !narrow && route.kind === 'list' && !list.items.length && !list.loading && !list.error && !query && !category;
   const showList = !narrow || route.kind === 'list';
   const showMain = (!narrow || route.kind !== 'list') && !emptyBase;
   const editing = isEditing(route) && !consultationMode;
