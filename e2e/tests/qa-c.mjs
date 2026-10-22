@@ -405,6 +405,42 @@ export async function qaCTests({ browser, base, api, admin, releaseVersion, test
     }
   });
 
+  // Formulario de préstamo del Inicio: marca todo lo que falta de una vez (impaciente P2: tres rebotes).
+  await test('qa-c', 'QA ronda 1 · Inicio', 'Préstamo en la barra: "Confirmar" vacío marca persona, rol y ubicación juntos; completar uno deja los demás marcados', async () => {
+    const [tag] = await freeTags(1);
+    assert(tag, 'No hay un equipo libre en la copia.');
+    const { context, page } = await session();
+    try {
+      await gotoView(page, base, 'dashboard');
+      await page.waitForSelector('[data-dash="afuera"] .dash-rows', { timeout: 20000 });
+      await page.type('input[data-dash-bar]', tag);
+      await page.waitForSelector(`[data-device-result="${tag}"]`);
+      await page.keyboard.press('Enter');
+      await page.waitForSelector('.dash-lend .dash-lend-person input');
+      await sleep(400);
+      const requests = posts(page, /^\/api\/loans\/lend/);
+      const submit = () => page.evaluate(() => [...document.querySelectorAll('.dash-lend button')].find(button => /Confirmar préstamo/.test(button.textContent || ''))?.click());
+      const read = () => page.evaluate(() => ({
+        error: document.querySelector('.dash-lend-error')?.textContent || '',
+        invalid: document.querySelectorAll('.dash-lend [aria-invalid="true"]').length
+      }));
+      await submit();
+      await sleep(300);
+      const first = await read();
+      await page.type('.dash-lend .dash-lend-person input', 'QA-C Persona');
+      await sleep(300);
+      const second = await read();
+      requests.stop();
+      assert(!requests.seen.length, 'Se mandó un préstamo incompleto.');
+      assert(/persona/.test(first.error) && /rol/.test(first.error) && /ubicación/.test(first.error) && first.invalid >= 3, `Primer intento: ${JSON.stringify(first)}`);
+      assert(!/persona/.test(second.error) && /rol/.test(second.error) && second.invalid >= 2, `Después de la persona: ${JSON.stringify(second)}`);
+      await shot(page, 'prestamo-faltantes-1366');
+      return `"${first.error}" (${first.invalid} campos) → "${second.error}" (${second.invalid})`;
+    } finally {
+      await context.close();
+    }
+  });
+
   // Capturas de referencia a 375 y 1366 (oscuro), para el informe.
   await test('qa-c', 'QA ronda 1 · Inicio', 'Capturas del Inicio a 375 y 1366', async () => {
     for (const [name, options] of [['inicio-375', { device: MOBILE }], ['inicio-1366', {}]]) {

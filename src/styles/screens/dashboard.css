@@ -180,6 +180,8 @@
 @container dash (max-width: 34.99rem) {
   .dash-bar-note { min-height: calc(var(--dash-note-btn) + 1.25rem + 3 * var(--g-s-1) + 2px); }
   .dash-bar-note .ui-status-actions { flex-basis: 100%; }
+  /* La ayuda arriba: el lugar reservado queda como aire al pie de la tarjeta, no como franja en el medio. */
+  .dash-bar-hint { align-self: start; padding-top: var(--g-s-1); }
 }
 .dash-bar-hint { padding-left: var(--g-s-1); color: var(--g-text-3); font-size: var(--g-fs-sm); line-height: 1.125rem; overflow-wrap: anywhere; }
 .dash-bar-note.has-status > .dash-bar-hint { visibility: hidden; }
