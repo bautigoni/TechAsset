@@ -22,7 +22,7 @@ Rama de trabajo sobre `rediseno-grafito` desde `0c342f6` (pasada 2 integrada). P
 | Historial «cargar más» 405 vs 220 | Traza (`--action=more`): tras la respuesta, una tarea de **181 ms de render** (React crea ~2.000 nodos: 50 filas × ~40 nodos; `timeOf` con `Intl` y zona horaria es la función propia más cara) y otra de **181 ms de layout + pintado** (Layout 111 ms con 27 raíces sucias sobre 2.177 objetos, Paint ~70 ms). | El costo es crear, maquetar y pintar las filas nuevas (cada celda lleva su etiqueta para el modo tarjeta de mobile). La pasada 2 ya probó filas `memo` (no re-renderizar las viejas) con A/B: +2 %, revertido. Lo que lo bajaría es CSS de la pantalla (etiquetas por `attr()` en vez de un `<span>` por celda, `content-visibility` en los grupos de día): **no se hizo** (ver Pendientes). |
 | Scroll de Dispositivos p95 33,5 vs 17 | Suite: el **peor frame era 719–1.271 ms en todas las corridas de `05`** (en `main`, 67–251). Microbenchmark con la tabla entera (386 filas, 16.136 nodos en `<main>`, 5.470 con `overflow` ≠ visible): prender/apagar `data-scrolling` = **1.321–2.228 ms** de estilo + layout con CPU 4×. Hit-test (`elementFromPoint`): **9–23 ms por punto**; con un velo encima, 0,0–0,1 ms. | El «sin puntero mientras scrollea» de la pasada 1 ponía `pointer-events: none` a los hijos de `.shell-scroll`. Esa propiedad **se hereda**: cambiarla recalculaba el estilo de los ~16.000 nodos al empezar y al terminar cada gesto de rueda (el frame de 736 ms). Y no abarataba el hit-test (con `pointer-events: none` siguió en 12–16 ms por punto): Blink igual recorre la tabla. |
 | «touch 34» 127 vs 83 | No se perfiló aislado (máquina saturada). | Pendiente (ver abajo). |
-| Dispositivos «contenido» 566 vs 428 | Código + A/B de pedidos | La lista pinta 12 filas y 30 en idle; lo que estiraba «contenido» era el pedido de contadores de Grupos/Papelera **demorado 300 ms fijos** a propósito. |
+| Dispositivos «contenido» 566 vs 428 | Código + A/B de pedidos | La lista pinta 12 filas y 30 en idle; lo que estiraba «contenido» era el pedido de contadores de Grupos/Papelera **demorado 300 ms fijos** a propósito. Adelantarlo rompió una regla de UX (ver #6, revertido): queda como estaba. |
 | Tareas 1ª vez 438 vs 357 | Pedidos al abrir (cpu-ab, 3×2) | Al abrir salían `/api/task-columns` y `/api/site-assistants`. Las columnas ya llegan con `/api/tasks` desde la pasada 2: el primero sobraba. `site-assistants` se usa en el tablero (Analítica del equipo) y el formulario: se mantiene. |
 
 ## Cambios (cada uno con su medición)
@@ -37,11 +37,11 @@ Rama de trabajo sobre `rediseno-grafito` desde `0c342f6` (pasada 2 integrada). P
 | 2–4 | (los tres juntos) | `cpu-ab --scenario=warm`, n = 5 por lado, alternados | layouts forzados 6 · **CPU de layout forzado 31 ms** (23–44 en las 5 corridas) · estilos forzados 7 · CPU hasta el FCP 193 · tarea más larga 79,9 | 5 · **4,6 ms (−85 %; 3–6 en las 5)** · 6 · 170,7 (−12 %) · 71,8 (−10 %) | **quedan** |
 | 2–4 | (ídem, tiempo de pared) | `ab.mjs --only=startup` 2×4 con **12/12 núcleos ocupados** | inicio en caliente: FCP 1.008 · TTI 4.761 · TBT 1.369 | 732 (−27 %) · 2.642 (−45 %) · 667 (−51 %); en frío +18 a +43 % **con el DCL +50 %** (que ningún cambio toca): ruido | — |
 | 5 | Tareas: **sin pedir `/api/task-columns` al abrir** si las columnas llegaron con la lista; se siguen de la lista polleada sin pisar un cambio local en curso (d311f78) | `cpu-ab --scenario=view:tasks`, pedidos al abrir (3×2) | `/api/task-columns` + `/api/site-assistants` (+ polls) | `/api/site-assistants` (+ polls): **un viaje menos** antes de «a la vista» | **queda** |
-| 6 | Dispositivos: contadores de Grupos/Papelera **apenas se pinta la lista** (rAF + 0) en vez de a los 300 ms fijos (b5e9ea0) | `cpu-ab --scenario=view:devices` (n = 5) | último pedido terminado a 2.199 ms (mediana, con la máquina saturada) | 1.865 ms (−15 %); el pedido sale en el frame siguiente al pintado, no a los 300 ms | **queda** |
+| 6 | Dispositivos: contadores de Grupos/Papelera **apenas se pinta la lista** (rAF + 0) en vez de a los 300 ms fijos (b5e9ea0) | `cpu-ab --scenario=view:devices` (n = 5) | último pedido terminado a 2.199 ms (mediana, con la máquina saturada) | 1.865 ms (−15 %, con la máquina saturada: no concluyente); el pedido sale en el frame siguiente al pintado | **revertido** (01fef79): el e2e `bop › «Marcar el primero con Ctrl+clic no corre la fila»` falló en 768 y 360 px (la fila tocada se movió 40 / 31,6 px, reproducible 2 de 2); con la demora de 300 ms vuelve a pasar 3/3 |
 
 Nota sobre el CPU total del arranque (2–4): en tres tandas de `cpu-ab --scenario=warm` la CPU total del hilo principal dio +9,6 % (n = 6), −13,3 % (n = 8) y +2,7 % (n = 5): es ruido de la carga (la misma versión varió de 367 a 859 ms). Lo que sí se repite en todas las corridas es lo que el cambio ataca: el layout forzado desaparece del commit del Inicio y del primer frame, y la CPU hasta el FCP baja (−8,5 %, −16,7 %, −11,6 %).
 
-Sin revertidos en esta pasada: los cambios que se descartaron antes de escribir código (con su medición) están en «No se hizo».
+Revertido: #6 (ver la fila). Los cambios que se descartaron antes de escribir código (con su medición) están en «No se hizo».
 
 ## Búsqueda rápida de personas (DIRECTIVA §6) — validación final
 
@@ -209,7 +209,14 @@ Resultado (`06`):
 
 ## Cierre
 
-PENDIENTE_CIERRE
+- **`npm run e2e` completo** (con la sonda UX bloqueante), sobre `b5e9ea0` (todo lo de esta pasada, con #6 todavía adentro): **268/271 funcionales OK, línea base 23/23 limpias**, 1.254 s, exit 1. Las 3 fallas:
+  - `bop › Marcar el primero con Ctrl+clic…` a 768 y 360 px: causadas por #6. Bisección: con #6 deshecho, 3/3 OK; se revirtió (01fef79) y **el grupo `bop` sobre el HEAD final dio 24/24 OK**.
+  - `ux › analytics (390/1024/1440)`: «dark 1024: 1 tarjeta con franja vacía (50 a 64 px) — *Préstamos vs. agenda TIC: El jueves tiene…*». **Falla igual en la base `0c342f6`** (corrida hoy con el mismo comando) y no falló en la pasada 2 (20/10, martes): el texto de esa tarjeta depende del día de la semana (22/10 es jueves) y a 1024 px queda un hueco debajo. Es previo a esta pasada y de CSS de la pantalla Analítica (fuera de lo que tocó esta pasada; los revisores de UX trabajan esas pantallas en paralelo): **queda reportado, sin corregir acá**.
+- **`npm run check:ui`:** OK, nada nuevo (4 ocurrencias heredadas).
+- **`npm run build`:** OK. JS de entrada **96,9 KB gzip** (presupuesto 102), CSS inicial **15,3 KB gzip** (presupuesto 40).
+- **`pg-smoke` contra Postgres 17** (contenedor nuevo `postgres:17-alpine` en el puerto 55481, borrado al final): **128/128 OK**, «sin errores de SQL en el log». (`perf/pg-endpoints.mjs` corrió contra otro contenedor nuevo, 55482, también borrado.)
+- **Archivos de esta pasada:** `06-pasada3.{json,md}`, `00-inicial-r3.{json,md}` y `05-pasada2-r3.{json,md}` (suites finales, ver abajo). Las salidas de las herramientas nuevas (`perf/.out/`) no se versionan; sus números están en este documento.
+- **Herramientas nuevas (versionadas):** `perf/ab.mjs` (A/B intercalado con la carga de fondo por tanda), `perf/cpu-ab.mjs` (A/B por trabajo del hilo principal: layouts/estilos forzados, CPU por tipo, pedidos al abrir), `perf/people-check.mjs` (§6 de punta a punta), `perf/sweep.mjs` (5 ejes por pantalla), `perf/soak.mjs` (sesión larga: memoria, duplicados, errores; `--snapshots`), `perf/pg-endpoints.mjs` (consultas por pedido en Postgres con el volumen del snapshot); `perf/trace.mjs` suma `--min`, marcas del DOM y `--keep-trace`; `perf/suite-preload.mjs` expone memoria y GC del server.
 
 ## Tabla final (DIRECTIVA §13)
 
