@@ -255,9 +255,10 @@ export async function knowledgeCanvasTests({ browser, base, api, apiConsulta, ad
       const mobile = await openContext(browser, { base, token: admin.token, releaseVersion, device: KnownDevices['iPhone 13'], reducedMotion: true });
       try {
         await openKnowledge(mobile.page, base);
-        await until(() => mobile.page.$(ROW), { message: 'filas en mobile' });
+        // Filas de verdad (los esqueletos de carga también son .kb-row, pero <li>, no <a>).
+        await until(() => mobile.page.$('a.kb-row'), { message: 'filas en mobile' });
         assert(!(await mobile.page.$('.kb-main')), 'En mobile el lector no debería verse junto a la lista.');
-        await mobile.page.$eval(ROW, el => el.click());
+        await mobile.page.$eval('a.kb-row', el => el.click());
         await mobile.page.waitForSelector('.kb-reader');
         assert(!(await mobile.page.$('.kb-list')), 'La lista sigue visible en la vista del artículo.');
         await clickText(mobile.page, '.kb-back button', /Volver/);
