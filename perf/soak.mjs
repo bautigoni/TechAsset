@@ -122,6 +122,30 @@ try {
     const entry = { minute, view: currentView, heapMB: MB(heap.usedSize), nodes: metrics.Nodes, listeners: metrics.JSEventListeners, documents: metrics.Documents };
     result.samples.push(entry);
     console.log(`  min ${minute}: heap ${entry.heapMB} MB · nodos ${entry.nodes} · listeners ${entry.listeners} · pedidos ${result.requests} · vistas ${result.views}`);
+    // --snapshots: snapshot del heap en el minuto 1 y al final, para ver QUÉ crece.
+    if (argv.includes('--snapshots') && minute > 0 && (minute === 1 || Date.now() >= end - 30000)) snapshots.push({ minute, byName: await heapByConstructor() });
+  };
+  const snapshots = [];
+  const heapByConstructor = async () => {
+    let raw = '';
+    const onChunk = event => { raw += event.chunk; };
+    cdp.on('HeapProfiler.addHeapSnapshotChunk', onChunk);
+    await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false });
+    cdp.off('HeapProfiler.addHeapSnapshotChunk', onChunk);
+    const snap = JSON.parse(raw);
+    const fields = snap.snapshot.meta.node_fields;
+    const types = snap.snapshot.meta.node_types[0];
+    const width = fields.length;
+    const iType = fields.indexOf('type'); const iName = fields.indexOf('name'); const iSize = fields.indexOf('self_size');
+    const byName = new Map();
+    for (let i = 0; i < snap.nodes.length; i += width) {
+      const type = types[snap.nodes[i + iType]];
+      const name = type === 'string' || type === 'concatenated string' || type === 'sliced string' ? '(string)' : `${type}:${snap.strings[snap.nodes[i + iName]]}`.slice(0, 80);
+      const item = byName.get(name) || { count: 0, size: 0 };
+      item.count += 1; item.size += snap.nodes[i + iSize];
+      byName.set(name, item);
+    }
+    return byName;
   };
   // Línea base en el Inicio, ya cargado.
   await sample(0);
@@ -152,6 +176,15 @@ try {
       await sleep(2000);
       await sample(minute);
     }
+  }
+  if (snapshots.length >= 2) {
+    const [a, b] = [snapshots[0], snapshots.at(-1)];
+    const growth = [...b.byName.entries()].map(([name, item]) => { const before = a.byName.get(name) || { count: 0, size: 0 }; return { name, count: item.count - before.count, size: item.size - before.size }; })
+      .sort((x, y) => y.size - x.size).slice(0, 15);
+    result.heapGrowth = { from: a.minute, to: b.minute, top: growth };
+    console.log(`
+Qué creció en el heap entre el minuto ${a.minute} y el ${b.minute} (tamaño propio):`);
+    for (const item of growth) console.log(`  ${(item.size / 1024).toFixed(1).padStart(8)} KB  ${String(item.count).padStart(6)} objetos  ${item.name}`);
   }
   await context.close();
 

@@ -180,7 +180,26 @@ Sin cambios de código por el barrido: lo que se vio está dentro de lo esperado
 
 ## Robustez: sesión larga, duplicados, errores
 
-PENDIENTE_SOAK
+Herramienta nueva: `node perf/soak.mjs --repo=<checkout> --minutes=10 --warp=3 [--snapshots]`. La app abierta en un Chrome headless (sin limitar CPU) navegando por **todas las pantallas del menú** (una cada 2,5 s, volviendo al Inicio cada tres) durante 10 minutos reales con los timers de la página **acelerados 3×** (el polling de 30 s corre cada 10 s): ≈ 30 minutos de polling. Cada minuto: GC forzado y heap usado, nodos del DOM y listeners, siempre parados en el Inicio. Pedidos duplicados = el mismo GET `/api` saliendo mientras otro idéntico está en vuelo. Después, 3 ráfagas de 600 pedidos al server (6 en paralelo, los 8 endpoints más usados) con GC antes de leer su memoria. **Máquina con carga de fondo** (no afecta conteos ni memoria).
+
+Resultado (`06`):
+
+    min 0: heap 4.8 MB · nodos 1335 · listeners 386 · pedidos 14 · vistas 0
+    min 1: heap 8.5 MB · nodos 4207 · listeners 876 · pedidos 98 · vistas 24
+    min 2: heap 9.2 MB · nodos 4207 · listeners 876 · pedidos 188 · vistas 48
+    min 3: heap 10 MB · nodos 4207 · listeners 876 · pedidos 262 · vistas 69
+    min 4: heap 10.3 MB · nodos 4207 · listeners 876 · pedidos 344 · vistas 92
+    min 5: heap 10.8 MB · nodos 4207 · listeners 876 · pedidos 434 · vistas 116
+    min 6: heap 10.9 MB · nodos 4207 · listeners 876 · pedidos 511 · vistas 138
+    min 7: heap 11 MB · nodos 4207 · listeners 876 · pedidos 592 · vistas 160
+    min 8: heap 11.1 MB · nodos 4207 · listeners 876 · pedidos 682 · vistas 184
+    min 9: heap 11.7 MB · nodos 4207 · listeners 876 · pedidos 759 · vistas 206
+    min 10: heap 11.8 MB · nodos 4207 · listeners 876 · pedidos 840 · vistas 228
+
+- **Vistas abiertas: 228 · pedidos /api: 840 · pedidos GET duplicados en vuelo: 0 · errores de consola: 0 · excepciones sin atrapar: 0 · respuestas 5xx: 0.**
+- **DOM y listeners planos:** 4.207 nodos y 876 listeners del minuto 1 al 10 (lo del minuto 0 es el Inicio antes de abrir el resto: chunks y cachés que se llenan una vez).
+- **Heap del front después de GC:** 8,5 MB → 11,8 MB en 9 minutos, desacelerando (+1 MB entre el 5 y el 10). Para ver qué crece, otra corrida con `--snapshots` (6 min, snapshot del heap en el minuto 1 y al final; 137 vistas) dio el crecimiento por tipo: **1.744 KB `InstructionStream` + 267 KB `TrustedByteArray` + 132 KB `FeedbackVector` + 46 KB `Code`** (código que V8 compila y optimiza a medida que se usan más pantallas y funciones), **366 KB `NetworkResourcesData`** (el buffer de red de DevTools: lo causa el propio `Network.enable` del banco) y, de la app, **+37 KB de `Object`** y **444 `DOMRectReadOnly` (24 KB)**. No hay objetos de la app que crezcan con las vistas abiertas (componentes, filas, respuestas): **sin fugas**.
+- **Server:** heap después de GC 21,9 MB antes de las ráfagas y 22,3 / 22,1 / 22,1 MB después de cada una (plano); RSS 102 → 108 → 114 MB (el RSS de Node no devuelve memoria al sistema enseguida; el heap, que es lo que crecería con una fuga, no se movió). Cada ráfaga de 600 pedidos tardó 10,5–10,8 s (≈ 17 ms por pedido con 15 ms de latencia simulada por consulta), sin 5xx.
 
 ## No se hizo (con motivo)
 
