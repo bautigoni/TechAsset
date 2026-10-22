@@ -37,6 +37,38 @@
         } catch (e) { /* sin storage: queda el oscuro por defecto */ }
       })();
     </script>
+    <!-- Arranque (#boot, ver body): colores de tokens.css (--g-bg, --g-text, --g-text-3, --g-raised, --g-line-strong). -->
+    <style>
+      html { background: #0D0F12; }
+      html[data-theme="light"] { background: #F6F7F9; }
+      body { margin: 0; }
+      #root:empty { display: none; }
+      #root:not(:empty) + #boot { display: none; }
+      #boot {
+        flex: 1 1 auto; width: 100%; min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: 16px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+        color: #ECEEF1; font: 500 15px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      .boot-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+      .boot-mark {
+        width: 36px; height: 36px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 12px; background: #1B1F24; border: 1px solid #353B44; font: 600 13px ui-monospace, Menlo, Consolas, monospace;
+      }
+      .boot-status { display: flex; align-items: center; gap: 8px; color: #7C8592; font-size: 13px; opacity: 0; animation: boot-in .3s ease .6s forwards; }
+      .boot-ring { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #353B44; border-top-color: #A7AEB8; animation: boot-spin .9s linear infinite; }
+      .boot-noscript { margin: 0; color: #A7AEB8; font-size: 14px; text-align: center; }
+      html[data-theme="light"] #boot { color: #14171B; }
+      html[data-theme="light"] .boot-mark { background: #F0F2F5; border-color: #CDD2D9; }
+      html[data-theme="light"] .boot-status { color: #646C78; }
+      html[data-theme="light"] .boot-ring { border-color: #CDD2D9; border-top-color: #4A525E; }
+      html[data-theme="light"] .boot-noscript { color: #4A525E; }
+      @keyframes boot-in { to { opacity: 1; } }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-status { animation: none; opacity: 1; }
+        .boot-ring { animation: none; }
+      }
+    </style>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -72,6 +104,22 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Pantalla de arranque: lo primero que pinta el HTML, antes de que baje el
+      JS (con 3G lento son varios segundos). Marca y "Cargando…" con los colores
+      de los tokens (oscuro / claro según data-theme, que ya puso el script de
+      arriba). No es una capa: es un hermano de #root que se ve solo mientras
+      #root está vacío; cuando React pinta algo (landing, ingreso o la app) se
+      oculta solo, sin JS. El "Cargando…" aparece recién a los 0,6 s para no
+      parpadear en una carga rápida; con reduced motion, sin giro ni fundido.
+    -->
+    <div id="boot" role="status" aria-live="polite">
+      <div class="boot-brand"><span class="boot-mark" aria-hidden="true">TA</span><span>TechAsset</span></div>
+      <div class="boot-status"><span class="boot-ring" aria-hidden="true"></span><span>Cargando…</span></div>
+      <noscript><p class="boot-noscript">TechAsset necesita JavaScript activado en el navegador.</p></noscript>
+    </div>
+    <!-- /boot -->
+    <!-- (El build pone acá la hoja de estilos de la app: ver stylesAfterBoot en vite.config.ts.) -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

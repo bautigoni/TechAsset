@@ -3,6 +3,7 @@ import { CalendarDays, ClipboardCheck, Download, Laptop, ScanLine } from 'lucide
 import { Button, Collapse } from '../../ui';
 import { dismissInstall, promptInstall, usePwaState } from '../../services/pwa';
 import { AuthFrame } from './AuthFrame';
+import { PRIVACY_PATH, onPrivacyLinkClick } from './publicRoutes';
 
 const icon = (node: ReactNode) => <span className="landing-icon" aria-hidden="true">{node}</span>;
 const ICON = { size: 18, strokeWidth: 1.6 } as const;
@@ -15,11 +16,14 @@ const MODULES: Array<{ title: string; text: string; icon: ReactNode }> = [
   { title: 'Tareas y tickets', text: 'Lo que tiene que hacer el equipo TIC, los pedidos de los docentes y las notas del día para el otro turno.', icon: icon(<ClipboardCheck {...ICON} />) }
 ];
 
-// Lo que el que entra quiere saber antes de registrarse (todo verificable en el código).
+// Lo que el que entra quiere saber antes de registrarse (todo verificable en el
+// código; el detalle está en /privacidad). Antes decía "sin seguimiento de lo
+// que hacés", y lo que hacés sí queda firmado con tu nombre para tu sede.
 const PRIVACY = [
   'Cada sede ve solo sus datos: los equipos, préstamos y tareas de una sede no se cruzan con los de otra.',
+  'Lo que hacés en la app (préstamos, devoluciones, tareas, cambios) queda firmado con tu nombre y lo ve el equipo de tu sede: es el historial de trabajo.',
   'Tu contraseña se guarda cifrada (hash): nadie, ni el administrador, puede leerla.',
-  'Tu mail se usa para entrar y para los avisos de la app (invitación, aprobación, contraseña). No hay publicidad ni seguimiento de lo que hacés.',
+  'Tu mail se usa para entrar y para los avisos de la app (invitación, contraseña y los que elijas). No hay publicidad ni herramientas de seguimiento de terceros.',
   'La sesión queda abierta 30 días en este dispositivo. La cerrás cuando quieras desde "Tu cuenta".'
 ];
 
@@ -71,6 +75,10 @@ export function LandingPage({ onLogin, onRegister }: { onLogin: () => void; onRe
           <ul className="landing-facts">
             {PRIVACY.map(text => <li key={text}>{text}</li>)}
           </ul>
+          <p className="landing-hint">
+            Qué datos se guardan, quién los administra, el asistente con IA y cómo pedir la baja:{' '}
+            <a className="auth-link auth-link--inline" href={PRIVACY_PATH} onClick={onPrivacyLinkClick}>Privacidad y uso</a>.
+          </p>
         </section>
       </div>
     </AuthFrame>

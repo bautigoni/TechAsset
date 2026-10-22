@@ -3,7 +3,8 @@ import type { AgendaItem } from '../types';
 import { createAgenda, deleteAgenda, getAgenda, updateAgenda } from '../services/agendaApi';
 import { getActiveSiteCode } from '../services/activeSite';
 
-export function useAgenda(operator: string) {
+/** `enabled`: sin sesión no pide nada (la landing no se come un 401). */
+export function useAgenda(operator: string, enabled = true) {
   const [items, setItems] = useState<AgendaItem[]>([]);
   // Terminadas viejas que el server no mandó (ver GET /api/agenda). Al pedirlas
   // una vez, el auto-refresh sigue trayendo todo.
@@ -47,8 +48,9 @@ export function useAgenda(operator: string) {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     refresh().catch(() => setItems([]));
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   const kpis = useMemo<Record<string, number>>(() => ({
     total: items.length,

@@ -19,6 +19,11 @@ export function dropDraft(key: string) {
   drafts.delete(key);
 }
 
+/** Cerrar sesión: no queda nada de la persona anterior (CSV con contraseñas, formularios a medias). */
+export function clearDrafts() {
+  drafts.clear();
+}
+
 /**
  * Al desmontar (cambiar de sección, ir a otra pantalla), si hay cambios sin
  * guardar quedan en memoria; si no, se borra lo que hubiera.

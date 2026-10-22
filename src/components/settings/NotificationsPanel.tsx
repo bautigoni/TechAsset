@@ -106,13 +106,17 @@ export function NotificationsPanel({ header }: { header: (actions?: ReactNode) =
     <>
       {header()}
       <Card ariaLabel="Canales">
+        {/* Sin push en el servidor no se ofrece "Activar" (no serviría): se explica por dónde llegan los avisos. */}
         <SettingRow
           name="Notificaciones push"
-          desc={<>En este dispositivo; llegan aunque no tengas la app abierta. En iPhone, primero instalá la app desde Compartir › Agregar a inicio.{loaded && !pushAvailable && <span className="cfg-block is-warn">El servidor no tiene push configurado.</span>}</>}
+          desc={loaded && !pushAvailable
+            ? 'En esta instalación no hay avisos en el celular o la compu con la app cerrada. Los avisos te llegan en la campana de arriba y, si los activás acá abajo, por mail.'
+            : 'En este dispositivo; llegan aunque no tengas la app abierta. En iPhone, primero instalá la app desde Compartir › Agregar a inicio.'}
         >
           {!loaded ? <Skeleton width="6rem" height="var(--g-control-h)" radius="sm" />
+            : !pushAvailable ? <span className="cfg-t2">No disponibles</span>
             : pushSubscribed ? <span className="cfg-inline cfg-t2"><IconCheck size={14} /> Activadas</span>
-            : <Button variant="secondary" loading={busy === 'push'} loadingLabel="Activando…" disabled={!pushAvailable} onClick={() => void activatePush()}>Activar</Button>}
+            : <Button variant="secondary" loading={busy === 'push'} loadingLabel="Activando…" onClick={() => void activatePush()}>Activar</Button>}
         </SettingRow>
         <SettingRow name="Avisos por mail" desc="Además de la campana, te llega un mail cuando te asignan algo o hay novedades.">
           <span className="cfg-inline">

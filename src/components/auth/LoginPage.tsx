@@ -4,12 +4,16 @@ import type { AuthUser, SiteInfo } from '../../types';
 import { confirmPasswordLink, getGoogleOAuthConfig, login, register, requestPasswordLink } from '../../services/authApi';
 import { ApiError } from '../../services/apiClient';
 import { Button, Collapse, Input } from '../../ui';
+import { newPasswordProblem, PASSWORD_HINT, PASSWORD_MAX } from '../../utils/passwordPolicy';
 import { AuthFrame } from './AuthFrame';
+import { PRIVACY_PATH, onPrivacyLinkClick } from './publicRoutes';
 
 export type AuthMode = 'landing' | 'login' | 'register';
 type Screen = 'login' | 'register' | 'password';
 type Tone = 'bad' | 'warn' | 'info' | 'ok';
 type Message = { tone: Tone; text: string; n: number };
+type Field = 'email' | 'repeat' | 'password' | 'code' | 'forgot';
+type FieldErrors = Partial<Record<Field, string>>;
 
 function translateUrlError(slug: string): { tone: Tone; text: string } {
   switch (slug) {
@@ -27,6 +31,8 @@ function translateUrlError(slug: string): { tone: Tone; text: string } {
 
 /** Mensaje entendible: sin "Failed to fetch" ni códigos HTTP sueltos. */
 function explain(error: unknown, fallback: string) {
+  // Credenciales: además de qué pasó, qué hacer.
+  if (error instanceof ApiError && error.status === 401) return `${error.message || 'Mail o contraseña incorrectos.'} Revisalos o tocá "Olvidé mi contraseña".`;
   if (error instanceof ApiError) return error.message || fallback;
   if (error instanceof TypeError || (error instanceof Error && /fetch|network|load failed/i.test(error.message))) {
     return 'No hay conexión con el servidor. Revisá tu internet y probá de nuevo.';
@@ -58,12 +64,14 @@ const SUBTITLES: Record<Screen, string> = {
   register: 'Con el código que te pasó el Jefe TIC de tu sede. Tu rol ya viene en la invitación.',
   password: 'Este link sirve una sola vez y vence a la hora de pedirlo.'
 };
+const FORGOT_SENT = 'Si el mail tiene acceso a TechAsset, te llega un link para elegir tu contraseña. Revisá tu casilla (y spam).';
 
 /**
  * Ingreso, registro con código y "Elegí tu contraseña" (link de un solo uso).
  * Todo en línea: los avisos van arriba del formulario, los campos de cada modo
  * se abren y cierran con alto suave (Collapse) y lo escrito nunca se pierde
  * ante un error. El botón queda ocupado mientras trabaja (sin doble envío).
+ * Registro OK: la sesión queda abierta y se entra directo (onReady).
  */
 export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSite }: {
   mode: AuthMode;
@@ -76,7 +84,13 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
   // Lo que trae la URL se lee una vez y se limpia (no queda el token a la vista).
   const [initial] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return { code: (params.get('code') || '').toUpperCase(), error: params.get('error') || '', token: params.get('password') || '' };
+    return {
+      code: (params.get('code') || '').toUpperCase().slice(0, 20),
+      error: params.get('error') || '',
+      token: params.get('password') || '',
+      // Después de Cerrar sesión (App recarga en /login?sesion=cerrada).
+      loggedOut: params.get('sesion') === 'cerrada'
+    };
   });
   const [passwordToken, setPasswordToken] = useState(initial.token);
   const screen: Screen = passwordToken ? 'password' : mode === 'register' ? 'register' : 'login';
@@ -88,19 +102,41 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
   const codeFromLink = Boolean(initial.code) && code === initial.code;
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState<'' | 'submit' | 'forgot' | 'google'>('');
-  const [message, setMessageState] = useState<Message | null>(() => (initial.error ? { ...translateUrlError(initial.error), n: 1 } : null));
-  const [fieldError, setFieldError] = useState<{ field: 'email' | 'repeat' | 'password' | 'code'; text: string } | null>(null);
+  const [message, setMessageState] = useState<Message | null>(() => (
+    initial.error ? { ...translateUrlError(initial.error), n: 1 }
+      : initial.loggedOut ? { tone: 'ok', text: 'Sesión cerrada. En este navegador no quedó tu nombre ni lo que tenías a medio cargar.', n: 1 }
+        : null
+  ));
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  // "Olvidé mi contraseña": primero se confirma a qué mail mandar el link (antes salía al toque).
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
   const emailRef = useRef<HTMLInputElement | null>(null);
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const repeatRef = useRef<HTMLInputElement | null>(null);
+  const codeRef = useRef<HTMLInputElement | null>(null);
+  const forgotRef = useRef<HTMLInputElement | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const refs: Partial<Record<Field, typeof emailRef>> = { email: emailRef, password: passwordRef, repeat: repeatRef, code: codeRef, forgot: forgotRef };
 
   const say = (tone: Tone, text: string) => setMessageState(current => ({ tone, text, n: (current?.n || 0) + 1 }));
-  const clear = () => { setMessageState(null); setFieldError(null); };
+  const clear = () => { setMessageState(null); setFieldErrors({}); };
+  const clearField = (field: Field) => setFieldErrors(current => (current[field] ? { ...current, [field]: undefined } : current));
+  /** Marca todos los campos con problema a la vez; el foco va al primero. */
+  const flag = (errors: FieldErrors, order: Field[]) => {
+    setFieldErrors(errors);
+    const first = order.find(field => errors[field]);
+    if (first) refs[first]?.current?.focus();
+  };
+  /** Error del server que es de un campo (field: 'password' | 'code' | 'email'): va debajo de ese campo. */
+  const fieldFromServer = (error: unknown) => {
+    const field = error instanceof ApiError ? String(error.data.field || '') : '';
+    if (field === 'password' || field === 'code' || field === 'email') flag({ [field]: (error as ApiError).message }, [field]);
+  };
 
   useEffect(() => {
-    if (initial.code || initial.error || initial.token) {
+    if (initial.code || initial.error || initial.token || initial.loggedOut) {
       const path = window.location.pathname;
       window.history.replaceState(window.history.state, '', path);
     }
@@ -115,7 +151,8 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
   const switchTo = (next: 'login' | 'register') => {
     if (next === screen) return;
     // El aviso de sesión vencida / link de Google sigue valiendo en Ingresar; el resto se limpia.
-    setFieldError(null);
+    setFieldErrors({});
+    setForgotOpen(false);
     setMessageState(current => (current && current.tone === 'warn' && next === 'login' ? current : null));
     onMode(next);
   };
@@ -142,24 +179,17 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
 
   const submitRegister = async () => {
     try {
-      const response = await register({ email: email.trim(), nombre: nombre.trim(), code: code.trim(), password });
-      // La cuenta queda activa: se pasa a Ingresar con el mail (y la contraseña) ya puestos.
-      setNombre('');
-      setCode('');
-      onMode('login');
-      say('ok', response.message || 'Cuenta creada. Ya podés iniciar sesión con tu mail.');
+      const session = await register({ email: email.trim(), nombre: nombre.trim(), code: code.trim(), password });
+      // La cuenta queda activa y la sesión abierta: se entra directo a la app.
+      if (!session.authenticated || !session.user || !session.sites?.length) throw new Error('La cuenta se creó, pero no pudimos abrir la sesión. Ingresá con tu mail y tu contraseña.');
+      onReady({ user: session.user, sites: session.sites });
     } catch (err) {
       say('bad', explain(err, 'No se pudo completar el registro.'));
+      fieldFromServer(err);
     }
   };
 
   const submitNewPassword = async () => {
-    if (password !== passwordRepeat) {
-      setFieldError({ field: 'repeat', text: 'Las contraseñas no coinciden.' });
-      say('bad', 'Las contraseñas no coinciden.');
-      repeatRef.current?.focus();
-      return;
-    }
     try {
       const response = await confirmPasswordLink(passwordToken, password);
       setPasswordToken('');
@@ -170,25 +200,34 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
       window.setTimeout(() => passwordRef.current?.focus(), 0);
     } catch (err) {
       say('bad', explain(err, 'No se pudo guardar la contraseña.'));
+      fieldFromServer(err);
     }
+  };
+
+  /** Lo que falta o está mal, todo junto (no de a un campo por intento). */
+  const validate = (): FieldErrors => {
+    const errors: FieldErrors = {};
+    if (screen === 'register' && !code.trim()) errors.code = 'Pegá o escribí el código de invitación.';
+    if (screen !== 'password' && !email.includes('@')) errors.email = 'Escribí tu mail completo (con @).';
+    if (screen === 'login') {
+      if (!password) errors.password = 'Escribí tu contraseña.';
+    } else {
+      // Contraseña nueva (registro o link): la misma regla que el server, avisada antes de mandar.
+      const problem = newPasswordProblem(password, { email, nombre });
+      if (problem) errors.password = problem;
+      else if (screen === 'password' && password !== passwordRepeat) errors.repeat = 'Las contraseñas no coinciden.';
+    }
+    return errors;
   };
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
     clear();
-    if (screen !== 'password' && !email.includes('@')) {
-      setFieldError({ field: 'email', text: 'Escribí tu mail completo (con @).' });
-      emailRef.current?.focus();
-      return;
-    }
-    if (screen === 'register' && !code.trim()) {
-      setFieldError({ field: 'code', text: 'Pegá o escribí el código de invitación.' });
-      return;
-    }
-    if (password.length < 6) {
-      setFieldError({ field: 'password', text: screen === 'login' ? 'Escribí tu contraseña (mínimo 6 caracteres).' : 'Mínimo 6 caracteres.' });
-      passwordRef.current?.focus();
+    const errors = validate();
+    if (Object.keys(errors).length) {
+      flag(errors, ['code', 'email', 'password', 'repeat']);
+      if (errors.repeat && !errors.password) say('bad', 'Las contraseñas no coinciden.');
       return;
     }
     setBusy('submit');
@@ -201,20 +240,34 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
     }
   };
 
-  const forgotPassword = async () => {
+  const toggleForgot = () => {
     if (busy) return;
-    clear();
-    if (!email.includes('@')) {
-      setFieldError({ field: 'email', text: 'Escribí tu mail acá y tocá de nuevo "Olvidé mi contraseña".' });
-      emailRef.current?.focus();
+    const next = !forgotOpen;
+    setForgotOpen(next);
+    clearField('forgot');
+    // Se propone el mail que ya está escrito; se puede corregir antes de mandar.
+    if (next) {
+      setForgotEmail(current => current || email.trim());
+      window.setTimeout(() => forgotRef.current?.focus({ preventScroll: true }), 0);
+    }
+  };
+
+  const sendForgot = async () => {
+    if (busy) return;
+    const target = forgotEmail.trim();
+    if (!target.includes('@')) {
+      flag({ forgot: 'Escribí el mail de tu cuenta (con @).' }, ['forgot']);
       return;
     }
+    setMessageState(null);
     setBusy('forgot');
     try {
-      const response = await requestPasswordLink(email.trim());
-      say('info', response.message);
+      const response = await requestPasswordLink(target);
+      setForgotOpen(false);
+      if (!email.trim()) setEmail(target);
+      say('info', response.message || FORGOT_SENT);
     } catch (err) {
-      say('bad', explain(err, 'No se pudo pedir el link.'));
+      flag({ forgot: explain(err, 'No se pudo pedir el link.') }, ['forgot']);
     } finally {
       setBusy('');
     }
@@ -230,10 +283,11 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
       {showPassword ? 'Ocultar' : 'Mostrar'}
     </button>
   );
-  const err = (field: 'email' | 'repeat' | 'password' | 'code') => (fieldError?.field === field ? fieldError.text : undefined);
+  const err = (field: Field) => fieldErrors[field];
   const isLogin = screen === 'login';
   const isRegister = screen === 'register';
   const isPassword = screen === 'password';
+  const privacyLink = <a className="auth-link auth-link--inline" href={PRIVACY_PATH} onClick={onPrivacyLinkClick}>Privacidad y uso</a>;
 
   return (
     <AuthFrame onHome={isPassword ? undefined : () => onMode('landing')}>
@@ -300,14 +354,16 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
           {/* Registro: código y nombre arriba del mail. */}
           <Collapse open={isRegister} className="auth-fields" anchor={false} reveal={false}>
             <Input
+              ref={codeRef}
               label="Código de invitación"
               className="auth-code"
               value={code}
-              onValueChange={value => { setCode(value.toUpperCase()); if (fieldError?.field === 'code') setFieldError(null); }}
+              onValueChange={value => { setCode(value.toUpperCase()); clearField('code'); }}
               placeholder="TA-XXXX-XXXX"
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
+              maxLength={20}
               hint={codeFromLink ? 'Lo tomamos del link de tu invitación.' : 'Te llega por mail o te lo pasa el Jefe TIC.'}
               error={err('code')}
             />
@@ -317,6 +373,8 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
               onValueChange={setNombre}
               placeholder="Como te van a ver los demás"
               autoComplete="name"
+              maxLength={120}
+              hint="Con este nombre quedan firmados tus préstamos y cambios."
             />
           </Collapse>
 
@@ -328,8 +386,9 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
               inputMode="email"
               autoComplete={isRegister ? 'email' : 'username'}
               value={email}
-              onValueChange={value => { setEmail(value); if (fieldError?.field === 'email') setFieldError(null); }}
+              onValueChange={value => { setEmail(value); clearField('email'); }}
               placeholder="nombre@colegio.edu.ar"
+              maxLength={254}
               hint={isRegister ? 'Si la invitación es para un mail puntual, tiene que ser ese.' : undefined}
               error={err('email')}
             />
@@ -341,9 +400,10 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
             type={showPassword ? 'text' : 'password'}
             autoComplete={isLogin ? 'current-password' : 'new-password'}
             value={password}
-            onValueChange={value => { setPassword(value); if (fieldError?.field === 'password') setFieldError(null); }}
+            onValueChange={value => { setPassword(value); clearField('password'); }}
             suffix={passwordToggle}
-            hint={isLogin ? undefined : 'Mínimo 6 caracteres.'}
+            maxLength={PASSWORD_MAX}
+            hint={isLogin ? undefined : PASSWORD_HINT}
             error={err('password')}
             autoFocus={isPassword}
           />
@@ -355,19 +415,43 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               value={passwordRepeat}
-              onValueChange={value => { setPasswordRepeat(value); if (fieldError?.field === 'repeat') setFieldError(null); }}
+              maxLength={PASSWORD_MAX}
+              onValueChange={value => { setPasswordRepeat(value); clearField('repeat'); }}
               error={err('repeat')}
             />
           </Collapse>
 
           <Collapse open={isLogin} className="auth-fields auth-fields--tight" anchor={false} reveal={false} lazy={false}>
-            <button type="button" className="auth-link auth-forgot" onClick={() => void forgotPassword()} disabled={!isLogin || Boolean(busy)} aria-busy={busy === 'forgot' || undefined}>
-              {busy === 'forgot' ? 'Pidiendo el link…' : 'Olvidé mi contraseña o es mi primera vez'}
+            <button type="button" className="auth-link auth-forgot" onClick={toggleForgot} disabled={!isLogin || Boolean(busy)} aria-expanded={forgotOpen} aria-controls="auth-forgot">
+              Olvidé mi contraseña
             </button>
           </Collapse>
 
+          {/* Antes el link mandaba el mail al toque: ahora se confirma a qué casilla. */}
+          <Collapse open={isLogin && forgotOpen} id="auth-forgot" className="auth-forgot-box">
+            <p className="auth-forgot-text">Te mandamos un link para elegir una contraseña nueva. Sirve una sola vez y vence en 1 hora.</p>
+            <Input
+              ref={forgotRef}
+              label="¿A qué mail te lo mandamos?"
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              value={forgotEmail}
+              maxLength={254}
+              onValueChange={value => { setForgotEmail(value); clearField('forgot'); }}
+              onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void sendForgot(); } }}
+              placeholder="nombre@colegio.edu.ar"
+              error={err('forgot')}
+            />
+            <div className="auth-forgot-actions">
+              <Button variant="secondary" loading={busy === 'forgot'} loadingLabel="Mandando…" disabled={Boolean(busy) && busy !== 'forgot'} onClick={() => void sendForgot()}>Mandar el link</Button>
+              <Button variant="ghost" disabled={busy === 'forgot'} onClick={toggleForgot}>Cancelar</Button>
+            </div>
+            <p className="auth-forgot-note">¿Tu cuenta es de antes y nunca elegiste una contraseña? Es este mismo link.</p>
+          </Collapse>
+
           <Button type="submit" variant="primary" block loading={busy === 'submit'} disabled={Boolean(busy) && busy !== 'submit'} loadingLabel={isRegister ? 'Creando la cuenta…' : isPassword ? 'Guardando…' : 'Ingresando…'}>
-            {isRegister ? 'Crear cuenta' : isPassword ? 'Guardar contraseña' : 'Ingresar'}
+            {isRegister ? 'Crear cuenta y entrar' : isPassword ? 'Guardar contraseña' : 'Ingresar'}
           </Button>
 
           <Collapse open={isLogin && googleEnabled} className="auth-fields" anchor={false} reveal={false}>
@@ -386,7 +470,7 @@ export function LoginPage({ mode, onMode, onReady, linkSite = '', onForgetLinkSi
 
         <div className="auth-notes">
           <span>{isRegister ? '¿Ya tenés cuenta? Tocá Ingresar.' : '¿No tenés cuenta? Pedile un código de invitación al Jefe TIC de tu sede.'}</span>
-          <span>Cada sede ve solo sus datos.</span>
+          <span>{isRegister ? 'Lo que hagas en la sede queda firmado con tu nombre y lo ve tu equipo.' : 'Cada sede ve solo sus datos.'} Qué se guarda y cómo pedir la baja: {privacyLink}.</span>
         </div>
       </div>
     </AuthFrame>

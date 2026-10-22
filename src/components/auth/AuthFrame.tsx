@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { Segmented } from '../../ui';
 import { setAppearance, useAppearance, type ThemePref } from '../../utils/theme';
+import { PRIVACY_PATH, onPrivacyLinkClick } from './publicRoutes';
 // Estilos de landing/login: viajan con estas pantallas (solo las ve quien no
 // tiene sesión), no en la primera carga de la app.
 import '../../styles/screens/auth.css';
@@ -17,13 +18,14 @@ const THEMES: Array<{ value: ThemePref; label: string; icon: ReactNode }> = [
  * marca, tema y pie. Sin capas: todo en el flujo de la página, que scrollea
  * el documento (nunca un contenedor interno).
  */
-export function AuthFrame({ children, onHome, action, wide = false }: {
+export function AuthFrame({ children, onHome, action, wide = false, hidePrivacyLink = false }: {
   children: ReactNode;
   /** La marca vuelve a la landing (en la landing no hace nada). */
   onHome?: () => void;
   /** Botón extra a la derecha (en la landing: "Ingresar"). */
   action?: ReactNode;
   wide?: boolean;
+  hidePrivacyLink?: boolean;
 }) {
   const { theme } = useAppearance();
   const brand = (
@@ -46,6 +48,8 @@ export function AuthFrame({ children, onHome, action, wide = false }: {
       <main className="auth-main" id="contenido">{children}</main>
       <footer className="auth-foot">
         <span>TechAsset · gestión TIC del colegio</span>
+        {/* En Privacidad mismo no se repite el link a sí misma. */}
+        {!hidePrivacyLink && <a className="auth-link" href={PRIVACY_PATH} onClick={onPrivacyLinkClick}>Privacidad y uso</a>}
       </footer>
     </div>
   );

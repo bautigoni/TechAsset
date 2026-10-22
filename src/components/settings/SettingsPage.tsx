@@ -28,7 +28,7 @@ type Access = 'all' | 'admin' | 'super';
 type PanelMeta = { title: string; desc: string; group: 'cuenta' | 'sede' | 'sistema'; access: Access };
 
 const PANELS: Record<SettingsPanelKey, PanelMeta> = {
-  cuenta: { title: 'Cuenta', desc: 'Tu usuario, el modo consulta y la sesión.', group: 'cuenta', access: 'all' },
+  cuenta: { title: 'Cuenta', desc: 'Tu usuario, el modo consulta, la contraseña, tus datos y la sesión.', group: 'cuenta', access: 'all' },
   apariencia: { title: 'Apariencia', desc: 'Cómo se ve TechAsset para vos: tema, densidad y tamaño de texto.', group: 'cuenta', access: 'all' },
   notificaciones: { title: 'Notificaciones', desc: 'Por dónde te avisamos y de qué.', group: 'cuenta', access: 'all' },
   turnos: { title: 'Turnos TIC', desc: 'Quién está a la mañana y quién a la tarde.', group: 'sede', access: 'all' },
@@ -247,7 +247,7 @@ export function SettingsPage(props: SettingsPageProps) {
   const renderPanel = (key: SettingsPanelKey) => {
     const common = { header: header(key), readOnly: consultationMode, siteCode: activeSite };
     switch (key) {
-      case 'cuenta': return <AccountPanel {...common} operator={props.operator} user={user} sites={sites} siteRole={props.siteRole} roleReadOnly={props.roleReadOnly} consultationMode={consultationMode} setConsultationMode={props.setConsultationMode} sync={props.sync} onLogout={props.onLogout} />;
+      case 'cuenta': return <AccountPanel {...common} operator={props.operator} user={user} sites={sites} siteRole={props.siteRole} roleReadOnly={props.roleReadOnly} consultationMode={consultationMode} setConsultationMode={props.setConsultationMode} onLogout={props.onLogout} />;
       case 'apariencia': return <AppearancePanel header={common.header} />;
       case 'notificaciones': return <NotificationsPanel header={common.header} />;
       case 'turnos': return <ShiftsPanel {...common} />;

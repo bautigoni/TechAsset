@@ -657,3 +657,13 @@ a.cfg-list-i:hover { color: var(--g-text-3); }
 .cfg .ui-control:has(> .ui-input-el[readonly]) { background: transparent; }
 .cfg .ui-input-el[readonly] { color: var(--g-text-2); }
 
+/* Cuenta (QA frente A): link dentro de una descripción y cambio de contraseña. */
+.cfg-textlink { color: var(--g-accent); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); }
+.cfg-textlink:hover { color: var(--g-accent-hover); }
+.cfg-textlink:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; border-radius: 4px; }
+.cfg-pw { max-width: 28rem; border-top: 1px solid var(--g-line); }
+.cfg-pw-actions { display: flex; flex-wrap: wrap; gap: var(--g-s-2); }
+.cfg-reveal { height: 28px; margin-right: calc(-1 * var(--g-s-2)); padding: 0 var(--g-s-2); border: 0; border-radius: var(--g-radius-sm); background: transparent; color: var(--g-text-2); font: inherit; font-size: var(--g-fs-sm); white-space: nowrap; cursor: pointer; }
+.cfg-reveal:hover { background: var(--g-raised); color: var(--g-text); }
+.cfg-reveal:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 0; }
+

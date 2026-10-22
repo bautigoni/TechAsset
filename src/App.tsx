@@ -25,6 +25,8 @@ import { activeSiteRole, isSuperadmin, roleAccess } from './utils/permissions';
 import { resolveDeviceMatches } from './utils/normalizeSearch';
 import type { AssistantContext } from './services/assistantApi';
 import { isSettingsAlias, panelFromPath, requestSettingsPanel } from './components/settings/settingsRoute';
+import { PUBLIC_PAGE_EVENT, readPublicPageFromUrl, type PublicPageKind } from './components/auth/publicRoutes';
+import { clearPersonalData } from './services/personalData';
 
 // Cada vista viaja en su propio chunk: el bundle inicial baja de ~570 kB a lo que
 // hace falta para pintar el dashboard. Los chunks del resto se precargan en idle
@@ -54,6 +56,8 @@ const UiShowcase = lazyView('ui', () => import('./ui/Showcase'), 'Showcase');
 // tiene sesión, así que no tiene por qué pesar en el bundle del que ya entró.
 const LoginPage = lazyView('login', () => import('./components/auth/LoginPage'), 'LoginPage');
 const LandingPage = lazyView('landing', () => import('./components/auth/LandingPage'), 'LandingPage');
+// Privacidad y "Esta página no existe": se ven con o sin sesión, fuera del shell.
+const PublicPage = lazyView('public', () => import('./components/auth/PublicPages'), 'PublicPage');
 
 // La sesión se pide apenas se evalúa este módulo, antes del primer render: así
 // sale ANTES que agenda, tareas y turnos (que se piden en los efectos de sus
@@ -63,13 +67,13 @@ let bootSession: ReturnType<typeof getAuthSession> | null = typeof window !== 'u
 // Marcado como atendido: si falla antes del primer render no es un rechazo sin manejar
 // (el efecto de la sesión igual recibe el error y lo trata).
 bootSession?.catch(() => undefined);
-// El Inicio es la vista de entrada: su chunk se pide ya, en paralelo con la
-// sesión (después de ella, que va primera en la cola de pedidos).
-if (typeof window !== 'undefined' && /^\/(sede\/[^/]+\/?(dashboard)?)?$/i.test(window.location.pathname)) prefetchView('dashboard');
+// (El chunk de la pantalla de entrada se pide al final del módulo, bootPrefetch.)
 
 export function App() {
   const [view, setView] = useState<ViewKey>('dashboard');
   const [authMode, setAuthMode] = useState<'landing' | 'login' | 'register'>(() => readAuthModeFromUrl());
+  // Privacidad / página inexistente (con o sin sesión): se pinta sin esperar la sesión.
+  const [publicPage, setPublicPage] = useState<PublicPageKind | null>(() => readPublicPageFromUrl());
   // Adónde volver después de ingresar: el link con el que se llegó sin sesión
   // (/sede/nfpt/tasks/12, un mail, una notificación) o la vista en la que
   // estaba cuando venció la sesión. El login muestra "Entrás a <sede>".
@@ -93,15 +97,21 @@ export function App() {
   // Lector USB estando en el Inicio: cae en su barra de acción.
   const [dashScan, setDashScan] = useState<{ code: string; nonce: number } | undefined>();
   const [movements, setMovements] = useState<Movement[]>([]);
-  const [authLoading, setAuthLoading] = useState(true);
+  // En la landing, sin sesión recordada ni la pista de sesión (cookie
+  // techasset_signed_in, no es credencial) no hay nada que esperar: se pinta
+  // ya y /api/auth/session confirma por detrás (si igual había sesión, entra).
+  const [authLoading, setAuthLoading] = useState(() => !(window.location.pathname === '/' && !hasSessionHint() && !readSessionCache()));
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sites, setSites] = useState<SiteInfo[]>([]);
   const [activeSite, setActiveSite] = useState('');
   const [siteSettings, setSiteSettings] = useState<Record<string, unknown> | null>(null);
   const { operator, setOperator } = useOperator();
   const { devices, filteredDevices, counts, sync, refresh, removeLocal } = useDevices(search, activeSite);
-  const agenda = useAgenda(operator);
-  const tasks = useTasks(operator);
+  // Sin sesión no se pide ni se pollea nada protegido (antes la landing pedía
+  // agenda, tareas, turnos y movimientos y se comía cuatro 401 cada 15-30 s).
+  const signedIn = Boolean(user);
+  const agenda = useAgenda(operator, signedIn);
+  const tasks = useTasks(operator, signedIn);
   useScrollReveal([view, filteredDevices.length, agenda.items.length, tasks.items.length, movements.length]);
 
   useEffect(() => {
@@ -241,7 +251,7 @@ export function App() {
   }, [activeSite]);
 
   useEffect(() => {
-    if (!user || !activeSite) return;
+    if (!user || !activeSite || publicPage) return;
     const next = `/sede/${activeSite.toLowerCase()}/${view}${view === 'devices' && devicePage ? `/${encodeURIComponent(devicePage.tag)}` : ''}`;
     const push = pushNext.current;
     pushNext.current = false;
@@ -258,11 +268,33 @@ export function App() {
     }
     if (push) window.history.pushState({ techasset: true }, '', next);
     else window.history.replaceState(null, '', next);
-  }, [activeSite, view, user, devicePage]);
+  }, [activeSite, view, user, devicePage, publicPage]);
+
+  // Privacidad: se abre desde la landing, el ingreso o Configuración › Cuenta
+  // (openPublicPage empuja /privacidad) y Atrás/Adelante la recorren, con o sin sesión.
+  const userRef = useRef(user);
+  userRef.current = user;
+  useEffect(() => {
+    const sync = () => {
+      const page = readPublicPageFromUrl();
+      setPublicPage(page);
+      if (!page && !userRef.current) setAuthMode(readAuthModeFromUrl());
+    };
+    window.addEventListener(PUBLIC_PAGE_EVENT, sync);
+    window.addEventListener('popstate', sync);
+    return () => { window.removeEventListener(PUBLIC_PAGE_EVENT, sync); window.removeEventListener('popstate', sync); };
+  }, []);
+  const leavePublicPage = useCallback(() => {
+    // Si se llegó desde la app (o la landing), Atrás vuelve exactamente ahí.
+    if ((window.history.state as { publicPage?: string } | null)?.publicPage) { window.history.back(); return; }
+    setPublicPage(null);
+    if (!userRef.current) { setAuthMode('landing'); window.history.replaceState(null, '', '/'); }
+  }, []);
 
   useEffect(() => {
     if (!user) return;
     const onPopState = () => {
+      if (readPublicPageFromUrl()) return;
       const urlView = readViewFromUrl();
       const urlSite = readSiteFromUrl();
       const site = urlSite ? sites.find(item => item.siteCode.toLowerCase() === urlSite.toLowerCase()) : null;
@@ -352,8 +384,9 @@ export function App() {
   // Agenda y tareas también se refrescan solas (cada 2 vueltas, ~30 s): antes
   // solo equipos y movimientos, y un tablero compartido quedaba viejo hasta recargar.
   const refreshTick = useRef(0);
+  // Sin sesión el intervalo ni se arma (0 = apagado).
   useAutoRefresh(() => {
-    if (document.hidden) return;
+    if (document.hidden || !userRef.current) return;
     void refresh();
     void refreshMovements();
     refreshTick.current += 1;
@@ -361,7 +394,7 @@ export function App() {
       void agenda.refresh().catch(() => undefined);
       void tasks.refresh().catch(() => undefined);
     }
-  }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 15));
+  }, signedIn ? Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 15) : 0);
 
   // (El refetch de movimientos por cambio de devices/agenda/tasks se sacó: era
   // redundante con el auto-refresh y con el refresh que hace cada mutación.)
@@ -510,18 +543,16 @@ export function App() {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
   }, [user]);
 
+  // Cerrar sesión: además de la cookie, se borra de este navegador lo que es de
+  // la persona (nombre, sesión recordada, borradores guardados) y la página se
+  // recarga en el ingreso con "Sesión cerrada": así no queda nada en memoria
+  // (equipos, agenda, tareas, movimientos, formularios a medias) para quien
+  // entre después en la misma compu. Los archivos de la app salen del caché.
   const handleLogout = async () => {
     await logoutSession().catch(() => undefined);
     clearSessionCache();
-    clearApiCache();
-    setUser(null);
-    setSites([]);
-    setActiveSite('');
-    setView('dashboard');
-    setAuthMode('landing');
-    setReturnTo('');
-    clearSearch();
-    window.history.replaceState(null, '', '/');
+    clearPersonalData();
+    window.location.replace('/login?sesion=cerrada');
   };
 
   const openLoanFlow = (deviceOrCode: Device | string) => {
@@ -614,9 +645,18 @@ export function App() {
   if (bootView.current !== null && view !== bootView.current) leftBootView.current = true;
   const enterStill = !leftBootView.current && view === bootView.current;
 
-  // Nada mientras se resuelve la sesión. El pedido tarda ~170 ms: cualquier
-  // cartel o placeholder alcanza a dibujarse y a irse, y ese parpadeo se nota
-  // más que la espera. Queda el fondo de la página y listo.
+  // Privacidad o una dirección que no existe: no espera la sesión (la sede se
+  // muestra si ya se conoce).
+  if (publicPage) {
+    return (
+      <Suspense fallback={null}>
+        <PublicPage kind={publicPage} user={user} sites={sites} activeSite={activeSite} onBack={leavePublicPage} />
+      </Suspense>
+    );
+  }
+  // Mientras se resuelve la sesión React no pinta nada y se ve la pantalla de
+  // arranque de index.html (#boot: marca y "Cargando…"), que se va sola cuando
+  // aparece la landing, el ingreso o la app.
   if (authLoading) return null;
   if (!user) {
     const goMode = (mode: 'landing' | 'login' | 'register') => {
@@ -770,6 +810,11 @@ function clearSessionCache() {
   }
 }
 
+/** Pista de sesión abierta en este navegador (la pone el server; la llave es la cookie httpOnly). */
+function hasSessionHint() {
+  try { return document.cookie.split(';').some(part => part.trim().startsWith('techasset_signed_in=1')); } catch { return false; }
+}
+
 function readSiteFromUrl() {
   const match = window.location.pathname.match(/^\/sede\/([^/]+)/i);
   return match?.[1]?.toUpperCase();
@@ -801,3 +846,22 @@ function readAuthModeFromUrl(): 'landing' | 'login' | 'register' {
   if (/^\/sede\/[^/]+/.test(path)) return 'login';
   return 'landing';
 }
+
+/**
+ * El chunk de la pantalla de entrada se pide ya, en paralelo con la sesión
+ * (que sale primera). Con una sesión recordada lo probable es entrar a la app:
+ * el Inicio. Sin ella, la pantalla sin sesión que toca: antes la landing en
+ * frío bajaba además el Inicio y ~15 chunks de íconos que no usaba, y con 3G
+ * lento competían con lo único que hacía falta pintar.
+ */
+function bootPrefetch() {
+  const path = window.location.pathname;
+  const page = readPublicPageFromUrl(path);
+  if (page) { prefetchView('public'); return; }
+  if (readSessionCache() || hasSessionHint()) {
+    if (/^\/(sede\/[^/]+\/?(dashboard)?)?$/i.test(path)) prefetchView('dashboard');
+    return;
+  }
+  prefetchView(readAuthModeFromUrl() === 'landing' ? 'landing' : 'login');
+}
+if (typeof window !== 'undefined') bootPrefetch();

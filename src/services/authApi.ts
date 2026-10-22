@@ -19,8 +19,19 @@ export const requestPasswordLink = (email: string) =>
   apiSend<{ ok: true; message: string }>('/api/auth/password/request', 'POST', { email });
 export const confirmPasswordLink = (token: string, password: string) =>
   apiSend<{ ok: true; email: string; message: string }>('/api/auth/password/confirm', 'POST', { token, password });
+/** Crea la cuenta y deja la sesión abierta (responde como /auth/session). */
 export const register = (payload: { email: string; nombre: string; code: string; password: string }) =>
   apiSend<AuthSession & { activated?: boolean }>('/api/auth/register', 'POST', payload);
+
+/** Cuenta propia: si tiene contraseña (o entra solo con Google). */
+export const getAccountInfo = () =>
+  apiGet<{ ok: true; hasPassword: boolean; googleEnabled: boolean }>('/api/auth/account');
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  apiSend<{ ok: true; message: string; closedSessions: number }>('/api/auth/password/change', 'POST', { currentPassword, newPassword });
+
+/** Para "Privacidad y uso": qué servicios de afuera tiene prendidos este servidor. */
+export const getPrivacyInfo = () =>
+  apiGet<{ ok: true; ai: string; google: boolean; push: boolean; errorReports: boolean }>('/api/auth/privacy-info');
 
 export interface Invite {
   id: number;

@@ -5,7 +5,8 @@ import { fetchShiftSettings } from '../services/operationsApi';
 import { isOverdue } from '../utils/dates';
 import { getActiveSiteCode } from '../services/activeSite';
 
-export function useTasks(operator: string) {
+/** `enabled`: sin sesión no pide nada (ni tareas ni turnos). */
+export function useTasks(operator: string, enabled = true) {
   const [items, setItems] = useState<TaskItem[]>([]);
   // Columnas activas de la sede (vienen con la lista): Tareas abre con el tablero ya armado.
   const [columns, setColumns] = useState<TaskColumn[]>([]);
@@ -64,8 +65,9 @@ export function useTasks(operator: string) {
   }, [loadShifts]);
 
   useEffect(() => {
+    if (!enabled) return;
     refresh().catch(() => setItems([]));
-  }, [refresh]);
+  }, [refresh, enabled]);
 
   const kpis = useMemo<Record<string, number>>(() => ({
     total: items.length,
