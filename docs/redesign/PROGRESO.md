@@ -22,7 +22,7 @@ Autodeploy verificado el 19/10/2026: la VM de producción se actualiza solo a ma
 | Búsqueda rápida de personas | ✅ < 200 ms (sugerencias 3 letras: 338 → 108 ms med.; 20 casos verificados con `perf/people-check.mjs`) | pasada 1 y 3 | — |
 | Revisión UX con 10 revisores + estética ElevenLabs + cartelitos en pop up (`revision-ux/ENCARGO.md`) | ✅ integrada en `integracion-ux` (hueco del Inicio, "Inicio" cortado, aperturas suaves, alturas parejas, radios redondos, orbe del asistente, `Dialog` de cartelitos) | rama `integracion-ux` | e2e 346/346 + 23/23 líneas base con `KNOWN_PENDING` vacío, check:ui OK, JS entrada 97,5 kB gzip, pg 128/128 |
 | Barrido REGLAS-UX (colapso compartido, sin huecos/truncados) en todas las pantallas | ✅ sonda UX bloqueante en 0 | 167dd5e, 938b7f4, 9085f22, 5ca267d | 3× e2e 265/265, pg 117/117 |
-| QA de lanzamiento: 5 usuarios nuevos (impaciente, escéptico, móvil 375px/3G, no nativo, destructor) en tenant de prueba QA aislado, lista por impacto, arreglo en un pase y re-corrida | pendiente (después del rendimiento) | — | — |
+| QA de lanzamiento: 5 usuarios nuevos (impaciente, escéptico, móvil 375px/3G, no nativo, destructor) en tenant de prueba QA aislado, lista por impacto, arreglo en un pase y re-corrida | ronda 1 ✅ (`qa/HALLAZGOS-1.md`, entorno `qa/README.md`); arreglos: C ✅ verificado, A/B/D/E cortados casi al final (ver abajo); integración y ronda 2 pendientes | 671f8b5, 9cf3cf2; ramas `qa-fix-a`…`qa-fix-e` | C: e2e 377/377 en su rama |
 | Auditoría 10 subagentes + correcciones + 2ª validación | pendiente | — | — |
 
 ## Decisiones tomadas en el camino
@@ -32,6 +32,30 @@ Autodeploy verificado el 19/10/2026: la VM de producción se actualiza solo a ma
 
 - 19/10: reglas de UX del dueño en REGLAS-UX.md (incluye colapsos suaves con encabezado anclado, sin huecos, sin truncar con espacio, vacíos diseñados) y la directiva completa en DIRECTIVA-FINAL.md.
 - Integración: cada pantalla se hace en un worktree y se trae con cherry-pick (nunca merge); después de cada integración: build, e2e, check:ui y pg-smoke.
+
+## Corte del 22/10/2026 (pedido del dueño: faltaban más de ~10 h) — qué quedó pendiente
+
+Los 5 frentes del arreglo del QA (ronda 1) están en ramas pusheadas, todas sobre `9cf3cf2` (= `rediseno-grafito`):
+
+| Rama | Frente | Estado al cortar |
+|---|---|---|
+| `qa-fix-a` | A: ingreso sin pantalla vacía y sin polling sin sesión, Privacidad y uso, 404, registro entra directo, cambiar contraseña, política de contraseña nueva, topes por campo + Unicode bidi en el server, mails de registro, cierre de sesión | 3 commits + 1 WIP (`src/App.tsx`); faltaba terminar su e2e completo |
+| `qa-fix-b` | B: leyenda sin números, formulario que marca todo junto (EP/ES, cursos), errores sin red en castellano, cámara, búsqueda "10" → Touch 10 | 4 commits + 1 WIP (11 archivos); faltaba su e2e completo |
+| `qa-fix-c` | C: Inicio — aviso en el lugar de la acción (sin corrimientos), sin falso vacío, vencimiento con la misma regla (`utils/taskDue.ts`), título "Equipos", textos | ✅ terminado: e2e 377/377, sonda UX 0, check:ui OK |
+| `qa-fix-d` | D: íconos de la barra con nombre, `src/ui` 44 px en touch, asistente dice si usa IA y qué manda / ejemplos reales / avisa al cambiar de vista, Escanear sin cámara, "Instalá" en una línea, "Más" con historial | 3 commits + 1 WIP (e2e `qa-d`); evals 38/38; faltaba su e2e completo |
+| `qa-fix-e` | E: Agenda (turnos, entregar/retirar con Deshacer, conteos), Tareas ("Grupo", casilla "Elegir", 24 h), Aulas sin plano con vacío explicado | 5 commits; faltaba su e2e completo |
+
+Conflictos esperables al integrar: `src/App.tsx` (A y C), `src/components/tasks/taskModel.ts` (C y E), formulario de préstamo del Inicio (C marca todos los faltantes; B rehízo `LoanForm` — alinear textos), `e2e/run.mjs` (cada frente registró su grupo), `apiClient.ts` (B errores; C no lo tocó al final).
+
+Orden para retomar:
+1. Integrar `qa-fix-c` → E → D → B → A con cherry-pick sobre `integracion-ux` (nunca merge), revisando los WIP; `npx tsc -b`, `npm run build`, `npm run check:ui`, `npm run e2e` completo (sonda UX con `KNOWN_PENDING` vacío), pg-smoke (Postgres 17 de Docker, `PG_TEST_URL` local).
+2. Ronda 2 de los 5 usuarios con `node qa/serve-qa.mjs --name=<p> --port=871x --fresh` (ver `qa/README.md`), comparar contra `qa/HALLAZGOS-1.md`.
+3. Auditoría con 10 subagentes (toda la app + especialidad cada uno) → consolidar → arreglar críticos/altos/medios sensatos → 2.ª validación.
+4. Validación técnica final (`node perf/suite.mjs --label=07-final`, comparar con 00/05/06) e informe final (tabla de benchmarks, estado de git, veredicto).
+
+Decisiones abiertas del dueño: ¿devolver un cartelito también en pop up?; logo del asistente (esfera / anillo / dos esferas, en `/sede/nfpt/ui`); registro que entra directo y contraseñas nuevas de 8+ (tomadas por defecto en A); Inicio: rótulo de "Prestar/Devolver" en mobile (abren el modo varios) y la ayuda fija (~50 px) en la barra.
+
+Remanentes de rendimiento (pasada 3 vs. inicial): arranque en caliente +23 %, "Cargar más" del historial +64 %, búsqueda "touch 34" +32 %, contenido de Dispositivos +34 %.
 
 ## Cómo reanudar
 
