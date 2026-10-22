@@ -511,7 +511,7 @@ export function TicketsPage({ consultationMode }: { consultationMode: boolean })
   };
 
   return (
-    <section className={cx('view active tkx', narrow && 'is-narrow')} aria-label="Tickets">
+    <section className={cx('view active tkx', narrow && 'is-narrow', paneOpen && 'has-pane')} aria-label="Tickets">
       <div className="tkx-toolbar">
         <Input
           className="tkx-search"

@@ -270,7 +270,7 @@ export function TicketForm({ initial, templates, classrooms, assistants, tickets
           {testLink
             ? <a className="ui-btn ui-btn--secondary tkx-linkbtn" href={testLink} target="_blank" rel="noreferrer"><span className="ui-btn-label">Abrir en {systemLabel(draft.origen)} ↗</span></a>
             : <Button variant="secondary" className="tkx-linkbtn" disabled>Abrir en {systemLabel(draft.origen)} ↗</Button>}
-          <span className="ui-help ui-help--hint">{testLink ? 'Se abre en otra pestaña para comprobar la referencia.' : 'Cargá la referencia para probar el link al sistema externo.'}</span>
+          <span className="ui-help ui-help--hint">{testLink ? 'Se abre en otra pestaña.' : 'Cargá la referencia para probarlo.'}</span>
         </div>
         <Segmented<TicketState> label="Estado" value={draft.estado} onChange={estado => set({ estado })} options={ESTADOS.map(value => ({ value, label: value }))} />
         <Segmented label="Prioridad" value={draft.prioridad} onChange={prioridad => set({ prioridad })} options={PRIORIDADES.map(value => ({ value, label: value }))} />

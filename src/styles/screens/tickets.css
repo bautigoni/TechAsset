@@ -109,6 +109,10 @@
 .tkx.is-narrow .tkx-wrap.has-pane .tkx-list,
 .tkx.is-narrow .tkx-wrap.no-pane .tkx-pane { display: none; }
 .tkx.is-narrow .tkx-pane { padding: var(--g-s-3) var(--g-s-4) var(--g-s-4); }
+/* En angosto con una ficha abierta, el buscador y los filtros (son de la lista, que no se ve)
+   no empujan la ficha hacia abajo: arranca arriba, con "Volver a la lista". */
+.tkx.is-narrow.has-pane > .tkx-toolbar,
+.tkx.is-narrow.has-pane > .tkx-filters { display: none; }
 
 /* Lista */
 .tkx-list-head { display: flex; align-items: center; min-width: 0; padding: var(--g-s-2) var(--g-s-3); border-bottom: 1px solid var(--g-line); }

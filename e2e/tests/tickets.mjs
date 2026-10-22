@@ -6,6 +6,7 @@
 // Sugerencias (validación en el lugar, votar, eliminar con Deshacer).
 // Cada prueba verifica el efecto en la base por API.
 import { assert, gotoView, openContext, pathname, sleep, until } from '../lib/browser.mjs';
+import { ticketsAgendaUxTests } from './ticketsAgendaUx.mjs';
 
 const visibleClick = (page, selector, rx) => until(() => page.evaluate((sel, src, flags) => {
   const re = new RegExp(src, flags);
@@ -238,5 +239,7 @@ export async function ticketsTests({ browser, base, api, apiConsulta, admin, con
   } finally {
     await ro.context.close();
   }
+  // rv6) Revisión UX 6: Tickets, Agenda y Horarios (aperturas suaves, vecinos parejos, sonda por ancho).
+  await ticketsAgendaUxTests({ browser, base, api, admin, releaseVersion, test, track });
   await sleep(0);
 }

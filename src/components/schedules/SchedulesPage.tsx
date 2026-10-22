@@ -277,8 +277,8 @@ export function SchedulesPage({ consultationMode }: { consultationMode: boolean 
               <div className="hr-now-grid">
                 {nowRows.map(item => (
                   <div key={item.id} className="hr-card hr-now-card">
-                    <TruncatedText className="hr-now-teacher">{item.teacher}</TruncatedText>
-                    <TruncatedText className="hr-now-course">{`${item.course} · ${item.subject || 'sin materia'}`}</TruncatedText>
+                    <TruncatedText className="hr-now-teacher" lines={2}>{item.teacher}</TruncatedText>
+                    <TruncatedText className="hr-now-course" lines={2}>{`${item.course} · ${item.subject || 'sin materia'}`}</TruncatedText>
                     <span className="hr-now-when g-num">{item.startTime}–{item.endTime}{item.room ? ` · ${item.room}` : ''}</span>
                   </div>
                 ))}

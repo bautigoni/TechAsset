@@ -1,7 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { AgendaItem } from '../../types';
 import { Button, Collapse, DatePicker, Input, NumberField, Ring, Segmented, Textarea, TimeField, cx, preloadPickers } from '../../ui';
-import { smoothHeight } from '../../utils/motion';
 import { weekdayOfKey } from '../../utils/formatters';
 import {
   DAY_SHORT, DEVICE_TYPES, MODULES, WEEK_DAYS, cap1, capacityFor, capacityUsage, dayNameOfDate, displayTurno, fold, longDate, toMin,
@@ -79,7 +78,6 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
-  const bodyRef = useRef<HTMLDivElement | null>(null);
   const lastError = useRef('');
   if (error) lastError.current = error;
   const modId = useId();
@@ -140,28 +138,15 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
         <h3 className="ag-h3">{title}</h3>
         <Button size="sm" variant="ghost" onClick={onCancel}>Cancelar</Button>
       </div>
-      <div className="ag-form-body" ref={bodyRef}>
+      <div className="ag-form-body">
         <div className="ag-form-row">
           <Segmented<Repeat>
             label="Se repite"
             value={draft.rep}
-            onChange={rep => smoothHeight(bodyRef.current, () => set({ rep }))}
+            onChange={rep => set({ rep })}
             options={[{ value: 'semanal', label: 'Todas las semanas' }, { value: 'fecha', label: 'Una sola fecha' }]}
           />
-          {dated ? (
-            <DatePicker
-              label="Fecha"
-              value={draft.fecha}
-              onChange={fecha => set({ fecha })}
-              min={minDate}
-              isDateDisabled={weekend}
-              disabledMessage="Sábados y domingos no se agendan"
-              shortcuts
-              required
-              defaultOpen={!draft.fecha}
-              className="ag-form-date"
-            />
-          ) : (
+          {!dated && (
             <Segmented
               label="Día"
               value={dayOptions.find(day => fold(day) === fold(draft.dia)) || draft.dia}
@@ -171,6 +156,22 @@ export function AgendaForm({ initial, items, clock, frequent, onSubmit, onCancel
           )}
           <Segmented label="Turno" value={draft.turno} onChange={turno => set({ turno })} options={turnoOptions.map(turno => ({ value: turno, label: turno || 'Sin turno' }))} />
         </div>
+        {/* "Una sola fecha": la fecha (con el calendario abierto) va en su propia fila y entra
+            creciendo; al lado de los segmentados dejaba un hueco del alto del calendario. */}
+        <Collapse open={dated} unmountOnClose>
+          <DatePicker
+            label="Fecha"
+            value={draft.fecha}
+            onChange={fecha => set({ fecha })}
+            min={minDate}
+            isDateDisabled={weekend}
+            disabledMessage="Sábados y domingos no se agendan"
+            shortcuts
+            required
+            defaultOpen={!draft.fecha}
+            className="ag-form-date"
+          />
+        </Collapse>
 
         <div className="ui-field">
           <span className="ui-label" id={modId}><span className="ui-label-text">Módulo</span></span>

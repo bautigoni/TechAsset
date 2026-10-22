@@ -93,7 +93,7 @@ export function StepList({ value, onChange, label, placeholder = 'Escribí un pa
               onBlur={() => { if (draft.trim()) add([draft], false); }}
             />
           </div>
-          <Button size="sm" variant="secondary" icon={<IconPlus size={14} />} disabled={!draft.trim()} onMouseDown={event => event.preventDefault()} onClick={() => add([draft])}>Agregar</Button>
+          <Button variant="secondary" icon={<IconPlus size={16} />} disabled={!draft.trim()} onMouseDown={event => event.preventDefault()} onClick={() => add([draft])}>Agregar</Button>
         </div>
       )}
     </div>

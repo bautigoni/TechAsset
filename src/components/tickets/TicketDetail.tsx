@@ -426,7 +426,7 @@ function Checklist({ ticketId, items, canEdit, onItems, reload }: {
           <div className="ui-control ui-input tkx-grow">
             <input ref={inputRef} className="ui-input-el" value={text} placeholder="Agregar paso y Enter" aria-label="Agregar paso" autoComplete="off" onChange={event => setText(event.target.value)} />
           </div>
-          <Button type="submit" size="sm" variant="secondary" icon={<IconPlus size={14} />} loading={adding} disabled={!text.trim()}>Agregar</Button>
+          <Button type="submit" variant="secondary" icon={<IconPlus size={16} />} loading={adding} disabled={!text.trim()}>Agregar</Button>
         </form>
       )}
     </section>
