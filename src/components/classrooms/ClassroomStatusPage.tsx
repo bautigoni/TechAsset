@@ -390,6 +390,18 @@ function Legend() {
  * todo: ni el plano ni la lista cambian al tocar un aula.
  */
 const STRETCH = 20;
+/**
+ * Alto natural de una tarjeta en columna (flex): sus hijos + gaps + padding +
+ * borde. No usa el alto de la tarjeta, así sirve también mientras una
+ * transición le fija el alto (tocarlo cortaría la animación).
+ */
+function naturalHeight(card: HTMLElement) {
+  const style = getComputedStyle(card);
+  const kids = Array.from(card.children).filter((child): child is HTMLElement => child instanceof HTMLElement && child.offsetParent !== null);
+  const gap = parseFloat(style.rowGap) || 0;
+  const box = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'].reduce((sum, key) => sum + (parseFloat(style[key as 'paddingTop']) || 0), 0);
+  return kids.reduce((sum, child) => sum + child.offsetHeight, 0) + gap * Math.max(0, kids.length - 1) + box;
+}
 function useBalancedLayout(layoutRef: RefObject<HTMLDivElement | null>, count: number) {
   const [cols, setCols] = useState<1 | 2>(1);
   const [hint, setHint] = useState(true);
@@ -417,9 +429,9 @@ function useBalancedLayout(layoutRef: RefObject<HTMLDivElement | null>, count: n
       const pad = parseFloat(getComputedStyle(view).paddingTop) || 0;
       const chromeH = planH - view.offsetHeight + 2 * pad;
       ul.classList.remove('is-2col');
-      const list1 = list.offsetHeight;
+      const list1 = naturalHeight(list);
       ul.classList.add('is-2col');
-      const list2 = list.offsetHeight;
+      const list2 = naturalHeight(list);
       ul.classList.toggle('is-2col', was2);
       if (fitBefore) layout.style.setProperty('--cls-plan-fit', fitBefore);
       // El aviso mide lo mismo abierto o plegado (el contenido del colapso conserva su alto).

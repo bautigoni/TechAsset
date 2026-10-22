@@ -7,6 +7,9 @@ import { pathToFileURL } from 'node:url';
 import { KnownDevices } from 'puppeteer-core';
 import { root } from '../lib/env.mjs';
 import { assert, clickButton, gotoView, openContext, sleep, typeInto, until } from '../lib/browser.mjs';
+import { formatProbe, probeView, setTheme, settle } from '../lib/ux-probe.mjs';
+import { abruptChange, recordHeights, unevenNeighbors } from './uxFrames.mjs';
+import { historyTests } from './history.mjs';
 
 const SHEET = '.cls-sheet';
 /** Lo que se abre en línea crece con una transición: se espera a que termine (antes está recortado y no se puede tocar). */
@@ -238,6 +241,184 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
     }
   });
 
+  // ── Revisión UX 7 (20/10): huecos, recortes, nada de golpe, vecinos parejos ──
+  const floorButtons = p => p.$$eval('.cls-seg-floor .ui-seg-item', nodes => nodes.map((node, index) => ({ index, label: (node.querySelector('.ui-seg-label')?.textContent || '').trim(), disabled: node.disabled })));
+  const pickFloor = async (p, index) => {
+    await p.evaluate(i => document.querySelectorAll('.cls-seg-floor .ui-seg-item')[i]?.click(), index);
+    await sleep(900);
+  };
+
+  await test('au', 'Estado de aulas', 'Sin huecos: plano y columna de la derecha parejos en todas las plantas (1280–1920); la tarjeta del plano sin franjas vacías; abrir la ficha no mueve el plano y el plano sigue a la vista', async () => {
+    const view = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
+    track(view.page);
+    const problems = [];
+    let measured = 0;
+    try {
+      const p = view.page;
+      for (const site of ['NFPT', 'NFND']) {
+        for (const width of [1280, 1440, 1920]) {
+          await p.setViewport({ width, height: 900 });
+          await gotoView(p, base, 'classrooms', { site });
+          await p.waitForSelector('.cls-plan-view .cls-room', { timeout: 20000 });
+          await sleep(400);
+          for (const floor of await floorButtons(p)) {
+            if (floor.disabled) continue;
+            await pickFloor(p, floor.index);
+            const m = await p.evaluate(() => {
+              const r = s => document.querySelector(s)?.getBoundingClientRect();
+              const plan = r('.cls-plan-card'), list = r('.cls-list-card'), tools = r('.cls-plan-tools'), viewBox = r('.cls-plan-view'), readout = r('.cls-plan-readout');
+              return { twoCols: list.left > plan.right, diff: Math.round(list.bottom - plan.bottom), top: Math.round(viewBox.top - tools.bottom), bottom: Math.round(readout.top - viewBox.bottom) };
+            });
+            measured += 1;
+            const where = `${site} ${floor.label} ${width}`;
+            if (m.twoCols && Math.abs(m.diff) > 56) problems.push(`${where}: columnas desparejas ${m.diff} px`);
+            if (m.top > 12 || m.bottom > 12) problems.push(`${where}: franja vacía en la tarjeta del plano (arriba ${m.top}, abajo ${m.bottom})`);
+          }
+        }
+      }
+      // Abrir la ficha no mueve ni cambia de tamaño el plano; scrolleando, el plano sigue a la vista (sticky).
+      await p.setViewport({ width: 1440, height: 900 });
+      await openFloor(p, base, '1er piso');
+      // Arriba de todo (abrir la ficha puede scrollear para mostrarla, y el plano es sticky).
+      const planBox = () => p.evaluate(async () => {
+        document.querySelector('.shell-scroll').scrollTop = 0;
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const layout = document.querySelector('.cls-layout').getBoundingClientRect();
+        const box = document.querySelector('.cls-plan-view').getBoundingClientRect();
+        return { x: Math.round(box.left - layout.left), y: Math.round(box.top - layout.top), w: Math.round(box.width), h: Math.round(box.height) };
+      });
+      const idle = await planBox();
+      await (await p.$('[data-list-room]')).click();
+      await p.waitForSelector(`.ui-collapse[data-state="open"] > .ui-collapse-clip > * > ${SHEET} .cls-eq-item`, { timeout: 15000 });
+      await sleep(500);
+      const open = await planBox();
+      if (JSON.stringify(idle) !== JSON.stringify(open)) problems.push(`Abrir la ficha movió el plano: ${JSON.stringify(idle)} → ${JSON.stringify(open)}`);
+      const stuck = await p.evaluate(async () => {
+        const sc = document.querySelector('.shell-scroll');
+        sc.scrollTop += 500;
+        await new Promise(resolve => setTimeout(resolve, 200));
+        return { scTop: Math.round(sc.getBoundingClientRect().top), planTop: Math.round(document.querySelector('.cls-plan-card').getBoundingClientRect().top), scrolled: sc.scrollTop };
+      });
+      if (stuck.scrolled > 0 && stuck.planTop < stuck.scTop) problems.push(`El plano no sigue a la vista: queda en ${stuck.planTop} con el área en ${stuck.scTop}`);
+    } finally {
+      await view.context.close();
+    }
+    assert(!problems.length, problems.slice(0, 8).join(' | '));
+    return `${measured} plantas × anchos parejas; plano quieto y sticky`;
+  });
+
+  await test('au', 'Estado de aulas', 'Nada recortado: las aulas del borde (con su contorno de foco y hover) quedan enteras dentro del recuadro del plano (360–1920)', async () => {
+    const view = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
+    track(view.page);
+    const problems = [];
+    try {
+      const p = view.page;
+      for (const site of ['NFPT', 'NFND']) {
+        for (const width of [360, 768, 1440, 1920]) {
+          await p.setViewport({ width, height: 900 });
+          await gotoView(p, base, 'classrooms', { site });
+          await p.waitForSelector('.cls-plan-view .cls-room', { timeout: 20000 });
+          await sleep(400);
+          for (const floor of await floorButtons(p)) {
+            if (floor.disabled) continue;
+            await pickFloor(p, floor.index);
+            // 3 px = el contorno de foco (2 px + 1 px de separación), el más ancho.
+            const cut = await p.evaluate(() => {
+              const box = document.querySelector('.cls-plan-view').getBoundingClientRect();
+              return [...document.querySelectorAll('.cls-room')].filter(room => {
+                const r = room.getBoundingClientRect();
+                return r.left - 3 < box.left - 0.5 || r.top - 3 < box.top - 0.5 || r.right + 3 > box.right + 0.5 || r.bottom + 3 > box.bottom + 0.5;
+              }).map(room => room.dataset.roomKey);
+            });
+            if (cut.length) problems.push(`${site} ${floor.label} ${width}: ${cut.join(', ')}`);
+          }
+        }
+      }
+    } finally {
+      await view.context.close();
+    }
+    assert(!problems.length, `Aulas con el contorno recortado: ${problems.slice(0, 6).join(' | ')}`);
+    return 'ningún contorno recortado';
+  });
+
+  await test('au', 'Estado de aulas', 'Nada de golpe: filtrar, cambiar de planta, pasar a otra aula y generar el diagnóstico cambian de alto suave', async () => {
+    const view = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width: 1440, height: 900 } });
+    track(view.page);
+    const problems = [];
+    try {
+      const p = view.page;
+      await openFloor(p, base, '1er piso');
+      // Un filtro que cambia la cantidad de aulas de la lista.
+      const filterIndex = await p.evaluate(() => {
+        const total = document.querySelectorAll('.cls-list-item').length;
+        return [...document.querySelectorAll('.cls-sum')].findIndex(node => { const n = Number(node.querySelector('.cls-sum-num')?.textContent || '-1'); return n >= 0 && n !== total && !node.classList.contains('cls-sum-main'); });
+      });
+      if (filterIndex >= 0) {
+        const heights = await recordHeights(p, '.cls-list-card', () => p.evaluate(i => document.querySelectorAll('.cls-sum')[i].click(), filterIndex));
+        const bad = abruptChange(heights);
+        if (bad) problems.push(`filtro: ${JSON.stringify(bad)}`);
+        const back = await recordHeights(p, '.cls-list-card', () => p.evaluate(i => document.querySelectorAll('.cls-sum')[i].click(), filterIndex));
+        const bad2 = abruptChange(back);
+        if (bad2) problems.push(`quitar filtro: ${JSON.stringify(bad2)}`);
+      }
+      const floors = await floorButtons(p);
+      const other = floors.find(floor => !floor.disabled && /Segundo|2do/.test(floor.label)) || floors.find(floor => !floor.disabled && !/1er/.test(floor.label));
+      const floorHeights = await recordHeights(p, '.cls-layout-box', () => p.evaluate(i => document.querySelectorAll('.cls-seg-floor .ui-seg-item')[i].click(), other.index));
+      const bad3 = abruptChange(floorHeights);
+      if (bad3) problems.push(`planta: ${JSON.stringify(bad3)}`);
+      await openFloor(p, base, '1er piso');
+      await openRoom(p, 'pp_2N');
+      const switchHeights = await recordHeights(p, '.cls-side', async () => { await (await p.$('[data-room-key="pp_3N"]')).click(); }, 1200);
+      await p.waitForSelector(`${SHEET}[aria-label*="3N"] .cls-eq-item`, { timeout: 15000 });
+      const bad4 = abruptChange(switchHeights);
+      if (bad4) problems.push(`otra aula: ${JSON.stringify(bad4)}`);
+      // La ficha no se achica al esqueleto y vuelve a crecer: el alto nunca baja de golpe más de la mitad.
+      const minDuring = Math.min(...switchHeights.filter(value => value > 0));
+      if (minDuring < switchHeights[0] * 0.5) problems.push(`otra aula: la ficha se achicó a ${minDuring} px (de ${switchHeights[0]}) mientras cargaba`);
+      const dx = await recordHeights(p, '.cls-side', async () => { await clickButton(p, /^(Generar análisis|Volver a generar)$/, { scope: SHEET }); }, 1500);
+      await p.waitForSelector(`${SHEET} .cls-health`, { timeout: 20000 });
+      const bad5 = abruptChange(dx);
+      if (bad5) problems.push(`diagnóstico: ${JSON.stringify(bad5)}`);
+    } finally {
+      await view.context.close();
+    }
+    assert(!problems.length, problems.join(' | '));
+    return 'filtro, planta, otra aula y diagnóstico sin saltos';
+  });
+
+  await test('au', 'Estado de aulas', 'Vecinos parejos (misma altura y alineados) y sonda UX en cero, con y sin ficha, 360–1440, oscuro y claro', async () => {
+    const rows = [
+      { row: '.cls-controls', items: '.ui-seg, .ui-btn' },
+      { row: '.cls-summary', items: '.cls-sum' },
+      { row: '.cls-plan-tools', items: '.ui-seg, .ui-btn, .ui-icon-btn' },
+      { row: '.cls-sheet-actions', items: '.ui-btn' },
+      { row: '.cls-savebar-btns', items: '.ui-btn' }
+    ];
+    const problems = [];
+    for (const width of [360, 1024, 1440]) {
+      const view = await openContext(browser, { base, token: admin.token, releaseVersion, viewport: { width, height: 900 }, ...(width < 768 ? { device: KnownDevices['iPhone 13'] } : {}) });
+      track(view.page);
+      try {
+        const p = view.page;
+        await openFloor(p, base, '1er piso');
+        await settle(p);
+        for (const state of ['sin ficha', 'con ficha']) {
+          if (state === 'con ficha') await openRoom(p, 'pp_2N');
+          problems.push(...(await unevenNeighbors(p, rows)).map(item => `${width} ${state}: ${item}`));
+          for (const theme of ['dark', 'light']) {
+            await setTheme(p, theme);
+            const probe = await probeView(p, { scope: '.cls', scrollSteps: 4 });
+            if (probe.total) problems.push(`${width} ${state} ${theme}: ${formatProbe(probe)}`);
+          }
+        }
+      } finally {
+        await view.context.close();
+      }
+    }
+    assert(!problems.length, problems.slice(0, 8).join(' | '));
+    return 'alturas parejas y sonda 0 en 3 anchos × 2 temas × 2 estados';
+  });
+
   // ── Recordatorios ─────────────────────────────────────────────────────
   const settings = (await api.get('/api/site-settings')).data.settings || {};
   const enabled = Array.isArray(settings['modules.enabled']) ? settings['modules.enabled'] : [];
@@ -349,4 +530,7 @@ export async function classroomsTests({ browser, base, api, apiConsulta, consult
   } finally {
     await ctx2.close();
   }
+
+  // hs) Historial (revisión UX 7): va acá para no tocar run.mjs (compartido).
+  await historyTests({ browser, base, admin, releaseVersion, test, track });
 }

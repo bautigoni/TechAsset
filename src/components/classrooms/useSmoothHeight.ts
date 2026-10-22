@@ -26,11 +26,13 @@ export function useSmoothHeight<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
   const from = useRef<number | null>(null);
   const run = useRef<{ timer: number; onEnd: (event: TransitionEvent) => void } | null>(null);
+  const raf = useRef(0);
 
   const finish = useCallback(() => {
     const el = ref.current;
     const current = run.current;
     run.current = null;
+    cancelAnimationFrame(raf.current);
     if (current) {
       window.clearTimeout(current.timer);
       el?.removeEventListener('transitionend', current.onEnd);
@@ -42,25 +44,33 @@ export function useSmoothHeight<T extends HTMLElement>() {
     }
   }, []);
 
-  // Después de cada render: si se pidió, del alto anterior al nuevo.
+  // Después de cada render: si se pidió, del alto anterior al nuevo. El alto
+  // de antes se sostiene hasta el próximo cuadro (antes de pintar): para
+  // entonces terminaron los re-render en cadena que dispara el cambio (p. ej.
+  // la lista que pasa a 2 columnas o el plano que se ajusta) y se mide el alto
+  // final de verdad, no uno intermedio.
   useLayoutEffect(() => {
     const el = ref.current;
     const start = from.current;
     if (!el || start === null) return;
     from.current = null;
     el.style.minHeight = '';
-    // Se mide el alto natural nuevo (sin lo que haya quedado de una animación anterior).
-    if (run.current) finish();
-    const end = el.getBoundingClientRect().height;
-    if (Math.abs(end - start) < 1 || reducedMotion()) return;
+    finish();
+    if (reducedMotion()) return;
     el.style.overflow = 'hidden';
     el.style.height = `${start}px`;
-    void el.offsetHeight;
-    el.style.transition = `height ${COLLAPSE_MS}ms var(--g-ease)`;
-    el.style.height = `${end}px`;
-    const onEnd = (event: TransitionEvent) => { if (event.target === el && event.propertyName === 'height') finish(); };
-    el.addEventListener('transitionend', onEnd);
-    run.current = { timer: window.setTimeout(finish, COLLAPSE_MS + 120), onEnd };
+    raf.current = requestAnimationFrame(() => {
+      el.style.height = '';
+      const end = el.getBoundingClientRect().height;
+      if (Math.abs(end - start) < 1) { finish(); return; }
+      el.style.height = `${start}px`;
+      void el.offsetHeight;
+      el.style.transition = `height ${COLLAPSE_MS}ms var(--g-ease)`;
+      el.style.height = `${end}px`;
+      const onEnd = (event: TransitionEvent) => { if (event.target === el && event.propertyName === 'height') finish(); };
+      el.addEventListener('transitionend', onEnd);
+      run.current = { timer: window.setTimeout(finish, COLLAPSE_MS + 120), onEnd };
+    });
   });
 
   useLayoutEffect(() => finish, [finish]);
