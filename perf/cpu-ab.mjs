@@ -73,7 +73,16 @@ function analyze(traceFile) {
   const tasks = mainEvents.filter(e => e.name === 'RunTask' || e.name === 'ThreadControllerImpl::RunTask');
   const cpu = list => list.reduce((sum, e) => sum + (e.tdur ?? e.dur ?? 0), 0) / 1000;
   const byName = name => mainEvents.filter(e => e.name === name);
+  // Layout / estilo FORZADOS: los que ocurren dentro de JS (alguien leyó una
+  // medida con el layout sucio). Se cuentan, no dependen de la carga.
+  const js = mainEvents.filter(e => e.name === 'FunctionCall' || e.name === 'EvaluateScript' || e.name === 'v8.evaluateModule' || e.name === 'TimerFire' || e.name === 'FireAnimationFrame');
+  const inside = e => js.some(f => f.ts <= e.ts && e.ts + (e.dur || 0) <= f.ts + (f.dur || 0));
+  const forcedLayout = byName('Layout').filter(inside);
+  const forcedStyle = byName('UpdateLayoutTree').filter(inside);
   return {
+    forcedLayouts: forcedLayout.length,
+    forcedLayoutCpu: cpu(forcedLayout),
+    forcedStyles: forcedStyle.length,
     cpuToFcp: fcp ? cpu(tasks.filter(t => t.ts < fcp.ts)) : null,
     cpuTotal: cpu(tasks),
     styleCpu: cpu(byName('UpdateLayoutTree')),
@@ -98,6 +107,7 @@ async function measure(server, browser) {
   await page.emulateNetworkConditions({ download: (10 * 1e6) / 8, upload: (5 * 1e6) / 8, latency: 40 });
   const traceFile = path.join(server.tmpDir, `t-${Date.now()}.json`);
   const dash = `${server.base}/sede/nfpt/dashboard`;
+  let extra = {};
   try {
     if (SCENARIO === 'cold' || SCENARIO === 'warm') {
       if (SCENARIO === 'warm') { await page.goto(dash, { waitUntil: 'networkidle0', timeout: 90000 }); await sleep(2500); }
@@ -142,13 +152,26 @@ async function measure(server, browser) {
       const view = SCENARIO.slice(5);
       await page.goto(dash, { waitUntil: 'networkidle0', timeout: 90000 });
       await sleep(4000);
+      // Pedidos /api que salen al abrir (cuántos, cuáles) y cuándo termina el último.
+      const api = [];
+      const onRequest = request => { if (/\/api\//.test(request.url())) api.push({ url: request.url().replace(server.base, '').split('?')[0], start: Date.now(), end: null, request }); };
+      const onDone = request => { const item = api.find(entry => entry.request === request); if (item) item.end = Date.now(); };
+      page.on('request', onRequest);
+      page.on('requestfinished', onDone);
+      page.on('requestfailed', onDone);
       await page.tracing.start({ path: traceFile, categories });
+      const clickedAt = Date.now();
       await page.evaluate(key => document.querySelector(`aside [data-view="${key}"]`)?.click(), view);
       await page.waitForNetworkIdle({ idleTime: 600, timeout: 30000 }).catch(() => undefined);
       await sleep(600);
       await page.tracing.stop();
+      page.off('request', onRequest);
+      page.off('requestfinished', onDone);
+      page.off('requestfailed', onDone);
+      const ends = api.map(entry => entry.end).filter(Boolean);
+      extra = { apiRequests: api.length, apiLastEndMs: ends.length ? Math.max(...ends) - clickedAt : 0, apiList: api.map(entry => entry.url).join(' ') };
     }
-    return analyze(traceFile);
+    return { ...analyze(traceFile), ...extra };
   } finally {
     await context.close();
     fs.rmSync(traceFile, { force: true });
@@ -163,7 +186,7 @@ try {
     for (const side of run % 2 === 0 ? ['A', 'B'] : ['B', 'A']) {
       const sample = await measure(servers[side], browser);
       results[side].push(sample);
-      console.log(`${side} ${run}: ${JSON.stringify(Object.fromEntries(Object.entries(sample).map(([k, v]) => [k, r1(v)])))}`);
+      console.log(`${side} ${run}: ${JSON.stringify(Object.fromEntries(Object.entries(sample).map(([k, v]) => [k, typeof v === "number" ? r1(v) : v])))}`);
     }
   }
 } finally {
