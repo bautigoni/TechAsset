@@ -55,6 +55,15 @@ function searchPeople(people, query, limit = 8) {
   return ranks.flat().slice(0, limit);
 }
 
+/** Vacía el campo como una persona: foco, Ctrl+A, Borrar (el triple clic no siempre selecciona todo). */
+async function clearField(page, input) {
+  await input.focus();
+  await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control');
+  await page.keyboard.press('Backspace');
+  const left = await page.evaluate(el => el.value, input);
+  if (left) throw new Error(`No se pudo vaciar el campo (quedó "${left}")`);
+}
+
 // ── Base y server ────────────────────────────────────────────────────────────
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'techasset-people-'));
 const dbCopy = path.join(tmpDir, 'people.db');
@@ -211,7 +220,7 @@ try {
         const page = await newPage(context, site);
         const input = await openPerson(page, site);
         for (const { kind, term } of terms) {
-          await input.click({ clickCount: 3 });
+          await clearField(page, input);
           await page.keyboard.press('Backspace');
           await sleep(700);
           const since = await page.evaluate(() => performance.now());
@@ -223,7 +232,7 @@ try {
             const field = document.getElementById('lo-persona');
             const listId = field?.getAttribute('aria-controls');
             const options = () => {
-              const scope = (listId && document.getElementById(listId)) || document;
+              const scope = (listId && document.getElementById(listId)) || document.createElement('div');
               return [...scope.querySelectorAll('[role="option"]')].filter(el => el.getBoundingClientRect().height > 1);
             };
             const started = performance.now();
@@ -238,7 +247,7 @@ try {
                     ok,
                     ms: ok ? Math.max(0, t - (window.__pc.lastKeyAt || t)) : null,
                     shown: shown.length,
-                    api: window.__pc.api.filter(r => r.at >= since0).map(r => r.url.replace(location.origin, '')),
+                    api: window.__pc.api.filter(r => r.at >= since0 && r.url.includes("/api/loans/")).map(r => r.url.replace(location.origin, '')),
                     long: window.__pc.long.filter(l => l.at >= since0).reduce((sum, l) => sum + l.ms, 0),
                     worstKey: Math.max(0, ...window.__pc.events.filter(e => e.at >= since0).map(e => e.ms))
                   });
@@ -278,13 +287,13 @@ try {
         const page = await newPage(context, site);
         const input = await openPerson(page, site);
         for (const { kind, term } of terms) {
-          await input.click({ clickCount: 3 });
+          await clearField(page, input);
           await page.keyboard.press('Backspace');
           await sleep(600);
           for (const char of term.slice(0, -1)) { await page.keyboard.type(char); await sleep(110); }
           const expected = searchPeople(directory, term).map(p => normalizePerson(p.persona || p.name)).slice(0, 1);
           // Antes de la última tecla: se marcan las opciones que ya están.
-          await page.evaluate(() => { window.__pcT0 = 0; document.addEventListener('keydown', () => { window.__pcT0 = performance.now(); }, { once: true, capture: true }); });
+          await page.evaluate(() => { window.__pcT0 = 0; document.addEventListener('input', () => { window.__pcT0 = performance.now(); }, { once: true, capture: true }); });
           await page.keyboard.type(term.slice(-1));
           const ms = await page.evaluate(expectedKeys => new Promise(resolve => {
             const norm = value => String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
@@ -292,7 +301,7 @@ try {
             const listId = field?.getAttribute('aria-controls');
             const started = performance.now();
             const tick = () => {
-              const scope = (listId && document.getElementById(listId)) || document;
+              const scope = (listId && document.getElementById(listId)) || document.createElement('div');
               const names = [...scope.querySelectorAll('[role="option"]')].filter(el => el.getBoundingClientRect().height > 1).map(el => norm(el.querySelector('.lo-suggest-name')?.textContent || el.textContent));
               if (expectedKeys.every(key => names.some(name => name.includes(key))) && names.length) {
                 requestAnimationFrame(() => setTimeout(() => resolve(performance.now() - window.__pcT0), 0));
@@ -327,14 +336,14 @@ try {
       const input = await openPerson(page, 'NFPT');
       await page.keyboard.type(slow);
       await sleep(320); // pasa el debounce: sale el pedido lento
-      await input.click({ clickCount: 3 });
+      await clearField(page, input);
       await page.keyboard.type(fast);
       await sleep(2200); // llegan las dos respuestas (la lenta, última)
       const shown = await page.evaluate(() => {
         const norm = value => String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
         const field = document.getElementById('lo-persona');
         const listId = field?.getAttribute('aria-controls');
-        const scope = (listId && document.getElementById(listId)) || document;
+        const scope = (listId && document.getElementById(listId)) || document.createElement('div');
         return { value: field?.value, names: [...scope.querySelectorAll('[role="option"]')].filter(el => el.getBoundingClientRect().height > 1).map(el => norm(el.querySelector('.lo-suggest-name')?.textContent || el.textContent)) };
       });
       const tokens = normalizePerson(fast).split(' ');
