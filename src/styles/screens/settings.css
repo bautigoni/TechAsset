@@ -657,10 +657,3 @@ a.cfg-list-i:hover { color: var(--g-text-3); }
 .cfg .ui-control:has(> .ui-input-el[readonly]) { background: transparent; }
 .cfg .ui-input-el[readonly] { color: var(--g-text-2); }
 
-/* Campo chico (size="sm") con la misma altura que el botón y el segmentado
-   chicos de al lado (barra de Usuarios, "Agregar ubicación"): el campo de
-   `src/ui` fija el alto del <input> al del tamaño normal y el control crecía
-   a 36 px. Arreglo local (el cambio compartido va en ui.css: ver informe). */
-@media (pointer: fine) {
-  .cfg .ui-control--sm .ui-input-el { height: calc(var(--ui-control-sm) - 2px); }
-}

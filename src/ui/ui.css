@@ -317,10 +317,15 @@ html[data-theme="light"] .ui-btn--primary[data-force~="active"] { background: co
   -webkit-appearance: none;
   appearance: none;
 }
+/* En el campo chico el texto interno también es chico: si no, su alto (el
+   normal) estira la caja a 36 px y queda más alta que el botón o el
+   segmentado sm de al lado (32 px). */
+.ui-control--sm .ui-input-el { height: calc(var(--ui-control-sm) - 2px); }
 .ui-input-el::placeholder { color: var(--g-text-3); opacity: 1; }
 .ui-input-el:disabled { cursor: not-allowed; }
 @media (pointer: coarse) {
-  .ui-input-el { height: calc(var(--ui-touch) - 2px); font-size: var(--g-fs-md); }
+  .ui-input-el,
+  .ui-control--sm .ui-input-el { height: calc(var(--ui-touch) - 2px); font-size: var(--g-fs-md); }
 }
 
 .ui-input-affix { display: inline-flex; align-items: center; flex: none; color: var(--g-text-3); }
@@ -347,8 +352,10 @@ html[data-theme="light"] .ui-btn--primary[data-force~="active"] { background: co
 .ui-input-btn:hover:not(:disabled) { background: var(--g-line); color: var(--g-text); }
 .ui-input-btn:focus-visible { outline: var(--g-focus-w) solid var(--g-focus); outline-offset: 0; }
 .ui-input-btn[aria-expanded="true"] { color: var(--g-accent); }
+.ui-control--sm .ui-input-btn { height: calc(var(--ui-control-sm) - var(--g-s-2)); }
 @media (pointer: coarse) {
-  .ui-input-btn { width: var(--ui-touch); height: calc(var(--ui-touch) - 2px); }
+  .ui-input-btn,
+  .ui-control--sm .ui-input-btn { width: var(--ui-touch); height: calc(var(--ui-touch) - 2px); }
 }
 
 /* Textarea autoalto: crece con el texto, nunca barra. */

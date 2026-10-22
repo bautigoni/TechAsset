@@ -428,7 +428,7 @@
 }
 .dash-selhead { border-radius: var(--g-radius) var(--g-radius) 0 0; }
 .dash-list-search { flex: 1 1 10rem; max-width: 15rem; margin-left: auto; }
-/* Pestañas y filtro del mismo alto (el Input sm de src/ui mide 36 y el Segmented sm 32). */
+/* Pestañas y filtro del mismo alto (32 px; en touch, los dos al objetivo táctil). */
 .dash-list-head { --dash-head-h: var(--ui-control-sm); }
 @media (pointer: coarse) { .dash-list-head { --dash-head-h: var(--ui-touch); } }
 .dash-list-search .ui-control { min-height: var(--dash-head-h); }
