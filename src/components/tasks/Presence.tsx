@@ -26,8 +26,9 @@ export function Presence<T>({ items, keyOf, render, reveal = false }: {
   const current = items.map(item => ({ key: keyOf(item), item, open: true }));
   const keys = new Set(current.map(row => row.key));
   // Lo que estaba dibujado y ya no viene: se queda plegándose en su lugar.
+  // (Solo las que estaban abiertas: una que ya terminó de plegarse no vuelve.)
   committed.current.forEach((row, index) => {
-    if (!keys.has(row.key) && !leaving.current.has(row.key)) leaving.current.set(row.key, { item: row.item, index });
+    if (row.open && !keys.has(row.key) && !leaving.current.has(row.key)) leaving.current.set(row.key, { item: row.item, index });
   });
   for (const key of keys) leaving.current.delete(key);
   const rows: Array<Row<T>> = current.slice();

@@ -340,7 +340,7 @@ async function tasksUxTests({ browser, base, api, admin, releaseVersion, test, t
       await openTasksAt(page, base, 390, 800);
       await gooey(page, 'Nueva columna');
       await page.waitForSelector('.ui-collapse[data-state="open"] form.tk-colform', { timeout: 4000 });
-      const h = await page.$eval('form.tk-colform .ui-control', el => Math.round(el.getBoundingClientRect().height));
+      const h = await page.$eval('form.tk-colform .tk-colform-input', el => Math.round(el.getBoundingClientRect().height));
       const probe = await probeView(page, { scope: 'form.tk-colform', scrollSteps: 0 });
       assert(h <= 48 && !probe.counts.innerGaps, `campo de ${h} px; ${formatProbe(probe)}`);
       await page.keyboard.press('Escape');
@@ -455,9 +455,9 @@ async function tasksUxTests({ browser, base, api, admin, releaseVersion, test, t
       await page.waitForSelector('.tk-selbar');
       await sleep(400);
       const probe = `() => document.querySelector('.tk-selbar').getBoundingClientRect().height`;
-      const open = smoothness(await sampleFrames(page, probe, () => press(page, /^Borrar$/, '.tk-selbar')));
+      const open = smoothness(await sampleFrames(page, probe, () => press(page, /^Borrar$/, '.tk-selbar')), 6);
       assert(open.ok, `abrir la confirmación saltó: ${JSON.stringify(open)}`);
-      const close = smoothness(await sampleFrames(page, probe, () => press(page, /^Cancelar$/, '.tk-selbar')));
+      const close = smoothness(await sampleFrames(page, probe, () => press(page, /^Cancelar$/, '.tk-selbar')), 6);
       assert(close.ok, `cerrar la confirmación saltó: ${JSON.stringify(close)}`);
       await page.keyboard.press('Escape');
       return `confirmación ${open.total} px en ${open.frames} cuadros, de vuelta ${close.total} px`;
