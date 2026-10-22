@@ -2,6 +2,8 @@
 // Deshacer, "Crear las N" en un request, recorrido de revisión con atajos y
 // Deshacer, y modo consulta. Cada prueba verifica el efecto en la base por API.
 import { assert, gotoView, openContext, sleep, until } from '../lib/browser.mjs';
+import { settle } from '../lib/ux-probe.mjs';
+import { assertSmooth, handleByText, rowMismatch, topGap, traceHeight } from './devices.mjs';
 
 const ROW = '.ivt-table .ui-tbody .ui-tr.is-clickable';
 
@@ -147,6 +149,57 @@ export async function inventoryTests({ browser, base, api, admin, consulta, rele
       await page.keyboard.press('Escape');
       await until(async () => !(await page.$('.ivt-review')), { message: 'que Esc cierre el recorrido' });
       return `${first.etiqueta}: Bueno → deshecho`;
+    });
+
+    /* ── Revisión UX 4 (20/10): nada de golpe, vecinos parejos, sin espacio muerto ── */
+
+    await test('inv', 'Inventario TIC', 'Segmentado, condición, KPI y categoría: el listado cambia de alto suave y el control tocado no se mueve', async () => {
+      await page.setViewport({ width: 1440, height: 900 });
+      await openInventory(page, base);
+      await settle(page);
+      const out = [];
+      out.push(assertSmooth('Equipos', await traceHeight(page, await handleByText(page, '.ivt-tools .ui-seg-item', /^Equipos/), '.ivt-body')));
+      out.push(assertSmooth('Sin revisar', await traceHeight(page, await handleByText(page, '.ivt-condrow .ivt-chip', /^Sin revisar/), '.ivt-body')));
+      out.push(assertSmooth('Toda', await traceHeight(page, await handleByText(page, '.ivt-condrow .ivt-chip', /^Toda/), '.ivt-body')));
+      out.push(assertSmooth('KPI Recursos', await traceHeight(page, await handleByText(page, '.ivt-kpi', /^Recursos/), '.ivt-body')));
+      out.push(assertSmooth('Categoría', await traceHeight(page, await page.waitForSelector('.ivt-cat'), '.ivt-body'), { maxDrift: Infinity }));
+      return out.join(' · ');
+    });
+
+    await test('inv', 'Inventario TIC', '"Ver N más" crece suave con el botón quieto; editar la ficha y cancelar cambian de alto suave', async () => {
+      await page.setViewport({ width: 1440, height: 900 });
+      await openInventory(page, base);
+      await pickSegment(page, 'Todo');
+      await clickByText(page, '.ivt-condrow .ivt-chip', /^Sin revisar/);
+      await sleep(400);
+      const out = [];
+      const more = await page.$('.ivt-pager button');
+      if (more) out.push(assertSmooth('Ver más', await traceHeight(page, more, '.ivt-body')));
+      await pickSegment(page, 'Recursos');
+      await page.evaluate(() => document.querySelector('.ivt-cat')?.click());
+      await page.waitForSelector(ROW);
+      await page.click(ROW);
+      await page.waitForSelector('.ivt-detail-wrap .ivt-detail');
+      await sleep(500);
+      out.push(assertSmooth('Editar', await traceHeight(page, await handleByText(page, '.ivt-detail .ivt-actions button', /^Editar$/), '.ivt-detail-wrap'), { maxDrift: Infinity }));
+      out.push(assertSmooth('Cancelar', await traceHeight(page, await handleByText(page, '.ivt-detail-wrap .ivt-actions button', /^Cancelar$/), '.ivt-detail-wrap'), { maxDrift: Infinity }));
+      return out.join(' · ');
+    });
+
+    await test('inv', 'Inventario TIC', 'Barra de herramientas pareja (segmentados y buscador, mismo alto y alineados) y sin espacio muerto arriba (360–1920)', async () => {
+      await openInventory(page, base);
+      const out = [];
+      for (const width of [360, 768, 1024, 1280, 1440, 1920]) {
+        await page.setViewport({ width, height: 900 });
+        await sleep(300);
+        const bad = await page.evaluate(rowMismatch, '.ivt-tools', ['.ui-seg', '.ivt-search', '.ui-seg:last-of-type']);
+        assert(!bad.length, `${width}: ${bad.join(' | ')}`);
+        const gap = await page.evaluate(topGap, '.ivt');
+        assert(gap !== null && gap <= 32, `${width}: ${gap} px vacíos arriba del primer bloque.`);
+        out.push(`${width}: arriba ${gap} px`);
+      }
+      await page.setViewport({ width: 1366, height: 900 });
+      return out.join(' · ');
     });
   } finally {
     await context.close().catch(() => {});

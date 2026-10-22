@@ -1,7 +1,162 @@
 // Pruebas de Dispositivos e Historial (etapa 5a): selección con Ctrl/Shift,
 // lotes en un solo request, selección acotada a lo visible, página del equipo y
 // búsqueda por alias en el Historial. Corren contra la copia de la base.
-import { assert, clickButton, clickStable, findButton, gotoView, pathname, sleep, text, typeInto, until, waitStable } from '../lib/browser.mjs';
+import { assert, clickButton, clickStable, findButton, gotoView, openContext, pathname, sleep, text, typeInto, until, waitStable } from '../lib/browser.mjs';
+import { COOKIE_NAME } from '../lib/env.mjs';
+import { settle, setTheme } from '../lib/ux-probe.mjs';
+
+/* ── Revisión UX 4 (20/10): ayudas compartidas con tests/inventory.mjs ────── */
+
+/**
+ * Toca `handle` con el mouse y mide, cuadro a cuadro (después de pintar cada
+ * frame), el alto de `watch` y la posición del control tocado. Devuelve el
+ * alto inicial y final, cuántos cuadros pasaron por un alto intermedio y
+ * cuánto se movió el control (drift). "De golpe" = sin intermedios.
+ */
+export async function traceHeight(page, handle, watch, { ms = 480 } = {}) {
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+  await handle.evaluate(el => { el.scrollIntoView({ block: 'center' }); el.setAttribute('data-ux4-trigger', ''); });
+  await sleep(200);
+  await page.evaluate((sel, dur) => {
+    window.__ux4 = [];
+    const t0 = performance.now();
+    const measure = () => {
+      const el = document.querySelector(sel);
+      const trigger = document.querySelector('[data-ux4-trigger]');
+      window.__ux4.push({ h: el ? el.getBoundingClientRect().height : -1, y: trigger?.isConnected ? trigger.getBoundingClientRect().top : null });
+      if (performance.now() - t0 < dur) requestAnimationFrame(() => setTimeout(measure, 0));
+    };
+    requestAnimationFrame(() => setTimeout(measure, 0));
+  }, watch, ms);
+  await handle.click();
+  await sleep(ms + 150);
+  const frames = await page.evaluate(() => {
+    document.querySelector('[data-ux4-trigger]')?.removeAttribute('data-ux4-trigger');
+    return window.__ux4;
+  });
+  const start = frames[0].h;
+  const end = frames[frames.length - 1].h;
+  const mids = frames.filter(frame => Math.abs(frame.h - start) > 2 && Math.abs(frame.h - end) > 2).length;
+  const ys = frames.map(frame => frame.y).filter(y => y !== null);
+  const drift = ys.length ? Math.max(...ys) - Math.min(...ys) : 0;
+  return { start: Math.round(start), end: Math.round(end), mids, drift: Math.round(drift * 10) / 10 };
+}
+
+/** Falla si el alto pasó del inicial al final en un cuadro (sin intermedios) o si el control tocado se movió. */
+export function assertSmooth(label, trace, { minDelta = 24, maxDrift = 2 } = {}) {
+  const delta = Math.abs(trace.end - trace.start);
+  assert(delta < minDelta || trace.mids >= 1, `${label}: el alto pasó de ${trace.start} a ${trace.end} px de golpe (${trace.mids} cuadros intermedios).`);
+  assert(trace.drift <= maxDrift, `${label}: el control tocado se movió ${trace.drift} px.`);
+  return `${label} ${trace.start}→${trace.end} (${trace.mids} intermedios, ${trace.drift} px)`;
+}
+
+/** Botón (o control) visible dentro de `scope` cuyo texto cumple `rx`. */
+export async function handleByText(page, scope, rx) {
+  return until(async () => {
+    const handle = await page.evaluateHandle((sel, src, flags) => {
+      const re = new RegExp(src, flags);
+      return [...document.querySelectorAll(sel)].find(node => re.test((node.textContent || '').replace(/\s+/g, ' ').trim()) && node.getBoundingClientRect().width && !node.disabled) || null;
+    }, scope, rx.source, rx.flags);
+    return handle.asElement();
+  }, { message: `${scope} ${rx}` });
+}
+
+/**
+ * Cajas vecinas de una fila (hijos de `row` en la misma línea) con distinto
+ * alto o desalineadas. `boxes` = selectores de las cajas que se comparan.
+ */
+export function rowMismatch(row, boxes) {
+  const list = boxes.map(sel => document.querySelector(`${row} ${sel}`)).filter(Boolean)
+    .map(el => ({ el, r: el.getBoundingClientRect() })).filter(item => item.r.width && item.r.height);
+  const out = [];
+  for (let i = 0; i < list.length; i += 1) {
+    for (let j = i + 1; j < list.length; j += 1) {
+      const a = list[i].r;
+      const b = list[j].r;
+      if (Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) < Math.min(a.height, b.height) / 2) continue; // otra línea
+      if (Math.abs(a.height - b.height) > 1 || Math.abs(a.top - b.top) > 1) out.push(`${boxes[i]} ${Math.round(a.height)}px@${Math.round(a.top)} vs ${boxes[j]} ${Math.round(b.height)}px@${Math.round(b.top)}`);
+    }
+  }
+  return out;
+}
+
+/** Textos cortados con elipsis (o line-clamp) que no se pueden leer: ni TruncatedText con tooltip ni campo. */
+export function unreadableCuts(scope) {
+  const root = document.querySelector(scope);
+  if (!root) return [`no está ${scope}`];
+  const out = [];
+  for (const el of root.querySelectorAll('*')) {
+    if (el.closest('.ui-collapse:not([data-state="open"])')) continue;
+    const s = getComputedStyle(el);
+    const clamp = s.webkitLineClamp && s.webkitLineClamp !== 'none';
+    if (s.textOverflow !== 'ellipsis' && !clamp) continue;
+    if (!el.textContent.trim() || !el.getClientRects().length) continue;
+    const cut = clamp ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1;
+    if (!cut || el.closest('.ui-trunc.is-cut, input, textarea, .ui-input, .ui-th-sort')) continue;
+    out.push(`${el.className || el.tagName}: "${el.textContent.trim().slice(0, 40)}"`);
+  }
+  return out;
+}
+
+/** Del borde de arriba del área que scrollea al primer texto o control de la vista. */
+export function topGap(scope) {
+  const scroller = document.querySelector('.shell-scroll');
+  const view = document.querySelector(scope);
+  if (!scroller || !view) return null;
+  const walker = document.createTreeWalker(view, NodeFilter.SHOW_ELEMENT);
+  for (let el = walker.currentNode; el; el = walker.nextNode()) {
+    const r = el.getBoundingClientRect();
+    if (!r.height || !r.width) continue;
+    const ownText = [...el.childNodes].some(node => node.nodeType === 3 && node.textContent.trim());
+    if (ownText || /^(BUTTON|INPUT|IMG|SVG)$/i.test(el.tagName)) return Math.round(r.top - scroller.getBoundingClientRect().top + scroller.scrollTop);
+  }
+  return null;
+}
+
+/* Datos largos para la ficha, la papelera y los grupos (se sirven interceptando los GET). */
+const LONG_PERSON = 'María Fernanda Rodríguez Alonso de la Vega Etcheverry';
+const LONG_PLACE = 'Laboratorio de ciencias naturales del segundo piso, ala norte';
+const LONG_MODEL = 'Chromebook Lenovo 300e Gen 3 Convertible AMD Ryzen 3 3250C';
+const LONG_GROUP = 'Carro de Chromebooks del segundo piso — préstamos de secundaria';
+
+async function serveLongDevices(page, api) {
+  await page.setBypassServiceWorker(true);
+  await page.setRequestInterception(true);
+  page.on('request', async request => {
+    if (request.isInterceptResolutionHandled?.()) return;
+    const url = new URL(request.url());
+    const json = body => request.respond({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });
+    try {
+      if (request.method() !== 'GET' || !url.pathname.startsWith('/api/')) return request.continue();
+      if (url.pathname === '/api/devices') {
+        const { data } = await api.get(url.pathname + url.search);
+        data.items = data.items.map((device, i) => (i === 0 ? { ...device, modelo: LONG_MODEL, sn: 'PF2SC1TRX9Q8W7E6R5T4Y3U2I1O0P', estado: 'Prestado', prestadoA: LONG_PERSON, rol: 'Docente de nivel secundario', ubicacion: LONG_PLACE, loanedAt: new Date(Date.now() - 86400000).toISOString() } : device));
+        return json(data);
+      }
+      if (/^\/api\/devices\/[^/]+\/overview$/.test(url.pathname)) {
+        const { data } = await api.get(url.pathname);
+        data.timeline = [{ action: 'Préstamo registrado con un texto de acción largo', date: new Date().toISOString(), user: LONG_PERSON, notes: `${LONG_PLACE} — nota adicional larga`, source: 'Préstamos' }, ...(data.timeline || [])];
+        data.recentTickets = [{ id: 1, numero: 'T-0001', titulo: 'La pantalla parpadea cuando se conecta el cargador y después se apaga sola', estado: 'En progreso', prioridad: 'Alta', categoria: 'Hardware', updatedAt: new Date().toISOString() }];
+        data.maintenanceHistory = [{ id: 1, title: 'Cambio de batería y limpieza interna completa del teclado', date: new Date().toISOString(), status: 'Hecho', notes: 'Se reemplazó la batería original por una compatible de mayor capacidad' }];
+        data.group = { id: 1, name: LONG_GROUP, description: 'Equipos que se guardan en el carro con llave del pasillo, ala norte, junto a la sala de profesores', classroomKey: '', members: (data.group?.members || []).slice(0, 4) };
+        return json(data);
+      }
+      if (url.pathname === '/api/devices/deleted') {
+        const { data } = await api.get(url.pathname);
+        data.items = [{ etiqueta: 'D9999', deletedAt: new Date().toISOString(), deletedBy: LONG_PERSON, reason: '', alias: 'Touch 999 con un alias muy largo para la papelera', categoria: 'Chromebook', modelo: LONG_MODEL }, ...(data.items || [])];
+        return json(data);
+      }
+      if (url.pathname === '/api/device-groups') {
+        const { data } = await api.get(url.pathname);
+        data.items = [{ id: 9991, name: LONG_GROUP, description: 'Equipos del carro con llave', classroomKey: '', members: [] }, ...(data.items || [])];
+        return json(data);
+      }
+      return request.continue();
+    } catch {
+      return request.continue().catch(() => {});
+    }
+  });
+}
 
 const ROW = '.dv-table [data-device-tag]';
 const SEARCH = '.dv-search input';
@@ -173,5 +328,98 @@ export async function devicesTests({ page, base, api, test, free }) {
     await clickButton(page, /^Abrir ficha completa$/, { scope: '.hs-mini' });
     await until(async () => (await pathname(page)).endsWith(`/devices/${pick.etiqueta.toLowerCase()}`), { message: 'la página del equipo' });
     return `"${compact}" → ${count} filas de ${pick.etiqueta}; CSV ${lines} filas; resumen → página`;
+  });
+
+  /* ── Revisión UX 4 (20/10): nada de golpe, vecinos parejos, textos legibles ── */
+
+  await test('d', 'Dispositivos', 'Filtro de estado, tipo y "Ver más": la lista cambia de alto suave y el control tocado no se mueve', async () => {
+    await page.setViewport({ width: 1440, height: 900 });
+    await gotoView(page, base, 'devices');
+    await page.waitForSelector(ROW, { timeout: 20000 });
+    await settle(page);
+    const results = [];
+    results.push(assertSmooth('Prestados', await traceHeight(page, await handleByText(page, '.dv-filters .ui-seg-item', /^Prestados/), '.dv-list-body')));
+    results.push(assertSmooth('Todos', await traceHeight(page, await handleByText(page, '.dv-filters .ui-seg-item', /^Todos/), '.dv-list-body')));
+    const segs = await page.$$('.dv-filters .ui-seg');
+    const type = segs[1] ? await segs[1].$$('.ui-seg-item') : [];
+    if (type.length > 2) {
+      results.push(assertSmooth('Tipo', await traceHeight(page, type[1], '.dv-list-body')));
+      results.push(assertSmooth('Tipo: todos', await traceHeight(page, type[0], '.dv-list-body')));
+    }
+    const more = await findButton(page, /^Ver más$/, { scope: '.dv-foot' });
+    if (more) results.push(assertSmooth('Ver más', await traceHeight(page, more, '.dv-list-body')));
+    return results.join(' · ');
+  });
+
+  await test('d', 'Dispositivos', 'Marcar y confirmar un lote: el encabezado cambia de alto suave; buscador, orden y barra con el mismo alto', async () => {
+    const out = [];
+    for (const width of [1440, 768]) {
+      await page.setViewport({ width, height: 900 });
+      await gotoView(page, base, 'devices');
+      await page.waitForSelector(ROW, { timeout: 20000 });
+      await settle(page);
+      const before = await page.evaluate(rowMismatch, '.dv-list-head', ['.dv-search .ui-control', '.ui-seg']);
+      assert(!before.length, `${width}: ${before.join(' | ')}`);
+      await clickRow(page, tagA, 'Control');
+      await until(async () => (await selCount(page)) === 1, { message: 'un equipo marcado' });
+      await sleep(350);
+      const marked = await page.evaluate(rowMismatch, '.dv-list-head', ['.ui-selhead', '.dv-search .ui-control', '.ui-seg']);
+      assert(!marked.length, `${width} con selección: ${marked.join(' | ')}`);
+      const ask = assertSmooth(`${width} Borrar 1`, await traceHeight(page, await handleByText(page, '.dv-list-head .ui-selhead button', /^Borrar 1$/), '.dv-list-head'), { minDelta: 12 });
+      const back = assertSmooth(`${width} Cancelar`, await traceHeight(page, await handleByText(page, '.dv-list-head .ui-confirm button', /^Cancelar$/), '.dv-list-head'), { minDelta: 12 });
+      await clickButton(page, /^Limpiar$/, { scope: '.dv-list .ui-selhead' });
+      await until(async () => (await selCount(page)) === 0, { message: 'Limpiar' });
+      out.push(ask, back);
+    }
+    await page.setViewport({ width: 1366, height: 900 });
+    return out.join(' · ');
+  });
+
+  await test('d', 'Dispositivos', 'Datos largos: ficha, papelera y grupos sin textos cortados ilegibles; sin espacio muerto arriba (390/1440, oscuro y claro)', async () => {
+    const token = (await page.cookies()).find(cookie => cookie.name === COOKIE_NAME)?.value;
+    assert(token, 'Sin cookie de sesión para abrir otro contexto.');
+    const { context, page: long } = await openContext(page.browser(), { base, token, viewport: { width: 1440, height: 900 } });
+    const out = [];
+    try {
+      await serveLongDevices(long, api);
+      await gotoView(long, base, 'devices');
+      await long.waitForSelector(ROW, { timeout: 20000 });
+      await settle(long);
+      await (await long.$(`${ROW} .dv-c-eq`)).click();
+      await long.waitForSelector('.dv-table .dv-detail .dv-tl-body');
+      await sleep(500);
+      await clickButton(long, /^Papelera/, { scope: '.dv-head-actions' });
+      await long.waitForSelector('.dv-trash-item');
+      await clickButton(long, /^Grupos/, { scope: '.dv-head-actions' });
+      await long.waitForSelector('.dv-group-item');
+      await sleep(500);
+      for (const width of [390, 1440]) {
+        for (const theme of ['dark', 'light']) {
+          await long.setViewport({ width, height: 900 });
+          await setTheme(long, theme);
+          await sleep(300);
+          const cuts = await long.evaluate(unreadableCuts, '.dv-page');
+          assert(!cuts.length, `${width} ${theme}: cortados sin tooltip: ${cuts.slice(0, 4).join(' | ')}`);
+          const gap = await long.evaluate(topGap, '.dv-page');
+          assert(gap !== null && gap <= 32, `${width} ${theme}: ${gap} px vacíos arriba del primer bloque.`);
+          out.push(`${width}/${theme}: arriba ${gap} px`);
+        }
+      }
+      // La página del equipo también.
+      const tag = (await api.devices())[0].etiqueta;
+      await long.goto(`${base}/sede/NFPT/devices/${tag}`, { waitUntil: 'domcontentloaded' });
+      await long.waitForSelector('.dv-detail--page .dv-tl-body', { timeout: 20000 });
+      for (const width of [390, 1440]) {
+        await long.setViewport({ width, height: 900 });
+        await sleep(300);
+        const cuts = await long.evaluate(unreadableCuts, '.dv-page');
+        assert(!cuts.length, `página ${width}: ${cuts.slice(0, 4).join(' | ')}`);
+        const gap = await long.evaluate(topGap, '.dv-page');
+        assert(gap !== null && gap <= 32, `página ${width}: ${gap} px vacíos arriba.`);
+      }
+    } finally {
+      await context.close().catch(() => {});
+    }
+    return out.join(' · ');
   });
 }

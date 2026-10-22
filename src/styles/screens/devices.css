@@ -321,3 +321,6 @@
 /* Al moverse con Tab, lo enfocado queda con aire respecto del borde del área
    que scrollea (el anillo de foco no se corta contra el borde). */
 .dv-page :is(button, a[href], input, textarea, [tabindex]) { scroll-margin-block: var(--g-s-4); }
+/* Texto cortado enfocable dentro de una celda (que recorta con overflow): el
+   anillo va por dentro, si no se veía cortado. */
+.dv-page .ui-td-value .ui-trunc.is-cut:focus-visible { outline-offset: -2px; }

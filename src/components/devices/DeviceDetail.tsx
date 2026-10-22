@@ -296,7 +296,7 @@ export function DeviceDetail({ device, consultationMode, variant = 'inline', ...
                   <span className="dv-tl-body">
                     <span className="dv-tl-action">{item.action}</span>
                     {(item.notes || item.source) && <span className="dv-muted dv-tl-notes">{item.notes || item.source}</span>}
-                    <TruncatedText className="dv-muted">{item.user || 'Sistema'}</TruncatedText>
+                    <TruncatedText lines={2} className="dv-muted">{item.user || 'Sistema'}</TruncatedText>
                   </span>
                 </li>
               ))}

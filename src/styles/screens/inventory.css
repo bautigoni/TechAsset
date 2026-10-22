@@ -578,6 +578,8 @@
 /* Al moverse con Tab, lo enfocado queda con aire respecto del borde del área
    que scrollea (el anillo de foco no se corta contra el borde). */
 .ivt :is(button, a[href], input, textarea, [tabindex]) { scroll-margin-block: var(--g-s-4); }
+/* Texto cortado enfocable dentro de una celda (que recorta): el anillo va por dentro. */
+.ivt .ui-td-value .ui-trunc.is-cut:focus-visible { outline-offset: -2px; }
 
 /* "Ver más" / "Ver todos": filas y tarjetas nuevas crecen desde alto 0 con
    opacidad (revealRows.ts las marca ~600 ms). Sin interpolate-size, solo opacidad. */
