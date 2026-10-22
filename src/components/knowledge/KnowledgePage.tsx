@@ -341,8 +341,13 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
     </Collapse>
   );
 
+  // Base vacía (sin filtro, ya cargada): la lista con su vacío ocupa todo el
+  // ancho y no hay lector al lado repitiendo el mismo vacío y el mismo botón
+  // (dos tarjetas de distinto alto en la fila). Con un filtro sin resultados
+  // el lector queda (avisa "Nada para leer") y la lista no cambia de ancho.
+  const emptyBase = !narrow && route.kind === 'list' && !list.items.length && !list.loading && !list.error && !query && !category;
   const showList = !narrow || route.kind === 'list';
-  const showMain = !narrow || route.kind !== 'list';
+  const showMain = (!narrow || route.kind !== 'list') && !emptyBase;
   const editing = isEditing(route) && !consultationMode;
 
   let main: React.ReactNode;
@@ -403,7 +408,7 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
   }
 
   return (
-    <section ref={rootRef} className={cx('kb-page', narrow && 'is-narrow')} aria-label="Base de conocimiento">
+    <section ref={rootRef} className={cx('kb-page', narrow && 'is-narrow', emptyBase && 'is-solo')} aria-label="Base de conocimiento">
       {/* Descartar o retomar el borrador lo pliega suave (no desaparece de golpe). */}
       <Collapse open={Boolean(showStored)} outerClassName="kb-draftnote-wrap" anchor={false} reveal={false} unmountOnClose>
         {shownStored.current && (
@@ -419,6 +424,9 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
         )}
       </Collapse>
 
+      {/* Lista y lector en su propia fila (envuelve en ancho medio). El aviso del
+          borrador queda afuera: plegado no deja el gap de una fila vacía arriba. */}
+      <div className="kb-body">
       {showList && (
         <KnowledgeList
           items={list.items}
@@ -453,6 +461,7 @@ export function KnowledgePage({ consultationMode }: { consultationMode: boolean 
           <div ref={mainBox} className="kb-main-box">{main}</div>
         </div>
       )}
+      </div>
     </section>
   );
 }

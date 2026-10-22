@@ -4,10 +4,12 @@
    propias con Volver. Todo lo que se abre va en línea.
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* La página apila el aviso del borrador (Collapse) y el cuerpo; el cuerpo es la
+   fila lista + lector que envuelve. El aviso no puede ser una fila de un flex que
+   envuelve: plegado mide 0, pero el gap de su fila vacía quedaba arriba (48 px). */
 .kb-page {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  flex-direction: column;
   gap: var(--g-s-5);
   min-width: 0;
   padding: var(--g-s-5) var(--g-s-6) var(--g-s-6);
@@ -16,7 +18,9 @@
   font-size: var(--g-fs-base);
 }
 .kb-page b { font-weight: var(--g-fw-semibold); }
-.kb-page.is-narrow { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--g-s-4); }
+.kb-page.is-narrow { gap: var(--g-s-4); }
+.kb-body { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--g-s-5); min-width: 0; }
+.kb-page.is-narrow .kb-body { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--g-s-4); }
 .kb-spacer { flex: 1 1 auto; }
 .kb-muted { margin: 0; color: var(--g-text-2); font-size: var(--g-fs-sm); }
 .kb-count { color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
@@ -38,7 +42,7 @@
 
 /* ── Borrador recuperable (fila entera) ─────────────────────────────────── */
 
-.kb-draftnote-wrap { flex: 1 1 100%; --ui-collapse-gap: var(--g-s-5); }
+.kb-draftnote-wrap { flex: none; --ui-collapse-gap: var(--g-s-5); }
 .kb-page.is-narrow > .kb-draftnote-wrap { flex: none; --ui-collapse-gap: var(--g-s-4); }
 .kb-draftnote {
   display: flex;
@@ -202,6 +206,8 @@
 .kb-main { display: flex; flex: 999 1 30rem; flex-direction: column; gap: var(--g-s-3); min-width: 0; }
 .kb-main.is-sticky { position: sticky; top: var(--g-s-4); }
 .kb-page.is-narrow .kb-main { flex: none; }
+/* Base vacía: la lista sola, a todo el ancho (sin lector repitiendo el vacío). */
+.kb-page.is-solo .kb-list { flex: 1 1 100%; max-width: none; }
 .kb-back { display: flex; margin-left: calc(var(--g-s-2) * -1); }
 
 .kb-reader { display: flex; flex-direction: column; gap: var(--g-s-4); padding: var(--g-s-5); }
