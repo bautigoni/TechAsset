@@ -92,6 +92,7 @@ export const KNOWN_PENDING = [
   // ── Operación: Dispositivos y Préstamos ──
   { view: /^devices$/, kind: 'mismatch', where: /dv-list-head/, owner: 'revisor de Dispositivos', note: 'filtro 36 px al lado del segmentado sm 32 px' },
   { view: /^devices$/, kind: 'toggle', where: /^Papelera.*de golpe/, owner: 'revisor de Dispositivos', note: 'con equipos en la papelera, abrirla salta 148 px (cargando → lista, sin transición); intermitente' },
+  { view: /^inventory$/, kind: 'toggle', where: /^Ocultos.*de golpe/, owner: 'revisor de Inventario', note: 'a 390 claro, abrir "Ocultos" salta 167 px (cargando → lista, sin transición); intermitente' },
   { view: /^loans$/, kind: 'toggle', where: /^Cámara .*aria-expanded no cambió/, owner: 'revisor de Préstamos', note: 'a 390 claro "Cámara" no cambia aria-expanded / lo-camera no existe abierto' },
   { view: /^loans$/, kind: 'toggle', where: /^Touch.*se movió/, owner: 'revisor de Préstamos', note: 'a 390 claro abrir el grupo Touch mueve el disparador 52 px' },
   // ── Gestión: Aulas, Tickets ──
