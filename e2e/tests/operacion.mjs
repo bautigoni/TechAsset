@@ -691,7 +691,7 @@ export async function operacionTests({ browser, base, api, admin, releaseVersion
       await page.waitForSelector('[data-lend-form] #lo-persona', { timeout: 5000 });
       await sleep(400);
       await page.type('[data-lend-form] #lo-persona', 'E2E Barrido');
-      for (const [label, rx] of [['Rol', /^DOE$/], ['Ubicación', /^DOE$/]]) {
+      for (const [label, rx] of [['Rol', /^DOE\b/], ['Ubicación', /^DOE\b/]]) {
         await page.evaluate((group, source) => {
           const re = new RegExp(source);
           const button = [...document.querySelectorAll(`[data-lend-form] [role="group"][aria-label="${group}"] button`)].find(node => re.test((node.textContent || '').trim()));

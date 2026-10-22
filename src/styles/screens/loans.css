@@ -253,17 +253,7 @@
 
 /* Datos del préstamo (en línea) */
 .lo-lend { display: flex; flex-direction: column; gap: var(--g-s-3); min-width: 0; padding-top: var(--g-s-4); border-top: 1px solid var(--g-line); }
-.lo-lend-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--g-s-1) var(--g-s-3); min-width: 0; }
 .lo-lend-title { min-width: 0; color: var(--g-text); font-size: var(--g-fs-sm); font-weight: var(--g-fw-semibold); overflow-wrap: anywhere; }
-.lo-lend-req { color: var(--g-text-3); font-size: var(--g-fs-xs); white-space: nowrap; }
-/* Obligatorio: un asterisco discreto junto al rótulo (no un color de fondo). */
-.lo-req { margin-left: 2px; color: var(--g-text-2); font-weight: var(--g-fw-semibold); }
-.lo-field-error { display: block; min-width: 0; color: var(--g-bad); font-size: var(--g-fs-sm); overflow-wrap: anywhere; }
-.lo-course { display: flex; flex-direction: column; gap: var(--g-s-3); min-width: 0; }
-.lo-grade-help { font-size: var(--g-fs-xs); }
-/* Falta elegir: el borde de las opciones pasa al color de error (sin fondo). */
-.lo-opts.is-invalid .lo-opt:not(.is-on),
-.lo-grades.is-invalid .lo-opt:not(.is-on) { border-color: var(--g-bad); }
 .lo-frow { display: grid; grid-template-columns: 7rem minmax(0, 1fr); align-items: start; gap: calc(var(--g-s-1) + 2px) var(--g-s-4); min-width: 0; }
 .lo-flabel { padding-top: var(--g-s-2); color: var(--g-text-2); font-size: var(--g-fs-xs); font-weight: var(--g-fw-medium); line-height: 1rem; }
 .lo-fcontrol { display: flex; flex-direction: column; gap: var(--g-s-2); min-width: 0; }
@@ -355,7 +345,6 @@
   font-size: var(--g-fs-xs);
 }
 .lo-legend-item { display: inline-flex; align-items: center; gap: calc(var(--g-s-1) + 2px); white-space: nowrap; }
-.lo-legend-title { color: var(--g-text-3); font-size: var(--g-fs-xs); font-weight: var(--g-fw-medium); letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
 
 .lo-chip {
   display: inline-flex;
@@ -391,8 +380,8 @@
 .lo-chip.is-late2:hover:not(:disabled):not(.is-selected) { background: var(--g-raised); border-color: currentColor; }
 .lo-chip:focus-visible { outline: 2px solid var(--g-focus); outline-offset: 2px; }
 .lo-chip:disabled:not(.is-blocked) { cursor: default; }
-/* Muestra de la leyenda: un chip chico y VACÍO (con un número se leía como cantidad). */
-.lo-chip--sample { flex: none; min-width: 0; width: calc(var(--g-s-4) + var(--g-s-1)); height: calc(var(--g-s-3) + 2px); padding: 0; border-radius: var(--ui-radius-xs); cursor: default; }.lo-chip-skel { background: var(--g-raised); border-color: var(--g-line); cursor: default; }
+.lo-chip--sample { min-width: calc(var(--g-s-6) - var(--g-s-1)); height: calc(var(--g-s-5) - 2px); padding: 0 var(--g-s-1); border-radius: var(--ui-radius-xs); font-size: .6875rem; cursor: default; }
+.lo-chip-skel { background: var(--g-raised); border-color: var(--g-line); cursor: default; }
 @media (pointer: coarse) {
   .lo-chip:not(.lo-chip--sample) { min-width: var(--ui-touch); height: var(--ui-touch); }
 }

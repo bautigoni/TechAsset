@@ -265,10 +265,8 @@ export function PhotoPassPanel({ consultationMode }: { consultationMode: boolean
           </Reveal>
 
           <p className="lo-help lo-passes-help">
-            {/* No son equipos: por eso el verbo es "entregar" y no "prestar". */}
-            <span>Autorización para sacar fotos: se le entrega a un alumno y queda registrado su curso y el docente a cargo. </span>
-            <span className="lo-long">Tocá un cartelito libre para entregarlo o uno entregado para devolverlo. Con Ctrl, ⌘ o Shift + clic marcás varios cartelitos.</span>
-            <span className="lo-short">Tocá un cartelito libre para entregarlo o uno entregado para devolverlo. Con "Varios" marcás varios cartelitos.</span>
+            <span className="lo-long">Clic: libre lo entrega, entregado lo devuelve. Ctrl/⌘/Shift + clic marca varios.</span>
+            <span className="lo-short">Tocá uno libre para entregarlo; uno entregado, para devolverlo. "Varios" marca varios.</span>
           </p>
           <ChipLegend items={[['free', 'Libre'], ['loaned', 'Entregado'], ['blocked', 'Perdido o fuera de uso'], ['selected', 'Marcado']]} />
           <div className="lo-chip-grid" role="group" aria-label="Cartelitos">

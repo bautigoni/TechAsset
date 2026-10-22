@@ -7,44 +7,6 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Sin red (o con el servidor caído) `fetch` tira un TypeError con el texto del
- * navegador en inglés ("Failed to fetch", "Load failed", "NetworkError…"). Acá
- * se traduce en la raíz: toda llamada de la API falla con este error, en
- * castellano, y cualquier pantalla que muestre `error.message` ya dice algo
- * entendible. `status` 0 = no hubo respuesta del servidor.
- */
-export class NetworkError extends ApiError {
-  readonly offline: boolean;
-  constructor() {
-    const offline = isOffline();
-    super(networkErrorMessage(offline), 0);
-    this.name = 'NetworkError';
-    this.offline = offline;
-  }
-}
-
-export function isOffline() {
-  return typeof navigator !== 'undefined' && navigator.onLine === false;
-}
-
-/** El aviso de "sin red" de toda la app (también lo usa errorMessage). */
-export function networkErrorMessage(offline = isOffline()) {
-  return offline
-    ? 'Sin conexión. Probá de nuevo cuando vuelva la red.'
-    : 'No se pudo conectar con el servidor. Probá de nuevo en un momento.';
-}
-
-/** `fetch` que, si no hubo respuesta, falla con NetworkError (un abort sigue siendo AbortError). */
-export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  try {
-    return await fetch(input, init);
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') throw error;
-    throw new NetworkError();
-  }
-}
-
 export const SESSION_EXPIRED_EVENT = 'techasset:session-expired';
 
 // Un 401 fuera de /api/auth es una sesión vencida o cerrada en otro lado: se
@@ -100,7 +62,7 @@ async function fetchJson<T>(url: string, background = false): Promise<T> {
   // volvía a bajar el JSON completo en cada poll: ~1 MB por minuto por pestaña.
   // X-Revalidate marca las revalidaciones en segundo plano (la pantalla ya
   // muestra datos): sirve para distinguirlas en logs y en el banco de pruebas.
-  const response = await apiFetch(url, { cache: 'no-cache', headers: headers(background ? { 'X-Revalidate': '1' } : undefined) });
+  const response = await fetch(url, { cache: 'no-cache', headers: headers(background ? { 'X-Revalidate': '1' } : undefined) });
   const data = await readApiResponse(response);
   checkResponse(url, response, data);
   return data as T;
@@ -134,7 +96,7 @@ export async function apiGet<T>(url: string, options?: { fresh?: boolean }): Pro
 
 export async function apiSend<T>(url: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   clearApiCache();
-  const response = await apiFetch(url, {
+  const response = await fetch(url, {
     method,
     headers: headers({ 'Content-Type': 'application/json' }),
     body: body === undefined ? undefined : JSON.stringify(body)

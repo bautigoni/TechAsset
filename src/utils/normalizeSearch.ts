@@ -1,5 +1,5 @@
 import type { Device } from '../types';
-import { getDeviceNumber, getOperationalAlias, getOperationalAliasList, operationalTypeLabel } from './classifyDevice';
+import { getOperationalAlias, getOperationalAliasList, operationalTypeLabel } from './classifyDevice';
 import { clean, normalizeText } from './formatters';
 
 export function parseScannedCode(raw: unknown): string {
@@ -118,25 +118,6 @@ export function resolveDeviceMatches(devices: Device[], raw: string): Device[] {
   const add = (device?: Device) => {
     if (device && !matches.some(item => item.id === device.id)) matches.push(device);
   };
-
-  // Un número corto solo ("10") es casi siempre el número operativo: primero
-  // los equipos con ese número (Touch 10, Plani 10…), después la etiqueta que
-  // coincida (D0010). Nunca más un "10" que ofrece equipos cuyo serie contiene
-  // 10 y no Touch 10 (QA MOV-P06).
-  const shortNumber = /^\d{1,3}$/.test(code.trim()) ? String(Number(code.trim())) : '';
-  if (shortNumber && shortNumber !== '0') {
-    const byNumber = devices.filter(device => {
-      const number = getDeviceNumber(device);
-      return Boolean(number) && String(Number(number)) === shortNumber;
-    });
-    if (byNumber.length > 1) {
-      // El tipo con más equipos primero (Touch 10 antes que TIC 10): es el más pedido.
-      const size = new Map<string, number>();
-      devices.forEach(device => { const type = operationalTypeLabel(device); size.set(type, (size.get(type) || 0) + 1); });
-      byNumber.sort((a, b) => (size.get(operationalTypeLabel(b)) || 0) - (size.get(operationalTypeLabel(a)) || 0));
-    }
-    byNumber.forEach(add);
-  }
 
   devices.forEach(device => {
     const exact = [device.etiqueta, device.sn, device.mac];
