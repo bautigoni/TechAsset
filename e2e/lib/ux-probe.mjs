@@ -45,7 +45,8 @@
 //                 > maxGap (el hueco de la captura del dueño en el Inicio);
 //   mismatch      (20/10) vecinos de distinto tamaño: controles con caja en una
 //                 misma fila de un flex/grid con alturas distintas (> 1 px), o
-//                 tarjetas tipo mosaico (≤ 240 px) de una fila con distinto alto;
+//                 tarjetas tipo mosaico (≤ 240 px, que no agrupan otras tarjetas:
+//                 un carril del tablero no es un mosaico) de una fila con distinto alto;
 //   modal         (20/10) ventanas emergentes (role=dialog, aria-modal, <dialog>)
 //                 o capas fijas que tapan > 25 % de la pantalla. Excepción: el
 //                 diálogo del cartelito (ALLOWED_DIALOG_NAME) y el tooltip.
@@ -677,7 +678,16 @@ export function uxProbe(opts = {}) {
         // Tarjetas tipo mosaico (KPI, resúmenes): hasta 240 px. Lo más alto en una
         // fila son columnas de layout (lista + lector, carriles, columnas que
         // fluyen): eso lo cuida la regla de huecos, no la de alturas parejas.
-        const card = r.height > 64 && r.height <= 240;
+        // Una columna con pocas tarjetas también puede medir ≤ 240 (un carril
+        // del tablero con una tarea): una caja que adentro tiene otra tarjeta
+        // (caja de > 48 px de alto y ≥ 60 % de su ancho) agrupa tarjetas y su
+        // alto es el de su lista, no un mosaico.
+        const holdsCards = () => [...el.querySelectorAll('*')].some(inner => {
+          if (!boxed(inner) || !visible(inner)) return false;
+          const ir = inner.getBoundingClientRect();
+          return ir.height > 48 && ir.width >= r.width * 0.6;
+        });
+        const card = r.height > 64 && r.height <= 240 && !holdsCards();
         if (control || card) boxes.push({ el, r, kind: control ? 'control' : 'card' });
       }
       if (boxes.length < 2) continue;
