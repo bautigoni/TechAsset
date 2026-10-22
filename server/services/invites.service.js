@@ -35,9 +35,11 @@ export function findValidInvite(code) {
   return { ok: true, invite };
 }
 
+/** Gasta la invitación si sigue libre. Devuelve 1 si la gastó, 0 si ya estaba usada. */
 export function consumeInvite(code, usedBy = '') {
-  getDb().prepare('UPDATE invites SET used_at=?, used_by=? WHERE code=? AND used_at=\'\'')
+  const result = getDb().prepare('UPDATE invites SET used_at=?, used_by=? WHERE code=? AND used_at=\'\'')
     .run(nowIso(), String(usedBy || '').trim().toLowerCase(), String(code || '').trim().toUpperCase());
+  return Number(result?.changes || 0);
 }
 
 export function listInvites(siteCode) {

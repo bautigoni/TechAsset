@@ -466,6 +466,44 @@ try {
   const goodKey = await call('PATCH', '/api/site-settings', { settings: { 'shift.options': ['Sin turno', 'Mañana'] } });
   check('site-settings guarda una clave válida', goodKey.status === 200 && goodKey.json?.settings?.['shift.options']?.length === 2, goodKey.text.slice(0, 200));
 
+  // QA de lanzamiento, frente A: registro endurecido, sesión al crear la cuenta,
+  // cambiar contraseña y topes por campo (services/inputLimits.js) en Postgres.
+  const raw = async (method, route, body, extraCookie = '') => {
+    const response = await fetch(`${base}${route}`, { method, headers: { 'Content-Type': 'application/json', 'X-Site-Code': 'NFPT', ...(extraCookie ? { cookie: extraCookie } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const text = await response.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch { /* no JSON */ }
+    const token = (response.headers.get('set-cookie') || '').match(/techasset_session=([a-f0-9]{20,})/)?.[1] || '';
+    return { status: response.status, json, text, cookie: token ? `${process.env.SESSION_COOKIE_NAME || 'techasset_session'}=${token}` : '' };
+  };
+  const qaInvite = await call('POST', '/api/invites', { role: 'Consulta', siteCode: 'NFPT', expiresInDays: 1 });
+  const qaCode = qaInvite.json?.invite?.code;
+  const qaLong = await raw('POST', '/api/auth/register', { email: `${'a'.repeat(5000)}@qa.test`, nombre: 'Largo', code: qaCode, password: 'clave-segura-1' });
+  const qaWeak = await raw('POST', '/api/auth/register', { email: `qa-${Date.now()}@test.local`, nombre: 'Débil', code: qaCode, password: '12345678' });
+  const qaStill = (await call('GET', '/api/invites')).json?.items?.find(item => item.code === qaCode)?.status;
+  check('registro: mail de 5008 y contraseña débil → 400 sin gastar la invitación', qaLong.status === 400 && qaWeak.status === 400 && qaWeak.json?.field === 'password' && qaStill === 'Activa', `${qaLong.status} ${qaWeak.status} ${qaStill}`);
+  const qaMail = `qa-a-${Date.now()}@test.local`;
+  const rlo = String.fromCodePoint(0x202e);
+  const qaReg = await raw('POST', '/api/auth/register', { email: qaMail, nombre: `QA ${rlo}live`, code: qaCode, password: 'clave-segura-1' });
+  check('registro: entra con sesión y el nombre sin controles invisibles (transacción + ON CONFLICT)', qaReg.status === 200 && qaReg.json?.authenticated && Boolean(qaReg.cookie) && !qaReg.json.user.nombre.includes(rlo), qaReg.text.slice(0, 200));
+  const qaReuse = await raw('POST', '/api/auth/register', { email: `otro-${qaMail}`, nombre: 'Otro', code: qaCode, password: 'clave-segura-1' });
+  check('registro: el código ya usado no crea otra cuenta', qaReuse.status === 403, qaReuse.text.slice(0, 200));
+  const qaOther = await raw('POST', '/api/auth/login', { email: qaMail, password: 'clave-segura-1' });
+  const qaAccount = await raw('GET', '/api/auth/account', undefined, qaReg.cookie);
+  const qaBad = await raw('POST', '/api/auth/password/change', { currentPassword: 'mal', newPassword: 'otra-clave-9' }, qaReg.cookie);
+  const qaChange = await raw('POST', '/api/auth/password/change', { currentPassword: 'clave-segura-1', newPassword: 'otra-clave-9' }, qaReg.cookie);
+  const qaOtherAfter = await raw('GET', '/api/auth/session', undefined, qaOther.cookie);
+  const qaSelfAfter = await raw('GET', '/api/auth/session', undefined, qaReg.cookie);
+  check('cambiar contraseña: valida la actual, cierra las otras sesiones y deja esta', qaAccount.json?.hasPassword === true && qaBad.status === 400 && qaChange.status === 200 && qaChange.json?.closedSessions === 1 && !qaOtherAfter.json?.authenticated && qaSelfAfter.json?.authenticated, `${qaBad.status} ${qaChange.text.slice(0, 120)} ${qaOtherAfter.text.slice(0, 60)}`);
+  const qaLogin = await raw('POST', '/api/auth/login', { email: qaMail, password: 'otra-clave-9' });
+  check('entra con la contraseña nueva', qaLogin.status === 200, qaLogin.text.slice(0, 200));
+  const qaTitle = await call('POST', '/api/tasks', { titulo: 'T'.repeat(250) });
+  const qaDesc = await call('POST', '/api/tasks', { titulo: 'QA tope', descripcion: 'x'.repeat(20000) });
+  const qaPerson = await call('POST', '/api/loans/lend', { etiqueta: 'D9004', person: 'P'.repeat(10000) });
+  check('topes por campo: título 250, descripción 20 000, persona 10 000 → 400', qaTitle.status === 400 && qaDesc.status === 400 && qaPerson.status === 400 && /supera el máximo/.test(qaPerson.json?.error || ''), `${qaTitle.status} ${qaDesc.status} ${qaPerson.status}`);
+  const qaPrivacy = await call('GET', '/api/auth/privacy-info');
+  check('privacidad: /auth/privacy-info público', qaPrivacy.status === 200 && typeof qaPrivacy.json?.google === 'boolean', qaPrivacy.text.slice(0, 200));
+
   // Errores de SQL en el log del server.
   const sqlErrors = serverLog.split('\n').filter(line => /syntax error|does not exist|operator does not|invalid input|ERROR:/i.test(line));
   check('sin errores de SQL en el log', !sqlErrors.length, sqlErrors.slice(0, 5).join(' | '));

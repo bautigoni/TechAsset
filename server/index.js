@@ -39,6 +39,7 @@ import { scheduleReminderCheck, startNotificationWorkers } from './services/noti
 import { invalidateDeviceInventoryCache } from './services/deviceInventory.service.js';
 import { bumpTasksVersion } from './services/tasksCache.service.js';
 import { authMiddleware, getUserSession, invalidateSessionCache, isSuperadmin, normalizeSiteCode, requireEditor, requireModuleEditor } from './services/siteContext.service.js';
+import { inputLimitsMiddleware } from './services/inputLimits.js';
 
 getDb();
 startNotificationWorkers();
@@ -63,6 +64,9 @@ const allowedOrigins = new Set([
 app.use(cors({ origin: (origin, done) => done(null, !origin || allowedOrigins.has(origin)) }));
 app.use(cookieParser());
 app.use(express.json({ limit: `${Math.max(2, config.maxUploadMb)}mb` }));
+// Topes de largo por campo y sin controles invisibles de Unicode en nombres y
+// campos de una línea, en TODA escritura de la API (services/inputLimits.js).
+app.use('/api', inputLimitsMiddleware);
 // Adjuntos: viven en /uploads/<categoría>/<SEDE>/<archivo> y solo los ve quien
 // tiene sesión con acceso a esa sede (comprobantes de caja chica, fotos de
 // inventario, PDFs de tickets...). Los logos de sede quedan públicos porque
@@ -207,8 +211,13 @@ app.use(express.static(distDir, {
     }
   }
 }));
-app.get('*', (_req, res) => {
+// Pantallas de la SPA. Cualquier otra ruta recibe la misma app (que muestra
+// "Esta página no existe") pero con 404, no 200: antes /privacy, /terminos o
+// /lo-que-sea parecían páginas que existían y no decían nada.
+const SPA_PATHS = /^\/(|login|register|privacidad|release-notes|sede(\/.*)?|configuracion(\/.*)?)\/?$/i;
+app.get('*', (req, res) => {
   res.set('Cache-Control', 'no-cache');
+  if (!SPA_PATHS.test(req.path)) res.status(404);
   res.sendFile(path.join(distDir, 'index.html'), error => {
     if (error) res.status(200).send('TechAsset - NFS backend activo. En desarrollo abrí http://127.0.0.1:5173; para producción ejecutá npm run build.');
   });

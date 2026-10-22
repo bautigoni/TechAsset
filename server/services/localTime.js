@@ -71,6 +71,17 @@ export function toLocalDate(value) {
   return `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
 }
 
+/**
+ * "22/10/2026 14:18" en hora de la sede (24 h). Para mails y textos que lee una
+ * persona: `toLocaleString('es-AR')` en el server usa el huso de la máquina
+ * (UTC en la VM) y 12 h sin a. m./p. m. ("02:18:13" a las 14:18).
+ */
+export function formatLocalDateTime(value) {
+  const parts = localParts(value);
+  if (!parts) return '';
+  return `${pad(parts.day)}/${pad(parts.month)}/${parts.year} ${pad(parts.hour)}:${pad(parts.minute)}`;
+}
+
 /** Hoy (YYYY-MM-DD) en hora de la sede. */
 export function todayLocal() {
   return toLocalDate(new Date());
