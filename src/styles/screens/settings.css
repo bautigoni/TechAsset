@@ -107,7 +107,9 @@
   cursor: pointer;
   touch-action: manipulation;
 }
-.cfg-nav-i > .cfg-ell { flex: 1 1 auto; }
+/* El título no se achica para hacerle lugar al conteo o a "sin guardar": si no entran juntos, la marca baja a una segunda línea (sin cortar el título habiendo lugar). */
+.cfg-nav-i { flex-wrap: wrap; column-gap: var(--g-s-2); row-gap: 0; padding-block: var(--g-s-1); }
+.cfg-nav-i > .cfg-ell { flex: 1 0 auto; max-width: 100%; }
 .cfg-nav-i:hover { background: var(--g-raised); color: var(--g-text); }
 .cfg-nav-i:focus-visible { outline: 2px solid var(--g-focus); outline-offset: -2px; }
 .cfg-nav-i.is-on { background: var(--g-raised); color: var(--g-text); font-weight: var(--g-fw-medium); }
