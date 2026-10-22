@@ -11,7 +11,7 @@ Rama de trabajo sobre `rediseno-grafito` desde `0c342f6` (pasada 2 integrada). P
   - **`perf/cpu-ab.mjs` (nuevo):** traza de Chrome por corrida (CPU 4×, misma red que la suite) y cuenta **layouts y recálculos de estilo forzados** (los que pasan dentro de JS: alguien leyó una medida con el layout sucio), el tiempo de CPU del hilo principal (`tdur`, reloj del hilo) por tipo de trabajo, la tarea más larga y los pedidos `/api` que salen al abrir una vista. Los conteos son deterministas; el tiempo de CPU también se infla con la carga (la misma versión dio 367–859 ms de CPU en una misma tanda), así que solo se usó cuando la diferencia es mucho mayor que esa dispersión.
   - `perf/ab.mjs` (el A/B de la pasada 2, ahora versionado y con la carga de fondo por tanda) para el tiempo de pared, como referencia.
   - Microbenchmarks en la página (`perf/.out/probe-*.mjs`, no versionados) para aislar costos puntuales.
-- **Suite final `06-pasada3` y re-medición de `00`:** ver el final; se corrieron con la carga que había y se presentan como tales.
+- **Ventana quieta:** el 22/10 entre las 10:08 y las 11:10 la carga bajó a 0,7–3 núcleos (los revisores en pausa). En esa ventana se corrieron las tres suites finales (`06`, `00` y `05` re-medido) y se repitieron con tiempo de pared los A/B del velo y del arranque (filas «máquina quieta» abajo). El A/B de vistas de esa ventana quedó desparejo (la carga volvió durante las tandas de B: 7,9–8,3 núcleos) y se repitió aparte.
 
 ## Diagnóstico de lo que seguía peor que `main`
 
@@ -31,11 +31,13 @@ Rama de trabajo sobre `rediseno-grafito` desde `0c342f6` (pasada 2 integrada). P
 | --- | --- | --- | --- | --- | --- |
 | 1 | **Velo invisible durante la rueda** en vez de `pointer-events` heredado (37fdbe8): un `<div>` sticky, primer hijo de `.shell-scroll`, del alto del área visible y con margen negativo igual (no ocupa lugar), se muestra 150 ms mientras se scrollea con rueda; el hit-test termina en él y la rueda sigue scrolleando el contenedor. | `cpu-ab --scenario=scroll` (Dispositivos entera, ida y vuelta, n = 4 por lado) | CPU total 5.174 ms · estilo 1.821 · hit-test 1.358 · pintado 1.516 · tarea más larga 746 | **1.718 (−67 %) · 1,4 (−99,9 %) · 35 (−97 %) · 814 (−46 %) · 116 (−84 %)** | **queda** |
 | 1 | (mismo cambio) | `ab.mjs --only=scroll,devsearch` 2×4 (n = 8; carga A 8,4–9,3 / B 11,3–11,8 núcleos) | scroll Dispositivos: p50 33,4 · p95 100,3 · peor frame 1.873 · frames > 50 ms 78; Historial peor frame 468 | **16,7 · 67 · 585 (−69 %) · 30 (−62 %); 33,5 (−93 %)** | — |
+| 1 | (mismo cambio, **máquina quieta**, 22/10 10:50) | `ab.mjs --only=scroll,devsearch,history` 2×4 (n = 8; carga A 0,8–3,2 / B 1,4–2,5 núcleos) | scroll Dispositivos: p95 50,1 · peor frame 769,5 · frames > 50 ms 15; Historial peor frame 217,5; «touch 34» 151,8; cargar más 564 | **17,2 (−66 %) · 201,1 (−74 %) · 2 (−87 %); 17,2 (−92 %); 153 (+0,8 %); 367,4 (−35 %)** | **queda** |
 | 2 | `useFitPlaceholder` escucha `loadingdone` en vez de leer `document.fonts.ready` al montar (17abb26) | `cpu-ab --scenario=warm`, n = 5 por lado | ver fila 2–4 | | **queda** |
 | 3 | Menú: **densidad recordada** (mismo alto, ítems y preferencias → se usa la guardada desde el primer render, sin probar) (59cc209) | ídem | | | **queda** |
 | 4 | La línea de estado completa (`ShellStatus`, chunk de franjas) se pide **un frame después del primer pintado**; mientras, `StatusOutlet` ya muestra los avisos (92c52df) | ídem | | | **queda** |
 | 2–4 | (los tres juntos) | `cpu-ab --scenario=warm`, n = 5 por lado, alternados | layouts forzados 6 · **CPU de layout forzado 31 ms** (23–44 en las 5 corridas) · estilos forzados 7 · CPU hasta el FCP 193 · tarea más larga 79,9 | 5 · **4,6 ms (−85 %; 3–6 en las 5)** · 6 · 170,7 (−12 %) · 71,8 (−10 %) | **quedan** |
 | 2–4 | (ídem, tiempo de pared) | `ab.mjs --only=startup` 2×4 con **12/12 núcleos ocupados** | inicio en caliente: FCP 1.008 · TTI 4.761 · TBT 1.369 | 732 (−27 %) · 2.642 (−45 %) · 667 (−51 %); en frío +18 a +43 % **con el DCL +50 %** (que ningún cambio toca): ruido | — |
+| 2–4 | (ídem, **máquina quieta**, 22/10 11:00) | `ab.mjs --only=startup` 2×4 (n = 8; carga A 1,5–2 / B 1,7–3 núcleos) | frío: FCP 868 · app visible 1.005 · datos 1.747 · TTI 1.695 · TBT 345 · tareas largas 1.011; caliente: FCP 372 · app visible 426 · datos 960 · TTI 878 · TBT 143 · tareas largas 367 | **frío: 748 (−14 %) · 829 (−18 %) · 1.521 (−13 %) · 1.469 (−13 %) · 242 (−30 %) · 822 (−19 %); caliente: 388 (+4 %) · 432 (+1 %) · 915 (−5 %) · 824 (−6 %) · 48 (−66 %) · 270 (−26 %)** (el DCL en caliente, que no toca ningún cambio, dio +17 %: ruido de ese orden) | **quedan** |
 | 5 | Tareas: **sin pedir `/api/task-columns` al abrir** si las columnas llegaron con la lista; se siguen de la lista polleada sin pisar un cambio local en curso (d311f78) | `cpu-ab --scenario=view:tasks`, pedidos al abrir (3×2) | `/api/task-columns` + `/api/site-assistants` (+ polls) | `/api/site-assistants` (+ polls): **un viaje menos** antes de «a la vista» | **queda** |
 | 6 | Dispositivos: contadores de Grupos/Papelera **apenas se pinta la lista** (rAF + 0) en vez de a los 300 ms fijos (b5e9ea0) | `cpu-ab --scenario=view:devices` (n = 5) | último pedido terminado a 2.199 ms (mediana, con la máquina saturada) | 1.865 ms (−15 %, con la máquina saturada: no concluyente); el pedido sale en el frame siguiente al pintado | **revertido** (01fef79): el e2e `bop › «Marcar el primero con Ctrl+clic no corre la fila»` falló en 768 y 360 px (la fila tocada se movió 40 / 31,6 px, reproducible 2 de 2); con la demora de 300 ms vuelve a pasar 3/3 |
 
@@ -220,4 +222,79 @@ Resultado (`06`):
 
 ## Tabla final (DIRECTIVA §13)
 
-PENDIENTE_TABLA
+Mediana / p95 en ms, n = 7 por etiqueta, CPU 4×, red 40 ms / 10 / 5 Mbps, 15 ms por consulta, mismo snapshot. «vs» compara medianas.
+
+- **00** = `main` (`00-inicial-r3`), **05** = pasada 2 (`05-pasada2-r3`) y **06** = esta pasada (`06-pasada3`, HEAD `01fef79`): medidas el **22/10 entre las 10:08 y las 10:49, una detrás de otra** (06 → 00 → 05), con la máquina en su momento más quieto de la pasada: **2,4 núcleos ocupados antes de 06, 1,4 antes de 00 y 0,7 antes de 05** (1,0–1,3 al terminar cada una). Son corridas seguidas, no alternadas: diferencias de ±10 % entre ellas están dentro de lo que se movieron métricas que ningún cambio toca (ver los A/B). Para decidir cada cambio valen los A/B alternados de arriba; esta tabla es la foto de cierre.
+- **04** = pasada 1 (`04-pasada1-r2`), medida el 20/10 en la pasada 2 (otro día y otra carga): es solo referencia.
+
+| Operación | 00 | 04 | 05 | 06 | vs 05 | vs 00 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Inicio en frío: FCP | 872 / 900 | 1.040 / 1.348 | 740 / 904 | 808 / 1.048 | +9 % | −7 % |
+| Inicio en frío: app visible | 935,5 / 950,5 | 1.233,1 / 1.507 | 857,8 / 1.013,3 | 886,3 / 1.146,7 | +3 % | −5 % |
+| Carga del dashboard (frío): con datos | 1.614,8 / 1.763,3 | 1.699 / 2.038,3 | 1.560,5 / 1.720,9 | 1.564,2 / 1.973,1 | +0 % | −3 % |
+| Inicio en frío: interactiva (TTI) | 1.486,4 / 1.761,5 | 1.687,8 / 2.179,3 | 1.489,7 / 1.670,4 | 1.562,8 / 1.906,1 | +5 % | +5 % |
+| Inicio en frío: TBT | 53 / 191 | 140 / 251 | 246 / 365 | 217 / 434 | −12 % | +309 % |
+| Inicio en frío: tareas largas (ms) | 499 / 698 | 732 / 1.099 | 859 / 974 | 873 / 1.210 | +2 % | +75 % |
+| Inicio en caliente: FCP | 320 / 412 | 400 / 556 | 396 / 528 | 408 / 748 | +3 % | +28 % |
+| Inicio en caliente: app visible | 366,6 / 484,9 | 469,9 / 660,1 | 443,1 / 602,3 | 452,5 / 877,8 | +2 % | +23 % |
+| Carga del dashboard (caliente): con datos | 1.020,5 / 1.170,5 | 959 / 1.212,5 | 972,9 / 1.097 | 987 / 1.578 | +1 % | −3 % |
+| Inicio en caliente: interactiva (TTI) | 870,7 / 1.164,8 | 849,1 / 1.200,7 | 924,4 / 1.048 | 916,8 / 1.508,4 | −1 % | +5 % |
+| Inicio en caliente: TBT | 3 / 51 | 25 / 75 | 164 / 216 | 109 / 461 | −34 % | +3533 % |
+| Inicio en caliente: tareas largas (ms) | 112 / 278 | 248 / 526 | 422 / 551 | 367 / 937 | −13 % | +228 % |
+| Cambio de módulo — Inicio 1ª: a la vista | 407,6 / 574,9 | 277,1 / 336,2 | 298,1 / 408,5 | 343,4 / 459,9 | +15 % | −16 % |
+| Cambio de módulo — Inicio 2ª: contenido | 364,1 / 567,5 | 218,5 / 298,6 | 278 / 429,4 | 287,6 / 386,8 | +3 % | −21 % |
+| Cambio de módulo — Préstamos 1ª: a la vista | 897,3 / 1.036,9 | 483 / 567,6 | 543,5 / 868,6 | 428,6 / 604 | −21 % | −52 % |
+| Cambio de módulo — Préstamos 2ª: contenido | 800 / 960,2 | 236,9 / 318 | 252,9 / 441,8 | 240,8 / 314,3 | −5 % | −70 % |
+| Cambio de módulo — Dispositivos 1ª: a la vista | 423,9 / 537,4 | 385,6 / 421 | 398,8 / 586,2 | 400,6 / 528,8 | +0 % | −5 % |
+| Cambio de módulo — Dispositivos 1ª: contenido | 423,9 / 537,4 | 582 / 599,3 | 582,1 / 745,6 | 568,1 / 688,7 | −2 % | +34 % |
+| Cambio de módulo — Dispositivos 2ª: contenido | 370,1 / 447,9 | 496 / 561,8 | 535,3 / 552,7 | 514,8 / 607,2 | −4 % | +39 % |
+| Cambio de módulo — Inventario 1ª: a la vista | 377,5 / 442,2 | 232,1 / 249,7 | 242,2 / 274,3 | 244,5 / 330,1 | +1 % | −35 % |
+| Cambio de módulo — Inventario 2ª: contenido | 131,7 / 210,8 | 173,7 / 176,9 | 181,6 / 198,9 | 186,5 / 235,2 | +3 % | +42 % |
+| Cambio de módulo — Agenda 1ª: a la vista | 184 / 190,9 | 159,8 / 182,4 | 163,4 / 263,2 | 157,8 / 279 | −3 % | −14 % |
+| Cambio de módulo — Agenda 2ª: contenido | 107,1 / 124,1 | 123,1 / 131,5 | 104,4 / 161,3 | 105,2 / 198,8 | +1 % | −2 % |
+| Cambio de módulo — Tareas 1ª: a la vista | 441,5 / 543,2 | 436,3 / 518,2 | 467,6 / 606,2 | 531,9 / 682,6 | +14 % | +20 % |
+| Cambio de módulo — Tareas 2ª: contenido | 283,1 / 504,5 | 318 / 358,2 | 294,3 / 454,2 | 268,6 / 396,7 | −9 % | −5 % |
+| Cambio de módulo — Tickets 1ª: a la vista | 1.578,7 / 2.153,6 | 494,3 / 549,6 | 429,1 / 497,5 | 435,2 / 493,1 | +1 % | −72 % |
+| Cambio de módulo — Tickets 2ª: contenido | 1.161 / 1.521 | 270,4 / 282,1 | 277,6 / 339,3 | 255 / 475,3 | −8 % | −78 % |
+| Cambio de módulo — Historial 1ª: a la vista | 314,9 / 371,5 | 348 / 535,2 | 418,3 / 459,6 | 345,8 / 505,5 | −17 % | +10 % |
+| Cambio de módulo — Historial 2ª: contenido | 268,4 / 360,9 | 250,8 / 278,5 | 276,1 / 587 | 286,8 / 517,1 | +4 % | +7 % |
+| Cambio de módulo — Analítica 1ª: a la vista | 965,9 / 1.226,3 | 580,7 / 949,6 | 717 / 924 | 803,7 / 861,4 | +12 % | −17 % |
+| Cambio de módulo — Analítica 1ª: contenido | 1.267,3 / 1.394,1 | 1.862,7 / 2.282,4 | 2.102,9 / 2.381,5 | 2.282,1 / 2.460,4 | +9 % | +80 % |
+| Cambio de módulo — Analítica 2ª: contenido | 1.091 / 1.125,4 | 1.345,7 / 1.693,9 | 1.715,8 / 1.896,9 | 1.633,5 / 1.866,2 | −5 % | +50 % |
+| Cambio de módulo — Configuración 1ª: a la vista | 829,7 / 888,1 | 115,7 / 165,6 | 127,1 / 302,5 | 135,9 / 264,9 | +7 % | −84 % |
+| Cambio de módulo — Configuración 2ª: contenido | 677,9 / 704,2 | 104,8 / 129 | 135,6 / 159,3 | 120,7 / 137,7 | −11 % | −82 % |
+| Sugerencias con 3 letras: común | 337,9 / 362,1 | 114,4 / 176,1 | 110,5 / 119 | 108 / 141 | −2 % | −68 % |
+| Sugerencias con 3 letras: parcial | 335,7 / 342,9 | 104,8 / 114,9 | 123,3 / 167,2 | 103 / 145,6 | −16 % | −69 % |
+| Sugerencias con 3 letras: con tilde | 345,1 / 384 | 85,9 / 122,8 | 96,6 / 127,6 | 95,1 / 139,5 | −2 % | −72 % |
+| Sugerencias con 3 letras: sin tilde | 338,5 / 342,4 | 103 / 131,3 | 96,2 / 141,6 | 93,3 / 133,7 | −3 % | −72 % |
+| Búsqueda rápida de equipos ("touch 34") | 104,1 / 114,8 | 130,9 / 134 | 128,3 / 197,9 | 137,4 / 234,6 | +7 % | +32 % |
+| Carga de historial: primera página | 593,3 / 629,3 | 626,2 / 674,1 | 578,8 / 639,1 | 599,3 / 816,3 | +4 % | +1 % |
+| Carga de historial: cargar más | 246,7 / 283,3 | 379 / 399,7 | 397,6 / 510,4 | 403,8 / 467,2 | +2 % | +64 % |
+| Renderizado de listas: scroll Dispositivos (387 filas), p95 por frame | 17,1 / 17,1 | 33,5 / 50,2 | 49,8 / 50,2 | 17,2 / 33,4 | −65 % | +1 % |
+| Renderizado de listas: scroll Dispositivos, peor frame | 217,5 / 251 | 735,9 / 802,9 | 936,8 / 1.104 | 234,1 / 267,4 | −75 % | +8 % |
+| Renderizado de listas: scroll Dispositivos, frames > 50 ms | 4 / 8 | 4 / 31 | 14 / 25 | 2 / 4 | −86 % | −50 % |
+| Renderizado de listas: scroll Historial, p95 por frame | 17,2 / 17,3 | 16,9 / 17 | 16,9 / 17,2 | 17 / 17,2 | +1 % | −1 % |
+| Renderizado de listas: scroll Historial, peor frame | 33,9 / 50,2 | 200,7 / 200,8 | 267,5 / 401,4 | 17,4 / 18,7 | −93 % | −49 % |
+| Prestar uno (click → pantalla quieta) | 492,3 / 525,2 | 567,5 / 674,9 | 466,2 / 574,1 | 403,2 / 823,5 | −14 % | −18 % |
+| Devolver uno (click → pantalla quieta) | 472,1 / 533 | 475,7 / 512,3 | 344,3 / 413,1 | 341,8 / 502,7 | −1 % | −28 % |
+| Consulta API: ráfaga de arranque (ms) | 492,7 / 509,7 | 551,6 / 571 | 320,5 / 398,8 | 324,6 / 387,1 | +1 % | −34 % |
+| Consulta API: ráfaga de arranque (consultas) | 22 / 22 | 23 / 23 | 11 / 14 | 11 / 14 | +0 % | −50 % |
+| Consulta API: `/api/devices` (ms) | 22,5 / 23,8 | 18,7 / 23,7 | 10,7 / 20,2 | 22,6 / 24,9 | +111 % | +0 % |
+| Consulta API: `/api/devices` (consultas) | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | – | – |
+| Consulta API: `/api/tasks?space=all` (ms) | 86,8 / 101 | 90 / 104,7 | 6,8 / 21,5 | 20,1 / 21 | +196 % | −77 % |
+| Consulta API: `/api/tasks?space=all` (consultas) | 4 / 4 | 4 / 4 | 0 / 0 | 0 / 0 | – | −100 % |
+| Consulta API: `/api/loans/people` (ms) | – | 12 / 19 | 17,1 / 20,7 | 18,3 / 19,2 | +7 % | – |
+| Consulta API: `/api/loans/people` (consultas) | – | 0 / 0 | 0 / 0 | 0 / 0 | – | – |
+| Consulta API: `/api/history?kind=loans&limit=50` (ms) | 36 / 49,3 | 34,3 / 36,7 | 39,3 / 49,8 | 33,4 / 35,2 | −15 % | −7 % |
+| Consulta API: `/api/history?kind=loans&limit=50` (consultas) | 1 / 1 | 1 / 1 | 1 / 1 | 1 / 1 | +0 % | +0 % |
+| Consulta API: `/api/tickets` (ms) | 24 / 38,6 | 35,1 / 51,3 | 33,4 / 38,3 | 39 / 52,2 | +17 % | +63 % |
+| Consulta API: `/api/tickets` (consultas) | 1 / 1 | 1 / 1 | 1 / 1 | 1 / 1 | +0 % | +0 % |
+| Consulta API: prestar (POST + ver en /devices) ms | 328,7 / 364,2 | 308,8 / 351,2 | 90,9 / 108,5 | 92,7 / 109,1 | +2 % | −72 % |
+| Consulta API: prestar, consultas | 13 / 15 | 13 / 13 | 3 / 3 | 3 / 3 | +0 % | −77 % |
+
+Tamaños (gzip, KB): JS inicial 94.4 / 94 / 94.3 / 94.6 · CSS inicial 56.8 / 15 / 15 / 15 · fuente precargada 0 / 28.7 / 28.7 / 28.7 · total crítico 152.1 / 139.3 / 139.6 / 139.9
+
+Notas:
+- **Lo que mejoró en esta pasada y la tabla confirma:** scroll de Dispositivos (p95 49,8 → 17,2 ms, peor frame 937 → 234 ms, frames > 50 ms 14 → 2; contra `main`: p95 igual, 17,1) y peor frame del scroll del Historial (268 → 17 ms; mejor que `main`, 34). Los cambios del arranque se ven en el A/B quieto (frío −13 a −18 %, TBT −30 % / −66 %); en esta tabla 06 corrió primero y con más carga (2,4 vs 0,7–1,4 núcleos) y el arranque en frío sale +3 a +9 % sobre 05: no se toma como regresión porque el A/B alternado, en la misma ventana, dio lo contrario.
+- **Lo que sigue peor que `main`** (y por qué, ver Diagnóstico y No se hizo): inicio en caliente «app visible» +23 % (precarga de los 22 chunks del Inicio y primer layout con Geist), TBT (el render del Inicio cae después del FCP, que ahora llega antes), Dispositivos «contenido» +34 % (la demora fija de 300 ms de los contadores: adelantarla rompió una regla de UX), Historial «cargar más» +64 % (crear, maquetar y pintar 50 filas más ricas: necesita CSS de la pantalla), «touch 34» +32 % (sin perfilar aislado), Analítica «contenido» +80 % (las secciones de abajo se montan en ratos libres a propósito; «a la vista» −17 %), Tareas 1ª (ver el A/B de vistas).
+- `/api/devices` y `/api/tasks` desde Node: 0 consultas en 05 y 06; los ms (10–23) son serializar 311 KB / 159 KB y varían entre corridas sin cambios de código en ese camino.
