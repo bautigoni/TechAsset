@@ -469,6 +469,11 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
       {overN > 0 ? <span className="tk-mono tk-bad">{plural(overN, 'vencida', 'vencidas')}</span> : <span className="tk-mono tk-muted">{plural(doneN, 'hecha', 'hechas')}</span>}
     </>
   );
+  // Elegir varias (mover o borrar en lote): en touch es la única forma; en desktop, además de Ctrl/Shift+click.
+  // Va en la cabecera del tablero; en el celu (sin esa cabecera), debajo de los conteos de la barra.
+  const pickButton = canEdit && !boardEmpty && (
+    <Button size="sm" variant="ghost" className={cx('tk-pick', selectMode && 'is-on')} icon={<ListChecks size={14} />} aria-pressed={selectMode} onClick={() => (selectMode ? endSelection() : setSelecting(true))}>Elegir</Button>
+  );
 
   const toolbar = (
     <div className={cx('tk-toolbar', gooOpen && 'is-goo-open')}>
@@ -496,7 +501,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
           />
         )}
       </div>
-      <div className="tk-tb-sums">{sums}</div>
+      <div className="tk-tb-sums">{sums}{isMobile && pickButton}</div>
       <div className="tk-tb-search" data-scanner-ignore="">
         <Input
           aria-label="Buscar tareas"
@@ -672,10 +677,7 @@ export function TasksPage({ store: core, operator, consultationMode }: { store: 
               {queryText && <><span className="tk-nw tk-text-2">{queryText}</span><button type="button" className="tk-link" onClick={() => setQuery('')}>Limpiar búsqueda</button></>}
               {sums}
               {store.moving && <span className="tk-mono tk-muted">Guardando…</span>}
-              {/* Elegir varias (mover o borrar en lote): en touch es la única forma; en desktop, además de Ctrl/Shift+click. */}
-              {canEdit && !boardEmpty && (
-                <Button size="sm" variant="ghost" className={cx('tk-pick', selectMode && 'is-on')} icon={<ListChecks size={14} />} aria-pressed={selectMode} onClick={() => (selectMode ? endSelection() : setSelecting(true))}>Elegir</Button>
-              )}
+              {!isMobile && pickButton}
             </div>
           </header>
           {/* Espacio sin tareas: un vacío diseñado con la acción siguiente (las columnas siguen abajo para soltar). */}

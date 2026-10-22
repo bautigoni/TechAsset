@@ -454,7 +454,7 @@ async function tasksUxTests({ browser, base, api, admin, releaseVersion, test, t
     await test('tk-ux', 'Tareas', 'Barra de selección en mobile: Borrar ↔ confirmación cambia de alto suave', async () => {
       await openTasksAt(page, base, 390, 800);
       // En el celu se elige con «Elegir» y tocando la tarjeta (la casilla no se ve en reposo).
-      await press(page, /^Elegir$/, '.tk-board-head');
+      await press(page, /^Elegir$/, '.tk-toolbar');
       await page.click('.tk-card .tk-card-meta');
       await page.waitForSelector('.tk-selbar');
       await sleep(400);

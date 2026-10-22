@@ -215,6 +215,40 @@ export async function qaETests({ browser, base, api, admin, releaseVersion, test
       return 'oculta → Elegir → marcada sin abrir → Esc';
     });
 
+    await test('qae', 'Tareas', 'Celu (375 px): "Elegir" a la vista en la barra; tocar una tarjeta la marca sin abrirla', async () => {
+      const mobile = await openContext(browser, { base, token: admin.token, releaseVersion, device: { viewport: { width: 375, height: 812, isMobile: true, hasTouch: true, deviceScaleFactor: 1 }, userAgent: 'Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36' } });
+      track(mobile.page);
+      try {
+        const mp = mobile.page;
+        await gotoView(mp, base, 'tasks');
+        await mp.waitForSelector('.tk-card', { timeout: 20000 });
+        await settle(mp);
+        const pick = await mp.evaluate(() => {
+          const button = [...document.querySelectorAll('.tk-toolbar button')].find(node => node.textContent.trim() === 'Elegir');
+          if (!button) return null;
+          const r = button.getBoundingClientRect();
+          return { w: r.width, h: r.height, right: r.right, vw: innerWidth };
+        });
+        assert(pick && pick.w > 0 && pick.h >= 32 && pick.right <= pick.vw, `"Elegir" no está a la vista en el celu: ${JSON.stringify(pick)}`);
+        const rest = await mp.$eval('.tk-card .tk-card-check', node => getComputedStyle(node).visibility);
+        assert(rest === 'hidden', 'en el celu la casilla se ve en reposo');
+        await press(mp, /^Elegir$/, '.tk-toolbar');
+        await mp.waitForSelector('.tk-selbar', { timeout: 4000 });
+        await mp.tap('.tk-card .tk-card-meta');
+        await sleep(400);
+        assert((await pathname(mp)).toLowerCase().endsWith('/tasks'), 'tocar la tarjeta eligiendo la abrió');
+        const bar = await mp.$eval('.tk-selbar', node => node.textContent);
+        assert(/1 seleccionada/.test(bar) && /Quitar selección/.test(bar), `barra: «${bar}»`);
+        const sx = await mp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        assert(sx <= 0, `scroll horizontal de ${sx} px`);
+        await press(mp, /^Quitar selección$/, '.tk-selbar');
+        await until(() => mp.$('.tk-toolbar'), { message: 'Quitar selección vuelve a la barra' });
+        return `Elegir ${Math.round(pick.w)}×${Math.round(pick.h)} px`;
+      } finally {
+        await mobile.context.close();
+      }
+    });
+
     await test('qae', 'Tareas', 'Ficha de la tarea con hora de 24 h (nunca "a. m." / "p. m.")', async () => {
       await gotoView(tp, base, `tasks/${created.tasks[0]}`);
       await tp.waitForSelector('.tk-detail', { timeout: 20000 });
