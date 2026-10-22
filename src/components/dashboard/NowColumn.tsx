@@ -6,7 +6,7 @@ import { DashEmpty } from './DashEmpty';
 import { getRecessSchedules } from '../../services/schedulesApi';
 import { minutesFromTime } from '../../utils/dates';
 import { nowMinutesAr, todayKeyAr } from '../../utils/formatters';
-import { isOverdue } from '../../utils/dates';
+import { taskDue } from '../../utils/taskDue';
 import { errorMessage } from '../layout/Feedback';
 import { clickableProps } from '../../utils/a11y';
 import { agendaNow, isAgendaToday, isMine, topTasks } from './agendaNow';
@@ -221,8 +221,9 @@ function TasksCard({ top, operator, canOpen, onOpenTasks, onOpenTask }: {
       {top.list.length ? (
         <ul className="dash-task-list">
           {top.list.map(task => {
-            const overdue = task.fechaVencimiento && isOverdue(task.fechaVencimiento);
-            const due = task.fechaVencimiento ? task.fechaVencimiento.split('-').reverse().slice(0, 2).join('/') : '';
+            // La misma regla que el tablero de Tareas (utils/taskDue): "vence hoy" el día que vence.
+            const due = taskDue(task.fechaVencimiento);
+            const dueText = due ? due.text.charAt(0).toLowerCase() + due.text.slice(1) : '';
             return (
               <li key={task.id}>
                 {/* Fila clickeable (no <button>): el título baja de renglón en vez de cortarse. */}
@@ -232,7 +233,7 @@ function TasksCard({ top, operator, canOpen, onOpenTasks, onOpenTask }: {
                     <span className="dash-sub">
                       <StatusText tone={task.prioridad === 'Urgente' ? 'bad' : 'muted'} strong={task.prioridad === 'Urgente'}>{task.prioridad || 'Sin prioridad'}</StatusText>
                       {' · '}{task.estado}
-                      {due ? <> · {overdue ? <StatusText tone="bad">venció el {due}</StatusText> : `vence ${due}`}</> : null}
+                      {due ? <> · {due.tone === 'bad' || due.tone === 'warn' ? <StatusText tone={due.tone}>{dueText}</StatusText> : dueText}</> : null}
                       {isMine(task, operator) ? ' · asignada a vos' : task.responsable ? ` · ${task.responsable}` : ''}
                     </span>
                   </span>

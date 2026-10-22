@@ -1,6 +1,6 @@
 import type { TaskColumn, TaskItem } from '../../types';
-import { normalizeText, todayKeyAr } from '../../utils/formatters';
-import { formatDdMm } from '../../utils/taskDate';
+import { normalizeText } from '../../utils/formatters';
+import { taskDue } from '../../utils/taskDue';
 
 /** Cuántas tarjetas se dibujan por columna antes de "Ver N más". */
 export const PAGE_SIZE = 8;
@@ -80,16 +80,9 @@ export function priorityLane(task: TaskItem): (typeof PRIORITIES)[number] {
 
 export type DueInfo = { text: string; tone: 'normal' | 'muted' | 'warn' | 'bad'; overdue: boolean };
 
-/** "Vence 21/10" · "Vence hoy" (ámbar) · "Venció 12/10" (rojo) · hecha: apagado. */
+/** "Vence 21/10" · "Vence hoy" (ámbar) · "Venció 12/10" (rojo) · hecha: apagado. La regla es la de utils/taskDue (la misma del Inicio). */
 export function dueInfo(task: TaskItem, done: boolean): DueInfo | null {
-  const iso = String(task.fechaVencimiento || '').slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return task.fechaVencimiento ? { text: `Vence ${task.fechaVencimiento}`, tone: 'normal', overdue: false } : null;
-  const label = formatDdMm(iso);
-  if (done) return { text: `Vence ${label}`, tone: 'muted', overdue: false };
-  const today = todayKeyAr();
-  if (iso < today) return { text: `Venció ${label}`, tone: 'bad', overdue: true };
-  if (iso === today) return { text: 'Vence hoy', tone: 'warn', overdue: false };
-  return { text: `Vence ${label}`, tone: 'normal', overdue: false };
+  return taskDue(task.fechaVencimiento, done);
 }
 
 export function plural(count: number, one: string, many: string) {
