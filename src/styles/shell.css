@@ -38,7 +38,12 @@
 }
 .shell[data-nav="none"].is-kb-open { --shell-tabbar-h: 0px; }
 
-.shell :is(button, a, [tabindex]):focus-visible {
+/* Anillo de foco por defecto de la app. Con :where() no suma especificidad
+   (queda en la de :focus-visible): el anillo propio de cada control o pantalla
+   (hacia adentro en filas de una tarjeta que recorta, en pestañas, en celdas)
+   manda. Antes `.shell :is(...)` pisaba esos anillos con el de afuera y
+   quedaban cortados por el overflow de su tarjeta. */
+:where(.shell) :where(button, a, [tabindex]):focus-visible {
   outline: var(--g-focus-w) solid var(--g-focus);
   outline-offset: var(--g-focus-offset);
 }
