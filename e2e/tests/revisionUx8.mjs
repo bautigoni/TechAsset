@@ -9,7 +9,9 @@
 //   - nada recortado por un ancestro con overflow (borde, resaltado o texto
 //     fuera de la caja que lo recorta, o arriba del origen de un scroll);
 //   - vecinos de una misma fila con la misma altura: controles (botones,
-//     segmentados, campos) y tarjetas de una fila de Analítica.
+//     segmentados, campos) y tarjetas de una fila de Analítica;
+//   - rótulos de los resúmenes enteros (nada de "Implementad…" a 360 px) y
+//     los botones de Caja chica que bajan a varias filas llenan cada fila.
 // Interacciones mirando cuadro a cuadro (sin movimiento reducido): nada cambia
 // de alto de golpe (un salto ≥ el cambio total en un solo cuadro) y el control
 // tocado queda quieto (± 2 px):
@@ -181,6 +183,24 @@ function rowProbe(scope) {
       if (Math.abs(a.top - b.top) > 2 || Math.abs(a.height - b.height) <= 1) continue;
       if (grid.classList.contains('is-loose')) continue; // despareja a propósito por el usuario (Top N, Tabla)
       uneven.push(`tarjetas de una fila: ${name(cards[i].card)} ${Math.round(a.height)} px y ${name(cards[j].card)} ${Math.round(b.height)} px`);
+    }
+  }
+  // 4. Rótulos de los resúmenes (KPI) enteros: con lugar en la tarjeta, nunca "Implementad…".
+  for (const label of root.querySelectorAll('.sgx-kl, .an-kpi-label, .pc-sum-label')) {
+    if (visible(label) && label.scrollWidth > label.clientWidth + 1) uneven.push(`rótulo cortado: ${name(label)}`);
+  }
+  // 5. Botones de acción que bajan a varias filas (Caja chica en angosto): cada fila llena el ancho, sin escalones.
+  for (const group of root.querySelectorAll('.pc-sum-acts')) {
+    if (!visible(group)) continue;
+    const box = group.getBoundingClientRect();
+    const buttons = [...group.children].filter(visible).map(el => el.getBoundingClientRect());
+    const rows = new Map();
+    for (const r of buttons) rows.set(Math.round(r.top), [...(rows.get(Math.round(r.top)) || []), r]);
+    if (rows.size < 2) continue;
+    for (const row of rows.values()) {
+      const left = Math.min(...row.map(r => r.left));
+      const right = Math.max(...row.map(r => r.right));
+      if (left - box.left > 2 || box.right - right > 2) uneven.push(`botones escalonados en ${name(group).split(' "')[0]}: una fila ocupa ${Math.round(right - left)} de ${Math.round(box.width)} px`);
     }
   }
   return { topGap, clipped: [...new Set(clipped)].slice(0, 8), uneven: [...new Set(uneven)].slice(0, 8) };

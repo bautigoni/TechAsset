@@ -60,6 +60,8 @@
 @media (max-width: 699px) {
   .sgx-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sgx-kp { padding: var(--g-s-3); }
+  /* A 360 px "Implementadas" entra entero (antes se cortaba con 12 px de relleno a cada lado). */
+  .sgx-kpis .sgx-kp:not(.sgx-kp-wide) { padding-inline: var(--g-s-2); }
   .sgx-kp-wide { order: 4; grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--g-line); }
 }
 

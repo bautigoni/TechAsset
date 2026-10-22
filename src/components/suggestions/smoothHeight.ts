@@ -4,6 +4,9 @@ import { COLLAPSE_MS, keepInPlace, recentTrigger } from '../../ui';
 const reduced = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 const HEIGHT_ANIMATION = 'smooth-height';
 
+/** Después de que se pintó el cuadro con el cambio (dos rAF): ahí el reloj ya no arrastra el tiempo de un render largo. */
+export const afterPaint = (fn: () => void) => requestAnimationFrame(() => requestAnimationFrame(fn));
+
 /**
  * Cambios de alto que no son un colapso (una lista que se reemplaza al tocar un
  * filtro, una descripción que se despliega, un comentario nuevo): aplica
@@ -32,7 +35,7 @@ export function smoothHeight(el: HTMLElement | null | undefined, mutate: () => v
   // siguiente: si dibujar lo nuevo tarda, la transición no empieza "ya avanzada".
   target.style.height = `${from}px`;
   target.style.overflow = 'clip';
-  requestAnimationFrame(() => {
+  afterPaint(() => {
     target.style.height = '';
     target.style.overflow = '';
     const animation = target.animate([{ height: `${from}px`, overflow: 'clip' }, { height: `${to}px`, overflow: 'clip' }], { duration: COLLAPSE_MS, easing: ease, fill: 'backwards' });

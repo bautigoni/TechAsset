@@ -101,6 +101,9 @@ export function keepInPlace(anchor: HTMLElement | null, mutate: () => void) {
 
 const EASE_FALLBACK = 'cubic-bezier(.2, 0, 0, 1)';
 
+/** Después de que se pintó el cuadro con el cambio (dos rAF): ahí el reloj ya no arrastra el tiempo de un render largo. */
+const afterPaint = (fn: () => void) => requestAnimationFrame(() => requestAnimationFrame(fn));
+
 /**
  * Aplica `mutate` (en el mismo frame) y anima el alto de cada elemento desde su
  * alto anterior al nuevo, recortando lo que sobra mientras dura. Antes de medir
@@ -134,7 +137,7 @@ export function smoothHeights(elements: HTMLElement[], mutate: () => void, touch
   // el cuadro siguiente: si dibujar lo nuevo (una tabla) tarda, la curva no
   // arranca "ya avanzada" y no se ve un salto.
   for (const { el, from } of moves) { el.style.height = `${from}px`; el.style.overflow = 'clip'; }
-  requestAnimationFrame(() => {
+  afterPaint(() => {
     const running = moves.map(({ el, from, to }) => {
       el.style.height = '';
       el.style.overflow = '';
@@ -369,13 +372,17 @@ function FlowGrid({ children }: { children: ReactNode }) {
       if (touched && wasStacked) { grid.classList.add('is-stacked'); return; }
       grid.classList.add('is-measuring');
       const rows = new Map<number, number[]>();
+      const tables = new Set<number>();
       for (const item of items) {
         const rect = item.getBoundingClientRect();
         const top = Math.round(rect.top);
         rows.set(top, [...(rows.get(top) || []), rect.height]);
+        if (item.querySelector('.an-table')) tables.add(top);
       }
       grid.classList.remove('is-measuring');
-      const uneven = [...rows.values()].some(heights => heights.length > 1 && Math.max(...heights) - Math.min(...heights) > 48);
+      // Una tabla estirada reparte lo que sobra entre sus filas: con pocas filas eso
+      // se ve como aire de más, así que con una tabla en la fila el margen es la mitad.
+      const uneven = [...rows.entries()].some(([top, heights]) => heights.length > 1 && Math.max(...heights) - Math.min(...heights) > (tables.has(top) ? 24 : 48));
       grid.classList.toggle(touched ? 'is-loose' : 'is-stacked', uneven);
     };
     if (!grid.dataset.anAnimating) decide();

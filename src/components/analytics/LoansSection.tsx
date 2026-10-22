@@ -357,7 +357,7 @@ function DevicesPanel({ span, rows, byType, total, loading }: { span: number; ro
     <Panel id="an-eqs" span={span} eyebrow="Equipos · ranking" title={title}
       tools={<>{control('Cuántos equipos mostrar')}<CsvButton onExport={exportCsv} disabled={!rows.length} /></>}
       note={loading ? undefined : `Mostrando ${Math.min(top, rows.length)} de ${rows.length} equipos. Se agrupan por etiqueta aunque el alias haya cambiado. Prom. afuera: préstamos del período ya devueltos; en ámbar, más de 24 h.`}>
-      <div ref={node => { ref.current = node; widthRef(node); }}>
+      <div className="an-rank-wrap" ref={node => { ref.current = node; widthRef(node); }}>
         {loading ? <Lazy height={360} kind="rows">{() => null}</Lazy> : (
           <SimpleTable
             caption="Equipos más prestados"
@@ -400,7 +400,7 @@ function PeoplePanel({ span, rows, total, sinPersona, loading }: { span: number;
     <Panel id="an-per" span={span} eyebrow="Personas · ranking" title={loading || !rows.length ? 'Personas que más pidieron' : `${rows[0].label} pidió ${formatInt(rows[0].value)} ${rows[0].value === 1 ? 'vez' : 'veces'}`}
       tools={<>{control('Cuántas personas mostrar')}<CsvButton onExport={exportCsv} disabled={!rows.length} /></>}
       note={loading ? undefined : `Mostrando ${Math.min(top, rows.length)} de ${rows.length} personas.${sinPersona ? ` ${formatInt(sinPersona)} préstamos sin persona cargada no entran.` : ''} Los nombres se agrupan sin distinguir mayúsculas ni acentos${merged ? ` (${merged} con más de una grafía)` : ''}; los errores de tipeo cuentan aparte.`}>
-      <div ref={ref}>
+      <div className="an-rank-wrap" ref={ref}>
         {loading ? <Lazy height={360} kind="rows">{() => null}</Lazy> : (
           <SimpleTable
             caption="Personas que más pidieron equipos"

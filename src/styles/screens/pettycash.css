@@ -52,6 +52,8 @@
 .pc-sum-pct { display: flex; flex-direction: column; color: var(--g-text-2); font-size: var(--g-fs-xs); line-height: 1rem; }
 .pc-sum-pct b { color: var(--g-text); font-size: var(--g-fs-md); line-height: 1.5rem; }
 .pc-sum-acts { flex: 1 1 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--g-s-2); min-width: 0; }
+/* Angosto: los botones bajan a su fila y la llenan (no quedan escalonados a la derecha con anchos distintos). */
+@media (max-width: 767px) { .pc-sum-acts > .ui-btn { flex: 1 1 auto; } }
 .pc-why { margin-top: var(--g-s-2); color: var(--g-text-3); font-size: var(--g-fs-xs); }
 .pc-fund {
   display: flex;

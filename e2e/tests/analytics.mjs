@@ -48,7 +48,16 @@ export async function analyticsTests({ browser, base, api, admin, releaseVersion
       const deferred = await page.evaluate(() => document.querySelectorAll('.an-lazy .an-skel').length);
       const shiftBefore = await page.evaluate(() => window.__shift);
       await clickText(page, '.an-index-link', /Parque/);
-      await sleep(1300);
+      // Antes de viajar se arman todas las secciones (con más datos, en una
+      // corrida completa, tarda más): se espera a que el viaje termine (la
+      // sección quieta) en vez de mirar a un tiempo fijo.
+      await until(async () => {
+        const a = await page.evaluate(() => Math.round(document.getElementById('an-par').getBoundingClientRect().top));
+        await sleep(200);
+        const b = await page.evaluate(() => Math.round(document.getElementById('an-par').getBoundingClientRect().top));
+        return a === b && b < 400;
+      }, { timeout: 6000, message: 'que el índice termine de llevar a Parque' }).catch(() => {});
+      await sleep(300);
       const state = await page.evaluate(() => ({
         top: document.getElementById('an-par').getBoundingClientRect().top,
         indexBottom: document.querySelector('.an-index').getBoundingClientRect().bottom,

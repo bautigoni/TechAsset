@@ -151,10 +151,14 @@
    contenido (mitad y mitad), en vez de quedar como una sola franja vacía antes de la lectura o al pie. */
 .an-card:not(.an-heatcard, .an-empty) > .an-card-head + :not(.an-readout, .an-note, .an-link--end) { margin-top: auto; }
 .an-card:not(.an-heatcard, .an-empty) > :not(.an-card-head, .an-readout, .an-note, .an-link--end):is(:has(+ .an-readout), :has(+ .an-note), :last-child) { margin-bottom: auto; }
-/* Una tabla (ranking) no se centra en blanco: arranca bajo el encabezado y lo que sobra
-   (como mucho 48 px: si no, FlowGrid apila la fila) queda antes de la nota. La tarjeta
-   tiene el mismo alto que su vecina de fila (antes quedaba más corta, con su alto propio). */
-.an-card:not(.an-heatcard, .an-empty) > .an-card-head + .an-table { margin-top: 0; }
+/* Una tabla (ranking) no se centra en blanco ni deja una franja vacía al pie: la tarjeta
+   tiene el mismo alto que su vecina de fila (antes quedaba más corta, con su alto propio)
+   y lo que sobra (como mucho 48 px: si no, FlowGrid apila la fila) se reparte entre las
+   filas, que crecen un poco con el texto centrado. */
+.an-card:not(.an-heatcard, .an-empty) > .an-table.an-table { flex: 1 1 auto; margin-top: 0; margin-bottom: 0; }
+.an-card:not(.an-heatcard, .an-empty) > .an-rank-wrap.an-rank-wrap { display: flex; flex: 1 1 auto; flex-direction: column; margin-top: 0; margin-bottom: 0; }
+.an-rank-wrap > .an-table { flex: 1 1 auto; }
+:is(.an-card, .an-rank-wrap) > .an-table > .an-tr:not(.an-tr--head) { flex: 1 1 auto; }
 .an-dim { color: var(--g-text-2); }
 .an-warn { color: var(--g-warn); }
 .an-rank { color: var(--g-text-3); font-family: var(--g-font-mono); font-size: var(--g-fs-xs); }
