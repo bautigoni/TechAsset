@@ -131,6 +131,8 @@ function rv6Probe(scope) {
 export async function ticketsAgendaUxTests({ browser, base, api, admin, releaseVersion, test, track = () => {} }) {
   const { context, page } = await openContext(browser, { base, token: admin.token, releaseVersion });
   track(page);
+  // El alta con cambios sin guardar pide confirmación del navegador al salir (beforeunload): se acepta.
+  page.on('dialog', dialog => { void dialog.accept().catch(() => {}); });
   const tag = String(Date.now()).slice(-5);
   try {
     // Datos propios: tickets de sobra para "Ver más", uno con checklist, una actividad de hoy y recreos.
