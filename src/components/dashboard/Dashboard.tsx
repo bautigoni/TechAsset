@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ClipboardCheck } from 'lucide-react';
 import type { AgendaItem, Device, Movement, SyncStatus, TaskItem, ViewKey } from '../../types';
-import { Button, COLLAPSE_MS, Collapse, StatusText, cx, icons, scrollParentOf, useStatusLine } from '../../ui';
+import { Button, COLLAPSE_MS, Collapse, StatusText, cx, icons, scrollParentOf, useStatusLine, type StatusMessage } from '../../ui';
 import { undoLoans, type LoanBatchResponse } from '../../services/loansApi';
 import { getDevicesHealth, subscribeDevicesHealth } from '../../hooks/useDevices';
 import { isEditableTarget } from '../../hooks/useGlobalScanner';
@@ -26,6 +26,12 @@ export type DashboardProps = {
   agenda: AgendaItem[];
   tasks: TaskItem[];
   movements: Movement[];
+  /**
+   * Si ya llegó la primera respuesta de agenda, tareas y movimientos (App). Hasta
+   * entonces cada bloque muestra su esqueleto, no "Sin …" (QA ronda 1, ítem 17).
+   * Sin la prop se asume que sí (compatibilidad).
+   */
+  ready?: { agenda: boolean; tasks: boolean; movements: boolean };
   siteSettings: Record<string, unknown> | null;
   /** Lo que el lector USB leyó estando en el Inicio (cae en la barra de acción). */
   scan?: { code: string; nonce: number };
@@ -90,7 +96,7 @@ function UpdatedNote() {
  * Sin analíticas, sin modales: todo se abre en línea.
  */
 export function Dashboard(props: DashboardProps) {
-  const { operator, consultationMode = false, devices, sync, agenda, tasks, movements, siteSettings, scan, canOpen, onNavigate, onOpenTask, onOpenLoans, onProfile, onEdit, onLoanChanged, onRefresh, onAgendaSave } = props;
+  const { operator, consultationMode = false, devices, sync, agenda, tasks, movements, ready, siteSettings, scan, canOpen, onNavigate, onOpenTask, onOpenLoans, onProfile, onEdit, onLoanChanged, onRefresh, onAgendaSave } = props;
   const [filter, setFilter] = useState<ListFilter>('loaned');
   const [type, setType] = useState('');
   const [query, setQuery] = useState('');
@@ -173,13 +179,13 @@ export function Dashboard(props: DashboardProps) {
     setLendRequest(current => ({ etiquetas, nonce: (current?.nonce || 0) + 1 }));
     scrollTo(barRef.current);
   };
-  const copyTag = async (device: Device) => {
+  const copyTag = async (device: Device, show: (message: StatusMessage) => void) => {
     try {
       if (!navigator.clipboard) throw new Error('El navegador no permite copiar acá.');
       await navigator.clipboard.writeText(device.etiqueta);
-      listStatus.show({ tone: 'ok', message: <><b>{device.etiqueta}</b> copiada al portapapeles · {aliasOf(device)}</>, autoHideMs: 3000 });
+      show({ tone: 'ok', message: <><b>{device.etiqueta}</b> copiada al portapapeles · {aliasOf(device)}</>, autoHideMs: 3000 });
     } catch (reason) {
-      listStatus.show({ tone: 'bad', message: errorMessage(reason, 'No se pudo copiar.') });
+      show({ tone: 'bad', message: errorMessage(reason, 'No se pudo copiar.') });
     }
   };
   const retry = async () => {
@@ -274,7 +280,7 @@ export function Dashboard(props: DashboardProps) {
             onLend={lendFromList}
             onEdit={onEdit}
             onProfile={onProfile}
-            onCopy={device => void copyTag(device)}
+            onCopy={(device, show) => void copyTag(device, show)}
             onShortcuts={() => { setHelp(true); scrollTo(barRef.current); }}
             onStartLend={() => { scrollTo(barRef.current); window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 60); }}
           />
@@ -283,6 +289,8 @@ export function Dashboard(props: DashboardProps) {
           <NowColumn
             agenda={agenda}
             tasks={tasks}
+            agendaReady={ready?.agenda ?? true}
+            tasksReady={ready?.tasks ?? true}
             operator={operator}
             readOnly={readOnly}
             canAgenda={canOpen('agenda')}
@@ -294,7 +302,7 @@ export function Dashboard(props: DashboardProps) {
           />
         </div>
         <div className="dash-area-moves">
-          <RecentMoves items={movements} canHistory={canOpen('history')} onHistory={() => onNavigate('history')} />
+          <RecentMoves items={movements} ready={(ready?.movements ?? true) || movements.length > 0} canHistory={canOpen('history')} onHistory={() => onNavigate('history')} />
         </div>
       </div>
     </section>

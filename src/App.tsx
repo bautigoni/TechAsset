@@ -93,6 +93,9 @@ export function App() {
   // Lector USB estando en el Inicio: cae en su barra de acción.
   const [dashScan, setDashScan] = useState<{ code: string; nonce: number } | undefined>();
   const [movements, setMovements] = useState<Movement[]>([]);
+  // Si ya llegó la primera respuesta (o el error) de agenda, tareas y movimientos de la
+  // sede: el Inicio no dice "Sin actividades" / "Sin movimientos" antes de saberlo (QA ítem 17).
+  const [firstLoad, setFirstLoad] = useState({ agenda: false, tasks: false, movements: false });
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sites, setSites] = useState<SiteInfo[]>([]);
@@ -188,7 +191,7 @@ export function App() {
         setMovements(data.items);
       })
       .catch(() => { /* el historial no es crítico para operar */ })
-      .finally(() => { movementsInFlight.current = null; });
+      .finally(() => { movementsInFlight.current = null; setFirstLoad(current => (current.movements ? current : { ...current, movements: true })); });
     movementsInFlight.current = promise;
     return promise;
   }, []);
@@ -299,11 +302,12 @@ export function App() {
   useEffect(() => {
     if (!user || !activeSite) return;
     void refresh();
+    setFirstLoad({ agenda: false, tasks: false, movements: false });
     // Agenda y tareas ya se pidieron al montar sus hooks (misma sede): si esa
     // respuesta llegó hace menos de 5 s no se vuelven a bajar (antes salía un
     // segundo GET /api/agenda de ~60 KB en cada arranque, según el timing).
-    void agenda.refresh({ maxAgeMs: 5000 });
-    void tasks.refresh({ maxAgeMs: 5000 });
+    void agenda.refresh({ maxAgeMs: 5000 }).catch(() => undefined).finally(() => setFirstLoad(current => (current.agenda ? current : { ...current, agenda: true })));
+    void tasks.refresh({ maxAgeMs: 5000 }).catch(() => undefined).finally(() => setFirstLoad(current => (current.tasks ? current : { ...current, tasks: true })));
     void refreshMovements(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSite, user?.id]);
@@ -699,7 +703,7 @@ export function App() {
       {!viewsOn ? <div className="view-enter"><section className="view active"><SkeletonView /></section></div> : (
       <div key={view} className="view-enter" style={enterStill ? STILL : undefined}>
       <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
-      {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={devices} sync={sync} agenda={agenda.items} tasks={tasks.items} movements={movements} siteSettings={siteSettings} scan={dashScan} canOpen={target => navItems.some(item => item.key === target)} onNavigate={navigate} onOpenTask={openTaskPage} onOpenLoans={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onLoanChanged={afterLoanChange} onRefresh={() => refresh({ force: true, wait: true })} onAgendaSave={agenda.save} />}
+      {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={devices} sync={sync} agenda={agenda.items} tasks={tasks.items} movements={movements} ready={firstLoad} siteSettings={siteSettings} scan={dashScan} canOpen={target => navItems.some(item => item.key === target)} onNavigate={navigate} onOpenTask={openTaskPage} onOpenLoans={openLoanFlow} onProfile={setProfile} onEdit={setEditingDevice} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onLoanChanged={afterLoanChange} onRefresh={() => refresh({ force: true, wait: true })} onAgendaSave={agenda.save} />}
       {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} allDevices={devices} siteCode={activeSite} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} pageTag={devicePage?.tag} pageEdit={devicePage?.edit} onOpenPage={openDevicePage} onNavigate={navigate} />}
       {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onRefresh={() => Promise.all([refresh({ force: true, wait: true }), refreshMovements(true)])} siteCode={activeSite} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} scanRequest={scanRequest} />}
       {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}

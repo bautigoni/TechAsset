@@ -6,6 +6,7 @@ import { DashEmpty } from './DashEmpty';
 import { useSmoothHeight } from './useSmoothHeight';
 import { createInternalNote, fetchInternalNotes, updateInternalNote } from '../../services/operationsApi';
 import { TIME_HM, dayKeyAr, formatDate, todayKeyAr } from '../../utils/formatters';
+import { getActiveSiteCode } from '../../services/activeSite';
 
 const TIME_24: Intl.DateTimeFormatOptions = { ...TIME_HM, hour12: false, timeZone: 'America/Argentina/Buenos_Aires' };
 import { errorMessage } from '../layout/Feedback';
@@ -15,6 +16,21 @@ const MAX_VISIBLE = 4;
 // "Hoy" en hora argentina: el server manda localDate; si no, se convierte createdAt (UTC).
 const noteDay = (item: InternalNote) => item.localDate || dayKeyAr(item.createdAt || '');
 
+/*
+ * Lo último visto por sede (y día): al volver al Inicio desde otra vista las
+ * notas se ven al instante y se revalidan en segundo plano, en vez de volver
+ * al esqueleto mientras viaja el pedido (QA ronda 1, ítem 17: ~4 s en 3G).
+ * Vive en el chunk del Inicio y se pierde al recargar (no persiste nada).
+ */
+let notesMemo: { site: string; day: string; items: InternalNote[] } | null = null;
+function readMemo() {
+  const memo = notesMemo;
+  return memo && memo.site === getActiveSiteCode() && memo.day === todayKeyAr() ? memo.items : null;
+}
+function writeMemo(items: InternalNote[]) {
+  notesMemo = { site: getActiveSiteCode(), day: todayKeyAr(), items };
+}
+
 /**
  * Notas del día (lo que antes era el chat de "Traspaso"; el nombre cambió por
  * pedido del dueño). Enter envía, ★ marca Importante (lo cuenta el cierre del
@@ -22,7 +38,8 @@ const noteDay = (item: InternalNote) => item.localDate || dayKeyAr(item.createdA
  * "Ver anteriores (N)". Se refresca al volver a la pestaña (sin polling).
  */
 export function NotesPanel({ operator, readOnly, onCount }: { operator: string; readOnly: boolean; onCount?: (count: number) => void }) {
-  const [items, setItems] = useState<InternalNote[] | null>(null);
+  // Volver al Inicio muestra lo último visto de la sede y revalida (sin esqueleto; QA ítem 17).
+  const [items, setItems] = useState<InternalNote[] | null>(() => readMemo());
   const [loadError, setLoadError] = useState('');
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -36,7 +53,9 @@ export function NotesPanel({ operator, readOnly, onCount }: { operator: string; 
     try {
       const response = await fetchInternalNotes('active');
       const today = todayKeyAr();
-      setItems(response.items.filter(item => noteDay(item) === today).sort((a, b) => a.id - b.id));
+      const next = response.items.filter(item => noteDay(item) === today).sort((a, b) => a.id - b.id);
+      writeMemo(next);
+      setItems(next);
       setLoadError('');
     } catch (reason) {
       setLoadError(errorMessage(reason, 'No se pudieron cargar las notas.'));

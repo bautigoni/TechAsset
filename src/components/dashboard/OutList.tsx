@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { ChevronDown, House, SearchX, Undo2 } from 'lucide-react';
 import type { Device } from '../../types';
 import {
   Button, Checkbox, ErrorState, Input, Kbd, Segmented, SelectionHeader, SkeletonRows, StatusText, TruncatedText,
-  Collapse, cx, icons, useAnchoredToggle, useInlineConfirm, useSelection, type StatusMessage
+  Collapse, cx, icons, useAnchoredToggle, useInlineConfirm, useSelection, useStatusLine,
+  type StatusLineApi, type StatusMessage
 } from '../../ui';
+import { HeldRowView, useHeldRows, useHeldTimer, type HeldRow } from './useHeldRows';
 import { aliasOf, fichaFields, filterList, initialOf, loanOf, sinceOf, stateText, whereOf, type Counts, type ListFilter } from './dashModel';
 import type { LoanActions } from './useLoanActions';
 import { normalizeText } from '../../utils/formatters';
@@ -26,7 +28,8 @@ export type OutListProps = {
   retrying: boolean;
   readOnly: boolean;
   actions: LoanActions;
-  status: { show: (message: StatusMessage) => void; element: ReactNode; slot: (className?: string) => ReactNode };
+  /** Solo si la fila tocada ya no está dibujada: el aviso va al pie de la lista. */
+  status: StatusLineApi;
   onFilter: (filter: ListFilter) => void;
   onType: (type: string) => void;
   onQuery: (query: string) => void;
@@ -34,14 +37,15 @@ export type OutListProps = {
   onLend: (etiquetas: string[]) => void;
   onEdit: (device: Device) => void;
   onProfile: (device: Device) => void;
-  onCopy: (device: Device) => void;
+  /** Copia la etiqueta; el aviso sale en la ficha abierta (`show`). */
+  onCopy: (device: Device, show: (message: StatusMessage) => void) => void;
   onShortcuts: () => void;
   /** Lleva a la barra de acción para prestar (estado vacío). */
   onStartLend: () => void;
 };
 
 /**
- * "Afuera ahora": la lista operativa. Pestañas Prestados / Disponibles /
+ * "Equipos" (antes "Afuera ahora"): la lista operativa. Pestañas Prestados / Disponibles /
  * Todos, buscador flexible, Devolver por fila y la ficha que se abre debajo
  * de la fila. Ctrl/Cmd+clic marca, Shift+clic marca el rango (misma gramática
  * que los cartelitos de Préstamos) y la selección REEMPLAZA el encabezado.
@@ -63,6 +67,33 @@ export function OutList(props: OutListProps) {
   const order = useMemo(() => visible.map(device => device.etiqueta), [visible]);
   const byTag = useMemo(() => new Map(devices.map(device => [device.etiqueta, device])), [devices]);
 
+  // Filas devueltas que se quedan en su lugar con su aviso hasta que el usuario deja la lista (useHeldRows).
+  const heldRows = useHeldRows(listRef, byTag, `${filter}|${type}|${query}`);
+  const { held, setTick } = heldRows;
+  const liveTags = useMemo(() => new Set(visible.map(device => device.etiqueta)), [visible]);
+  const bump = useCallback(() => setTick(value => value + 1), [setTick]);
+  useHeldTimer(held, heldRows.tick, liveTags, heldRows.settle, bump);
+  /** Lo que se dibuja: la lista viva y, en el lugar donde estaban, las filas retenidas. */
+  const display = useMemo(() => {
+    const out: Array<{ device: Device; held?: HeldRow }> = visible.map(device => ({ device, held: held.get(device.etiqueta) }));
+    const extra = [...held.values()].filter(row => !liveTags.has(row.tag)).sort((a, b) => a.index - b.index);
+    for (const row of extra) {
+      const after = row.after ? out.findIndex(item => item.device.etiqueta === row.after) : -1;
+      const at = after >= 0 ? after + 1 : row.after ? Math.min(row.index, out.length) : 0;
+      out.splice(at, 0, { device: row.device, held: row });
+    }
+    return out;
+  }, [visible, held, liveTags]);
+
+  /** Devolver desde la lista: el aviso sale EN la fila tocada (no arriba de la lista). */
+  const returnRows = (tags: string[]) => {
+    const clickedAt = Date.now();
+    const snap = heldRows.snapshot(tags);
+    return actions.returnDevices(tags, message => {
+      if (!heldRows.pin(tags, snap, message, clickedAt)) status.show(message);
+    });
+  };
+
   useEffect(() => { setShown(FIRST_PAGE); }, [filter, type, query]);
   // La selección se recalcula contra el estado vivo: lo que ya no existe o
   // quedó bloqueado (fuera de servicio) se suelta solo.
@@ -82,7 +113,7 @@ export function OutList(props: OutListProps) {
       const ok = await confirm.ask({ message: `¿Devolver ${tags.length} equipos?`, detail: toReturn.map(device => `${aliasOf(device)} ${device.etiqueta}`).join(' · '), confirmLabel: 'Confirmar' });
       if (!ok) return;
     }
-    const done = await actions.returnDevices(tags, status.show);
+    const done = await returnRows(tags);
     if (done) selection.clear();
     else tags.forEach(tag => { if (!selection.isSelected(tag)) selection.toggle(tag); });
   };
@@ -128,14 +159,14 @@ export function OutList(props: OutListProps) {
     }
     : filter === 'loaned' ? {
       icon: 'home',
-      title: 'Todo en casa',
-      desc: counts.available ? `No hay equipos prestados · ${counts.available} ${counts.available === 1 ? 'disponible' : 'disponibles'} para prestar.` : 'No hay equipos prestados.',
+      title: 'Ningún equipo prestado',
+      desc: counts.available ? `${counts.available} ${counts.available === 1 ? 'disponible' : 'disponibles'} para prestar.` : 'Todos los equipos están en su lugar.',
       actions: [
         ...(!readOnly && counts.available ? [{ label: 'Prestar un equipo', primary: true, onClick: onStartLend }] : []),
         ...(counts.available ? [{ label: 'Ver disponibles', onClick: () => onFilter('available') }] : [])
       ]
     }
-      : filter === 'overdue' ? { icon: 'home', title: 'Nada atrasado', desc: 'Todo lo prestado salió hoy.', actions: [{ label: 'Ver prestados', onClick: () => onFilter('loaned') }] }
+      : filter === 'overdue' ? { icon: 'home', title: 'Ninguno atrasado', desc: 'Todo lo prestado salió hoy.', actions: [{ label: 'Ver prestados', onClick: () => onFilter('loaned') }] }
         : filter === 'available' ? {
           icon: 'back',
           title: 'No hay equipos libres ahora',
@@ -143,12 +174,13 @@ export function OutList(props: OutListProps) {
           actions: counts.loaned ? [{ label: 'Ver prestados', onClick: () => onFilter('loaned') }] : []
         }
           : { icon: 'search', title: 'No hay equipos en esta sede', desc: 'Se cargan desde Dispositivos o con la importación de inventario.', actions: [] };
-  const hasRows = !loading && visible.length > 0;
+  const hasRows = !loading && display.length > 0;
   const bodyRef = useSmoothHeight<HTMLDivElement>(`${filter}|${type}|${query}|${shown}|${loading ? 1 : 0}|${hasRows ? 1 : 0}`);
 
   const header = (
     <div className="dash-list-head">
-      <h2 className="dash-h2" id="afuera-titulo">Afuera ahora</h2>
+      {/* Título neutro: la pestaña dice qué se ve (antes "Afuera ahora" también sobre Disponibles; QA ítem 19). */}
+      <h2 className="dash-h2" id="afuera-titulo">Equipos</h2>
       <Segmented<'loaned' | 'available' | 'all'>
         size="sm"
         ariaLabel="Filtrar la lista"
@@ -156,12 +188,13 @@ export function OutList(props: OutListProps) {
         value={filter === 'overdue' ? 'loaned' : (filter as 'loaned' | 'available' | 'all')}
         onChange={value => anchored(() => onFilter(value))}
         options={[
-          { value: 'loaned', label: 'Prestados', count: counts.loaned },
-          { value: 'available', label: 'Disponibles', count: counts.available },
-          { value: 'all', label: 'Todos', count: counts.total }
+          // Mientras carga, sin números: un "0" antes de la primera respuesta es un falso vacío (QA ítem 17).
+          { value: 'loaned', label: 'Prestados', count: loading ? undefined : counts.loaned },
+          { value: 'available', label: 'Disponibles', count: loading ? undefined : counts.available },
+          { value: 'all', label: 'Todos', count: loading ? undefined : counts.total }
         ]}
       />
-      {filter === 'overdue' && <FilterChip label="Más de 1 día afuera" onClear={() => onFilter('loaned')} />}
+      {filter === 'overdue' && <FilterChip label="Prestados hace más de 1 día" onClear={() => onFilter('loaned')} />}
       {type && <FilterChip label={`Tipo: ${type}`} onClear={() => onType('')} />}
       <Input
         className="dash-list-search"
@@ -201,7 +234,6 @@ export function OutList(props: OutListProps) {
       </SelectionHeader>
 
       {error && <ErrorState className="dash-block-error" message="No se pudo actualizar la lista" updatedAt={updatedLabel} onRetry={onRetry} retrying={retrying} />}
-      {status.slot('dash-status dash-status--in')}
 
       {/* Cambiar de pestaña, filtrar, quedar vacía o "Ver más" estira o encoge la
           lista suave (títulos, filas, vacío y pie juntos): nada aparece de golpe. */}
@@ -222,8 +254,10 @@ export function OutList(props: OutListProps) {
       </div>}
 
       {loading ? <SkeletonRows rows={5} className="dash-list-skel" /> : (
-        <ul className={cx('dash-rows', readOnly && 'is-readonly')} hidden={!visible.length} ref={listRef} onKeyDown={onListKey} aria-label="Equipos">
-          {visible.map(device => (
+        <ul className={cx('dash-rows', readOnly && 'is-readonly')} hidden={!display.length} ref={listRef} onKeyDown={onListKey} aria-label="Equipos" {...heldRows.pointer}>
+          {display.map(({ device, held: row }) => (row ? (
+            <HeldRowView key={device.etiqueta} row={row} onExpire={() => heldRows.expire(row.tag, row.key)} onLeft={() => heldRows.drop(row.tag)} />
+          ) : (
             <Row
               key={device.etiqueta}
               device={device}
@@ -234,18 +268,18 @@ export function OutList(props: OutListProps) {
               personCount={device.prestadoA ? counts.peopleCount.get(normalizeText(device.prestadoA)) || 0 : 0}
               onClick={event => clickRow(device, event)}
               onCheck={event => { selection.handleClick(device.etiqueta, { ctrlKey: true, metaKey: false, shiftKey: event.shiftKey }, order); }}
-              onReturn={() => void actions.returnDevices([device.etiqueta], status.show)}
+              onReturn={() => void returnRows([device.etiqueta])}
               onLend={() => onLend([device.etiqueta])}
               onClose={() => { pinned.current = null; setOpen(null); }}
               anchor={() => pinned.current}
               onEdit={() => onEdit(device)}
               onProfile={() => onProfile(device)}
-              onCopy={() => onCopy(device)}
+              onCopy={show => onCopy(device, show)}
             />
-          ))}
+          )))}
         </ul>
       )}
-      {!loading && !visible.length && <ListEmpty info={empty} />}
+      {!loading && !display.length && <ListEmpty info={empty} />}
 
       {/* El pie (cuántas, atajos de selección, Ver más) solo tiene sentido con filas. */}
       {hasRows && (
@@ -253,7 +287,7 @@ export function OutList(props: OutListProps) {
           <span className="ui-mono dash-nw">{visible.length} de {list.length}</span>
           {!readOnly && (
             <span className="dash-list-help dash-only-wide">
-              <Kbd>Ctrl</Kbd> / <Kbd>⌘</Kbd> / <Kbd>Shift</Kbd> + clic marca varias · clic abre la ficha
+              <Kbd>Ctrl</Kbd> / <Kbd>⌘</Kbd> / <Kbd>Shift</Kbd> + clic marca varios equipos · clic abre la ficha
             </span>
           )}
           <Button size="sm" variant="ghost" className="dash-only-wide" onClick={onShortcuts}><Kbd>?</Kbd> Atajos</Button>
@@ -263,6 +297,8 @@ export function OutList(props: OutListProps) {
         </div>
       )}
       </div>
+      {/* Solo si la fila tocada ya no estaba dibujada: al pie, no arriba de las filas. */}
+      {status.slot('dash-status dash-status--in')}
     </section>
   );
 }
@@ -307,7 +343,7 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
   anchor: () => HTMLElement | null;
   onEdit: () => void;
   onProfile: () => void;
-  onCopy: () => void;
+  onCopy: (show: (message: StatusMessage) => void) => void;
 }) {
   const state = loanOf(device);
   const alias = aliasOf(device);
@@ -316,6 +352,8 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
   const where = state === 'loaned' ? whereOf(device) || '—' : [device.marca, device.modelo].filter(Boolean).join(' ') || '—';
   const blocked = state === 'blocked';
   const lineRef = useRef<HTMLDivElement | null>(null);
+  // "Copiada" sale adentro de la ficha, debajo del botón tocado (nada de arriba se mueve).
+  const fichaStatus = useStatusLine();
   return (
     <li className={cx('dash-row', selected && 'is-selected', open && 'is-open', busy && 'is-busy')} data-device-tag={device.etiqueta}>
       {/* Toda la fila responde al mouse (clic abre la ficha; Ctrl/Cmd/Shift marcan);
@@ -369,10 +407,11 @@ function Row({ device, open, selected, busy, readOnly, personCount, onClick, onC
             {!readOnly && state === 'available' && <Button size="sm" variant="primary" onClick={onLend}>Prestar</Button>}
             {!readOnly && <Button size="sm" variant="secondary" onClick={onEdit}>Editar</Button>}
             <Button size="sm" variant="secondary" onClick={onProfile}>Ficha completa</Button>
-            <Button size="sm" variant="secondary" onClick={onCopy}>Copiar etiqueta</Button>
+            <Button size="sm" variant="secondary" onClick={() => onCopy(fichaStatus.show)}>Copiar etiqueta</Button>
             <span className="dash-grow" />
             <Button size="sm" variant="ghost" onClick={() => { onClose(); lineRef.current?.querySelector<HTMLButtonElement>('.dash-row-hit')?.focus({ preventScroll: true }); }}>Cerrar</Button>
           </div>
+          {fichaStatus.slot('dash-ficha-status')}
         </div>
       </Collapse>
     </li>

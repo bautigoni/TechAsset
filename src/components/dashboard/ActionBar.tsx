@@ -1,12 +1,12 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type Ref, type RefObject } from 'react';
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type Ref, type RefObject } from 'react';
 import { Camera, PackageMinus, PackagePlus, ScanLine } from 'lucide-react';
 import type { Device } from '../../types';
-import { Button, Collapse, Combobox, IconButton, Input, Kbd, Select, StatusText, cx, icons, type SelectOption, type StatusMessage } from '../../ui';
+import { Button, Collapse, Combobox, IconButton, Input, Kbd, Select, StatusLine, StatusText, cx, icons, type SelectOption, type StatusLineApi } from '../../ui';
 import { getLoanSuggestions, type LoanSuggestion } from '../../services/loansApi';
 import { searchPeople, usePeopleDirectory } from '../../services/peopleDirectory';
 import { resolveDeviceMatches } from '../../utils/normalizeSearch';
 import { aliasOf, agoText, fichaFields, loanOf, nearestDevices, nearestFree, stateText, whereOf } from './dashModel';
-import { EMPTY_DRAFT, SCHOOL_LEVELS, applySuggestion, draftPayload, validateDraft, type LendDraft, type LoanOptions } from './loanOptions';
+import { EMPTY_DRAFT, SCHOOL_LEVELS, applySuggestion, draftPayload, validateDraft, type LendDraft, type LendError, type LoanOptions } from './loanOptions';
 import type { LoanActions } from './useLoanActions';
 import { useQrCamera } from './useQrCamera';
 import { useFitPlaceholder } from '../../hooks/useFitPlaceholder';
@@ -21,7 +21,8 @@ export type ActionBarProps = {
   readOnly: boolean;
   readOnlyReason: string;
   actions: LoanActions;
-  status: { show: (message: StatusMessage) => void; element: ReactNode; slot: (className?: string) => ReactNode };
+  /** Avisos de lo que pasó en la barra: van en el renglón fijo del pie de la barra (BarNote). */
+  status: StatusLineApi;
   /** Lo que leyó el lector USB estando en el Inicio. */
   scan?: { code: string; nonce: number };
   /** Abrir el préstamo de estos equipos (Prestar de una fila o "Prestar N" de la selección). */
@@ -53,7 +54,7 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
   const [queueNote, setQueueNote] = useState('');
   const [lendList, setLendList] = useState<string[] | null>(null);
   const [draft, setDraft] = useState<LendDraft>(EMPTY_DRAFT);
-  const [lendError, setLendError] = useState<[keyof LendDraft, string] | null>(null);
+  const [lendError, setLendError] = useState<LendError | null>(null);
   const [sending, setSending] = useState(false);
   const [active, setActive] = useState(0);
   const [ficha, setFicha] = useState(false);
@@ -269,7 +270,7 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
         {!found && q.trim() && !matches.length && (
           <div className="dash-res-none">
             <div className="dash-row-wrap">
-              <span className="dash-res-title">Sin «{q.trim()}».</span>
+              <span className="dash-res-title">No se encontró «{q.trim()}».</span>
               <span className="dash-res-hint">{suggestions.length ? '¿Quisiste decir…?' : 'No hay un equipo así en esta sede.'}</span>
             </div>
             {suggestions.length > 0 && <PickList items={suggestions} active={active} onActive={setActive} onPick={device => { setQ(device.etiqueta); focusBar(); }} />}
@@ -285,7 +286,8 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
             cta={mode === 'lend' ? `Prestar ${queue.length}` : lendTags.length > 1 ? `Prestar ${lendTags.length}` : 'Confirmar préstamo'}
             options={options}
             draft={draft}
-            setDraft={next => { setDraft(next); setLendError(null); }}
+            // Con el aviso a la vista, lo que falta se recalcula al completar (no se borran las marcas de los otros campos).
+            setDraft={next => { setDraft(next); setLendError(current => (current?.[2] ? validateDraft(next, options) : null)); }}
             error={lendError}
             sending={sending}
             autoFocus={mode !== 'lend'}
@@ -355,6 +357,14 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
           </Button>
         </div>
         {aside && <div className="dash-bar-day">{aside}</div>}
+        <BarNote
+          status={status}
+          hint={readOnly ? <>{readOnlyReason}: podés buscar equipos y ver su ficha.</> : (
+            <>
+              Escribí o escaneá un equipo para prestarlo o devolverlo<span className="dash-only-wide">: Enter hace lo que corresponde. Para muchos seguidos, «Prestar varios» o «Devolver varios»</span>.
+            </>
+          )}
+        />
       </div>
 
       {/* El resultado crece hacia abajo desde la barra y se pliega hacia ella;
@@ -362,9 +372,61 @@ export function ActionBar({ devices, options, readOnly, readOnlyReason, actions,
       <Collapse open={showResult} id="dash-res" className="dash-res" role="region" aria-label="Resultado" onSettled={open => { if (!open) heldResult.current = null; }}>
         <div ref={resRef} className="dash-res-body">{resultBody ?? heldResult.current}</div>
       </Collapse>
-
-      {status.slot('dash-status')}
     </section>
+  );
+}
+
+/**
+ * Renglón fijo al pie de la barra: sin novedades dice qué hacer (prestar o
+ * devolver UNO escribiéndolo acá; QA ítem 26) y, después de una acción,
+ * muestra en el MISMO lugar "Touch 7 prestado · Deshacer". Antes la línea de
+ * estado entraba y salía debajo de la barra y empujaba todo el Inicio ~66 px
+ * a los 8 s, sin que el usuario hiciera nada: un clic apuntado a una fila caía
+ * en otra (QA ronda 1, ítem 4). Aviso y ayuda ocupan la misma celda (mide lo
+ * que el más alto), así que aparecer o irse no cambia el alto; si el aviso era
+ * más alto (dos renglones en mobile), el renglón conserva ese alto hasta que
+ * el usuario vuelve a tocar la barra, nunca se encoge solo.
+ */
+function BarNote({ status, hint }: { status: StatusLineApi; hint: ReactNode }) {
+  const item = status.current;
+  const ref = useRef<HTMLDivElement | null>(null);
+  const shownHeight = useRef(0);
+  const [hold, setHold] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (item) { shownHeight.current = el.getBoundingClientRect().height; return; }
+    // Se fue el aviso: si el renglón se achicaría, queda con el alto que tenía.
+    if (shownHeight.current > el.getBoundingClientRect().height + 1) setHold(shownHeight.current);
+    shownHeight.current = 0;
+  }, [item]);
+
+  // Se suelta cuando el usuario vuelve a usar la barra (o cambia el ancho).
+  useEffect(() => {
+    if (!hold) return;
+    const wrap = ref.current?.closest('.dash-bar-wrap');
+    const release = () => setHold(0);
+    wrap?.addEventListener('pointerdown', release, true);
+    wrap?.addEventListener('keydown', release, true);
+    window.addEventListener('resize', release);
+    return () => {
+      wrap?.removeEventListener('pointerdown', release, true);
+      wrap?.removeEventListener('keydown', release, true);
+      window.removeEventListener('resize', release);
+    };
+  }, [hold]);
+
+  let line: ReactNode = null;
+  if (item) {
+    const { key, ...message } = item;
+    line = <StatusLine key={key} {...message} className="dash-bar-status" onDismiss={status.clear} />;
+  }
+  return (
+    <div ref={ref} className={cx('dash-bar-note', item && 'has-status')} style={hold ? { minHeight: hold } : undefined}>
+      <span className="dash-bar-hint" aria-hidden={item ? true : undefined}>{hint}</span>
+      {line}
+    </div>
   );
 }
 
@@ -483,7 +545,7 @@ function LendForm({ title, chips, cta, options, draft, setDraft, error, sending,
   options: LoanOptions;
   draft: LendDraft;
   setDraft: (next: LendDraft) => void;
-  error: [keyof LendDraft, string] | null;
+  error: LendError | null;
   sending: boolean;
   autoFocus: boolean;
   onSubmit: () => void;
@@ -501,7 +563,7 @@ function LendForm({ title, chips, cta, options, draft, setDraft, error, sending,
   const set = (patch: Partial<LendDraft>) => setDraft({ ...draft, ...patch });
   const location = options.locations.find(item => item.label === draft.location);
   const reason = options.motives.find(item => item.label === draft.reason);
-  const errorOf = (field: keyof LendDraft) => (error && error[0] === field ? true : undefined);
+  const errorOf = (field: keyof LendDraft) => (error && (error[2] ? error[2].includes(field) : error[0] === field) ? true : undefined);
 
   // Sin directorio todavía: frecuentes del server (una vez por apertura, caché de 15 s).
   const hasPeople = Boolean(people);

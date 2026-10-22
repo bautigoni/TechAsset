@@ -1,5 +1,18 @@
 import type { ReactNode } from 'react';
-import { cx } from '../../ui';
+import { SkeletonText, cx } from '../../ui';
+
+/**
+ * Mientras no llegó la primera respuesta: renglones de esqueleto en el lugar
+ * del contenido, nunca el vacío ("Sin actividades hoy", "Sin movimientos")
+ * antes de saber que está vacío (QA ronda 1, ítem 17).
+ */
+export function DashLoading({ label, lines = 3, flat, className }: { label: string; lines?: number; flat?: boolean; className?: string }) {
+  return (
+    <div className={cx('dash-loading', flat && 'dash-loading--flat', className)} role="status" aria-busy="true" aria-label={label}>
+      <SkeletonText lines={lines} />
+    </div>
+  );
+}
 
 /**
  * Estado vacío del Inicio: compacto, con un ícono sobrio, una frase clara y,

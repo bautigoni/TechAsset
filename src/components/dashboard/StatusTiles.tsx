@@ -37,7 +37,8 @@ export function StatusTiles({ counts, types, filter, type, typesOpen, loading, o
   const tiles: Array<{ key: ListFilter; label: string; short?: string; value: number; detail: string; tone?: 'warn' }> = [
     { key: 'available', label: 'Disponibles', value: counts.available, detail: `de ${counts.total} · elegí el tipo` },
     { key: 'loaned', label: 'Prestados', value: counts.loaned, detail: counts.people === 1 ? '1 persona' : `${counts.people} personas` },
-    { key: 'overdue', label: 'Más de 1 día afuera', short: 'Atrasados', value: counts.overdue, detail: warn ? 'devolver o reclamar' : 'nada atrasado', tone: warn ? 'warn' : undefined }
+    // Sin "afuera" (QA ítem 26: no se entiende afuera de qué).
+    { key: 'overdue', label: 'Prestados hace más de 1 día', short: 'Atrasados', value: counts.overdue, detail: warn ? 'devolver o reclamar' : 'ninguno atrasado', tone: warn ? 'warn' : undefined }
   ];
   return (
     <section className="dash-state" aria-label="Estado de los equipos ahora">

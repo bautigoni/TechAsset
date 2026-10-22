@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronRight, Coffee, ListChecks } from 'lucide-react';
 import type { AgendaItem, AgendaState, TaskItem } from '../../types';
 import { Button, Segmented, StatusText, cx, useStatusLine } from '../../ui';
-import { DashEmpty } from './DashEmpty';
+import { DashEmpty, DashLoading } from './DashEmpty';
 import { getRecessSchedules } from '../../services/schedulesApi';
+import { getActiveSiteCode } from '../../services/activeSite';
 import { minutesFromTime } from '../../utils/dates';
 import { nowMinutesAr, todayKeyAr } from '../../utils/formatters';
 import { taskDue } from '../../utils/taskDue';
@@ -30,15 +31,20 @@ function useNowMinutes() {
  * calcula acá con el reloj, así "Recreo hasta…" no queda viejo si el Inicio
  * está abierto toda la mañana.
  */
+// Lo último visto por sede: volver al Inicio no hace aparecer el recreo de golpe al rato (QA ítem 17).
+let recessMemo: { site: string; slots: RecessSlot[] } | null = null;
+
 function useRecess(nowMinutes: number) {
-  const [slots, setSlots] = useState<RecessSlot[]>([]);
+  const [slots, setSlots] = useState<RecessSlot[]>(() => (recessMemo?.site === getActiveSiteCode() ? recessMemo.slots : []));
   useEffect(() => {
     let alive = true;
+    const site = getActiveSiteCode();
     getRecessSchedules()
       .then(response => {
         if (!alive) return;
-        const all = (response.groups || []).flatMap(group => (group.slots || []).map(slot => ({ ...slot, groupName: group.name })));
-        setSlots(all as RecessSlot[]);
+        const all = (response.groups || []).flatMap(group => (group.slots || []).map(slot => ({ ...slot, groupName: group.name }))) as RecessSlot[];
+        recessMemo = { site, slots: all };
+        setSlots(all);
       })
       // Sin permiso de Horarios o sin recreos: no se muestra nada.
       .catch(() => undefined);
@@ -56,9 +62,12 @@ function useRecess(nowMinutes: number) {
 
 type Tab = 'agenda' | 'tasks' | 'notes';
 
-export function NowColumn({ agenda, tasks, operator, readOnly, canAgenda, canTasks, onAgendaSave, onOpenAgenda, onOpenTasks, onOpenTask }: {
+export function NowColumn({ agenda, tasks, agendaReady = true, tasksReady = true, operator, readOnly, canAgenda, canTasks, onAgendaSave, onOpenAgenda, onOpenTasks, onOpenTask }: {
   agenda: AgendaItem[];
   tasks: TaskItem[];
+  /** Ya llegó la primera respuesta (antes: esqueleto, nunca "Sin actividades"). */
+  agendaReady?: boolean;
+  tasksReady?: boolean;
   operator: string;
   readOnly: boolean;
   canAgenda: boolean;
@@ -95,10 +104,10 @@ export function NowColumn({ agenda, tasks, operator, readOnly, canAgenda, canTas
         ]}
       />
       <div className="dash-now-panel" data-panel="agenda">
-        <AgendaCard agenda={agenda} nowMinutes={nowMinutes} readOnly={readOnly} canOpen={canAgenda} onSave={onAgendaSave} onOpen={onOpenAgenda} />
+        <AgendaCard agenda={agenda} ready={agendaReady || agenda.length > 0} nowMinutes={nowMinutes} readOnly={readOnly} canOpen={canAgenda} onSave={onAgendaSave} onOpen={onOpenAgenda} />
       </div>
       <div className="dash-now-panel" data-panel="tasks">
-        <TasksCard top={top} operator={operator} canOpen={canTasks} onOpenTasks={onOpenTasks} onOpenTask={onOpenTask} />
+        <TasksCard top={top} ready={tasksReady || tasks.length > 0} operator={operator} canOpen={canTasks} onOpenTasks={onOpenTasks} onOpenTask={onOpenTask} />
       </div>
       <div className="dash-now-panel dash-now-panel--grow" data-panel="notes">
         <NotesPanel operator={operator} readOnly={readOnly} onCount={setNoteCount} />
@@ -109,8 +118,9 @@ export function NowColumn({ agenda, tasks, operator, readOnly, canAgenda, canTas
 
 /* ── Agenda de hoy ─────────────────────────────────────────────────────── */
 
-function AgendaCard({ agenda, nowMinutes, readOnly, canOpen, onSave, onOpen }: {
+function AgendaCard({ agenda, ready, nowMinutes, readOnly, canOpen, onSave, onOpen }: {
   agenda: AgendaItem[];
+  ready: boolean;
   nowMinutes: number;
   readOnly: boolean;
   canOpen: boolean;
@@ -157,7 +167,7 @@ function AgendaCard({ agenda, nowMinutes, readOnly, canOpen, onSave, onOpen }: {
         )}
         {canOpen && <Button size="sm" variant="ghost" className="dash-link" onClick={onOpen}>Ver agenda</Button>}
       </header>
-      {main ? (
+      {!ready ? <DashLoading label="Cargando la agenda…" /> : main ? (
         <div className="dash-agenda-main">
           <div className="dash-agenda-top">
             <span className="ui-eyebrow">{eyebrow}</span>
@@ -204,8 +214,9 @@ function AgendaCard({ agenda, nowMinutes, readOnly, canOpen, onSave, onOpen }: {
 
 /* ── Tus tareas ────────────────────────────────────────────────────────── */
 
-function TasksCard({ top, operator, canOpen, onOpenTasks, onOpenTask }: {
+function TasksCard({ top, ready, operator, canOpen, onOpenTasks, onOpenTask }: {
   top: ReturnType<typeof topTasks>;
+  ready: boolean;
   operator: string;
   canOpen: boolean;
   onOpenTasks: () => void;
@@ -218,7 +229,7 @@ function TasksCard({ top, operator, canOpen, onOpenTasks, onOpenTask }: {
         <span className="dash-card-meta g-num">{top.open ? `${top.open} ${top.open === 1 ? 'abierta' : 'abiertas'}` : ''}</span>
         {canOpen && <Button size="sm" variant="ghost" className="dash-link" onClick={onOpenTasks}>Ver tareas</Button>}
       </header>
-      {top.list.length ? (
+      {!ready ? <DashLoading label="Cargando las tareas…" /> : top.list.length ? (
         <ul className="dash-task-list">
           {top.list.map(task => {
             // La misma regla que el tablero de Tareas (utils/taskDue): "vence hoy" el día que vence.

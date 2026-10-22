@@ -158,6 +158,38 @@
   .dash-bar-day > .ui-btn { margin-left: auto; }
 }
 
+/* Renglón fijo al pie de la barra (BarNote): la ayuda y el aviso de la última
+   acción en la MISMA celda. Aparecer o irse el aviso no cambia el alto de la
+   barra ni mueve el Inicio (QA ronda 1, ítem 4). */
+.dash-bar-note {
+  display: grid;
+  grid-template: minmax(0, auto) / minmax(0, 1fr);
+  align-items: center;
+  flex: 1 1 100%;
+  min-width: 0;
+  /* El alto de una línea de estado de un renglón (botón chico + aire + borde): la ayuda ya lo ocupa. */
+  --dash-note-btn: var(--ui-control-sm);
+  min-height: calc(var(--dash-note-btn) + 2 * var(--g-s-1) + 2px);
+}
+/* En touch los botones chicos miden 44 px (ui.css): el lugar reservado también. */
+@media (pointer: coarse) { .dash-bar-note { --dash-note-btn: var(--ui-touch); } }
+.dash-bar-note > * { grid-area: 1 / 1; min-width: 0; }
+.dash-bar-note .ui-status-msg { line-height: 1.25rem; }
+/* Angosto: el aviso va siempre en dos renglones (texto; Deshacer abajo) y el
+   lugar ya los reserva: aparecer no empuja nada (antes +26 px a 375). */
+@container dash (max-width: 34.99rem) {
+  .dash-bar-note { min-height: calc(var(--dash-note-btn) + 1.25rem + 3 * var(--g-s-1) + 2px); }
+  .dash-bar-note .ui-status-actions { flex-basis: 100%; }
+}
+.dash-bar-hint { padding-left: var(--g-s-1); color: var(--g-text-3); font-size: var(--g-fs-sm); line-height: 1.125rem; overflow-wrap: anywhere; }
+.dash-bar-note.has-status > .dash-bar-hint { visibility: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  .dash-bar-note { transition: min-height var(--g-dur) var(--g-ease); }
+  .dash-bar-hint { transition: opacity var(--g-dur) var(--g-ease); }
+  .dash-bar-note:not(.has-status) > .dash-bar-hint { animation: dash-fade-in var(--g-dur) var(--g-ease); }
+}
+@keyframes dash-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
 /* Resultado EN LÍNEA (empuja el contenido). */
 .dash-res {
   min-width: 0;
@@ -503,6 +535,14 @@
 .dash-rows { margin: 0; padding: 0; list-style: none; }
 .dash-row { border-bottom: 1px solid var(--g-line); }
 .dash-row-line { min-height: 2.75rem; cursor: pointer; }
+/* Fila convertida en su aviso (useHeldRows): el mismo alto que tenía, el aviso
+   en el lugar del equipo; se pliega suave cuando el usuario deja la lista. */
+.dash-row--held { display: flex; align-items: center; min-width: 0; }
+.dash-held { display: flex; flex: 1 1 auto; align-items: center; min-width: 0; padding: 2px var(--g-s-3); }
+/* Compacta: entra en el alto de la fila más baja (la fila retenida nunca crece). */
+.dash-held .ui-status { min-height: 0; padding-block: 0; }
+.dash-held-line { max-width: 100%; }
+.dash-ficha-status { padding-top: var(--g-s-2); }
 .dash-row-line:hover, .dash-row.is-open .dash-row-line, .dash-row.is-selected .dash-row-line { background: var(--g-raised); }
 .dash-row-hit {
   margin: 0;
@@ -564,6 +604,9 @@
   padding: var(--g-s-4);
 }
 .dash-empty--flat { padding: var(--g-s-3) var(--g-s-4) var(--g-s-4); border-top: 1px solid var(--g-line); }
+/* Esqueleto hasta la primera respuesta (mismo aire que el vacío: no salta al llegar). */
+.dash-loading { display: flex; flex-direction: column; min-width: 0; padding: var(--g-s-4); }
+.dash-loading--flat { padding: var(--g-s-3) var(--g-s-4) var(--g-s-4); border-top: 1px solid var(--g-line); }
 .dash-empty-icon {
   display: flex;
   flex: none;

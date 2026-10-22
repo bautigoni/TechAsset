@@ -84,18 +84,29 @@ export function applySuggestion(draft: LendDraft, suggestion: LoanSuggestion, op
   return next;
 }
 
-/** Mismas validaciones que el formulario de Préstamos. Devuelve [campo, mensaje] o null. */
-export function validateDraft(draft: LendDraft, options: LoanOptions): [keyof LendDraft, string] | null {
+/** Error del préstamo: el primer campo (foco), el mensaje y TODOS los campos que faltan (se marcan juntos). */
+export type LendError = [keyof LendDraft, string, Array<keyof LendDraft>?];
+
+/**
+ * Mismas validaciones que el formulario de Préstamos, pero marca todo lo que
+ * falta de una vez: antes avisaba de a un campo y prestar un equipo llevaba
+ * tres o cinco intentos (QA ronda 1, impaciente P2 en el Inicio).
+ */
+export function validateDraft(draft: LendDraft, options: LoanOptions): LendError | null {
   const location = options.locations.find(item => item.label === draft.location);
   const reason = options.motives.find(item => item.label === draft.reason);
-  if (!draft.person.trim()) return ['person', 'Completá la persona que recibe el equipo.'];
-  if (!draft.role.trim()) return ['role', 'Elegí un rol.'];
-  if (!draft.location.trim()) return ['location', 'Elegí una ubicación.'];
-  if (location?.requiresCourse && !draft.schoolLevel) return ['schoolLevel', 'Elegí si es EP o ES.'];
-  if (location?.requiresCourse && !draft.course) return ['course', 'Elegí grado, año o curso.'];
-  if (location?.requiresDetail && !draft.locationDetail.trim()) return ['locationDetail', 'Especificá la ubicación.'];
-  if (reason?.requiresDetail && !draft.reasonDetail.trim()) return ['reasonDetail', 'Especificá el motivo.'];
-  return null;
+  const missing: Array<[keyof LendDraft, string]> = [];
+  if (!draft.person.trim()) missing.push(['person', 'la persona']);
+  if (!draft.role.trim()) missing.push(['role', 'el rol']);
+  if (!draft.location.trim()) missing.push(['location', 'la ubicación']);
+  if (location?.requiresCourse && !draft.schoolLevel) missing.push(['schoolLevel', 'el nivel (primaria EP o secundaria ES)']);
+  if (location?.requiresCourse && !draft.course) missing.push(['course', 'el curso']);
+  if (location?.requiresDetail && !draft.locationDetail.trim()) missing.push(['locationDetail', 'qué ubicación']);
+  if (reason?.requiresDetail && !draft.reasonDetail.trim()) missing.push(['reasonDetail', 'qué motivo']);
+  if (!missing.length) return null;
+  const names = missing.map(([, name]) => name);
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`;
+  return [missing[0][0], `Falta ${list}.`, missing.map(([field]) => field)];
 }
 
 /** Payload de /api/loans/lend y /lend-batch (mismos nombres que LoanForm). */

@@ -3,7 +3,7 @@ import { ArrowDownLeft, ArrowUpRight, ChevronDown, History, Pencil, Undo2 } from
 import type { Movement } from '../../types';
 import { Button, Collapse, TruncatedText, cx, useAnchoredToggle } from '../../ui';
 import { TIME_HM, dateFormatter, dayKeyAr, todayKeyAr, addDaysToKey } from '../../utils/formatters';
-import { DashEmpty } from './DashEmpty';
+import { DashEmpty, DashLoading } from './DashEmpty';
 import { useSmoothHeight } from './useSmoothHeight';
 
 const FIRST = 10;
@@ -37,7 +37,7 @@ function when(timestamp: string) {
  * Filas en una grilla común (subgrid): tipo e ícono enteros, descripción en
  * hasta 2 renglones, operador y hora en mono; angosto → filas apiladas.
  */
-export function RecentMoves({ items, canHistory, onHistory }: { items: Movement[]; canHistory: boolean; onHistory: () => void }) {
+export function RecentMoves({ items, ready = true, canHistory, onHistory }: { items: Movement[]; ready?: boolean; canHistory: boolean; onHistory: () => void }) {
   const [open, setOpen] = useState(true);
   const [all, setAll] = useState(false);
   const anchored = useAnchoredToggle();
@@ -46,7 +46,7 @@ export function RecentMoves({ items, canHistory, onHistory }: { items: Movement[
   // Ver los 20 / Ver menos: el botón tocado queda quieto (la lista crece o se achica abajo).
   const toggleAll = () => anchored(() => setAll(value => !value));
   // La lista se estira o se encoge suave (no aparecen 10 filas de golpe).
-  const listRef = useSmoothHeight<HTMLDivElement>(`${all}|${rows.length}`);
+  const listRef = useSmoothHeight<HTMLDivElement>(`${all}|${rows.length}|${ready}`);
   return (
     <section className="dash-card dash-moves" aria-labelledby="mov-titulo" data-dash="movimientos">
       <header className={cx('dash-card-head', open && 'is-open')}>
@@ -76,7 +76,7 @@ export function RecentMoves({ items, canHistory, onHistory }: { items: Movement[
               );
             })}
           </ol>
-        ) : (
+        ) : !ready ? <DashLoading flat label="Cargando los movimientos…" lines={4} /> : (
           <DashEmpty flat icon={<History size={18} strokeWidth={1.6} />} title="Sin movimientos todavía" description="Acá aparecen los préstamos, devoluciones y cambios de la sede." />
         )}
         </div>
