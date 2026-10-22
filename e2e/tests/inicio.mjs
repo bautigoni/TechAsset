@@ -552,12 +552,26 @@ export async function inicioTests({ browser, base, api, admin, releaseVersion, t
         }, row4);
         await sleep(150);
         const row4Before = await topOf(row4);
-        await page.click(`${row4} .dash-row-hit`);
         // Mientras se cierra la de arriba y se abre la tocada (250 ms), la fila no se
         // mueve; después, si su ficha no entra, se la trae a la vista sin sacarla.
-        const rowSamples = [];
-        for (let i = 0; i < 5; i += 1) { await sleep(40); rowSamples.push(await topOf(row4)); }
-        await sleep(300);
+        // Se mide lo que se PINTA: en el ResizeObserver de las fichas que cambian de
+        // alto (después de la corrección de scroll del cuadro y del layout). Leer el
+        // layout desde afuera entre cuadros muestra el avance de la animación antes
+        // de esa corrección (un salto que nunca llega a la pantalla).
+        await page.evaluate(sel => {
+          const samples = [];
+          window.__rowSamples = samples;
+          const observer = new ResizeObserver(() => {
+            const wraps = [...document.querySelectorAll('[data-dash="afuera"] .dash-row > .ui-collapse')];
+            if (wraps.some(wrap => wrap.dataset.state === 'opening' || wrap.dataset.state === 'closing')) samples.push(document.querySelector(sel).getBoundingClientRect().top);
+          });
+          for (const wrap of document.querySelectorAll('[data-dash="afuera"] .dash-row > .ui-collapse')) observer.observe(wrap);
+          window.setTimeout(() => observer.disconnect(), 1500);
+        }, row4);
+        await page.click(`${row4} .dash-row-hit`);
+        await sleep(500);
+        const rowSamples = await page.evaluate(() => window.__rowSamples);
+        assert(rowSamples.length >= 3, `Las fichas no se animaron (${rowSamples.length} cuadros).`);
         const rowDrift = Math.max(...rowSamples.map(value => Math.abs(value - row4Before)));
         const rowInView = await page.evaluate(sel => {
           const box = document.querySelector('.shell-scroll').getBoundingClientRect();

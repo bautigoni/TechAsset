@@ -144,6 +144,9 @@
   .dash-bar-field { flex-basis: 100%; }
 }
 @container dash (max-width: 38.99rem) {
+  /* Los botones usan todo el renglón (no media fila vacía a la derecha). */
+  .dash-bar-btns { flex: 1 1 100%; flex-wrap: nowrap; }
+  .dash-bar-btns > .ui-btn { flex: 1 1 0; }
   .dash-bar-day { flex: 1 1 100%; justify-content: flex-start; padding-top: var(--g-s-2); border-top: 1px solid var(--g-line); }
   .dash-bar-day > .ui-btn { margin-left: auto; }
 }
