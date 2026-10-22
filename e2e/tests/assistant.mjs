@@ -324,26 +324,37 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
           return scroller && scroller.scrollHeight > scroller.clientHeight + 100;
         }), { timeout: 20000, message: 'que el Inicio cargue y tenga scroll' }).catch(() => {});
         await sleep(400);
+        // Lo que se mira: el bloque de arriba a la izquierda del área visible.
+        // En columna el contenido se angosta (crece la columna del asistente y
+        // el menú pasa a rail) y se re-acomoda: lo de arriba crece y el
+        // navegador corrige scrollTop para que lo mirado no se mueva (scroll
+        // anchoring). Por eso se mide dónde queda ese bloque en pantalla, no
+        // scrollTop (que cambia justamente para que nada salte).
         const before = await page.evaluate(() => {
           const scroller = document.querySelector('.shell-scroll');
           scroller.scrollTop = Math.min(400, scroller.scrollHeight - scroller.clientHeight);
-          return scroller.scrollTop;
+          const box = scroller.getBoundingClientRect();
+          let anchor = document.elementFromPoint(box.left + 40, box.top + 40);
+          while (anchor && anchor.parentElement && anchor.parentElement !== scroller && anchor.getBoundingClientRect().height < 24) anchor = anchor.parentElement;
+          window.__asstAnchor = anchor;
+          return { top: scroller.scrollTop, anchor: anchor ? anchor.getBoundingClientRect().top : 0, label: anchor ? `${anchor.tagName.toLowerCase()}.${String(anchor.className).split(' ')[0]}` : '' };
         });
-        assert(before > 0, 'El Inicio no tiene scroll para probar la posición.');
+        assert(before.top > 0, 'El Inicio no tiene scroll para probar la posición.');
         await page.$eval('.shell-assistant-btn', button => button.click());
         await page.waitForSelector(INPUT);
-        await sleep(200);
-        const whileOpen = await page.evaluate(() => ({ top: document.querySelector('.shell-scroll').scrollTop, window: window.scrollY, focused: document.activeElement?.classList.contains('asst-input') }));
+        await until(() => page.evaluate(() => document.querySelector('.shell')?.dataset.asstPhase === 'open'), { message: 'que el asistente termine de abrir' });
+        await sleep(450); // lo que dura la transición (--g-dur-panel) y un margen
+        const whileOpen = await page.evaluate(() => ({ anchor: window.__asstAnchor?.isConnected ? window.__asstAnchor.getBoundingClientRect().top : NaN, window: window.scrollY, focused: document.activeElement?.classList.contains('asst-input') }));
         assert(whileOpen.window === 0, `Abrir movió la ventana (${whileOpen.window}).`);
         assert(whileOpen.focused, 'Al abrir, el foco no quedó en el campo del asistente.');
-        if (width >= 1024) assert(Math.abs(whileOpen.top - before) <= 1, `Abrir movió el contenido de ${before} a ${whileOpen.top}.`);
+        if (width >= 1024) assert(Math.abs(whileOpen.anchor - before.anchor) <= 2, `Abrir movió lo que se miraba (${before.label}) de ${Math.round(before.anchor)} a ${Math.round(whileOpen.anchor)} px.`);
         await page.keyboard.press('Escape');
         await until(async () => Boolean(await page.$('.asst[hidden]')), { message: 'que Esc cierre el asistente' });
         await sleep(150);
         const after = await page.evaluate(() => ({ top: document.querySelector('.shell-scroll').scrollTop, focused: document.activeElement?.classList.contains('shell-assistant-btn') }));
-        assert(Math.abs(after.top - before) <= 1, `Al cerrar, la posición pasó de ${before} a ${after.top}.`);
+        assert(Math.abs(after.top - before.top) <= 1, `Al cerrar, la posición pasó de ${before.top} a ${after.top}.`);
         assert(after.focused, 'Al cerrar, el foco no volvió al botón Asistente.');
-        return `posición ${before} → ${after.top}; foco en Asistente`;
+        return `posición ${before.top} → ${after.top}; ${before.label} quieto al abrir; foco en Asistente`;
       } finally {
         await context.close();
       }
@@ -369,7 +380,8 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
           t: Math.round(performance.now() - t0),
           width: asst && !asst.hidden ? asst.getBoundingClientRect().width : -1,
           opacity: panel && asst && !asst.hidden ? Number(getComputedStyle(panel).opacity) : -1,
-          button: shellBtn.getBoundingClientRect().left
+          button: shellBtn.getBoundingClientRect().left,
+          content: document.querySelector('.shell-scroll')?.clientWidth ?? -1
         });
         if (performance.now() - t0 < 900) requestAnimationFrame(tick); else resolve();
       };
@@ -399,6 +411,11 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
         const fading = open.filter(frame => frame.opacity > 0.02 && frame.opacity < 0.98).length;
         const buttonMoves = Math.max(...open.map(frame => frame.button)) - Math.min(...open.map(frame => frame.button));
         assert(buttonMoves <= 1, `El botón Asistente se movió ${buttonMoves} px al abrir.`);
+        // El menú pasa a rail en el mismo cuadro en que la columna empieza a
+        // crecer: el contenido se angosta derecho, sin ensancharse antes (un
+        // re-acomodo de ida y vuelta mueve todo lo que se está mirando).
+        const widen = (frames, dir) => frames.slice(1).reduce((worst, frame, i) => Math.max(worst, dir * (frame.content - frames[i].content)), 0);
+        assert(widen(open, 1) <= 1, `Al abrir, el contenido primero se ensanchó ${widen(open, 1)} px y después se angostó.`);
         assert(await page.evaluate(() => document.activeElement?.classList.contains('asst-input')), 'Al abrir, el foco no quedó en el compositor.');
         if (reduced) {
           assert(growing === 0 && fading === 0, `Con movimiento reducido hubo animación (${growing} cuadros de ancho, ${fading} de opacidad).`);
@@ -411,6 +428,7 @@ export async function assistantTests({ browser, base, api, admin, releaseVersion
         const closeMoves = Math.max(...close.map(frame => frame.button)) - Math.min(...close.map(frame => frame.button));
         assert(close[close.length - 1].width === -1, 'Después de cerrar, el asistente sigue dibujado.');
         assert(closeMoves <= 1, `El botón Asistente se movió ${closeMoves} px al cerrar.`);
+        assert(widen(close, -1) <= 1, `Al cerrar, el contenido primero se angostó ${widen(close, -1)} px y después se ensanchó.`);
         if (reduced) assert(shrinking === 0, `Con movimiento reducido el cierre animó ${shrinking} cuadros.`);
         else assert(shrinking >= 3, `La columna se cerró en ${shrinking} cuadros intermedios (de golpe).`);
         assert(await page.evaluate(() => document.activeElement?.classList.contains('shell-assistant-btn')), 'Al cerrar con Esc, el foco no volvió al botón Asistente.');

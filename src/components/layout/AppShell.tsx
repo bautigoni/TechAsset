@@ -209,7 +209,12 @@ export function AppShell(props: AppShellProps) {
   const assistantShown = assistantPhase !== 'closed';
   const assistantColumn = assistantShown && assistantMode === 'column';
   const assistantView = assistantShown && assistantMode === 'view';
-  const railForced = !isMobile && (width <= RAIL_MAX || (assistantOpen && assistantMode === 'column' && width < ASST_WIDE_MIN));
+  // El menú se angosta en el MISMO cuadro en que la columna empieza a crecer
+  // ('open', no 'enter') y vuelve en el mismo en que empieza a achicarse
+  // ('closing'): con la misma duración y curva, el ancho del contenido va
+  // derecho de uno al otro. Si el menú arrancaba dos cuadros antes, el
+  // contenido primero se ensanchaba y después se angostaba (re-acomodo doble).
+  const railForced = !isMobile && (width <= RAIL_MAX || (assistantPhase === 'open' && assistantMode === 'column' && width < ASST_WIDE_MIN));
   const navMode = isMobile ? 'none' : railForced || collapsed ? 'rail' : 'full';
   const canCollapse = !isMobile && !railForced;
   const canSwitchSites = user.rolGlobal === 'Superadmin' && sites.length > 1;
