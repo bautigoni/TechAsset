@@ -36,6 +36,7 @@ Fuente única de verdad de los nombres. `src/styles/tokens.css` los define; `src
 | `--g-series-rest` | `#3A414B` | `#C9CED6` | "resto", período anterior |
 | `--g-check-bg` / `--g-check-fg` | `#ECEEF1` / `#0D0F12` | `#14171B` / `#FFFFFF` | checkbox marcado |
 | `--g-shadow-tooltip` | `0 6px 20px rgba(0,0,0,.35)` | `0 6px 20px rgba(20,23,27,.12)` | ÚNICA sombra permitida |
+| `--g-orb-hi` / `--g-orb-mid` / `--g-orb-lo` | `#A9CBFF` / `#5B9BFF` / `#2C5DB3` | `#8DB4F5` / `#2F6FE0` / `#1A4BA6` | solo la marca del asistente (sombreado tonal de la esfera) |
 
 Prohibido: fondos tintados de estado, gradientes, glows, sombras fuera del tooltip.
 
@@ -50,15 +51,31 @@ Prohibido: fondos tintados de estado, gradientes, glows, sombras fuera del toolt
 ## Espacio, forma, tamaño
 
 - `--g-s-1` 4px · `--g-s-2` 8 · `--g-s-3` 12 · `--g-s-4` 16 · `--g-s-5` 24 · `--g-s-6` 32 · `--g-s-7` 48
-- `--g-radius-sm` 6px (controles) · `--g-radius` 10px (cards) · `--g-radius-pill` 999px (solo anillos/segmented interno)
+- Radios (estética ElevenLabs, ver `ESTETICA-ELEVENLABS.md`; grandes y concéntricos: lo de adentro lleva el radio de afuera menos el aire que los separa):
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--g-radius-xs` | 6px | casillas (5), kbd, ítems chicos |
+| `--g-radius-sm` | 12px | campos y controles rectangulares, chips de pantalla, tooltip |
+| `--g-radius` | 16px | tarjetas |
+| `--g-radius-lg` | 20px | paneles (asistente, franjas), líneas de estado y barras de selección |
+| `--g-radius-xl` | 24px | superficies de primer nivel (pop up de cartelitos) |
+| `--g-radius-pill` | 999px | botones, segmentado, chips, compositor, días del calendario |
+| `--g-radius-btn` | `var(--g-radius-pill)` | **semántico**: todo botón |
+| `--g-radius-field` | `var(--g-radius-sm)` | **semántico**: todo campo (input, select, textarea, fechas) |
+| `--g-radius-card` | `var(--g-radius)` | **semántico**: tarjetas, Disclosure, InlineConfirm |
+| `--g-radius-panel` | `var(--g-radius-lg)` | **semántico**: paneles, StatusLine, SelectionHeader, ErrorState |
+
+  Los componentes usan los semánticos; las pantallas, la escala. Nunca px sueltos: así una pantalla hereda la forma.
+- Foco: `--g-focus-w` 2px · `--g-focus-offset` 2px → `outline: var(--g-focus-w) solid var(--g-focus); outline-offset: var(--g-focus-offset)` (el outline sigue el radio). Adentro de algo que recorta (`.ui-scroll-fade`, la lista del Select, el hilo del asistente) el contenedor pone `--g-focus-offset: calc(-1 * var(--g-focus-w))` y el anillo se dibuja hacia adentro: nunca queda cortado.
 - `--g-control-h` 36px (compact 32px; en `(pointer: coarse)` mínimo 44px) · `--g-row-h` 40px (compact 34px)
 - `--g-topbar-h` 56px · `--g-sidebar-w` 232px · `--g-rail-w` 56px
 
 ## Movimiento
 
 - `--g-ease` `cubic-bezier(.22,1,.36,1)` · `--g-ease-spring` `cubic-bezier(.34,1.56,.64,1)`
-- `--g-dur-fast` 120ms · `--g-dur` 180ms · `--g-dur-slow` 260ms
-- Solo `transform` y `opacity`. Todo con guarda `prefers-reduced-motion: reduce` (duración 0 o sin animación).
+- `--g-dur-fast` 120ms · `--g-dur` 180ms · `--g-dur-slow` 260ms · `--g-dur-panel` 240ms (paneles que entran y salen: columna del asistente, su vista en mobile) · Collapse/AutoHeight 250ms (`--ui-collapse-dur`)
+- `transform` y `opacity`; el alto solo con `Collapse` / `AutoHeight` y la columna del asistente con `grid-template-columns` (son los únicos cambios de layout animados). Todo con guarda `prefers-reduced-motion: reduce` (duración 0 o sin animación).
 
 ## Reglas de layout (no negociables, ver CLAUDE.md)
 
