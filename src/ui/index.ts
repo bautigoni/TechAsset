@@ -39,7 +39,6 @@ export {
   Collapse, AutoHeight, keepInPlace, useAnchoredToggle, useHeldKeys, revealInView, scrollParentOf, recentTrigger, releaseScrollReserve, COLLAPSE_MS,
   type CollapseProps, type AutoHeightProps, type KeepInPlace, type KeepInPlaceOptions
 } from './Collapse';
-export { AutoHeight } from './AutoHeight';
 export { useScrollEdges } from './scrollEdges';
 export { StatusSlot, type StatusLineApi } from './StatusSlot';
 export { FlowColumns } from './FlowColumns';

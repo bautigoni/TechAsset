@@ -7,7 +7,7 @@ import { getDeviceStateKey } from '../../utils/deviceState';
 import { fold, keepInView } from '../../ui/util';
 import { useScrollEdges } from '../../ui/scrollEdges';
 import { StripCollapse } from './ShellStrips';
-import { AutoHeight } from '../../ui/AutoHeight';
+import { AutoHeight } from '../../ui/Collapse';
 import type { NavItem } from './nav';
 
 /**

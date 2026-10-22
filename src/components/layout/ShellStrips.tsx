@@ -8,7 +8,7 @@ import { Button } from '../../ui/Button';
 import { TruncatedText } from '../../ui/Truncated';
 import { EmptyState } from '../../ui/Data';
 import { Collapse } from '../../ui/Collapse';
-import { AutoHeight } from '../../ui/AutoHeight';
+import { AutoHeight } from '../../ui/Collapse';
 import { useScrollEdges } from '../../ui/scrollEdges';
 import { StatusLine, clearStatus, useStatusOutlet } from '../../ui/Status';
 import { groupLinks } from '../tools/quickLinks';
