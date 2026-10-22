@@ -93,14 +93,25 @@ export function CanvasPage({ consultationMode }: { consultationMode: boolean }) 
       const next = Math.max(BOARD_MIN, Math.floor(scroller.clientHeight - boardTop - below));
       setBoardH(current => (current === next ? current : next));
     };
+    // El corrimiento es la mitad del cambio de tamaño: con anchos impares cae en
+    // medio píxel. El menú que pasa a rail (o el asistente) cambia el ancho
+    // cuadro a cuadro durante su transición, y redondear cada paso por separado
+    // sumaba hasta ~0,5 px por cuadro (3 px de deriva). Se arrastra el resto.
+    const carry = { x: 0, y: 0 };
+    const step = (axis: 'x' | 'y', delta: number) => {
+      carry[axis] += delta;
+      const whole = Math.round(carry[axis]);
+      carry[axis] -= whole;
+      return whole;
+    };
     const observer = new ResizeObserver(() => {
       const w = board.clientWidth;
       const h = board.clientHeight;
       if (w !== size.w || h !== size.h) {
-        const dx = (w - size.w) / 2;
-        const dy = (h - size.h) / 2;
+        const dx = step('x', (w - size.w) / 2);
+        const dy = step('y', (h - size.h) / 2);
         size = { w, h };
-        setView(current => ({ ...current, x: Math.round(current.x + dx), y: Math.round(current.y + dy) }));
+        if (dx || dy) setView(current => ({ ...current, x: current.x + dx, y: current.y + dy }));
       }
       fill();
     });
