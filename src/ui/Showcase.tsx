@@ -158,7 +158,7 @@ const RADII = [
 ];
 
 const MARK_VARIANTS: { variant: AssistantMarkVariant; name: string; note: string }[] = [
-  { variant: 'orb', name: 'A · Esfera (en uso)', note: 'Esfera en tonos del acento con un brillo interno que gira despacio mientras piensa; respira al escuchar o hablar.' },
+  { variant: 'orb', name: 'A · Esfera', note: 'En uso. Esfera en tonos del acento con un brillo interno que gira despacio mientras piensa; respira al escuchar o hablar.' },
   { variant: 'ring', name: 'B · Anillo', note: 'Anillo fino con un núcleo que respira. La más liviana a la vista.' },
   { variant: 'duo', name: 'C · Dúo', note: 'Dos esferas superpuestas que orbitan lento. La más "orgánica".' }
 ];
