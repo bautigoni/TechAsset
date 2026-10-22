@@ -161,10 +161,11 @@ export function NotifStrip({ open, items, unread, onOpen, onMarkAll, onClose }: 
 
 /* ── Cuenta ──────────────────────────────────────────────────────────── */
 
+// "Sistema" solo no decía nada (QA, no nativo): "Como el sistema" = sigue el modo del celu o la compu.
 const THEME_OPTIONS: Array<{ value: ThemePref; label: string }> = [
   { value: 'dark', label: 'Oscuro' },
   { value: 'light', label: 'Claro' },
-  { value: 'system', label: 'Sistema' }
+  { value: 'system', label: 'Como el sistema' }
 ];
 
 export function AccountStrip({ open, user, roleLabel, siteLabel, onSettings, onLogout, onClose }: {
@@ -190,7 +191,7 @@ export function AccountStrip({ open, user, roleLabel, siteLabel, onSettings, onL
         </dl>
         <div className="shell-account-side">
           <div className="shell-account-theme">
-            <span className="shell-account-label" id="shell-theme-label">Tema</span>
+            <span className="shell-account-label" id="shell-theme-label">Tema de la pantalla</span>
             {/* El tema es una preferencia de la cuenta: vive acá y en Configuración › Apariencia. */}
             <div className="shell-seg" role="group" aria-labelledby="shell-theme-label">
               {THEME_OPTIONS.map(option => (
@@ -253,7 +254,10 @@ export function SitesStrip({ open, sites, activeSite, onPick, onClose }: { open:
  * filtro aplicado desde Ctrl K) no empuja la página de golpe; scrolleado, lo
  * que se mira queda quieto. Mientras se pliega se sigue viendo el último aviso.
  */
-export function ShellStatus() {
+export function ShellStatus({ installHere = true }: {
+  /** "Instalá TechAsset" solo en el Inicio: no ocupa lugar en cada vista ni sobre un formulario. */
+  installHere?: boolean;
+}) {
   const item = useStatusOutlet();
   const [shown, setShown] = useState(item);
   if (item && item !== shown) setShown(item);
@@ -261,7 +265,7 @@ export function ShellStatus() {
   return (
     <>
       <ReleaseStrip />
-      <PwaLines />
+      <PwaLines installHere={installHere} />
       <StripCollapse open={Boolean(item)}>
         {current && <OutletLine item={current} />}
       </StripCollapse>
@@ -275,7 +279,7 @@ export function ShellStatus() {
  * Avisos de la app (src/services/pwa.ts) como líneas fijas de la cabecera: no
  * los pisa un pushStatus de una acción y se van solos cuando dejan de valer.
  */
-function PwaLines() {
+function PwaLines({ installHere }: { installHere: boolean }) {
   const { offline, updateReady, updating, installable } = usePwaState();
   return (
     <>
@@ -291,14 +295,13 @@ function PwaLines() {
           </span>
         </div>
       </StripCollapse>
-      <StripCollapse open={installable}>
-        <div className="ui-status ui-status--info shell-status shell-status--install" role="status">
-          <span className="ui-status-icon" aria-hidden="true"><Download size={14} strokeWidth={1.6} /></span>
-          <span className="ui-status-msg">Instalá TechAsset en tu celu: se abre como una app, sin el navegador.</span>
-          <span className="ui-status-actions">
-            <Button size="sm" variant="secondary" onClick={() => void promptInstall()}>Instalar</Button>
-            <Button size="sm" variant="ghost" onClick={dismissInstall}>Más tarde</Button>
-          </span>
+      {/* Una sola línea (≈52 px): el texto corto y los dos botones al lado. */}
+      <StripCollapse open={installable && installHere}>
+        <div className="shell-install" role="status">
+          <Download className="shell-install-icon" size={16} strokeWidth={1.6} aria-hidden="true" />
+          <TruncatedText className="shell-install-msg">Usá TechAsset como app</TruncatedText>
+          <Button size="sm" variant="secondary" onClick={() => void promptInstall()}>Instalar</Button>
+          <Button size="sm" variant="ghost" onClick={dismissInstall}>Más tarde</Button>
         </div>
       </StripCollapse>
     </>

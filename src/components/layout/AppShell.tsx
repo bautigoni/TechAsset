@@ -1,14 +1,16 @@
-import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { isViewKey, type AuthUser, type Device, type SiteInfo, type ViewKey } from '../../types';
 import type { AssistantContext } from '../../services/assistantApi';
 import type { AppNotification } from '../../services/notificationsApi';
 import { useNotifications } from '../../hooks/useNotifications';
 import { lazyView, prefetchView, prefetchViewsWhenIdle } from '../../utils/lazyView';
+import { getDeviceStateKey } from '../../utils/deviceState';
 import { pushStatus } from '../../ui/Status';
 import { isEditableTarget } from '../../hooks/useGlobalScanner';
 import { useQuickLinks } from '../tools/quickLinks';
 import { navItem, type NavItem } from './nav';
 import { plainText } from './notifText';
+import { cameraBlocker, cameraBlockerText, focusLoanCode } from './scanCamera';
 import { Sidebar, type NavCounts } from './Sidebar';
 import { Topbar, type StripKey } from './Topbar';
 
@@ -34,6 +36,18 @@ const ASST_COLUMN_MIN = 1024; // >= 1024: el asistente es columna; si no, vista 
 // Con el asistente abierto y < 1600 el menú pasa a rail: a 1440 con menú
 // completo + columna quedaban ~850 px de contenido y las tablas se cortaban.
 const ASST_WIDE_MIN = 1600;
+// "Más" (mobile) tiene su entrada en el historial: Atrás lo cierra.
+const MORE_HASH = '#mas';
+const moreInUrl = () => typeof window !== 'undefined' && window.location.hash === MORE_HASH;
+
+/** Equipos reales de la sede para los ejemplos (asistente, Escanear): nunca uno inventado. */
+export type DeviceExamples = { free?: string; freeTag?: string; loaned?: string; loanedTag?: string };
+function deviceExamples(devices: Device[]): DeviceExamples {
+  const label = (device?: Device) => device ? (device.aliasOperativo || device.etiqueta) : undefined;
+  const free = devices.find(device => getDeviceStateKey(device) === 'available' && device.etiqueta);
+  const loaned = devices.find(device => getDeviceStateKey(device) === 'loaned' && device.etiqueta);
+  return { free: label(free), freeTag: free?.etiqueta, loaned: label(loaned), loanedTag: loaned?.etiqueta };
+}
 
 /** Duración de la entrada/salida de paneles (--g-dur-panel; 0 con movimiento reducido). */
 function panelMs() {
@@ -136,8 +150,14 @@ export function AppShell(props: AppShellProps) {
   const [strip, setStrip] = useState<StripKey | null>(null);
   // Desde que se abre la primera franja quedan montadas (vacías si están
   // cerradas) para poder animar el cierre; antes no se monta nada.
-  const [stripsOn, setStripsOn] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [stripsOn, setStripsOn] = useState(() => isMobile && moreInUrl());
+  // Recargar con /…#mas en el celu vuelve a "Más" (la entrada ya está en el historial).
+  const [moreOpen, setMoreOpen] = useState(() => isMobile && moreInUrl() && Boolean(window.history.state?.more));
+  // Al volver con Atrás/Adelante a una entrada de "Más", el cambio de vista no la cierra.
+  const moreFromPop = useRef(false);
+  // Lo que se hace al salir de "Más" con Atrás (ir a otra sección, escanear): después del popstate.
+  const afterMorePop = useRef<(() => void) | null>(null);
+  const [viewReturning, setViewReturning] = useState(false);
 
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantMounted, setAssistantMounted] = useState(false);
@@ -253,6 +273,82 @@ export function AppShell(props: AppShellProps) {
     });
   }, []);
 
+  /* ── "Más" (mobile) con su entrada en el historial ───────────────────
+     Abrir suma `#mas` a la URL (pushState); cerrarlo sin ir a otro lado es
+     Atrás (así el botón Atrás del celu lo cierra y no queda una entrada de
+     más). Ir a otra sección desde "Más" primero saca esa entrada y después
+     navega: Atrás desde la sección nueva vuelve a la vista de antes. */
+  const savedMoreScroll = useRef<{ top: number; view: string } | null>(null);
+  const openMore = useCallback(() => {
+    // El contenido se oculta mientras "Más" está abierto: se guarda dónde estabas.
+    savedMoreScroll.current = { top: scrollRef.current?.scrollTop ?? 0, view: viewRef.current };
+    if (!moreInUrl()) {
+      const { pathname, search } = window.location;
+      window.history.pushState({ ...(window.history.state || {}), techasset: true, more: true }, '', `${pathname}${search}${MORE_HASH}`);
+    }
+    setStripsOn(true);
+    setStrip(null);
+    setMoreOpen(true);
+  }, []);
+  const closeMore = useCallback((then?: () => void) => {
+    setMoreOpen(false);
+    if (moreInUrl() && window.history.state?.more) {
+      afterMorePop.current = then || null;
+      window.history.back();
+      return;
+    }
+    if (moreInUrl()) {
+      // Entrada sin estado propio (link pegado con #mas): solo se limpia la URL.
+      const { pathname, search } = window.location;
+      window.history.replaceState(window.history.state, '', `${pathname}${search}`);
+    }
+    then?.();
+  }, []);
+  useEffect(() => {
+    const onPop = () => {
+      const more = moreInUrl() && Boolean(window.history.state?.more);
+      moreFromPop.current = true;
+      window.setTimeout(() => { moreFromPop.current = false; }, 400);
+      setMoreOpen(more && window.innerWidth <= MOBILE_MAX);
+      const then = afterMorePop.current;
+      afterMorePop.current = null;
+      // Después de que App relea la URL (mismo popstate): recién ahí se navega.
+      if (then) window.setTimeout(then, 0);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // Pasar a desktop con "Más" abierto: se cierra (y su entrada se va).
+  useEffect(() => {
+    if (!isMobile && moreOpen) closeMore();
+  }, [isMobile, moreOpen, closeMore]);
+  // "Más" arranca arriba; al cerrarlo (sin cambiar de vista) se vuelve a donde estabas.
+  useLayoutEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    if (showMore) { scroller.scrollTop = 0; return; }
+    const saved = savedMoreScroll.current;
+    savedMoreScroll.current = null;
+    if (saved && saved.view === viewRef.current) scroller.scrollTop = saved.top;
+  }, [showMore]);
+  // La vista vuelve con un fundido corto al cerrar "Más" (no de golpe).
+  const wasMoreOpen = useRef(moreOpen);
+  useEffect(() => {
+    if (wasMoreOpen.current && !moreOpen) {
+      wasMoreOpen.current = false;
+      setViewReturning(true);
+      const timer = window.setTimeout(() => setViewReturning(false), panelMs() + 40);
+      // El foco vuelve al botón "Más" si estaba adentro (o se perdió).
+      const active = document.activeElement;
+      if (!active || active === document.body || active.closest('#shell-more')) {
+        document.querySelector<HTMLElement>('.shell-tab[aria-controls="shell-more"]')?.focus({ preventScroll: true });
+      }
+      return () => window.clearTimeout(timer);
+    }
+    wasMoreOpen.current = moreOpen;
+    return undefined;
+  }, [moreOpen]);
+
   const toggleCollapsed = useCallback(() => {
     setCollapsed(value => {
       const next = !value;
@@ -270,11 +366,36 @@ export function AppShell(props: AppShellProps) {
     setAssistantMounted(true);
     setAssistantOpen(true);
     setStrip(null);
-    setMoreOpen(false);
-  }, []);
+    if (moreInUrl()) closeMore();
+    else setMoreOpen(false);
+  }, [closeMore]);
   const closeAssistant = useCallback(() => setAssistantOpen(false), []);
   // El panel baja apenas el usuario apunta al botón: el primer toque ya abre animado.
   const assistantIntent = useCallback(() => prefetchView('assistant'), []);
+
+  const examples = useMemo(() => deviceExamples(devices), [devices]);
+  const examplesRef = useRef(examples);
+  examplesRef.current = examples;
+  // "Escanear" (barra inferior): en touch abre la cámara de Préstamos. Si no hay
+  // cámara que se pueda usar (no existe, el navegador la bloqueó o la dirección
+  // no la permite), no se intenta: va a Préstamos con el foco en el campo y una
+  // línea de estado en criollo que se va sola (no queda un panel pegado).
+  const scanBusy = useRef(false);
+  const scan = useCallback(async () => {
+    if (scanBusy.current) return;
+    const touch = window.matchMedia?.('(pointer: coarse)').matches;
+    if (!touch || consultationMode) { onScan(); return; }
+    scanBusy.current = true;
+    try {
+      const blocked = await cameraBlocker();
+      if (!blocked) { onScan(); return; }
+      onNavigate('loans');
+      focusLoanCode();
+      pushStatus({ tone: 'info', message: cameraBlockerText(blocked, examplesRef.current.free || ''), autoHideMs: 9000 });
+    } finally {
+      scanBusy.current = false;
+    }
+  }, [consultationMode, onNavigate, onScan]);
 
   // Fases de la entrada/salida (ver assistantPhase). Entrar: dos cuadros en
   // 'enter' (cerrado) y recién ahí 'open', así la transición arranca de 0.
@@ -331,9 +452,12 @@ export function AppShell(props: AppShellProps) {
   // no puede quedar como hueco al pie de la vista nueva: se suelta al cambiar de
   // vista, de sede o de página (Atrás/Adelante). Por evento, para no sumar el
   // colapso al bundle de arranque.
+  // (Volver con Atrás a una entrada de "Más" no la cierra: la abre el popstate.)
+  const firstViewEffect = useRef(true);
   useEffect(() => {
     setStrip(null);
-    setMoreOpen(false);
+    if (!firstViewEffect.current && !moreFromPop.current) setMoreOpen(false);
+    firstViewEffect.current = false;
     scrollRef.current?.scrollTo({ top: 0 });
     window.dispatchEvent(new Event('ui:release-scroll-reserve'));
   }, [view, activeSite]);
@@ -385,11 +509,11 @@ export function AppShell(props: AppShellProps) {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       if (strip) { event.preventDefault(); closeStrip(true); return; }
       if (assistantOpen) { event.preventDefault(); setAssistantOpen(false); return; }
-      if (moreOpen) { event.preventDefault(); setMoreOpen(false); }
+      if (moreOpen) { event.preventDefault(); closeMore(); }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [strip, assistantOpen, moreOpen, canCollapse, closeStrip, toggleStrip, toggleCollapsed]);
+  }, [strip, assistantOpen, moreOpen, canCollapse, closeStrip, closeMore, toggleStrip, toggleCollapsed]);
 
   // Notificaciones: abrir una (marca leída y lleva al destino).
   const openNotification = useCallback((item: AppNotification) => {
@@ -520,7 +644,7 @@ export function AppShell(props: AppShellProps) {
           {/* Línea de estado global: entra y sale con alto suave. Sin fallback: un aviso que llega antes
               que el chunk (precargado en idle, pedido después del primer pintado) espera en el store y
               entra animado, nunca de golpe. */}
-          {statusOn && <Suspense fallback={null}><ShellStatus /></Suspense>}
+          {statusOn && <Suspense fallback={null}><ShellStatus installHere={view === 'dashboard' && !showMore && !assistantView && !keyboardOpen} /></Suspense>}
         </div>
 
         {/* Lo único que scrollea: el contenido. La barra superior (con sus
@@ -535,7 +659,7 @@ export function AppShell(props: AppShellProps) {
               open={showMore}
               items={navItems}
               active={view}
-              onNavigate={next => { setMoreOpen(false); onNavigate(next); }}
+              onNavigate={next => closeMore(() => onNavigate(next))}
               onPrefetch={onPrefetch}
               counts={counts}
               user={user}
@@ -549,7 +673,8 @@ export function AppShell(props: AppShellProps) {
             />
             </Suspense>
           )}
-          <div className="shell-view">{children}</div>
+          {/* Con "Más" abierto la vista queda oculta (montada: no pierde lo escrito). */}
+          <div className={`shell-view${viewReturning ? ' is-returning' : ''}`} hidden={showMore}>{children}</div>
         </main>
         </div>
 
@@ -567,6 +692,7 @@ export function AppShell(props: AppShellProps) {
               canEdit={assistantCanEdit}
               context={assistantContext}
               question={question}
+              examples={examples}
             />
           </Suspense>
         )}
@@ -578,10 +704,10 @@ export function AppShell(props: AppShellProps) {
           items={navItems}
           active={view}
           moreOpen={moreOpen}
-          onNavigate={next => { setMoreOpen(false); setAssistantOpen(false); onNavigate(next); }}
+          onNavigate={next => { setAssistantOpen(false); closeMore(() => onNavigate(next)); }}
           onPrefetch={onPrefetch}
-          onScan={() => { setMoreOpen(false); setAssistantOpen(false); onScan(); }}
-          onToggleMore={() => { setAssistantOpen(false); setStrip(null); setStripsOn(true); setMoreOpen(value => !value); }}
+          onScan={() => { setAssistantOpen(false); closeMore(() => void scan()); }}
+          onToggleMore={() => { setAssistantOpen(false); if (moreOpen) closeMore(); else openMore(); }}
           counts={counts}
         />
         </Suspense>

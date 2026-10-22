@@ -33,10 +33,22 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 const INSTALL_DISMISS_KEY = 'techasset_install_dismissed';
+/** "Más tarde" lo guarda por 30 días: no vuelve en cada vista ni en cada visita. */
+const INSTALL_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
 let installEvent: BeforeInstallPromptEvent | null = null;
+/** Sin storage (modo privado): "Más tarde" vale hasta recargar. */
+let dismissedNow = false;
 
 function installDismissed() {
-  try { return localStorage.getItem(INSTALL_DISMISS_KEY) === '1'; } catch { return false; }
+  if (dismissedNow) return true;
+  try {
+    const value = localStorage.getItem(INSTALL_DISMISS_KEY);
+    if (!value) return false;
+    // '1' = "Más tarde" de antes de que venciera (se cuenta desde hoy).
+    const at = value === '1' ? Date.now() : Number(value);
+    if (value === '1') localStorage.setItem(INSTALL_DISMISS_KEY, String(at));
+    return Number.isFinite(at) && Date.now() - at < INSTALL_SNOOZE_MS;
+  } catch { return false; }
 }
 
 function listenInstallPrompt() {
@@ -64,9 +76,10 @@ export async function promptInstall() {
   set({ installable: false });
 }
 
-/** "Más tarde": no se vuelve a ofrecer en este navegador. */
+/** "Más tarde": no se vuelve a ofrecer en este navegador por 30 días. */
 export function dismissInstall() {
-  try { localStorage.setItem(INSTALL_DISMISS_KEY, '1'); } catch { /* sin storage: solo por esta vez */ }
+  dismissedNow = true;
+  try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch { /* sin storage: solo por esta vez */ }
   installEvent = null;
   set({ installable: false });
 }

@@ -1,15 +1,17 @@
+import { useLayoutEffect, useRef } from 'react';
 import { Search, Settings } from 'lucide-react';
 import type { AuthUser, SiteInfo, ViewKey } from '../../types';
 import { groupNavItems, type NavItem } from './nav';
 import { initialsOf, type NavCounts } from './Sidebar';
 import { TenantLogo } from './TenantLogo';
 import { TruncatedText } from '../../ui/Truncated';
-import { Collapse } from '../../ui/Collapse';
 
 /**
- * "Más" (mobile): todas las secciones agrupadas, la sede, buscar y la cuenta.
- * Se despliega arriba del contenido con Collapse (alto suave; si estabas
- * abajo, te lleva hasta él) y al cerrarse lo que estabas mirando no salta.
+ * "Más" (mobile): todas las secciones agrupadas (con una línea de qué es cada
+ * una), la sede, buscar y la cuenta. Es una vista propia, como el asistente en
+ * mobile: ocupa el lugar del contenido (la vista anterior no queda debajo) y
+ * tiene su entrada en el historial (`#mas`), así Atrás la cierra. Entra con un
+ * fundido corto (instantáneo con movimiento reducido).
  */
 export function MoreView({ open, items, active, onNavigate, onPrefetch, counts, user, roleLabel, sites, activeSite, canSwitchSites, onOpenSites, onOpenPalette, onOpenAccount }: {
   open: boolean;
@@ -31,15 +33,21 @@ export function MoreView({ open, items, active, onNavigate, onPrefetch, counts, 
   const groups = groupNavItems(items);
   const settings = items.find(item => item.key === 'settings');
   const displayName = user.nombre || user.email || 'Usuario';
+  const ref = useRef<HTMLElement | null>(null);
+  // Al abrir, el lector de pantalla y el teclado empiezan en "Más" (sin mover la página).
+  useLayoutEffect(() => {
+    if (open) ref.current?.focus({ preventScroll: true });
+  }, [open]);
   return (
-    <Collapse
-      open={open}
-      appear
-      // Al cerrar queda quieto el contenido de la vista (si se ve); al abrir, Collapse lo trae a la vista.
-      anchor={() => (open ? null : document.querySelector<HTMLElement>('.shell-view'))}
-      outerClassName="shell-more-wrap"
+    <section
+      ref={ref}
+      id="shell-more"
+      className="shell-more"
+      aria-label="Más secciones"
+      tabIndex={-1}
+      hidden={!open}
+      data-scanner-ignore=""
     >
-    <section id="shell-more" className="shell-more" aria-label="Más secciones" data-scanner-ignore="">
       <button type="button" className="shell-more-search" onClick={onOpenPalette}>
         <Search size={16} strokeWidth={1.6} aria-hidden="true" />
         <span>Buscar equipo o sección</span>
@@ -52,12 +60,15 @@ export function MoreView({ open, items, active, onNavigate, onPrefetch, counts, 
               const Icon = item.Icon;
               const isActive = item.key === active;
               const count = counts[item.key];
+              // El Inicio no tiene pista en la barra (ahí va la fecha): acá sí, como las demás.
+              const hint = item.hint || (item.key === 'dashboard' ? 'Resumen del día' : '');
               return (
                 <button
                   key={item.key}
                   type="button"
                   className={`shell-more-item${isActive ? ' is-active' : ''}`}
                   aria-current={isActive ? 'page' : undefined}
+                  aria-label={hint ? `${item.label}: ${hint}` : item.label}
                   onClick={() => onNavigate(item.key)}
                   onTouchStart={() => onPrefetch?.(item.key)}
                 >
@@ -65,7 +76,10 @@ export function MoreView({ open, items, active, onNavigate, onPrefetch, counts, 
                     <Icon size={18} strokeWidth={1.6} aria-hidden={true} />
                     {count ? <span className="shell-more-count g-num">{count}</span> : null}
                   </span>
-                  <TruncatedText className="shell-more-label">{item.label}</TruncatedText>
+                  <span className="shell-more-text">
+                    <TruncatedText className="shell-more-label">{item.label}</TruncatedText>
+                    {hint && <TruncatedText className="shell-more-hint" lines={2}>{hint}</TruncatedText>}
+                  </span>
                 </button>
               );
             })}
@@ -96,6 +110,5 @@ export function MoreView({ open, items, active, onNavigate, onPrefetch, counts, 
         </div>
       </div>
     </section>
-    </Collapse>
   );
 }

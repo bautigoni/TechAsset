@@ -42,6 +42,8 @@ const MAX_PER_GROUP = 6;
 
 const STATE_TEXT: Record<string, string> = { available: 'Disponible', loaned: 'Prestado', missing: 'No encontrado', out: 'Fuera de servicio' };
 const COMMAND = /^(prest(?:ar|a|ale|á|ále)|pr[eé]stamo|devolv(?:er|e|é)|devoluci[oó]n|ficha|ver)\s+(.+)$/i;
+// Sobre el texto ya sin tildes ni mayúsculas (fold).
+const PRIVACY = /privac|mis datos|datos personales|termino|legal|baja de la cuenta|borrar (mi )?cuenta/;
 
 export function CommandPalette({ open, devices, navItems, links, consultationMode, canAsk, canManageLinks, onGoView, onJumpToDevice, onLoan, onProfile, onAsk, onManageLinks, onClose }: {
   open: boolean;
@@ -129,12 +131,26 @@ export function CommandPalette({ open, devices, navItems, links, consultationMod
       out.push({ id: `link-${link.id}`, group: 'links', external: true, label: link.titulo, meta: hostOf(link.url), run: () => { window.open(link.url, '_blank', 'noopener,noreferrer'); } });
     }
 
+    // "privacidad", "mis datos", "términos": la página pública de Privacidad (otra pestaña).
+    if (fq.length >= 4 && PRIVACY.test(fq)) {
+      out.push({ id: 'privacy', group: 'links', external: true, label: 'Privacidad y datos', meta: 'Qué datos guarda TechAsset y quién los ve', run: () => { window.open('/privacidad', '_blank', 'noopener,noreferrer'); } });
+    }
+
     if (q && canAsk) {
       out.push({ id: 'ask', group: 'assistant', icon: <Bot size={14} strokeWidth={1.6} aria-hidden="true" />, label: <>Preguntar al asistente: “{q}”</>, run: () => onAsk(q) });
     }
     const order = command ? ORDER_COMMAND : ORDER_SEARCH;
     return order.flatMap(group => out.filter(entry => entry.group === group));
   }, [query, devices, navItems, links, consultationMode, canAsk, hasLoans, onGoView, onJumpToDevice, onLoan, onProfile, onAsk]);
+
+  // Ejemplos con un equipo real de la sede (no uno que no existe acá).
+  const placeholder = useMemo(() => {
+    const sample = devices.find(device => device.etiqueta && getOperationalAlias(device)) || devices.find(device => device.etiqueta);
+    if (!sample) return 'Buscá un equipo, una sección o un acceso';
+    const alias = getOperationalAlias(sample);
+    const examples = [alias ? alias.toLowerCase() : '', sample.etiqueta].filter(Boolean).join(', ');
+    return `Buscá un equipo (${examples}), una sección, un acceso, o escribí “prestar ${sample.etiqueta}”`;
+  }, [devices]);
 
   useEffect(() => { setActive(0); }, [query]);
   const safeActive = Math.min(active, Math.max(0, entries.length - 1));
@@ -175,7 +191,7 @@ export function CommandPalette({ open, devices, navItems, links, consultationMod
           value={query}
           onChange={event => setQuery(event.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Buscá un equipo (touch 34, D1436), una sección, un acceso, o escribí “prestar D1436”"
+          placeholder={placeholder}
           aria-label="Buscar o ir a"
           role="combobox"
           aria-expanded="true"
