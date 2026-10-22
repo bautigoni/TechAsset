@@ -21,6 +21,14 @@ import { cx } from '../../ui/util';
 import { AccessoryToggles, GradeGrid, OptionGroup, Reveal, toggleList, useHeldList } from './ChipPanelKit';
 import { SuggestInput } from './PersonSuggestInput';
 import { ScanMessage, SuccessCheck } from './ScanMessage';
+import { usePwaState } from '../../services/pwa';
+import { NetworkError, networkErrorMessage } from '../../services/apiClient';
+import { errorMessage } from '../layout/Feedback';
+import { appScroller } from '../../utils/scroll';
+import {
+  LOAN_FIELD_ORDER, SCHOOL_LEVELS, SCHOOL_LEVEL_VALUES, gradeGroupLabel, gradeHelp, gradesForLevel, levelFromGrade, missingSummary,
+  validateLoanFields, type LoanFieldKey
+} from './loanFields';
 
 type LoanActionResult = { synced?: boolean; message?: string; idempotent?: boolean } | void;
 type BarcodeDetectorInstance = { detect: (source: CanvasImageSource) => Promise<Array<{ rawValue?: string }>> };
@@ -32,7 +40,11 @@ type Msg = { tone: 'info' | 'warn' | 'error'; text: string; success?: boolean };
 export type UndoFn = (etiquetas: string[], action: 'return' | 'lend') => Promise<LoanBatchResponse>;
 
 const DEFAULT_GRADE_OPTIONS = ['1N', '1F', '1S', '2N', '2F', '2S', '3N', '3F', '3S', '4N', '4F', '4S', '5N', '5F', '5S', '6N', '6F', '6S'];
-const SCHOOL_LEVEL_OPTIONS = ['EP', 'ES'];
+/** Lo tipeado a mano se evalúa al dejar de tipear (un lector cierra con Enter, que evalúa en el acto). */
+const TYPE_SETTLE_MS = 250;
+/** Siglas que se leen mejor con una pista (el valor guardado no cambia). */
+const OPTION_HINTS: Record<string, string> = { DOE: 'DOE (orientación)' };
+const optionLabel = (value: string) => OPTION_HINTS[value] || value;
 const DEFAULT_ACCESSORIES = ['Cargador', 'Mouse', 'Bolso', 'Cable HDMI', 'Adaptador', 'Lápiz óptico', 'Auriculares'];
 const DEFAULT_ROLES = ['DOE', 'Alumno', 'Maestra', 'Profesor', 'Directivo', 'Preceptor', 'Otro'];
 const DEFAULT_LOCATIONS: LocationOption[] = [{ label: 'Aula', requiresCourse: true }, { label: 'DOE' }, { label: 'Planificación móvil' }, { label: 'Otro', requiresDetail: true }];
@@ -63,7 +75,27 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   batchSeed?: { etiquetas: string[]; nonce: number };
   scanRequest?: number;
 }) {
-  const [code, setCode] = useState('');
+  // `code` es lo que muestra el campo; `query`, lo que se evalúa. Tipeado a mano,
+  // `query` se pone al día al dejar de tipear: así el préstamo no se abre con
+  // "touch 1" para cambiar a "touch 10" mientras escribís (la página se movía bajo
+  // el dedo y un toque en Persona podía no llegar, QA MOV-P15). Todo lo demás
+  // (lector con Enter, semillas, QR, sugerencias) pone los dos juntos.
+  const [code, setCodeValue] = useState('');
+  const [query, setQuery] = useState('');
+  const typeTimer = useRef<number | null>(null);
+  const setCode = (value: string) => {
+    if (typeTimer.current !== null) { window.clearTimeout(typeTimer.current); typeTimer.current = null; }
+    setCodeValue(value);
+    setQuery(value);
+  };
+  const typeCode = (value: string) => {
+    setCodeValue(value);
+    if (typeTimer.current !== null) window.clearTimeout(typeTimer.current);
+    typeTimer.current = null;
+    if (!value.trim()) { setQuery(value); return; }
+    typeTimer.current = window.setTimeout(() => { typeTimer.current = null; setQuery(value); }, TYPE_SETTLE_MS);
+  };
+  useEffect(() => () => { if (typeTimer.current !== null) window.clearTimeout(typeTimer.current); }, []);
   const [continuous, setContinuous] = useState(false);
   const [queue, setQueue] = useState<Array<{ id: string; etiqueta: string }>>([]);
   const [scanMessage, setScanMessage] = useState<Msg | null>(null);
@@ -85,6 +117,12 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   const [expectedAccessories, setExpectedAccessories] = useState<string[] | null>(null);
   const [formError, setFormError] = useState('');
   const [errorKey, setErrorKey] = useState(0);
+  // Después del primer intento de prestar, cada dato que falta se marca en su
+  // lugar y se va solo al completarlo (todos juntos, no de a uno).
+  const [attempted, setAttempted] = useState(false);
+  // El último envío no llegó al servidor: el botón dice "Reintentar".
+  const [netFailed, setNetFailed] = useState(false);
+  const { offline } = usePwaState();
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState('');
@@ -105,8 +143,9 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   const scanFrameRef = useRef<number | null>(null);
   const lastQrRef = useRef('');
   const status = useStatusLine();
+  const formRef = useRef<HTMLDivElement | null>(null);
 
-  const trimmed = code.trim();
+  const trimmed = query.trim();
   const matches = useMemo(() => (!continuous && trimmed ? resolveDeviceMatches(devices, trimmed) : []), [devices, trimmed, continuous]);
   // Búsqueda rápida de personas: directorio bajado una vez, filtrado local en cada tecla.
   const people = usePeopleDirectory();
@@ -128,6 +167,14 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   const selectedLocation = locationOptions.find(item => item.label === location);
   const selectedReason = motiveOptions.find(item => item.label === reason);
   const requiresSchoolCourse = Boolean(selectedLocation?.requiresCourse);
+  const gradeChoices = gradesForLevel(gradeOptions, schoolLevel);
+  const fieldErrors = attempted ? validateLoanFields({
+    person, role, location, locationDetail, schoolLevel, course, reasonDetail,
+    requiresCourse: requiresSchoolCourse,
+    requiresLocationDetail: Boolean(selectedLocation?.requiresDetail),
+    requiresReasonDetail: Boolean(selectedReason?.requiresDetail)
+  }) : {};
+  const errId = (key: LoanFieldKey) => (fieldErrors[key] ? `lo-err-${key}` : undefined);
 
   const focusCode = (select = false) => window.setTimeout(() => {
     codeInputRef.current?.focus();
@@ -140,7 +187,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
     });
   }, []);
 
-  // Semilla (chip libre, "Revisar", Ctrl K, escáner global, botón Prestar de
+  // Semilla (chip libre, "Ver accesorios", Ctrl K, escáner global, botón Prestar de
   // otra pantalla): carga la etiqueta y deja el campo seleccionado, así el
   // próximo escaneo la reemplaza en vez de pegarse atrás. Con el continuo
   // prendido, el equipo se suma directo a la lista.
@@ -225,6 +272,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   const resetFields = () => {
     setPerson(''); setRole(''); setLocation(''); setLocationDetail(''); setCourse(''); setSchoolLevel(''); setReason(''); setReasonDetail(''); setComment('');
     setLoanAccessories([]); setReturnedAccessories([]); setCustomAccessory(''); setAccessoriesOpen(false); setFormError('');
+    setAttempted(false); setNetFailed(false);
   };
 
   const showError = (text: string) => {
@@ -239,7 +287,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
     if (suggestion.motivo && motiveOptions.some(item => item.label === suggestion.motivo)) setReason(suggestion.motivo);
     if (suggestion.curso) {
       const parts = suggestion.curso.split('·').map(part => part.trim()).filter(Boolean);
-      const level = parts.find(part => SCHOOL_LEVEL_OPTIONS.includes(part));
+      const level = parts.find(part => SCHOOL_LEVEL_VALUES.includes(part));
       const grade = parts.find(part => gradeOptions.includes(part));
       if (level) setSchoolLevel(level);
       if (grade) setCourse(grade);
@@ -247,15 +295,49 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
     setFormError('');
   };
 
-  const validateLoanFields = () => {
-    if (!person.trim()) return 'Completá la persona que recibe el equipo.';
-    if (!role.trim() || role === 'Seleccionar rol') return 'Seleccioná un rol.';
-    if (!location.trim() || location === 'Seleccionar ubicación') return 'Seleccioná una ubicación.';
-    if (requiresSchoolCourse && (!schoolLevel.trim() || schoolLevel === 'Seleccionar nivel')) return 'Seleccioná si es EP o ES.';
-    if (requiresSchoolCourse && (!course.trim() || course === 'Seleccionar curso')) return 'Seleccioná grado, año o curso.';
-    if (selectedLocation?.requiresDetail && !locationDetail.trim()) return 'Especificá la ubicación.';
-    if (selectedReason?.requiresDetail && !reasonDetail.trim()) return 'Especificá el motivo.';
-    return '';
+  /**
+   * Revisa TODO junto: marca cada dato que falta en su lugar, lo resume debajo del
+   * botón y lleva el foco (y la vista, suave) al primero. true = se puede prestar.
+   */
+  const checkFields = () => {
+    const errors = validateLoanFields({
+      person, role, location, locationDetail, schoolLevel, course, reasonDetail,
+      requiresCourse: requiresSchoolCourse,
+      requiresLocationDetail: Boolean(selectedLocation?.requiresDetail),
+      requiresReasonDetail: Boolean(selectedReason?.requiresDetail)
+    });
+    setAttempted(true);
+    const first = LOAN_FIELD_ORDER.find(key => errors[key]);
+    if (!first) return true;
+    showError(missingSummary(errors));
+    focusField(first);
+    return false;
+  };
+
+  // Foco en el primer dato que falta. La vista se acomoda sola (suave y solo si
+  // hace falta): el campo queda a la vista con aire para su rótulo.
+  const focusField = (key: LoanFieldKey) => window.requestAnimationFrame(() => {
+    const row = formRef.current?.querySelector<HTMLElement>(`[data-field="${key}"]`);
+    if (!row) return;
+    const target = row.querySelector<HTMLElement>('input, button');
+    target?.focus({ preventScroll: true });
+    revealField(key);
+  });
+
+  // Deja la fila del dato a la vista: no se mueve nada si ya se ve.
+  const revealField = (key: LoanFieldKey) => {
+    const row = formRef.current?.querySelector<HTMLElement>(`[data-field="${key}"]`);
+    if (!row) return;
+    const scroller = appScroller();
+    if (!scroller) return;
+    const box = row.getBoundingClientRect();
+    const view = scroller.getBoundingClientRect();
+    const margin = 24;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    let delta = 0;
+    if (box.top < view.top + margin) delta = box.top - view.top - margin;
+    else if (box.bottom > view.bottom - margin) delta = Math.min(box.bottom - view.bottom + margin, box.top - view.top - margin);
+    if (Math.abs(delta) > 1) scroller.scrollBy({ top: delta, behavior: reduced ? 'auto' : 'smooth' });
   };
 
   const whereText = () => {
@@ -276,14 +358,14 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
       if (errors.length) status.show({ tone: 'bad', message: `No se pudo deshacer: ${errors.join('; ')}` });
       else status.show({ tone: 'info', message: `Se deshizo: ${text}` });
     } catch (error) {
-      status.show({ tone: 'bad', message: error instanceof Error ? error.message : 'No se pudo deshacer.' });
+      status.show({ tone: 'bad', message: errorMessage(error, 'No se pudo deshacer.') });
     }
   };
 
   const handleLend = async () => {
     if (busyRef.current || consultationMode || !selected || selectedState !== 'available') return;
-    const validation = validateLoanFields();
-    if (validation) { showError(validation); return; }
+    if (!checkFields()) return;
+    if (offline) { showError(networkErrorMessage(true)); return; }
     const device = selected;
     const text = `${getOperationalAlias(device) || device.etiqueta} (${device.etiqueta}) prestado a ${person.trim()} · ${whereText()}`;
     busyRef.current = true;
@@ -299,7 +381,9 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
       resetFields();
       focusCode();
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'No se pudo registrar el préstamo.');
+      // Lo escrito queda; si no llegó al servidor, el botón ofrece Reintentar.
+      setNetFailed(error instanceof NetworkError);
+      showError(errorMessage(error, 'No se pudo registrar el préstamo.'));
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -308,6 +392,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
 
   const handleReturn = async () => {
     if (busyRef.current || consultationMode || !selected || selectedState !== 'loaned') return;
+    if (offline) { setScanMessage({ tone: 'error', text: networkErrorMessage(true) }); return; }
     const device = selected;
     const text = `${getOperationalAlias(device) || device.etiqueta} (${device.etiqueta}) devuelto${device.prestadoA ? ` · lo tenía ${device.prestadoA}` : ''}`;
     busyRef.current = true;
@@ -324,7 +409,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
       resetFields();
       focusCode();
     } catch (error) {
-      setScanMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo registrar la devolución.' });
+      setScanMessage({ tone: 'error', text: errorMessage(error, 'No se pudo registrar la devolución.') });
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -334,8 +419,8 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   const handleConfirmMultipleLoan = async () => {
     if (busyRef.current || consultationMode || !queueAvailable.length) return;
     // Mismas validaciones que el préstamo suelto.
-    const validation = validateLoanFields();
-    if (validation) { showError(validation); return; }
+    if (!checkFields()) return;
+    if (offline) { showError(networkErrorMessage(true)); return; }
     const targets = queueAvailable.map(device => device.etiqueta);
     const who = person.trim();
     const where = whereText();
@@ -348,7 +433,9 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
         const response = await onLendBatch({ etiquetas: targets, ...loanPayload() });
         failed = response.results.filter(item => !item.ok).map(item => ({ etiqueta: item.etiqueta, error: item.error || 'no se pudo registrar' }));
       } catch (error) {
-        failed = targets.map(etiqueta => ({ etiqueta, error: error instanceof Error ? error.message : 'error' }));
+        // Sin respuesta del servidor no se prestó nada: un solo aviso, la lista queda.
+        if (error instanceof NetworkError) { setNetFailed(true); showError(error.message); return; }
+        failed = targets.map(etiqueta => ({ etiqueta, error: errorMessage(error, 'error') }));
       }
       const failedTags = new Set(failed.map(item => item.etiqueta));
       const done = targets.filter(etiqueta => !failedTags.has(etiqueta));
@@ -394,10 +481,30 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
     if (event.key !== 'Enter') return;
     event.preventDefault();
     if (continuous) { addToContinuousScan(code); return; }
-    // Enter hace LA acción: prestado → devuelve; libre → a completar la persona.
+    // Enter evalúa en el acto lo escrito (no espera al fin del tipeo) y hace LA
+    // acción: prestado → devuelve; libre → a completar la persona.
+    if (query !== code) {
+      setCode(code);
+      const now = code.trim() ? resolveDeviceMatches(devices, code.trim()) : [];
+      const state = now.length === 1 ? getLoanState(now[0].estado) : 'unknown';
+      // El render con el equipo nuevo llega en el próximo cuadro: la acción va después.
+      if (state === 'loaned') pendingEnter.current = 'return';
+      else if (state === 'available') window.setTimeout(() => personInputRef.current?.focus(), 0);
+      return;
+    }
     if (selectedState === 'loaned') void handleReturn();
     else if (selectedState === 'available') personInputRef.current?.focus();
   };
+
+  // Enter sobre un código recién tipeado que resultó prestado: devolver apenas
+  // el formulario lo tiene seleccionado (mismo camino que el Enter de siempre).
+  const pendingEnter = useRef<'' | 'return'>('');
+  useEffect(() => {
+    if (pendingEnter.current !== 'return') return;
+    pendingEnter.current = '';
+    if (selectedState === 'loaned') void handleReturn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.etiqueta, selectedState, query]);
 
   const toggleContinuous = (next: boolean) => {
     if (next) {
@@ -428,18 +535,25 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   // El panel de la cámara (el video o el aviso de por qué no abrió): el botón lo abre y lo cierra.
   const cameraPanel = !continuous && (cameraOpen || cameraPending || Boolean(cameraError));
 
+  // Sin cámara: el aviso dice qué hacer (escribir el código) sin jerga, y el
+  // cursor queda en el campo del código. Escribir ahí lo saca (no queda pegado).
+  const cameraFailed = (text: string) => {
+    setCameraError(`${text} Escribí el número o la etiqueta del equipo en el campo de abajo.`);
+    focusCode();
+  };
+
   const openCamera = async () => {
     setCameraError('');
     let own = 0;
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError('No se pudo abrir la cámara. Este navegador no permite acceso a cámara.');
+      cameraFailed('Este navegador no deja usar la cámara.');
       return;
     }
     if (!window.isSecureContext) {
       const host = window.location.hostname;
       const local = host === 'localhost' || host === '127.0.0.1' || host === '::1';
       if (!local) {
-        setCameraError('No se pudo abrir la cámara: hace falta HTTPS (o localhost). Verificá los permisos del navegador.');
+        cameraFailed('La cámara no está disponible en esta conexión.');
         return;
       }
     }
@@ -454,12 +568,16 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
       setCameraPending(false);
       streamRef.current = stream;
       setCameraOpen(true);
-      if (!barcodeDetectorClass()) setCameraError('El escaneo QR no está disponible en este navegador. Podés ingresar el código manualmente.');
-    } catch {
+      if (!barcodeDetectorClass()) setCameraError('Este navegador no lee códigos QR con la cámara. Escribí el número o la etiqueta del equipo en el campo de abajo.');
+    } catch (error) {
       if (own !== cameraRequest.current) return;
       setCameraPending(false);
-      setCameraError('No se pudo abrir la cámara. Verificá permisos del navegador o usá HTTPS/localhost.');
       setCameraOpen(false);
+      const name = error instanceof DOMException ? error.name : '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') cameraFailed('No hay permiso para usar la cámara (se da desde los ajustes del navegador).');
+      else if (name === 'NotFoundError' || name === 'OverconstrainedError') cameraFailed('No se encontró una cámara en este dispositivo.');
+      else if (name === 'NotReadableError') cameraFailed('La cámara está ocupada por otra aplicación.');
+      else cameraFailed('No se pudo abrir la cámara.');
     }
   };
 
@@ -497,7 +615,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
           }
         }
       } catch {
-        setCameraError('No se pudo leer el QR. Podés ingresar el código manualmente.');
+        setCameraError('No se pudo leer el QR. Escribí el número o la etiqueta del equipo en el campo de abajo.');
       }
       scanFrameRef.current = window.requestAnimationFrame(scan);
     };
@@ -507,6 +625,14 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
   /* ── Vista ───────────────────────────────────────────────────────────── */
 
   const idle = !continuous && !trimmed;
+  const required = <><span className="lo-req" aria-hidden="true">*</span><span className="ui-sr"> (obligatorio)</span></>;
+  const fieldError = (key: LoanFieldKey) => (
+    <Reveal when={Boolean(fieldErrors[key])} fold="lo-fold-field">
+      {fieldErrors[key] && <span id={`lo-err-${key}`} className="lo-field-error">{fieldErrors[key]}</span>}
+    </Reveal>
+  );
+  // Sin red no se puede guardar: los botones quedan deshabilitados con el motivo a la vista.
+  const offlineBlocks = offline && !consultationMode;
   const accessoryList = [...new Set([...DEFAULT_ACCESSORIES, ...extraAccessories, ...loanAccessories])];
   const addCustomAccessory = () => {
     const item = customAccessory.trim();
@@ -529,11 +655,11 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
       <div className="lo-card-head lo-form-head">
         <h2 id="lo-form-title" className="lo-h2">Prestar o devolver</h2>
         <div className="lo-form-tools">
-          <Switch className="lo-cont-switch" checked={continuous} onCheckedChange={toggleContinuous} label="Escaneo continuo" />
-          <Button size="sm" variant="ghost" className="lo-hide-touch" icon={<IconSearch size={14} />} onClick={() => { codeInputRef.current?.focus(); codeInputRef.current?.select(); }}>Foco lector</Button>
+          <Switch className="lo-cont-switch" checked={continuous} onCheckedChange={toggleContinuous} label="Escanear varios seguidos" />
+          <Button size="sm" variant="ghost" className="lo-hide-touch" icon={<IconSearch size={14} />} aria-label="Usar el lector: pone el cursor en el campo del código" onClick={() => { codeInputRef.current?.focus(); codeInputRef.current?.select(); }}>Usar lector</Button>
           {!continuous && (
             <Button size="sm" variant="ghost" aria-expanded={cameraPanel} aria-controls="lo-camera" onClick={() => { if (cameraPanel) { stopCamera(); setCameraError(''); } else void openCamera(); }}>
-              {cameraPanel ? 'Cerrar cámara' : 'Cámara'}
+              {cameraOpen || cameraPending ? 'Cerrar cámara' : cameraError ? 'Cerrar aviso' : 'Cámara'}
             </Button>
           )}
         </div>
@@ -585,7 +711,12 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
               </>
             )}
             value={code}
-            onValueChange={next => { setCode(next); setFormError(''); }}
+            onValueChange={next => {
+              typeCode(next);
+              setFormError('');
+              // Escribir el código es lo que el aviso de la cámara pedía: el aviso se va.
+              if (cameraError && !cameraOpen && !cameraPending) setCameraError('');
+            }}
             onKeyDown={onCodeKeyDown}
             placeholder={codePlaceholder}
             autoComplete="off"
@@ -612,9 +743,16 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
               state={selectedState}
               busy={busy}
               consultationMode={consultationMode}
+              offline={offlineBlocks}
               onReturn={() => void handleReturn()}
             />
           )}
+        </Reveal>
+
+        <Reveal when={offlineBlocks && (continuous || Boolean(selected))}>
+          <p className="lo-msg lo-msg--warn" role="status" data-offline-note="">
+            <span className="lo-msg-text">Sin conexión: prestar y devolver vuelven a andar cuando vuelva la red. Lo que escribiste no se pierde.</span>
+          </p>
         </Reveal>
 
         <Reveal when={!continuous && Boolean(selected) && selectedState === 'loaned'}>
@@ -667,7 +805,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
             <div className="lo-queue-head">
               <span className="lo-queue-sum g-num">Total {queueDevices.length} · Disponibles {queueAvailable.length} · Con error {nErr}</span>
               <span className="lo-queue-actions">
-                <Button size="sm" variant="secondary" className="lo-code-add" disabled={!trimmed || !continuous} onClick={() => addToContinuousScan(code)} iconEnd={<Kbd className="lo-hide-touch">↵</Kbd>}>
+                <Button size="sm" variant="secondary" className="lo-code-add" disabled={!code.trim() || !continuous} onClick={() => addToContinuousScan(code)} iconEnd={<Kbd className="lo-hide-touch">↵</Kbd>}>
                   Agregar a la lista
                 </Button>
                 <Button size="sm" variant="ghost" disabled={!queueDevices.length || busy} onClick={() => { setQueue([]); setScanMessage(null); }}>Limpiar lista</Button>
@@ -699,20 +837,30 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
         </Collapse>
 
         {/* Los datos del préstamo se despliegan debajo del equipo y se pliegan al prestar. */}
-        <Collapse open={lendOpen} outerClassName="lo-fold-sm">
-          <div className="lo-lend" data-lend-form="">
-            <div className="lo-lend-title">
-              {continuous
-                ? `Datos del préstamo · uno para ${queueAvailable.length === 1 ? 'el disponible' : `los ${queueAvailable.length} disponibles`} de la lista`
-                : `Prestar ${selected ? getOperationalAlias(selected) || selected.etiqueta : ''}`}
+        {/* Sin el "llevar a la vista" del colapso: con un formulario más alto que la
+            pantalla, al terminar de abrirse la página subía ~330 px y un toque en
+            Persona caía en otro lado (el texto terminaba en el código, QA MOV-P15).
+            Solo se acomoda si Persona quedó tapada, y apenas lo necesario. */}
+        <Collapse open={lendOpen} outerClassName="lo-fold-sm" reveal={false} onSettled={value => { if (value) revealField('person'); }}>
+          <div className="lo-lend" data-lend-form="" data-scanner-ignore="" ref={formRef}>
+            <div className="lo-lend-head">
+              <span className="lo-lend-title">
+                {continuous
+                  ? `Datos del préstamo · uno para ${queueAvailable.length === 1 ? 'el disponible' : `los ${queueAvailable.length} disponibles`} de la lista`
+                  : `Prestar ${selected ? getOperationalAlias(selected) || selected.etiqueta : ''}`}
+              </span>
+              <span className="lo-lend-req" aria-hidden="true"><span className="lo-req">*</span> obligatorio</span>
             </div>
 
-            <div className="lo-frow">
-              <label htmlFor="lo-persona" className="lo-flabel">Persona</label>
+            <div className="lo-frow" data-field="person">
+              <label htmlFor="lo-persona" className="lo-flabel">Persona{required}</label>
               <div className="lo-fcontrol">
                 <SuggestInput<LoanSuggestion>
                   id="lo-persona"
                   inputRef={personInputRef}
+                  required
+                  invalid={Boolean(fieldErrors.person)}
+                  describedBy={errId('person')}
                   value={person}
                   onChange={next => { setPerson(next); setFormError(''); }}
                   placeholder={personPlaceholder}
@@ -730,30 +878,56 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
                   onPick={applySuggestion}
                   onEnter={submitLend}
                 />
+                {fieldError('person')}
               </div>
             </div>
 
-            <div className="lo-frow">
-              <span className="lo-flabel">Rol</span>
-              <OptionGroup label="Rol" options={roleOptions.map(value => ({ value, label: value }))} value={role} onChange={value => { setRole(value); setFormError(''); }} />
+            <div className="lo-frow" data-field="role">
+              <span className="lo-flabel">Rol{required}</span>
+              <div className="lo-fcontrol">
+                <OptionGroup label="Rol" options={roleOptions.map(value => ({ value, label: optionLabel(value) }))} value={role} onChange={value => { setRole(value); setFormError(''); }} invalid={Boolean(fieldErrors.role)} describedBy={errId('role')} />
+                {fieldError('role')}
+              </div>
             </div>
 
-            <div className="lo-frow">
-              <span className="lo-flabel">Ubicación</span>
+            <div className="lo-frow" data-field="location">
+              <span className="lo-flabel">Ubicación{required}</span>
               <div className="lo-fcontrol">
-                <OptionGroup label="Ubicación" options={locationOptions.map(item => ({ value: item.label, label: item.label }))} value={location} onChange={value => { setLocation(value); setFormError(''); }} />
+                <OptionGroup label="Ubicación" options={locationOptions.map(item => ({ value: item.label, label: optionLabel(item.label) }))} value={location} onChange={value => { setLocation(value); setFormError(''); }} invalid={Boolean(fieldErrors.location)} describedBy={errId('location')} />
+                {fieldError('location')}
                 <Collapse open={Boolean(selectedLocation?.requiresDetail)}>
-                  <Input aria-label="Especificar ubicación" value={locationDetail} onValueChange={setLocationDetail} onKeyDown={onLendKey} placeholder="Especificá la ubicación" autoComplete="off" />
+                  <div className="lo-fcontrol" data-field="locationDetail">
+                    <Input aria-label="Especificar ubicación" value={locationDetail} onValueChange={setLocationDetail} onKeyDown={onLendKey} placeholder="¿Dónde? (obligatorio)" autoComplete="off" error={Boolean(fieldErrors.locationDetail) || undefined} aria-describedby={errId('locationDetail')} />
+                    {fieldError('locationDetail')}
+                  </div>
                 </Collapse>
               </div>
             </div>
 
+            {/* Con "Aula": nivel y curso. Elegir el nivel acomoda el rótulo y los cursos. */}
             <Collapse open={requiresSchoolCourse} outerClassName="lo-fold-row">
-              <div className="lo-frow">
-                <span className="lo-flabel">Nivel y curso</span>
-                <div className="lo-fcontrol">
-                  <OptionGroup label="Nivel" mono options={SCHOOL_LEVEL_OPTIONS.map(value => ({ value, label: value }))} value={schoolLevel} onChange={value => { setSchoolLevel(value); setFormError(''); }} />
-                  <GradeGrid label="Grado, año o curso" grades={gradeOptions} value={course} onChange={value => { setCourse(value); setFormError(''); }} />
+              <div className="lo-course">
+                <div className="lo-frow" data-field="schoolLevel">
+                  <span className="lo-flabel">Nivel{required}</span>
+                  <div className="lo-fcontrol">
+                    <OptionGroup label="Nivel" options={SCHOOL_LEVELS.map(level => ({ value: level.value, label: level.label }))} value={schoolLevel} onChange={value => { setSchoolLevel(value); setFormError(''); if (value && course && !gradesForLevel(gradeOptions, value).some(item => item.value === course)) setCourse(''); }} invalid={Boolean(fieldErrors.schoolLevel)} describedBy={errId('schoolLevel')} />
+                    {fieldError('schoolLevel')}
+                  </div>
+                </div>
+                <div className="lo-frow" data-field="course">
+                  <span className="lo-flabel">{gradeGroupLabel(schoolLevel)}{required}</span>
+                  <div className="lo-fcontrol">
+                    <GradeGrid
+                      label="Grado, año o curso"
+                      grades={gradeChoices}
+                      value={course}
+                      onChange={value => { setCourse(value); setFormError(''); const level = levelFromGrade(value); if (level) setSchoolLevel(level); }}
+                      invalid={Boolean(fieldErrors.course)}
+                      describedBy={[errId('course'), 'lo-grade-help'].filter(Boolean).join(' ')}
+                    />
+                    <span id="lo-grade-help" className="lo-muted lo-grade-help">{gradeHelp(schoolLevel)}</span>
+                    {fieldError('course')}
+                  </div>
                 </div>
               </div>
             </Collapse>
@@ -763,7 +937,10 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
               <div className="lo-fcontrol">
                 <OptionGroup label="Motivo" allowEmpty={false} options={[{ value: '', label: 'Sin motivo' }, ...motiveOptions.map(item => ({ value: item.label, label: item.label }))]} value={reason} onChange={value => { setReason(value); setFormError(''); }} />
                 <Collapse open={Boolean(selectedReason?.requiresDetail)}>
-                  <Input aria-label="Especificar motivo" value={reasonDetail} onValueChange={setReasonDetail} onKeyDown={onLendKey} placeholder="Especificá el motivo" autoComplete="off" />
+                  <div className="lo-fcontrol" data-field="reasonDetail">
+                    <Input aria-label="Especificar motivo" value={reasonDetail} onValueChange={setReasonDetail} onKeyDown={onLendKey} placeholder="¿Cuál? (obligatorio)" autoComplete="off" error={Boolean(fieldErrors.reasonDetail) || undefined} aria-describedby={errId('reasonDetail')} />
+                    {fieldError('reasonDetail')}
+                  </div>
                 </Collapse>
               </div>
             </div>
@@ -797,13 +974,13 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
             <div className="lo-lend-actions">
               <Button
                 variant="primary"
-                disabled={consultationMode || (continuous && !queueAvailable.length)}
+                disabled={consultationMode || offlineBlocks || (continuous && !queueAvailable.length)}
                 loading={busy}
                 loadingLabel="Prestando…"
                 onClick={submitLend}
                 iconEnd={<Kbd>↵</Kbd>}
               >
-                {continuous ? `Confirmar préstamo múltiple (${queueAvailable.length})` : 'Prestar'}
+                {netFailed ? 'Reintentar' : continuous ? `Confirmar préstamo múltiple (${queueAvailable.length})` : 'Prestar'}
               </Button>
               <Button variant="ghost" disabled={busy} onClick={() => { resetFields(); if (!continuous) setCode(''); focusCode(); }}>Cancelar</Button>
             </div>
@@ -819,7 +996,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, onUndo, consu
 }
 
 /** Resultado en línea del equipo identificado: alias, etiqueta, estado y LA acción. */
-function FoundDevice({ device, state, busy, consultationMode, onReturn }: { device: Device; state: string; busy: boolean; consultationMode: boolean; onReturn: () => void }) {
+function FoundDevice({ device, state, busy, consultationMode, offline, onReturn }: { device: Device; state: string; busy: boolean; consultationMode: boolean; offline: boolean; onReturn: () => void }) {
   const alias = getOperationalAlias(device) || operationalTypeLabel(device);
   let stateText = device.estado || 'Sin estado';
   let tone: StatusTextTone = 'normal';
@@ -849,7 +1026,7 @@ function FoundDevice({ device, state, busy, consultationMode, onReturn }: { devi
         <TruncatedText className="lo-found-detail" lines={2}>{detail}</TruncatedText>
       </div>
       {state === 'loaned' && (
-        <Button variant="primary" className="lo-found-action" disabled={consultationMode} loading={busy} loadingLabel="Devolviendo…" onClick={onReturn} iconEnd={<Kbd>↵</Kbd>}>
+        <Button variant="primary" className="lo-found-action" disabled={consultationMode || offline} loading={busy} loadingLabel="Devolviendo…" onClick={onReturn} iconEnd={<Kbd>↵</Kbd>}>
           Devolver
         </Button>
       )}
@@ -917,7 +1094,7 @@ function mergeStringOptions(value: unknown, defaults: string[]) {
   const seen = new Set<string>();
   return [...defaults, ...configured].filter(item => {
     const key = item.trim().toLowerCase();
-    if (SCHOOL_LEVEL_OPTIONS.some(level => level.toLowerCase() === key)) return false;
+    if (SCHOOL_LEVEL_VALUES.some(level => level.toLowerCase() === key)) return false;
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;

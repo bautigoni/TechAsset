@@ -75,12 +75,14 @@ async function fillLoanPerson(page) {
   await typeInto(page, person, 'E2E Prueba');
   await page.keyboard.press('Tab');
   const roles = await page.$$eval(`${LOAN_FORM} [role="group"][aria-label="Rol"] button`, nodes => nodes.map(node => node.textContent.trim()));
-  await pickOption(page, 'Rol', exact(roles.includes('DOE') ? 'DOE' : roles[0]));
+  // "DOE" se muestra con su pista ("DOE (orientación)"): se busca por el principio.
+  const doe = list => list.find(label => /^DOE\b/.test(label));
+  await pickOption(page, 'Rol', exact(doe(roles) || roles[0]));
   const locations = await page.$$eval(`${LOAN_FORM} [role="group"][aria-label="Ubicación"] button`, nodes => nodes.map(node => node.textContent.trim()));
-  await pickOption(page, 'Ubicación', exact(locations.includes('DOE') ? 'DOE' : locations[0]));
+  await pickOption(page, 'Ubicación', exact(doe(locations) || locations[0]));
   await sleep(100);
   if (await page.$(`${LOAN_FORM} [role="group"][aria-label="Nivel"]`)) {
-    await pickOption(page, 'Nivel', /^EP$/);
+    await pickOption(page, 'Nivel', /\(EP\)$/);
     await pickOption(page, 'Grado, año o curso', /./);
   }
   for (const input of await page.$$(`${LOAN_FORM} input[aria-label^="Especificar"]`)) await typeInto(page, input, 'E2E');
@@ -747,7 +749,7 @@ export async function functionalTests({ browser, base, api, apiConsulta, admin, 
   }
 
   // g) Modo consulta ──────────────────────────────────────────────────────────
-  const WRITE = /^(\+\s*)?(Prestar|Devolver|Borrar|Eliminar|Editar|Guardar|Añadir|Agregar(?! a lista)|Importar|Confirmar|Generar|Enviar|Restaurar|Nueva|Nuevo|Crear|Entregar|Revisar devolución|Revisar$|Seleccionar varios|Varios)\b/i;
+  const WRITE = /^(\+\s*)?(Prestar|Devolver|Borrar|Eliminar|Editar|Guardar|Añadir|Agregar(?! a lista)|Importar|Confirmar|Generar|Enviar|Restaurar|Nueva|Nuevo|Crear|Entregar|Revisar devolución|Revisar$|Ver accesorios|Seleccionar varios|Varios)\b/i;
   const writeControls = page => page.evaluate((source, flags) => {
     const rx = new RegExp(source, flags);
     const main = document.querySelector('main') || document.body;

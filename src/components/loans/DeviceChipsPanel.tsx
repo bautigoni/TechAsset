@@ -223,8 +223,8 @@ export function DeviceChipsPanel({ devices, consultationMode, onReturnBatch, onU
           <div className="lo-head-text">
             <h2 id="lo-chips-title" className="lo-h2">Equipos por tipo</h2>
             <p className="lo-help">
-              <span className="lo-long">Clic: libre lo carga arriba, prestado lo devuelve. Ctrl/⌘/Shift + clic marca varios.</span>
-              <span className="lo-short">Tocá uno libre para cargarlo arriba; uno prestado, para devolverlo. "Varios" marca varios.</span>
+              <span className="lo-long">Tocá un equipo libre para prestarlo (se carga arriba) o uno prestado para devolverlo. Con Ctrl, ⌘ o Shift + clic marcás varios equipos.</span>
+              <span className="lo-short">Tocá un equipo libre para prestarlo (se carga arriba) o uno prestado para devolverlo. Con "Varios" marcás varios equipos.</span>
             </p>
           </div>
           <SelectModeButton disabled={consultationMode} onClick={() => setSelectMode(true)} />

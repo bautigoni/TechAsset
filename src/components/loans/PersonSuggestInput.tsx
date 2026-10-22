@@ -25,7 +25,11 @@ const EMPTY: never[] = [];
  * escribió tal cual —"mile", "Mile", "Mile STAFF"— y en orden alfabético. Acá
  * el backend agrupa por nombre normalizado y ordena por uso.
  */
-export function SuggestInput<T>({ id, value, onChange, fetcher, local, onOpen, row, itemKey, onPick, onEnter, placeholder, autoFocus, disabled, inputRef, listLabel, footer, ariaLabel }: {
+export function SuggestInput<T>({ id, value, onChange, fetcher, local, onOpen, row, itemKey, onPick, onEnter, placeholder, autoFocus, disabled, inputRef, listLabel, footer, ariaLabel, invalid, describedBy, required }: {
+  /** Falta completar: borde de error; el mensaje va en `describedBy`. */
+  invalid?: boolean;
+  describedBy?: string;
+  required?: boolean;
   id?: string;
   value: string;
   onChange: (value: string) => void;
@@ -110,6 +114,9 @@ export function SuggestInput<T>({ id, value, onChange, fetcher, local, onOpen, r
         spellCheck={false}
         placeholder={placeholder}
         aria-label={ariaLabel}
+        error={invalid || undefined}
+        required={required}
+        aria-describedby={describedBy}
         role="combobox"
         aria-expanded={visible}
         aria-controls={visible ? listId : undefined}

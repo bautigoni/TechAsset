@@ -233,13 +233,18 @@ export function SelectModeButton({ disabled, onClick }: { disabled?: boolean; on
   );
 }
 
-/** Referencia de cómo se ve cada estado del chip (sin puntitos ni fondos de color). */
+/**
+ * Referencia de cómo se ve cada estado del chip (sin puntitos ni fondos de
+ * color). Las muestras van VACÍAS, sin número: con un "12" en cada una se
+ * leían como cantidades (QA 22/10). El rótulo "Referencia" dice qué es.
+ */
 export function ChipLegend({ items }: { items: Array<[ChipKind | 'selected', string]> }) {
   return (
-    <div className="lo-legend" aria-hidden="true">
+    <div className="lo-legend" aria-hidden="true" data-legend="">
+      <span className="lo-legend-title">Referencia</span>
       {items.map(([kind, text]) => (
         <span key={kind} className="lo-legend-item">
-          <span className={cx('lo-chip', 'lo-chip--sample', `is-${kind}`)}>12</span>{text}
+          <span className={cx('lo-chip', 'lo-chip--sample', `is-${kind}`)} />{text}
         </span>
       ))}
     </div>
@@ -254,7 +259,7 @@ export function batchResultMessage(verb: string, noun: string, total: number, er
 }
 
 /** Botones de opción (rol, ubicación, motivo, nivel): uno marcado; tocar el marcado lo suelta. */
-export function OptionGroup({ label, options, value, onChange, allowEmpty = true, disabled, className, mono }: {
+export function OptionGroup({ label, options, value, onChange, allowEmpty = true, disabled, className, mono, invalid, describedBy }: {
   label: string;
   options: Array<{ value: string; label: string }>;
   value: string;
@@ -263,9 +268,12 @@ export function OptionGroup({ label, options, value, onChange, allowEmpty = true
   disabled?: boolean;
   className?: string;
   mono?: boolean;
+  /** Falta elegir (después de intentar prestar): borde de error y el mensaje en describedBy. */
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   return (
-    <div className={cx('lo-opts', className)} role="group" aria-label={label}>
+    <div className={cx('lo-opts', invalid && 'is-invalid', className)} role="group" aria-label={label} aria-describedby={describedBy} data-invalid={invalid ? '' : undefined}>
       {options.map(option => {
         const on = option.value === value;
         return (
@@ -289,28 +297,38 @@ export function OptionGroup({ label, options, value, onChange, allowEmpty = true
  * Grilla de grados (1N…6S) en filas por división; lo que no sigue ese formato
  * (cursos configurados en la sede) va en una fila aparte.
  */
-export function GradeGrid({ label, grades, value, onChange, disabled }: { label: string; grades: string[]; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+export function GradeGrid({ label, grades, value, onChange, disabled, invalid, describedBy }: {
+  label: string;
+  /** Strings (valor = rótulo) u opciones con su rótulo. */
+  grades: Array<string | { value: string; label: string }>;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
+}) {
   const pattern = /^(\d)([A-Za-z])$/;
   const sections: string[] = [];
-  const bySection = new Map<string, string[]>();
-  const rest: string[] = [];
-  for (const grade of grades) {
-    const match = grade.match(pattern);
+  const bySection = new Map<string, Array<{ value: string; label: string }>>();
+  const rest: Array<{ value: string; label: string }> = [];
+  for (const raw of grades) {
+    const grade = typeof raw === 'string' ? { value: raw, label: raw } : raw;
+    const match = grade.label.match(pattern);
     if (!match) { rest.push(grade); continue; }
     const section = match[2].toUpperCase();
     if (!bySection.has(section)) { bySection.set(section, []); sections.push(section); }
     bySection.get(section)!.push(grade);
   }
-  const rows = [...sections.map(section => bySection.get(section)!.sort()), ...(rest.length ? [rest] : [])];
+  const rows = [...sections.map(section => bySection.get(section)!.sort((a, b) => a.label.localeCompare(b.label))), ...(rest.length ? [rest] : [])];
   return (
-    <div className="lo-grades" role="group" aria-label={label}>
+    <div className={cx('lo-grades', invalid && 'is-invalid')} role="group" aria-label={label} aria-describedby={describedBy} data-invalid={invalid ? '' : undefined}>
       {rows.map((row, index) => (
         <div className="lo-grades-row" key={index}>
           {row.map(grade => {
-            const on = grade === value;
+            const on = grade.value === value;
             return (
-              <button key={grade} type="button" className={cx('lo-opt', 'lo-opt--mono', 'lo-opt--grade', on && 'is-on')} aria-pressed={on} disabled={disabled} onClick={() => onChange(on ? '' : grade)}>
-                {grade}
+              <button key={grade.value} type="button" className={cx('lo-opt', 'lo-opt--mono', 'lo-opt--grade', on && 'is-on')} aria-pressed={on} disabled={disabled} onClick={() => onChange(on ? '' : grade.value)}>
+                {grade.label}
               </button>
             );
           })}

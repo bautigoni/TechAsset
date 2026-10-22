@@ -48,7 +48,7 @@ export function LoansPage({ devices, operator, consultationMode, onLend, onRetur
   siteCode?: string;
 }) {
   // Una sola fuente de semillas para el formulario (App: escáner global, Ctrl K,
-  // Prestar de otra pantalla; y las de acá: chip libre, "Revisar"). El nonce
+  // Prestar de otra pantalla; y las de acá: chip libre, "Ver accesorios"). El nonce
   // hace que la misma etiqueta dos veces seguidas también llegue.
   const [seed, setSeed] = useState<{ code: string; nonce: number } | undefined>();
   const [batchSeed, setBatchSeed] = useState<{ etiquetas: string[]; nonce: number } | undefined>();
@@ -244,7 +244,8 @@ function LoanedNow({ devices, consultationMode, onReview, onReturnBatch, onUndo,
                 <button type="button" className="lo-link" aria-label={`Abrir ficha de ${alias} (${device.etiqueta})`} onClick={() => onProfile?.(device)}>{alias}</button>
                 <span className="lo-loaned-tag g-num">{device.etiqueta}</span>
                 <span className="lo-loaned-actions">
-                  <Button size="sm" variant="ghost" aria-label={`Revisar la devolución de ${alias}`} disabled={consultationMode} onClick={() => onReview(device.etiqueta)}>Revisar</Button>
+                  {/* Carga el equipo arriba: ahí se ve quién lo tiene, se marcan los accesorios que vuelven y se devuelve. */}
+                  <Button size="sm" variant="ghost" aria-label={`Ver accesorios de ${alias} y devolverlo desde arriba`} disabled={consultationMode} onClick={() => onReview(device.etiqueta)}>Ver accesorios</Button>
                   <Button size="sm" variant="secondary" aria-label={`Devolver ${alias}`} disabled={consultationMode || Boolean(busyTag)} loading={busyTag === device.etiqueta} onClick={() => void returnOne(device)}>Devolver</Button>
                 </span>
               </div>
