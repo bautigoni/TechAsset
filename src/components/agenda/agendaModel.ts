@@ -128,6 +128,18 @@ export function displayTurno(value: string) {
   return value || 'Sin turno';
 }
 
+/**
+ * Rótulo sin ambigüedad: "Mañana" suelto se lee también como "tomorrow" (QA de
+ * lanzamiento, NN-17), así que donde va solo se dice "Turno mañana".
+ */
+export function turnoLabel(value: string) {
+  const turno = displayTurno(value);
+  return turno === 'Mañana' || turno === 'Tarde' ? `Turno ${turno.toLowerCase()}` : turno;
+}
+
+/** Opciones del filtro de turno: el valor de siempre, con un rótulo claro. */
+export const TURNO_FILTER_LABEL: Record<TurnoFilter, string> = { Completo: 'Todo el día', 'Mañana': 'Turno mañana', Tarde: 'Turno tarde' };
+
 export function matchesTurno(item: AgendaItem, turno: TurnoFilter) {
   return turno === 'Completo' || fold(item.turno) === fold(turno);
 }
@@ -158,12 +170,16 @@ export function statusOf(item: AgendaItem, clock: Clock): { label: string; tone:
   return { label: 'Pendiente', tone: 'normal' };
 }
 
+/**
+ * "Entregado" = los equipos se llevaron al aula (no es un préstamo);
+ * "retirados" = ya volvieron al depósito. El texto dice qué falta.
+ */
 export function retiredInfo(item: AgendaItem) {
   const retired = Number(item.compusRetiradas || 0);
   const expected = Number(item.cantidad || 0);
   const canRetire = item.estado === 'Entregado' || item.estado === 'Realizado';
   const all = retired > 0 && retired >= expected;
-  const text = retired > 0 ? `Retiradas ${retired}/${expected}` : canRetire ? 'Sin retirar' : '';
+  const text = all ? 'Retirados del aula' : retired > 0 ? `Retirados ${retired} de ${expected}` : canRetire ? 'Falta retirar' : '';
   const tone: StatusTextTone = retired > 0 && !all ? 'warn' : retired > 0 ? 'normal' : 'muted';
   return { retired, expected, canRetire, all, text, tone };
 }

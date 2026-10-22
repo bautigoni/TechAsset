@@ -57,9 +57,9 @@ export function AgendaSync({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <section className="ag-card ag-sync" aria-label="Sincronizar calendario" data-scanner-ignore="">
+    <section className="ag-card ag-sync" aria-label="Agenda en tu calendario" data-scanner-ignore="">
       <div className="ag-card-head">
-        <h3 className="ag-h3">Sincronizar calendario</h3>
+        <h3 className="ag-h3">Agenda en tu calendario</h3>
         <Button size="sm" variant="ghost" onClick={onClose}>Cerrar</Button>
       </div>
       <div className="ag-sync-body">

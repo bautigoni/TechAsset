@@ -3,7 +3,7 @@ import type { AgendaItem } from '../../types';
 import { Button, Collapse, InlineConfirm, StatusText, Textarea, TruncatedText, cx, icons } from '../../ui';
 import { AgendaForm } from './AgendaForm';
 import { smoothHeight } from '../../utils/motion';
-import { cap1, displayTurno, isEnCurso, longDate, retiredInfo, shortDateTime, shortLabel, statusOf, type Clock } from './agendaModel';
+import { cap1, isEnCurso, longDate, retiredInfo, shortDateTime, shortLabel, statusOf, turnoLabel, type Clock } from './agendaModel';
 
 /** Lo que la pantalla le presta a cada fila (Día, Mes, Semana, Historial). */
 export type AgendaActions = {
@@ -13,14 +13,49 @@ export type AgendaActions = {
   frequent: string[];
   /** id → acción en curso ("deliver", "retire", "nota"…) para el spinner del botón. */
   busy: Record<string, string>;
-  /** Cambia campos de una actividad. `undo` = deja Deshacer en la línea de estado. */
-  patch: (item: AgendaItem, patch: Partial<AgendaItem>, options: { kind: string; message?: string; undo?: boolean }) => Promise<boolean>;
+  /**
+   * Cambia campos de una actividad. `undo` = deja Deshacer en la línea de
+   * estado; `global` = la línea de la cabecera (pushStatus), que se ve desde
+   * cualquier fila, y un segundo toque enseguida no encadena otra acción.
+   */
+  patch: (item: AgendaItem, patch: Partial<AgendaItem>, options: { kind: string; message?: string; undo?: boolean; global?: boolean }) => Promise<boolean>;
   remove: (item: AgendaItem) => Promise<boolean>;
   createTask: (item: AgendaItem) => Promise<void>;
   /** Edición completa desde el formulario en línea (tira el error para mostrarlo en el form). */
   edit: (item: AgendaItem, payload: Partial<AgendaItem>) => Promise<void>;
 };
 
+
+const equipos = (item: AgendaItem) => `${item.cantidad} ${item.tipoDispositivo}`.trim();
+
+/**
+ * Entregar y retirar: acciones explícitas (el botón dice lo que hace), con
+ * Deshacer en la línea de estado. Antes "✓ Entregado" parecía una etiqueta y
+ * tocarlo volvía la actividad a pendiente sin aviso.
+ */
+export const agendaQuick = {
+  deliver: (actions: AgendaActions, item: AgendaItem) => actions.patch(item, { estado: 'Entregado' }, {
+    kind: 'deliver', global: true, undo: true,
+    message: `${shortLabel(item)}: ${equipos(item)} entregados en ${item.ubicacion || 'el aula'}. Cuando vuelvan al depósito, marcalos retirados.`
+  }),
+  undeliver: (actions: AgendaActions, item: AgendaItem) => actions.patch(item, { estado: 'Pendiente' }, {
+    kind: 'deliver', global: true, undo: true, message: `${shortLabel(item)} volvió a pendiente: los equipos figuran sin entregar.`
+  }),
+  retire: (actions: AgendaActions, item: AgendaItem) => actions.patch(item, { compusRetiradas: item.cantidad }, {
+    kind: 'retire', global: true, undo: true, message: `${shortLabel(item)}: ${equipos(item)} retirados del aula.`
+  }),
+  unretire: (actions: AgendaActions, item: AgendaItem) => actions.patch(item, { compusRetiradas: 0 }, {
+    kind: 'retire', global: true, undo: true, message: `${shortLabel(item)}: los equipos vuelven a figurar sin retirar.`
+  })
+};
+
+/** La acción que conviene en la fila: entregar lo pendiente, retirar lo entregado; nada si ya está todo. */
+export function nextQuick(item: AgendaItem) {
+  const ret = retiredInfo(item);
+  if (item.estado === 'Pendiente') return 'deliver' as const;
+  if (ret.canRetire && !ret.all) return 'retire' as const;
+  return null;
+}
 
 /** Un click en cualquier lugar de la fila la abre; los botones de adentro no (y en touch, tocar un texto cortado lo despliega). */
 export function rowClickOpens(event: MouseEvent<HTMLElement>) {
@@ -42,11 +77,11 @@ export function AgendaRow({ item, open, onToggle, actions, showDay }: {
   const { clock, consultation, busy } = actions;
   const st = statusOf(item, clock);
   const ret = retiredInfo(item);
-  const delivered = item.estado === 'Entregado';
+  const quick = nextQuick(item);
   const live = isEnCurso(item, clock);
   const cancelled = item.estado === 'Cancelado';
   const working = busy[item.id];
-  const sub = live ? 'en curso' : showDay ? (item.fecha ? item.fecha.split('-').reverse().join('/') : item.dia) : item.fecha ? 'una vez' : displayTurno(item.turno);
+  const sub = live ? 'en curso' : showDay ? (item.fecha ? item.fecha.split('-').reverse().join('/') : item.dia) : item.fecha ? 'una vez' : 'semanal';
   const label = `${item.curso}, ${item.actividad}, ${item.desde} a ${item.hasta}, ${st.label}`;
 
   return (
@@ -70,26 +105,22 @@ export function AgendaRow({ item, open, onToggle, actions, showDay }: {
             <icons.IconChevronDown size={16} className="ag-chev" />
           </button>
         </div>
-        <div className="ag-row-act">
-          {ret.canRetire && (
-            <Button size="sm" variant="secondary" aria-pressed={ret.all} disabled={consultation} loading={working === 'retire'} onClick={() => actions.patch(item, { compusRetiradas: ret.all ? 0 : item.cantidad }, { kind: 'retire' })}>
-              {ret.all ? 'Retiradas' : 'Retirar'}
+        {quick && (
+          <div className="ag-row-act">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="ag-quick"
+              disabled={consultation}
+              loading={working === quick}
+              loadingLabel="Guardando…"
+              aria-label={quick === 'deliver' ? `Marcar entregados los ${equipos(item)} de ${item.curso || 'esta actividad'}` : `Marcar retirados del aula los ${equipos(item)} de ${item.curso || 'esta actividad'}`}
+              onClick={() => void agendaQuick[quick](actions, item)}
+            >
+              {quick === 'deliver' ? 'Marcar entregados' : 'Marcar retirados'}
             </Button>
-          )}
-          <Button
-            size="sm"
-            variant="secondary"
-            className={cx('ag-deliver', delivered && 'is-on')}
-            aria-pressed={delivered}
-            disabled={consultation}
-            loading={working === 'deliver'}
-            loadingLabel="Guardando…"
-            icon={delivered ? <icons.IconCheck size={14} /> : undefined}
-            onClick={() => actions.patch(item, { estado: delivered ? 'Pendiente' : 'Entregado' }, { kind: 'deliver' })}
-          >
-            {delivered ? 'Entregado' : 'Entregar'}
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
       {/* El detalle se abre y se cierra con el colapso compartido (la fila tocada no se mueve); queda montado para no perder una nota a medio escribir. */}
       <Collapse open={open} id={`ag-detail-${item.id}`}>
@@ -137,10 +168,10 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
   }
 
   const fields: Array<{ k: string; v: string; tone?: 'muted' | 'state'; mono?: boolean }> = [
-    { k: 'Horario', v: `${item.fecha ? cap1(longDate(item.fecha)) : item.dia} · ${item.desde}–${item.hasta} · ${displayTurno(item.turno)}` },
-    { k: 'Entrega', v: `${item.cantidad} ${item.tipoDispositivo} · ${item.ubicacion || 'sin ubicación'}` },
+    { k: 'Horario', v: `${item.fecha ? cap1(longDate(item.fecha)) : item.dia} · ${item.desde}–${item.hasta} · ${turnoLabel(item.turno)}` },
+    { k: 'Equipos', v: `${item.cantidad} ${item.tipoDispositivo} · ${item.ubicacion || 'sin ubicación'}` },
     { k: 'Estado', v: st.label, tone: 'state' },
-    { k: 'Retiradas', v: `${ret.retired} de ${ret.expected}`, mono: true },
+    { k: 'Retirados del aula', v: `${ret.retired} de ${ret.expected}`, mono: true },
     { k: 'Se repite', v: item.fecha ? `Solo el ${longDate(item.fecha)}` : 'Todas las semanas' },
     { k: 'Último cambio', v: lastChange ? `${lastChange} · ${item.operadorUltimoCambio || 'sin operador'}` : 'Sin cambios registrados', tone: 'muted' }
   ];
@@ -181,11 +212,13 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
         </div>
       </div>
 
+      <p className="ag-note-small ag-legend">Entregados: los equipos se llevaron al aula. Retirados: ya volvieron al depósito. Ninguno de los dos registra un préstamo.</p>
+
       {/* Acciones ↔ confirmación: una se pliega mientras la otra se abre. */}
       <Collapse open={ask === 'cancel'} unmountOnClose>
         <InlineConfirm
           message={`¿Cancelar ${short}?`}
-          detail="Queda en el historial y sale del calendario sincronizado."
+          detail="Queda en el historial y sale de los calendarios suscriptos."
           confirmLabel="Sí, cancelar"
           cancelLabel="No"
           busy={working === 'cancel'}
@@ -207,11 +240,11 @@ export function AgendaDetail({ item, actions }: { item: AgendaItem; actions: Age
       </Collapse>
       <Collapse open={!ask} lazy={false}>
         <div className="ag-detail-actions">
-          <Button size="sm" variant="primary" disabled={consultation} loading={working === 'deliver'} loadingLabel="Guardando…" onClick={() => actions.patch(item, { estado: delivered ? 'Pendiente' : 'Entregado' }, { kind: 'deliver' })}>
-            {delivered ? 'Volver a pendiente' : 'Marcar entregado'}
+          <Button size="sm" variant="primary" disabled={consultation} loading={working === 'deliver'} loadingLabel="Guardando…" onClick={() => void (delivered ? agendaQuick.undeliver : agendaQuick.deliver)(actions, item)}>
+            {delivered ? 'Volver a pendiente' : 'Marcar entregados'}
           </Button>
-          <Button size="sm" variant="secondary" disabled={consultation} loading={working === 'retire'} onClick={() => actions.patch(item, { compusRetiradas: ret.all ? 0 : item.cantidad }, { kind: 'retire' })}>
-            {ret.all ? 'Desmarcar retirada' : 'Marcar retirada'}
+          <Button size="sm" variant="secondary" disabled={consultation} loading={working === 'retire'} onClick={() => void (ret.all ? agendaQuick.unretire : agendaQuick.retire)(actions, item)}>
+            {ret.all ? 'Desmarcar retirados' : 'Marcar retirados'}
           </Button>
           <Button size="sm" variant="secondary" disabled={consultation} loading={working === 'task'} onClick={() => actions.createTask(item)}>Crear tarea</Button>
           <Button size="sm" variant="secondary" disabled={consultation} onClick={() => switchMode('edit')}>Editar</Button>

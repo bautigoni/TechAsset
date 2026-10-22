@@ -1,10 +1,10 @@
 import { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CalendarCheck, ClipboardList, Download, RefreshCw, Rss } from 'lucide-react';
+import { CalendarCheck, CalendarPlus, ClipboardList, Download, RefreshCw } from 'lucide-react';
 import type { AgendaItem } from '../../types';
 import { restoreAgenda } from '../../services/agendaApi';
 import { useMinuteTick } from '../../hooks/useMinuteTick';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
-import { Button, Collapse, EmptyState, Eyebrow, IconButton, Ring, Segmented, StatusSlot, StatusText, TruncatedText, cx, icons, useStatusLine } from '../../ui';
+import { Button, Collapse, EmptyState, Eyebrow, IconButton, Ring, Segmented, StatusSlot, StatusText, TruncatedText, cx, icons, pushStatus, useStatusLine, type StatusMessage } from '../../ui';
 import { addDaysToKey, weekdayOfKey } from '../../utils/formatters';
 import { downloadCsv, downloadText } from '../../utils/download';
 import { AgendaForm } from './AgendaForm';
@@ -13,9 +13,9 @@ import { AgendaRow, type AgendaActions } from './AgendaRow';
 import { AgendaSync } from './AgendaSync';
 import { AgendaWeek, type WeekColumn } from './AgendaWeek';
 import {
-  DAY_SHORT, KPI_DEFS, MONTHS, WEEK_DAYS, applyKpi, byTime, cap1, csvRows, dateOfWeekday, displayTurno, frequentActivities,
+  DAY_SHORT, KPI_DEFS, MONTHS, WEEK_DAYS, applyKpi, byTime, cap1, csvRows, dateOfWeekday, frequentActivities,
   itemDate, kpiCounts, longDate, matchesTurno, occursOn, readClock, referenceMonday, shortLabel, slotsOfDay, statusOf, summaryText,
-  weekRangeLabel, type KpiKey, type TurnoFilter
+  TURNO_FILTER_LABEL, turnoLabel, weekRangeLabel, type KpiKey, type TurnoFilter
 } from './agendaModel';
 import { smoothHeight } from '../../utils/motion';
 import '../../styles/screens/agenda.css';
@@ -38,10 +38,10 @@ function monthCells(cursor: string) {
 function groupByTurno(list: AgendaItem[]) {
   const groups = new Map<string, AgendaItem[]>();
   for (const item of [...list].sort(byTime)) {
-    const label = displayTurno(item.turno);
+    const label = turnoLabel(item.turno);
     groups.set(label, [...(groups.get(label) || []), item]);
   }
-  const order = (label: string) => (label === 'Mañana' ? 0 : label === 'Tarde' ? 1 : 2);
+  const order = (label: string) => (label === turnoLabel('Mañana') ? 0 : label === turnoLabel('Tarde') ? 1 : 2);
   return [...groups.entries()].sort((a, b) => order(a[0]) - order(b[0])).map(([label, rows]) => ({ label, rows }));
 }
 
@@ -120,7 +120,6 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
   }, [visible, kpi, clock, monday]);
 
   const nextToday = todayItems.filter(item => item.estado === 'Pendiente' || item.estado === 'Entregado').slice(0, 4);
-  const pendingToday = todayItems.filter(item => item.estado === 'Pendiente').length;
   const frequent = useMemo(() => frequentActivities(items), [items]);
   // La capacidad es de toda la sede (todos los turnos), del día que se mira.
   const capDate = view === 'dia' ? dayDate : view === 'mes' ? selectedDate : isWeekend ? monday : clock.today;
@@ -137,24 +136,38 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
     }
   };
 
-  const revert = async (item: AgendaItem, before: Partial<AgendaItem>) => {
+  // Entregar y retirar se tocan desde cualquier fila de la lista: su aviso va a
+  // la línea de estado de la cabecera (pushStatus), que se ve aunque la fila
+  // esté lejos del principio de la lista. El resto, en la línea de la lista.
+  const say = (message: StatusMessage, global?: boolean) => (global ? pushStatus(message) : status.show(message));
+
+  const revert = async (item: AgendaItem, before: Partial<AgendaItem>, global?: boolean) => {
     try {
       await onSave({ id: item.id, ...before });
-      status.show({ tone: 'info', message: `Se deshizo el cambio en ${shortLabel(item)}.` });
+      say({ tone: 'info', message: `Se deshizo el cambio en ${shortLabel(item)}.` }, global);
     } catch (err) {
-      status.show({ tone: 'bad', message: `No se pudo deshacer: ${errorText(err)}` });
+      say({ tone: 'bad', message: `No se pudo deshacer: ${errorText(err)}` }, global);
     }
   };
 
+  // Un doble toque no encadena dos acciones: "Marcar entregado" se convierte en
+  // "Marcar retirados" en el mismo lugar, así que un segundo toque enseguida
+  // sobre la misma actividad se ignora.
+  const lastQuick = useRef<Record<string, number>>({});
   const patch: AgendaActions['patch'] = async (item, change, options) => {
     const before: Partial<AgendaItem> = {};
     for (const key of Object.keys(change) as Array<keyof AgendaItem>) (before as Record<string, unknown>)[key] = item[key] ?? '';
+    if (options.global) {
+      if (Date.now() - (lastQuick.current[item.id] || 0) < 900) return false;
+      lastQuick.current[item.id] = Date.now();
+    }
     try {
       await run(item.id, options.kind, () => onSave({ id: item.id, ...change }));
-      if (options.message) status.show({ tone: 'ok', message: options.message, undo: options.undo ? { onUndo: () => revert(item, before) } : undefined });
+      if (options.global) lastQuick.current[item.id] = Date.now();
+      if (options.message) say({ tone: 'ok', message: options.message, undo: options.undo ? { onUndo: () => revert(item, before, options.global) } : undefined }, options.global);
       return true;
     } catch (err) {
-      status.show({ tone: 'bad', message: `No se pudo guardar ${shortLabel(item)}: ${errorText(err)}`, retry: { onRetry: () => patch(item, change, options) } });
+      say({ tone: 'bad', message: `No se pudo guardar ${shortLabel(item)}: ${errorText(err)}`, retry: { onRetry: () => { lastQuick.current[item.id] = 0; return patch(item, change, options); } } }, options.global);
       return false;
     }
   };
@@ -297,7 +310,15 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
   const listTitle = view === 'mes' ? cap1(longDate(selectedDate)) : day === 'Hoy' ? `Hoy · ${longDate(clock.today)}` : cap1(longDate(dayDate));
   const kpiLabel = KPI_DEFS.find(def => def.key === kpi)?.label || '';
   if (kpiLabel) lastKpiLabel.current = kpiLabel;
-  const filterSummary = `Turno ${turno.toLowerCase()} · ${kpi ? kpiLabel : 'todas las actividades'}`;
+  const filterSummary = `${TURNO_FILTER_LABEL[turno]} · ${kpi ? kpiLabel : 'todas las actividades'}`;
+  // Lo que dice la cabecera es lo mismo que cuentan los filtros (el día, la
+  // fecha del mes, la semana o el historial que se mira, con el turno elegido):
+  // antes decía "4 pendientes" de hoy al lado de "Pendientes 6" de la semana.
+  const scopeText = view === 'semana' ? 'en la semana'
+    : view === 'hist' ? 'en el historial'
+      : view === 'mes' ? (selectedDate === clock.today ? 'hoy' : `el ${longDate(selectedDate)}`)
+        : day === 'Hoy' ? 'hoy' : `el ${longDate(dayDate)}`;
+  const turnoScope = turno === 'Completo' ? '' : ` · ${TURNO_FILTER_LABEL[turno].toLowerCase()}`;
   const tools = (
     <div className="ag-card-tools">
       <Button size="sm" variant="ghost" icon={<ClipboardList size={15} />} onClick={copySummary}>Copiar resumen</Button>
@@ -347,10 +368,10 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
   }, [balanceKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const capCard = (
-    <section className="ag-card ag-cap-card" aria-label="Touch por franja">
+    <section className="ag-card ag-cap-card" aria-label="Touch libres por horario">
       <div className="ag-card-head ag-card-head--stack">
-        <h3 className="ag-h3">Touch por franja · {longDate(capDate)}</h3>
-        <span className="ag-head-sub">Tope 25 sumando las actividades que se superponen</span>
+        <h3 className="ag-h3">Touch libres por horario · {longDate(capDate)}</h3>
+        <span className="ag-head-sub">Hay 25: se suman las actividades que coinciden en el horario</span>
       </div>
       {capSlots.map(slot => (
         <div key={slot.key} className="ag-slot">
@@ -363,7 +384,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         </div>
       ))}
       {!capSlots.length && <EmptyState compact className="ag-empty-state" icon={<CalendarCheck size={18} strokeWidth={1.6} />} title="Ese día no hay Touch reservadas." />}
-      <p className="ag-note-small ag-inset">El número es cuántas quedan libres. TIC, Plani y Dell tienen tope 99. Al crear o editar una actividad se avisa antes de guardar si no hay lugar.</p>
+      <p className="ag-note-small ag-inset">El número es cuántas Touch quedan libres en ese horario. De TIC, Plani y Dell se pueden reservar hasta 99. Al crear o editar una actividad se avisa antes de guardar si no hay lugar.</p>
     </section>
   );
 
@@ -392,12 +413,14 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
           <Eyebrow>{weekRangeLabel(monday)}</Eyebrow>
           <h2 id="ag-title" className="ag-title">{headTitle}</h2>
           <p className="ag-head-sub">
-            <b className="g-num">{todayItems.length}</b> hoy · <b className="g-num">{visible.length}</b> visibles · <b className="g-num">{pendingToday}</b> pendientes
+            {view === 'hist'
+              ? <><b className="g-num">{counts.total}</b> {counts.total === 1 ? 'realizada o cancelada' : 'realizadas o canceladas'}{turnoScope}</>
+              : <><b className="g-num">{counts.total}</b> {counts.total === 1 ? 'actividad' : 'actividades'} {scopeText}{turnoScope} · <b className="g-num">{counts.pend}</b> {counts.pend === 1 ? 'pendiente' : 'pendientes'}</>}
           </p>
         </div>
         <div className="ag-head-actions">
           <Button variant="ghost" className="ag-refresh" icon={<RefreshCw size={16} />} loading={refreshing} aria-label="Actualizar la agenda" onClick={refresh}>Actualizar</Button>
-          <Button variant="secondary" icon={<Rss size={16} />} aria-expanded={syncOpen} aria-controls="ag-sync-panel" onClick={() => setSyncOpen(value => !value)}>Sincronizar</Button>
+          <Button variant="secondary" icon={<CalendarPlus size={16} />} aria-label="Ver la agenda en tu calendario" aria-expanded={syncOpen} aria-controls="ag-sync-panel" onClick={() => setSyncOpen(value => !value)}>Calendario</Button>
           {!consultationMode && (
             <Button variant="primary" icon={<icons.IconPlus size={16} />} aria-expanded={creating} aria-controls="ag-new" onClick={() => setCreating(value => !value)}>Nueva actividad</Button>
           )}
@@ -415,12 +438,16 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
 
       <div className="ag-controls">
         <Segmented<View> ariaLabel="Vista" value={view} onChange={next => smooth(() => { setView(next); setOpenId(''); })} options={VIEWS} />
-        <Segmented<string>
-          ariaLabel="Día"
-          value={view === 'dia' ? day : ''}
-          onChange={next => smooth(() => { setDay(next as DayKey); setView('dia'); setOpenId(''); })}
-          options={[{ value: 'Hoy', label: 'Hoy' }, ...WEEK_DAYS.map(name => ({ value: name, label: DAY_SHORT[name] }))]}
-        />
+        {/* En el celu, los días se pliegan fuera de la vista Día: así el primer
+            pantallazo de Semana, Mes o Historial ya muestra actividades. */}
+        <Collapse open={!isNarrow || view === 'dia'} reveal={false}>
+          <Segmented<string>
+            ariaLabel="Día"
+            value={view === 'dia' ? day : ''}
+            onChange={next => smooth(() => { setDay(next as DayKey); setView('dia'); setOpenId(''); })}
+            options={[{ value: 'Hoy', label: 'Hoy' }, ...WEEK_DAYS.map(name => ({ value: name, label: DAY_SHORT[name] }))]}
+          />
+        </Collapse>
       </div>
 
       <div className={cx('ag-filters', filtersOpen && 'is-open')}>
@@ -431,7 +458,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         </button>
         {/* En mobile los filtros se pliegan detrás de su botón (colapso compartido); en ancho están siempre. */}
         <Collapse open={!isNarrow || filtersOpen} className="ag-filters-body" id="ag-filters-body" reveal={isNarrow}>
-          <Segmented<TurnoFilter> ariaLabel="Turno" value={turno} onChange={next => smooth(() => setTurno(next))} options={TURNOS.map(value => ({ value, label: value }))} />
+          <Segmented<TurnoFilter> ariaLabel="Turno" value={turno} onChange={next => smooth(() => setTurno(next))} options={TURNOS.map(value => ({ value, label: TURNO_FILTER_LABEL[value] }))} />
           <div className="ag-kpis" role="group" aria-label="Contar y filtrar">
             {KPI_DEFS.map(def => {
               const on = kpi === def.key || (def.key === 'total' && !kpi);
@@ -454,7 +481,7 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
         <Collapse open={Boolean(kpi)} unmountOnClose>
           <div className="ag-filtering" role="status">
             <span>Filtrando por <b>{kpiLabel || lastKpiLabel.current}</b></span>
-            <Button size="sm" variant="ghost" className="ag-link-btn" onClick={() => smooth(() => setKpi(null))}>Limpiar</Button>
+            <Button size="sm" variant="ghost" className="ag-link-btn" onClick={() => smooth(() => setKpi(null))}>Quitar filtro</Button>
           </div>
         </Collapse>
       </div>
@@ -529,11 +556,15 @@ export function AgendaPage({ items, consultationMode, onSave, onDelete, onTask, 
 
           {view === 'semana' && (
             <section className="ag-week-wrap" aria-label="Semana">
-              <div className="ag-week-bar">
-                <span className="ag-muted">Lunes a viernes, agrupado por día. Tocá una actividad para ver el detalle.</span>
-                {tools}
-              </div>
+              {/* En el celu la explicación y las herramientas van al pie: arriba, directo las actividades. */}
+              {!isNarrow && (
+                <div className="ag-week-bar">
+                  <span className="ag-muted">Lunes a viernes, agrupado por día. Tocá una actividad para ver el detalle.</span>
+                  {tools}
+                </div>
+              )}
               <AgendaWeek columns={weekColumns} openId={openId} onToggle={toggle} actions={actions} onOpenDay={(item, name) => goToItem(item, dateOfWeekday(name, monday) === clock.today ? 'Hoy' : name as DayKey)} />
+              {isNarrow && <div className="ag-week-bar ag-week-bar--foot">{tools}</div>}
             </section>
           )}
 

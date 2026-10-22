@@ -1,7 +1,7 @@
 import type { AgendaItem } from '../../types';
 import { Button, Collapse, StatusText, TruncatedText, cx } from '../../ui';
-import { rowClickOpens, type AgendaActions } from './AgendaRow';
-import { retiredInfo, statusOf } from './agendaModel';
+import { agendaQuick, rowClickOpens, type AgendaActions } from './AgendaRow';
+import { retiredInfo, statusOf, turnoLabel } from './agendaModel';
 
 export type WeekColumn = { day: string; date: string; isToday: boolean; items: AgendaItem[] };
 
@@ -39,14 +39,14 @@ export function AgendaWeek({ columns, openId, onToggle, onOpenDay, actions }: {
                   <TruncatedText className="ag-what">{`${item.actividad || 'Actividad'} · ${item.cantidad} ${item.tipoDispositivo}`}</TruncatedText>
                 </div>
                 <Collapse open={open} id={`ag-wk-detail-${item.id}`} className="ag-wk-detail">
-                    <span className="ag-what">{item.ubicacion || 'Sin ubicación'} · {item.fecha ? 'una vez' : item.turno || 'sin turno'}</span>
+                    <span className="ag-what">{item.ubicacion || 'Sin ubicación'} · {item.fecha ? 'una vez' : turnoLabel(item.turno)}</span>
                     {ret.text && <StatusText tone={ret.tone}>{ret.text}</StatusText>}
                     <span className="ag-what">{item.nota ? `Nota: ${item.nota}` : 'Sin nota'}</span>
-                    <Button size="sm" variant="primary" block disabled={consultation} loading={busy[item.id] === 'deliver'} loadingLabel="Guardando…" onClick={() => actions.patch(item, { estado: delivered ? 'Pendiente' : 'Entregado' }, { kind: 'deliver' })}>
-                      {delivered ? 'Volver a pendiente' : 'Marcar entregado'}
+                    <Button size="sm" variant="primary" block disabled={consultation} loading={busy[item.id] === 'deliver'} loadingLabel="Guardando…" onClick={() => void (delivered ? agendaQuick.undeliver : agendaQuick.deliver)(actions, item)}>
+                      {delivered ? 'Volver a pendiente' : 'Marcar entregados'}
                     </Button>
-                    <Button size="sm" variant="secondary" block disabled={consultation} loading={busy[item.id] === 'retire'} onClick={() => actions.patch(item, { compusRetiradas: ret.all ? 0 : item.cantidad }, { kind: 'retire' })}>
-                      {ret.all ? 'Desmarcar retirada' : 'Marcar retirada'}
+                    <Button size="sm" variant="secondary" block disabled={consultation} loading={busy[item.id] === 'retire'} onClick={() => void (ret.all ? agendaQuick.unretire : agendaQuick.retire)(actions, item)}>
+                      {ret.all ? 'Desmarcar retirados' : 'Marcar retirados'}
                     </Button>
                     <Button size="sm" variant="ghost" block onClick={() => onOpenDay(item, column.day)}>Abrir en el día</Button>
                 </Collapse>
