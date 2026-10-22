@@ -63,7 +63,16 @@ export function Sidebar({ items, active, onNavigate, onPrefetch, counts, activeS
       }
       edges();
     });
+    // No alcanza con el alto del menú: el de la lista cambia sin que cambie el
+    // del menú cuando el pie o la cabecera crecen (la fuente que termina de
+    // cargar, el tamaño de texto de las preferencias) y el de los grupos cuando
+    // cambian los ítems. Con la densidad medida antes de eso, el último ítem
+    // ("Componentes UI") quedaba fuera de la lista. Cambiar la densidad acá
+    // cambia el alto de los grupos y vuelve a avisar una vez: la medición es la
+    // misma y se estabiliza en ese cuadro.
     observer.observe(nav);
+    observer.observe(list);
+    for (const group of list.querySelectorAll('.shell-nav-group')) observer.observe(group);
     list.onscroll = edges;
     return () => observer.disconnect();
   }, [items.length]);
