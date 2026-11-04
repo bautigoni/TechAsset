@@ -39,6 +39,12 @@ export const config = {
   // Tope diario de llamadas a la IA por sede (chat + resúmenes + diagnósticos). 0 = sin tope.
   aiDailyLimitPerSite: Math.max(0, Number(process.env.AI_DAILY_LIMIT_PER_SITE ?? 400) || 0),
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  // Pedidos de cambios: contraseña de la API de administración (la usa el
+  // script del desarrollador). Vacía = la API de admin queda cerrada.
+  requestsAdminPassword: process.env.REQUESTS_ADMIN_PASSWORD || '',
+  // Archivos que solo sirve la API con permiso (capturas de Pedidos de cambios).
+  // Fuera de data/uploads a propósito: eso se sirve por estático con solo tener sesión.
+  privateDataDir: path.resolve(rootDir, process.env.PRIVATE_DATA_DIR || './data/private'),
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   openaiModel: process.env.OPENAI_MODEL || '',
   openaiPromptId: process.env.OPENAI_PROMPT_ID || '',

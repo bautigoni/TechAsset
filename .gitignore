@@ -54,3 +54,8 @@ perf/.out/
 
 # Entorno de QA (bases sembradas, credenciales, logs y mails de prueba)
 qa/.out/
+
+# Pedidos de cambios: capturas privadas y secretos del script del dev
+data/private/
+.pedidos/
+scripts/dev/.secrets*

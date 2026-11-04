@@ -1,4 +1,4 @@
-import { Bell, Lock, PanelLeftClose, PanelLeftOpen, Search, Zap } from 'lucide-react';
+import { Bell, Lock, MessageSquarePlus, PanelLeftClose, PanelLeftOpen, Search, Zap } from 'lucide-react';
 import type { AuthUser } from '../../types';
 import { initialsOf } from './Sidebar';
 import { AnimatedNumber } from './AnimatedNumber';
@@ -7,13 +7,14 @@ import { AssistantMark } from '../assistant/AssistantMark';
 export type StripKey = 'quick' | 'notif' | 'account' | 'sites' | 'palette';
 
 /**
- * Barra superior (56 px): título de la vista y su contexto corto; a la
+ * Barra superior (56 px): título de la vista y su contexto corto; al medio,
+ * «Sugerir un cambio», la única acción con color de la barra; a la
  * derecha Asistente, accesos rápidos (rayo), campana con el contador en mono
  * y la cuenta. Nada se abre flotando: cada botón abre una franja EN LÍNEA
  * debajo de la barra que empuja el contenido (una a la vez; Esc o el mismo
  * botón la cierran).
  */
-export function Topbar({ title, context, consultationMode, user, unread, openStrip, onToggleStrip, assistantOpen, onToggleAssistant, onAssistantIntent, collapsed, canCollapse, onToggleCollapsed }: {
+export function Topbar({ title, context, consultationMode, user, unread, openStrip, onToggleStrip, assistantOpen, onToggleAssistant, onAssistantIntent, suggestActive, onSuggest, collapsed, canCollapse, onToggleCollapsed }: {
   title: string;
   context?: string;
   consultationMode: boolean;
@@ -25,6 +26,9 @@ export function Topbar({ title, context, consultationMode, user, unread, openStr
   onToggleAssistant: () => void;
   /** Puntero o foco sobre el botón: se precarga el panel (abre animado desde el primer toque). */
   onAssistantIntent?: () => void;
+  /** Se está en Pedidos de cambios: el botón deja de llamar la atención. */
+  suggestActive: boolean;
+  onSuggest: () => void;
   collapsed: boolean;
   /** Bajo 1100 px (o con el asistente abierto en pantallas medianas) el rail es fijo. */
   canCollapse: boolean;
@@ -49,6 +53,16 @@ export function Topbar({ title, context, consultationMode, user, unread, openStr
         {context && <span className="shell-title-sep" aria-hidden="true">/</span>}
         {context && <span className="shell-title-context">{context}</span>}
       </div>
+      <button
+        type="button"
+        className={`shell-suggest-btn${suggestActive ? ' is-on' : ''}`}
+        aria-label="Sugerir un cambio"
+        aria-current={suggestActive ? 'page' : undefined}
+        onClick={onSuggest}
+      >
+        <MessageSquarePlus size={16} strokeWidth={1.8} aria-hidden="true" />
+        <span className="shell-suggest-label">Sugerir<span className="shell-suggest-more"> un cambio</span></span>
+      </button>
       {consultationMode && (
         <span className="shell-consulta" role="status">
           <Lock size={14} strokeWidth={1.6} aria-hidden="true" />

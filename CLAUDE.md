@@ -131,6 +131,17 @@ Ojo con el orden de rutas en Express: un `/:id` declarado antes tapa a las rutas
 - Papelera de dispositivos: `GET /api/devices/deleted` + `POST /api/devices/:etiqueta/restore`. Borrar = ocultar, con Deshacer en la línea de estado.
 - `GET /api/agenda` omite por defecto las terminadas de más de 120 días (`?all=1` trae todo; la respuesta trae `olderHidden`).
 
+## Pedidos de cambios
+
+Sección para que cualquier cuenta con sesión pida correcciones o cosas nuevas charlando con una IA que pregunta lo que falta y arma un resumen construible. No depende de la sede ni del rol. Por eso el router va **antes** de `requireEditor` (un rol de consulta puede pedir cambios).
+
+- Tabla `change_requests` (id uuid texto, `status` `draft|pending|in_progress|done|discarded` con CHECK, `summary_json`, `messages_json`, `images_json`, `note`, fechas). Servicio `server/services/changeRequests.service.js`, IA en `requestInterviewer.service.js` (por el adaptador `services/ai`, con tope diario y salida JSON; el **mapa de la app** está en `APP_MAP`: mantenerlo al día cuando cambien pantallas), rutas en `server/routes/changeRequests.routes.js`.
+- Capturas en `PRIVATE_DATA_DIR` (default `data/private/requests/<user_id>/`), **no** en `data/uploads`. Se validan por magic bytes (JPG/PNG/WEBP, 5 MB); las sirve solo `/api/requests/:id/images/:imageId` (dueño) o la de admin.
+- Admin: `/api/admin/requests*`. Sesión propia con `REQUESTS_ADMIN_PASSWORD` (cookie `techasset_requests_admin`, path `/api/admin`) o un Superadmin logueado. Va **antes** de `authMiddleware`.
+- Front: vista `pedidos` (`src/components/requests/RequestsPage.tsx`, CSS en `styles/screens/requests.css`), URL `/sede/<sede>/pedidos[/<id>]`; en el menú y con el botón «Sugerir un cambio» de la barra superior.
+- `server/app.js` es la app sin `listen` (la montan los tests de `npm test`); `server/index.js` arranca base, workers y puerto.
+- Flujo del dev: `node scripts/dev/pedidos.mjs` (lee `scripts/dev/.secrets.json` con `{ url, password }`, gitignoreado; baja capturas a `.pedidos/<id>/`), implementar, deployar y `node scripts/dev/pedidos.mjs estado <id> done "nota cálida que diga dónde está el cambio"`.
+
 ## Accesos rápidos y herramientas
 
 - `quick_links` + `/api/quick-links` CRUD. Validación de URL: solo `http(s)://`, rechaza `javascript:`, `data:`, `vbscript:`. Archivos `.bat` administrativos viven en `public/downloads/` y se sirven como descarga (no se ejecutan desde la web).

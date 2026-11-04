@@ -17,6 +17,7 @@
 //     chat.step({ allowTools, onText, signal }) -> { text, toolCalls:[{id,name,input}], stopReason, usage }
 //     chat.addToolResults([{ id, content: string, isError }])
 //   provider.generateText({ system, input, maxTokens, effort, schema, signal }) -> { text, usage }
+//        input = texto, o bloques de Anthropic (texto + imágenes; OpenAI usa solo el texto)
 //
 // Las keys viven solo en variables de entorno del server. Nunca se loguea
 // contenido: solo proveedor, modelo, tokens y latencia.
@@ -236,7 +237,7 @@ function createAnthropicProvider() {
         model,
         max_tokens: maxTokens,
         system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: String(input || '') }],
+        messages: [{ role: 'user', content: Array.isArray(input) ? input : String(input || '') }],
         output_config: {
           effort: VALID_EFFORTS.has(effort) ? effort : 'low',
           ...(schema ? { format: { type: 'json_schema', schema } } : {})
@@ -315,7 +316,7 @@ function createOpenAiProvider() {
     },
 
     async generateText({ system, input, maxTokens = 1500 } = {}) {
-      const data = await call({ instructions: system, input: String(input || ''), maxOutputTokens: maxTokens });
+      const data = await call({ instructions: system, input: Array.isArray(input) ? input.filter(block => block.type === 'text').map(block => block.text).join('\n') : String(input || ''), maxOutputTokens: maxTokens });
       const text = responseOutputText(data);
       if (!text) throw new AiProviderError('empty', 'Respuesta de IA vacía.');
       return { text, usage: usageOf(data), stopReason: 'end_turn' };

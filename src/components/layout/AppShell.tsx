@@ -471,6 +471,8 @@ export function AppShell(props: AppShellProps) {
             assistantOpen={assistantOpen}
             onToggleAssistant={() => (assistantOpen ? closeAssistant() : openAssistant())}
             onAssistantIntent={assistantIntent}
+            suggestActive={view === 'pedidos'}
+            onSuggest={() => onNavigate('pedidos')}
             collapsed={navMode === 'rail'}
             canCollapse={canCollapse}
             onToggleCollapsed={toggleCollapsed}

@@ -41,6 +41,7 @@ const SchedulesPage = lazyView('schedules', () => import('./components/schedules
 const TasksPage = lazyView('tasks', () => import('./components/tasks/TasksPage'), 'TasksPage');
 const PettyCashPage = lazyView('pettycash', () => import('./components/pettycash/PettyCashPage'), 'PettyCashPage');
 const SuggestionsPage = lazyView('suggestions', () => import('./components/suggestions/SuggestionsPage'), 'SuggestionsPage');
+const RequestsPage = lazyView('pedidos', () => import('./components/requests/RequestsPage'), 'RequestsPage');
 const ClassroomStatusPage = lazyView('classrooms', () => import('./components/classrooms/ClassroomStatusPage'), 'ClassroomStatusPage');
 const ToolsPage = lazyView('tools', () => import('./components/tools/ToolsPage'), 'ToolsPage');
 const QuickAccessPage = lazyView('quickaccess', () => import('./components/tools/QuickAccessPage'), 'QuickAccessPage');
@@ -710,6 +711,7 @@ export function App() {
       {view === 'tasks' && <TasksPage key={activeSite} store={tasks} operator={operator} consultationMode={effectiveConsultation} />}
       {view === 'pettycash' && <PettyCashPage key={activeSite} siteCode={activeSite} consultationMode={effectiveConsultation} />}
       {view === 'suggestions' && <SuggestionsPage key={activeSite} />}
+      {view === 'pedidos' && <RequestsPage />}
       {view === 'classrooms' && <ClassroomStatusPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} activeSite={activeSite} sites={sites} onSiteChange={changeSite} onNavigate={navigate} />}
       {view === 'tools' && <ToolsPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} canEdit={access.admin || access.edit.has('*') || access.edit.has('tools')} canSend={access.admin} onNavigate={navigate} />}
       {view === 'quickaccess' && <QuickAccessPage key={activeSite} operator={operator} consultationMode={effectiveConsultation} canEdit={access.admin || access.edit.has('*') || access.edit.has('quickaccess')} />}
