@@ -62,7 +62,8 @@
 .request-row:focus-visible { outline: 2px solid var(--req-accent); outline-offset: 2px; }
 .request-row-main { display: grid; gap: 4px; min-width: 0; }
 .request-row-title { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
-.request-row-meta { font-size: 12.5px; color: var(--muted); }
+.request-row-meta { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.request-row-author { font-weight: 600; color: var(--text); }
 .request-row-note { font-size: 13px; color: var(--text); opacity: .9; overflow-wrap: anywhere; }
 .request-row-note strong { font-weight: 600; color: var(--muted); }
 .request-row-draft { --request-tone: var(--muted); }
@@ -87,6 +88,8 @@
 .request-pill-in_progress { --pill: var(--yellow); }
 .request-pill-done { --pill: var(--green); }
 .request-pill-discarded { --pill: var(--red); }
+
+.requests-truncated { margin: 12px 0 0; font-size: 12.5px; text-align: center; }
 
 .requests-empty {
   display: grid;
@@ -125,6 +128,8 @@
 .requests-back:hover { color: var(--text); }
 .request-titlebar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .request-titlebar h2 { margin: 0; overflow-wrap: anywhere; }
+.request-byline { margin: -8px 0 16px; font-size: 13.5px; overflow-wrap: anywhere; }
+.request-byline strong { color: var(--text); font-weight: 600; }
 
 .request-note {
   margin-bottom: 16px;

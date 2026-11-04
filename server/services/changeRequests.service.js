@@ -13,7 +13,7 @@ export const REQUEST_LIMITS = {
   imagesPerRequest: 6,
   imageBytes: 5 * 1024 * 1024,
   messagesPerRequest: 40,
-  listSize: 100
+  listSize: 200
 };
 
 export const REQUEST_STATUSES = ['draft', 'pending', 'in_progress', 'done', 'discarded'];
@@ -23,7 +23,8 @@ export const REQUEST_KINDS = ['fix', 'change', 'new'];
 export const GREETING = '¡Hola! Contame qué te gustaría cambiar, agregar o qué no te está funcionando. Si te ayuda, adjuntá una captura de la pantalla con el clip.';
 
 // Las capturas NO van en data/uploads (eso se sirve por estático con solo tener
-// sesión): van a una carpeta privada que solo sirve el endpoint del pedido.
+// sesión, y las de un borrador son privadas): van a una carpeta que solo sirve el
+// endpoint del pedido, con la misma regla de lectura que el pedido.
 const PRIVATE_ROOT = config.privateDataDir;
 
 const EXTENSION_BY_MIME = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -52,9 +53,8 @@ export function userMessageCount(messages) {
   return messages.filter(message => message.role === 'user').length;
 }
 
-/** Lo que ve el front (dueño o admin). Nunca expone la ruta en disco. */
+/** Lo que ve el front (cuenta o admin). Nunca expone la ruta en disco. */
 export function requestView(request, { withMessages = true } = {}) {
-  const last = request.messages.at(-1);
   const view = {
     id: request.id,
     status: request.status,
@@ -65,26 +65,52 @@ export function requestView(request, { withMessages = true } = {}) {
     createdAt: request.created_at,
     updatedAt: request.updated_at,
     submittedAt: request.submitted_at || '',
-    resolvedAt: request.resolved_at || '',
-    userMessages: userMessageCount(request.messages),
-    awaitingReply: OPEN_STATUSES.has(request.status) && last?.role === 'user'
+    resolvedAt: request.resolved_at || ''
   };
   if (withMessages) {
+    view.userMessages = userMessageCount(request.messages);
+    view.awaitingReply = OPEN_STATUSES.has(request.status) && request.messages.at(-1)?.role === 'user';
     view.messages = request.messages;
     view.images = request.images.map(({ id, name, mime }) => ({ id, name, mime }));
   }
   return view;
 }
 
+export function isRequestOwner(request, userId) {
+  return Number(request.user_id) === Number(userId);
+}
+
+function requesterName(request) {
+  return request.user_nombre || String(request.user_email || '').split('@')[0] || 'Alguien del equipo';
+}
+
+/** La vista de una cuenta: suma de quién es, sin exponer su id ni su mail. */
+export function requestViewFor(request, viewerId, options) {
+  return {
+    ...requestView(request, options),
+    mine: isRequestOwner(request, viewerId),
+    requester: { nombre: requesterName(request) }
+  };
+}
+
+// Con el JOIN cada lectura trae quién lo pidió sin una query aparte.
+export const REQUEST_SELECT = `
+  SELECT r.*, u.nombre AS user_nombre, u.email AS user_email
+  FROM change_requests r LEFT JOIN users u ON u.id=r.user_id`;
+
 export function getRequestRow(id) {
-  const row = getDb().prepare('SELECT * FROM change_requests WHERE id=?').get(String(id || ''));
+  const row = getDb().prepare(`${REQUEST_SELECT} WHERE r.id=?`).get(String(id || ''));
   return row ? readRequestRow(row) : null;
 }
 
-/** Del dueño o nada: "no existe" y "es de otro" responden igual. */
-export function getOwnRequest(id, userId) {
+/**
+ * Regla de lectura: lo enviado lo ve cualquier cuenta; un borrador, solo su dueño.
+ * Un borrador ajeno responde igual que uno que no existe.
+ */
+export function getVisibleRequest(id, viewerId) {
   const request = getRequestRow(id);
-  return request && Number(request.user_id) === Number(userId) ? request : null;
+  if (!request) return null;
+  return request.status !== 'draft' || isRequestOwner(request, viewerId) ? request : null;
 }
 
 export function saveRequest(request, fields) {
@@ -114,16 +140,31 @@ export function createDraft(userId, siteCode) {
 
 /** El borrador que se abrió y nunca se escribió (para no duplicarlo). */
 export function findEmptyDraft(userId) {
-  const rows = getDb().prepare("SELECT * FROM change_requests WHERE user_id=? AND status='draft' ORDER BY created_at DESC LIMIT 20").all(userId);
+  const rows = getDb().prepare(`${REQUEST_SELECT} WHERE r.user_id=? AND r.status='draft' ORDER BY r.created_at DESC LIMIT 20`).all(userId);
   return rows.map(readRequestRow).find(request => !userMessageCount(request.messages)) || null;
 }
 
-export function listOwnRequests(userId) {
-  // Se piden de más porque los borradores vacíos se filtran después.
-  const rows = getDb().prepare('SELECT * FROM change_requests WHERE user_id=? ORDER BY created_at DESC LIMIT ?').all(userId, REQUEST_LIMITS.listSize * 2);
-  return rows.map(readRequestRow)
-    .filter(request => request.status !== 'draft' || userMessageCount(request.messages) > 0)
-    .slice(0, REQUEST_LIMITS.listSize);
+/**
+ * La lista que ve una cuenta: sus borradores primero (el tope nunca se los come) y
+ * después lo enviado por cualquiera, lo último arriba. Una sola query y sin las
+ * conversaciones de los demás, que la lista no usa y pesan: solo las de los
+ * borradores propios, para descartar los que se abrieron y nunca se escribieron.
+ */
+export function listVisibleRequests(viewerId) {
+  // De más: los borradores vacíos se filtran acá (findEmptyDraft evita juntarlos)
+  // y una fila extra dice si quedó algo afuera.
+  const rows = getDb().prepare(`
+    SELECT r.id, r.user_id, r.status, r.title, r.summary_json, r.ready, r.note, r.created_at, r.updated_at, r.submitted_at, r.resolved_at,
+      CASE WHEN r.status='draft' THEN r.messages_json ELSE '[]' END AS messages_json,
+      u.nombre AS user_nombre, u.email AS user_email
+    FROM change_requests r LEFT JOIN users u ON u.id=r.user_id
+    WHERE r.status<>'draft' OR r.user_id=?
+    ORDER BY CASE WHEN r.status='draft' THEN 0 ELSE 1 END, COALESCE(NULLIF(r.submitted_at, ''), r.created_at) DESC
+    LIMIT ?
+  `).all(viewerId, REQUEST_LIMITS.listSize + 21);
+  const visible = rows.map(readRequestRow)
+    .filter(request => request.status !== 'draft' || userMessageCount(request.messages) > 0);
+  return { items: visible.slice(0, REQUEST_LIMITS.listSize), truncated: visible.length > REQUEST_LIMITS.listSize };
 }
 
 // ---------- Capturas ----------

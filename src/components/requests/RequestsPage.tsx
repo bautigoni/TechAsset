@@ -19,11 +19,14 @@ import {
   submitRequest,
   withdrawRequest,
   type ChangeRequest,
+  type RequestListItem,
   type RequestMessage
 } from '../../services/requestsApi';
 
 // «Pedidos de cambios»: la persona le cuenta a la IA qué quiere cambiar, la IA
 // pregunta lo que falta y arma un resumen, y desde acá se envía y se sigue.
+// Lo enviado lo lee cualquier cuenta; un pedido ajeno se ve sin cuadro de escribir
+// ni acciones (`mine`), y los borradores son solo de su dueño.
 // URL: /sede/<sede>/pedidos (lista) y /sede/<sede>/pedidos/<id> (pedido).
 
 function idFromUrl() {
@@ -62,12 +65,15 @@ function StatusPill({ status }: { status: ChangeRequest['status'] }) {
 }
 
 function RequestList({ onOpen }: { onOpen: (id: string) => void }) {
-  const [items, setItems] = useState<ChangeRequest[] | null>(null);
+  const [items, setItems] = useState<RequestListItem[] | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    listRequests().then(setItems).catch(reason => { setItems([]); setError(errorMessage(reason, 'No se pudieron cargar tus pedidos.')); });
+    listRequests()
+      .then(data => { setItems(data.items); setTruncated(data.truncated); })
+      .catch(reason => { setItems([]); setError(errorMessage(reason, 'No se pudieron cargar los pedidos.')); });
   }, []);
 
   const start = async () => {
@@ -94,7 +100,7 @@ function RequestList({ onOpen }: { onOpen: (id: string) => void }) {
       <ol className="requests-how" aria-label="Cómo funciona">
         <li><span className="requests-how-num" aria-hidden="true">1</span><div><strong>Contalo como se lo contarías a alguien</strong><p>Con tus palabras. Si ayuda, sumá una captura de la pantalla.</p></div></li>
         <li><span className="requests-how-num" aria-hidden="true">2</span><div><strong>La IA te pregunta lo que falta</strong><p>Y va armando un resumen claro de lo que necesitás.</p></div></li>
-        <li><span className="requests-how-num" aria-hidden="true">3</span><div><strong>Lo enviás y lo seguís desde acá</strong><p>Vas a ver cuándo está en curso y cuándo está hecho.</p></div></li>
+        <li><span className="requests-how-num" aria-hidden="true">3</span><div><strong>Lo enviás y lo seguís desde acá</strong><p>Lo enviado lo lee cualquier cuenta, con la charla y las capturas. Vas a ver cuándo está en curso y cuándo está hecho.</p></div></li>
       </ol>
 
       {error && <div className="tool-error" role="alert">{error}</div>}
@@ -103,21 +109,23 @@ function RequestList({ onOpen }: { onOpen: (id: string) => void }) {
 
       {items && !items.length && !error && (
         <div className="requests-empty">
-          <h3>Todavía no hiciste pedidos</h3>
+          <h3>Todavía no hay pedidos</h3>
           <p className="muted">Cuando algo no funcione o se te ocurra una mejora, empezá por acá.</p>
           <Button variant="primary" onClick={() => void start()} disabled={creating}>Empezar un pedido</Button>
         </div>
       )}
 
       {items && items.length > 0 && (
-        <ul className="requests-list">
+        <ul className="requests-list" aria-label="Pedidos de todos">
           {items.map(item => (
             <li key={item.id}>
               <button type="button" className={`request-row request-row-${item.status}`} onClick={() => onOpen(item.id)}>
                 <span className="request-row-main">
                   <span className="request-row-title">{item.title || item.summary.title || 'Pedido sin título'}</span>
                   <span className="request-row-meta">
-                    {KIND_LABEL[item.summary.kind] || KIND_LABEL.change} · {formatDate(item.submittedAt || item.createdAt, DATE_ONLY)}
+                    <span className="request-row-author">{item.mine ? 'Vos' : item.requester.nombre}</span>
+                    {' · '}{KIND_LABEL[item.summary.kind] || KIND_LABEL.change} · {formatDate(item.submittedAt || item.createdAt, DATE_ONLY)}
+                    {item.status === 'draft' && ' · Solo lo ves vos'}
                   </span>
                   {item.note && <span className="request-row-note"><strong>Respuesta del equipo:</strong> {item.note}</span>}
                 </span>
@@ -127,6 +135,7 @@ function RequestList({ onOpen }: { onOpen: (id: string) => void }) {
           ))}
         </ul>
       )}
+      {truncated && items && <p className="muted requests-truncated">Se muestran los {items.length} pedidos más recientes.</p>}
     </section>
   );
 }
@@ -164,7 +173,7 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
 
   useEffect(() => {
     getRequest(id)
-      .then(item => { setRequest(item); setReplyFailed(item.awaitingReply); })
+      .then(item => { setRequest(item); setReplyFailed(item.mine && item.awaitingReply); })
       .catch(reason => setLoadError(errorMessage(reason, 'No se pudo abrir el pedido.')));
   }, [id]);
 
@@ -174,19 +183,22 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
   useEffect(() => () => attachmentsRef.current.forEach(item => URL.revokeObjectURL(item.url)), []);
 
   const messages = request?.messages || [];
+  const mine = Boolean(request?.mine);
   const open = request ? request.status === 'draft' || request.status === 'pending' : false;
+  const canWrite = mine && open;
   const firstMessage = (request?.userMessages || 0) === 0;
   const imagesLeft = REQUEST_LIMITS.imagesPerRequest - (request?.images?.length || 0) - attachments.length;
 
   // Hay una sola barra de scroll, la de la página. Al abrir (sin animación) y con
   // cada mensaje se baja hasta el final del chat; si ya está listo, hasta el resumen.
+  // Un pedido ajeno se lee desde arriba: título, de quién es y nota del equipo.
   const readyToSend = Boolean(request?.ready) && request?.status === 'draft' && !thinking;
   useEffect(() => {
-    if (messages.length < 2) return;
+    if (messages.length < 2 || !mine) return;
     const target = readyToSend ? summaryRef.current : chatRef.current;
     target?.scrollIntoView({ block: 'end', behavior: scrolledOnce.current ? 'smooth' : 'instant' });
     scrolledOnce.current = true;
-  }, [messages.length, thinking, readyToSend]);
+  }, [messages.length, thinking, readyToSend, mine]);
 
   // La caja crece de 2 a 10 líneas.
   useLayoutEffect(() => {
@@ -319,7 +331,7 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
     return (
       <section className="view active requests-page">
         <button type="button" className="requests-back" onClick={onBack}><ArrowLeft size={16} /> Pedidos de cambios</button>
-        <div className="requests-empty"><h3>{loadError}</h3><Button onClick={onBack}>Volver a mis pedidos</Button></div>
+        <div className="requests-empty"><h3>{loadError}</h3><Button onClick={onBack}>Volver a los pedidos</Button></div>
       </section>
     );
   }
@@ -335,6 +347,7 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
 
   const resolved = request.status === 'done' || request.status === 'discarded';
   const title = request.title || request.summary.title || 'Nuevo pedido';
+  const requester = request.requester.nombre;
 
   return (
     <section className="view active requests-page">
@@ -343,6 +356,11 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <h2>{title}</h2>
         <StatusPill status={request.status} />
       </div>
+      {!mine && (
+        <p className="request-byline muted">
+          Pedido de <strong>{requester}</strong>{request.submittedAt && ` · ${formatDate(request.submittedAt, DATE_ONLY)}`}
+        </p>
+      )}
 
       {request.note && (
         <div className={`request-note request-note-${request.status}`} role="status">
@@ -355,14 +373,14 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <div className="request-chat" ref={chatRef}>
           <div className="request-messages" aria-live="polite" aria-label="Conversación">
             {messages.map((message, index) => (
-              <ChatBubble key={`${message.at}-${index}`} message={message} requestId={request.id} imageName={imageName} onZoom={setZoom} />
+              <ChatBubble key={`${message.at}-${index}`} message={message} author={mine ? 'Vos' : requester} requestId={request.id} imageName={imageName} onZoom={setZoom} />
             ))}
             {thinking && (
               <div className="request-bubble request-bubble-assistant request-typing" aria-label="La IA está escribiendo">
                 <span /><span /><span />
               </div>
             )}
-            {replyFailed && !thinking && open && (
+            {replyFailed && !thinking && canWrite && (
               <div className="request-retry" role="alert">
                 <span>La IA no pudo responder. Tu mensaje quedó guardado.</span>
                 <Button onClick={() => void runReply()}><RotateCcw size={15} /> Reintentar</Button>
@@ -370,7 +388,7 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
             )}
           </div>
 
-          {open ? (
+          {canWrite ? (
             <div className="request-composer">
               {attachments.length > 0 && (
                 <ul className="request-attachments" aria-label="Capturas para enviar">
@@ -408,7 +426,9 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
             </div>
           ) : (
             <p className="request-closed muted">
-              {request.status === 'in_progress'
+              {!mine
+                ? `Este pedido es de ${requester}: podés leerlo, pero solo esa persona puede sumarle cosas.`
+                : request.status === 'in_progress'
                 ? 'El equipo ya está trabajando en este pedido. Si querés sumar algo, empezá uno nuevo.'
                 : 'Este pedido está cerrado. Si querés sumar algo, empezá uno nuevo.'}
             </p>
@@ -417,7 +437,7 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
 
         <aside className="request-summary" ref={summaryRef} aria-label="Resumen del pedido">
           <SummaryCard request={request} />
-          {!resolved && (
+          {mine && !resolved && (
             <div className="request-actions">
               {request.status === 'draft' && (
                 <>
@@ -433,6 +453,9 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
               {request.status === 'draft' && !request.ready && !firstMessage && (
                 <p className="muted request-actions-hint">La IA todavía tiene alguna pregunta, pero si ya está todo dicho podés enviarlo así.</p>
               )}
+              {request.status === 'draft' && (
+                <p className="muted request-actions-hint">Hasta que lo envíes solo lo ves vos. Después lo puede leer cualquier cuenta, con la conversación y las capturas.</p>
+              )}
             </div>
           )}
         </aside>
@@ -447,16 +470,17 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
   );
 }
 
-function ChatBubble({ message, requestId, imageName, onZoom }: {
+function ChatBubble({ message, author, requestId, imageName, onZoom }: {
   message: RequestMessage;
+  author: string;
   requestId: string;
   imageName: Map<string, string>;
   onZoom: (image: { src: string; name: string }) => void;
 }) {
-  const mine = message.role === 'user';
+  const fromUser = message.role === 'user';
   return (
-    <div className={`request-bubble request-bubble-${mine ? 'user' : 'assistant'}`}>
-      <span className="sr-only">{mine ? 'Vos:' : 'Asistente:'}</span>
+    <div className={`request-bubble request-bubble-${fromUser ? 'user' : 'assistant'}`}>
+      <span className="sr-only">{fromUser ? `${author}:` : 'Asistente:'}</span>
       {message.text && <p>{message.text}</p>}
       {message.imageIds.length > 0 && (
         <div className="request-thumbs">
@@ -487,13 +511,13 @@ function SummaryCard({ request }: { request: ChangeRequest }) {
         {!empty && <span className={`request-kind request-kind-${summary.kind}`}>{KIND_LABEL[summary.kind] || KIND_LABEL.change}</span>}
       </div>
       {empty ? (
-        <p className="muted">Acá va a aparecer lo que la IA entendió de tu pedido, y se actualiza con cada respuesta.</p>
+        <p className="muted">{request.mine ? 'Acá va a aparecer lo que la IA entendió de tu pedido, y se actualiza con cada respuesta.' : 'La IA no llegó a armar un resumen de este pedido: está todo en la conversación.'}</p>
       ) : (
         <dl className="request-summary-fields">
           <div><dt>Título</dt><dd>{summary.title || '—'}</dd></div>
           <div><dt>Dónde</dt><dd>{summary.screen || 'Todavía no está claro'}</dd></div>
           {summary.kind !== 'new' && <div><dt>Hoy</dt><dd>{summary.today || '—'}</dd></div>}
-          <div><dt>Lo que querés</dt><dd>{summary.desired || '—'}</dd></div>
+          <div><dt>{request.mine ? 'Lo que querés' : 'Lo que pide'}</dt><dd>{summary.desired || '—'}</dd></div>
           {summary.details.length > 0 && (
             <div><dt>Detalles</dt><dd><ul>{summary.details.map((detail, index) => <li key={index}>{detail}</li>)}</ul></dd></div>
           )}

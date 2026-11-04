@@ -359,8 +359,91 @@ describe('admin', () => {
   });
 });
 
-describe('aislamiento entre usuarios', () => {
-  test('un usuario no ve, no escribe ni baja capturas de pedidos de otro (404 igual que inexistente)', async () => {
+describe('pedidos compartidos entre cuentas', () => {
+  // El pedido de Ana, enviado y con una captura.
+  async function sentByAna(text = 'Compartido con todos') {
+    const { data } = await call('POST', '/requests', { cookie: users.ana.cookie });
+    const id = data.item.id;
+    const sent = await call('POST', `/requests/${id}/messages`, { cookie: users.ana.cookie, form: messageForm(text, [{ buffer: PNG }]) });
+    await call('POST', `/requests/${id}/submit`, { cookie: users.ana.cookie });
+    return { id, imageId: sent.data.item.images[0].id };
+  }
+
+  test('un pedido enviado ajeno se lee entero, con conversación, captura, estado y nota', async () => {
+    const { id, imageId } = await sentByAna();
+    await call('PATCH', `/admin/requests/${id}`, { cookie: adminCookie, json: { status: 'done', note: 'Listo, ya está.' } });
+
+    const res = await call('GET', `/requests/${id}`, { cookie: users.beto.cookie });
+    assert.equal(res.status, 200);
+    assert.equal(res.data.item.mine, false);
+    assert.deepEqual(res.data.item.requester, { nombre: 'ana' });
+    assert.equal(res.data.item.status, 'done');
+    assert.equal(res.data.item.note, 'Listo, ya está.');
+    assert.equal(res.data.item.messages.at(-1).text, 'Compartido con todos');
+    assert.equal(res.data.item.images[0].id, imageId);
+    assert.equal(res.data.item.images[0].key, undefined);
+    assert.ok(!JSON.stringify(res.data).includes('ana@colegio.test'));
+
+    const img = await call('GET', `/requests/${id}/images/${imageId}`, { cookie: users.beto.cookie });
+    assert.equal(img.status, 200);
+    assert.ok(img.data.equals(PNG));
+    assert.equal((await call('GET', `/requests/${id}`)).status, 401);
+    assert.equal((await call('GET', `/requests/${id}/images/${imageId}`)).status, 401);
+  });
+
+  test('la lista trae lo enviado de todos con quién lo pidió, sin mail ni conversaciones', async () => {
+    const { id } = await sentByAna();
+    const res = await call('GET', '/requests', { cookie: users.caro.cookie });
+    assert.equal(res.status, 200);
+    assert.equal(res.data.truncated, false);
+    const item = res.data.items.find(entry => entry.id === id);
+    assert.equal(item.mine, false);
+    assert.deepEqual(item.requester, { nombre: 'ana' });
+    assert.equal(item.messages, undefined);
+    assert.equal(item.images, undefined);
+    assert.ok(!JSON.stringify(res.data).includes('@colegio.test'));
+
+    const own = await call('GET', '/requests', { cookie: users.ana.cookie });
+    assert.equal(own.data.items.find(entry => entry.id === id).mine, true);
+  });
+
+  test('sin nombre muestra la parte del mail antes de la arroba, nunca el mail', async () => {
+    const dani = makeUser('dani.perez@colegio.test');
+    getDb().prepare("UPDATE users SET nombre='' WHERE id=?").run(dani.id);
+    const id = await newRequestWithMessage(dani);
+    await call('POST', `/requests/${id}/submit`, { cookie: dani.cookie });
+    const res = await call('GET', `/requests/${id}`, { cookie: users.beto.cookie });
+    assert.deepEqual(res.data.item.requester, { nombre: 'dani.perez' });
+  });
+
+  test('escribir un pedido enviado ajeno se rechaza con un error claro y no cambia nada', async () => {
+    let calls = 0;
+    interviewer.run = async () => { calls += 1; return fakeReply(); };
+    const { id } = await sentByAna('El último de Ana');
+    // Para que reply tenga algo que contestar: el último mensaje es del usuario.
+    const before = await call('GET', `/requests/${id}`, { cookie: users.ana.cookie });
+    assert.equal(before.data.item.awaitingReply, true);
+
+    for (const [method, url, opts] of [
+      ['POST', `/requests/${id}/messages`, { form: messageForm('hack', [{ buffer: PNG }]) }],
+      ['POST', `/requests/${id}/reply`, {}],
+      ['POST', `/requests/${id}/submit`, {}],
+      ['POST', `/requests/${id}/withdraw`, {}],
+      ['DELETE', `/requests/${id}`, {}]
+    ]) {
+      const res = await call(method, url, { cookie: users.beto.cookie, ...opts });
+      assert.equal(res.status, 403, `${method} ${url}`);
+      assert.match(res.data.error, /solo quien lo hizo/);
+    }
+    assert.equal(calls, 0);
+    const after = await call('GET', `/requests/${id}`, { cookie: users.ana.cookie });
+    assert.deepEqual(after.data.item, before.data.item);
+    // También una vez cerrado: primero manda de quién es, no el estado.
+    await call('PATCH', `/admin/requests/${id}`, { cookie: adminCookie, json: { status: 'done' } });
+    assert.equal((await call('POST', `/requests/${id}/messages`, { cookie: users.beto.cookie, form: messageForm('hack') })).status, 403);
+  });
+
+  test('un borrador ajeno no existe: ni se lee, ni se escribe, ni aparece, ni baja su captura', async () => {
     const { data } = await call('POST', '/requests', { cookie: users.ana.cookie });
     const id = data.item.id;
     const sent = await call('POST', `/requests/${id}/messages`, { cookie: users.ana.cookie, form: messageForm('privado', [{ buffer: PNG }]) });
@@ -380,11 +463,70 @@ describe('aislamiento entre usuarios', () => {
     ]) {
       const res = await call(method, url, { cookie: users.beto.cookie, ...opts });
       assert.equal(res.status, 404, `${method} ${url}`);
+      assert.deepEqual(res.data, missing.data);
     }
-    const list = await call('GET', '/requests', { cookie: users.beto.cookie });
-    assert.ok(!list.data.items.some(item => item.id === id));
+    assert.ok(!(await call('GET', '/requests', { cookie: users.beto.cookie })).data.items.some(item => item.id === id));
+    // El dueño sí lo ve, en su lista y marcado como suyo.
+    const own = (await call('GET', '/requests', { cookie: users.ana.cookie })).data.items.find(item => item.id === id);
+    assert.equal(own.status, 'draft');
+    assert.equal(own.mine, true);
     // Y la captura tampoco sale por el estático de /uploads.
     const statico = await fetch(`${base.replace('/api', '')}/uploads/requests/${users.ana.id}/${imageId}.png`, { headers: { Cookie: users.beto.cookie } });
     assert.notEqual(statico.status, 200);
+  });
+
+  test('las respuestas de las escrituras del dueño siguen diciendo de quién es', async () => {
+    const { data: created } = await call('POST', '/requests', { cookie: users.ana.cookie });
+    const id = created.item.id;
+    const steps = [
+      created,
+      (await call('POST', `/requests/${id}/messages`, { cookie: users.ana.cookie, form: messageForm('hola') })).data,
+      (await call('POST', `/requests/${id}/reply`, { cookie: users.ana.cookie })).data,
+      (await call('POST', `/requests/${id}/reply`, { cookie: users.ana.cookie })).data,
+      (await call('POST', `/requests/${id}/submit`, { cookie: users.ana.cookie })).data,
+      (await call('POST', `/requests/${id}/withdraw`, { cookie: users.ana.cookie })).data
+    ];
+    for (const step of steps) {
+      assert.equal(step.item.mine, true);
+      assert.deepEqual(step.item.requester, { nombre: 'ana' });
+    }
+  });
+
+  test('la API de admin no cambia: sin mine y con el mail de quién lo pidió', async () => {
+    const { id } = await sentByAna();
+    const { data } = await call('GET', `/admin/requests/${id}`, { cookie: adminCookie });
+    assert.equal(data.item.mine, undefined);
+    assert.equal(data.item.requester.email, 'ana@colegio.test');
+    assert.equal(data.item.requester.id, users.ana.id);
+    assert.equal(typeof data.item.userMessages, 'number');
+    assert.equal(typeof data.item.awaitingReply, 'boolean');
+    assert.ok(Array.isArray(data.item.messages));
+  });
+
+  test('tope de la lista: avisa que quedó algo afuera y no se come los borradores propios', async () => {
+    const db = getDb();
+    const draftId = await newRequestWithMessage(users.beto, 'Mi borrador viejo');
+    const insert = db.prepare(`
+      INSERT INTO change_requests (id, user_id, site_code, status, title, summary_json, ready, messages_json, images_json, note, created_at, updated_at, submitted_at)
+      VALUES (?, ?, 'NFPT', 'pending', ?, '{}', 0, '[]', '[]', '', ?, ?, ?)
+    `);
+    try {
+      for (let i = 0; i < 205; i++) {
+        const ts = new Date(Date.now() + (i + 1) * 60_000).toISOString();
+        insert.run(`tope-${i}`, users.ana.id, `Pedido ${i}`, ts, ts, ts);
+      }
+      const { data } = await call('GET', '/requests', { cookie: users.beto.cookie });
+      assert.equal(data.items.length, 200);
+      assert.equal(data.truncated, true);
+      assert.equal(data.items.find(item => item.status === 'draft' && item.id === draftId)?.mine, true);
+      // Primero los borradores propios y después lo enviado, lo último arriba.
+      const firstSent = data.items.findIndex(item => item.status !== 'draft');
+      assert.ok(data.items.slice(firstSent).every(item => item.status !== 'draft'));
+      assert.equal(data.items[firstSent].id, 'tope-204');
+      const sentDates = data.items.slice(firstSent).map(item => item.submittedAt);
+      assert.deepEqual(sentDates, [...sentDates].sort().reverse());
+    } finally {
+      db.prepare("DELETE FROM change_requests WHERE id LIKE 'tope-%'").run();
+    }
   });
 });

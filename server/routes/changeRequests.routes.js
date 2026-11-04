@@ -8,15 +8,18 @@ import {
   OPEN_STATUSES,
   REQUEST_LIMITS,
   REQUEST_STATUSES,
+  REQUEST_SELECT,
   createDraft,
   findEmptyDraft,
-  getOwnRequest,
   getRequestRow,
+  getVisibleRequest,
   imageFilePath,
-  listOwnRequests,
+  isRequestOwner,
+  listVisibleRequests,
   readRequestRow,
   removeImages,
   requestView,
+  requestViewFor,
   saveRequest,
   storeImage,
   userMessageCount
@@ -26,7 +29,8 @@ import { interviewer } from '../services/requestInterviewer.service.js';
 // «Pedidos de cambios». Dos routers:
 // - changeRequestsRouter: cualquier cuenta con sesión charla con la IA y envía el
 //   pedido. Va después de authMiddleware y ANTES de requireEditor: un rol de
-//   consulta tiene que poder pedir cambios igual.
+//   consulta tiene que poder pedir cambios igual. Lo enviado lo lee cualquier
+//   cuenta; los borradores y toda escritura son solo del dueño.
 // - changeRequestsAdminRouter: el desarrollador (o su script) lee y resuelve los
 //   pedidos. Sesión propia con contraseña de .env, o un Superadmin logueado.
 //   Va antes de authMiddleware porque el script no tiene sesión de usuario.
@@ -36,6 +40,7 @@ export const changeRequestsAdminRouter = Router();
 
 const NOT_FOUND = 'No encontramos ese pedido.';
 const CLOSED = 'Este pedido ya está cerrado. Si querés sumar algo, empezá uno nuevo.';
+const NOT_OWNER = 'Este pedido es de otra persona: podés leerlo, pero solo quien lo hizo puede modificarlo.';
 
 // ---------- Límites de frecuencia (en memoria, por usuario) ----------
 
@@ -63,21 +68,30 @@ function auditSite(userId, fallback = '') {
   return fallback || getUserSites(userId)[0]?.siteCode || config.defaultSiteCode || 'NFPT';
 }
 
+/** El pedido para escribirlo, o responde: borrador ajeno 404 (no existe), enviado ajeno 403. */
+function ownRequestOrFail(req, res) {
+  const request = getVisibleRequest(req.params.id, req.user.id);
+  if (!request) { fail(res, 404, NOT_FOUND); return null; }
+  if (!isRequestOwner(request, req.user.id)) { fail(res, 403, NOT_OWNER); return null; }
+  return request;
+}
+
 // ---------- Usuario ----------
 
 changeRequestsRouter.get('/requests', (req, res) => {
-  res.json({ ok: true, items: listOwnRequests(req.user.id).map(item => requestView(item, { withMessages: false })) });
+  const { items, truncated } = listVisibleRequests(req.user.id);
+  res.json({ ok: true, truncated, items: items.map(item => requestViewFor(item, req.user.id, { withMessages: false })) });
 });
 
 changeRequestsRouter.post('/requests', (req, res) => {
   const draft = findEmptyDraft(req.user.id) || createDraft(req.user.id, req.siteCode);
-  res.json({ ok: true, item: requestView(draft) });
+  res.json({ ok: true, item: requestViewFor(draft, req.user.id) });
 });
 
 changeRequestsRouter.get('/requests/:id', (req, res) => {
-  const request = getOwnRequest(req.params.id, req.user.id);
+  const request = getVisibleRequest(req.params.id, req.user.id);
   if (!request) return fail(res, 404, NOT_FOUND);
-  res.json({ ok: true, item: requestView(request) });
+  res.json({ ok: true, item: requestViewFor(request, req.user.id) });
 });
 
 // Los archivos quedan en memoria hasta validarlos: recién se escriben a disco
@@ -97,15 +111,15 @@ function receiveFiles(req, res, next) {
 }
 
 changeRequestsRouter.post('/requests/:id/messages', (req, res, next) => {
-  const request = getOwnRequest(req.params.id, req.user.id);
-  if (!request) return fail(res, 404, NOT_FOUND);
+  const request = ownRequestOrFail(req, res);
+  if (!request) return;
   if (!OPEN_STATUSES.has(request.status)) return fail(res, 409, CLOSED);
   if (tooMany(`msg:${req.user.id}`, 60, HOUR)) return fail(res, 429, 'Mandaste muchos mensajes en poco tiempo. Esperá un rato y seguimos.');
   next();
 }, receiveFiles, (req, res) => {
   // Se relee: mientras subían los archivos pudo cambiar.
-  const request = getOwnRequest(req.params.id, req.user.id);
-  if (!request) return fail(res, 404, NOT_FOUND);
+  const request = ownRequestOrFail(req, res);
+  if (!request) return;
   if (!OPEN_STATUSES.has(request.status)) return fail(res, 409, CLOSED);
   const text = String(req.body?.text || '').trim();
   const files = req.files || [];
@@ -123,7 +137,7 @@ changeRequestsRouter.post('/requests/:id/messages', (req, res, next) => {
   }
   const message = { role: 'user', text, imageIds: stored.map(image => image.id), at: nowIso() };
   const saved = saveRequest(request, { messages: [...request.messages, message], images: [...request.images, ...stored] });
-  res.json({ ok: true, item: requestView(saved) });
+  res.json({ ok: true, item: requestViewFor(saved, req.user.id) });
 });
 
 // Una respuesta en curso por pedido: si llega otra (doble click, reintento
@@ -145,10 +159,10 @@ async function replyTo(requestId) {
 }
 
 changeRequestsRouter.post('/requests/:id/reply', async (req, res) => {
-  const request = getOwnRequest(req.params.id, req.user.id);
-  if (!request) return fail(res, 404, NOT_FOUND);
+  const request = ownRequestOrFail(req, res);
+  if (!request) return;
   if (!OPEN_STATUSES.has(request.status)) return fail(res, 409, CLOSED);
-  if (request.messages.at(-1)?.role !== 'user') return res.json({ ok: true, item: requestView(request) });
+  if (request.messages.at(-1)?.role !== 'user') return res.json({ ok: true, item: requestViewFor(request, req.user.id) });
   let pending = replying.get(request.id);
   if (!pending) {
     if (tooMany(`reply:${req.user.id}`, 60, HOUR)) return fail(res, 429, 'La IA necesita un respiro. Probá de nuevo en un rato.');
@@ -157,7 +171,7 @@ changeRequestsRouter.post('/requests/:id/reply', async (req, res) => {
   }
   try {
     const saved = await pending;
-    res.json({ ok: true, item: requestView(saved || request) });
+    res.json({ ok: true, item: requestViewFor(saved || request, req.user.id) });
   } catch (error) {
     console.error('[requests] la IA no respondió:', error?.message || error);
     // El mensaje del usuario ya quedó guardado: el front ofrece "Reintentar".
@@ -166,29 +180,29 @@ changeRequestsRouter.post('/requests/:id/reply', async (req, res) => {
 });
 
 changeRequestsRouter.post('/requests/:id/submit', (req, res) => {
-  const request = getOwnRequest(req.params.id, req.user.id);
-  if (!request) return fail(res, 404, NOT_FOUND);
+  const request = ownRequestOrFail(req, res);
+  if (!request) return;
   if (request.status !== 'draft') return fail(res, 409, 'Este pedido ya fue enviado.');
   if (!userMessageCount(request.messages)) return fail(res, 400, 'Contanos qué necesitás antes de enviar el pedido.');
   const ts = nowIso();
   const title = request.title || request.summary.title || 'Pedido sin título';
   const saved = saveRequest(request, { status: 'pending', submitted_at: ts, title });
   addLocalMovement({ tipo: 'pedido', descripcion: `Pedido de cambios enviado: ${title}`, operador: req.user.nombre || req.user.email, origen: 'Pedidos de cambios', siteCode: auditSite(req.user.id, req.siteCode) });
-  res.json({ ok: true, item: requestView(saved) });
+  res.json({ ok: true, item: requestViewFor(saved, req.user.id) });
 });
 
 changeRequestsRouter.post('/requests/:id/withdraw', (req, res) => {
-  const request = getOwnRequest(req.params.id, req.user.id);
-  if (!request) return fail(res, 404, NOT_FOUND);
+  const request = ownRequestOrFail(req, res);
+  if (!request) return;
   if (request.status !== 'pending') return fail(res, 409, 'Solo se puede cancelar un pedido enviado que todavía no empezó.');
   const saved = saveRequest(request, { status: 'discarded', note: 'Cancelado por el usuario', resolved_at: nowIso() });
   addLocalMovement({ tipo: 'pedido', descripcion: `Pedido de cambios cancelado: ${saved.title}`, operador: req.user.nombre || req.user.email, origen: 'Pedidos de cambios', siteCode: auditSite(req.user.id, req.siteCode) });
-  res.json({ ok: true, item: requestView(saved) });
+  res.json({ ok: true, item: requestViewFor(saved, req.user.id) });
 });
 
 changeRequestsRouter.delete('/requests/:id', (req, res) => {
-  const request = getOwnRequest(req.params.id, req.user.id);
-  if (!request) return fail(res, 404, NOT_FOUND);
+  const request = ownRequestOrFail(req, res);
+  if (!request) return;
   if (request.status !== 'draft') return fail(res, 409, 'Solo se pueden descartar borradores.');
   getDb().prepare("DELETE FROM change_requests WHERE id=? AND status='draft'").run(request.id);
   removeImages(request.images);
@@ -207,7 +221,7 @@ function sendImage(res, request, imageId) {
 }
 
 changeRequestsRouter.get('/requests/:id/images/:imageId', (req, res) => {
-  const request = getOwnRequest(req.params.id, req.user.id);
+  const request = getVisibleRequest(req.params.id, req.user.id);
   if (!request) return fail(res, 404, NOT_FOUND);
   sendImage(res, request, req.params.imageId);
 });
@@ -284,12 +298,8 @@ function adminView(row) {
   };
 }
 
-const ADMIN_SELECT = `
-  SELECT r.*, u.nombre AS user_nombre, u.email AS user_email
-  FROM change_requests r LEFT JOIN users u ON u.id=r.user_id`;
-
 function adminRequest(id) {
-  const row = getDb().prepare(`${ADMIN_SELECT} WHERE r.id=? AND r.status<>'draft'`).get(String(id || ''));
+  const row = getDb().prepare(`${REQUEST_SELECT} WHERE r.id=? AND r.status<>'draft'`).get(String(id || ''));
   return row || null;
 }
 
@@ -297,13 +307,13 @@ changeRequestsAdminRouter.get('/admin/requests', requireRequestsAdmin, (req, res
   const status = String(req.query.status || '').trim();
   let rows;
   if (status === 'all') {
-    rows = getDb().prepare(`${ADMIN_SELECT} WHERE r.status<>'draft' ORDER BY r.submitted_at DESC LIMIT 500`).all();
+    rows = getDb().prepare(`${REQUEST_SELECT} WHERE r.status<>'draft' ORDER BY r.submitted_at DESC LIMIT 500`).all();
   } else if (status && status !== 'draft' && REQUEST_STATUSES.includes(status)) {
-    rows = getDb().prepare(`${ADMIN_SELECT} WHERE r.status=? ORDER BY r.submitted_at DESC LIMIT 500`).all(status);
+    rows = getDb().prepare(`${REQUEST_SELECT} WHERE r.status=? ORDER BY r.submitted_at DESC LIMIT 500`).all(status);
   } else if (status) {
     return fail(res, 400, 'Estado inválido. Usá pending, in_progress, done, discarded o all.');
   } else {
-    rows = getDb().prepare(`${ADMIN_SELECT} WHERE r.status IN ('pending','in_progress') ORDER BY r.submitted_at ASC LIMIT 500`).all();
+    rows = getDb().prepare(`${REQUEST_SELECT} WHERE r.status IN ('pending','in_progress') ORDER BY r.submitted_at ASC LIMIT 500`).all();
   }
   res.json({ ok: true, items: rows.map(adminView) });
 });

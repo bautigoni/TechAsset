@@ -32,7 +32,7 @@ const APP_MAP = `MAPA DE TECHASSET (menú de la izquierda; en el celular, barra 
 - Asistente: el botón del asistente de IA abre un chat (con voz) que consulta equipos, préstamos, tareas y agenda, y puede registrar préstamos, devoluciones, tareas y eventos.
 - Campana de notificaciones arriba; selector de sede (NFPT, NFND) arriba.
 - Configuración: perfil y tema (oscuro/claro y estilos), modo consulta, usuarios y roles de la sede, módulos que se prenden o apagan por sede, mail, logo de la sede.
-- Pedidos de cambios: esta misma sección.`;
+- Pedidos de cambios: esta misma sección. Los pedidos enviados los puede leer cualquier cuenta.`;
 
 const SYSTEM_PROMPT = `Sos el asistente de «Pedidos de cambios» de TechAsset, la app con la que el equipo TIC de un colegio maneja equipos, préstamos, aulas, tareas y agenda. Una persona te cuenta algo que quiere cambiar, agregar o que no le funciona. Tu trabajo es entender exactamente qué quiere, con las preguntas justas, y dejarlo escrito para que el equipo lo pueda construir sin volver a preguntarle.
 

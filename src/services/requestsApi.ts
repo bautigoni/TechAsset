@@ -21,7 +21,8 @@ export interface RequestMessage {
 
 export interface RequestImage { id: string; name: string; mime: string }
 
-export interface ChangeRequest {
+/** Lo que trae la lista: sin la conversación, que pesa y la lista no usa. */
+export interface RequestListItem {
   id: string;
   status: RequestStatus;
   title: string;
@@ -32,6 +33,12 @@ export interface ChangeRequest {
   updatedAt: string;
   submittedAt: string;
   resolvedAt: string;
+  /** Es de la cuenta que mira. Lo ajeno se lee pero no se escribe. */
+  mine: boolean;
+  requester: { nombre: string };
+}
+
+export interface ChangeRequest extends RequestListItem {
   userMessages: number;
   awaitingReply: boolean;
   messages?: RequestMessage[];
@@ -57,8 +64,8 @@ export const REQUEST_LIMITS = { textChars: 4000, imagesPerMessage: 3, imagesPerR
 type ItemResponse = { ok: true; item: ChangeRequest };
 
 export async function listRequests() {
-  const data = await apiGet<{ ok: true; items: ChangeRequest[] }>('/api/requests');
-  return data.items;
+  const data = await apiGet<{ ok: true; items: RequestListItem[]; truncated: boolean }>('/api/requests');
+  return { items: data.items, truncated: data.truncated };
 }
 
 export async function openDraft() {
