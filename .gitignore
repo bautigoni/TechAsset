@@ -51,3 +51,9 @@ data/procedimientos/*.mp4
 
 # Banco de pruebas de rendimiento (datos reales locales)
 perf/.out/
+
+# Pedidos de cambios: capturas privadas (servidor) y las que baja el script del dev
+data/private/
+.pedidos/
+# Secretos locales de scripts de desarrollo (contraseña de la API de admin)
+scripts/dev/.secrets*

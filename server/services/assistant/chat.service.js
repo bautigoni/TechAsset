@@ -5,7 +5,7 @@ import { buildLocalInventory, getMergedDevices, invalidateDeviceInventoryCache }
 import { notifySiteAdmins } from '../notifications.service.js';
 import { searchProcedures } from '../procedureSearch.js';
 import { searchKnowledgeArticles } from '../knowledge.service.js';
-import { callOpenAiResponses } from '../openaiResponses.service.js';
+import { claudeClient, hasClaude, responseText } from '../claude.service.js';
 
 const MAX_ROUNDS = 5;
 
@@ -263,16 +263,15 @@ WRITE_TOOLS.add('crear_recordatorio');
 
 export async function runToolLoop({ messages, access, context = null }) {
   const lastUserMessage = getLastUserMessage(messages);
-  if (!config.openaiApiKey) return localFallback(messages, access);
+  if (!hasClaude()) return localFallback(messages, access);
 
   const knowledgeContext = searchKnowledgeArticles(String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase(), lastUserMessage, 3)
     .map(article => `[${article.title}] (${article.category || 'General'}; tags: ${article.tags.join(', ') || 'sin tags'})\n${article.contentText.slice(0, 2500)}`)
     .join('\n\n');
 
-  const input = [
-    { role: 'system', content: buildSystemPrompt(access, knowledgeContext, context) },
-    ...(messages || []).slice(-20)
-  ];
+  const system = buildSystemPrompt(access, knowledgeContext, context);
+  const conversation = toClaudeMessages(messages);
+  if (!conversation.length) return { reply: '¿En qué te doy una mano?', suggestedRoute: null };
 
   let suggestedRoute = null;
   let suggestedDevice = null;
@@ -280,19 +279,25 @@ export async function runToolLoop({ messages, access, context = null }) {
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const lastRound = round === MAX_ROUNDS - 1;
-      const data = await callResponses(input, { allowTools: !lastRound });
-      const toolCalls = (data.output || []).filter(o => o.type === 'function_call');
+      const response = await callClaude(system, conversation, { allowTools: !lastRound });
+      // El contenido va entero (con los bloques de thinking) para que la vuelta
+      // siguiente lo reciba igual que lo generó el modelo.
+      conversation.push({ role: 'assistant', content: response.content });
+      const toolCalls = response.content.filter(block => block.type === 'tool_use');
 
-      if (!toolCalls.length) {
-        const reply = extractText(data);
+      if (response.stop_reason !== 'tool_use' || !toolCalls.length) {
+        const reply = responseText(response);
         if (!reply) return { reply: 'No pude procesar el mensaje. ¿Podés reformularlo?', suggestedRoute: null };
         const deterministic = await deterministicLoanDraft(lastUserMessage, access);
         if (deterministic && isGenericAssistantReply(reply)) return deterministic;
         return { reply, suggestedRoute, suggestedDevice };
       }
 
+      // Todos los resultados de una vuelta viajan juntos en un solo mensaje.
+      const results = [];
       for (const call of toolCalls) {
-        const result = await runAssistantTool(call.name, parseArgs(call.arguments), access);
+        const args = call.input && typeof call.input === 'object' ? call.input : {};
+        const result = await runAssistantTool(call.name, args, access);
         if (result?.ok !== false) {
           if (call.name === 'detalle_dispositivo' && result?.item?.etiqueta) {
             suggestedDevice = result.item.etiqueta;
@@ -303,9 +308,9 @@ export async function runToolLoop({ messages, access, context = null }) {
           } else if (call.name === 'abrir_seccion' && result?.seccion) suggestedRoute = result.seccion;
           else if (SUGGESTED_ROUTES[call.name]) suggestedRoute = SUGGESTED_ROUTES[call.name];
         }
-        input.push({ type: 'function_call', call_id: call.call_id, name: call.name, arguments: call.arguments });
-        input.push({ type: 'function_call_output', call_id: call.call_id, output: JSON.stringify(result).slice(0, 6000) });
+        results.push({ type: 'tool_result', tool_use_id: call.id, content: JSON.stringify(result).slice(0, 6000), is_error: result?.ok === false });
       }
+      conversation.push({ role: 'user', content: results });
     }
   } catch (error) {
     console.error('[assistant] fallo del loop:', error?.message || error);
@@ -727,21 +732,30 @@ function titleCase(value) {
   return String(value || '').trim().replace(/\S+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
 
-// ---------- OpenAI Responses API ----------
+// ---------- Claude (Messages API) ----------
 
-async function callResponses(input, { allowTools = true } = {}) {
-  return callOpenAiResponses({ input, tools: TOOLS, toolChoice: allowTools ? 'auto' : 'none' });
+const CLAUDE_TOOLS = TOOLS.map(tool => ({ name: tool.name, description: tool.description, input_schema: tool.parameters }));
+
+async function callClaude(system, messages, { allowTools = true } = {}) {
+  return claudeClient().messages.create({
+    model: config.claudeModel,
+    max_tokens: 4096,
+    output_config: { effort: 'low' },
+    system,
+    tools: CLAUDE_TOOLS,
+    tool_choice: { type: allowTools ? 'auto' : 'none' },
+    messages
+  });
 }
 
-function extractText(data) {
-  if (data.output_text) return String(data.output_text).trim();
-  for (const item of Array.isArray(data.output) ? data.output : []) {
-    if (item?.type !== 'message') continue;
-    for (const chunk of Array.isArray(item.content) ? item.content : []) {
-      if (typeof chunk?.text === 'string' && chunk.text.trim()) return chunk.text.trim();
-    }
-  }
-  return '';
+// El historial del front viene como [{ role, content }] con texto. Claude pide
+// que arranque con un mensaje del usuario: se descarta el saludo inicial.
+function toClaudeMessages(messages) {
+  const recent = (messages || []).slice(-20)
+    .map(message => ({ role: message.role === 'assistant' ? 'assistant' : 'user', content: String(message.content || '').trim() }))
+    .filter(message => message.content);
+  while (recent.length && recent[0].role !== 'user') recent.shift();
+  return recent;
 }
 
 // Bloqueado a propósito: no reintroducir ejecución de SQL libre acá.
@@ -755,10 +769,6 @@ function runSqlQuery(_args = {}, siteCode) {
 }
 
 // ---------- Helpers ----------
-
-function parseArgs(raw) {
-  try { return JSON.parse(raw || '{}'); } catch { return {}; }
-}
 
 function isLoanedState(value) {
   const state = normalize(value);

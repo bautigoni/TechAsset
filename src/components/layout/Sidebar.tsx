@@ -12,6 +12,7 @@ import {
   History,
   Link2,
   Lightbulb,
+  MessageSquarePlus,
   MonitorSmartphone,
   PanelLeftClose,
   PanelLeftOpen,
@@ -58,6 +59,7 @@ const NAV: NavItem[] = [
   { key: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
   { key: 'tools', label: 'Herramientas auxiliares', Icon: Wrench },
   { key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
+  { key: 'pedidos', label: 'Pedidos de cambios', Icon: MessageSquarePlus },
   { key: 'settings', label: 'Configuración', Icon: Settings }
 ];
 

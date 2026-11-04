@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
-import { config } from '../config.js';
 import { getDb, nowIso } from '../db.js';
-import { callOpenAiResponses, responseOutputText } from './openaiResponses.service.js';
+import { claudeText, hasClaude } from './claude.service.js';
 
 const pendingTickets = new Map();
 
@@ -23,7 +22,7 @@ export async function refreshTicketSummary(ticketId, siteCode, { force = false }
   const checklist = db.prepare('SELECT text, done FROM ticket_checklist_items WHERE ticket_id=? AND site_code=? ORDER BY position,id').all(ticketId, siteCode);
   const fallback = deterministicTicketSummary(ticket, comments, activity, checklist);
   let summary = fallback;
-  if (config.openaiApiKey && (force || comments.length || activity.length)) {
+  if (hasClaude() && (force || comments.length || activity.length)) {
     summary = await generateText({
       instructions: 'Resumí el ticket técnico en español claro y muy conciso. Incluí: qué pasó, estado actual, acciones realizadas, trabajo pendiente y resolución final si está cerrado. No inventes datos. Máximo 120 palabras.',
       input: JSON.stringify({ ticket: pickTicket(ticket), comments, activity, checklist })
@@ -38,7 +37,7 @@ export async function getDeviceAiSummary({ siteCode, device, events, tickets }) 
   const cached = getDb().prepare('SELECT * FROM device_ai_summaries WHERE site_code=? AND device_tag=?').get(siteCode, device.etiqueta);
   if (cached?.source_signature === signature && cached.summary) return { text: cached.summary, generatedAt: cached.generated_at, cached: true };
   const fallback = deterministicDeviceSummary(device, events, tickets);
-  const text = config.openaiApiKey
+  const text = hasClaude()
     ? await generateText({
       instructions: 'Redactá un resumen técnico de un dispositivo en español, una sola frase o párrafo corto. Usá únicamente los datos provistos: estado/asignación, cantidad de préstamos, reparaciones/incidentes y fechas relevantes. No inventes garantía, compra ni mantenimiento.',
       input: JSON.stringify({ device, recentEvents: events.slice(0, 25), tickets: tickets.slice(0, 15) })
@@ -54,10 +53,7 @@ export async function getDeviceAiSummary({ siteCode, device, events, tickets }) 
 }
 
 async function generateText({ instructions, input }) {
-  const data = await callOpenAiResponses({ instructions, input, maxOutputTokens: 300 });
-  const text = responseOutputText(data);
-  if (!text) throw new Error('Respuesta de IA vacía');
-  return text;
+  return claudeText({ instructions, input, maxTokens: 400 });
 }
 
 function deterministicTicketSummary(ticket, comments, activity, checklist) {

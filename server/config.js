@@ -30,11 +30,19 @@ export const config = {
   sqliteDbPath: path.resolve(rootDir, process.env.SQLITE_DB_PATH || './data/techasset.db'),
   cacheCsvPath: path.resolve(rootDir, process.env.CACHE_CSV_PATH || './data/cache_sheet.csv'),
   devicesAppCsvPath: path.resolve(rootDir, process.env.DEVICES_APP_CSV_PATH || './data/devices_app.csv'),
+  // IA: Claude (Anthropic). OpenAI queda solo para transcribir audio del
+  // asistente de voz, que Claude no hace; sin OPENAI_API_KEY la voz se apaga.
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  claudeModel: process.env.CLAUDE_MODEL || 'claude-haiku-5-5',
   openaiApiKey: process.env.OPENAI_API_KEY || '',
-  openaiModel: process.env.OPENAI_MODEL || '',
-  openaiPromptId: process.env.OPENAI_PROMPT_ID || '',
+  // Pedidos de cambios: contraseña de la API de administración (la usa el
+  // script del desarrollador). Vacía = la API de admin queda cerrada.
+  requestsAdminPassword: process.env.REQUESTS_ADMIN_PASSWORD || '',
   localtunnelSubdomain: process.env.LOCALTUNNEL_SUBDOMAIN || 'techasset-nfpt',
   toolsTempDir: path.resolve(rootDir, process.env.TOOLS_TEMP_DIR || './data/tmp'),
+  // Archivos que solo sirve la API con permiso (capturas de Pedidos de cambios).
+  // Fuera de data/uploads a propósito: eso se sirve por estático con solo tener sesión.
+  privateDataDir: path.resolve(rootDir, process.env.PRIVATE_DATA_DIR || './data/private'),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB || 10),
   smtp: {
     server: process.env.SMTP_SERVER || '',
