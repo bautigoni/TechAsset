@@ -31,20 +31,20 @@ let base;
 let adminCookie = '';
 const users = {};
 
-function makeUser(email) {
+function makeUser(email, site = 'NFPT') {
   const db = getDb();
   const ts = nowIso();
   db.prepare('INSERT INTO users (email, nombre, rol_global, activo, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)')
     .run(email, email.split('@')[0], 'Consulta', ts, ts);
   const user = db.prepare('SELECT * FROM users WHERE email=?').get(email);
-  db.prepare("INSERT INTO user_sites (user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at) VALUES (?, 'NFPT', 'Consulta', 'Mañana', 1, 1, ?, ?)")
-    .run(user.id, ts, ts);
+  db.prepare("INSERT INTO user_sites (user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at) VALUES (?, ?, 'Consulta', 'Mañana', 1, 1, ?, ?)")
+    .run(user.id, site, ts, ts);
   const { token } = createSession(user.id);
   return { id: user.id, email, cookie: `${config.sessionCookieName}=${token}` };
 }
 
-async function call(method, url, { cookie, json, form } = {}) {
-  const headers = { Accept: 'application/json', 'X-Site-Code': 'NFPT' };
+async function call(method, url, { cookie, json, form, site = 'NFPT' } = {}) {
+  const headers = { Accept: 'application/json', 'X-Site-Code': site };
   if (cookie) headers.Cookie = cookie;
   let body;
   if (json !== undefined) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(json); }
@@ -405,6 +405,31 @@ describe('pedidos compartidos entre cuentas', () => {
 
     const own = await call('GET', '/requests', { cookie: users.ana.cookie });
     assert.equal(own.data.items.find(entry => entry.id === id).mine, true);
+  });
+
+  test('es intersede: lo enviado en una sede lo ven las cuentas de la otra, y al revés', async () => {
+    const nordelta = makeUser('nordelta@colegio.test', 'NFND');
+    const inOwnSite = { cookie: nordelta.cookie, site: 'NFND' };
+    const { data } = await call('POST', '/requests', inOwnSite);
+    const fromNordelta = data.item.id;
+    const sent = await call('POST', `/requests/${fromNordelta}/messages`, { ...inOwnSite, form: messageForm('Desde Nordelta', [{ buffer: PNG }]) });
+    assert.equal(sent.status, 200);
+    assert.equal((await call('POST', `/requests/${fromNordelta}/submit`, inOwnSite)).status, 200);
+    assert.equal(getDb().prepare('SELECT site_code FROM change_requests WHERE id=?').get(fromNordelta).site_code, 'NFND');
+
+    // Una cuenta que solo tiene Puertos lo ve en la lista, en el detalle y con su captura.
+    const list = await call('GET', '/requests', { cookie: users.beto.cookie });
+    assert.ok(list.data.items.some(item => item.id === fromNordelta));
+    assert.equal((await call('GET', `/requests/${fromNordelta}`, { cookie: users.beto.cookie })).status, 200);
+    const image = await call('GET', `/requests/${fromNordelta}/images/${sent.data.item.images[0].id}`, { cookie: users.beto.cookie });
+    assert.equal(image.status, 200);
+
+    // Y al revés: el de Puertos lo ve la cuenta de Nordelta, desde su sede.
+    const { id: fromPuertos } = await sentByAna();
+    const otherWay = await call('GET', '/requests', inOwnSite);
+    assert.equal(otherWay.status, 200);
+    assert.ok(otherWay.data.items.some(item => item.id === fromPuertos));
+    assert.equal((await call('GET', `/requests/${fromPuertos}`, inOwnSite)).status, 200);
   });
 
   test('sin nombre muestra la parte del mail antes de la arroba, nunca el mail', async () => {
