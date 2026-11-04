@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { getDb, nowIso } from '../db.js';
 import { isSiteManager, requireSite } from '../services/siteContext.service.js';
 import { notifySiteAdmins } from '../services/notifications.service.js';
-import { callOpenAiResponses, responseOutputText } from '../services/openaiResponses.service.js';
+import { claudeText } from '../services/claude.service.js';
 
 export const classroomsRouter = Router();
 
@@ -548,12 +548,12 @@ classroomsRouter.post('/classrooms/:roomKey/health', async (req, res, next) => {
     const equipment = parseHealthEquipment(classroom.equipment_json, classroom);
     let report;
     try {
-      const data = await callOpenAiResponses({
+      const text = await claudeText({
         instructions: 'Sos analista de salud de aulas escolares. Respondé SOLO JSON válido, conciso, en español, con score (0-100), status, summary, recurringProblems[], positives[], risks[], preventiveActions[]. No inventes datos.',
         input: `Aula: ${JSON.stringify({ name:classroom.nombre, state:classroom.estado_general, observations:classroom.observaciones, equipment, tickets, devices })}`,
-        maxOutputTokens: 900
+        maxTokens: 1200
       });
-      report = parseHealthReport(responseOutputText(data));
+      report = parseHealthReport(text);
     } catch {
       report = localHealthReport(classroom, equipment, tickets, devices);
     }

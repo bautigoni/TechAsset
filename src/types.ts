@@ -1,4 +1,4 @@
-export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'history' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'reminders' | 'suggestions' | 'tools' | 'quickaccess' | 'assistant' | 'tenants' | 'adminusers' | 'settings';
+export type ViewKey = 'dashboard' | 'devices' | 'loans' | 'history' | 'inventory' | 'analytics' | 'agenda' | 'schedules' | 'tasks' | 'canvas' | 'pettycash' | 'classrooms' | 'tickets' | 'knowledge' | 'reminders' | 'suggestions' | 'tools' | 'quickaccess' | 'pedidos' | 'assistant' | 'tenants' | 'adminusers' | 'settings';
 
 export type ClassroomItemState = 'OK' | 'Con falla' | 'No tiene' | 'En reparación' | 'Sin revisar';
 export type ClassroomGeneralState = 'OK' | 'Con observaciones' | 'Problema' | 'Sin revisar';
@@ -82,6 +82,8 @@ export interface AuthUser {
   email: string;
   nombre: string;
   rolGlobal: string;
+  /** Puede usar «Pedidos de cambios» (lo prende el admin por mail). */
+  canRequestChanges?: boolean;
 }
 
 export interface Device {

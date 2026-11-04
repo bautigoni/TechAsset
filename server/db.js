@@ -508,6 +508,28 @@ export function initDb(database = getDb()) {
       updated_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_suggestion_comments_item ON suggestion_comments(site_code, suggestion_id, id);
+    -- Pedidos de cambios: la persona charla con la IA, que arma el resumen
+    -- (summary_json). messages_json/images_json son arrays; las capturas viven
+    -- en data/private/requests/<user_id>/. Sin site_code en la clave: el pedido
+    -- es de la persona, la sede se guarda solo como contexto.
+    CREATE TABLE IF NOT EXISTS change_requests (
+      id TEXT PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      site_code TEXT DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','pending','in_progress','done','discarded')),
+      title TEXT DEFAULT '',
+      summary_json TEXT DEFAULT '{}',
+      ready INTEGER DEFAULT 0,
+      messages_json TEXT DEFAULT '[]',
+      images_json TEXT DEFAULT '[]',
+      note TEXT DEFAULT '',
+      created_at TEXT,
+      updated_at TEXT,
+      submitted_at TEXT DEFAULT '',
+      resolved_at TEXT DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_change_requests_user ON change_requests(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_change_requests_status ON change_requests(status, submitted_at);
     CREATE TABLE IF NOT EXISTS device_ai_summaries (
       site_code TEXT NOT NULL,
       device_tag TEXT NOT NULL,
@@ -1012,6 +1034,8 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'allowed_users', 'notif_email', 'INTEGER DEFAULT 0');
   ensureColumn(database, 'allowed_users', 'notification_prefs_json', "TEXT DEFAULT ''");
   ensureColumn(database, 'allowed_users', 'prefs_json', "TEXT DEFAULT ''");
+  // Pedidos de cambios: apagado por defecto, lo prende el admin por mail.
+  ensureColumn(database, 'users', 'can_request_changes', 'INTEGER DEFAULT 0');
 
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);

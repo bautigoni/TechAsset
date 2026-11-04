@@ -5,6 +5,7 @@
 @import './layout.css';
 @import './responsive.css';
 @import './auth.css';
+@import './requests.css';
 /* Navegación y overrides del Tema B (Smart Campus) — carga al final. */
 @import './nav-smart.css';
 /* Sistema de movimiento (recetas transitions.dev). Va último a propósito:

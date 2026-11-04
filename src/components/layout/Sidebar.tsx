@@ -12,6 +12,7 @@ import {
   History,
   Link2,
   Lightbulb,
+  MessageSquarePlus,
   MonitorSmartphone,
   PanelLeftClose,
   PanelLeftOpen,
@@ -35,7 +36,8 @@ type NavIcon = ComponentType<{ size?: number; strokeWidth?: number }>;
 
 // requiresAny: vistas que no son un módulo propio y se ven si el rol puede ver
 // alguno de estos módulos (Historial = Préstamos o Dispositivos).
-export type NavItem = { key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: boolean; requiresAny?: ModuleKey[] };
+// requestsOnly: depende de un permiso de la cuenta, no de la sede ni del rol.
+export type NavItem = { key: ViewKey; label: string; Icon: NavIcon; superadminOnly?: boolean; requiresAny?: ModuleKey[]; requestsOnly?: boolean };
 
 const NAV: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', Icon: Gauge },
@@ -58,6 +60,7 @@ const NAV: NavItem[] = [
   { key: 'suggestions', label: 'Sugerencias', Icon: Lightbulb },
   { key: 'tools', label: 'Herramientas auxiliares', Icon: Wrench },
   { key: 'quickaccess', label: 'Accesos rápidos', Icon: Link2 },
+  { key: 'pedidos', label: 'Pedidos de cambios', Icon: MessageSquarePlus, requestsOnly: true },
   { key: 'settings', label: 'Configuración', Icon: Settings }
 ];
 
@@ -65,9 +68,10 @@ const BOTTOM_NAV = new Set<ViewKey>(['settings']);
 
 // Lista de navegación visible según sede, rol y módulos habilitados.
 // La comparten Sidebar (ambos temas) y el bottom nav mobile del tema B.
-export function visibleNavItems(settings: Record<string, unknown> | null | undefined, isSuperadmin: boolean, access: ModuleAccess | null): NavItem[] {
+export function visibleNavItems(settings: Record<string, unknown> | null | undefined, isSuperadmin: boolean, access: ModuleAccess | null, canRequestChanges = false): NavItem[] {
   return NAV.filter(item =>
     (!item.superadminOnly || isSuperadmin) &&
+    (!item.requestsOnly || canRequestChanges) &&
     isViewEnabled(item.key, settings) &&
     (!access || canViewModule(access, item.key, TOGGLEABLE_KEYS)) &&
     (!item.requiresAny || item.requiresAny.some(key => isViewEnabled(key, settings) && (!access || canViewModule(access, key, TOGGLEABLE_KEYS))))
@@ -85,7 +89,7 @@ export function getStairsMargin(index: number, activeIndex: number): number {
   return 5;
 }
 
-export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null, themeProfile = 'classic', impersonating = false }: {
+export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collapsed, onToggleCollapsed, activeSite, sites, settings, isSuperadmin = false, access = null, canRequestChanges = false, themeProfile = 'classic', impersonating = false }: {
   active: ViewKey;
   onNavigate: (view: ViewKey) => void;
   onPrefetch?: (view: ViewKey) => void;
@@ -98,11 +102,12 @@ export function Sidebar({ active, onNavigate, onPrefetch, open, onClose, collaps
   settings?: Record<string, unknown> | null;
   isSuperadmin?: boolean;
   access?: ModuleAccess | null;
+  canRequestChanges?: boolean;
   themeProfile?: ThemeProfile;
   impersonating?: boolean;
 }) {
   const siteInfo = sites.find(site => site.siteCode === activeSite);
-  const visibleNav = visibleNavItems(settings, isSuperadmin, access);
+  const visibleNav = visibleNavItems(settings, isSuperadmin, access, canRequestChanges);
   const navigate = (view: ViewKey) => {
     onNavigate(view);
     onClose();

@@ -89,7 +89,8 @@ function buildSession(token, row) {
       email: row.email,
       nombre: row.nombre,
       rolGlobal: row.rol_global,
-      activo: Boolean(row.activo)
+      activo: Boolean(row.activo),
+      canRequestChanges: Number(row.can_request_changes) === 1
     },
     sites: getUserSites(row.id)
   };

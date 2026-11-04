@@ -12,11 +12,13 @@ npm run server           # solo backend
 npm run build            # tsc -b && vite build (verificación principal antes de mergear)
 npm run start            # producción local (sirve dist/ desde Express en 8000)
 npm run preview          # vite preview de dist/
+npm test                 # tests de integración (node:test) en server/tests/, base SQLite temporal
 npm run release:broadcast -- --version=vX.Y.Z --title="..." --file=./release-notes.md
 npm run release:broadcast:dry -- --version=vX.Y.Z ...  # simula sin enviar
+node scripts/dev/pedidos.mjs                           # Pedidos de cambios pendientes (ver sección)
 ```
 
-`npm run build` debe pasar antes de cerrar cualquier cambio. No hay tests configurados.
+`npm run build` debe pasar antes de cerrar cualquier cambio. `npm test` también (por ahora cubre Pedidos de cambios). Los tests montan `server/app.js` (la app sin `listen`); `server/index.js` solo arranca base, workers y puerto.
 
 Node: producción (VM) corre **Node 20**; `engines.node` acepta 20 a 26. `better-sqlite3` está fijado en **12.9.0** exacto: es la última versión con binario precompilado para Node 20 en Linux (la VM tiene 1 GB de RAM y compilarlo ahí es arriesgado) y para Node 24 en Windows. No subirlo sin chequear los binarios de la release. Con npm 11, si `better-sqlite3` no carga localmente, correr `npx prebuild-install` dentro de `node_modules/better-sqlite3` (npm ya no ejecuta los scripts de instalación por defecto). El Dockerfile usa `node:22-bookworm-slim` (no Alpine — `better-sqlite3` necesita glibc).
 
@@ -116,6 +118,23 @@ Ojo con el orden de rutas en Express: un `/:id` declarado antes tapa a las rutas
 
 `/api/daily-closures` (GET/POST + `/preview`) genera un resumen automático: préstamos activos, tareas pendientes/en proceso/hechas hoy, agenda del día y sus incidencias, aulas con problema, notas importantes. El operador agrega observaciones desde `DailyClosureModal` y se persiste en `daily_closures`.
 
+## IA (Claude)
+
+Toda la IA usa **Claude** (`@anthropic-ai/sdk`, modelo `CLAUDE_MODEL`, default `claude-haiku-5-5`) por `server/services/claude.service.js` (`claudeClient`, `claudeText`, `hasClaude`). Sin `ANTHROPIC_API_KEY` todo cae a su fallback local (asistente por reglas, resúmenes determinísticos, informe de aula local). Ya no se usa la Responses API de OpenAI: lo único que queda de OpenAI es la **transcripción de audio** del asistente de voz (`assistant/audio.service.js`), porque Claude no transcribe; sin `OPENAI_API_KEY` la voz responde "no configurado" y el resto anda igual.
+
+- Asistente (`assistant/chat.service.js`): loop de tool use; las tools se definen en el formato viejo (`parameters`) y se mapean a `input_schema` en `CLAUDE_TOOLS`. El contenido del assistant se devuelve entero en cada vuelta (con los bloques de thinking) y los `tool_result` de una vuelta van juntos en un solo mensaje.
+
+## Pedidos de cambios
+
+Sección para que cuentas habilitadas (ej. la directora) pidan correcciones o cosas nuevas charlando con una IA que pregunta lo que falta y arma un resumen construible. No depende de la sede ni del rol: es un permiso de la cuenta (`users.can_request_changes`, apagado por defecto). Por eso el router va **antes** de `requireEditor` (un rol de consulta puede pedir cambios).
+
+- Tabla `change_requests` (id uuid texto, `status` `draft|pending|in_progress|done|discarded` con CHECK, `summary_json`, `messages_json`, `images_json`, `note`, fechas). Servicio `server/services/changeRequests.service.js`, IA en `requestInterviewer.service.js` (Haiku + salida estructurada con zod; el **mapa de la app** está en `APP_MAP`: mantenerlo al día cuando cambien pantallas), rutas en `server/routes/changeRequests.routes.js`.
+- Capturas en `PRIVATE_DATA_DIR` (default `data/private/requests/<user_id>/`), **no** en `data/uploads` (eso se sirve por estático con solo tener sesión). Se validan por magic bytes (JPG/PNG/WEBP, 5 MB); las sirve solo `/api/requests/:id/images/:imageId` (dueño) o la de admin.
+- Usuario: `/api/requests` (lista, abrir borrador sin duplicar, mensajes multipart, `reply` aparte para poder reintentar, `submit`, `withdraw`, `DELETE` solo borradores). Pedido ajeno = mismo 404 que inexistente.
+- Admin: `/api/admin/requests*` y `/api/admin/requests-access`. Sesión propia con `REQUESTS_ADMIN_PASSWORD` (cookie `techasset_requests_admin`, path `/api/admin`) o un Superadmin logueado. Va **antes** de `authMiddleware`.
+- Front: vista `pedidos` (`src/components/requests/RequestsPage.tsx`), URL `/sede/<sede>/pedidos[/<id>]`; en el menú solo si `user.canRequestChanges`.
+- Flujo del dev ("mirá las correcciones"): `node scripts/dev/pedidos.mjs` (lee `scripts/dev/.secrets.json` con `{ url, password }`, gitignoreado; baja capturas a `.pedidos/<id>/`, también gitignoreado), implementar, deployar y `node scripts/dev/pedidos.mjs estado <id> done "nota cálida que diga dónde está el cambio"`. Habilitar a alguien: `node scripts/dev/pedidos.mjs acceso <mail> on` (la persona tiene que haber entrado una vez).
+
 ## Accesos rápidos
 
 `quick_links` table + `/api/quick-links` CRUD. Validación de URL: solo `http(s)://`, rechaza `javascript:`, `data:`, `vbscript:`. La tabla incluye links institucionales fijos + ediciones desde la UI. Archivos `.bat` administrativos viven en `public/downloads/` y se sirven como descarga (no se ejecutan desde la web).
@@ -154,7 +173,7 @@ Botón opcional en la pantalla de login al lado del tradicional por mail. Si las
 **Producción real (VM bauhub, desde julio 2026): systemd, NO Docker.**
 
 - Caddy corre en el host y proxea `techasset.bauhub.online` → `reverse_proxy 127.0.0.1:3013` (ver `/etc/caddy/Caddyfile`).
-- En el 3013 escucha el servicio systemd `techasset` (`/etc/systemd/system/techasset.service`): `node server/index.js` desde `/opt/apps/techasset`, con `.env` ahí (PORT=3013, `DATABASE_URL` a Postgres/Supabase, `OPENAI_API_KEY`).
+- En el 3013 escucha el servicio systemd `techasset` (`/etc/systemd/system/techasset.service`): `node server/index.js` desde `/opt/apps/techasset`, con `.env` ahí (PORT=3013, `DATABASE_URL` a Postgres/Supabase, `ANTHROPIC_API_KEY`, `REQUESTS_ADMIN_PASSWORD`, y `OPENAI_API_KEY` solo si se quiere la voz del asistente).
 - **Deploy: `ssh oracle` y correr `/opt/apps/techasset/deploy.sh`** (pull + npm install + build + `systemctl restart techasset` + health check). El restart NO es opcional: node no relee código del disco — actualizar la carpeta sin reiniciar deja el proceso viejo sirviendo (causa histórica de "deployé y sigue igual").
 - Cuidado con el nombre: el `hostname` de la VM es `bauhub`, pero el alias en `~/.ssh/config` es **`oracle`** (`168.75.68.75`, user `ubuntu`, key `oracle-bauhub.key`). `ssh bauhub` no resuelve.
 - La VM **no tiene credenciales de GitHub**: el código llega por un `git bundle` subido por scp, y el `origin` del repo remoto apunta a ese archivo en `/tmp` (que se borra al reiniciar la VM). Si `deploy.sh` avisa que el bundle no existe, desde la máquina de desarrollo: `git bundle create /tmp/techasset.bundle <sha-en-la-vm>..main`, `scp` a `bauhub:/tmp/`, `git remote set-url origin` al nuevo path y correr `deploy.sh`. El script imprime los comandos exactos con el SHA correcto.

@@ -46,6 +46,7 @@ const TicketsPage = lazyView('tickets', () => import('./components/tickets/Ticke
 const KnowledgePage = lazyView('knowledge', () => import('./components/knowledge/KnowledgePage'), 'KnowledgePage');
 const CanvasPage = lazyView('canvas', () => import('./components/canvas/CanvasPage'), 'CanvasPage');
 const RemindersPage = lazyView('reminders', () => import('./components/reminders/RemindersPage'), 'RemindersPage');
+const RequestsPage = lazyView('pedidos', () => import('./components/requests/RequestsPage'), 'RequestsPage');
 const TenantsDashboard = lazyView('tenants', () => import('./components/settings/TenantsDashboard'), 'TenantsDashboard');
 const UsersByTenantPage = lazyView('adminusers', () => import('./components/settings/UsersByTenantPage'), 'UsersByTenantPage');
 const SettingsPage = lazyView('settings', () => import('./components/settings/SettingsPage'), 'SettingsPage');
@@ -180,8 +181,14 @@ export function App() {
   useEffect(() => {
     if (!user || !activeSite) return;
     const next = `/sede/${activeSite.toLowerCase()}/${view}`;
-    if (window.location.pathname !== next) window.history.replaceState(null, '', next);
+    // Las subrutas de la vista (/pedidos/<id>) las maneja la propia pantalla.
+    if (window.location.pathname !== next && !window.location.pathname.startsWith(`${next}/`)) window.history.replaceState(null, '', next);
   }, [activeSite, view, user]);
+
+  // Pedidos de cambios es un permiso de la cuenta: sin él, la vista no existe.
+  useEffect(() => {
+    if (view === 'pedidos' && user && !user.canRequestChanges) setView('dashboard');
+  }, [view, user]);
 
   // La sede de los requests se fija en layout effect: corre antes que los
   // useEffect de los hijos, así ninguna vista pide datos con la sede anterior.
@@ -488,7 +495,8 @@ export function App() {
     const home = sites.find(site => site.isDefault) || sites[0];
     if (home) setActiveSite(home.siteCode);
   };
-  const navItems = visibleNavItems(siteSettings, superadmin, access);
+  const canRequestChanges = Boolean(user?.canRequestChanges);
+  const navItems = visibleNavItems(siteSettings, superadmin, access, canRequestChanges);
   const navKeys = navItems.map(item => item.key).join(',');
 
   // Con la sesión y los módulos resueltos, bajamos en idle los chunks de las
@@ -533,7 +541,7 @@ export function App() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
+      <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} canRequestChanges={canRequestChanges} themeProfile={themeProfile} impersonating={impersonating} />
       <main className="main main-content">
         <Topbar consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} />
         {/* El `key={view}` remonta este nodo en cada cambio de vista, y con eso
@@ -560,6 +568,7 @@ export function App() {
         {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
+        {view === 'pedidos' && canRequestChanges && <RequestsPage />}
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}
@@ -637,7 +646,7 @@ function readSiteFromUrl() {
 
 function readViewFromUrl(): ViewKey | null {
   const view = window.location.pathname.match(/^\/sede\/[^/]+\/([^/]+)/i)?.[1] as ViewKey | undefined;
-  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'assistant', 'tenants', 'adminusers', 'settings'];
+  const allowed: ViewKey[] = ['dashboard', 'devices', 'loans', 'history', 'inventory', 'analytics', 'agenda', 'schedules', 'tasks', 'reminders', 'canvas', 'pettycash', 'classrooms', 'tickets', 'knowledge', 'suggestions', 'tools', 'quickaccess', 'pedidos', 'assistant', 'tenants', 'adminusers', 'settings'];
   return view && allowed.includes(view) ? view : null;
 }
 
