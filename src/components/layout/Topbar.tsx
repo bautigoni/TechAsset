@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Check, ChevronDown, Menu } from 'lucide-react';
+import { Check, ChevronDown, Menu, MessageSquarePlus } from 'lucide-react';
 import type { AuthUser, SiteInfo, ViewKey } from '../../types';
 import { hasVariantNav, isSmartProfile, type ThemeProfile } from '../../utils/themeProfile';
 import { NotificationBell } from './NotificationBell';
@@ -131,6 +131,13 @@ export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = '
     </div>
   ) : null;
 
+  const requestButton = (
+    <button className="topbar-request-btn" type="button" aria-label="Sugerir un cambio" title="Sugerir un cambio" onClick={() => onNavigate?.('pedidos')}>
+      <MessageSquarePlus size={18} strokeWidth={2} aria-hidden="true" />
+      <span>Sugerir<span className="topbar-request-more"> un cambio</span></span>
+    </button>
+  );
+
   if (hasVariantNav(themeProfile)) {
     return (
       <div className={`topbar-smart-block has-searchrow ${impersonating ? 'has-impersonation' : ''}`}>
@@ -146,6 +153,7 @@ export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = '
             <button className="topbar-icon-btn topbar-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
               <Menu size={20} strokeWidth={1.7} />
             </button>
+            {requestButton}
             {consultationMode && <span className="consulta-banner">Modo consulta</span>}
           </div>
           <div className="topbar-right">
@@ -172,6 +180,7 @@ export function Topbar({ consultationMode, onMenu, onToggleTheme, activeSite = '
         <button className="mobile-menu-btn" type="button" aria-label="Abrir menú" onClick={onMenu}>
           <span className="hamburger-icon" aria-hidden="true" />
         </button>
+        {requestButton}
         {consultationMode && <span className="consulta-banner">Modo consulta</span>}
       </div>
       <div className="topbar-actions">

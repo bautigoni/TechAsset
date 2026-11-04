@@ -132,7 +132,7 @@ Sección para que cualquier cuenta con sesión pida correcciones o cosas nuevas 
 - Capturas en `PRIVATE_DATA_DIR` (default `data/private/requests/<user_id>/`), **no** en `data/uploads` (eso se sirve por estático con solo tener sesión). Se validan por magic bytes (JPG/PNG/WEBP, 5 MB); las sirve solo `/api/requests/:id/images/:imageId` (dueño) o la de admin.
 - Usuario: `/api/requests` (lista, abrir borrador sin duplicar, mensajes multipart, `reply` aparte para poder reintentar, `submit`, `withdraw`, `DELETE` solo borradores). Pedido ajeno = mismo 404 que inexistente.
 - Admin: `/api/admin/requests*`. Sesión propia con `REQUESTS_ADMIN_PASSWORD` (cookie `techasset_requests_admin`, path `/api/admin`) o un Superadmin logueado. Va **antes** de `authMiddleware`.
-- Front: vista `pedidos` (`src/components/requests/RequestsPage.tsx`), URL `/sede/<sede>/pedidos[/<id>]`; siempre en el menú. La columna `users.can_request_changes` quedó en la base de producción sin uso.
+- Front: vista `pedidos` (`src/components/requests/RequestsPage.tsx`), URL `/sede/<sede>/pedidos[/<id>]`; siempre en el menú y con el botón «Sugerir un cambio» de la barra superior. El chat no tiene scroll propio: una sola columna centrada y el scroll de la página. La columna `users.can_request_changes` quedó en la base de producción sin uso.
 - Flujo del dev ("mirá las correcciones"): `node scripts/dev/pedidos.mjs` (lee `scripts/dev/.secrets.json` con `{ url, password }`, gitignoreado; baja capturas a `.pedidos/<id>/`, también gitignoreado), implementar, deployar y `node scripts/dev/pedidos.mjs estado <id> done "nota cálida que diga dónde está el cambio"`.
 
 ## Accesos rápidos

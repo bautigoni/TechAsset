@@ -47,7 +47,7 @@ export function RequestsPage() {
     const next = id ? `${listUrl()}/${id}` : listUrl();
     if (window.location.pathname !== next) window.history.pushState(null, '', next);
     setSelectedId(id);
-    window.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
 
   return selectedId
@@ -157,7 +157,9 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [zoom, setZoom] = useState<{ src: string; name: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const chatRef = useRef<HTMLDivElement | null>(null);
+  const summaryRef = useRef<HTMLElement | null>(null);
+  const scrolledOnce = useRef(false);
   const textareaId = useId();
 
   useEffect(() => {
@@ -176,9 +178,15 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const firstMessage = (request?.userMessages || 0) === 0;
   const imagesLeft = REQUEST_LIMITS.imagesPerRequest - (request?.images?.length || 0) - attachments.length;
 
+  // Hay una sola barra de scroll, la de la página. Al abrir (sin animación) y con
+  // cada mensaje se baja hasta el final del chat; si ya está listo, hasta el resumen.
+  const readyToSend = Boolean(request?.ready) && request?.status === 'draft' && !thinking;
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-  }, [messages.length, thinking]);
+    if (messages.length < 2) return;
+    const target = readyToSend ? summaryRef.current : chatRef.current;
+    target?.scrollIntoView({ block: 'end', behavior: scrolledOnce.current ? 'smooth' : 'instant' });
+    scrolledOnce.current = true;
+  }, [messages.length, thinking, readyToSend]);
 
   // La caja crece de 2 a 10 líneas.
   useLayoutEffect(() => {
@@ -344,7 +352,7 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
       )}
 
       <div className="request-layout">
-        <div className="request-chat">
+        <div className="request-chat" ref={chatRef}>
           <div className="request-messages" aria-live="polite" aria-label="Conversación">
             {messages.map((message, index) => (
               <ChatBubble key={`${message.at}-${index}`} message={message} requestId={request.id} imageName={imageName} onZoom={setZoom} />
@@ -360,7 +368,6 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 <Button onClick={() => void runReply()}><RotateCcw size={15} /> Reintentar</Button>
               </div>
             )}
-            <div ref={endRef} />
           </div>
 
           {open ? (
@@ -408,7 +415,7 @@ function RequestDetail({ id, onBack }: { id: string; onBack: () => void }) {
           )}
         </div>
 
-        <aside className="request-summary" aria-label="Resumen del pedido">
+        <aside className="request-summary" ref={summaryRef} aria-label="Resumen del pedido">
           <SummaryCard request={request} />
           {!resolved && (
             <div className="request-actions">

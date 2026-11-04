@@ -5,6 +5,8 @@
    ================================================================ */
 
 .requests-page { --req-accent: var(--accent, var(--blue)); }
+/* Columna centrada. Tres clases para ganarle al max-width de .view.active. */
+.view.active.requests-page { width: 100%; max-width: 904px; margin-inline: auto; }
 
 .requests-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .requests-head h2 { margin: 0; }
@@ -136,16 +138,18 @@
 .request-note-done { --note: var(--green); }
 .request-note-discarded { --note: var(--muted); }
 
-.request-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 18px; align-items: start; }
+/* Una sola columna centrada y un solo scroll, el de la página: el chat crece con
+   la conversación y no tiene barra propia. */
+.request-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 
 .request-chat {
   display: flex;
   flex-direction: column;
-  min-height: 520px;
+  min-height: 420px;
   border: 1px solid var(--surface-border);
   border-radius: var(--radius);
   background: var(--surface);
-  overflow: hidden;
+  scroll-margin-bottom: 16px;
 }
 .request-chat.request-skeleton, .request-summary.request-skeleton { min-height: 420px; }
 .request-messages {
@@ -154,9 +158,6 @@
   flex-direction: column;
   gap: 12px;
   padding: 18px;
-  max-height: min(64vh, 720px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .request-bubble {
@@ -203,7 +204,12 @@
   background: color-mix(in srgb, var(--yellow) 10%, var(--surface));
 }
 
-.request-composer { border-top: 1px solid var(--surface-border); padding: 12px; background: var(--surface); }
+.request-composer {
+  border-top: 1px solid var(--surface-border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 12px;
+  background: var(--surface);
+}
 .request-composer-row { display: flex; align-items: flex-end; gap: 8px; }
 .request-textarea {
   flex: 1;
@@ -255,7 +261,7 @@
 .request-closed { margin: 0; padding: 14px 18px; border-top: 1px solid var(--surface-border); }
 
 /* Resumen */
-.request-summary { position: sticky; top: calc(var(--topbar-h) + 14px); display: grid; gap: 12px; }
+.request-summary { display: grid; gap: 12px; scroll-margin-bottom: 16px; }
 .request-summary-card {
   padding: 16px 18px;
   border-radius: var(--radius);
@@ -274,15 +280,15 @@
 .request-summary-fields dt { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .request-summary-fields dd { margin: 3px 0 0; font-size: 14px; overflow-wrap: anywhere; }
 .request-summary-fields ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
-.request-actions { display: grid; gap: 8px; }
-.request-actions .btn { width: 100%; }
-.request-actions-hint { margin: 2px 0 0; font-size: 12.5px; }
+.request-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.request-actions .btn { flex: 1 1 200px; }
+.request-actions-hint { flex: 1 0 100%; margin: 2px 0 0; font-size: 12.5px; text-align: center; }
 
 @media (max-width: 900px) {
-  .request-layout { grid-template-columns: minmax(0, 1fr); }
-  .request-summary { position: static; }
-  .request-chat { min-height: 0; }
-  .request-messages { max-height: 60vh; padding: 14px; }
+  /* El margen deja lugar a la barra inferior del tema con nav abajo. */
+  .request-chat { min-height: 0; scroll-margin-bottom: 96px; }
+  .request-summary { scroll-margin-bottom: 96px; }
+  .request-messages { padding: 14px; }
   .request-bubble { max-width: 88%; }
 }
 
@@ -293,6 +299,44 @@
   .request-row { padding: 12px 14px; align-items: flex-start; }
 }
 
+/* Botón principal en la barra superior. */
+.topbar-min .topbar-title-wrap { flex: 1; align-items: center; }
+.topbar-left { flex: 1; min-width: 0; }
+/* Sin elemento central: los controles de la derecha van contra el borde. */
+.topbar-smart-block .topbar-smart { grid-template-columns: minmax(0, 1fr) auto; }
+.topbar-request-btn {
+  flex: 0 1 380px;
+  min-width: 0;
+  height: 42px;
+  margin-left: clamp(12px, 8vw, 170px);
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent, var(--blue));
+  color: #fff;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--duration-fast, .15s) ease, transform var(--duration-fast, .15s) ease;
+}
+.topbar-request-btn:hover { background: color-mix(in srgb, var(--accent, var(--blue)) 86%, #fff); }
+.topbar-request-btn:active { transform: scale(.98); }
+.topbar-request-btn:focus-visible { outline: 2px solid var(--accent, var(--blue)); outline-offset: 2px; }
+
+@media (max-width: 768px) {
+  .topbar-request-btn { margin-left: 0; padding: 0 10px; gap: 6px; }
+}
+@media (max-width: 520px) {
+  .topbar-request-more { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .topbar-request-btn { transition: none; }
   .request-bubble, .request-typing span, .request-skeleton { animation: none; }
 }
