@@ -1035,7 +1035,6 @@ export function initDb(database = getDb()) {
   ensureColumn(database, 'allowed_users', 'notification_prefs_json', "TEXT DEFAULT ''");
   ensureColumn(database, 'allowed_users', 'prefs_json', "TEXT DEFAULT ''");
   // Pedidos de cambios: apagado por defecto, lo prende el admin por mail.
-  ensureColumn(database, 'users', 'can_request_changes', 'INTEGER DEFAULT 0');
 
   const count = database.prepare('SELECT COUNT(*) AS total FROM agenda').get().total;
   if (!count) seedAgenda(database);

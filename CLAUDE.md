@@ -126,14 +126,14 @@ Toda la IA usa **Claude** (`@anthropic-ai/sdk`, modelo `CLAUDE_MODEL`, default `
 
 ## Pedidos de cambios
 
-Sección para que cuentas habilitadas (ej. la directora) pidan correcciones o cosas nuevas charlando con una IA que pregunta lo que falta y arma un resumen construible. No depende de la sede ni del rol: es un permiso de la cuenta (`users.can_request_changes`, apagado por defecto). Por eso el router va **antes** de `requireEditor` (un rol de consulta puede pedir cambios).
+Sección para que cualquier cuenta con sesión pida correcciones o cosas nuevas charlando con una IA que pregunta lo que falta y arma un resumen construible. No depende de la sede ni del rol. Por eso el router va **antes** de `requireEditor` (un rol de consulta puede pedir cambios).
 
 - Tabla `change_requests` (id uuid texto, `status` `draft|pending|in_progress|done|discarded` con CHECK, `summary_json`, `messages_json`, `images_json`, `note`, fechas). Servicio `server/services/changeRequests.service.js`, IA en `requestInterviewer.service.js` (Haiku + salida estructurada con zod; el **mapa de la app** está en `APP_MAP`: mantenerlo al día cuando cambien pantallas), rutas en `server/routes/changeRequests.routes.js`.
 - Capturas en `PRIVATE_DATA_DIR` (default `data/private/requests/<user_id>/`), **no** en `data/uploads` (eso se sirve por estático con solo tener sesión). Se validan por magic bytes (JPG/PNG/WEBP, 5 MB); las sirve solo `/api/requests/:id/images/:imageId` (dueño) o la de admin.
 - Usuario: `/api/requests` (lista, abrir borrador sin duplicar, mensajes multipart, `reply` aparte para poder reintentar, `submit`, `withdraw`, `DELETE` solo borradores). Pedido ajeno = mismo 404 que inexistente.
-- Admin: `/api/admin/requests*` y `/api/admin/requests-access`. Sesión propia con `REQUESTS_ADMIN_PASSWORD` (cookie `techasset_requests_admin`, path `/api/admin`) o un Superadmin logueado. Va **antes** de `authMiddleware`.
-- Front: vista `pedidos` (`src/components/requests/RequestsPage.tsx`), URL `/sede/<sede>/pedidos[/<id>]`; en el menú solo si `user.canRequestChanges`.
-- Flujo del dev ("mirá las correcciones"): `node scripts/dev/pedidos.mjs` (lee `scripts/dev/.secrets.json` con `{ url, password }`, gitignoreado; baja capturas a `.pedidos/<id>/`, también gitignoreado), implementar, deployar y `node scripts/dev/pedidos.mjs estado <id> done "nota cálida que diga dónde está el cambio"`. Habilitar a alguien: `node scripts/dev/pedidos.mjs acceso <mail> on` (la persona tiene que haber entrado una vez).
+- Admin: `/api/admin/requests*`. Sesión propia con `REQUESTS_ADMIN_PASSWORD` (cookie `techasset_requests_admin`, path `/api/admin`) o un Superadmin logueado. Va **antes** de `authMiddleware`.
+- Front: vista `pedidos` (`src/components/requests/RequestsPage.tsx`), URL `/sede/<sede>/pedidos[/<id>]`; siempre en el menú. La columna `users.can_request_changes` quedó en la base de producción sin uso.
+- Flujo del dev ("mirá las correcciones"): `node scripts/dev/pedidos.mjs` (lee `scripts/dev/.secrets.json` con `{ url, password }`, gitignoreado; baja capturas a `.pedidos/<id>/`, también gitignoreado), implementar, deployar y `node scripts/dev/pedidos.mjs estado <id> done "nota cálida que diga dónde está el cambio"`.
 
 ## Accesos rápidos
 

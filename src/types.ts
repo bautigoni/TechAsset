@@ -82,8 +82,6 @@ export interface AuthUser {
   email: string;
   nombre: string;
   rolGlobal: string;
-  /** Puede usar «Pedidos de cambios» (lo prende el admin por mail). */
-  canRequestChanges?: boolean;
 }
 
 export interface Device {

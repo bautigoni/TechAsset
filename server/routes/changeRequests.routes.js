@@ -3,7 +3,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { config } from '../config.js';
 import { addLocalMovement, getDb, nowIso } from '../db.js';
-import { getUserSession, getUserSites, isSuperadmin, normalizeEmail } from '../services/siteContext.service.js';
+import { getUserSession, getUserSites, isSuperadmin } from '../services/siteContext.service.js';
 import {
   OPEN_STATUSES,
   REQUEST_LIMITS,
@@ -24,9 +24,9 @@ import {
 import { interviewer } from '../services/requestInterviewer.service.js';
 
 // «Pedidos de cambios». Dos routers:
-// - changeRequestsRouter: la persona habilitada (can_request_changes) charla con
-//   la IA y envía el pedido. Va después de authMiddleware y ANTES de requireEditor:
-//   una directora con rol de consulta tiene que poder pedir cambios igual.
+// - changeRequestsRouter: cualquier cuenta con sesión charla con la IA y envía el
+//   pedido. Va después de authMiddleware y ANTES de requireEditor: un rol de
+//   consulta tiene que poder pedir cambios igual.
 // - changeRequestsAdminRouter: el desarrollador (o su script) lee y resuelve los
 //   pedidos. Sesión propia con contraseña de .env, o un Superadmin logueado.
 //   Va antes de authMiddleware porque el script no tiene sesión de usuario.
@@ -64,11 +64,6 @@ function auditSite(userId, fallback = '') {
 }
 
 // ---------- Usuario ----------
-
-changeRequestsRouter.use('/requests', (req, res, next) => {
-  if (!req.user?.canRequestChanges) return fail(res, 403, 'Esta sección no está habilitada en tu cuenta.');
-  next();
-});
 
 changeRequestsRouter.get('/requests', (req, res) => {
   res.json({ ok: true, items: listOwnRequests(req.user.id).map(item => requestView(item, { withMessages: false })) });
@@ -349,14 +344,3 @@ changeRequestsAdminRouter.get('/admin/requests/:id/images/:imageId', requireRequ
   sendImage(res, readRequestRow(row), req.params.imageId);
 });
 
-// Prende o apaga la sección para una cuenta. No toca nada más del usuario.
-changeRequestsAdminRouter.post('/admin/requests-access', requireRequestsAdmin, (req, res) => {
-  const email = normalizeEmail(req.body?.email);
-  if (!email) return fail(res, 400, 'Falta el mail.');
-  const enabled = req.body?.enabled === true || req.body?.enabled === 'true' || req.body?.enabled === 1;
-  const user = getDb().prepare('SELECT id, email, nombre FROM users WHERE lower(email)=?').get(email);
-  if (!user) return fail(res, 404, 'Ese mail todavía no entró nunca a TechAsset. Tiene que iniciar sesión una vez y después lo habilitás.');
-  getDb().prepare('UPDATE users SET can_request_changes=?, updated_at=? WHERE id=?').run(enabled ? 1 : 0, nowIso(), user.id);
-  addLocalMovement({ tipo: 'permiso', descripcion: `Pedidos de cambios ${enabled ? 'habilitado' : 'deshabilitado'} para ${user.email}`, operador: req.requestsAdmin.nombre, origen: 'Pedidos de cambios', siteCode: auditSite(user.id) });
-  res.json({ ok: true, email: user.email, nombre: user.nombre || '', enabled });
-});

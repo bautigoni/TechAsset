@@ -125,8 +125,8 @@ app.use('/api', analyticsRouter);
 // lectura al módulo; el router aplica propiedad y permisos de gestión por acción.
 app.use('/api', suggestionsRouter);
 app.use('/api', remindersRouter);
-// Pedidos de cambios: el permiso es de la cuenta (can_request_changes), no del
-// rol en la sede, así que va antes de requireEditor.
+// Pedidos de cambios: abierto a toda cuenta con sesión, sin importar el rol en la
+// sede, así que va antes de requireEditor.
 app.use('/api', changeRequestsRouter);
 // Base de conocimiento y canvas: estaban programados pero sin montar. Chequean
 // canViewModule/canEditModule adentro; en el front son módulos que cada sede prende.

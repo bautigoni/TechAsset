@@ -185,11 +185,6 @@ export function App() {
     if (window.location.pathname !== next && !window.location.pathname.startsWith(`${next}/`)) window.history.replaceState(null, '', next);
   }, [activeSite, view, user]);
 
-  // Pedidos de cambios es un permiso de la cuenta: sin él, la vista no existe.
-  useEffect(() => {
-    if (view === 'pedidos' && user && !user.canRequestChanges) setView('dashboard');
-  }, [view, user]);
-
   // La sede de los requests se fija en layout effect: corre antes que los
   // useEffect de los hijos, así ninguna vista pide datos con la sede anterior.
   useLayoutEffect(() => {
@@ -495,8 +490,7 @@ export function App() {
     const home = sites.find(site => site.isDefault) || sites[0];
     if (home) setActiveSite(home.siteCode);
   };
-  const canRequestChanges = Boolean(user?.canRequestChanges);
-  const navItems = visibleNavItems(siteSettings, superadmin, access, canRequestChanges);
+  const navItems = visibleNavItems(siteSettings, superadmin, access);
   const navKeys = navItems.map(item => item.key).join(',');
 
   // Con la sesión y los módulos resueltos, bajamos en idle los chunks de las
@@ -541,7 +535,7 @@ export function App() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} canRequestChanges={canRequestChanges} themeProfile={themeProfile} impersonating={impersonating} />
+      <Sidebar active={view} onNavigate={setView} onPrefetch={prefetchView} open={menuOpen} onClose={() => setMenuOpen(false)} collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebar} activeSite={activeSite} sites={sites} settings={siteSettings} isSuperadmin={superadmin} access={access} themeProfile={themeProfile} impersonating={impersonating} />
       <main className="main main-content">
         <Topbar consultationMode={effectiveConsultation} onMenu={() => setMenuOpen(true)} onToggleTheme={toggleTheme} activeSite={activeSite} sites={sites} onSiteChange={setActiveSite} user={user} onLogout={handleLogout} onNavigate={setView} themeProfile={themeProfile} impersonating={impersonating} onExitImpersonation={exitImpersonation} />
         {/* El `key={view}` remonta este nodo en cada cambio de vista, y con eso
@@ -568,7 +562,7 @@ export function App() {
         {view === 'knowledge' && <KnowledgePage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'canvas' && <CanvasPage key={activeSite} consultationMode={effectiveConsultation} />}
         {view === 'reminders' && <RemindersPage key={activeSite} consultationMode={effectiveConsultation} />}
-        {view === 'pedidos' && canRequestChanges && <RequestsPage />}
+        {view === 'pedidos' && <RequestsPage />}
         {view === 'tenants' && superadmin && <TenantsDashboard activeSite={activeSite} onSwitch={setActiveSite} onChanged={refreshSessionSites} />}
         {view === 'adminusers' && superadmin && <UsersByTenantPage consultationMode={effectiveConsultation} />}
         {view === 'settings' && <SettingsPage operator={operator} setOperator={setOperator} consultationMode={effectiveConsultation} setConsultationMode={setConsultationMode} siteRole={currentRole} roleReadOnly={roleReadOnly} sync={sync} user={user} sites={sites} onSitesChanged={refreshSessionSites} onModulesChanged={reloadSiteSettings} />}

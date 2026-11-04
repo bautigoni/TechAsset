@@ -31,11 +31,11 @@ let base;
 let adminCookie = '';
 const users = {};
 
-function makeUser(email, { canRequest = false } = {}) {
+function makeUser(email) {
   const db = getDb();
   const ts = nowIso();
-  db.prepare('INSERT INTO users (email, nombre, rol_global, activo, created_at, updated_at, can_request_changes) VALUES (?, ?, ?, 1, ?, ?, ?)')
-    .run(email, email.split('@')[0], 'Consulta', ts, ts, canRequest ? 1 : 0);
+  db.prepare('INSERT INTO users (email, nombre, rol_global, activo, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)')
+    .run(email, email.split('@')[0], 'Consulta', ts, ts);
   const user = db.prepare('SELECT * FROM users WHERE email=?').get(email);
   db.prepare("INSERT INTO user_sites (user_id, site_code, site_role, turno, is_default, activo, created_at, updated_at) VALUES (?, 'NFPT', 'Consulta', 'Mañana', 1, 1, ?, ?)")
     .run(user.id, ts, ts);
@@ -74,8 +74,8 @@ function fakeReply(overrides = {}) {
 before(async () => {
   await new Promise(resolve => { server = app.listen(0, '127.0.0.1', resolve); });
   base = `http://127.0.0.1:${server.address().port}/api`;
-  users.ana = makeUser('ana@colegio.test', { canRequest: true });
-  users.beto = makeUser('beto@colegio.test', { canRequest: true });
+  users.ana = makeUser('ana@colegio.test');
+  users.beto = makeUser('beto@colegio.test');
   users.caro = makeUser('caro@colegio.test');
   const login = await call('POST', '/admin/login', { json: { password: 'clave-de-prueba' } });
   assert.equal(login.status, 200);
@@ -101,39 +101,14 @@ async function newRequestWithMessage(user, text = 'El buscador no encuentra la T
 }
 
 describe('permiso', () => {
-  test('sin el permiso la API responde 403', async () => {
+  test('cualquier cuenta con sesión entra, aunque su rol sea de consulta', async () => {
     const res = await call('GET', '/requests', { cookie: users.caro.cookie });
-    assert.equal(res.status, 403);
-    assert.equal(res.data.error, 'Esta sección no está habilitada en tu cuenta.');
+    assert.equal(res.status, 200);
   });
 
   test('sin sesión responde 401', async () => {
     const res = await call('GET', '/requests');
     assert.equal(res.status, 401);
-  });
-
-  test('el admin lo prende y lo apaga por mail, y la sesión lo ve al toque', async () => {
-    const on = await call('POST', '/admin/requests-access', { cookie: adminCookie, json: { email: 'CARO@colegio.test', enabled: true } });
-    assert.equal(on.status, 200);
-    assert.equal(on.data.enabled, true);
-    const session = await call('GET', '/auth/session', { cookie: users.caro.cookie });
-    assert.equal(session.data.user.canRequestChanges, true);
-    assert.equal((await call('GET', '/requests', { cookie: users.caro.cookie })).status, 200);
-
-    const off = await call('POST', '/admin/requests-access', { cookie: adminCookie, json: { email: 'caro@colegio.test', enabled: false } });
-    assert.equal(off.data.enabled, false);
-    assert.equal((await call('GET', '/requests', { cookie: users.caro.cookie })).status, 403);
-    // No toca nada más de la cuenta.
-    const row = getDb().prepare('SELECT rol_global, activo FROM users WHERE email=?').get('caro@colegio.test');
-    assert.deepEqual({ ...row }, { rol_global: 'Consulta', activo: 1 });
-    const audit = getDb().prepare("SELECT COUNT(*) AS n FROM local_movements WHERE tipo='permiso'").get();
-    assert.ok(audit.n >= 2);
-  });
-
-  test('el acceso por mail desconocido da 404 y sin sesión de admin da 401', async () => {
-    assert.equal((await call('POST', '/admin/requests-access', { cookie: adminCookie, json: { email: 'nadie@x.test', enabled: true } })).status, 404);
-    assert.equal((await call('POST', '/admin/requests-access', { json: { email: 'caro@colegio.test', enabled: true } })).status, 401);
-    assert.equal((await call('POST', '/admin/requests-access', { cookie: users.ana.cookie, json: { email: 'caro@colegio.test', enabled: true } })).status, 401);
   });
 
   test('contraseña de admin incorrecta', async () => {

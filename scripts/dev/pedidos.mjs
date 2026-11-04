@@ -5,7 +5,6 @@
 //   node scripts/dev/pedidos.mjs --all                todos (menos borradores)
 //   node scripts/dev/pedidos.mjs --json               lo mismo en JSON (para otro script o un agente)
 //   node scripts/dev/pedidos.mjs estado <id> <pending|in_progress|done|discarded> "nota"
-//   node scripts/dev/pedidos.mjs acceso <email> [on|off]
 //
 // La nota la ve la persona en la app: escribila cálida y concreta, en
 // rioplatense, y decí dónde encontrar el cambio. <id> acepta los primeros
@@ -157,15 +156,8 @@ async function setStatus(prefix, status, note) {
   console.log(`✔ "${data.item.title}" → ${STATUS_LABEL[data.item.status]}${data.item.note ? `\n  Nota: ${data.item.note}` : ''}`);
 }
 
-async function setAccess(email, value = 'on') {
-  if (!email || !['on', 'off'].includes(value)) die('Uso: acceso <email> [on|off]');
-  const { data } = await api('POST', '/admin/requests-access', { email, enabled: value === 'on' });
-  console.log(`✔ Pedidos de cambios ${data.enabled ? 'habilitado' : 'deshabilitado'} para ${data.nombre ? `${data.nombre} ` : ''}<${data.email}>`);
-}
-
 const args = process.argv.slice(2);
 await login();
 if (args[0] === 'estado') await setStatus(args[1], args[2], args[3]);
-else if (args[0] === 'acceso') await setAccess(args[1], args[2]);
 else if (!args[0] || args[0].startsWith('--')) await list(args.includes('--all'), args.includes('--json'));
 else die(`Comando desconocido "${args[0]}". Mirá el encabezado de scripts/dev/pedidos.mjs.`);
