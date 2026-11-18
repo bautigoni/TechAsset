@@ -9,13 +9,14 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-# Toolchain mínimo para compilar better-sqlite3.
+# Toolchain mínimo para compilar better-sqlite3, y curl para el healthcheck de Coolify.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
         python3 \
         make \
         g++ \
         ca-certificates \
+        curl \
  && rm -rf /var/lib/apt/lists/*
 
 # Dependencias primero (cacheable).
