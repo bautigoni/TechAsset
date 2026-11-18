@@ -31,7 +31,13 @@ async function getClient() {
     // ?sslmode=disable en la URL; producción no lo lleva y sigue igual.
     ssl: /[?&]sslmode=disable\b/.test(connectionString) ? false : { rejectUnauthorized: false },
     connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS || 10000),
-    keepAlive: true
+    // Que la base corte una consulta trabada antes de que el hilo principal se
+    // rinda (PG_SYNC_TIMEOUT_MS, 15 s): así vuelve un error y no hay que matar
+    // el worker y reconectar.
+    query_timeout: Number(process.env.PG_QUERY_TIMEOUT_MS || 12000),
+    statement_timeout: Number(process.env.PG_QUERY_TIMEOUT_MS || 12000),
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000
   });
   // `pg` emite `error` cuando Supabase/pgbouncer corta una conexión idle. Sin
   // listener Node termina el worker y el hilo principal queda bloqueado.

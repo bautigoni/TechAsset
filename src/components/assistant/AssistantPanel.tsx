@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMountTransition } from '../../hooks/useMountTransition';
 import { createPortal } from 'react-dom';
 import type { ThemeProfile } from '../../utils/themeProfile';
-import { sendAssistantMessage, transcribeAssistantAudio, type AssistantContext, type AssistantResponse } from '../../services/assistantApi';
+import { confirmAssistantAction, sendAssistantMessage, transcribeAssistantAudio, type AssistantAction, type AssistantContext, type AssistantResponse } from '../../services/assistantApi';
 
 export const ASSISTANT_LOGO = '/assistant-logo.png';
 
@@ -60,13 +60,19 @@ function spanishVoice(): SpeechSynthesisVoice | undefined {
     || voices.find(voice => /^es-/i.test(voice.lang));
 }
 
-export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, open: openProp, onOpenChange, themeProfile = 'classic' }: {
+type ActionState = { status: 'pending' | 'busy' | 'done' | 'cancelled' | 'error'; message?: string };
+
+const INPUT_MAX_HEIGHT = 160;
+
+export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, open: openProp, onOpenChange, docked = false, themeProfile = 'classic' }: {
   onNavigate: (view: string) => void;
   onOpenDevice?: (deviceTag: string) => boolean;
   canEdit?: boolean;
   context?: AssistantContext | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Hay una ficha abierta desde el chat: el panel queda al costado y deja usar la ficha. */
+  docked?: boolean;
   themeProfile?: ThemeProfile;
 }) {
   const [openState, setOpenState] = useState(false);
@@ -88,18 +94,60 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
   const chunksRef = useRef<Blob[]>([]);
   const recordingTimeoutRef = useRef<number | null>(null);
   const cancelRecordingRef = useRef(false);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const feedRef = useRef<HTMLDivElement | null>(null);
+  const [actionStates, setActionStates] = useState<Record<string, ActionState>>({});
 
   const suggestions = canEdit ? STAFF_SUGGESTIONS : VIEWER_SUGGESTIONS;
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      // Con una ficha abierta al lado, el Esc es para la ficha: el chat sigue.
+      if (event.key === 'Escape' && !docked) setOpen(false);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, docked]);
+
+  // Al abrir el chat (con el botón flotante o desde donde sea) el cursor queda
+  // en el campo de texto, sin tocar nada más, y se ve el último mensaje.
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => {
+      const feed = feedRef.current;
+      if (feed) feed.scrollTop = feed.scrollHeight;
+      const input = inputRef.current;
+      if (input && !input.disabled) {
+        input.focus({ preventScroll: true });
+        const end = input.value.length;
+        input.setSelectionRange(end, end);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, panel.mounted]);
+
+  // Cada mensaje nuevo (o el "escribiendo…") baja el chat hasta el final.
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (!feed) return;
+    feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
+  }, [messages.length, loading, actionStates]);
+
+  // Cuando termina de responder, el foco vuelve al campo para seguir escribiendo.
+  useEffect(() => {
+    if (open && !loading && voiceState === 'idle') inputRef.current?.focus({ preventScroll: true });
+  }, [loading, voiceState, open]);
+
+  // El campo crece con el texto hasta un tope; después scrollea adentro.
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, INPUT_MAX_HEIGHT)}px`;
+    input.style.overflowY = input.scrollHeight > INPUT_MAX_HEIGHT ? 'auto' : 'hidden';
+  }, [input, panel.mounted]);
 
   useEffect(() => () => {
     if (recordingTimeoutRef.current) window.clearTimeout(recordingTimeoutRef.current);
@@ -132,15 +180,16 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
     const newMessages = [...messages, { role: 'user' as const, content: clean }];
     setMessages(newMessages);
     try {
+      // Toda la conversación, con lo que el asistente consultó en cada vuelta
+      // (antes solo los últimos 12 mensajes y sin esos datos).
       const response = await sendAssistantMessage(
-        newMessages.slice(-12).map(m => ({ role: m.role, content: m.content })), context
+        newMessages.map(m => ({ role: m.role, content: m.content, memory: m.response?.memory || '' })), context
       );
       setMessages(prev => [...prev, { role: 'assistant', content: stripMarkdown(response.reply), response }]);
-      if (response.suggestedDevice && onOpenDevice?.(response.suggestedDevice)) {
-        setOpen(false);
-      } else if (response.suggestedRoute) {
-        onNavigate(response.suggestedRoute);
-      }
+      setActionStates(prev => ({ ...prev, ...Object.fromEntries((response.actions || []).map(action => [action.id, { status: 'pending' as const }])) }));
+      // La ficha se abre al lado y el chat sigue abierto para seguir charlando.
+      if (response.openDevice) openDeviceFromChat(response.openDevice);
+      else if (response.suggestedRoute) onNavigate(response.suggestedRoute);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'No pude procesar el pedido. ¿Querés intentar de nuevo?' }]);
     } finally {
@@ -148,8 +197,55 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
     }
   };
 
+  // En compu la ficha se abre al lado y el chat sigue. En el celu no entran los
+  // dos: se pliega el chat (la charla queda) y el botón flotante lo vuelve a abrir
+  // donde estaba.
+  const openDeviceFromChat = (tag: string) => {
+    const opened = onOpenDevice?.(tag);
+    if (!opened) return;
+    if (window.matchMedia('(max-width: 767px)').matches) setOpen(false);
+    // La ficha se lleva el foco al abrirse; se devuelve al chat para seguir escribiendo.
+    else window.setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 120);
+  };
+
+  // Mientras hay una ficha abierta al lado, los modales se corren a la izquierda
+  // para no quedar tapados por el panel.
+  useEffect(() => {
+    if (!open || !docked) return;
+    document.body.classList.add('assistant-docked');
+    return () => document.body.classList.remove('assistant-docked');
+  }, [open, docked]);
+
   const handleBackdrop = (event: React.MouseEvent) => {
-    if (event.target === event.currentTarget) setOpen(false);
+    if (event.target === event.currentTarget && !docked) setOpen(false);
+  };
+
+  const runAction = async (action: AssistantAction) => {
+    const state = actionStates[action.id];
+    if (state && state.status !== 'pending' && state.status !== 'error') return;
+    setActionStates(prev => ({ ...prev, [action.id]: { status: 'busy' } }));
+    try {
+      const result = await confirmAssistantAction(action);
+      setActionStates(prev => ({ ...prev, [action.id]: { status: 'done', message: result.message } }));
+      // Queda en la charla como respuesta del asistente: así lo recuerda después.
+      setMessages(prev => [...prev, { role: 'assistant', content: result.message }]);
+    } catch (error) {
+      setActionStates(prev => ({ ...prev, [action.id]: { status: 'error', message: error instanceof Error ? error.message : 'No se pudo completar.' } }));
+    }
+  };
+
+  const cancelAction = (action: AssistantAction) => {
+    setActionStates(prev => ({ ...prev, [action.id]: { status: 'cancelled' } }));
+    setMessages(prev => [...prev, { role: 'user', content: `Cancelé: ${action.summary}` }]);
+    inputRef.current?.focus();
+  };
+
+  const onInputKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter envía; Shift + Enter agrega un renglón. Mientras se compone con IME no se envía.
+    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      void send(input);
+    }
   };
 
   const stopRecording = () => {
@@ -245,7 +341,7 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
   };
 
   const chatEl = (
-    <div className={`assistant-backdrop t-fade ${panel.stateClass}`.trim()} onClick={handleBackdrop}>
+    <div className={`assistant-backdrop t-fade ${panel.stateClass}${docked ? ' is-docked' : ''}`.trim()} onClick={handleBackdrop}>
     <section className="assistant-panel t-pop" aria-label="Asistente TechAsset">
       <header className="assistant-panel-head">
         <div className="assistant-panel-brand">
@@ -259,7 +355,7 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </header>
-      <div className="assistant-feed">
+      <div className="assistant-feed" ref={feedRef}>
         {!hasStarted && (
           <div className="assistant-welcome">
             <img className="assistant-welcome-logo" src={ASSISTANT_LOGO} alt="" aria-hidden="true" />
@@ -279,7 +375,35 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
               </div>
             )}
             <div className="chat-bubble">
-              <p>{msg.content}</p>
+              <p className="chat-text">{msg.content}</p>
+              {msg.response?.devices && msg.response.devices.length > 0 && (
+                <div className="assistant-device-links">
+                  {msg.response.devices.map(device => (
+                    <button key={device.etiqueta} type="button" className="assistant-chip" onClick={() => openDeviceFromChat(device.etiqueta)}>
+                      Ver ficha {device.alias ? `${device.alias} · ` : ''}{device.etiqueta}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {msg.response?.actions?.map(action => {
+                const state = actionStates[action.id] || { status: 'pending' };
+                return (
+                  <div key={action.id} className={`assistant-action is-${state.status}`}>
+                    <span className="assistant-action-summary">{action.summary}</span>
+                    {(state.status === 'pending' || state.status === 'busy' || state.status === 'error') && (
+                      <div className="assistant-action-buttons">
+                        <button type="button" className="assistant-action-confirm" disabled={state.status === 'busy' || !canEdit} onClick={() => void runAction(action)}>
+                          {state.status === 'busy' ? 'Confirmando…' : state.status === 'error' ? 'Reintentar' : action.label}
+                        </button>
+                        <button type="button" className="assistant-action-cancel" disabled={state.status === 'busy'} onClick={() => cancelAction(action)}>Cancelar</button>
+                      </div>
+                    )}
+                    {state.status === 'done' && <span className="assistant-action-status">Confirmado</span>}
+                    {state.status === 'cancelled' && <span className="assistant-action-status">Cancelado</span>}
+                    {state.status === 'error' && state.message && <span className="assistant-action-error" role="alert">{state.message}</span>}
+                  </div>
+                );
+              })}
               {msg.role === 'assistant' && (
                 <button
                   type="button"
@@ -312,12 +436,17 @@ export function AssistantPanel({ onNavigate, onOpenDevice, canEdit, context, ope
         )}
       </div>
       <form className="assistant-input-form" onSubmit={e => { e.preventDefault(); send(input); }}>
-        <input
+        <textarea
+          ref={inputRef}
           className="assistant-input"
+          rows={1}
           value={input}
           onChange={e => setInput(e.target.value)}
+          onKeyDown={onInputKeyDown}
           placeholder={voiceState === 'recording' ? 'Te escucho…' : voiceState === 'transcribing' ? 'Transcribiendo audio…' : 'Escribí tu pedido…'}
-          disabled={loading || voiceState !== 'idle'}
+          // Mientras responde se puede seguir escribiendo; lo que no se puede es enviar.
+          readOnly={voiceState !== 'idle'}
+          aria-label="Mensaje para el asistente"
         />
         <button
           type="button"

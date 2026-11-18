@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { addLocalMovement, addLoanEvent, getDb, nowIso, setLocalState } from '../db.js';
-import { buildLocalInventory, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
+import { buildLocalInventory, getMergedDevices, invalidateDeviceInventoryCache } from '../services/deviceInventory.service.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { invalidateLoanPeople, searchLoanPeople } from '../services/loanPeople.service.js';
+import { findRosterPerson, normalizePersonName, searchRoster } from '../services/peopleRoster.service.js';
 
 export const loansRouter = Router();
 
@@ -11,10 +13,10 @@ loansRouter.post('/loans/lend', async (req, res, next) => {
     const etiqueta = normalizeEtiqueta(req.body.etiqueta);
     const siteCode = requireSite(req);
     if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
-    const device = currentDevice(siteCode, etiqueta);
+    const device = await currentDevice(siteCode, etiqueta);
     if (!device) return res.status(404).json({ ok: false, error: `No existe el dispositivo ${etiqueta}.` });
     if (!isAvailableState(device.estado)) {
-      return res.status(409).json({ ok: false, error: `${deviceLabel(siteCode, etiqueta)} está ${device.estado || 'no disponible'} y no se puede prestar.` });
+      return res.status(409).json({ ok: false, error: `${deviceDisplayLabel(device, etiqueta)} está ${device.estado || 'no disponible'} y no se puede prestar.` });
     }
     const validation = validateLoanPayload(req.body);
     if (validation) return res.status(400).json({ ok: false, error: validation });
@@ -73,6 +75,45 @@ loansRouter.post('/loans/return-batch', async (req, res, next) => {
   }
 });
 
+// "Devolver y prestar": el equipo figura prestado a otra persona (el turno de la
+// tarde no lo devolvió y quedó en la oficina) y se pasa directo al receptor
+// nuevo. Queda en el historial como dos movimientos, devolución y préstamo, en
+// una sola transacción: o se registran los dos o ninguno.
+loansRouter.post('/loans/relend', async (req, res, next) => {
+  try {
+    const etiqueta = normalizeEtiqueta(req.body.etiqueta);
+    const siteCode = requireSite(req);
+    if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
+    const device = await currentDevice(siteCode, etiqueta);
+    if (!device) return res.status(404).json({ ok: false, error: `No existe el dispositivo ${etiqueta}.` });
+    if (!isLoanedState(device.estado)) {
+      return res.status(409).json({ ok: false, error: `${deviceDisplayLabel(device, etiqueta)} no figura prestado: usá Prestar.` });
+    }
+    const validation = validateLoanPayload(req.body);
+    if (validation) return res.status(400).json({ ok: false, error: validation });
+    const previous = String(device.prestadoA || '').trim();
+    const receiver = String(req.body.person || '').trim();
+    const db = getDb();
+    db.transaction(() => {
+      registerReturn(siteCode, device, etiqueta, {
+        operator: req.body.operator,
+        comment: `Devuelto al pasarlo directo a ${receiver || 'otro receptor'}.`,
+        returnedAccessories: req.body.accessories
+      });
+      registerLend(siteCode, device, etiqueta, req.body);
+    })();
+    invalidateDeviceInventoryCache('loan-relend', siteCode);
+    res.json({
+      ok: true,
+      synced: true,
+      syncing: false,
+      message: `${deviceDisplayLabel(device, etiqueta)}: devuelto${previous ? ` por ${previous}` : ''} y prestado a ${receiver || 'sin nombre (ver comentario)'}.`
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 function batchTags(value) {
   const list = Array.isArray(value) ? value : [];
   return [...new Set(list.map(normalizeEtiqueta).filter(Boolean))].slice(0, 300);
@@ -86,9 +127,11 @@ function registerLend(siteCode, device, etiqueta, body) {
   const fechaPrestado = nowIso();
   const loanSessionId = crypto.randomUUID();
   const accessories = normalizeAccessories(body.accessories);
+  const person = String(body.person || '').trim();
   setLocalState(etiqueta, {
     estado: 'Prestado',
-    prestadoA: body.person || '',
+    // Sin nombre (se prestó sin saber a quién): el comentario dice lo que se sabe.
+    prestadoA: person || 'Sin nombre',
     rol: body.role || '',
     ubicacion: body.location || '',
     ubicacionDetalle: body.locationDetail || '',
@@ -100,8 +143,9 @@ function registerLend(siteCode, device, etiqueta, body) {
     returnedAt: '',
     siteCode
   });
+  invalidateLoanPeople(siteCode);
   const label = deviceDisplayLabel(device, etiqueta);
-  addLocalMovement({ tipo: 'préstamo', descripcion: `${label} prestada a ${body.person || ''}`, operador: body.operator, origen: 'Local', etiqueta, siteCode });
+  addLocalMovement({ tipo: 'préstamo', descripcion: `${label} prestada a ${person || 'sin nombre (ver comentario)'}`, operador: body.operator, origen: 'Local', etiqueta, siteCode });
   addLoanEvent({
     siteCode, tipo: 'prestamo', etiqueta,
     alias: device.aliasOperativo || '', filtro: device.filtro || device.categoria || '',
@@ -149,7 +193,7 @@ loansRouter.post('/loans/return', async (req, res, next) => {
     const etiqueta = normalizeEtiqueta(req.body.etiqueta);
     const siteCode = requireSite(req);
     if (!etiqueta) return res.status(400).json({ ok: false, error: 'Etiqueta inválida.' });
-    const device = currentDevice(siteCode, etiqueta);
+    const device = await currentDevice(siteCode, etiqueta);
     if (!device) return res.status(404).json({ ok: false, error: `No existe el dispositivo ${etiqueta}.` });
     if (!isLoanedState(device.estado)) {
       return res.json({
@@ -182,42 +226,41 @@ loansRouter.get('/loans/:etiqueta/accessories', (req, res) => {
 });
 
 // Recomendador: sugiere personas conocidas (match flexible) con su rol/ubicación/
-// motivo/curso más usados y la fecha del último préstamo. Alimenta el autocompletado
-// del LoanForm. Lee de loan_events (historial durable).
+// motivo/curso más usados y la fecha del último préstamo, y después las de la
+// lista de docentes y alumnos de la sede que coinciden por nombre o apellido
+// aunque nunca hayan pedido nada. Alimenta el autocompletado del LoanForm.
 loansRouter.get('/loans/suggest', (req, res) => {
   const siteCode = requireSite(req);
-  const q = normalizeName(req.query.q);
-  const rows = getDb().prepare(`
-    SELECT persona, rol, ubicacion, ubicacion_detalle AS ubicacionDetalle, curso, motivo, timestamp
-    FROM loan_events
-    WHERE site_code=? AND tipo='prestamo' AND TRIM(persona)<>''
-  `).all(siteCode);
-  const groups = new Map();
-  for (const row of rows) {
-    const key = normalizeName(row.persona);
-    if (!key) continue;
-    if (q && !key.includes(q)) continue;
-    let group = groups.get(key);
-    if (!group) { group = { persona: row.persona, count: 0, last: '', roles: {}, ubic: {}, cursos: {}, motivos: {} }; groups.set(key, group); }
-    group.count += 1;
-    if (!group.last || String(row.timestamp) > group.last) { group.last = String(row.timestamp || ''); group.persona = row.persona; }
-    bump(group.roles, row.rol);
-    bump(group.ubic, row.ubicacion);
-    bump(group.cursos, row.curso);
-    bump(group.motivos, row.motivo);
-  }
-  const suggestions = [...groups.values()]
-    .sort((a, b) => b.count - a.count || b.last.localeCompare(a.last))
-    .slice(0, 8)
-    .map(group => ({
+  const q = String(req.query.q || '').trim();
+  if (!q) return res.json({ ok: true, suggestions: [] });
+  const fromHistory = searchLoanPeople(siteCode, q, 8).map(group => {
+    const listed = findRosterPerson(siteCode, group.persona);
+    return {
       persona: group.persona,
       count: group.count,
-      lastAt: group.last,
-      rol: mode(group.roles),
-      ubicacion: mode(group.ubic),
-      curso: mode(group.cursos),
-      motivo: mode(group.motivos)
+      lastAt: group.lastAt,
+      rol: group.rol || rosterRole(listed),
+      ubicacion: group.ubicacion,
+      curso: group.curso || listed?.curso || '',
+      motivo: group.motivo,
+      source: 'historial'
+    };
+  });
+  const known = new Set(fromHistory.map(item => normalizePersonName(item.persona)));
+  const fromRoster = searchRoster(siteCode, q, { limit: 8 })
+    .filter(person => !known.has(normalizePersonName(person.nombre)))
+    .map(person => ({
+      persona: person.nombre,
+      count: 0,
+      lastAt: '',
+      rol: rosterRole(person),
+      ubicacion: '',
+      curso: person.curso || '',
+      motivo: '',
+      source: 'lista'
     }));
+  // Primero el historial (lo que más se usa), pero siempre con lugar para la lista.
+  const suggestions = [...fromHistory.slice(0, fromRoster.length ? 5 : 8), ...fromRoster].slice(0, 10);
   res.json({ ok: true, suggestions });
 });
 
@@ -227,9 +270,9 @@ loansRouter.get('/loans/previous-day', (req, res) => {
   const rows = getDb().prepare(`
     SELECT id, etiqueta, alias, filtro, persona, rol, ubicacion, curso, motivo, operador, accessories_json, timestamp
     FROM loan_events
-    WHERE site_code=? AND tipo='prestamo'
+    WHERE site_code=? AND tipo='prestamo' AND timestamp >= ?
     ORDER BY timestamp DESC, id DESC
-  `).all(siteCode);
+  `).all(siteCode, new Date(Date.now() - 21 * 86400000).toISOString());
   // "Ayer" estricto queda vacío después de fines de semana o feriados; se muestra
   // el último día previo a hoy que tuvo préstamos (la fecha viaja en la respuesta).
   const date = rows
@@ -255,10 +298,6 @@ loansRouter.get('/loans/previous-day', (req, res) => {
   res.json({ ok: true, date, items });
 });
 
-function normalizeName(value) {
-  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
-}
-
 function findActiveLoanEvent(siteCode, etiqueta) {
   const latest = getDb().prepare(`
     SELECT id, tipo, loan_session_id, accessories_json, timestamp
@@ -279,36 +318,30 @@ function parseAccessories(value) {
   try { return normalizeAccessories(JSON.parse(String(value || '[]'))); } catch { return []; }
 }
 
-function bump(map, value) {
-  const key = String(value || '').trim();
-  if (!key) return;
-  map[key] = (map[key] || 0) + 1;
-}
-
-function mode(map) {
-  let best = '';
-  let bestCount = 0;
-  for (const [key, count] of Object.entries(map)) {
-    if (count > bestCount) { best = key; bestCount = count; }
-  }
-  return best;
-}
-
 function previousLocalDateKey() {
   const date = new Date();
   date.setDate(date.getDate() - 1);
   return localDateKey(date);
 }
 
+// Un solo formateador: crearlo por fila costaba ~1,7 s con 10.000 préstamos.
+const AR_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Argentina/Buenos_Aires',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+
 function localDateKey(value) {
   const date = value instanceof Date ? value : new Date(value || Date.now());
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Argentina/Buenos_Aires',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(date);
+  return AR_DAY.format(date);
+}
+
+// Rol para la sugerencia que sale de la lista de personas.
+function rosterRole(person) {
+  if (!person) return '';
+  return person.tipo === 'docente' ? 'Docente' : 'Alumno';
 }
 
 function normalizeEtiqueta(value) {
@@ -317,12 +350,13 @@ function normalizeEtiqueta(value) {
   return number ? `D${number.padStart(4, '0')}` : raw;
 }
 
-function deviceLabel(siteCode, etiqueta) {
-  return deviceDisplayLabel(currentDevice(siteCode, etiqueta), etiqueta);
-}
 
-function currentDevice(siteCode, etiqueta) {
-  return buildLocalInventory(siteCode).find(item => normalizeEtiqueta(item.etiqueta) === normalizeEtiqueta(etiqueta));
+// Usa el inventario cacheado de la sede (se invalida con cada escritura de
+// equipos/préstamos) en vez de armarlo entero desde la base en cada préstamo.
+async function currentDevice(siteCode, etiqueta) {
+  const tag = normalizeEtiqueta(etiqueta);
+  const { items } = await getMergedDevices({ siteCode });
+  return items.find(item => normalizeEtiqueta(item.etiqueta) === tag);
 }
 
 function deviceDisplayLabel(device, etiqueta) {
@@ -330,12 +364,13 @@ function deviceDisplayLabel(device, etiqueta) {
   return device?.aliasOperativo ? `${tag} · ${device.aliasOperativo}` : tag;
 }
 
+// Ningún campo es obligatorio (pedido de Préstamos: a veces se presta sin saber
+// el nombre ni el curso). Solo se exige algo que identifique a quién: la persona
+// o un comentario con lo que se sepa. Misma regla que validateLoanFields del front.
 function validateLoanPayload(body) {
-  if (!String(body.person || '').trim()) return 'Completá la persona que recibe el equipo.';
-  if (isPlaceholder(body.role, 'Seleccionar rol')) return 'Seleccioná un rol.';
-  if (isPlaceholder(body.location, 'Seleccionar ubicación')) return 'Seleccioná una ubicación.';
-  if (String(body.location || '').trim().toLowerCase() === 'aula' && isPlaceholder(body.schoolLevel, 'Seleccionar nivel')) return 'Seleccioná si es EP o ES.';
-  if (String(body.location || '').trim().toLowerCase() === 'aula' && isPlaceholder(body.course, 'Seleccionar curso')) return 'Seleccioná grado, año o curso.';
+  if (!String(body.person || '').trim() && !String(body.comment || '').trim()) {
+    return 'Anotá la persona o, si no la sabés, un comentario con lo que sepas (curso, cómo es, etc.).';
+  }
   return '';
 }
 
@@ -344,11 +379,6 @@ function formatCourse(body) {
     .map(value => String(value || '').trim())
     .filter(value => value && value !== 'Seleccionar nivel' && value !== 'Seleccionar curso')
     .join(' · ');
-}
-
-function isPlaceholder(value, placeholder) {
-  const clean = String(value || '').trim();
-  return !clean || clean.toLowerCase() === placeholder.toLowerCase();
 }
 
 function isLoanedState(value) {

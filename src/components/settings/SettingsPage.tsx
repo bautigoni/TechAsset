@@ -10,6 +10,7 @@ import { ModulesPanel } from './ModulesPanel';
 import { RolesPanel } from './RolesPanel';
 import { InvitesPanel } from './InvitesPanel';
 import { NotificationsPanel } from './NotificationsPanel';
+import { PeopleRosterPanel } from './PeopleRosterPanel';
 import { toast, errorMessage } from '../layout/Feedback';
 import { SelectField } from '../layout/SelectField';
 
@@ -84,6 +85,8 @@ export function SettingsPage({ operator, consultationMode, setConsultationMode, 
             <AdvancedSettings />
           </>
         )}
+        {/* Plegada al final a propósito: la carga normal es pegándole la lista al Asistente. */}
+        <PeopleRosterPanel consultationMode={consultationMode} />
         {!isAdmin && <div className="tool-info">Tu usuario tiene acceso a: {sites.map(site => site.siteCode).join(', ')}</div>}
       </div>
     </section>

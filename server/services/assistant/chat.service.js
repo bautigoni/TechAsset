@@ -6,6 +6,9 @@ import { notifySiteAdmins } from '../notifications.service.js';
 import { searchProcedures } from '../procedureSearch.js';
 import { searchKnowledgeArticles } from '../knowledge.service.js';
 import { claudeClient, hasClaude, responseText } from '../claude.service.js';
+import { findRosterPerson, normalizePersonName, parseRosterText, rosterCounts, saveRoster, searchRoster } from '../peopleRoster.service.js';
+import { invalidateLoanPeople, searchLoanPeople } from '../loanPeople.service.js';
+import crypto from 'node:crypto';
 
 const MAX_ROUNDS = 5;
 
@@ -52,17 +55,27 @@ LA POSTA DE CÓMO LABURO:
 - No te hago repetir las cosas: si ya me lo dijiste antes o ya lo tengo de una herramienta, lo uso directo.
 - Las etiquetas de los equipos son tipo D1436. Los alias operativos son "Touch 34", "Plani 5", "TIC 12". Ojo: si te dicen "Touch" no es lo mismo que una "TIC", cada uno tiene su tipo.
 
-PRÉSTAMOS — cuando te pidan prestar algo:
-1. Primero fijate con detalle_dispositivo que el equipo exista y esté disponible, y con buscar_persona fijate si ya tiene movimientos (rol/ubicación que usa siempre). Podés pedir ambas cosas al mismo tiempo.
-2. Si la persona ya tiene histórico, proponé directamente el rol y la ubicación que más usa.
-3. Si todos los datos obligatorios están claros, ejecutá registrar_prestamo inmediatamente y mostrale el resultado. No pidas confirmación extra. Si falta un dato obligatorio, preguntá únicamente ese dato.
+VARIOS PEDIDOS EN UN MENSAJE: si en un mismo mensaje te piden varias cosas (por ejemplo revisar dos equipos, o devolver uno y prestar otro), resolvé TODAS. Llamá todas las herramientas que hagan falta, en la misma vuelta si podés, y respondé cada una por separado. Nunca te quedes solo con la primera.
 
-DEVOLUCIONES: verificá con detalle_dispositivo que esté prestado y ejecutá registrar_devolucion de inmediato. Si no te dicen condición, asumí "bueno".
+PRÉSTAMOS — cuando te pidan prestar algo:
+1. Fijate con detalle_dispositivo que el equipo exista y esté disponible, y con buscar_persona quién es (curso, si es docente o alumno, rol y ubicación que usa siempre). Podés pedir ambas cosas al mismo tiempo.
+2. Si la persona tiene historial o está en la lista de personas, proponé directamente ese rol, curso y ubicación.
+3. Usá registrar_prestamo. OJO: no registra nada todavía; al usuario le aparece un botón «Confirmar» con los datos. Decile en una frase corta qué va a quedar registrado y que lo confirme con el botón. Nunca digas que ya quedó prestado: recién queda cuando el usuario toca el botón.
+4. Ningún dato es obligatorio salvo el equipo y saber a quién: el nombre, o si no lo sabe, una descripción en comentario (curso, cómo es). No frenes un préstamo por falta de rol o ubicación.
+
+DEVOLUCIONES: verificá con detalle_dispositivo que esté prestado y usá registrar_devolucion; también deja un botón para que el usuario confirme. Si no te dicen condición, asumí "bueno". Si el alias que te dicen coincide con varios equipos (detalle_dispositivo te devuelve "coincidencias"), preguntá cuál antes de seguir.
+
+PERSONAS: buscar_persona busca en el historial de préstamos y en la lista de docentes y alumnos de la sede. Cuando nombren a alguien, decí su curso y si es docente o alumno según la lista. Si no está en la lista ni en el historial, decilo así; jamás adivines el curso ni el rol.
+
+LISTAS DE DOCENTES Y ALUMNOS: si te pegan una lista de nombres para guardar, usá cargar_lista_personas (el texto lo tomo yo directo del mensaje: no lo copies en la herramienta). Queda un botón para que el usuario confirme; decile cuántas personas entendiste y que confirme.
+
+MEMORIA: tenés toda la conversación de este chat. Al principio de tus mensajes anteriores, entre corchetes, está lo que consultaste con las herramientas en ese momento: usalo para no volver a preguntar lo que ya sabés. Si es un dato que pudo cambiar (el estado de un equipo, quién lo tiene), volvé a consultarlo. Nunca escribas vos esos corchetes en tus respuestas.
 
 TAREAS Y AGENDA: si el pedido es claro, crealas sin vueltas ni confirmación. Metele responsable, prioridad y detalles en el mismo llamado. NO podés editar ni borrar cosas existentes — si te lo piden, decí "mirá, no puedo modificar eso, pero te llevo a la sección y lo hacés vos".
 
 NAVEGACIÓN: si te piden ir a algún lado ("llevame a tareas", "abrí préstamos"), usá abrir_seccion. Si además te pidieron un dato específico, buscalo primero con la herramienta y decí algo como "te llevo a Tareas, por cierto la tarea Maker está pendiente, vence el 19/06".
-- Si te piden abrir, entrar, ver la ficha o el reporte de un dispositivo concreto, usá detalle_dispositivo. Eso abre la ficha del equipo directamente. No mandes un dispositivo a Inventario maker: los equipos Dxxxx, Dell, Touch, Plani y TIC viven en Dispositivos.
+- Si te piden abrir, entrar, ver la ficha o el reporte de un dispositivo concreto, usá detalle_dispositivo: al usuario le aparece un botón para abrir la ficha sin salir del chat. No mandes un dispositivo a Inventario maker: los equipos Dxxxx, Dell, Touch, Plani y TIC viven en Dispositivos.
+- No uses abrir_seccion si no te pidieron ir a una pantalla: consultar un dato no es motivo para sacar al usuario de donde está.
 
 LÍMITE DE SEDE: TODO lo que hago es exclusivamente de la sede ${siteCode}. No puedo ver ni modificar datos de otras sedes. Si te piden algo de otra sede, decí que los tenants están separados y que necesitan cambiarse a esa sede con los permisos correspondientes.
 
@@ -115,7 +128,7 @@ const TOOLS = [
   {
     type: 'function',
     name: 'buscar_persona',
-    description: 'Busca personas por nombre en el historial de préstamos. Devuelve nombre exacto, rol y ubicación más frecuentes, y cantidad de préstamos. Usá esos valores como propuesta para un préstamo nuevo.',
+    description: 'Busca personas por nombre o apellido en la lista de docentes y alumnos de la sede y en el historial de préstamos. Devuelve nombre exacto, si es docente o alumno y su curso (según la lista), y rol/ubicación/curso más frecuentes en préstamos. Usá esos valores como propuesta para un préstamo nuevo; si no aparece, decilo.',
     parameters: {
       type: 'object',
       properties: { nombre: { type: 'string', description: 'Nombre parcial, ej. "mili" o "juan". Mínimo 2 caracteres.' } },
@@ -195,23 +208,25 @@ const TOOLS = [
   {
     type: 'function',
     name: 'registrar_prestamo',
-    description: 'Registra un préstamo. Usar inmediatamente cuando estén claros dispositivo, persona, rol y ubicación; no pedir confirmación adicional.',
+    description: 'Prepara un préstamo y le muestra al usuario un botón para confirmarlo. NO registra nada hasta que el usuario toca el botón. Hace falta el dispositivo y el nombre de la persona (o, si no se sabe, un comentario que la describa); el resto es opcional.',
     parameters: {
       type: 'object',
       properties: {
-        codigo_dispositivo: { type: 'string', description: 'Etiqueta del dispositivo, ej. D1436.' },
-        usuario_nombre: { type: 'string', description: 'Nombre de la persona que recibe el equipo.' },
-        rol: { type: 'string', description: 'Rol: DOE, Docente, Alumno, Preceptor, Directivo, Administración.' },
-        ubicacion: { type: 'string', description: 'Ubicación, ej. DOE, SUM, Aula 12, Dirección.' },
-        motivo: { type: 'string', description: 'Motivo del préstamo. Opcional.' }
+        codigo_dispositivo: { type: 'string', description: 'Etiqueta del dispositivo, ej. D1436, o alias "Touch 34".' },
+        usuario_nombre: { type: 'string', description: 'Nombre de la persona que recibe el equipo. Vacío si no se sabe.' },
+        rol: { type: 'string', description: 'Rol: DOE, Docente, Alumno, Preceptor, Directivo, Administración. Opcional.' },
+        ubicacion: { type: 'string', description: 'Ubicación, ej. DOE, SUM, Aula 12, Dirección. Opcional.' },
+        curso: { type: 'string', description: 'Curso, ej. 3S o EP · 2F. Opcional.' },
+        motivo: { type: 'string', description: 'Motivo del préstamo. Opcional.' },
+        comentario: { type: 'string', description: 'Lo que se sepa aunque falten datos (color del equipo, cómo es la persona). Opcional.' }
       },
-      required: ['codigo_dispositivo', 'usuario_nombre', 'rol', 'ubicacion']
+      required: ['codigo_dispositivo']
     }
   },
   {
     type: 'function',
     name: 'registrar_devolucion',
-    description: 'Registra inmediatamente la devolución de un dispositivo prestado cuando el pedido sea claro.',
+    description: 'Prepara la devolución de un dispositivo prestado y le muestra al usuario un botón para confirmarla. NO registra nada hasta que el usuario toca el botón.',
     parameters: {
       type: 'object',
       properties: {
@@ -257,7 +272,24 @@ const TOOLS = [
   }
 ];
 
-const WRITE_TOOLS = new Set(['registrar_prestamo', 'registrar_devolucion', 'crear_tarea', 'crear_evento_agenda']);
+TOOLS.push({
+  type: 'function',
+  name: 'cargar_lista_personas',
+  description: 'Prepara la carga de una lista de docentes o alumnos que el usuario pegó en su último mensaje (el texto lo toma el sistema directo del mensaje, no lo copies). Le muestra al usuario cuántas personas se entendieron y un botón para confirmar el guardado.',
+  parameters: {
+    type: 'object',
+    properties: {
+      tipo: { type: 'string', enum: ['docente', 'alumno'], description: 'Tipo por defecto de la lista si el texto no lo dice con un título "Docentes:" o "Alumnos:".' },
+      curso: { type: 'string', description: 'Curso de toda la lista si el usuario lo dijo (ej. "3S") y los renglones no lo traen. Opcional.' },
+      modo: { type: 'string', enum: ['agregar', 'reemplazar'], description: 'agregar (por defecto) suma a la lista; reemplazar borra la lista de ese tipo y la carga de nuevo. Solo si lo pidieron explícitamente.' }
+    },
+    required: ['tipo']
+  }
+});
+
+const WRITE_TOOLS = new Set(['registrar_prestamo', 'registrar_devolucion', 'crear_tarea', 'crear_evento_agenda', 'cargar_lista_personas']);
+// Herramientas que no escriben: preparan una acción que el usuario confirma con un botón.
+const CONFIRM_TOOLS = new Set(['registrar_prestamo', 'registrar_devolucion', 'cargar_lista_personas']);
 TOOLS.push({ type:'function', name:'crear_recordatorio', description:'Crea inmediatamente un recordatorio cuando título y fecha/hora están claros.', parameters:{ type:'object', properties:{ titulo:{type:'string'}, descripcion:{type:'string'}, fecha_hora:{type:'string',description:'Fecha y hora ISO'}, prioridad:{type:'string',enum:['Baja','Media','Alta','Urgente']}, tipo_relacion:{type:'string'}, id_relacion:{type:'string'}, nombre_relacion:{type:'string'} }, required:['titulo','fecha_hora'] } });
 WRITE_TOOLS.add('crear_recordatorio');
 
@@ -274,7 +306,17 @@ export async function runToolLoop({ messages, access, context = null }) {
   if (!conversation.length) return { reply: '¿En qué te doy una mano?', suggestedRoute: null };
 
   let suggestedRoute = null;
-  let suggestedDevice = null;
+  // Fichas que salieron en esta respuesta: el front las muestra como botones
+  // "Ver ficha" bajo el mensaje. Antes se abría sola la primera y se cerraba el
+  // chat, aunque hubieran pedido revisar varias.
+  const devices = [];
+  const actions = [];
+  const memory = [];
+  const wantsToOpen = /(abr[ií]|entr[aá]|ficha|reporte|llev[aá])/i.test(lastUserMessage);
+  const finish = (reply) => {
+    const openDevice = wantsToOpen && devices.length === 1 ? devices[0].etiqueta : null;
+    return { reply, suggestedRoute, suggestedDevice: openDevice, openDevice, devices, actions, memory: memory.join(' | ').slice(0, 1800) };
+  };
 
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -288,27 +330,34 @@ export async function runToolLoop({ messages, access, context = null }) {
       if (response.stop_reason !== 'tool_use' || !toolCalls.length) {
         const reply = responseText(response);
         if (!reply) return { reply: 'No pude procesar el mensaje. ¿Podés reformularlo?', suggestedRoute: null };
-        const deterministic = await deterministicLoanDraft(lastUserMessage, access);
-        if (deterministic && isGenericAssistantReply(reply)) return deterministic;
-        return { reply, suggestedRoute, suggestedDevice };
+        if (!actions.length && isGenericAssistantReply(reply)) {
+          const deterministic = await deterministicLoanDraft(lastUserMessage, access);
+          if (deterministic) return deterministic;
+        }
+        return finish(reply);
       }
 
       // Todos los resultados de una vuelta viajan juntos en un solo mensaje.
       const results = [];
       for (const call of toolCalls) {
         const args = call.input && typeof call.input === 'object' ? call.input : {};
-        const result = await runAssistantTool(call.name, args, access);
+        const result = await runAssistantTool(call.name, args, access, { lastUserMessage });
         if (result?.ok !== false) {
           if (call.name === 'detalle_dispositivo' && result?.item?.etiqueta) {
-            suggestedDevice = result.item.etiqueta;
-            suggestedRoute = 'devices';
-          } else if (call.name === 'buscar_dispositivos' && result?.items?.length === 1 && /(abr|entr|ficha|reporte|detalle|llev)/i.test(lastUserMessage)) {
-            suggestedDevice = result.items[0].etiqueta;
-            suggestedRoute = 'devices';
+            addDevice(devices, result.item);
+          } else if (call.name === 'buscar_dispositivos' && result?.items?.length === 1 && wantsToOpen) {
+            addDevice(devices, result.items[0]);
           } else if (call.name === 'abrir_seccion' && result?.seccion) suggestedRoute = result.seccion;
-          else if (SUGGESTED_ROUTES[call.name]) suggestedRoute = SUGGESTED_ROUTES[call.name];
         }
-        results.push({ type: 'tool_result', tool_use_id: call.id, content: JSON.stringify(result).slice(0, 6000), is_error: result?.ok === false });
+        // La acción (con su payload) viaja al front; al modelo le llega solo el aviso.
+        let forModel = result;
+        if (result?.accion) {
+          actions.push(result.accion);
+          const { accion: _accion, ...rest } = result;
+          forModel = rest;
+        }
+        memory.push(`${call.name}(${JSON.stringify(args).slice(0, 160)}) → ${JSON.stringify(forModel).slice(0, 360)}`);
+        results.push({ type: 'tool_result', tool_use_id: call.id, content: JSON.stringify(forModel).slice(0, 6000), is_error: result?.ok === false });
       }
       conversation.push({ role: 'user', content: results });
     }
@@ -317,17 +366,53 @@ export async function runToolLoop({ messages, access, context = null }) {
     return { reply: 'No pude conectarme con el servicio de IA en este momento. Probá de nuevo en unos segundos.', suggestedRoute: null };
   }
 
-  return { reply: 'Hice varias consultas pero no llegué a una respuesta clara. ¿Podés reformular el pedido?', suggestedRoute, suggestedDevice };
+  return finish('Hice varias consultas pero no llegué a una respuesta clara. ¿Podés reformular el pedido?');
+}
+
+function addDevice(list, item) {
+  const etiqueta = String(item?.etiqueta || '').trim();
+  if (!etiqueta || list.some(entry => entry.etiqueta === etiqueta)) return;
+  list.push({ etiqueta, alias: String(item.alias || item.aliasOperativo || '') });
+}
+
+/**
+ * Ejecuta una acción que el Asistente dejó preparada y el usuario confirmó con
+ * el botón. Valida todo de nuevo contra la base: el payload viene del navegador.
+ */
+export async function confirmAssistantAction(action, access) {
+  const type = String(action?.type || '');
+  const payload = action?.payload && typeof action.payload === 'object' ? action.payload : {};
+  const siteCode = String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
+  if (!access?.canEdit) return { ok: false, error: 'Tu rol es de solo consulta: no podés confirmar esta acción.' };
+  try {
+    if (type === 'lend') return await registerLoan(payload, siteCode, access);
+    if (type === 'return') return await registerReturn(payload, siteCode, access);
+    if (type === 'roster') {
+      const people = parseRosterText(String(payload.text || ''), { defaultTipo: payload.tipo });
+      if (!people.length) return { ok: false, error: 'No encontré nombres para guardar.' };
+      const result = saveRoster(siteCode, people, {
+        mode: payload.modo === 'reemplazar' ? 'reemplazar' : 'agregar',
+        replaceTipo: payload.tipo === 'docente' ? 'docente' : 'alumno',
+        createdBy: access?.user?.nombre || access?.user?.email || 'Asistente IA'
+      });
+      return { ok: true, mensaje: `Lista guardada: ${result.added} nuevas${result.updated ? `, ${result.updated} actualizadas` : ''}${result.removed ? `, ${result.removed} quitadas` : ''}. Ahora hay ${result.docentes} docentes y ${result.alumnos} alumnos en la lista.` };
+    }
+    return { ok: false, error: 'Acción desconocida.' };
+  } catch (error) {
+    console.error('[assistant] error al confirmar acción:', error);
+    return { ok: false, error: 'No se pudo completar. Probá de nuevo o hacelo desde la pantalla.' };
+  }
 }
 
 // Ejecuta una herramienta con permisos y captura de errores. Cualquier excepción
 // interna se loguea completa acá y al modelo solo le llega un mensaje transmisible,
 // para que no invente causas técnicas.
-export async function runAssistantTool(name, args, access) {
+export async function runAssistantTool(name, args, access, extra = {}) {
   if (WRITE_TOOLS.has(name) && !access?.canEdit) {
     return { ok: false, error: 'El usuario no tiene permisos para esta acción: su rol es de solo consulta.' };
   }
   try {
+    if (CONFIRM_TOOLS.has(name)) return await prepareAction(name, args, access, extra);
     return await dispatchTool(name, args, access);
   } catch (error) {
     console.error(`[assistant] error en herramienta ${name}:`, error);
@@ -377,20 +462,36 @@ async function searchDevices({ query = '', estado = '' } = {}, siteCode) {
 
 async function deviceDetail({ etiqueta } = {}, siteCode) {
   if (!String(etiqueta || '').trim()) return { ok: false, error: 'Falta la etiqueta o alias del dispositivo a consultar.' };
-  const device = await findDevice(etiqueta, siteCode);
+  const all = await findDevices(etiqueta, siteCode);
+  if (all.length > 1) {
+    return {
+      ok: true,
+      coincidencias: all.slice(0, 6).map(device => ({ etiqueta: device.etiqueta, alias: device.aliasOperativo || '', tipo: device.filtro || device.dispositivo || '', estado: device.estado || 'Disponible', prestadoA: device.prestadoA || '' })),
+      nota: `Hay ${all.length} equipos que coinciden con "${etiqueta}". Preguntá cuál es (por etiqueta) antes de seguir.`
+    };
+  }
+  const device = all[0];
   if (!device) return { ok: false, error: `No existe "${etiqueta}" en el inventario de ${siteCode}. Verificá la etiqueta o alias.` };
   return { ok: true, item: { etiqueta: device.etiqueta, alias: device.aliasOperativo || '', tipo: device.filtro || device.dispositivo || '', marca: device.marca || '', modelo: device.modelo || '', estado: device.estado || 'Disponible', prestadoA: device.prestadoA || '', rol: device.rol || '', ubicacion: device.ubicacion || '', motivo: device.motivo || '', prestadoDesde: device.loanedAt || '' } };
 }
 
 // Busca por etiqueta exacta o por alias operativo ("Touch 34").
-async function findDevice(value, siteCode) {
+async function findDevice(value, siteCode, prefer = null) {
+  const all = await findDevices(value, siteCode);
+  if (all.length <= 1 || !prefer) return all[0] || null;
+  // Con un alias repetido, para devolver sirve el que está prestado y para
+  // prestar el que está disponible (antes agarraba siempre el primero).
+  return all.find(item => (prefer === 'loaned' ? isLoanedState(item.estado) : isAvailableState(item.estado))) || all[0];
+}
+
+async function findDevices(value, siteCode) {
   const code = normalizeCode(value);
   const { items } = await getMergedDevices({ siteCode });
   const byTag = items.find(item => normalizeCode(item.etiqueta) === code);
-  if (byTag) return byTag;
+  if (byTag) return [byTag];
   const q = normalize(value);
-  if (!q) return null;
-  return items.find(item => normalize(item.aliasOperativo) === q) || null;
+  if (!q) return [];
+  return items.filter(item => normalize(item.aliasOperativo) === q);
 }
 
 // Lee de loan_events (historial durable, el mismo que alimenta el autocompletado
@@ -398,42 +499,35 @@ async function findDevice(value, siteCode) {
 function findPerson({ nombre } = {}, siteCode) {
   const clean = String(nombre || '').trim();
   if (clean.length < 2) return { ok: false, error: 'El nombre a buscar es muy corto (mínimo 2 letras).' };
-  const q = normalize(clean);
-  const rows = getDb().prepare(`
-    SELECT persona, rol, ubicacion, curso, motivo, timestamp
-    FROM loan_events
-    WHERE site_code=? AND tipo='prestamo' AND TRIM(persona)<>''
-  `).all(siteCode);
-
-  const groups = new Map();
-  for (const row of rows) {
-    const key = normalize(row.persona);
-    if (!key || !key.includes(q)) continue;
-    let group = groups.get(key);
-    if (!group) { group = { persona: row.persona, count: 0, last: '', roles: {}, ubicaciones: {}, cursos: {} }; groups.set(key, group); }
-    group.count += 1;
-    if (String(row.timestamp || '') > group.last) { group.last = String(row.timestamp || ''); group.persona = row.persona; }
-    bump(group.roles, row.rol);
-    bump(group.ubicaciones, row.ubicacion);
-    bump(group.cursos, row.curso);
+  const listado = (name) => {
+    const person = findRosterPerson(siteCode, name);
+    return person ? { en_lista: true, tipo: person.tipo, curso_segun_lista: person.curso || '' } : { en_lista: false };
+  };
+  const personas = searchLoanPeople(siteCode, clean, 5).map(group => ({
+    nombre: group.persona,
+    ...listado(group.persona),
+    rol_habitual: group.rol,
+    ubicacion_habitual: group.ubicacion,
+    curso_habitual: group.curso,
+    prestamos_registrados: group.count,
+    ultimo_prestamo: group.lastAt ? toLocalDate(new Date(group.lastAt)) : ''
+  }));
+  const known = new Set(personas.map(person => normalizePersonName(person.nombre)));
+  for (const person of searchRoster(siteCode, clean, { limit: 6 })) {
+    if (known.has(normalizePersonName(person.nombre))) continue;
+    personas.push({ nombre: person.nombre, en_lista: true, tipo: person.tipo, curso_segun_lista: person.curso || '', prestamos_registrados: 0 });
   }
-
-  const personas = [...groups.values()]
-    .sort((a, b) => b.count - a.count || b.last.localeCompare(a.last))
-    .slice(0, 5)
-    .map(group => ({
-      nombre: group.persona,
-      rol_habitual: mode(group.roles),
-      ubicacion_habitual: mode(group.ubicaciones),
-      curso_habitual: mode(group.cursos),
-      prestamos_registrados: group.count,
-      ultimo_prestamo: group.last ? toLocalDate(new Date(group.last)) : ''
-    }));
-
+  const counts = rosterCounts(siteCode);
   if (!personas.length) {
-    return { ok: true, personas: [], nota: `No hay historial de préstamos con "${clean}". Pedile al usuario el rol y la ubicación.` };
+    return {
+      ok: true,
+      personas: [],
+      nota: counts.total
+        ? `"${clean}" no está en la lista de docentes y alumnos ni en el historial de préstamos. Decilo así; no adivines curso ni rol.`
+        : `No hay historial de préstamos con "${clean}" y todavía no se cargó la lista de docentes y alumnos. Pedile lo que haga falta; no adivines curso ni rol.`
+    };
   }
-  return { ok: true, personas };
+  return { ok: true, personas: personas.slice(0, 8) };
 }
 
 async function activeLoans({ persona = '' } = {}, siteCode) {
@@ -519,7 +613,7 @@ function openSection({ seccion } = {}) {
 // la UI y el inventario leen de local_states vía getMergedDevices.
 async function registerLoan(args, siteCode, access) {
   if (!String(args.codigo_dispositivo || '').trim()) return { ok: false, error: 'Falta la etiqueta del dispositivo a prestar.' };
-  const device = await findDevice(args.codigo_dispositivo, siteCode);
+  const device = await findDevice(args.codigo_dispositivo, siteCode, 'available');
   if (!device) return { ok: false, error: `No existe el dispositivo "${args.codigo_dispositivo}" en el inventario de ${siteCode}.` };
   const etiqueta = normalizeCode(device.etiqueta);
   const label = device.aliasOperativo ? `${etiqueta} (${device.aliasOperativo})` : etiqueta;
@@ -528,39 +622,145 @@ async function registerLoan(args, siteCode, access) {
     return { ok: false, error: `${label} está ${device.estado}${quien} y no se puede prestar. Si corresponde, primero registrá la devolución.` };
   }
   const persona = String(args.usuario_nombre || '').trim();
-  if (!persona) return { ok: false, error: 'Falta el nombre de la persona que recibe el equipo.' };
+  const comentario = String(args.comentario || '').trim();
+  if (!persona && !comentario) return { ok: false, error: 'Falta a quién se le presta: el nombre o, si no se sabe, una descripción en comentario.' };
+  const curso = String(args.curso || '').trim();
 
   const fecha = nowIso();
   const operador = access?.user?.nombre || access?.user?.email || 'Asistente IA';
   setLocalState(etiqueta, {
     estado: 'Prestado',
-    prestadoA: persona,
+    prestadoA: persona || 'Sin nombre',
     rol: args.rol || '',
     ubicacion: args.ubicacion || '',
     ubicacionDetalle: '',
-    curso: '',
+    curso,
     motivo: args.motivo || '',
     motivoDetalle: '',
-    comentarios: 'Registrado vía Asistente IA',
+    comentarios: comentario || 'Registrado vía Asistente IA',
     loanedAt: fecha,
     returnedAt: '',
     siteCode
   });
   invalidateDeviceInventoryCache('assistant-lend', siteCode);
-  addLocalMovement({ tipo: 'préstamo', descripcion: `${label} prestada a ${persona}`, operador, origen: 'Asistente IA', etiqueta, siteCode });
+  invalidateLoanPeople(siteCode);
+  addLocalMovement({ tipo: 'préstamo', descripcion: `${label} prestada a ${persona || 'sin nombre (ver comentario)'}`, operador, origen: 'Asistente IA', etiqueta, siteCode });
   addLoanEvent({
     siteCode, tipo: 'prestamo', etiqueta,
     alias: device.aliasOperativo || '', filtro: device.filtro || device.categoria || '',
-    persona, rol: args.rol || '', ubicacion: args.ubicacion || '',
-    motivo: args.motivo || '', operador, origen: 'Asistente IA', timestamp: fecha
+    persona, rol: args.rol || '', ubicacion: args.ubicacion || '', curso,
+    motivo: args.motivo || '', comentarios: comentario, operador, origen: 'Asistente IA', timestamp: fecha
   });
-  return { ok: true, mensaje: `${label} quedó registrado como prestado a ${persona} (${args.rol || 'sin rol'}, ${args.ubicacion || 'sin ubicación'}).` };
+  return { ok: true, mensaje: `${label} quedó prestado a ${persona || 'sin nombre'}${[args.rol, curso, args.ubicacion].filter(Boolean).length ? ` (${[args.rol, curso, args.ubicacion].filter(Boolean).join(', ')})` : ''}.` };
+}
+
+// Prepara (sin escribir) una acción que el usuario confirma con un botón.
+// Valida lo que se puede validar ahora para no mostrar un botón que va a fallar.
+async function prepareAction(name, args, access, extra = {}) {
+  const siteCode = String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
+  const id = crypto.randomUUID();
+  if (name === 'registrar_prestamo') {
+    if (!String(args.codigo_dispositivo || '').trim()) return { ok: false, error: 'Falta la etiqueta del dispositivo a prestar.' };
+    const device = await findDevice(args.codigo_dispositivo, siteCode, 'available');
+    if (!device) return { ok: false, error: `No existe el dispositivo "${args.codigo_dispositivo}" en el inventario de ${siteCode}.` };
+    const etiqueta = normalizeCode(device.etiqueta);
+    const label = device.aliasOperativo ? `${device.aliasOperativo} (${etiqueta})` : etiqueta;
+    if (!isAvailableState(device.estado)) {
+      const quien = device.prestadoA ? ` a ${device.prestadoA}` : '';
+      return { ok: false, error: `${label} está ${device.estado}${quien} y no se puede prestar. Si corresponde, primero hay que registrar la devolución.` };
+    }
+    const persona = String(args.usuario_nombre || '').trim();
+    const comentario = String(args.comentario || '').trim();
+    if (!persona && !comentario) return { ok: false, error: 'Falta a quién se le presta: preguntá el nombre o una descripción.' };
+    const payload = { codigo_dispositivo: etiqueta, usuario_nombre: persona, rol: String(args.rol || ''), ubicacion: String(args.ubicacion || ''), curso: String(args.curso || ''), motivo: String(args.motivo || ''), comentario };
+    const detalle = [payload.rol, payload.curso, payload.ubicacion, payload.motivo].filter(Boolean).join(' · ');
+    return {
+      ok: true,
+      pendiente_confirmacion: true,
+      mensaje: `Quedó listo el botón para confirmar el préstamo de ${label} a ${persona || 'alguien sin nombre'}. Todavía NO está registrado.`,
+      accion: { id, type: 'lend', label: 'Confirmar préstamo', summary: `${label} → ${persona || 'sin nombre'}${detalle ? ` (${detalle})` : ''}${comentario ? ` · ${comentario}` : ''}`, payload }
+    };
+  }
+  if (name === 'registrar_devolucion') {
+    if (!String(args.codigo_dispositivo || '').trim()) return { ok: false, error: 'Falta la etiqueta del dispositivo a devolver.' };
+    const device = await findDevice(args.codigo_dispositivo, siteCode, 'loaned');
+    if (!device) return { ok: false, error: `No existe el dispositivo "${args.codigo_dispositivo}" en el inventario de ${siteCode}.` };
+    const etiqueta = normalizeCode(device.etiqueta);
+    const label = device.aliasOperativo ? `${device.aliasOperativo} (${etiqueta})` : etiqueta;
+    if (!isLoanedState(device.estado)) {
+      return { ok: true, nota: `${label} ya figura ${device.estado || 'disponible'}: no hay nada que devolver.` };
+    }
+    const condicion = ['bueno', 'danado', 'incompleto'].includes(args.condicion) ? args.condicion : 'bueno';
+    const payload = { codigo_dispositivo: etiqueta, condicion, comentario: String(args.comentario || '') };
+    return {
+      ok: true,
+      pendiente_confirmacion: true,
+      mensaje: `Quedó listo el botón para confirmar la devolución de ${label} (lo tenía ${device.prestadoA || 'alguien sin registrar'}). Todavía NO está registrada.`,
+      accion: { id, type: 'return', label: 'Confirmar devolución', summary: `${label} · lo tenía ${device.prestadoA || 'sin registrar'}${condicion !== 'bueno' ? ` · ${condicion}` : ''}`, payload }
+    };
+  }
+  if (name === 'cargar_lista_personas') {
+    const tipo = args.tipo === 'docente' ? 'docente' : 'alumno';
+    let text = extractRosterText(extra.lastUserMessage || '');
+    if (args.curso && String(args.curso).trim()) text = `${String(args.curso).trim()}:\n${text}`;
+    const people = parseRosterText(text, { defaultTipo: tipo });
+    if (!people.length) return { ok: false, error: 'No encontré nombres en el mensaje. Pedile que pegue la lista con una persona por renglón.' };
+    const modo = args.modo === 'reemplazar' ? 'reemplazar' : 'agregar';
+    const docentes = people.filter(person => person.tipo === 'docente').length;
+    const ejemplo = people.slice(0, 4).map(person => `${person.nombre}${person.curso ? ` (${person.curso})` : ''}`).join(', ');
+    return {
+      ok: true,
+      pendiente_confirmacion: true,
+      entendidas: people.length,
+      docentes,
+      alumnos: people.length - docentes,
+      ejemplo,
+      mensaje: `Entendí ${people.length} personas. Quedó un botón para que el usuario confirme el guardado; todavía NO está guardado.`,
+      accion: {
+        id,
+        type: 'roster',
+        label: modo === 'reemplazar' ? 'Reemplazar lista' : 'Guardar en la lista',
+        summary: `${people.length} ${people.length === 1 ? 'persona' : 'personas'} (${docentes} docentes, ${people.length - docentes} alumnos). Ej.: ${ejemplo}${people.length > 4 ? '…' : ''}`,
+        payload: { text, tipo, modo }
+      }
+    };
+  }
+  return { ok: false, error: `Herramienta desconocida: ${name}` };
+}
+
+// Saca del mensaje del usuario lo que es la lista: descarta los renglones de
+// pedido ("cargá esta lista de alumnos de 3S") pero conserva lo que dicen del
+// tipo y el curso como título, y separa listas escritas en un renglón con comas.
+function extractRosterText(message) {
+  const out = [];
+  for (const rawLine of String(message || '').split(/\r?\n/)) {
+    let line = rawLine.trim();
+    if (!line) continue;
+    const colon = line.indexOf(':');
+    let head = colon >= 0 ? line.slice(0, colon) : line;
+    let rest = colon >= 0 ? line.slice(colon + 1).trim() : '';
+    const isInstruction = /\b(carg|guard|agreg|sum[aá]|pon[eé]|pas[aá]|lista|estos|estas|porfa|por favor|te paso|ac[aá] (va|est))/i.test(head);
+    if (isInstruction || (colon >= 0 && /\b(docent|profe|maestr|alumn|estudiant)/i.test(head))) {
+      const tipo = /\b(docent|profe|maestr)/i.test(head) ? 'Docentes' : /\b(alumn|estudiant)/i.test(head) ? 'Alumnos' : '';
+      const curso = head.match(/\b((?:EP|ES)\s*)?\d{1,2}\s*(?:°|º|ro|do|er|to|mo|vo|no)?\s*(?:año|grado)?\s*[A-Z]{1,2}\b/i)?.[0] || '';
+      if (tipo || curso) out.push(`${tipo || 'Alumnos'}${curso ? ` ${curso.trim()}` : ''}:`);
+      if (!rest) continue;
+      line = rest;
+    } else if (colon >= 0 && !rest) {
+      out.push(line);
+      continue;
+    }
+    const parts = line.split(',').map(part => part.trim()).filter(Boolean);
+    if (parts.length >= 3 && parts.every(part => part.split(/\s+/).length <= 4)) out.push(...parts);
+    else out.push(line);
+  }
+  return out.join('\n');
 }
 
 // Replica POST /api/loans/return, incluida la idempotencia si ya estaba disponible.
 async function registerReturn(args, siteCode, access) {
   if (!String(args.codigo_dispositivo || '').trim()) return { ok: false, error: 'Falta la etiqueta del dispositivo a devolver.' };
-  const device = await findDevice(args.codigo_dispositivo, siteCode);
+  const device = await findDevice(args.codigo_dispositivo, siteCode, 'loaned');
   if (!device) return { ok: false, error: `No existe el dispositivo "${args.codigo_dispositivo}" en el inventario de ${siteCode}.` };
   const etiqueta = normalizeCode(device.etiqueta);
   const label = device.aliasOperativo ? `${etiqueta} (${device.aliasOperativo})` : etiqueta;
@@ -667,8 +867,10 @@ function localFallback(messages, access) {
     const device = buildLocalInventory(siteCode).find(item => normalizeCode(item.etiqueta) === code);
     if (!device) return { reply: `No encontré ${code} en Dispositivos de ${siteCode}.`, suggestedRoute: 'devices' };
     const openProfile = /(abr|entr|ficha|reporte|detalle|llev)/i.test(last);
-    if (isLoanedState(device.estado)) return { reply: `${code} está prestado a ${device.prestadoA || 'alguien sin registrar'}.`, suggestedRoute: openProfile ? 'devices' : 'loans', suggestedDevice: openProfile ? code : null };
-    return { reply: `${code} está ${device.estado || 'disponible'}.`, suggestedRoute: 'devices', suggestedDevice: openProfile ? code : null };
+    const devices = [{ etiqueta: code, alias: device.aliasOperativo || '' }];
+    const openDevice = openProfile ? code : null;
+    if (isLoanedState(device.estado)) return { reply: `${code} está prestado a ${device.prestadoA || 'alguien sin registrar'}.`, suggestedRoute: null, suggestedDevice: openDevice, openDevice, devices };
+    return { reply: `${code} está ${device.estado || 'disponible'}.`, suggestedRoute: null, suggestedDevice: openDevice, openDevice, devices };
   }
   if (/prestamo|prestar|prestale|devol/i.test(last)) return { reply: 'El asistente con IA no está configurado. Podés registrar préstamos y devoluciones desde la pantalla de Préstamos.', suggestedRoute: 'loans' };
   if (/hola|buenas|ayuda/i.test(last)) return { reply: 'Hola. Puedo decirte el estado de un equipo si me pasás la etiqueta (ej. D1436). Para el asistente completo hace falta configurar la API de IA.', suggestedRoute: null };
@@ -681,25 +883,25 @@ async function deterministicLoanDraft(text, access) {
   const siteCode = String(access?.siteCode || config.defaultSiteCode || 'NFPT').toUpperCase();
   const device = await findDevice(parsed.device, siteCode);
   if (!device) {
-    return { reply: `No encontré "${parsed.device}" en el inventario de ${siteCode}.`, suggestedRoute: 'devices' };
+    return { reply: `No encontré "${parsed.device}" en el inventario de ${siteCode}.`, suggestedRoute: null };
   }
   const etiqueta = normalizeCode(device.etiqueta);
   const label = device.aliasOperativo ? `${device.aliasOperativo} (${etiqueta})` : etiqueta;
   if (!isAvailableState(device.estado)) {
     const quien = device.prestadoA ? ` a ${device.prestadoA}` : '';
-    return { reply: `${label} está ${device.estado}${quien}; primero registrá la devolución si corresponde.`, suggestedRoute: 'loans' };
+    return { reply: `${label} está ${device.estado}${quien}; primero registrá la devolución si corresponde.`, suggestedRoute: null };
   }
   const personInfo = findPerson({ nombre: parsed.person }, siteCode);
   const person = personInfo?.personas?.[0] || {};
-  const role = person.rol_habitual || '';
-  const location = person.ubicacion_habitual || '';
-  if (!role || !location) {
-    return { reply: `Tengo ${label} para ${titleCase(parsed.person)}. Me falta rol y ubicación para confirmarlo.`, suggestedRoute: 'loans' };
-  }
-  return {
-    reply: `¿Confirmo? ${label} → ${person.nombre || titleCase(parsed.person)} (rol ${role}, ubicación ${location})`,
-    suggestedRoute: 'loans'
-  };
+  const prepared = await prepareAction('registrar_prestamo', {
+    codigo_dispositivo: etiqueta,
+    usuario_nombre: person.nombre || titleCase(parsed.person),
+    rol: person.rol_habitual || (person.tipo === 'docente' ? 'Docente' : person.tipo === 'alumno' ? 'Alumno' : ''),
+    ubicacion: person.ubicacion_habitual || '',
+    curso: person.curso_segun_lista || person.curso_habitual || ''
+  }, access);
+  if (!prepared?.accion) return { reply: prepared?.error || `Tengo ${label} para ${titleCase(parsed.person)}, pero no pude prepararlo.`, suggestedRoute: null };
+  return { reply: `Te dejo listo el préstamo de ${label}. Confirmalo con el botón.`, suggestedRoute: null, actions: [prepared.accion], devices: [], memory: '' };
 }
 
 function parseLoanRequest(text) {
@@ -750,12 +952,33 @@ async function callClaude(system, messages, { allowTools = true } = {}) {
 
 // El historial del front viene como [{ role, content }] con texto. Claude pide
 // que arranque con un mensaje del usuario: se descarta el saludo inicial.
+// El historial completo del chat va como contexto (antes, a lo sumo los últimos
+// 12 mensajes del front y sin nada de lo consultado). Cada respuesta anterior del
+// asistente lleva adelante, entre corchetes, lo que consultó con las
+// herramientas en ese momento: si no, en la vuelta siguiente "se olvidaba" de los
+// datos que él mismo había dicho. Tope por tamaño: se descartan los más viejos.
+const HISTORY_MAX_MESSAGES = 60;
+const HISTORY_MAX_CHARS = 60000;
 function toClaudeMessages(messages) {
-  const recent = (messages || []).slice(-20)
-    .map(message => ({ role: message.role === 'assistant' ? 'assistant' : 'user', content: String(message.content || '').trim() }))
+  const recent = (messages || []).slice(-HISTORY_MAX_MESSAGES)
+    .map(message => {
+      const role = message.role === 'assistant' ? 'assistant' : 'user';
+      const text = String(message.content || '').trim();
+      const memory = role === 'assistant' ? String(message.memory || '').trim() : '';
+      return { role, content: memory && text ? `[Lo que consulté para responder esto: ${memory}]\n${text}` : text };
+    })
     .filter(message => message.content);
+  let total = recent.reduce((sum, message) => sum + message.content.length, 0);
+  while (recent.length > 1 && total > HISTORY_MAX_CHARS) total -= recent.shift().content.length;
   while (recent.length && recent[0].role !== 'user') recent.shift();
-  return recent;
+  // Claude pide que los roles alternen: dos seguidos del mismo rol se juntan.
+  const merged = [];
+  for (const message of recent) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === message.role) last.content += `\n\n${message.content}`;
+    else merged.push({ ...message });
+  }
+  return merged;
 }
 
 // Bloqueado a propósito: no reintroducir ejecución de SQL libre acá.

@@ -530,6 +530,21 @@ export function initDb(database = getDb()) {
     );
     CREATE INDEX IF NOT EXISTS idx_change_requests_user ON change_requests(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_change_requests_status ON change_requests(status, submitted_at);
+    -- Lista de docentes y alumnos de la sede (se pega en el chat del Asistente o
+    -- en Configuración → Lista de personas). Alimenta las sugerencias de persona
+    -- en Préstamos y cartelitos aunque nunca hayan pedido nada, y el Asistente la
+    -- usa para saber el curso o rol de alguien. nombre_norm: minúsculas sin tildes.
+    CREATE TABLE IF NOT EXISTS people_roster (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site_code TEXT NOT NULL,
+      nombre TEXT NOT NULL,
+      nombre_norm TEXT NOT NULL,
+      tipo TEXT NOT NULL DEFAULT 'alumno',
+      curso TEXT DEFAULT '',
+      created_by TEXT DEFAULT '',
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_people_roster_site ON people_roster(site_code, nombre_norm);
     CREATE TABLE IF NOT EXISTS device_ai_summaries (
       site_code TEXT NOT NULL,
       device_tag TEXT NOT NULL,
@@ -1276,10 +1291,26 @@ function normalizeInventoryName(value) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+// En Postgres cada PRAGMA table_info es una consulta a information_schema: el
+// arranque hacía más de cien viajes a la base antes de abrir el puerto (y
+// mientras tanto Caddy respondía 502). Se leen todas las columnas de una vez.
+let pgColumnSet = null;
+function hasColumn(database, table, column) {
+  if (database.isPg) {
+    if (!pgColumnSet) {
+      pgColumnSet = new Set(database.prepare(`
+        SELECT table_name || '.' || column_name AS col FROM information_schema.columns WHERE table_schema = current_schema()
+      `).all().map(row => String(row.col).toLowerCase()));
+    }
+    return pgColumnSet.has(`${table}.${column}`.toLowerCase());
+  }
+  return database.prepare(`PRAGMA table_info(${table})`).all().some(item => item.name === column);
+}
+
 function ensureColumn(database, table, column, definition) {
-  const columns = database.prepare(`PRAGMA table_info(${table})`).all().map(item => item.name);
-  if (!columns.includes(column)) {
+  if (!hasColumn(database, table, column)) {
     database.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    if (pgColumnSet) pgColumnSet.add(`${table}.${column}`.toLowerCase());
   }
 }
 
@@ -1953,11 +1984,30 @@ export function setLocalState(etiqueta, fields) {
   });
 }
 
+// Los permisos de cada rol (roles.config) y otros settings se leían de la base en
+// CADA chequeo: con Postgres remoto era la consulta más repetida de la app (dos
+// por escritura solo para permisos). Se guarda el texto crudo por sede+clave un
+// minuto; las rutas que escriben site_settings llaman a invalidateSiteSettings.
+// Se guarda el JSON sin parsear: cada llamada recibe su propio objeto.
+const SITE_SETTING_TTL_MS = 60 * 1000;
+const siteSettingCache = new Map();
+
+export function invalidateSiteSettings(siteCode) {
+  if (!siteCode) { siteSettingCache.clear(); return; }
+  for (const key of siteSettingCache.keys()) if (key.startsWith(`${siteCode}|`)) siteSettingCache.delete(key);
+}
+
 export function getSiteSetting(siteCode, key) {
-  const row = getDb().prepare('SELECT value_json FROM site_settings WHERE site_code=? AND key=?').get(siteCode, key);
-  if (!row) return null;
-  try { return JSON.parse(row.value_json || 'null'); }
-  catch { return row.value_json; }
+  const cacheKey = `${siteCode}|${key}`;
+  let hit = siteSettingCache.get(cacheKey);
+  if (!hit || Date.now() - hit.at > SITE_SETTING_TTL_MS) {
+    const row = getDb().prepare('SELECT value_json FROM site_settings WHERE site_code=? AND key=?').get(siteCode, key);
+    hit = { at: Date.now(), raw: row ? row.value_json : undefined };
+    siteSettingCache.set(cacheKey, hit);
+  }
+  if (hit.raw === undefined) return null;
+  try { return JSON.parse(hit.raw || 'null'); }
+  catch { return hit.raw; }
 }
 
 export function getAppSetting(key) {

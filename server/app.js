@@ -1,4 +1,5 @@
 import express from 'express';
+import './asyncErrors.js';
 import compression from 'compression';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -6,6 +7,7 @@ import path from 'node:path';
 import { config } from './config.js';
 import { devicesRouter } from './routes/devices.routes.js';
 import { loansRouter } from './routes/loans.routes.js';
+import { peopleRosterRouter } from './routes/peopleRoster.routes.js';
 import { agendaRouter } from './routes/agenda.routes.js';
 import { tasksRouter } from './routes/tasks.routes.js';
 import { analyticsRouter } from './routes/analytics.routes.js';
@@ -147,6 +149,7 @@ app.use('/api', (req, res, next) => {
 app.use('/api', requireModuleEditor);
 app.use('/api', devicesRouter);
 app.use('/api', loansRouter);
+app.use('/api', peopleRosterRouter);
 app.use('/api', inventoryRouter);
 app.use('/api', photoPassesRouter);
 app.use('/api', ticketsRouter);

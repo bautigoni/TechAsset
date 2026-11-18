@@ -1,11 +1,22 @@
 import { Router } from 'express';
 import { getDb, getSiteSetting, nowIso } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
+import { searchRoster } from '../services/peopleRoster.service.js';
 
 // Cartelitos numerados que autorizan a usar el celular para sacar fotos a
 // alumnos. Se prestan y se devuelven como los equipos, con historial de quién
 // tuvo cuál. Particionados por sede: cada tenant tiene su propia numeración.
 export const photoPassesRouter = Router();
+
+// Grupos de nombres para las sugerencias, por sede y campo. Antes cada letra
+// tipeada leía tablas enteras (en docentes, tres) de la base remota. Se arman una
+// vez y se tiran con cualquier escritura de cartelitos o a los 60 s.
+const SUGGEST_TTL_MS = 60 * 1000;
+const suggestCache = new Map();
+photoPassesRouter.use((req, _res, next) => {
+  if (req.method !== 'GET' && req.method !== 'HEAD') suggestCache.clear();
+  next();
+});
 
 const ESTADOS = ['Disponible', 'Prestado', 'Perdido', 'Fuera de uso'];
 
@@ -119,7 +130,40 @@ photoPassesRouter.get('/photo-passes/suggest', (req, res) => {
   const siteCode = requireSite(req);
   const q = normalizarNombre(req.query.q);
   const campo = String(req.query.field || 'alumno').toLowerCase() === 'docente' ? 'docente' : 'alumno';
+  const cacheKey = `${siteCode}|${campo}`;
+  let todos = suggestCache.get(cacheKey);
+  if (!todos || Date.now() - todos.at > SUGGEST_TTL_MS) {
+    todos = { at: Date.now(), grupos: armarGruposSugerencia(siteCode, campo) };
+    suggestCache.set(cacheKey, todos);
+  }
+  const deHistorial = [];
+  for (const [clave, grupo] of todos.grupos) {
+    if (q && !clave.includes(q)) continue;
+    deHistorial.push(grupo);
+  }
+  const items = deHistorial
+    .sort((a, b) => b.veces - a.veces || b.ultimo.localeCompare(a.ultimo))
+    .slice(0, 8)
+    .map(grupo => ({
+      nombre: mejorEscritura(grupo.variantes),
+      veces: grupo.veces,
+      ultimoAt: grupo.ultimo,
+      curso: masUsado(grupo.cursos),
+      docente: masUsado(grupo.docentes)
+    }));
+  // La lista de docentes y alumnos de la sede: aparecen aunque nunca hayan
+  // pedido nada, con su curso.
+  if (q) {
+    const conocidos = new Set(items.map(item => normalizarNombre(item.nombre)));
+    const deLista = searchRoster(siteCode, q, { limit: 6, tipo: campo })
+      .filter(persona => !conocidos.has(normalizarNombre(persona.nombre)))
+      .map(persona => ({ nombre: persona.nombre, veces: 0, ultimoAt: '', curso: persona.curso || '', docente: '' }));
+    items.splice(deLista.length ? Math.min(items.length, 5) : items.length, items.length, ...deLista);
+  }
+  res.json({ ok: true, items: items.slice(0, 10) });
+});
 
+function armarGruposSugerencia(siteCode, campo) {
   const filas = campo === 'alumno'
     ? getDb().prepare(`
         SELECT persona AS nombre, curso, docente AS acompania, timestamp
@@ -140,7 +184,6 @@ photoPassesRouter.get('/photo-passes/suggest', (req, res) => {
     const clave = normalizarNombre(nombre);
     // Restos de pruebas: "123", "12", una letra suelta.
     if (!clave || clave.length < 3 || !/\p{L}/u.test(clave) || /^\d+$/.test(clave)) continue;
-    if (q && !clave.includes(q)) continue;
     let grupo = grupos.get(clave);
     if (!grupo) { grupo = { veces: 0, ultimo: '', variantes: {}, cursos: {}, docentes: {} }; grupos.set(clave, grupo); }
     grupo.veces += 1;
@@ -151,19 +194,8 @@ photoPassesRouter.get('/photo-passes/suggest', (req, res) => {
     contar(grupo.docentes, fila.acompania);
   }
 
-  const items = [...grupos.values()]
-    .sort((a, b) => b.veces - a.veces || b.ultimo.localeCompare(a.ultimo))
-    .slice(0, 8)
-    .map(grupo => ({
-      nombre: mejorEscritura(grupo.variantes),
-      veces: grupo.veces,
-      ultimoAt: grupo.ultimo,
-      curso: masUsado(grupo.cursos),
-      docente: masUsado(grupo.docentes)
-    }));
-
-  res.json({ ok: true, items });
-});
+  return grupos;
+}
 
 function normalizarNombre(value) {
   return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');

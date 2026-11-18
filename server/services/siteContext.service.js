@@ -36,7 +36,7 @@ export function clearSession(token) {
 // la app. Ahora se resuelve una vez cada SESSION_CACHE_MS y last_seen_at se
 // escribe como mucho cada LAST_SEEN_WRITE_MS. Cualquier escritura sobre
 // usuarios/sedes/accesos limpia la caché entera (invalidateSessionCache).
-const SESSION_CACHE_MS = 30 * 1000;
+const SESSION_CACHE_MS = 2 * 60 * 1000;
 const LAST_SEEN_WRITE_MS = 5 * 60 * 1000;
 const sessionCache = new Map();
 
@@ -213,7 +213,7 @@ export function requireEditor(req, res, next) {
 // rol con algún permiso de edición (un "Profesor" podía borrar dispositivos).
 const MODULE_BY_WRITE_PREFIX = [
   [/^\/(devices|device-groups|lifecycle)\b/, 'devices'],
-  [/^\/(loans|prestamos|devoluciones|photo-passes)\b/, 'loans'],
+  [/^\/(loans|prestamos|devoluciones|photo-passes|people-roster)\b/, 'loans'],
   [/^\/inventory\b/, 'inventory'],
   [/^\/agenda\b/, 'agenda'],
   [/^\/(classrooms|classroom-categories)\b/, 'classrooms'],

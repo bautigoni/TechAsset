@@ -30,8 +30,11 @@ export function useNotifications(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     void refresh();
-    const t = setInterval(() => void refresh(), POLL_MS);
-    return () => clearInterval(t);
+    // Con la pestaña oculta no se pollea (antes seguía cada 30 s por pestaña).
+    const t = setInterval(() => { if (!document.hidden) void refresh(); }, POLL_MS);
+    const onVisible = () => { if (!document.hidden) void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); };
   }, [enabled, refresh]);
 
   useEffect(() => {

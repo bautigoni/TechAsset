@@ -153,7 +153,7 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
           <div className="table-wrap">
             <table className="compact-table history-table">
               <thead>
-                <tr><th>Fecha</th><th>Tipo</th><th>Equipo</th><th>Persona</th><th>Curso / ubicación</th><th>Motivo</th><th>Operador</th></tr>
+                <tr><th>Fecha</th><th>Tipo</th><th>Equipo</th><th>Persona</th><th>Curso / ubicación</th><th>Motivo y comentario</th><th>Operador</th></tr>
               </thead>
               <tbody>
                 {loanItems.map(item => (
@@ -171,6 +171,7 @@ export function HistoryPage({ devices, onProfile }: { devices: Device[]; onProfi
                     <td data-label="Motivo"><div>
                       {item.motivo || '—'}
                       {item.accesorios.length > 0 && <div className="cell-sub">Accesorios: {item.accesorios.join(', ')}</div>}
+                      {item.comentarios && <div className="cell-sub history-comment">Comentario: {item.comentarios}</div>}
                     </div></td>
                     <td data-label="Operador">{item.operador || '—'}</td>
                   </tr>

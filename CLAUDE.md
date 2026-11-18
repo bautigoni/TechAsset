@@ -138,6 +138,36 @@ Sección para que cualquier cuenta con sesión pida correcciones o cosas nuevas 
 - Front: vista `pedidos` (`src/components/requests/RequestsPage.tsx`), URL `/sede/<sede>/pedidos[/<id>]`; siempre en el menú y con el botón «Sugerir un cambio» de la barra superior. El chat no tiene scroll propio: una sola columna centrada y el scroll de la página. La columna `users.can_request_changes` quedó en la base de producción sin uso.
 - Flujo del dev ("mirá las correcciones"): `node scripts/dev/pedidos.mjs` (lee `scripts/dev/.secrets.json` con `{ url, password }`, gitignoreado; baja capturas a `.pedidos/<id>/`, también gitignoreado), implementar, deployar y `node scripts/dev/pedidos.mjs estado <id> done "nota cálida que diga dónde está el cambio"`.
 
+## Lista de docentes y alumnos
+
+- Tabla `people_roster` (por sede: `nombre`, `nombre_norm`, `tipo` docente|alumno, `curso`). Servicio `server/services/peopleRoster.service.js` (lista en memoria por sede, se invalida al escribir; `parseRosterText` entiende títulos "Docentes:"/"Alumnos 3S:", cursos sueltos como título, "Nombre - 3S", "Nombre (2F)" y viñetas). Rutas `/api/people-roster` (escribir = permiso del módulo Préstamos).
+- Se carga pegándole la lista al Asistente (`cargar_lista_personas`, con botón de confirmar) o en Configuración → "Lista de docentes y alumnos" (plegada al final a propósito).
+- Alimenta `/loans/suggest` y `/photo-passes/suggest` (aparecen con la marca "Lista" aunque nunca hayan pedido nada) y `buscar_persona` del Asistente (curso y tipo; si no está, lo dice y no adivina).
+- Personas del historial de préstamos agrupadas: `server/services/loanPeople.service.js` (caché por sede, se invalida en cada préstamo). No volver a leer `loan_events` entero por tecla.
+
+## Préstamos: datos opcionales y "Devolver y prestar"
+
+- Ningún campo del préstamo es obligatorio: alcanza con la persona **o** un comentario (`validateLoanPayload` en el server y `validateLoanFields` en `LoanForm`). Sin nombre, `local_states.prestado_a` queda "Sin nombre" y el comentario va al historial (Historial lo muestra).
+- `POST /api/loans/relend`: equipo prestado a otra persona → devolución + préstamo nuevo en una transacción (dos movimientos). Botón "Devolver y prestar" en `LoanForm` cuando el equipo figura prestado y hay persona o comentario.
+- Campo de persona con sugerencias: `src/components/loans/SuggestField.tsx` (Tab entra a la lista, flechas, Enter, Esc; la lista vive mientras el foco esté en el campo). Lo usan Préstamos y cartelitos.
+
+## Asistente
+
+- Préstamos, devoluciones y listas **no se escriben desde el modelo**: las herramientas devuelven una `accion` y el chat muestra "Confirmar"/"Cancelar". `POST /api/asistente/confirmar` revalida todo y ejecuta (`confirmAssistantAction`), con permiso del módulo Préstamos.
+- Memoria: el front manda la conversación entera y cada respuesta del asistente trae `memory` (lo que consultó con herramientas), que vuelve con el historial. Tope en `toClaudeMessages` (60 mensajes / 60k caracteres).
+- Fichas: no se abren solas salvo "abrí la ficha de X" con un solo equipo; cada equipo consultado sale como botón "Ver ficha". Con una ficha abierta el chat queda al costado (`docked`, `body.assistant-docked`); en el celu se pliega y el botón flotante lo reabre donde estaba.
+- Campo de texto: textarea que crece; Enter envía, Shift + Enter agrega un renglón. Al abrir el chat el foco va al campo y se ve el último mensaje.
+
+## Rendimiento con Postgres remoto (pg-sync)
+
+Cada query bloquea el hilo entero mientras viaja a Supabase. Reglas:
+- `server/index.js`: `keepAliveTimeout` 125 s (más largo que Caddy). Con el default de 5 s, Node cerraba conexiones que Caddy reutilizaba y eso eran los 502.
+- `server/asyncErrors.js`: los handlers `async` que fallan van a `next(error)`; `unhandledRejection` se loguea y no mata el proceso.
+- `pg-sync`: timeout 15 s (`PG_SYNC_TIMEOUT_MS`), `statement_timeout`/`query_timeout` 12 s (`PG_QUERY_TIMEOUT_MS`) y buffers nuevos por worker.
+- Cachés en memoria con invalidación en escritura: `getSiteSetting` (`invalidateSiteSettings` en las rutas que escriben `site_settings`), sesión (2 min), personas, sugerencias, inventario. `ensureColumn` lee las columnas de Postgres una sola vez al arrancar.
+- Polls del front: 30 s (tareas y agenda cada ~1 min); notificaciones no pollean con la pestaña oculta. Worker de notificaciones cada 30 s.
+- Tareas: el alta entra a la lista con lo que devuelve el POST (sin esperar la relectura) y el server descarta un alta igual de la misma persona en 15 s (doble toque).
+
 ## Accesos rápidos
 
 `quick_links` table + `/api/quick-links` CRUD. Validación de URL: solo `http(s)://`, rechaza `javascript:`, `data:`, `vbscript:`. La tabla incluye links institucionales fijos + ediciones desde la UI. Archivos `.bat` administrativos viven en `public/downloads/` y se sirven como descarga (no se ejecutan desde la web).

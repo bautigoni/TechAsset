@@ -690,3 +690,60 @@ body {
     transition: none !important;
   }
 }
+
+/* ── Asistente: campo que crece, fichas y acciones con botón ─────────────── */
+textarea.assistant-input {
+  resize: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  border-radius: 20px;
+  min-height: 42px;
+  max-height: 160px;
+  overflow-y: hidden;
+}
+.assistant-input-form { align-items: flex-end; }
+
+.assistant-device-links,
+.assistant-action-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.assistant-chip,
+.assistant-action-confirm,
+.assistant-action-cancel {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.assistant-chip:hover,
+.assistant-action-cancel:hover { border-color: color-mix(in srgb, var(--blue) 50%, var(--border)); }
+.assistant-action-confirm { background: var(--blue); border-color: var(--blue); color: #fff; }
+.assistant-action-confirm:disabled,
+.assistant-action-cancel:disabled { opacity: .6; cursor: default; }
+.assistant-action {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.assistant-action-summary { font-size: 13px; font-weight: 600; }
+.assistant-action-status { font-size: 12px; color: var(--muted); }
+.assistant-action.is-done .assistant-action-status { color: var(--green, #16a34a); }
+.assistant-action-error { font-size: 12px; color: var(--red, #dc2626); }
+
+/* Ficha abierta desde el chat: el panel queda a la derecha y no bloquea la ficha. */
+@media (min-width: 768px) {
+  .assistant-backdrop.is-docked { pointer-events: none; }
+  .assistant-backdrop.is-docked .assistant-panel { pointer-events: auto; }
+}
+@media (min-width: 900px) {
+  body.assistant-docked .modal { padding-right: 472px; }
+}

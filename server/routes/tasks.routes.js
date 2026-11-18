@@ -71,6 +71,18 @@ tasksRouter.post('/tasks', (req, res) => {
   payload.visibility = payload.visibility === 'private' ? 'private' : 'team';
   payload.ownerEmail = payload.visibility === 'private' ? String(req.user?.email || '').toLowerCase() : '';
   if (payload.visibility === 'private' && !payload.ownerEmail) return res.status(400).json({ ok: false, error: 'No se pudo identificar al propietario de la tarea privada.' });
+  // Red de seguridad contra el doble toque en "Guardar" (o un reintento del
+  // navegador): la misma tarea, de la misma persona, en los últimos 15 s, es la
+  // misma alta. Se devuelve la que ya existe en vez de crear un duplicado.
+  if (!payload.id) {
+    const since = new Date(Date.now() - 15000).toISOString();
+    const twin = db.prepare(`
+      SELECT * FROM tasks
+      WHERE site_code=? AND eliminada=0 AND titulo=? AND COALESCE(creado_por,'')=? AND COALESCE(descripcion,'')=? AND fecha_creacion>=?
+      ORDER BY fecha_creacion DESC LIMIT 1
+    `).get(siteCode, payload.titulo, payload.operator || '', payload.descripcion || '', since);
+    if (twin) return res.json({ ok: true, item: rowToTask(twin), duplicate: true });
+  }
   const id = payload.id || `TK${Date.now()}`;
   const ts = nowIso();
   db.prepare(`

@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { assistantStatus, handleAssistantChat } from '../services/assistant/index.js';
 import { transcribeAssistantAudio } from '../services/assistant/audio.service.js';
-import { canEditSite, getActiveSiteRole, isSiteManager } from '../services/siteContext.service.js';
+import { canEditModule, canEditSite, getActiveSiteRole, isSiteManager } from '../services/siteContext.service.js';
+import { confirmAssistantAction } from '../services/assistant/chat.service.js';
 
 export const assistantRouter = Router();
 
@@ -43,7 +44,10 @@ function normalizeMessages(body = {}) {
     return messages
       .map(message => ({
         role: message?.role === 'assistant' ? 'assistant' : 'user',
-        content: String(message?.content || message?.text || '').trim()
+        content: String(message?.content || message?.text || '').trim().slice(0, 20000),
+        // Lo que el asistente consultó en esa vuelta (lo devolvió el server y el
+        // front lo reenvía): le da memoria de la conversación entera.
+        memory: message?.role === 'assistant' ? String(message?.memory || '').slice(0, 2000) : ''
       }))
       .filter(message => message.content);
   }
@@ -63,6 +67,23 @@ assistantRouter.post('/asistente/chat', async (req, res, next) => {
       context: normalizeContext(req.body?.context)
     });
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// El usuario tocó «Confirmar» en una acción que preparó el Asistente (préstamo,
+// devolución o lista de personas). Es una escritura: /asistente pasa el filtro
+// de solo consulta, así que los permisos se chequean acá.
+assistantRouter.post('/asistente/confirmar', async (req, res, next) => {
+  try {
+    const type = String(req.body?.action?.type || '');
+    if (!canEditSite(req) || (['lend', 'return', 'roster'].includes(type) && !canEditModule(req, 'loans'))) {
+      return res.status(403).json({ ok: false, error: 'Tu rol no tiene permiso para confirmar esta acción.' });
+    }
+    const result = await confirmAssistantAction(req.body?.action, buildAccess(req));
+    if (result?.ok === false) return res.status(400).json(result);
+    res.json({ ok: true, message: result?.mensaje || 'Listo.' });
   } catch (error) {
     next(error);
   }

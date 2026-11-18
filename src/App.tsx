@@ -15,7 +15,7 @@ import { useTasks } from './hooks/useTasks';
 import { useScrollReveal } from './hooks/useScrollReveal';
 import { useAutoRefresh } from './hooks/useAutoRefresh';
 import { addDevice, deleteDevice, getMovements } from './services/devicesApi';
-import { lendDevice, lendDevicesBatch, returnDevice, returnDevicesBatch, type LoanBatchResponse } from './services/loansApi';
+import { lendDevice, lendDevicesBatch, relendDevice, returnDevice, returnDevicesBatch, type LoanBatchResponse } from './services/loansApi';
 import { createTask } from './services/tasksApi';
 import { getAuthSession, getSiteSettings, logout as logoutSession } from './services/authApi';
 import { setActiveSiteCode } from './services/activeSite';
@@ -226,8 +226,12 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, siteSettings, user?.id, activeSite]);
 
-  // Agenda y tareas también se refrescan solas (cada 2 vueltas, ~30 s): antes
+  // Agenda y tareas también se refrescan solas (cada 2 vueltas, ~1 min): antes
   // solo equipos y movimientos, y un tablero compartido quedaba viejo hasta recargar.
+  //
+  // Cada 30 s (antes 15): con varias pestañas abiertas cada vuelta eran consultas
+  // que frenaban al servidor para todos. Lo propio se ve al toque igual: cada
+  // préstamo, devolución o alta refresca en el momento.
   const refreshTick = useRef(0);
   useAutoRefresh(() => {
     if (document.hidden) return;
@@ -238,7 +242,7 @@ export function App() {
       void agenda.refresh().catch(() => undefined);
       void tasks.refresh().catch(() => undefined);
     }
-  }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 15));
+  }, Number(import.meta.env.VITE_AUTO_REFRESH_SECONDS || 30));
 
   useEffect(() => {
     applyThemeProfile(themeProfile);
@@ -354,10 +358,24 @@ export function App() {
     void refreshMovements(true);
   };
 
+  // Prestar/devolver: apenas el server confirma, el equipo cambia de estado en
+  // pantalla y el botón se libera. La relectura del inventario entero va en
+  // segundo plano: antes el botón quedaba en "Prestando..." hasta que bajaba
+  // toda la lista de equipos, y con la red lenta eso eran varios segundos.
+  const markLoaned = (payload: Record<string, unknown>) => {
+    const etiqueta = String(payload.etiqueta || '');
+    if (etiqueta) patchLocal(etiqueta, { estado: 'Prestado', prestadoA: String(payload.person || '') } as Partial<Device>);
+  };
+  const markReturned = (payload: Record<string, unknown>) => {
+    const etiqueta = String(payload.etiqueta || '');
+    if (etiqueta) patchLocal(etiqueta, { estado: 'Disponible', prestadoA: '' } as Partial<Device>);
+  };
+
   const onLend = async (payload: Record<string, unknown>) => {
     try {
       const result = await lendDevice({ ...payload, operator });
-      await refresh({ force: true, wait: true });
+      markLoaned(payload);
+      void refresh({ force: true, wait: true });
       return result;
     } finally {
       void refreshMovements(true);
@@ -367,7 +385,21 @@ export function App() {
   const onReturn = async (payload: Record<string, unknown>) => {
     try {
       const result = await returnDevice({ ...payload, operator });
-      await refresh({ force: true, wait: true });
+      markReturned(payload);
+      void refresh({ force: true, wait: true });
+      return result;
+    } finally {
+      void refreshMovements(true);
+    }
+  };
+
+  // "Devolver y prestar": el equipo figura prestado a otra persona (ej. el turno
+  // anterior no lo devolvió) y se pasa directo al nuevo receptor.
+  const onRelend = async (payload: Record<string, unknown>) => {
+    try {
+      const result = await relendDevice({ ...payload, operator });
+      markLoaned(payload);
+      void refresh({ force: true, wait: true });
       return result;
     } finally {
       void refreshMovements(true);
@@ -546,7 +578,7 @@ export function App() {
         <Suspense fallback={<section className="view active"><SkeletonView /></section>}>
         {view === 'dashboard' && <Dashboard key={activeSite} operator={operator} consultationMode={effectiveConsultation} devices={filteredDevices} counts={counts} agenda={agenda.items} tasks={tasks.items} movements={movements} onNavigate={setView} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onEdit={setEditingDevice} />}
         {view === 'devices' && <DevicesPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} operator={operator} onAdd={onAddDevice} onLoan={openLoanFlow} onReturn={returnFromTable} onProfile={setProfile} onDelete={onDeleteDevice} onLoanBatch={openLoanBatch} onReturnBatch={onReturnBatch} onImported={() => refresh({ force: true, wait: true })} />}
-        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} />}
+        {view === 'loans' && <LoansPage key={activeSite} devices={devices} movements={movements} operator={operator} consultationMode={effectiveConsultation} onLend={onLend} onReturn={onReturn} onRelend={onRelend} onLendBatch={onLendBatch} onReturnBatch={onReturnBatch} onProfile={setProfile} initialCode={loanSeed} initialBatch={loanBatchSeed} />}
         {view === 'history' && <HistoryPage key={activeSite} devices={devices} onProfile={setProfile} />}
         {view === 'inventory' && <InventoryPage key={activeSite} devices={filteredDevices} consultationMode={effectiveConsultation} onProfile={setProfile} onRefreshDevices={() => refresh({ force: true, wait: true })} />}
         {view === 'analytics' && <AnalyticsPage key={activeSite} devices={devices} onRefresh={refresh} />}
@@ -583,6 +615,7 @@ export function App() {
           context={assistantContext || { type: 'view', view, label: view }}
           open={assistantOpen}
           onOpenChange={setAssistantOpen}
+          docked={Boolean(profile)}
           themeProfile={themeProfile}
         />
         {profile && <DeviceProfile device={profile} consultationMode={effectiveConsultation} onOpenDevice={setProfile} onClose={() => setProfile(null)} />}

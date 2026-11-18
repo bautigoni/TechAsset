@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getPhotoPassSuggestions, type PhotoPassSuggestion } from '../../services/photoPassesApi';
+import { SuggestField } from './SuggestField';
 
 /**
  * Campo de persona con sugerencias, igual que el de préstamo de equipos.
@@ -7,7 +8,8 @@ import { getPhotoPassSuggestions, type PhotoPassSuggestion } from '../../service
  * Reemplaza al `<datalist>` nativo, que listaba todo lo que alguna vez se
  * escribió tal cual se escribió —"mile", "Mile", "Mile STAFF", "mili", "Mili
  * doe"— y encima en orden alfabético, así que el nombre que más usás quedaba
- * enterrado. Acá el backend ya agrupa por nombre normalizado y ordena por uso.
+ * enterrado. Acá el backend ya agrupa por nombre normalizado y ordena por uso,
+ * y suma la lista de docentes y alumnos de la sede aunque nunca hayan pedido nada.
  */
 export function PersonSuggestInput({ value, onChange, onPick, field, placeholder, autoFocus, required, id }: {
   value: string;
@@ -21,58 +23,44 @@ export function PersonSuggestInput({ value, onChange, onPick, field, placeholder
   id?: string;
 }) {
   const [items, setItems] = useState<PhotoPassSuggestion[]>([]);
-  const [abierto, setAbierto] = useState(false);
 
   useEffect(() => {
     const q = value.trim();
     if (q.length < 2) { setItems([]); return; }
+    let cancelled = false;
     const timer = window.setTimeout(() => {
       getPhotoPassSuggestions(q, field)
-        .then(response => setItems(response.items || []))
-        .catch(() => setItems([]));
-    }, 220);
-    return () => window.clearTimeout(timer);
+        .then(response => { if (!cancelled) setItems(response.items || []); })
+        .catch(() => { if (!cancelled) setItems([]); });
+    }, 180);
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, [value, field]);
 
+  const options = items.map(item => ({
+    key: item.nombre,
+    title: item.nombre,
+    tag: item.veces ? undefined : 'Lista',
+    detail: [
+      [item.curso, field === 'alumno' ? item.docente : ''].filter(Boolean).join(' · ') || (item.veces ? 'sin datos previos' : ''),
+      item.veces ? `${item.veces}×` : ''
+    ].filter(Boolean).join(' · ')
+  }));
+
   return (
-    <span className="loan-person-field">
-      <input
-        id={id}
-        className="input"
-        value={value}
-        required={required}
-        autoFocus={autoFocus}
-        autoComplete="off"
-        placeholder={placeholder}
-        onChange={event => { onChange(event.target.value); setAbierto(true); }}
-        onFocus={() => setAbierto(true)}
-        // El blur se demora: sin eso el click en una sugerencia cierra la lista
-        // antes de que llegue a registrarse.
-        onBlur={() => window.setTimeout(() => setAbierto(false), 150)}
-      />
-      {abierto && items.length > 0 && (
-        <ul className="loan-suggest">
-          {items.map(item => (
-            <li key={item.nombre}>
-              <button
-                type="button"
-                onMouseDown={event => {
-                  event.preventDefault();
-                  onChange(item.nombre);
-                  onPick?.(item);
-                  setAbierto(false);
-                }}
-              >
-                <strong>{item.nombre}</strong>
-                <span>
-                  {[item.curso, field === 'alumno' ? item.docente : ''].filter(Boolean).join(' · ') || 'sin datos previos'}
-                  {' · '}{item.veces}×
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </span>
+    <SuggestField
+      id={id}
+      value={value}
+      onChange={onChange}
+      options={options}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      required={required}
+      onPick={index => {
+        const item = items[index];
+        if (!item) return;
+        onChange(item.nombre);
+        onPick?.(item);
+      }}
+    />
   );
 }

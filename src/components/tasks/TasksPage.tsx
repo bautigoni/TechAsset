@@ -14,6 +14,7 @@ import { Columns3, Lock, Users } from 'lucide-react';
 import { Modal } from '../layout/Modal';
 import { SelectionBar, useSelection } from '../layout/Selection';
 import { deleteTask } from '../../services/tasksApi';
+import { getSiteAssistants } from '../../services/authApi';
 import { confirmDialog, toast } from '../layout/Feedback';
 
 const PRIORITIES = ['Urgente', 'Media', 'Baja'];
@@ -76,6 +77,8 @@ export function TasksPage(props: { tasks: TaskItem[]; kpis: Record<string, numbe
     }
   }, []);
   useEffect(() => { refreshColumns().catch(() => setMessage('No se pudieron cargar las columnas.')); }, [refreshColumns]);
+  // Deja listas las personas del equipo para cuando se abra "Nueva tarea".
+  useEffect(() => { void getSiteAssistants().catch(() => undefined); }, []);
 
   const visibleTasks = useMemo(() => tasks.filter(task => {
     if (space === 'team') return task.visibility !== 'private';

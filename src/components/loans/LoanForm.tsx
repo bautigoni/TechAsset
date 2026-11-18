@@ -10,6 +10,7 @@ import { getSiteSettings } from '../../services/authApi';
 import { getActiveLoanAccessories, getLoanSuggestions, type LoanBatchResponse, type LoanSuggestion } from '../../services/loansApi';
 import { confirmDialog } from '../layout/Feedback';
 import { getLoanState } from '../../utils/deviceState';
+import { SuggestField } from './SuggestField';
 
 type ScanItem = {
   id: string;
@@ -39,7 +40,7 @@ const DEFAULT_GRADE_OPTIONS = [
 const SCHOOL_LEVEL_OPTIONS = ['EP', 'ES'];
 const DEFAULT_ACCESSORIES = ['Cargador', 'Mouse', 'Bolso', 'Cable HDMI', 'Adaptador', 'Lápiz óptico', 'Auriculares'];
 
-export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationMode, initialCode = '', batchSeed }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; consultationMode: boolean; initialCode?: string; batchSeed?: { etiquetas: string[]; nonce: number } }) {
+export function LoanForm({ devices, onLend, onReturn, onRelend, onLendBatch, consultationMode, initialCode = '', batchSeed }: { devices: Device[]; onLend: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onReturn: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onRelend?: (payload: Record<string, unknown>) => Promise<LoanActionResult>; onLendBatch: (payload: Record<string, unknown> & { etiquetas: string[] }) => Promise<LoanBatchResponse>; consultationMode: boolean; initialCode?: string; batchSeed?: { etiquetas: string[]; nonce: number } }) {
   const [code, setCode] = useState('');
   const [person, setPerson] = useState('');
   const [role, setRole] = useState('');
@@ -57,7 +58,6 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
   const [accessoriesOpen, setAccessoriesOpen] = useState(false);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [suggestions, setSuggestions] = useState<LoanSuggestion[]>([]);
-  const [showSuggest, setShowSuggest] = useState(false);
   const [continuousScan, setContinuousScan] = useState(false);
   const [scanItems, setScanItems] = useState<ScanItem[]>([]);
   const [scanMessage, setScanMessage] = useState<{ tone: 'info' | 'warn' | 'error'; text: string; success?: boolean } | null>(null);
@@ -153,7 +153,7 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
 
   const reset = () => {
     setCode(''); setPerson(''); setRole(''); setLocation(''); setLocationDetail(''); setCourse(''); setSchoolLevel(''); setReason(''); setReasonDetail(''); setComment('');
-    setSuggestions([]); setShowSuggest(false);
+    setSuggestions([]);
     setLoanAccessories([]); setReturnedAccessories([]); setExpectedAccessories([]); setCustomAccessory(''); setAccessoriesOpen(false);
     codeInputRef.current?.focus();
   };
@@ -162,11 +162,24 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
   useEffect(() => {
     const q = person.trim();
     if (q.length < 2) { setSuggestions([]); return; }
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      getLoanSuggestions(q).then(response => setSuggestions(response.suggestions || [])).catch(() => setSuggestions([]));
-    }, 220);
-    return () => window.clearTimeout(timer);
+      getLoanSuggestions(q)
+        .then(response => { if (!cancelled) setSuggestions(response.suggestions || []); })
+        .catch(() => { if (!cancelled) setSuggestions([]); });
+    }, 180);
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, [person]);
+
+  const suggestionOptions = useMemo(() => suggestions.map(suggestion => ({
+    key: suggestion.persona,
+    title: suggestion.persona,
+    tag: suggestion.source === 'lista' ? 'Lista' : undefined,
+    detail: [
+      [suggestion.rol, suggestion.curso || suggestion.ubicacion].filter(Boolean).join(' · ') || (suggestion.count ? 'sin datos previos' : ''),
+      suggestion.count ? `${suggestion.count}×` : ''
+    ].filter(Boolean).join(' · ')
+  })), [suggestions]);
 
   // Al elegir una persona conocida, pre-rellenar rol/ubicación/motivo/curso más usados.
   const applySuggestion = (suggestion: LoanSuggestion) => {
@@ -181,7 +194,6 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
       if (level) setSchoolLevel(level);
       if (grade) setCourse(grade);
     }
-    setShowSuggest(false);
   };
 
   const handleLend = async () => {
@@ -225,15 +237,37 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
     }
   };
 
+  // Ningún dato es obligatorio: a veces se presta sin saber el nombre (ej. "una
+  // profe de 3.º, notebook azul"). Solo hace falta algo que identifique a quién:
+  // la persona o un comentario. El server aplica la misma regla.
   const validateLoanFields = () => {
-    if (!person.trim()) return 'Completá la persona que recibe el equipo.';
-    if (!role.trim() || role === 'Seleccionar rol') return 'Seleccioná un rol.';
-    if (!location.trim() || location === 'Seleccionar ubicación') return 'Seleccioná una ubicación.';
-    if (requiresSchoolCourse && (!schoolLevel.trim() || schoolLevel === 'Seleccionar nivel')) return 'Seleccioná si es EP o ES.';
-    if (requiresSchoolCourse && (!course.trim() || course === 'Seleccionar curso')) return 'Seleccioná grado, año o curso.';
-    if (selectedLocation?.requiresDetail && !locationDetail.trim()) return 'Especificá la ubicación.';
-    if (selectedReason?.requiresDetail && !reasonDetail.trim()) return 'Especificá el motivo.';
+    if (!person.trim() && !comment.trim()) return 'Anotá la persona o, si no la sabés, un comentario con lo que sepas (curso, cómo es, etc.).';
     return '';
+  };
+
+  // El equipo figura prestado a otra persona (ej. el turno anterior no lo
+  // devolvió): se registra la devolución y el préstamo nuevo de una.
+  const handleRelend = async () => {
+    if (busyRef.current || consultationMode || selectedLoanState !== 'loaned' || !onRelend) return;
+    const validation = validateLoanFields();
+    if (validation) {
+      setScanMessage({ tone: 'error', text: validation });
+      return;
+    }
+    const data = { ...payload(), accessories: returnedAccessories };
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      const result = await onRelend(data);
+      const synced = !(result && result.synced === false);
+      setScanMessage({ tone: synced ? 'info' : 'warn', text: result?.message || 'Devolución y préstamo registrados.', success: synced });
+      reset();
+    } catch (error) {
+      setScanMessage({ tone: 'error', text: error instanceof Error ? error.message : 'No se pudo registrar la devolución y el préstamo.' });
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
   };
 
   const addToContinuousScan = (raw: string) => {
@@ -463,29 +497,15 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
       )}
 
       <div className="grid-2">
-        <label className="loan-person-field">Persona
-          <input
+        <label>Persona
+          <SuggestField
             ref={personInputRef}
-            className="input"
             value={person}
-            onChange={event => { setPerson(event.target.value); setShowSuggest(true); }}
-            onFocus={() => setShowSuggest(true)}
-            onBlur={() => window.setTimeout(() => setShowSuggest(false), 150)}
-            placeholder="Nombre de quien recibe"
-            autoComplete="off"
+            onChange={setPerson}
+            options={suggestionOptions}
+            onPick={index => { const suggestion = suggestions[index]; if (suggestion) applySuggestion(suggestion); }}
+            placeholder={selectedLoanState === 'loaned' ? 'A quién se lo pasás (opcional)' : 'Nombre de quien recibe (opcional)'}
           />
-          {showSuggest && suggestions.length > 0 && (
-            <ul className="loan-suggest">
-              {suggestions.map(suggestion => (
-                <li key={suggestion.persona}>
-                  <button type="button" onMouseDown={event => { event.preventDefault(); applySuggestion(suggestion); }}>
-                    <strong>{suggestion.persona}</strong>
-                    <span>{[suggestion.rol, suggestion.ubicacion].filter(Boolean).join(' · ') || 'sin datos previos'} · {suggestion.count}×</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </label>
         <label>Rol<SelectField ariaLabel="Rol" value={role} placeholder="Seleccionar rol" onChange={setRole} options={roleOptions.map(value => ({ value, label: value }))} /></label>
       </div>
@@ -501,7 +521,16 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
           {selectedReason?.requiresDetail && <label>Especificar motivo<input className="input" value={reasonDetail} onChange={event => setReasonDetail(event.target.value)} /></label>}
         </div>
       )}
-	      <label>Comentario<input className="input" value={comment} onChange={event => setComment(event.target.value)} placeholder="Comentario opcional" /></label>
+      <label>Comentario
+        <textarea
+          className="input loan-comment"
+          rows={2}
+          value={comment}
+          onChange={event => { setComment(event.target.value); autoGrow(event.currentTarget); }}
+          ref={element => { if (element) autoGrow(element); }}
+          placeholder="Lo que sepas aunque falten datos: color o marca del equipo, curso, cómo es la persona…"
+        />
+      </label>
         {!continuousScan && selectedLoanState === 'loaned' && (
           <section className="loan-accessories-card">
             <div className="loan-accessories-head">
@@ -553,6 +582,9 @@ export function LoanForm({ devices, onLend, onReturn, onLendBatch, consultationM
           <>
             {selectedLoanState === 'available' && <Button type="button" variant="primary" disabled={consultationMode || busy} onClick={handleLend}>{busy ? 'Prestando...' : 'Prestar'}</Button>}
             {selectedLoanState === 'loaned' && <Button type="button" variant="success" disabled={consultationMode || busy} onClick={handleReturn}>{busy ? 'Devolviendo...' : 'Devolver'}</Button>}
+            {selectedLoanState === 'loaned' && onRelend && (person.trim() || comment.trim()) && (
+              <Button type="button" variant="primary" disabled={consultationMode || busy} onClick={handleRelend}>{busy ? 'Registrando...' : 'Devolver y prestar'}</Button>
+            )}
             <Button type="button" onClick={openCamera} disabled={cameraOpen}>Abrir cámara</Button>
             <Button type="button" onClick={stopCamera} disabled={!cameraOpen}>Cerrar cámara</Button>
           </>
@@ -575,6 +607,12 @@ function AccessoryToggle({ label, checked, onChange }: { label: string; checked:
       <span className="app-switch" aria-hidden="true"><span /></span>
     </button>
   );
+}
+
+/** El comentario crece con el texto (hasta un tope; después scrollea adentro). */
+function autoGrow(element: HTMLTextAreaElement) {
+  element.style.height = 'auto';
+  element.style.height = `${Math.min(element.scrollHeight + 2, 220)}px`;
 }
 
 function toggleList(items: string[], item: string) {

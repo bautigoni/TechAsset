@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../config.js';
-import { getDb, getSiteSetting, nowIso, seedDefaultSettings } from '../db.js';
+import { getDb, getSiteSetting, invalidateSiteSettings, nowIso, seedDefaultSettings } from '../db.js';
 import { isSiteManager, isSuperadmin, normalizeSiteCode, requireSite } from '../services/siteContext.service.js';
 import { sendMail } from '../services/mail.service.js';
 import { buildUserApprovedMail, buildUserDeactivatedMail, buildUserRejectedMail } from '../services/mailTemplates.js';
@@ -64,6 +64,7 @@ sitesRouter.patch('/site-settings', (req, res) => {
     if (key === 'siteCode' || key === 'site_code') continue;
     stmt.run(siteCode, key, JSON.stringify(value), ts);
   }
+  invalidateSiteSettings(siteCode);
   res.json({ ok: true, siteCode, settings: loadSiteSettings(siteCode) });
 });
 

@@ -10,7 +10,10 @@ import { Worker } from 'node:worker_threads';
 
 const CTRL_BYTES = 8;                 // Int32Array[2]
 const DATA_BYTES = 16 * 1024 * 1024;  // 16MB para el payload de resultados
-const RPC_TIMEOUT_MS = Math.max(5000, Number(process.env.PG_SYNC_TIMEOUT_MS || 30000));
+// Mientras una query espera, TODO el servidor espera (el hilo está bloqueado).
+// 30 s colgados congelaban la app entera y terminaban en 502; con 15 s se corta
+// antes, se reinicia la conexión y el resto de los usuarios sigue.
+const RPC_TIMEOUT_MS = Math.max(5000, Number(process.env.PG_SYNC_TIMEOUT_MS || 15000));
 
 // Tablas SIN columna `id` autonumérica: no se les puede pedir RETURNING id.
 const NO_ID_TABLES = new Set([
@@ -82,14 +85,19 @@ function tableOfInsert(sql) {
 }
 
 export function createPgSync(connectionString) {
-  const ctrlSab = new SharedArrayBuffer(CTRL_BYTES);
-  const dataSab = new SharedArrayBuffer(DATA_BYTES);
-  const ctrl = new Int32Array(ctrlSab);
-  const data = new Uint8Array(dataSab);
+  let ctrl;
+  let data;
   const dec = new TextDecoder();
 
   let worker;
   const startWorker = () => {
+    // Buffers nuevos por worker: si se reinicia por timeout, el worker viejo
+    // todavía puede escribir su respuesta tardía, y con los mismos buffers la
+    // query siguiente la leía como propia (datos de otra consulta).
+    const ctrlSab = new SharedArrayBuffer(CTRL_BYTES);
+    const dataSab = new SharedArrayBuffer(DATA_BYTES);
+    ctrl = new Int32Array(ctrlSab);
+    data = new Uint8Array(dataSab);
     const next = new Worker(new URL('./pgworker.js', import.meta.url), {
       workerData: { connectionString, ctrlSab, dataSab }
     });
@@ -98,7 +106,6 @@ export function createPgSync(connectionString) {
   };
   const resetWorker = () => {
     try { void worker?.terminate(); } catch { /* noop */ }
-    Atomics.store(ctrl, 0, 0);
     worker = startWorker();
   };
   worker = startWorker();
@@ -145,9 +152,9 @@ export function createPgSync(connectionString) {
           FROM information_schema.table_constraints tc
           JOIN information_schema.key_column_usage kcu
             ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-          WHERE tc.constraint_type='PRIMARY KEY' AND tc.table_name = $1
+          WHERE tc.constraint_type='PRIMARY KEY' AND tc.table_name = $1 AND tc.table_schema = current_schema()
         ) pk ON pk.column_name = c.column_name
-        WHERE c.table_name = $1
+        WHERE c.table_name = $1 AND c.table_schema = current_schema()
         ORDER BY c.ordinal_position`, [m[1]]).rows;
     }
     return []; // journal_mode, foreign_keys, index_list, index_info -> no aplican en PG

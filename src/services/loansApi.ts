@@ -9,6 +9,8 @@ export interface LoanSuggestion {
   ubicacion: string;
   curso: string;
   motivo: string;
+  /** 'lista' = sale de la lista de docentes y alumnos de la sede, sin préstamos previos. */
+  source?: 'historial' | 'lista';
 }
 
 export function getLoanSuggestions(q: string) {
@@ -39,6 +41,11 @@ export function lendDevice(payload: Record<string, unknown>) {
 
 export function returnDevice(payload: Record<string, unknown>) {
   return apiSend<LoanSyncResponse>('/api/loans/return', 'POST', payload);
+}
+
+/** Devuelve el equipo (prestado a otra persona) y lo presta al nuevo receptor en un solo paso. */
+export function relendDevice(payload: Record<string, unknown>) {
+  return apiSend<LoanSyncResponse>('/api/loans/relend', 'POST', payload);
 }
 
 export type LoanBatchResponse = { ok: true; done: number; results: Array<{ etiqueta: string; ok: boolean; error?: string; idempotent?: boolean }> };

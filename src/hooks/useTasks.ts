@@ -86,8 +86,12 @@ export function useTasks(operator: string) {
       return data.item;
     }
     const data = await createTask({ ...payload, operator });
-    // Una tarea nueva puede caer en cualquier orden: acá sí conviene releer.
-    await refresh();
+    // La tarea creada entra a la lista al toque (el POST ya la devuelve) y la
+    // relectura completa, que es el GET más pesado, va en segundo plano: antes
+    // el formulario esperaba esa relectura para cerrarse.
+    if (data?.item) setItems(previous => previous.some(item => item.id === data.item.id) ? previous : [data.item, ...previous]);
+    // Si había un poll en vuelo salió antes del alta: se espera y se relee de nuevo.
+    void (inFlight.current || Promise.resolve()).catch(() => undefined).then(() => refresh()).catch(() => undefined);
     return data.item;
   };
 

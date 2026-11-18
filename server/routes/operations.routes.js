@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { buildTaskContext, getDb, nowIso, rowToAgenda, rowToTask } from '../db.js';
+import { buildTaskContext, getDb, invalidateSiteSettings, nowIso, rowToAgenda, rowToTask } from '../db.js';
 import { requireSite } from '../services/siteContext.service.js';
 
 export const operationsRouter = Router();
@@ -118,6 +118,7 @@ operationsRouter.patch('/settings/shifts', (req, res) => {
   const stmt = getDb().prepare('INSERT INTO site_settings (site_code, key, value_json, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(site_code, key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at');
   stmt.run(siteCode, 'shift.morningOperator', JSON.stringify(morning), ts);
   stmt.run(siteCode, 'shift.afternoonOperator', JSON.stringify(afternoon), ts);
+  invalidateSiteSettings(siteCode);
   res.json({ ok: true, settings: { morningOperator: morning, afternoonOperator: afternoon } });
 });
 

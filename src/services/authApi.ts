@@ -1,5 +1,6 @@
 import type { AuthUser, SiteInfo } from '../types';
 import { apiGet, apiSend } from './apiClient';
+import { getActiveSiteCode } from './activeSite';
 
 export type AuthSession = {
   ok: true;
@@ -90,7 +91,42 @@ export type AllowedUserItem = {
 
 export const getAllowedUsers = () => apiGet<{ ok: true; items: AllowedUserItem[] }>('/api/allowed-users');
 
-export const getSiteAssistants = () => apiGet<{ ok: true; items: Array<{ name: string; email?: string; siteRole?: string; turno?: string }> }>('/api/site-assistants');
+export type SiteAssistant = { name: string; email?: string; siteRole?: string; turno?: string };
+
+// Las personas del equipo cambian muy de vez en cuando, pero el alta de tarea las
+// pedía cada vez que se abría y los chips de responsables tardaban en aparecer.
+// Se guardan por sede 5 minutos (la caché general de apiGet se vacía con
+// cualquier escritura) y se revalidan en segundo plano: el formulario abre ya con ellas.
+const ASSISTANTS_TTL_MS = 5 * 60 * 1000;
+const assistantsCache = new Map<string, { at: number; items: SiteAssistant[] }>();
+const assistantsInflight = new Map<string, Promise<{ ok: true; items: SiteAssistant[] }>>();
+
+/** Lo último que se sabe de las personas del equipo de la sede activa, sin red. */
+export function peekSiteAssistants(): SiteAssistant[] | null {
+  return assistantsCache.get(getActiveSiteCode())?.items || null;
+}
+
+export function getSiteAssistants(): Promise<{ ok: true; items: SiteAssistant[] }> {
+  const site = getActiveSiteCode();
+  const load = () => {
+    const pending = assistantsInflight.get(site);
+    if (pending) return pending;
+    const request = apiGet<{ ok: true; items: SiteAssistant[] }>('/api/site-assistants')
+      .then(response => {
+        assistantsCache.set(site, { at: Date.now(), items: response.items || [] });
+        return response;
+      })
+      .finally(() => assistantsInflight.delete(site));
+    assistantsInflight.set(site, request);
+    return request;
+  };
+  const cached = assistantsCache.get(site);
+  if (cached) {
+    if (Date.now() - cached.at > ASSISTANTS_TTL_MS) void load().catch(() => undefined);
+    return Promise.resolve({ ok: true as const, items: cached.items });
+  }
+  return load();
+}
 
 export const saveAllowedUser = (user: AllowedUserItem) =>
   apiSend<{ ok: true; item: AllowedUserItem }>(user.id ? `/api/allowed-users/${user.id}` : '/api/allowed-users', user.id ? 'PATCH' : 'POST', user);

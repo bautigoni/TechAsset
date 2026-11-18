@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TaskItem } from '../../types';
 import { Modal } from '../layout/Modal';
 import { Button } from '../layout/Button';
 import { ddMmToIso, formatDdMm, isValidDdMm } from '../../utils/taskDate';
-import { getSiteAssistants } from '../../services/authApi';
+import { getSiteAssistants, peekSiteAssistants } from '../../services/authApi';
 import { uploadTaskAttachment } from '../../services/tasksApi';
 import { useAssistantContext } from '../../hooks/useAssistantContext';
 import { SelectField } from '../layout/SelectField';
@@ -19,7 +19,14 @@ function initialResponsables(initial?: Partial<TaskItem>, operator?: string): st
 
 export function TaskModal({ onClose, onSave, initial, operator, defaultVisibility = 'team' }: { onClose: () => void; onSave: (task: Partial<TaskItem>) => Promise<unknown>; initial?: Partial<TaskItem>; operator: string; defaultVisibility?: 'team' | 'private' }) {
   useAssistantContext(initial?.id ? { type: 'task', id: initial.id, label: initial.titulo || initial.id, data: { estado: initial.estado, prioridad: initial.prioridad } } : null);
-  const [assistants, setAssistants] = useState<Array<{ name: string; email?: string }>>([]);
+  // Arranca con lo que ya se sabe del equipo (caché por sede): los chips de
+  // responsables aparecen al abrir, sin esperar a la red.
+  const [assistants, setAssistants] = useState<Array<{ name: string; email?: string }>>(() => (peekSiteAssistants() || []).filter(item => item.name));
+  // Guardar dos veces rápido creaba la tarea duplicada: el ref corta el segundo
+  // envío en el mismo tick (el estado recién se ve en el render siguiente).
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [task, setTask] = useState<Partial<TaskItem>>({ prioridad: 'Media', estado: 'Pendiente', visibility: defaultVisibility, ...initial });
   const [selected, setSelected] = useState<string[]>(() => initialResponsables(initial, operator));
   const [dateInput, setDateInput] = useState(formatDdMm(task.fechaVencimiento));
@@ -29,7 +36,7 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
   useEffect(() => {
     getSiteAssistants()
       .then(response => setAssistants(response.items.filter(item => item.name)))
-      .catch(() => setAssistants([]));
+      .catch(() => undefined);
   }, []);
 
   // C1/C2: todas las personas del sitio + el operador actual, como chips toggleables.
@@ -51,12 +58,23 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (savingRef.current || uploading) return;
     if (!isValidDdMm(dateInput)) return;
     const iso = ddMmToIso(dateInput);
     const responsables = selected.length ? selected : ['Sin asignar'];
     const assigneeEmails = assistants.filter(item => responsables.includes(item.name)).map(item => item.email || '').filter(Boolean);
-    await onSave({ ...task, responsables, assigneeEmails, responsable: responsables.join(','), fechaVencimiento: iso });
-    onClose();
+    savingRef.current = true;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await onSave({ ...task, responsables, assigneeEmails, responsable: responsables.join(','), fechaVencimiento: iso });
+      onClose();
+    } catch (error) {
+      // Lo escrito no se pierde: el formulario queda abierto para reintentar.
+      setSaveError(error instanceof Error ? error.message : 'No se pudo guardar la tarea.');
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   return (
@@ -125,7 +143,8 @@ export function TaskModal({ onClose, onSave, initial, operator, defaultVisibilit
             }
           }} /></label>
         </div>
-        <div className="actions"><Button variant="primary" type="submit">Guardar</Button><Button type="button" onClick={onClose}>Cancelar</Button></div>
+        {saveError && <div className="tool-error" role="alert">{saveError}</div>}
+        <div className="actions"><Button variant="primary" type="submit" disabled={saving || uploading}>{saving ? 'Guardando…' : 'Guardar'}</Button><Button type="button" onClick={onClose} disabled={saving}>Cancelar</Button></div>
       </form>
     </Modal>
   );
