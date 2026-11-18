@@ -8,6 +8,7 @@ import { config } from './config.js';
 import { devicesRouter } from './routes/devices.routes.js';
 import { loansRouter } from './routes/loans.routes.js';
 import { peopleRosterRouter } from './routes/peopleRoster.routes.js';
+import { importArchiveRouter } from './routes/importArchive.routes.js';
 import { agendaRouter } from './routes/agenda.routes.js';
 import { tasksRouter } from './routes/tasks.routes.js';
 import { analyticsRouter } from './routes/analytics.routes.js';
@@ -100,6 +101,8 @@ app.use('/api', authRouter);
 app.use('/api', googleAuthRouter);
 // Pedidos de cambios (admin): sesión propia por contraseña, sin sesión de usuario.
 app.use('/api', changeRequestsAdminRouter);
+// Mudanza de servidor (solo con IMPORT_TOKEN): recibe los adjuntos en un .tar.gz.
+app.use('/api', importArchiveRouter);
 app.use('/', publicCalendarRouter);
 app.use('/api', authMiddleware);
 // El operador de cada movimiento es quien tiene la sesión, no lo que diga el
